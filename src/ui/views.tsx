@@ -8,6 +8,7 @@ import { exportSpice } from '../core/spice';
 import { buildBom, bomToCsv, bomTotal } from '../core/bom';
 import { buildGuide, buildBlogPost } from '../core/docs';
 import { CodeEditor } from './CodeEditor';
+import { CodeAssistant } from './CodeAssistant';
 import { download, slug } from './exporters';
 import { generateFiles } from '../core/codegen';
 
@@ -129,6 +130,7 @@ export function CodeView() {
         </div>
       )}
       <CodeEditor fileKey={`${project.id}:${file}`} value={project.files[file]} onChange={(v) => useStore.getState().setFile(file, v)} errorLine={errorLine} />
+      <CodeAssistant file={file} />
     </div>
   );
 }

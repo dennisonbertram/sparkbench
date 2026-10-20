@@ -29,7 +29,7 @@ export function App() {
   useEffect(() => {
     fetch('/api/status')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && useStore.getState().set({ aiStatus: { enabled: !!d.ai?.enabled, model: d.ai?.model, kicad: d.kicad, ngspice: d.ngspice } }))
+      .then((d) => d && useStore.getState().set({ aiStatus: { enabled: !!d.ai?.enabled, model: d.ai?.model, via: d.ai?.via, kicad: d.kicad, ngspice: d.ngspice } }))
       .catch(() => {});
     const p = loadCurrent();
     const url = new URL(location.href);

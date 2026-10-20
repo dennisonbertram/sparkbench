@@ -32,8 +32,8 @@ export function Copilot() {
     <aside className="copilot" data-tour="copilot">
       <header className="panel-head">
         <h2>Copilot</h2>
-        <span className={`ai-badge ${ai.enabled ? 'on' : ''}`} title={ai.enabled ? `Using ${ai.model}` : 'Using the built-in offline planner. Start the dev server with ANTHROPIC_API_KEY set to use Claude.'}>
-          {ai.enabled ? 'Claude' : 'Offline planner'}
+        <span className={`ai-badge ${ai.enabled ? 'on' : ''}`} title={ai.enabled ? `Using ${ai.model}${ai.via === 'claude-cli' ? ' through your Claude Code login' : ''}` : 'Using the built-in offline planner. Set ANTHROPIC_API_KEY or log in to Claude Code to use Claude.'}>
+          {ai.enabled ? 'Claude AI' : 'Offline planner'}
         </span>
       </header>
       <div className="chat-log" ref={log}>

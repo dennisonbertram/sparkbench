@@ -39,12 +39,22 @@ export async function sendPrompt(text: string) {
 
   try {
     if (st.aiStatus.enabled) {
-      const res = await fetch('/api/ai/design', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: trimmed, project: current }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'AI request failed');
-      if (data.project) applyProject(data.project, data.intent === 'new');
-      st.patchChat(pending, { text: data.reply, details: data.log, pending: false, actions: data.project ? nextActions() : undefined });
-      return;
+      st.patchChat(pending, { text: 'Claude is designing… (this can take up to a minute when it writes custom code)' });
+      const history = st.chat
+        .filter((m) => !m.pending && m.id !== pending)
+        .slice(-7, -1)
+        .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+      try {
+        const res = await fetch('/api/ai/design', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: trimmed, project: current, history }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'AI request failed');
+        if (data.project) applyProject(data.project, data.intent === 'new');
+        st.patchChat(pending, { text: data.reply, details: data.log, pending: false, actions: data.project ? nextActions() : undefined });
+        return;
+      } catch (e: any) {
+        // Fall through to the offline planner so the user is never stuck.
+        st.patchChat(pending, { text: `Claude was unavailable (${e?.message ?? e}); using the offline planner instead.` });
+      }
     }
     if (looksLikeNewProject(trimmed, current)) {
       const p = planFromPrompt(trimmed);

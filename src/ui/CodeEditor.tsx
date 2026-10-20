@@ -22,6 +22,14 @@ const errorField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
+let active: EditorView | null = null;
+/** The text the user has selected in the code editor (for "change this part" AI requests). */
+export function getEditorSelection(): string {
+  if (!active) return '';
+  const r = active.state.selection.main;
+  return r.empty ? '' : active.state.sliceDoc(r.from, r.to);
+}
+
 export function CodeEditor({ value, onChange, errorLine, fileKey }: { value: string; onChange(v: string): void; errorLine?: number | null; fileKey: string }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -45,7 +53,11 @@ export function CodeEditor({ value, onChange, errorLine, fileKey }: { value: str
       }),
     });
     view.current = v;
-    return () => v.destroy();
+    active = v;
+    return () => {
+      if (active === v) active = null;
+      v.destroy();
+    };
   }, [fileKey]);
 
   useEffect(() => {

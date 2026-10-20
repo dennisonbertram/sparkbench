@@ -241,8 +241,10 @@ class Builder {
     const short = label && /^button ([a-z])$/i.exec(label);
     if (short) return `btn_${short[1].toLowerCase()}`;
     if (label) {
-      const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-      if (slug && !/^(button|led|status)$/.test(slug)) base = `${NAMES[kind]}_${slug}`.slice(0, 24);
+      // "Silence button" → btn_silence; drop words that just repeat what the part is.
+      const filler = /^(button|btn|sensor|buzzer|led|light|lamp|display|screen|oled|lcd|knob|servo|relay|module|temperature|humidity|the|a|an|status|imu|ring|switch|alarm)$/;
+      const words = label.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w && !filler.test(w));
+      if (words.length) base = `${NAMES[kind]}_${words.join('_')}`.slice(0, 24);
     }
     const n = (this.nameCount.get(base) ?? 0) + 1;
     this.nameCount.set(base, n);
@@ -662,7 +664,7 @@ export function editSpec(spec: DesignSpec, instruction: string): EditResult {
   // Board swap
   const boardWords = /\b(esp-?32|pico|rp2040|raspberry ?pi|rpi)\b/.exec(t);
   if (boardWords && /\b(use|switch|swap|change|instead|move|port|replace)\b/.test(t)) {
-    const nb = detectBoard(boardWords[0]);
+    const nb = detectBoard(instruction);
     if (nb !== spec.board) {
       next.board = nb;
       msgs.push(`Switched the board to ${BOARDS[nb as Exclude<BoardId, 'none'>].name} and re-assigned every pin.`);

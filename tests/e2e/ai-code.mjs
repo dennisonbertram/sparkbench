@@ -1,0 +1,23 @@
+// E2E: ask the AI to change code in the Code tab, accept, and check it runs.
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(String(e)));
+await p.goto('http://localhost:5173/?example=pico-traffic-light&notour');
+await p.waitForSelector('.part');
+await p.click('.tabs button:has-text("Code")');
+await p.fill('[data-testid=code-assistant] textarea', 'Print the name of the colour (RED, YELLOW or GREEN) to the serial monitor every time the light changes.');
+await p.click('[data-testid=code-assistant] button[type=submit]');
+await p.waitForSelector('[data-testid=ai-proposal]', { timeout: 240000 });
+await p.screenshot({ path: 'test-results/ai-code-proposal.png' });
+console.log('proposal:', (await p.textContent('.proposal-head')).slice(0, 400));
+await p.click('button:has-text("Accept & run")');
+await p.click('.tabs button:has-text("Breadboard")');
+await p.waitForTimeout(7000);
+const serial = await p.textContent('[data-testid=serial]');
+console.log('serial:', serial.slice(-300));
+await p.screenshot({ path: 'test-results/ai-code-running.png' });
+console.log('errors:', errors);
+await b.close();
+process.exit(/RED|GREEN|YELLOW/i.test(serial) && !errors.length ? 0 : 1);

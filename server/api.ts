@@ -31,14 +31,20 @@ export function apiPlugin(): Plugin {
     if (!req.url?.startsWith('/api/')) return next();
     try {
       if (req.url === '/api/status') {
-        const { aiEnabled } = await import('./ai');
-        return send(res, 200, { ai: aiEnabled() ? { enabled: true, model: 'claude-opus-5-5' } : { enabled: false }, kicad: !!KICAD_CLI, ngspice: !!NGSPICE });
+        const { aiStatus } = await import('./ai');
+        return send(res, 200, { ai: aiStatus(), kicad: !!KICAD_CLI, ngspice: !!NGSPICE });
       }
       if (req.url === '/api/ai/design' && req.method === 'POST') {
-        const { aiDesign, aiEnabled } = await import('./ai');
-        if (!aiEnabled()) return send(res, 400, { error: 'Set ANTHROPIC_API_KEY to enable Claude.' });
-        const { prompt, project } = await body(req);
-        return send(res, 200, await aiDesign(prompt, project));
+        const { aiDesign, aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'No AI available: set ANTHROPIC_API_KEY or log in to Claude Code.' });
+        const { prompt, project, history } = await body(req);
+        return send(res, 200, await aiDesign(prompt, project ?? undefined, history ?? []));
+      }
+      if (req.url === '/api/ai/code' && req.method === 'POST') {
+        const { aiEditFile, aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'No AI available: set ANTHROPIC_API_KEY or log in to Claude Code.' });
+        const { project, file, instruction, error, selection } = await body(req);
+        return send(res, 200, await aiEditFile(project, file, instruction, { error, selection }));
       }
       if (req.url === '/api/kicad/render' && req.method === 'POST') {
         if (!KICAD_CLI) return send(res, 404, { error: 'kicad-cli not found' });

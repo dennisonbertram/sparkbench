@@ -47,7 +47,7 @@ interface State {
   bottomTab: 'serial' | 'problems';
   showWelcome: boolean;
   tourStep: number | null;
-  aiStatus: { enabled: boolean; model?: string; kicad?: boolean; ngspice?: boolean };
+  aiStatus: { enabled: boolean; model?: string; via?: string; kicad?: boolean; ngspice?: boolean };
 
   setProject(p: Project | null, opts?: { record?: boolean; keepSim?: boolean }): void;
   update(fn: (p: Project) => Project, record?: boolean): void;

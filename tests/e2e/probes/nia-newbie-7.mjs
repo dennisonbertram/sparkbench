@@ -1,0 +1,45 @@
+import { chromium } from 'playwright';
+const D='test-results/qa/nia-newbie/';
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 1366, height: 820 } });
+await ctx.addInitScript(()=>{try{localStorage.setItem('sparkbench.tour.done','1')}catch{}});
+const p = await ctx.newPage();
+const errs=[]; p.on('console',m=>{if(m.type()==='error')errs.push(m.text())}); p.on('pageerror',e=>errs.push('pageerror: '+e.message));
+await p.goto('http://localhost:5173/?welcome');
+await p.waitForTimeout(1500);
+let t0=Date.now();
+await p.fill('.hero-input textarea','a thermometer with a screen for my desk');
+await p.click('button.primary.big'); for(const s of [2,10,25]){await p.waitForTimeout(s===2?2000:(s===10?8000:15000)); await p.screenshot({path:D+'70-wait-'+s+'s.png'});} await p.waitForSelector('.part',{timeout:240000}); 
+await p.waitForFunction(()=>!document.querySelector('.msg.pending'),null,{timeout:180000});
+console.log('design took', (Date.now()-t0)/1000,'s; badge:', await p.innerText('[data-tour=copilot] .badge, [data-tour=copilot] header').catch(()=>'?'));
+async function ask(q, shot){
+  const t=Date.now();
+  await p.fill('.composer textarea', q); await p.press('.composer textarea','Enter');
+  await p.waitForTimeout(500);
+  await p.screenshot({ path: D+shot.replace('.png','-pending.png') });
+  await p.waitForFunction(()=>!document.querySelector('.msg.pending'),null,{timeout:240000});
+  await p.waitForTimeout(800);
+  const msgs = await p.$$eval('.msg.ai', es=>es.map(e=>e.innerText));
+  console.log('\n=== Q:', q, `(${((Date.now()-t)/1000).toFixed(1)}s)\nREPLY:`, msgs.slice(-1)[0]);
+  console.log('PARTS', await p.$$eval('.part', es=>es.map(e=>e.getAttribute('data-part'))), 'NAME', await p.innerText('header .project-name, .topbar h1, .title').catch(()=>'?'));
+  await p.screenshot({ path: D+shot });
+}
+await ask("make it beep when it's too hot", '60-beep.png');
+await ask('what does the resistor do?', '61-resistor.png');
+await ask('what do I need to buy?', '62-buy.png');
+await ask('how do I build it?', '63-build.png');
+await ask('make the text bigger', '64-text.png');
+await p.click('.tabs button:has-text("Code")'); await p.waitForTimeout(800);
+await p.screenshot({ path: D+'65-code.png' });
+await p.click('.tabs button:has-text("Breadboard")'); await p.waitForTimeout(500);
+await p.click('button.run'); await p.waitForTimeout(2500);
+const sl = p.locator('input[aria-label=Temperature]').first();
+if (await sl.count()) { await sl.fill('40'); await p.waitForTimeout(4000); }
+console.log('SERIAL:', (await p.innerText('[data-testid=serial]')).slice(-500));
+await p.click('.console-tabs button:has-text("Problems")').catch(()=>{});
+console.log('PROBLEMS:', await p.innerText('[data-testid=problems]').catch(()=>'?'));
+await p.click('.console-tabs button >> nth=0').catch(()=>{});
+await p.screenshot({ path: D+'66-hot.png' });
+console.log('ERRS', errs);
+await ctx.storageState({ path: D+'state7.json' });
+await b.close();

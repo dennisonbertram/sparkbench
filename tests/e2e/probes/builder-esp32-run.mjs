@@ -1,0 +1,36 @@
+// builder-esp32 probe: node tests/e2e/probes/builder-esp32-run.mjs <label> "<prompt>"
+import { chromium } from 'playwright';
+import fs from 'fs';
+const [label, prompt] = process.argv.slice(2);
+const dir = `test-results/qa/builder-esp32/${label}`;
+fs.mkdirSync(dir, { recursive: true });
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const errs = [];
+p.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.type() + ': ' + m.text()); });
+p.on('pageerror', e => errs.push('pageerror: ' + e.message));
+await p.goto('http://localhost:5173/?welcome&notour');
+await p.waitForSelector('.hero-input textarea');
+await p.fill('.hero-input textarea', prompt);
+await p.click('button.primary.big');
+await p.waitForSelector('.part', { timeout: 30000 });
+await p.waitForTimeout(2500);
+await p.screenshot({ path: `${dir}/01-design.png` });
+const out = {};
+out.title = await p.title();
+out.header = await p.evaluate(() => document.querySelector('header')?.innerText);
+out.copilot = await p.evaluate(() => document.querySelector('.copilot, .chat, aside')?.innerText);
+out.parts = await p.$$eval('.part', els => els.map(e => e.getAttribute('data-part')));
+out.simctl = await p.evaluate(() => document.querySelector('.simctl')?.outerHTML?.slice(0, 4000));
+await p.click('button.run');
+await p.waitForTimeout(4000);
+await p.screenshot({ path: `${dir}/02-running.png` });
+out.serial1 = await p.evaluate(() => document.querySelector('[data-testid=serial]')?.innerText);
+out.simctl2 = await p.evaluate(() => document.querySelector('.simctl')?.innerText);
+const probs = await p.$('.console-tabs button:has-text("Problems")');
+if (probs) { await probs.click(); await p.waitForTimeout(400); out.problems = await p.evaluate(() => document.querySelector('[data-testid=problems]')?.innerText); }
+fs.writeFileSync(`${dir}/out.json`, JSON.stringify(out, null, 1));
+fs.writeFileSync(`${dir}/errors.txt`, errs.join('\n'));
+await b.close();
+console.log(JSON.stringify(out, null, 1));
+console.log('ERRS', errs.join('\n'));

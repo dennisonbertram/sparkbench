@@ -339,3 +339,26 @@ h2, h3 { margin: 0; }
 }
 
 .value-chip { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); background: var(--signal); color: var(--signal-ink); font: 500 11px/1 var(--mono); padding: 4px 7px; border-radius: 99px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+
+/* ---------------------------------------------------------------- AI code assistant */
+.assistant { border-top: 1px solid var(--line); background: var(--surface); padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 55%; overflow: auto; flex: none; }
+.assistant.off { color: var(--ink-3); font-size: 13px; }
+.assistant-form { display: flex; gap: 8px; align-items: stretch; }
+.assistant-form textarea { flex: 1; resize: none; font-size: 13.5px; }
+.assistant-status { font-size: 12.5px; color: var(--ink-2); }
+.assistant-status::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--signal); margin-right: 8px; animation: pulse 1.2s infinite; }
+.fix-ai { align-self: flex-start; background: var(--signal); color: var(--signal-ink); border-color: #c79f00; font-weight: 600; }
+.proposal { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.proposal-head { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--surface-2); }
+.proposal-reply { margin-top: 4px; font-size: 13.5px; }
+.proposal-log { font-size: 12px; margin-top: 3px; }
+.proposal-log.ok { color: var(--ok); }
+.proposal-log.warn { color: var(--warn); }
+.proposal-actions { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.diff { margin: 0; font: 12px/1.45 var(--mono); max-height: 260px; overflow: auto; background: var(--surface); }
+.dl { white-space: pre; padding: 0 10px; }
+.dm { display: inline-block; width: 14px; color: var(--ink-3); user-select: none; }
+.dl-add { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+.dl-del { background: color-mix(in srgb, var(--error) 14%, transparent); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--error) 50%, transparent); }
+.dl-gap { color: var(--ink-3); background: var(--surface-2); }
+.dl-gap::after { content: '⋯'; }

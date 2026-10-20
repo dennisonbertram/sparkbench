@@ -1,0 +1,17 @@
+import { open, OUT, state, runSim, stop, problems } from './max-maker-lib.mjs';
+const { b, p, errs } = await open();
+await p.waitForTimeout(1000);
+await p.screenshot({ path: OUT + '01-welcome.png' });
+await p.fill('.hero-input textarea', 'ESP32 with an OLED screen, two buttons, a temperature sensor and an IMU');
+await p.click('button.primary.big');
+await p.waitForSelector('.part', { timeout: 30000 });
+await p.waitForTimeout(3000);
+await p.screenshot({ path: OUT + '02-designed.png' });
+console.log(JSON.stringify(await state(p)));
+console.log('COPILOT PANEL:\n', await p.locator('.copilot, .chat, aside').first().innerText().catch(e=>e.message));
+console.log('SERIAL:\n', await runSim(p, 4000));
+await p.screenshot({ path: OUT + '03-running.png' });
+await stop(p);
+console.log('PROBLEMS:\n', await problems(p));
+console.log('ERRS', errs);
+await b.close();
