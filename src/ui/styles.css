@@ -530,3 +530,31 @@ h2, h3 { margin: 0; }
 .pcb-downloads a.button { display: inline-flex; align-items: center; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; text-decoration: none; color: var(--ink); background: var(--surface); font-size: 13.5px; }
 .pcb-downloads a.button.primary { background: var(--ink); color: var(--bench); border-color: var(--ink); }
 .pcb-order { padding: 0; max-width: 74ch; }
+.tests { padding: 8px 14px; overflow: auto; height: 100%; font-size: 13.5px; }
+.tests-intro { margin: 0 0 8px; color: var(--ink-2); max-width: 80ch; }
+.test-list { list-style: none; padding: 0; margin: 0 0 10px; }
+.test-list li { padding: 5px 0; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.test-list .mark { font-weight: 700; width: 1.2em; }
+.test-list li.pass .mark { color: var(--ok); }
+.test-list li.fail .mark { color: var(--error); }
+.test-list .t-title { flex: 1; min-width: 200px; }
+.test-list .t-source { color: var(--ink-3); font-size: 12px; }
+.test-list .t-detail { flex-basis: 100%; padding-left: calc(1.2em + 8px); color: var(--ink-2); font-size: 12.5px; }
+.test-add { display: flex; gap: 6px; margin-top: 10px; }
+.test-add input { flex: 1; min-width: 0; }
+.questions { margin-top: 8px; display: grid; gap: 8px; }
+.questions fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px 8px; margin: 0; }
+.questions legend { font-weight: 600; font-size: 13px; padding: 0 4px; }
+.q-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.q-options label { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; background: var(--surface); }
+.q-options label.on { border-color: var(--ink); background: var(--ink); color: var(--bench); }
+.q-options input { position: absolute; opacity: 0; pointer-events: none; }
+.q-options label:has(input:focus-visible) { outline: 2px solid var(--select); outline-offset: 2px; }
+.q-rec { opacity: 0.7; }
+.req-card { margin-top: 8px; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--surface); font-size: 12.5px; display: grid; gap: 4px; }
+.req-row { display: grid; grid-template-columns: 88px 1fr; gap: 6px; }
+.req-row ul { margin: 0; padding-left: 16px; }
+.req-label { color: var(--ink-3); }
+.req-card.editing label { display: grid; gap: 3px; color: var(--ink-3); }
+.req-card.editing textarea, .req-card.editing input { font: inherit; color: var(--ink); }
+.req-actions { display: flex; gap: 6px; }

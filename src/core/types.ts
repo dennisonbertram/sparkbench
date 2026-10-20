@@ -113,9 +113,21 @@ export interface Project {
   customParts?: import('./customParts').CustomPartSpec[];
   /** What custom (AI-written or curated) firmware does, used by the build guide and blog. */
   behavior?: { does: string; test?: string; sim?: string }[];
+  /** What the user wants, confirmed before/after designing (requirements card). */
+  requirements?: Requirements;
+  /** Acceptance tests from the user's intent (AI or user written); auto-derived ones are recomputed. */
+  tests?: import('./acceptance').AcceptanceTest[];
   createdAt: number;
   updatedAt: number;
   version: 1;
+}
+
+export interface Requirements {
+  /** What it will do, one plain sentence each. */
+  does: string[];
+  power: string;
+  size: string;
+  budget: string;
 }
 
 export interface Net {

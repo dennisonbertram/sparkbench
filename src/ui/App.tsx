@@ -10,6 +10,7 @@ import { downloadZip, download, slug } from './exporters';
 import { audio } from './audio';
 import { Tour } from './Tour';
 import { PcbView } from './PcbView';
+import { useTestRunner } from './TestsPanel';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
 
@@ -27,6 +28,7 @@ export function App() {
   const project = useStore((s) => s.project);
   const tab = useStore((s) => s.tab);
   const tourStep = useStore((s) => s.tourStep);
+  useTestRunner();
 
   useEffect(() => {
     fetch('/api/status')

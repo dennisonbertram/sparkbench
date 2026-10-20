@@ -12,6 +12,10 @@ export interface ChatMsg {
   id: string;
   role: 'user' | 'ai';
   text: string;
+  /** Multiple-choice questions before designing (clarify). */
+  questions?: { question: string; options: string[] }[];
+  /** Requirements card shown with a design. */
+  requirements?: import('../core/types').Requirements;
   details?: string[];
   actions?: { label: string; run: string }[];
   pending?: boolean;
@@ -46,7 +50,9 @@ interface State {
   wiringFrom: PinRef | null;
   hoverNet: string | null;
   activeFile: string;
-  bottomTab: 'serial' | 'problems' | 'pins';
+  bottomTab: 'serial' | 'problems' | 'pins' | 'tests';
+  /** Latest acceptance-test run for the open project (see TestsPanel). */
+  testRun: { key: string; running: boolean; results: import('../core/acceptance').TestResult[]; error?: string } | null;
   showWelcome: boolean;
   /** Set while the AI is working, with a short status line. */
   busy: string | null;
@@ -88,6 +94,7 @@ export const useStore = create<State>((set, get) => ({
   hoverNet: null,
   activeFile: 'main.py',
   bottomTab: 'serial',
+  testRun: null,
   showWelcome: true,
   busy: null,
   pinnedNet: null,

@@ -9,6 +9,8 @@ import { PARTS, partDef } from '../core/parts';
 import { buildNets, pinKey } from '../core/netlist';
 import { runChecks } from '../core/checks';
 import { SimControls } from './SimControls';
+import { TestsPanel, TestsBadge } from './TestsPanel';
+import { RequirementsCard, QuestionsCard } from './Requirements';
 import type { CheckResult, FixAction } from '../core/types';
 import { annotate } from '../core/netlist';
 import { registerCustomPart, type CustomPartSpec } from '../core/customParts';
@@ -50,6 +52,8 @@ export function Copilot() {
         {chat.map((m) => (
           <div key={m.id} className={`msg ${m.role} ${m.pending ? 'pending' : ''}`}>
             {m.role === 'ai' && !m.pending ? <div className="msg-text md" dangerouslySetInnerHTML={{ __html: marked.parse(m.text, { async: false, breaks: true }) as string }} /> : <div className="msg-text">{m.text}</div>}
+            {m.questions && <QuestionsCard questions={m.questions} />}
+            {m.requirements && <RequirementsCard requirements={m.requirements} />}
             {m.details && m.details.length > 0 && (
               <details className="msg-details">
                 <summary>Why it's wired this way</summary>
@@ -71,6 +75,7 @@ export function Copilot() {
                       const p = useStore.getState().project;
                       if (a.run === 'run' && p) startSim(p);
                       else if (a.run.startsWith('tab:')) useStore.getState().setTab(a.run.slice(4) as any);
+                      else if (a.run.startsWith('bottom:')) useStore.getState().set({ bottomTab: a.run.slice(7) as any });
                     }}
                   >
                     {a.label}
@@ -350,6 +355,10 @@ export function Console() {
             Pins
           </button>
         )}
+        <button role="tab" aria-selected={tab === 'tests'} className={tab === 'tests' ? 'active' : ''} onClick={() => useStore.getState().set({ bottomTab: 'tests' })} data-testid="tests-tab">
+          Tests
+          <TestsBadge />
+        </button>
         <span className="spacer" />
         <span className="sim-time">{sim.status !== 'idle' ? `${(sim.t / 1000).toFixed(1)} s simulated` : ''}</span>
       </div>
@@ -361,6 +370,7 @@ export function Console() {
       )}
       {tab === 'serial' && discrete && <Scope />}
       {tab === 'pins' && !discrete && <PinsPanel />}
+      {tab === 'tests' && <TestsPanel />}
       {tab === 'problems' && (
         <div className="problems" data-testid="problems">
           {sim.error && (

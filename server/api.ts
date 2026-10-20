@@ -55,6 +55,23 @@ export function apiPlugin(): Plugin {
         if (!project || !ok) return send(res, 400, { error: 'Send 1–4 JPEG/PNG/WebP photos (under ~6 MB each).' });
         return send(res, 200, await aiCheckPhoto(project, images, typeof note === 'string' ? note.slice(0, 500) : undefined));
       }
+      if (req.url === '/api/tests/run' && req.method === 'POST') {
+        const { project } = await body(req);
+        const { deriveTests } = await import('../src/core/acceptance');
+        const { runTests } = await import('../src/sim/run-tests');
+        const { registerProjectParts } = await import('../src/core/customParts');
+        registerProjectParts(project);
+        const tests = [...deriveTests(project), ...(project.tests ?? [])];
+        return send(res, 200, { tests, results: await runTests(project, tests) });
+      }
+      if (req.url === '/api/ai/tests' && req.method === 'POST') {
+        const { aiWriteTests, aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'Writing tests from a sentence needs Claude: set ANTHROPIC_API_KEY or log in to Claude Code.' });
+        const { project, text } = await body(req);
+        const { runTests } = await import('../src/sim/run-tests');
+        const tests = await aiWriteTests(project, String(text ?? '').slice(0, 1000), 'user');
+        return send(res, 200, { tests, results: await runTests(project, tests) });
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });

@@ -4,7 +4,9 @@
 // Claude writes main.py. Code: Claude edits a file on request. Every firmware change is run in
 // the simulator; crashes are fed back to Claude to repair (up to two rounds).
 import { z } from 'zod';
-import type { DesignSpec, Project } from '../src/core/types';
+import type { DesignSpec, Project, Requirements } from '../src/core/types';
+import { deriveTests, partControls, type AcceptanceTest, type TestResult, type TestStep } from '../src/core/acceptance';
+import { runTests } from '../src/sim/run-tests';
 import { buildProject, FEATURE_LABELS } from '../src/core/planner';
 import { BOARDS } from '../src/core/boards';
 import { simulate } from '../src/sim/node-runner';
@@ -33,7 +35,44 @@ const DesignSchema = z.object({
   reply: z.string().describe('2-6 friendly sentences for a beginner: what you designed/changed and why. Mention anything unsupported and the alternative you chose.'),
   write_firmware: z.boolean().describe('true when the request asks for behaviour beyond simple defaults (e.g. "beep when too hot", "count steps", "show in Fahrenheit", a game, a menu)'),
   firmware_brief: z.string().nullable().describe('If write_firmware: precise description of the behaviour the firmware must implement'),
+  questions: z
+    .array(z.object({ question: z.string(), options: z.array(z.string()).describe('2-4 short answers; the first is your recommended default') }))
+    .describe('Only for a NEW design whose request is genuinely ambiguous in a way that changes the parts (power source, kind of display, how it alerts, internet or not). At most 3. Empty otherwise — including when the user is answering earlier questions.'),
+  requirements: z
+    .object({
+      does: z.array(z.string()).describe('3-6 short sentences: what the finished device does, in the user\'s words'),
+      power: z.string().describe('How it is powered, e.g. "USB cable (5 V)" or "9 V battery"'),
+      size: z.string().describe('Rough size, e.g. "fits on one breadboard; about 8 × 5 cm as a circuit board"'),
+      budget: z.string().describe('Rough parts cost, e.g. "about $25 in parts"'),
+    })
+    .describe('The requirements card for the design (new and edit intents)'),
 });
+
+const StepSchema = z.object({
+  kind: z.enum(['wait', 'set', 'press', 'expect']),
+  part: z.string().nullable().describe('Part ref (R1, SW1, DS1, U2…) for set/press/expect'),
+  control: z.string().nullable().describe("set: the part's control key (from the list)"),
+  value: z.number().nullable().describe('set: the value'),
+  ms: z.number().nullable().describe('wait: milliseconds; press: how long to hold'),
+  what: z.enum(['screen', 'serial', 'led', 'buzzer', 'servo', 'relay', 'motor', 'pixels', 'no-error']).nullable().describe('expect: what to check'),
+  text: z.string().nullable().describe('expect screen/serial: text that must appear (short, case-insensitive)'),
+  on: z.boolean().nullable().describe('expect led/buzzer/relay/motor/pixels: true = on, false = off'),
+  min: z.number().nullable().describe('expect servo: lowest acceptable angle'),
+  max: z.number().nullable().describe('expect servo: highest acceptable angle'),
+  within: z.number().nullable().describe('expect: allow this many ms for it to become true (default 1500)'),
+});
+const TestsSchema = z.object({
+  tests: z
+    .array(z.object({ title: z.string().describe('The promise in plain words, e.g. "When the soil is dry, the screen says Water me"'), steps: z.array(StepSchema) }))
+    .describe('2-6 tests that check what the USER asked for (not generic boot checks)'),
+});
+
+const TESTS_SYSTEM = `You write acceptance tests for hardware projects in Sparkbench. Each test is a short script run in the simulator:
+- set: move a sensor or switch control (e.g. part U2 control "temperature" value 31; part U3 control "moisture" value 10)
+- press: press and release a button (part SW1)
+- wait: let time pass
+- expect: check an output, waiting up to "within" ms: screen text (OLED/LCD/e-paper, read off the display), serial text, LED on/off, buzzer on/off, servo angle range, relay, motor, NeoPixels lit, or no-error.
+Test what the user asked for, using the parts and controls listed. Prefer short words that will certainly be on screen (e.g. "Water", "31"). Allow generous "within" times when the program updates slowly (read the code). Don't test things the request didn't ask for.`;
 
 const FileEditSchema = z.object({
   reply: z.string().describe('1-4 sentences: what you changed and why, for a beginner'),
@@ -74,8 +113,11 @@ export function aiStatus() {
 export interface AiDesignResult {
   project?: Project;
   reply: string;
-  intent: 'new' | 'edit' | 'code' | 'question';
+  intent: 'new' | 'edit' | 'code' | 'question' | 'clarify';
   log: string[];
+  questions?: { question: string; options: string[] }[];
+  requirements?: Requirements;
+  results?: TestResult[];
 }
 
 function projectContext(p?: Project) {
@@ -106,9 +148,13 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
   const d = await askJson(SYSTEM, [...history.slice(-6), { role: 'user', content: `${projectContext(current)}\n\nRequest: ${prompt}` }], DesignSchema);
   log.push(`Claude: intent=${d.intent}, board=${d.board}, ${d.features.length} part groups.`);
   if (d.intent === 'question') return { reply: d.reply, intent: 'question', log };
+  if (d.intent === 'new' && d.questions.length && !history.some((t) => t.role === 'assistant')) {
+    return { reply: d.reply, intent: 'clarify', log, questions: d.questions.slice(0, 3), requirements: d.requirements };
+  }
   if (d.intent === 'code' && current) {
     const r = await aiEditFile(current, 'main.py', d.firmware_brief ?? prompt);
-    return finish(r.project, `${d.reply}\n\n${r.reply}`.trim(), 'code', [...log, ...r.log]);
+    const t = await testAndRepair(r.project, prompt, log);
+    return finish(t.project, `${d.reply}\n\n${r.reply}`.trim(), 'code', [...log, ...r.log], undefined, t.results);
   }
   const boardDef = d.board === 'none' ? undefined : BOARDS[d.board];
   const pinName = (p: string | null) => {
@@ -136,18 +182,73 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
     // The user's (or Claude's) custom program must survive a wiring change: adapt it rather than replace it.
     const adapted = { ...project, files: { ...project.files, 'main.py': current!.files['main.py'] }, behavior: current!.behavior };
     const r = await aiEditFile(adapted, 'main.py', `The hardware design just changed (${prompt}). Update this program so it uses the new wiring listed above${d.write_firmware && d.firmware_brief ? ` and also: ${d.firmware_brief}` : ''}. Keep everything else it already does.`);
-    return finish(r.project, d.reply, d.intent, [...log, ...r.log]);
+    const t = await testAndRepair({ ...r.project, requirements: d.requirements, tests: current!.tests }, prompt, log);
+    return finish(t.project, d.reply, d.intent, [...log, ...r.log], undefined, t.results);
   }
   if (d.write_firmware && d.firmware_brief && project.board !== 'none') {
     const r = await aiEditFile(project, 'main.py', d.firmware_brief);
     project = r.project;
     log.push(...r.log);
   }
-  return finish(project, d.reply, d.intent, log, current);
+  project = { ...project, requirements: d.requirements, tests: isEdit ? current!.tests : undefined };
+  const t = project.board === 'none' ? { project, results: await runTests(project, deriveTests(project)) } : await testAndRepair(project, `${history.filter((x) => x.role === 'user').map((x) => x.content).join('\n')}\n${prompt}`, log);
+  return finish(t.project, d.reply, d.intent, log, current, t.results);
+}
+
+/** Turn a flat AI step into a typed test step. */
+function toStep(s: z.infer<typeof StepSchema>): TestStep | null {
+  if (s.kind === 'wait') return { kind: 'wait', ms: s.ms ?? 1000 };
+  if (s.kind === 'press' && s.part) return { kind: 'press', part: s.part, ...(s.ms ? { ms: s.ms } : {}) };
+  if (s.kind === 'set' && s.part && s.control && s.value !== null) return { kind: 'set', part: s.part, control: s.control, value: s.value };
+  if (s.kind === 'expect' && s.what) return { kind: 'expect', what: s.what, ...(s.part ? { part: s.part } : {}), ...(s.text ? { text: s.text } : {}), ...(s.on !== null ? { on: s.on } : {}), ...(s.min !== null ? { min: s.min } : {}), ...(s.max !== null ? { max: s.max } : {}), ...(s.within ? { within: s.within } : {}) };
+  return null;
+}
+
+/** Claude writes acceptance tests for what the user asked for (A4). */
+export async function aiWriteTests(project: Project, request: string, source: AcceptanceTest['source'] = 'ai'): Promise<AcceptanceTest[]> {
+  const out = await askJson(
+    TESTS_SYSTEM,
+    [
+      {
+        role: 'user',
+        content: `Project: ${project.name}\nParts and their simulator controls: ${JSON.stringify(partControls(project))}\nmain.py:\n\`\`\`python\n${project.files['main.py'] ?? ''}\n\`\`\`\n\nWhat the user asked for:\n${request}`,
+      },
+    ],
+    TestsSchema,
+    { effort: 'low' },
+  );
+  return out.tests.map((t, i) => ({ id: `${source}-${Date.now().toString(36)}-${i}`, title: t.title, source, steps: t.steps.map(toStep).filter((x): x is TestStep => !!x) })).filter((t) => t.steps.length);
+}
+
+/**
+ * Write tests for the request, run them with the derived ones, and if the program fails them,
+ * let Claude change the program until they pass (two rounds max). Results are reported honestly.
+ */
+async function testAndRepair(project: Project, request: string, log: string[]): Promise<{ project: Project; results: TestResult[] }> {
+  let tests = project.tests?.length ? project.tests : [];
+  try {
+    if (!tests.length) tests = await aiWriteTests(project, request);
+  } catch (e: any) {
+    log.push(`Couldn't write acceptance tests: ${e.message}`);
+  }
+  let current: Project = { ...project, tests };
+  let results = await runTests(current, [...deriveTests(current), ...tests]);
+  log.push(`Acceptance tests: ${results.filter((r) => r.pass).length}/${results.length} pass in the simulator.`);
+  for (let round = 0; round < 2 && results.some((r) => !r.pass); round++) {
+    const failing = results.filter((r) => !r.pass);
+    const r = await aiEditFile(current, 'main.py', `Make the program do what the user asked: ${request}\nThese acceptance tests fail in the simulator:\n${failing.map((f) => `- ${f.title}: ${f.detail}`).join('\n')}\nThe tests read the screen text as drawn, the serial output, and LED/buzzer/servo states. Change the program so they pass, keeping everything else it does.`);
+    const next = await runTests(r.project, [...deriveTests(r.project), ...tests]);
+    log.push(`Fix round ${round + 1}: ${next.filter((x) => x.pass).length}/${next.length} pass.`);
+    if (next.filter((x) => x.pass).length >= results.filter((x) => x.pass).length) {
+      current = { ...r.project, tests };
+      results = next;
+    }
+  }
+  return { project: current, results };
 }
 
 /** Append honest notes: design-check errors and any wiring that moved. */
-function finish(project: Project, reply: string, intent: AiDesignResult['intent'], log: string[], previous?: Project): AiDesignResult {
+function finish(project: Project, reply: string, intent: AiDesignResult['intent'], log: string[], previous?: Project, results?: TestResult[]): AiDesignResult {
   const problems = runChecks(project).filter((x) => x.severity === 'error');
   let extra = problems.length ? `\n\nHeads up — the design checker found ${problems.length === 1 ? 'one problem' : `${problems.length} problems`}: ${problems.map((x) => `${x.title}${x.detail ? ` (${x.detail.split('. ')[0]})` : ''}`).join('; ')}. See the Problems tab for details and fixes.` : '';
   if (previous?.features && previous.board === project.board) {
@@ -158,7 +259,11 @@ function finish(project: Project, reply: string, intent: AiDesignResult['intent'
     }
     if (moved.length) extra += `\n\nWiring moved: ${moved.join(', ')}.`;
   }
-  return { project, reply: reply + extra, intent, log };
+  if (results?.length) {
+    const passed = results.filter((r) => r.pass).length;
+    extra += passed === results.length ? `\n\nI checked it in the simulator: all ${results.length} acceptance tests pass (see the Tests tab).` : `\n\n${passed} of ${results.length} acceptance tests pass in the simulator. The Tests tab shows what still fails and why.`;
+  }
+  return { project, reply: reply + extra, intent, log, results, requirements: project.requirements };
 }
 
 function renameForBoard(prev: Project, board: Project['board']) {

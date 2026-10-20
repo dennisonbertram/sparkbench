@@ -10,6 +10,7 @@ import { BOARDS } from '../core/boards';
 import { startSim, stopSim } from './simClient';
 import type { Project } from '../core/types';
 import { GLOSSARY } from './glossary';
+import { deriveRequirements } from '../core/requirements';
 
 const NEW_RE = /^\s*(start over|new project|(build|create|design|make)( me)? an? (new|different|whole new) |i want to build|i'd like to build|let'?s build|help me build)/i;
 const BUILD_RE = /^\s*(build|create|design|i want|i'd like|i would like|can you (build|make|design)|make me)\b/i;
@@ -59,8 +60,13 @@ export async function sendPrompt(text: string) {
         const res = await fetch('/api/ai/design', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: trimmed, project: current, history }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? 'AI request failed');
+        if (data.intent === 'clarify') {
+          st.patchChat(pending, { text: data.reply, questions: data.questions, pending: false });
+          return;
+        }
         if (data.project) applyProject(data.project, data.intent === 'new');
-        st.patchChat(pending, { text: data.reply, details: data.log, pending: false, actions: data.project ? nextActions() : undefined });
+        if (data.project && data.results) st.set({ testRun: null });
+        st.patchChat(pending, { text: data.reply, details: data.log, pending: false, requirements: data.intent === 'new' ? (data.requirements ?? data.project?.requirements) : undefined, actions: data.project ? nextActions(data.results) : undefined });
         return;
       } catch (e: any) {
         st.patchChat(pending, { text: `Claude was unavailable (${e?.message ?? e}); using the offline planner instead.` });
@@ -88,10 +94,11 @@ function offline(text: string, current: Project | null, pending: string) {
     return;
   }
   if (looksLikeNewProject(text, current)) {
-    const p = planFromPrompt(text);
+    const p0 = planFromPrompt(text);
+    const p = { ...p0, requirements: deriveRequirements(p0) };
     applyProject(p, true);
     const behaviour = behaviourNote(text);
-    st.patchChat(pending, { text: `${p.spec?.note ? `${p.spec.note}\n\n` : ''}${explainDesign(p)}${behaviour}`, details: p.notes, pending: false, actions: nextActions() });
+    st.patchChat(pending, { text: `${p.spec?.note ? `${p.spec.note}\n\n` : ''}${explainDesign(p)}${behaviour}`, details: p.notes, pending: false, requirements: p.requirements, actions: nextActions() });
     return;
   }
   const spec = current!.spec ?? { board: current!.board, features: [] };
@@ -140,9 +147,10 @@ function summarizeChecks(p: Project) {
   return errs.length ? `Heads up: ${errs.length} problem${errs.length > 1 ? 's' : ''} to look at in the Problems tab.` : 'Wiring checks pass.';
 }
 
-function nextActions() {
+function nextActions(results?: { pass: boolean }[]) {
   return [
     { label: '▶ Run the simulation', run: 'run' },
+    ...(results?.length ? [{ label: `Tests: ${results.filter((r) => r.pass).length}/${results.length} pass`, run: 'bottom:tests' }] : []),
     { label: 'Show the schematic', run: 'tab:schematic' },
     { label: 'Build guide', run: 'tab:guide' },
   ];

@@ -1576,3 +1576,8 @@ function netSetup(c: Ctx): string[] {
   if (extras.length) out.push(`Also set ${listJoin(extras)}.`);
   return out.length ? [...out.map((x) => x), ''] : [];
 }
+
+/** What the finished project does, one plain sentence each (requirements card, tests checklist). */
+export function projectBehaviours(project: Project): { does: string; test: string; sim?: string }[] {
+  return behaviours(analyze(project)).map((b) => ({ does: b.does, test: b.test, sim: b.sim }));
+}
