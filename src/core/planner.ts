@@ -630,11 +630,15 @@ class Builder {
     const c2 = this.addPart('capacitor', { farads: 10e-9 }, 'Control capacitor');
     const bz = this.addPart('buzzer', {}, 'Piezo buzzer');
     const sw = this.addPart('pushbutton', { color: 'red' }, 'Sound button');
+    const rr = this.addPart('resistor', { ohms: 10000 }, 'Reset pull-down');
     const w = (a: string, ap: string, bb: string, bpn: string, color?: string) => this.wire({ part: a, pin: ap }, { part: bb, pin: bpn }, color);
-    w(bat, '+', sw, '1', WIRE_COLORS.v33);
-    w(sw, '2', u, 'VCC', WIRE_COLORS.v33);
-    w(u, 'RESET', u, 'VCC', WIRE_COLORS.v33);
+    // The 555 is always powered; the button lifts RESET (pin 4) to + to let it run.
+    w(bat, '+', u, 'VCC', WIRE_COLORS.v33);
     w(bat, '-', u, 'GND', WIRE_COLORS.gnd);
+    w(sw, '1', u, 'VCC', WIRE_COLORS.v33);
+    w(sw, '2', u, 'RESET');
+    w(rr, '1', u, 'RESET');
+    w(rr, '2', bat, '-', WIRE_COLORS.gnd);
     w(r1, '1', u, 'VCC', WIRE_COLORS.v33);
     w(r1, '2', u, 'DIS');
     w(r2, '1', u, 'DIS');
@@ -646,10 +650,10 @@ class Builder {
     w(c2, '2', bat, '-', WIRE_COLORS.gnd);
     w(u, 'OUT', bz, '+');
     w(bz, '-', bat, '-', WIRE_COLORS.gnd);
-    fi.parts.push(u, bat, r1, r2, c1, c2, bz, sw);
-    Object.assign(this.fixed, { [bat]: [40, 110], [sw]: [150, 40], [r1]: [250, 60], [r2]: [330, 60], [u]: [280, 150], [c1]: [200, 300], [c2]: [360, 300], [bz]: [480, 170] });
+    fi.parts.push(u, bat, r1, r2, c1, c2, bz, sw, rr);
+    Object.assign(this.fixed, { [bat]: [40, 110], [sw]: [430, 40], [rr]: [520, 110], [r1]: [250, 60], [r2]: [330, 60], [u]: [280, 150], [c1]: [200, 300], [c2]: [360, 300], [bz]: [480, 190] });
     this.groups.push({ main: bat, parts: [bat], side: 'left' }, { main: u, parts: [r1, r2, u], side: 'right' });
-    this.notes.push('f = 1.44 / ((R1 + 2·R2)·C) = 1.44 / ((1k + 30k) · 100 nF) ≈ 465 Hz — a clear beep while you hold the button. Bigger R2 or C = lower pitch.');
+    this.notes.push('f = 1.44 / ((R1 + 2·R2)·C) = 1.44 / ((1k + 30k) · 100 nF) ≈ 465 Hz — a clear beep while you hold the button. Bigger R2 or C = lower pitch.', 'The button connects the 555\'s RESET pin (4) to +; the 10 kΩ pull-down keeps RESET low — and the 555 silent — when you let go.');
   }
 
   /** LED switched by an NPN transistor and a push button (no microcontroller). */

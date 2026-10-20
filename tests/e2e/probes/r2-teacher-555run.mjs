@@ -1,0 +1,17 @@
+import { chromium } from 'playwright';
+const out = 'test-results/qa2/teacher';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1400, height: 1000 } });
+await p.goto('http://localhost:5173/?example=555-tone&notour');
+await p.waitForTimeout(2500);
+await p.locator('button.run').click();
+await p.waitForTimeout(1000);
+const sw = p.locator('.part[data-part=pushbutton1]');
+const bb = await sw.boundingBox();
+await p.mouse.move(bb.x + bb.width/2, bb.y + bb.height/2);
+await p.mouse.down();
+await p.waitForTimeout(1500);
+await p.screenshot({ path: `${out}/555-tone-running-pressed.png` });
+console.log((await p.locator('body').innerText()).match(/Problems[\s\S]{0,300}/)?.[0]);
+await p.mouse.up();
+await b.close();

@@ -111,7 +111,7 @@ function designPhrase(c: Ctx): string {
     counts.set(n, (counts.get(n) ?? 0) + 1);
   }
   const items = [...counts].map(([n, k]) => (k > 1 ? plural(k, n, { words: true }) : withArticle(n)));
-  if (!c.board) return c.project.parts.some((p) => p.type === 'ne555') ? 'a classic 555 timer circuit that blinks an LED, running from a 9 V battery with no microcontroller' : 'a push button that switches an LED through a transistor, running from a 9 V battery with no microcontroller';
+  if (!c.board) return c.project.parts.some((p) => p.type === 'ne555') ? (analyze555(c.project)?.tone ? 'a classic 555 timer circuit that beeps a piezo buzzer while you hold a button, running from a 9 V battery with no microcontroller' : 'a classic 555 timer circuit that blinks an LED, running from a 9 V battery with no microcontroller') : 'a push button that switches an LED through a transistor, running from a 9 V battery with no microcontroller';
   const online = c.features.some((f) => f.kind === 'internet') ? `, connected to the internet over ${c.board.id === 'rpi4' ? 'its network' : 'Wi-Fi'}` : '';
   return `${withArticle(c.board.name)} with ${listJoin(items)}${online}`;
 }
@@ -501,6 +501,8 @@ interface Astable {
   f: number;
   tHigh: number;
   tLow: number;
+  /** Output drives a buzzer (tone generator) rather than an LED (blinker). */
+  tone: boolean;
 }
 
 /** Find R1 (VCC–DIS), R2 (DIS–THR) and the timing capacitor (THR–GND) of a 555 astable. */
@@ -534,7 +536,8 @@ export function analyze555(project: Project): Astable | undefined {
   const cap = Number(C.props.farads);
   const rl = res.find((r) => n(r.id, '1') === out || n(r.id, '2') === out);
   const bat = project.parts.find((p) => p.type === 'battery-9v');
-  return { r1, r2, c: cap, rLed: rl ? Number(rl.props.ohms) : undefined, v: Number(bat?.props.volts ?? 9), f: 1.44 / ((r1 + 2 * r2) * cap), tHigh: 0.693 * (r1 + r2) * cap, tLow: 0.693 * r2 * cap };
+  const tone = project.parts.some((p) => p.type === 'buzzer' && n(p.id, '+') === out);
+  return { tone, r1, r2, c: cap, rLed: rl ? Number(rl.props.ohms) : undefined, v: Number(bat?.props.volts ?? 9), f: 1.44 / ((r1 + 2 * r2) * cap), tHigh: 0.693 * (r1 + r2) * cap, tLow: 0.693 * r2 * cap };
 }
 
 const fmtHz = (f: number) => (f >= 100 ? `${Math.round(f)} Hz` : f >= 10 ? `${f.toFixed(1)} Hz` : `${f.toFixed(2)} Hz`);
@@ -560,6 +563,11 @@ function transistorValues(project: Project) {
 
 function behavioursDiscrete(c: Ctx): Behaviour[] {
   const a = analyze555(c.project);
+  if (a?.tone)
+    return [
+      { does: `Hold the button and the buzzer sounds a steady tone of about ${fmtHz(a.f)}; let go and it stops.`, test: 'Clip on the battery (it stays quiet), then hold the button: you should hear a clear mid-pitched beep.', sim: 'Turn Sound on, press ▶ Run and hold the button on the breadboard; the buzzer shows the frequency.' },
+      { does: 'There is no program: the pitch comes entirely from the two timing resistors and the capacitor.', test: `Swap the ${ohm(a.r2)} resistor for a bigger one: the pitch drops.`, sim: `Change R2 in the properties panel and run again to hear the pitch change.` },
+    ];
   if (a) {
     const smaller = ohm(Math.max(1000, Math.round(a.r2 / 2000) * 1000));
     return [
@@ -879,7 +887,7 @@ function howItWorksDiscrete(c: Ctx): string[] {
   if (a) {
     const ledMa = a.rLed ? Math.round(((a.v - 1.7 - 2) / a.rLed) * 1000) : undefined;
     return [
-      'The 555 timer charges the timing capacitor through both resistors, and discharges it through just the second one. When the capacitor reaches two-thirds of the supply voltage, the output switches off; when it drops to one-third, it switches back on. Round and round it goes — an *oscillator*.',
+      `The 555 timer charges the timing capacitor through both resistors, and discharges it through just the second one. When the capacitor reaches two-thirds of the supply voltage, the output switches off; when it drops to one-third, it switches back on. Round and round it goes — an *oscillator*.${a.tone ? ` Here it switches hundreds of times a second, which the piezo buzzer turns into a tone. The button lifts the RESET pin (4) to + to let it run; the 10 kΩ pull-down holds RESET low — and the buzzer silent — the rest of the time.` : ''}`,
       '',
       `With R1 = ${ohm(a.r1)}, R2 = ${ohm(a.r2)} and C = ${formatFarads(a.c)}:`,
       '',
@@ -888,7 +896,7 @@ function howItWorksDiscrete(c: Ctx): string[] {
       `- **Off time:** 0.693 · R2 · C ≈ ${fmtS(a.tLow)}`,
       ...(ledMa ? [`- **LED current:** the output sits about 1.7 V below the battery, so (${a.v} − 1.7 − 2) V ÷ ${ohm(a.rLed!)} ≈ ${ledMa} mA`] : []),
       '',
-      'Want it faster? Use a smaller capacitor or smaller resistors. Slower? Go bigger.',
+      a.tone ? 'Want a higher pitch? Use a smaller capacitor or smaller resistors. Lower? Go bigger.' : 'Want it faster? Use a smaller capacitor or smaller resistors. Slower? Go bigger.',
     ];
   }
   const t = transistorValues(c.project);
@@ -1007,7 +1015,7 @@ export function buildGuide(project: Project): string {
   for (const p of project.parts) {
     if (seen.has(p.type)) continue;
     seen.add(p.type);
-    for (const t of TROUBLE[p.type] ?? []) out.push(`- ${t}`);
+    for (const t of p.type === 'ne555' && analyze555(c.project)?.tone ? ['**No sound:** check the chip is the right way round (notch/dot = pin 1), that the button really connects pin 4 (RESET) to + when pressed, and that the buzzer is a *passive* piezo (an active buzzer has its own beeper inside).'] : TROUBLE[p.type] ?? []) out.push(`- ${t}`);
   }
   out.push('- **Still stuck?** Go through the wiring table above one row at a time and check each wire really lands on the pin it names. Then compare with the breadboard picture in Sparkbench (hover a pin there to see what it should connect to).', '');
   return piify(project, out.join('\n'));
@@ -1171,13 +1179,14 @@ function resistorJob(p: PartInstance): string {
   if (/divider/i.test(label) && /echo/i.test(label)) return 'together scale the distance sensor\'s 5 V echo down to a safe 3.3 V';
   if (/divider/i.test(label)) return 'turns a changing resistance into a voltage the board can measure';
   if (/neopixel|data/i.test(label)) return 'protects the NeoPixels\' data input from spikes';
-  if (/timing|^R[12]\b/i.test(label)) return 'set how fast the 555 blinks';
+  if (/pull-down/i.test(label)) return 'holds the 555\'s RESET pin low, so it stays silent until you press the button';
+  if (/timing|^R[12]\b/i.test(label)) return 'set how fast the 555 switches — the blink rate or the pitch';
   if (/base/i.test(label)) return 'keeps the transistor\'s base current small and safe';
   return lowerFirst(def(p).eli5.replace(/\.$/, ''));
 }
 function capacitorJob(p: PartInstance): string {
   const label = partLabel(p);
-  if (/timing/i.test(label)) return 'sets the blink rate together with the two timing resistors (and must go in the right way round: stripe to −)';
+  if (/timing/i.test(label)) return p.type === 'electrolytic' ? 'sets the blink rate together with the two timing resistors (and must go in the right way round: stripe to −)' : 'sets the speed (here: the pitch) together with the two timing resistors; ceramic capacitors can go either way round';
   if (/control/i.test(label)) return 'keeps the 555\'s internal reference voltage (pin 5) steady, so the timing doesn\'t wobble';
   return lowerFirst(def(p).eli5.replace(/\.$/, ''));
 }
@@ -1198,6 +1207,8 @@ function blogPartsSection(c: Ctx): string[] {
     out.push(!c.board && DISCRETE_INTRO[p.type] ? DISCRETE_INTRO[p.type] : `${d.eli5} ${d.description.replace(/\.$/, '')}.`, '');
     const roles = same.flatMap((x) => roleOf.get(x.id) ?? []);
     if (d.category === 'board' && c.board) out.push(`In this project it runs ${c.board.language === 'micropython' ? 'MicroPython' : 'Python 3'}, ${c.features.some((f) => SENSOR_KINDS.includes(f.kind) || f.kind === 'button') ? 'reads every input and decides what every output should do' : 'decides what every output should do, moment by moment'}.`, '');
+    else if (!c.board && p.type === 'pushbutton' && analyze555(c.project)?.tone) out.push('Here it connects the 555\'s RESET pin to + while you hold it, letting the timer run.', '');
+    else if (!c.board && p.type === 'buzzer') out.push('Here the 555\'s output pushes its piezo disc back and forth hundreds of times a second — that\'s the sound.', '');
     else if (!c.board && ROLE_DISCRETE[p.type]) out.push(ROLE_DISCRETE[p.type], '');
     else if (roles.length) out.push(`**In this project:** ${roles.slice(0, 3).join(' ')}`, '');
     else if (p.type === 'mcp3008') out.push('**In this project:** the Raspberry Pi can only read on/off signals, so this chip measures the analog voltages for it and sends the numbers over SPI.', '');
@@ -1243,11 +1254,11 @@ function discreteDeepDive(c: Ctx): string[] {
       '',
       'Inside that little 8-pin chip are two *comparators* (circuits that check whether one voltage is higher than another), a *flip-flop* (a one-bit memory) and a *discharge transistor*. Three identical resistors inside the chip split the supply into thirds — legend has it they\'re 5 kΩ each, which is where the name comes from.',
       '',
-      'While the capacitor charges, the output (pin 3) is high and the LED is on. When the voltage on pin 6 (THRESHOLD) passes two-thirds of the supply, the upper comparator flips the flip-flop: the output goes low and the discharge transistor on pin 7 switches on, draining the capacitor through R2. When the voltage on pin 2 (TRIGGER) falls below one-third, the lower comparator flips it back, and the cycle starts again.',
+      a.tone ? 'While the capacitor charges, the output (pin 3) is high and pushes the buzzer\'s disc one way; while it discharges, the output is low. When the voltage on pin 6 (THRESHOLD) passes two-thirds of the supply, the upper comparator flips the flip-flop: the output goes low and the discharge transistor on pin 7 switches on, draining the capacitor through R2. When the voltage on pin 2 (TRIGGER) falls below one-third, the lower comparator flips it back, and the cycle starts again — hundreds of times a second, which you hear as a tone.' : 'While the capacitor charges, the output (pin 3) is high and the LED is on. When the voltage on pin 6 (THRESHOLD) passes two-thirds of the supply, the upper comparator flips the flip-flop: the output goes low and the discharge transistor on pin 7 switches on, draining the capacitor through R2. When the voltage on pin 2 (TRIGGER) falls below one-third, the lower comparator flips it back, and the cycle starts again.',
       '',
-      `Pin 4 (RESET) is tied to + so the chip never resets, and the small ${formatFarads(c.project.parts.find((p) => p.type === 'capacitor')?.props.farads ?? 1e-8)} capacitor on pin 5 (CONTROL) keeps the internal reference steady.`,
+      `${a.tone ? 'Pin 4 (RESET) is held low by a 10 kΩ resistor, which keeps the chip stopped until the button pulls it up to +. The' : 'Pin 4 (RESET) is tied to + so the chip never resets, and the'} small ${formatFarads(c.project.parts.find((p) => p.type === 'capacitor')?.props.farads ?? 1e-8)} capacitor on pin 5 (CONTROL) keeps the internal reference steady.`,
       '',
-      `Where does the 1.44 come from? Charging a capacitor from one-third to two-thirds of the supply through a resistor takes ln 2 ≈ 0.693 "time constants" (resistance × capacitance). One full cycle is therefore 0.693 · (R1 + 2·R2) · C, and 1 ÷ 0.693 ≈ 1.44. Because the capacitor charges through R1 *and* R2 but discharges only through R2, the LED is on a little longer than it's off — here about ${duty} % of the time.`,
+      `Where does the 1.44 come from? Charging a capacitor from one-third to two-thirds of the supply through a resistor takes ln 2 ≈ 0.693 "time constants" (resistance × capacitance). One full cycle is therefore 0.693 · (R1 + 2·R2) · C, and 1 ÷ 0.693 ≈ 1.44. Because the capacitor charges through R1 *and* R2 but discharges only through R2, the output is high a little longer than it's low — here about ${duty} % of the time.`,
       '',
     ];
   }
@@ -1388,10 +1399,13 @@ function buildTipsSection(c: Ctx): string[] {
 function ideasSection(c: Ctx): string[] {
   const kinds = [...new Set(c.features.map((f) => f.kind))];
   const ideas = kinds.map((k) => FEATURE_IDEAS[k]).filter(Boolean) as string[];
-  const picked = [...ideas.slice(0, 3), c.board || kinds.includes('astable555') ? BOARD_IDEAS[c.project.board] : ''].filter(Boolean);
+  const tone = !!analyze555(c.project)?.tone;
+  const picked = tone
+    ? ['Swap R2 for a 100 kΩ potentiometer (wired as a variable resistor) to make a pitch knob — a tiny synthesiser.', 'Add a second 555 running slowly (like the 555 blinker) and use its output to drive this one\'s RESET pin: the beeper turns into a pulsing alarm.', 'Add an LED and 470 Ω resistor from the output to GND so you can see when it is sounding.']
+    : [...ideas.slice(0, 3), c.board || kinds.includes('astable555') ? BOARD_IDEAS[c.project.board] : ''].filter(Boolean);
   if (c.board && !kinds.includes('buzzer')) picked.push('Add a buzzer so it can tell you when something happens — just ask Sparkbench to "add a buzzer".');
   if (c.board && !kinds.some((k) => k === 'oled' || k === 'lcd')) picked.push('Add a small OLED screen to show what\'s going on without a computer attached.');
-  if (!c.board) picked.push(`Build the same thing with a microcontroller: ask Sparkbench for ${kinds.includes('astable555') ? '"a Pico LED blinker"' : '"a Pico with a button and an LED"'} and compare the two approaches.`);
+  if (!c.board) picked.push(`Build the same thing with a microcontroller: ask Sparkbench for ${tone ? '"a Pico with a button and a buzzer"' : kinds.includes('astable555') ? '"a Pico LED blinker"' : '"a Pico with a button and an LED"'} and compare the two approaches.`);
   return ['## Ideas to take it further', '', ...picked.slice(0, 5).map((x) => `- ${x}`), ''];
 }
 
@@ -1413,12 +1427,13 @@ export function buildBlogPost(project: Project, opts: { schematicSvgPath?: strin
   const c = analyze(project);
   const kinds = new Set<FeatureKind>(c.features.map((f) => f.kind));
   const schematic = opts.schematicSvgPath ?? 'schematic.svg';
-  const tag = matchByKinds(TAGLINES, kinds);
+  const tone555 = !!analyze555(project)?.tone;
+  const tag = tone555 ? 'a beeper made from a 555 timer, a button and a piezo — no code at all' : matchByKinds(TAGLINES, kinds);
   const total = formatUsd(bomTotal(c.bom));
   const out: string[] = [];
   out.push(`# Build ${withArticle(project.name)}${tag ? `: ${tag}` : ''}`, '');
   out.push(`*${capFirst(designPhrase(c))} — designed with Sparkbench, with ${c.board ? 'schematic, code and simulation' : 'schematic and simulation'} included.*`, '');
-  const hook = matchByKinds(HOOKS, kinds) ?? (c.board ? 'There\'s a special kind of joy in building a gadget that actually does something.' : 'Before microcontrollers were everywhere, clever little circuits did all the work on their own. They still can.');
+  const hook = (tone555 ? 'Before microcontrollers were everywhere, clever little circuits did all the work on their own. The 555 timer, designed in 1971, is still made by the billion — and with two resistors and a capacitor it will sing.' : undefined) ?? matchByKinds(HOOKS, kinds) ?? (c.board ? 'There\'s a special kind of joy in building a gadget that actually does something.' : 'Before microcontrollers were everywhere, clever little circuits did all the work on their own. They still can.');
   const others = project.parts.filter((p) => p.id !== c.boardId).length;
   out.push(hook, '');
   out.push(
@@ -1468,9 +1483,10 @@ export function explainDesign(project: Project): string {
     const a = analyze555(project);
     if (a) {
       s.push(`I designed ${withArticle(project.name)}: a 555 timer circuit running from a 9 V battery, with no microcontroller and no code.`);
-      s.push(`The ${ohm(a.r1)} and ${ohm(a.r2)} resistors and the ${formatFarads(a.c)} capacitor set the timing, so the LED blinks at about ${fmtHz(a.f)} (on for ${fmtS(a.tHigh)}, off for ${fmtS(a.tLow)}).`);
+      if (a.tone) s.push(`The ${ohm(a.r1)} and ${ohm(a.r2)} resistors and the ${formatFarads(a.c)} capacitor make it oscillate at about ${fmtHz(a.f)}, which the piezo buzzer plays as a tone while you hold the button (the button lifts the 555's RESET pin).`);
+      else s.push(`The ${ohm(a.r1)} and ${ohm(a.r2)} resistors and the ${formatFarads(a.c)} capacitor set the timing, so the LED blinks at about ${fmtHz(a.f)} (on for ${fmtS(a.tHigh)}, off for ${fmtS(a.tLow)}).`);
       if (a.rLed) s.push(`A ${ohm(a.rLed)} resistor limits the LED current to a safe ${Math.round(((a.v - 1.7 - 2) / a.rLed) * 1000)} mA or so.`);
-      s.push('To make it blink faster, use a smaller capacitor or smaller resistors.');
+      s.push(a.tone ? 'For a higher pitch, use a smaller capacitor or smaller resistors.' : 'To make it blink faster, use a smaller capacitor or smaller resistors.');
     } else {
       const t = transistorValues(project);
       s.push(`I designed ${withArticle(project.name)}: a push button that switches an LED through an NPN transistor, powered by a 9 V battery.`);

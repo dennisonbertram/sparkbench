@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const page = await b.newPage({ viewport: { width: 1500, height: 950 } });
+await page.goto('http://localhost:5173/?example=555-tone&notour');
+await page.waitForTimeout(2500);
+await page.screenshot({ path: 'test-results/qa2/verify555/open.png' });
+await page.locator('.tabs button', { hasText: 'Blog post' }).click();
+await page.waitForTimeout(1500);
+await page.screenshot({ path: 'test-results/qa2/verify555/blog.png' });
+const t = await page.locator('body').innerText();
+console.log((t.match(/[^\n]*(blink|555 blinker)[^\n]*/gi) || []).slice(0,8).join('\n'));
+await b.close();

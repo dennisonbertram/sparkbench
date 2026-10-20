@@ -1,0 +1,34 @@
+import { open, proj, say } from './r2-regression-lib.mjs';
+const OUT='test-results/qa2/repro-move/';
+const {b,p} = await open('?example=esp32-weather-imu&notour'); await p.waitForSelector('.part');
+const summary = async(tag)=>{ const pr=await proj(p); const s=JSON.stringify(pr);
+  const wires=(s.match(/pushbutton1:[^"]*/g)||[]); console.log(tag,'wires',[...new Set(wires)]);
+  const code=(s.match(/btn_a[^\\]*/g)||[]).slice(0,3); console.log(tag,'code',code);
+  const feat=(s.match(/Button A[^}]*}/g)||[]).slice(0,2); console.log(tag,'feat',feat);
+};
+async function pressTest(tag){
+  await p.click('button.run'); await p.waitForTimeout(2500);
+  await p.locator('.part[data-part=pushbutton1]').click(); await p.waitForTimeout(300);
+  await p.locator('.part[data-part=ssd13061]').screenshot({path:`${OUT}${tag}-oled-pre.png`});
+  const pressBtn = p.locator('aside button, .inspector button',{hasText:/^Press$/}).first();
+  console.log(tag,'press buttons', await pressBtn.count());
+  await pressBtn.dispatchEvent('pointerdown').catch(e=>console.log(e.message)); await pressBtn.dispatchEvent('mousedown').catch(()=>{});
+  await p.waitForTimeout(500);
+  await pressBtn.dispatchEvent('pointerup').catch(()=>{}); await pressBtn.dispatchEvent('mouseup').catch(()=>{});
+  await p.waitForTimeout(1500);
+  await p.locator('.part[data-part=ssd13061]').screenshot({path:`${OUT}${tag}-oled-post.png`});
+  await p.locator('.console-tabs button',{hasText:'Pins'}).click(); await p.waitForTimeout(200);
+  console.log(tag,'pins',(await p.locator('.console').innerText()).split('\n').filter(l=>/GPIO1[34]/.test(l)));
+  await p.screenshot({path:`${OUT}${tag}-full.png`});
+  await p.click('button.run'); await p.waitForTimeout(500);
+}
+await summary('before'); await pressTest('before');
+const r = await say(p,'move button A to GPIO 14', 200000);
+console.log('REPLY', r.secs, r.reply);
+await p.screenshot({path:`${OUT}after-reply.png`});
+await summary('after'); await pressTest('after');
+await p.locator('.console-tabs button',{hasText:'Problems'}).click();
+console.log('problems', await p.locator('[data-testid=problems]').innerText());
+await p.locator('.tabs button',{hasText:'Code'}).click(); await p.waitForTimeout(500);
+await p.screenshot({path:`${OUT}after-code.png`});
+await b.close();

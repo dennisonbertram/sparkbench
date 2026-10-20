@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+const B='http://localhost:5173', O='test-results/qa2/visual/zoom';
+const browser = await chromium.launch();
+const ctx = await browser.newContext({viewport:{width:1440,height:900}, deviceScaleFactor:2});
+const p=await ctx.newPage(); await p.goto(`${B}/?example=esp32-neopixel-thermo&notour`); await p.waitForSelector('[data-testid="breadboard"] .part'); await p.waitForTimeout(900);
+await p.click('button.run'); await p.waitForTimeout(5000);
+const ring = p.locator('.part[data-part^="neopixel"], .part[data-part*="ring"]').first();
+console.log('ring count', await ring.count(), await p.$$eval('.part',els=>els.map(e=>e.getAttribute('data-part'))));
+await p.screenshot({path:`${O}/neopixel-ring-22.png`, clip:{x:340,y:270,width:180,height:180}});
+const sliders = p.locator('.simctl input[type=range]');
+console.log('sliders', await sliders.count());
+await sliders.first().fill('40'); await p.waitForTimeout(3000);
+await p.screenshot({path:`${O}/neopixel-ring-hot.png`, clip:{x:340,y:270,width:180,height:180}});
+console.log((await p.textContent('[data-testid=serial]')).slice(-200));
+await browser.close();

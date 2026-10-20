@@ -1,0 +1,16 @@
+import { open, serial } from './r2-ai-builder-1-lib.mjs';
+const { p, shot, close } = await open('doorbell');
+await shot('12-reload');
+console.log('pir box', JSON.stringify(await p.locator('.part[data-part=pir1]').boundingBox()));
+await p.locator('button', { hasText: 'Fit' }).click(); await p.waitForTimeout(800);
+await shot('13-fit');
+await p.click('button.run');
+await p.waitForTimeout(34000);
+const m = p.locator('.simctl .momentary', { hasText: 'Motion' }).first();
+const bb = await m.boundingBox();
+await p.mouse.move(bb.x + 20, bb.y + 10); await p.mouse.down(); await p.waitForTimeout(1500);
+await shot('14-motion-held');
+console.log('LED', await p.evaluate(() => document.querySelector('.part[data-part=led1] wokwi-led')?.value));
+await p.mouse.up(); await p.waitForTimeout(2000);
+console.log('SERIAL>>>\n' + (await serial(p)).split('\n').slice(-12).join('\n'));
+await close();

@@ -1,0 +1,17 @@
+import { chromium } from 'playwright';
+const D='test-results/qa2/beepfit/';
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1366,height:820}});
+await p.goto('http://localhost:5173/?example=esp32-weather-imu&notour'); await p.waitForTimeout(3000);
+await p.screenshot({path:D+'01-start.png'});
+const n0 = await p.locator('.msg.ai:not(.pending)').count();
+await p.fill('.composer textarea','make it beep when it\'s below 18 degrees'); await p.press('.composer textarea','Enter');
+const t0=Date.now();
+await p.waitForFunction(n=>document.querySelectorAll('.msg.ai:not(.pending)').length>n && !document.querySelector('.msg.ai.pending'), n0, {timeout:180000});
+console.log('reply after', (Date.now()-t0)/1000, 's');
+await p.waitForTimeout(1500);
+console.log('reply:', (await p.locator('.msg.ai:not(.pending)').last().innerText()).slice(0,400));
+await p.screenshot({path:D+'02-after-change.png'});
+const wrapBox = await p.locator('.part').first().evaluate(e=>{let w=e.closest('svg')||e.parentElement; const r=(w.closest('[class*=board]')||w).getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height}});
+const parts = await p.$$eval('.part', els=>els.map(e=>{const r=e.getBoundingClientRect(); return {id:e.dataset.part,x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}}));
+console.log('canvas', wrapBox); console.log(JSON.stringify(parts));
+await b.close();

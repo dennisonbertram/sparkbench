@@ -1,0 +1,12 @@
+import {open,shot,D} from './r2-newbie-lib.mjs';
+const {ctx,p,errs}=await open('http://localhost:5173/');
+await p.waitForTimeout(2500);
+const bz = p.locator('.part[data-part=buzzer1]');
+console.log('buzzer box', await bz.boundingBox());
+const canvas = await p.locator('.tab-body, .canvas, svg').first().boundingBox();
+console.log('canvas', canvas);
+await shot(p,'54-reload');
+await p.click('button:has-text("Fit")'); await p.waitForTimeout(800);
+console.log('buzzer box after fit', await bz.boundingBox());
+await shot(p,'55-fit');
+await ctx.close();

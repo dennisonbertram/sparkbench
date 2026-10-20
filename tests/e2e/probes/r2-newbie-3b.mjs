@@ -1,0 +1,21 @@
+import {open,shot,D} from './r2-newbie-lib.mjs';
+const {ctx,p,errs}=await open('http://localhost:5173/');
+await p.waitForTimeout(2500);
+await p.click('button.run');
+await p.waitForTimeout(3000);
+const t = p.locator('.simctl input[aria-label=Temperature]');
+// real mouse drag: click near left side of the slider
+const bb = await t.boundingBox(); console.log('bb',bb);
+await p.mouse.click(bb.x+bb.width*0.35, bb.y+bb.height/2);
+await p.waitForTimeout(500);
+console.log('value after mouse click', await t.inputValue(), await p.locator('.simctl .slider-value').first().innerText());
+await p.waitForTimeout(5000);
+await shot(p,'21-cold');
+console.log('SERIAL after cold:',(await p.locator('[data-testid=serial]').innerText()).slice(-400));
+await t.fill('25');
+await p.waitForTimeout(5000);
+console.log('value after fill', await t.inputValue());
+await shot(p,'22-warm');
+console.log('SERIAL after warm:',(await p.locator('[data-testid=serial]').innerText()).slice(-300));
+console.log('ERRS',errs);
+await ctx.close();

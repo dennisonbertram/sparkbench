@@ -1,0 +1,17 @@
+import { open, OUT } from './r2-regression-lib.mjs';
+const {b,p} = await open('?example=esp32-parking-sensor&notour');
+await p.locator('.tabs button',{hasText:'Schematic'}).click(); await p.waitForTimeout(800);
+const cands = await p.$$eval('[data-testid=schematic] [data-net="GPIO17"]', es=>es.map(e=>{const r=e.getBoundingClientRect(); return {tag:e.tagName,cls:e.getAttribute('class'),x:r.x,y:r.y,w:r.width,h:r.height, html:e.outerHTML.slice(0,120)};}));
+console.log(cands);
+const c = cands.filter(c=>c.w>0).sort((a,b)=>b.x-a.x)[0];
+console.log('click at', c.x+c.w/2, c.y+c.h/2, 'elementFromPoint', await p.evaluate(([x,y])=>{const e=document.elementFromPoint(x,y); return e?.outerHTML.slice(0,150)}, [c.x+c.w/2, c.y+c.h/2]));
+await p.mouse.click(c.x+c.w/2, c.y+c.h/2); await p.waitForTimeout(600);
+console.log('banner', await p.locator('.net-banner').allInnerTexts());
+await p.screenshot({path:OUT+'net-schematic.png'});
+const btn = p.locator('.net-banner button',{hasText:'Show it on the breadboard'});
+if (await btn.count()) await btn.click(); else await p.locator('.tabs button',{hasText:'Breadboard'}).click();
+await p.waitForTimeout(800);
+const hl = await p.$$eval('[data-testid=breadboard] .hl, [data-testid=breadboard] [class*=hl]', es=>es.map(e=>e.tagName+'.'+e.getAttribute('class')+' '+(e.getAttribute('data-pin')||'')));
+console.log('bb hl', hl.length, hl);
+await p.screenshot({path:OUT+'net-breadboard.png'});
+await b.close();
