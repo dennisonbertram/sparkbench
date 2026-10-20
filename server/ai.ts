@@ -411,3 +411,16 @@ export async function aiDebug(project: Project, input: { symptom: string; serial
     .join('\n\n');
   return askJson(DEBUG_SYSTEM, [{ role: 'user', content }], DebugSchema, { effort: 'medium', images: input.images as any });
 }
+
+// ---------- Explain a line of code ----------
+
+const ExplainSchema = z.object({ explanation: z.string().describe('2-4 plain sentences for a beginner: what this line does in this program, why it is there, and what would change if you edited it') });
+
+export async function aiExplainLine(project: Project, file: string, line: number): Promise<string> {
+  const src = project.files[file] ?? '';
+  const lines = src.split('\n');
+  const ctx = lines.slice(Math.max(0, line - 12), line + 8).map((l, i) => `${Math.max(1, line - 11) + i}${Math.max(1, line - 11) + i === line ? '>' : ' '} ${l}`).join('\n');
+  const wiring = (project.features ?? []).map((f) => `${f.label}: ${Object.entries(f.gpio).map(([k, v]) => `${k}=GPIO${v}`).join(' ')}`).join('; ');
+  const out = await askJson('You explain firmware to complete beginners in Sparkbench. Be concrete about this project\'s hardware. No jargon without a short explanation.', [{ role: 'user', content: `Project: ${project.name} (${project.board}). Wiring: ${wiring}\nFile ${file}, around line ${line} (marked >):\n${ctx}\n\nExplain line ${line}.` }], ExplainSchema, { effort: 'low' });
+  return out.explanation;
+}

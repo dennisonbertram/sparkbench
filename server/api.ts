@@ -121,6 +121,12 @@ export function apiPlugin(): Plugin {
           return send(res, 502, { error: `Live prices are unavailable right now (${e?.message ?? e}).` });
         }
       }
+      if (req.url === '/api/ai/explain' && req.method === 'POST') {
+        const { aiExplainLine, aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'Needs Claude.' });
+        const { project, file, line } = await body(req);
+        return send(res, 200, { explanation: await aiExplainLine(project, String(file ?? 'main.py'), Number(line) || 1) });
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });
