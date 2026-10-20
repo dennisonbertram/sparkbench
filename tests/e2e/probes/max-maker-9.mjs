@@ -1,0 +1,16 @@
+import { open, OUT } from './max-maker-lib.mjs';
+const { b, p, errs } = await open();
+await p.fill('.hero-input textarea', 'ESP32 with an OLED screen, two buttons, a temperature sensor and an IMU');
+await p.click('button.primary.big');
+await p.waitForSelector('.part', { timeout: 240000 });
+await p.waitForFunction(() => { const m=[...document.querySelectorAll('.msg-text')]; return m.length && !/designing/i.test(m[m.length-1].innerText); }, null, { timeout: 240000 });
+console.log('badge', await p.locator('.ai-badge').innerText());
+const t0 = Date.now();
+await p.fill('.composer textarea', 'use a Raspberry Pi Pico instead'); await p.press('.composer textarea', 'Enter');
+await p.waitForFunction(() => { const m=[...document.querySelectorAll('.msg-text')]; return m.length >= 4 && !/designing/i.test(m[m.length-1].innerText); }, null, { timeout: 240000 }).catch(e => console.log('wait fail', e.message));
+console.log('secs', (Date.now()-t0)/1000);
+await p.waitForTimeout(1000);
+await p.screenshot({ path: OUT + '60-claude-pico.png' });
+console.log('BODY', (await p.evaluate(() => document.body.innerText)).slice(0, 2500));
+console.log('ERRS', errs.join('\n'));
+await b.close();

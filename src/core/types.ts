@@ -139,7 +139,7 @@ export type FixAction =
 
 export type FeatureKind =
   | 'oled' | 'lcd' | 'button' | 'switch' | 'pot' | 'dht22' | 'mpu6050' | 'hcsr04' | 'pir' | 'ldr' | 'ntc' | 'soil'
-  | 'led' | 'rgb' | 'neopixel' | 'buzzer' | 'servo' | 'relay' | 'astable555' | 'transistor-led';
+  | 'led' | 'rgb' | 'neopixel' | 'buzzer' | 'servo' | 'relay' | 'astable555' | 'transistor-led' | 'epaper' | 'internet';
 
 export interface FeatureReq {
   kind: FeatureKind;
@@ -151,6 +151,8 @@ export interface DesignSpec {
   board: BoardId;
   features: FeatureReq[];
   title?: string;
+  /** A note from the planner to show the user (e.g. a board substitution). */
+  note?: string;
 }
 
 export interface FeatureInstance {

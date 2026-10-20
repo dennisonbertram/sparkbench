@@ -49,10 +49,10 @@ def _sleep(us):
         _hw.sleep_us(step)
 
 def time():
-    return 1767225600 + _hw.ticks_us() // 1000000
+    return int(_hw.epoch())
 
 def time_ns():
-    return (1767225600 * 1000000 + _hw.ticks_us()) * 1000
+    return int(_hw.epoch() * 1000000) * 1000
 
 def monotonic():
     return _hw.ticks_us() / 1000000
@@ -84,7 +84,13 @@ def localtime(secs=None):
 gmtime = localtime
 
 def mktime(t):
-    return 1767225600
+    y, mo, d, h, mi, sec = t[0], t[1], t[2], t[3], t[4], t[5]
+    days = 0
+    for yy in range(1970, y):
+        days += 366 if (yy % 4 == 0 and (yy % 100 != 0 or yy % 400 == 0)) else 365
+    mdays = [31, 29 if (y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    days += sum(mdays[: mo - 1]) + d - 1
+    return days * 86400 + h * 3600 + mi * 60 + sec
 `;
 
 export const MACHINE_PY = `# Simulated machine module (MicroPython API subset)
@@ -332,18 +338,31 @@ SoftI2C = I2C
 
 class SPI:
     MSB = 0
+    LSB = 1
 
-    def __init__(self, id=0, baudrate=1000000, sck=None, mosi=None, miso=None, **kw):
-        self.sck, self.mosi, self.miso = sck, mosi, miso
+    def __init__(self, id=1, baudrate=1000000, polarity=0, phase=0, bits=8, firstbit=0, sck=None, mosi=None, miso=None, **kw):
+        d = _hw.spi_default(id)
+        g = lambda p, i: p._id if p is not None else d[i]
+        self._bus = _hw.spi_open(g(sck, 0), g(mosi, 1), g(miso, 2))
+
+    def init(self, *a, **kw):
+        pass
+
+    def deinit(self):
+        pass
 
     def write(self, buf):
-        pass
+        _hw.spi_write(self._bus, bytes(buf).hex())
 
     def read(self, n, write=0):
+        _hw.spi_write(self._bus, bytes([write] * n).hex())
         return bytes(n)
 
+    def readinto(self, buf, write=0):
+        _hw.spi_write(self._bus, bytes([write] * len(buf)).hex())
+
     def write_readinto(self, w, r):
-        pass
+        _hw.spi_write(self._bus, bytes(w).hex())
 
 
 SoftSPI = SPI
@@ -511,44 +530,125 @@ class NeoPixel:
         _hw.neopixel_write(self._id, bytes(flat).hex())
 `;
 
-export const NETWORK_PY = `# Simulated Wi-Fi: always connects instantly (there is no real network in the simulator).
+export const NETWORK_PY = `# Simulated Wi-Fi. Connects if the board's "Wi-Fi network in range" switch is on.
 import _hw
 STA_IF = 0
 AP_IF = 1
+STAT_IDLE = 0
+STAT_CONNECTING = 1
+STAT_WRONG_PASSWORD = 202
+STAT_NO_AP_FOUND = 201
+STAT_CONNECT_FAIL = 203
 STAT_GOT_IP = 1010
 
 
 class WLAN:
     def __init__(self, i=0):
         self._active = False
-        self._ok = False
 
     def active(self, a=None):
         if a is None:
             return self._active
-        self._active = a
+        self._active = bool(a)
 
     def connect(self, ssid=None, key=None, **kw):
-        print("[sim] Wi-Fi connecting to %s… (simulated)" % ssid)
-        self._ok = True
+        if not self._active:
+            raise OSError("Wi-Fi Internal Error: call wlan.active(True) first")
+        _hw.wifi_connect(str(ssid))
 
     def isconnected(self):
-        return self._ok
+        return _hw.wifi_status() == STAT_GOT_IP
 
     def status(self, *a):
-        return STAT_GOT_IP if self._ok else 0
+        if a and a[0] == "rssi":
+            return -52
+        return _hw.wifi_status()
 
     def ifconfig(self, *a):
-        return ("192.168.1.42", "255.255.255.0", "192.168.1.1", "8.8.8.8")
+        return ("192.168.1.42", "255.255.255.0", "192.168.1.1", "8.8.8.8") if self.isconnected() else ("0.0.0.0",) * 4
+
+    def ipconfig(self, *a):
+        return self.ifconfig()[0]
 
     def config(self, *a, **kw):
         return "sparkbench-sim"
 
     def disconnect(self):
-        self._ok = False
+        _hw.wifi_disconnect()
 
     def scan(self):
-        return [(b"SimNet", b"\\x00" * 6, 6, -40, 3, False)]
+        return [(b"MyHomeWiFi", b"\\x00" * 6, 6, -48, 3, False)] if _hw.wifi_available() else []
+`;
+
+export const REQUESTS_PY = `# Simulated HTTP client (urequests / requests). Requests go out from the simulator to the real
+# internet when possible; tests use built-in sample responses.
+import _hw
+import json as _json
+
+
+class Response:
+    def __init__(self, status, text, url):
+        self.status_code = status
+        self.text = text
+        self.url = url
+        self.reason = "OK" if status == 200 else ""
+        self.ok = 200 <= status < 300
+
+    @property
+    def content(self):
+        return self.text.encode()
+
+    def json(self):
+        return _json.loads(self.text)
+
+    def raise_for_status(self):
+        if not self.ok:
+            raise OSError("HTTP %d for %s" % (self.status_code, self.url))
+
+    def close(self):
+        pass
+
+
+class ConnectionError(OSError):
+    pass
+
+
+def request(method, url, data=None, json=None, headers=None, timeout=None, params=None, **kw):
+    if params:
+        url += ("&" if "?" in url else "?") + "&".join("%s=%s" % (k, v) for k, v in params.items())
+    body = _json.dumps(json) if json is not None else (data if isinstance(data, str) else (data.decode() if data else ""))
+    r = _hw.http(method, url, body)
+    status = int(r[0])
+    if status < 0:
+        raise ConnectionError("network unreachable: is Wi-Fi connected?" if status == -118 else "request failed (%d)" % status)
+    return Response(status, r[1], url)
+
+
+def get(url, **kw):
+    return request("GET", url, **kw)
+
+
+def post(url, **kw):
+    return request("POST", url, **kw)
+
+
+def put(url, **kw):
+    return request("PUT", url, **kw)
+`;
+
+export const NTPTIME_PY = `# Simulated ntptime: sets the board clock from the internet (needs Wi-Fi).
+import _hw
+host = "pool.ntp.org"
+timeout = 1
+
+
+def time():
+    return int(_hw.epoch())
+
+
+def settime():
+    if _hw.ntp_sync() < 0:
+        raise OSError(110)
 `;
 
 // ------------------------------------------------------------------ Raspberry Pi (CPython) shims

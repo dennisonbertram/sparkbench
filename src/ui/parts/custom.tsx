@@ -41,6 +41,7 @@ export const CUSTOM_PINS: Record<string, Pins> = {
     ...['VDD', 'VREF', 'AGND', 'CLK', 'DOUT', 'DIN', 'CS', 'DGND'].map((n, i) => [n, { x: 12 + i * 18, y: 2 }]),
   ]),
   'battery-9v': { '+': { x: 22, y: 6 }, '-': { x: 48, y: 6 } },
+  epaper29: Object.fromEntries(['VCC', 'GND', 'DIN', 'CLK', 'CS', 'DC', 'RST', 'BUSY'].map((n, i) => [n, { x: 58 + i * 32, y: 184 }])),
 };
 
 const pinDot = (x: number, y: number, key: string) => <rect key={key} x={x - 2.5} y={y - 2.5} width={5} height={5} rx={1} fill="#c9b37a" stroke="#6b5a2a" strokeWidth={0.6} />;

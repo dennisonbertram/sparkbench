@@ -399,3 +399,105 @@ class I2cLcd:
         for ch in text:
             self.write_char(ord(ch) if ord(ch) < 256 else 0x3F)
 `;
+
+export const EPAPER_PY = `# 2.9" e-paper (296x128, SSD1680) driver for MicroPython, landscape orientation.
+# Draw with the framebuf API (text, line, rect, fill_rect, pixel…) using colour 1 = black,
+# 0 = white, then call show(). A full refresh takes ~2 s; the image stays without power.
+from micropython import const
+import framebuf
+import time
+
+WIDTH = const(296)
+HEIGHT = const(128)
+
+
+class EPD(framebuf.FrameBuffer):
+    def __init__(self, spi, cs, dc, rst, busy):
+        self.spi, self.cs, self.dc, self.rst, self.busy = spi, cs, dc, rst, busy
+        self.cs.init(self.cs.OUT, value=1)
+        self.dc.init(self.dc.OUT, value=0)
+        self.rst.init(self.rst.OUT, value=1)
+        self.busy.init(self.busy.IN)
+        self.width = WIDTH
+        self.height = HEIGHT
+        self.buffer = bytearray(WIDTH * HEIGHT // 8)
+        super().__init__(self.buffer, WIDTH, HEIGHT, framebuf.MONO_HLSB)
+        self.init()
+
+    def _cmd(self, c, data=None):
+        self.dc(0)
+        self.cs(0)
+        self.spi.write(bytes([c]))
+        self.cs(1)
+        if data is not None:
+            self._data(data)
+
+    def _data(self, data):
+        self.dc(1)
+        self.cs(0)
+        self.spi.write(data)
+        self.cs(1)
+
+    def wait_idle(self, timeout_ms=5000):
+        t = time.ticks_ms()
+        while self.busy.value() == 1:
+            if time.ticks_diff(time.ticks_ms(), t) > timeout_ms:
+                raise OSError("e-paper BUSY stuck high: check the BUSY wire and power")
+            time.sleep_ms(10)
+
+    def init(self):
+        self.rst(0)
+        time.sleep_ms(10)
+        self.rst(1)
+        time.sleep_ms(10)
+        self.wait_idle()
+        self._cmd(0x12)  # software reset
+        self.wait_idle()
+        self._cmd(0x01, b"\\x27\\x01\\x00")  # 296 gate lines
+        self._cmd(0x11, b"\\x03")  # data entry: x+, y+
+        self._cmd(0x44, b"\\x00\\x0f")  # RAM x: bytes 0..15 (128 px)
+        self._cmd(0x45, b"\\x00\\x00\\x27\\x01")  # RAM y: 0..295
+        self._cmd(0x3C, b"\\x05")  # border waveform
+        self._cmd(0x18, b"\\x80")  # internal temperature sensor
+        self.wait_idle()
+
+    def show(self):
+        """Send the picture to the panel and refresh it (blocks ~2 s)."""
+        # The panel is 128 px wide and 296 px tall; rotate our landscape buffer into it.
+        row = bytearray(16)
+        self._cmd(0x4E, b"\\x00")
+        self._cmd(0x4F, b"\\x00\\x00")
+        self.dc(0)
+        self.cs(0)
+        self.spi.write(b"\\x24")  # write black/white RAM
+        self.dc(1)
+        pix = self.pixel
+        for y in range(WIDTH):
+            for xb in range(16):
+                b = 0xFF
+                base = HEIGHT - 1 - xb * 8
+                for bit in range(8):
+                    if pix(y, base - bit):
+                        b &= ~(0x80 >> bit)
+                row[xb] = b
+            self.spi.write(row)
+        self.cs(1)
+        self._cmd(0x22, b"\\xf7")  # full update sequence
+        self._cmd(0x20)  # go
+        self.wait_idle()
+
+    def sleep(self):
+        self._cmd(0x10, b"\\x01")
+
+    def big_text(self, s, x, y, scale=3, c=1):
+        """Draw text scaled up (the built-in font is only 8 px)."""
+        tmp = framebuf.FrameBuffer(bytearray(8), 8, 8, framebuf.MONO_HLSB)
+        for ch in s:
+            tmp.fill(0)
+            tmp.text(ch, 0, 0, 1)
+            for yy in range(8):
+                for xx in range(8):
+                    if tmp.pixel(xx, yy):
+                        self.fill_rect(x + xx * scale, y + yy * scale, scale, scale, c)
+            x += 8 * scale
+`;

@@ -25,6 +25,7 @@ const MODULE_LOAD_MA: Record<string, number> = {
   servo: 10,
   relay: 70,
   mcp3008: 0.5,
+  epaper29: 8,
 };
 /** Modules with on-board I2C pull-ups (4.7 kΩ to their VCC). */
 const I2C_PULLUPS = new Set(['ssd1306', 'lcd1602', 'mpu6050']);
@@ -208,6 +209,7 @@ export class ElectricalModel {
             els.no = c.add(new Switch(`${id}.no`, n('COM'), n('NO'), false));
             els.nc = c.add(new Switch(`${id}.nc`, n('COM'), n('NC'), true));
           }
+          if (part.type === 'epaper29') els.busy = c.add(new VSource(`${id}.busy`, n('BUSY'), g, 0, 200));
           if (part.type === 'servo') els.sig = c.add(new Resistor(`${id}.sig`, n('PWM'), g, 20000));
           if (part.type === 'mcp3008') {
             // VREF draws a tiny current; analog inputs are high impedance.

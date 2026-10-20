@@ -131,9 +131,51 @@ export function PartView({ part, visual, onPins, onInput, inputs }: Props) {
     }
   }, [visual, part.type]);
 
+  if (part.type === 'epaper29') return <EPaperView visual={visual} />;
   if (!tag) return <CustomPart type={part.type} props={part.props} visual={visual} />;
   const attrs = def.wokwi?.attrs?.(part.props) ?? {};
   const strAttrs: Record<string, string> = {};
   for (const [k, v] of Object.entries(attrs)) if (v !== '' && v !== false) strAttrs[k] = String(v);
   return React.createElement(tag, { ref, ...strAttrs, style: { display: 'block' } });
+}
+
+/** 2.9" e-ink module: draws exactly what the simulated SSD1680 panel is showing. */
+function EPaperView({ visual }: { visual?: PartVisual }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const ram = visual?.epaper?.ram;
+  useEffect(() => {
+    const ctx = canvas.current?.getContext('2d');
+    if (!ctx) return;
+    const img = ctx.createImageData(296, 128);
+    for (let lx = 0; lx < 296; lx++)
+      for (let ly = 0; ly < 128; ly++) {
+        const px = 127 - ly;
+        const white = !ram || (ram[lx * 16 + (px >> 3)] & (0x80 >> (px & 7))) !== 0;
+        const i = (ly * 296 + lx) * 4;
+        const v = white ? 226 : 28;
+        img.data[i] = v;
+        img.data[i + 1] = v;
+        img.data[i + 2] = white ? 218 : 30;
+        img.data[i + 3] = 255;
+      }
+    ctx.putImageData(img, 0, 0);
+  }, [ram]);
+  const pins = CUSTOM_PINS.epaper29;
+  return (
+    <div className="epaper" style={{ width: 340, height: 190 }}>
+      <div className="epaper-board" />
+      <canvas ref={canvas} width={296} height={128} className={`epaper-screen ${visual?.epaper?.refreshing ? 'refreshing' : ''}`} />
+      <svg width={340} height={190} className="epaper-pins">
+        {Object.entries(pins).map(([n, p]) => (
+          <g key={n}>
+            <rect x={p.x - 2.5} y={p.y - 2.5} width={5} height={5} rx={1} fill="#c9b37a" stroke="#6b5a2a" strokeWidth={0.6} />
+            <text x={p.x} y={p.y - 7} fontSize={7} textAnchor="middle" fill="#e8eef7" fontFamily="var(--mono)">
+              {n}
+            </text>
+          </g>
+        ))}
+        <text x={20} y={176} fontSize={8} fill="#9fb3d1">2.9" e-Paper · SSD1680</text>
+      </svg>
+    </div>
+  );
 }

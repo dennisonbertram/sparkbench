@@ -147,6 +147,7 @@ export interface ImuInputs {
   tiltY: number; // pitch, degrees
   rotZ: number; // deg/s
   shake: number; // 0/1
+  walking?: number; // 0/1: periodic up/down steps at ~1.8 Hz
 }
 
 export class MPU6050Device implements I2CDevice {
@@ -187,6 +188,12 @@ export class MPU6050Device implements I2CDevice {
       ax += 1.6 * Math.sin(ph * 7.1);
       ay += 1.4 * Math.cos(ph * 5.3);
       az += 1.2 * Math.sin(ph * 3.7);
+    }
+    if (inp.walking) {
+      // Each step: a sharp vertical bump plus a little forward sway.
+      const ph = (t / 1e6) * 1.8 * 2 * Math.PI;
+      az += 0.55 * Math.max(0, Math.sin(ph)) ** 3 - 0.12;
+      ax += 0.12 * Math.sin(ph / 2);
     }
     // tiny sensor noise so values look alive
     const n = () => (Math.random() - 0.5) * 0.004;
@@ -300,5 +307,115 @@ export class Lcd1602Device implements I2CDevice {
     out.set(this.ddram.subarray(0, 16), 0);
     out.set(this.ddram.subarray(0x40, 0x50), 16);
     return out;
+  }
+}
+
+/** SSD1680 e-paper controller (296×128 panel used as 128 wide × 296 tall RAM). */
+export class EPaperDevice {
+  ram = new Uint8Array(16 * 296).fill(0xff);
+  shown = new Uint8Array(16 * 296).fill(0xff);
+  busyUntil = 0;
+  refreshes = 0;
+  private cmd = -1;
+  private args: number[] = [];
+  private x = 0;
+  private y = 0;
+  private x0 = 0;
+  private x1 = 15;
+  private y0 = 0;
+  private y1 = 295;
+  sleeping = false;
+  constructor(public partId: string, public now: () => number) {}
+
+  reset() {
+    this.busyUntil = this.now() + 5_000;
+    this.sleeping = false;
+    this.cmd = -1;
+  }
+  busy() {
+    return this.now() < this.busyUntil;
+  }
+  write(bytes: number[], dc: number) {
+    if (this.sleeping && !(dc === 0 && bytes[0] === 0x12)) return;
+    if (dc === 0) {
+      for (const b of bytes) this.command(b);
+      return;
+    }
+    for (const b of bytes) this.data(b);
+  }
+  private command(c: number) {
+    this.cmd = c;
+    this.args = [];
+    switch (c) {
+      case 0x12: // SW reset
+        this.busyUntil = this.now() + 2_000;
+        this.x0 = 0;
+        this.x1 = 15;
+        this.y0 = 0;
+        this.y1 = 295;
+        break;
+      case 0x20: // master activation: show RAM
+        this.shown.set(this.ram);
+        this.refreshes++;
+        this.busyUntil = this.now() + 1_800_000;
+        break;
+    }
+  }
+  private data(b: number) {
+    const a = this.args;
+    switch (this.cmd) {
+      case 0x24:
+        if (this.x >= 0 && this.x < 16 && this.y >= 0 && this.y < 296) this.ram[this.y * 16 + this.x] = b;
+        this.x++;
+        if (this.x > this.x1) {
+          this.x = this.x0;
+          this.y++;
+          if (this.y > this.y1) this.y = this.y0;
+        }
+        return;
+      case 0x44:
+        a.push(b);
+        if (a.length === 2) [this.x0, this.x1] = [a[0] & 0x1f, a[1] & 0x1f];
+        return;
+      case 0x45:
+        a.push(b);
+        if (a.length === 4) [this.y0, this.y1] = [a[0] | (a[1] << 8), a[2] | (a[3] << 8)];
+        return;
+      case 0x4e:
+        this.x = b & 0x1f;
+        return;
+      case 0x4f:
+        a.push(b);
+        this.y = a[0] | ((a[1] ?? 0) << 8);
+        return;
+      case 0x10:
+        if (b & 1) this.sleeping = true;
+        return;
+    }
+  }
+  /** Landscape 296×128 bitmap (1 = black) of what the panel currently shows. */
+  pixels(): Uint8Array {
+    const out = new Uint8Array(296 * 128);
+    for (let lx = 0; lx < 296; lx++)
+      for (let ly = 0; ly < 128; ly++) {
+        const px = 127 - ly;
+        const bit = this.shown[lx * 16 + (px >> 3)] & (0x80 >> (px & 7));
+        out[ly * 296 + lx] = bit ? 0 : 1;
+      }
+    return out;
+  }
+  ascii(sx = 4, sy = 8): string {
+    const px = this.pixels();
+    const rows: string[] = [];
+    for (let y = 0; y < 128; y += sy) {
+      let r = '';
+      for (let x = 0; x < 296; x += sx) {
+        let on = 0;
+        for (let dy = 0; dy < sy; dy++) for (let dx = 0; dx < sx; dx++) on |= px[(y + dy) * 296 + x + dx];
+        r += on ? '#' : '.';
+      }
+      rows.push(r);
+    }
+    return rows.join('\n');
   }
 }

@@ -362,3 +362,12 @@ h2, h3 { margin: 0; }
 .dl-del { background: color-mix(in srgb, var(--error) 14%, transparent); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--error) 50%, transparent); }
 .dl-gap { color: var(--ink-3); background: var(--surface-2); }
 .dl-gap::after { content: '⋯'; }
+
+/* e-paper module */
+.epaper { position: relative; }
+.epaper-board { position: absolute; inset: 0; background: #1b2a44; border-radius: 6px; box-shadow: inset 0 0 0 1px #0d1626; }
+.epaper-screen { position: absolute; left: 22px; top: 18px; width: 296px; height: 128px; image-rendering: pixelated; outline: 6px solid #f2f2ee; box-shadow: 0 0 0 7px #0d1626; }
+.epaper-screen.refreshing { animation: eink-flash 1.8s steps(6) 1; }
+.epaper-pins { position: absolute; left: 0; top: 0; overflow: visible; }
+@keyframes eink-flash { 0%, 34% { filter: invert(1); } 17%, 50% { filter: none; } 67% { filter: invert(1) contrast(0.6); } 100% { filter: none; } }
+@media (prefers-reduced-motion: reduce) { .epaper-screen.refreshing { animation: none; } }

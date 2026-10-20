@@ -4,8 +4,8 @@ import type { Project, PartInstance } from '../core/types';
 import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, type I2CDevice } from './devices';
-import { SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, bootstrapPy } from './pyshims';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, type I2CDevice } from './devices';
+import { SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, bootstrapPy } from './pyshims';
 
 export class SimStop extends Error {
   constructor(public reason: 'user' | 'time' | 'reset') {
@@ -26,6 +26,10 @@ export interface SimHost {
   pollInputs(): InputChange[] | null;
   shouldStop(): boolean;
   emit(frame: SimFrame): void;
+  /** Synchronous HTTP (worker: sync XHR). Return status < 0 on network failure. */
+  httpRequest?(method: string, url: string, body: string): { status: number; text: string };
+  /** Real-world time for NTP (ms since 1970). */
+  nowEpochMs?(): number;
 }
 
 export interface PartVisual {
@@ -36,6 +40,7 @@ export interface PartVisual {
   oled?: number[]; // 1024 bytes GDDRAM
   oledOn?: boolean;
   lcd?: { chars: number[]; backlight: boolean };
+  epaper?: { ram: number[]; refreshing: boolean; refreshes: number };
   angle?: number;
   tone?: number;
   relay?: boolean;
@@ -101,6 +106,11 @@ export class SimEngine {
   private relays = new Map<string, boolean>();
   private pirHold = new Map<string, number>();
   private i2cLog: string[] = [];
+  private epapers: { dev: EPaperDevice; part: PartInstance }[] = [];
+  private spiBuses: { sck: number; mosi: number; miso: number }[] = [];
+  private wifi = { status: 0, readyAt: 0, ssid: '' };
+  private epochBase = 946684800; // board RTC starts at 2000-01-01 until NTP sync
+  httpLog: string[] = [];
   private wallStart = 0;
   private simStart = 0;
   private lastFrameWall = 0;
@@ -113,9 +123,12 @@ export class SimEngine {
   constructor(public project: Project, public host: SimHost, public opts: EngineOptions) {
     this.model = new ElectricalModel(project);
     this.speed = opts.speed ?? 1;
+    // A Raspberry Pi runs Linux and already knows the real time.
+    if (project.board === 'rpi4') this.epochBase = (host.nowEpochMs?.() ?? Date.UTC(2026, 9, 20, 10, 30)) / 1000;
     for (const part of project.parts) {
       if (part.type === 'ssd1306') this.devices.push({ dev: new SSD1306Device(part.id), part });
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
+      if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
         const ad0 = this.model.gpiosOnNet(part.id, 'AD0').length === 0 && this.model.pinVoltage(part.id, 'AD0') > 2;
@@ -146,7 +159,11 @@ export class SimEngine {
     this.checkStop();
     this.syncClock();
     this.pollInputs();
+    this.updateBusyLines();
     this.maybeFrame();
+  }
+  private updateBusyLines() {
+    for (const { dev, part } of this.epapers) this.model.setModuleOutput(part.id, 'busy', dev.busy() && this.model.modulePowered(part.id) ? 3.3 : 0);
   }
   sleepUs(us: number) {
     this.checkStop();
@@ -275,6 +292,7 @@ export class SimEngine {
       tr.at = this.timeUs;
     }
     this.trig.set(g, tr);
+    if (!v) for (const { dev, part } of this.epapers) if (this.model.gpiosOnNet(part.id, 'RST').includes(g)) dev.reset();
     this.updateActuators(g);
   }
   readPin(g: number): number {
@@ -506,6 +524,97 @@ export class SimEngine {
     return Math.max(0, Math.min(1023, Math.round((v / vref) * 1023)));
   }
 
+  // ------------------------------------------------------------------ SPI
+  spiDefault(id: number): number[] {
+    const b = this.board;
+    if (b?.id === 'esp32') return id === 1 ? [14, 13, 12] : [18, 23, 19];
+    if (b?.id === 'pico') return id === 1 ? [10, 11, 12] : [18, 19, 16];
+    return [11, 10, 9];
+  }
+  spiOpen(sck: number, mosi: number, miso: number): number {
+    this.tick();
+    this.spiBuses.push({ sck, mosi, miso });
+    return this.spiBuses.length - 1;
+  }
+  spiWrite(bus: number, hex: string) {
+    this.tick();
+    const bytes = hexToBytes(hex);
+    this.timeUs += bytes.length * 2; // ~4 MHz
+    const b = this.spiBuses[bus];
+    if (!b) return;
+    for (const { dev, part } of this.epapers) {
+      const on = (pin: string) => this.model.gpiosOnNet(part.id, pin);
+      if (!on('CLK').includes(b.sck) || !on('DIN').includes(b.mosi)) {
+        this.warn(`epd-spi-${part.id}`, 'error', `${part.ref}: CLK/DIN must connect to the SPI pins the code uses (GPIO${b.sck} clock, GPIO${b.mosi} data).`, [part.id]);
+        continue;
+      }
+      const cs = on('CS')[0];
+      if (cs === undefined) {
+        this.warn(`epd-cs-${part.id}`, 'error', `${part.ref}: the CS pin isn't connected to the board.`, [part.id]);
+        continue;
+      }
+      if ((this.outLevel.get(cs) ?? 1) !== 0) continue; // not selected
+      if (!this.model.modulePowered(part.id)) {
+        this.warn(`epd-power-${part.id}`, 'warning', `${part.ref}: the e-paper display has no power — connect VCC and GND.`, [part.id]);
+        continue;
+      }
+      const dc = on('DC')[0];
+      dev.write(bytes, dc === undefined ? 0 : this.outLevel.get(dc) ?? 0);
+    }
+  }
+
+  // ------------------------------------------------------------------ Wi-Fi, HTTP, time
+  private wifiAvailable() {
+    if (this.board?.id === 'pico' || !this.boardPartId()) return false;
+    return (this.model.states.get(this.boardPartId()!)?.wifi ?? 1) > 0;
+  }
+  private boardPartId() {
+    return this.model.boardPartId;
+  }
+  wifiConnect(ssid: string) {
+    this.tick();
+    this.wifi = { status: 1, readyAt: this.timeUs + 1_500_000, ssid };
+  }
+  wifiStatus(): number {
+    this.tick();
+    if (this.board?.id === 'rpi4') return this.wifiAvailable() ? 1010 : 201;
+    if (this.wifi.status === 1 && this.timeUs >= this.wifi.readyAt) this.wifi.status = this.wifiAvailable() ? 1010 : 201;
+    if (this.wifi.status === 1010 && !this.wifiAvailable()) this.wifi.status = 201;
+    return this.wifi.status;
+  }
+  private online() {
+    return this.board?.id === 'rpi4' ? this.wifiAvailable() : this.wifiStatus() === 1010;
+  }
+  http(method: string, url: string, body: string): [number, string] {
+    this.tick();
+    if (!this.online()) {
+      this.warn('http-offline', 'warning', 'The program tried to use the internet before Wi-Fi was connected (or the board\'s Wi-Fi switch is off).');
+      this.sleepUs(200_000);
+      return [-118, ''];
+    }
+    this.sleepUs(350_000); // typical HTTPS round trip
+    let res = this.host.httpRequest?.(method, url, body);
+    if (!res || res.status < 0) {
+      res = sampleResponse(url);
+      if (this.host.httpRequest) this.warn('http-sample', 'info', `Couldn't reach ${new URL(url).host} from the simulator, so sample data was used instead.`);
+    }
+    if (this.httpLog.length < 200) this.httpLog.push(`${method} ${url} → ${res.status}`);
+    this.serial(`[sim] ${method} ${url.length > 90 ? url.slice(0, 87) + '…' : url} → ${res.status}`);
+    return [res.status, res.text];
+  }
+  ntpSync(): number {
+    this.tick();
+    if (!this.online()) return -1;
+    this.sleepUs(80_000);
+    const now = (this.host.nowEpochMs?.() ?? Date.UTC(2026, 9, 20, 10, 30)) / 1000;
+    this.epochBase = now - this.timeUs / 1e6;
+    return 0;
+  }
+  epoch(): number {
+    this.tick();
+    return this.epochBase + this.timeUs / 1e6;
+  }
+
   // ------------------------------------------------------------------ frames
   maybeFrame(force = false) {
     if (!this.realtime() && !force) return;
@@ -554,6 +663,12 @@ export class SimEngine {
             v.oledOn = v.powered && d.on;
           }
           if (d instanceof Lcd1602Device) v.lcd = { chars: v.powered ? Array.from(d.characters()) : new Array(32).fill(32), backlight: !!v.powered && d.backlight };
+          break;
+        }
+        case 'epaper29': {
+          const e = this.epapers.find((x) => x.part.id === part.id)?.dev;
+          v.powered = m.modulePowered(part.id);
+          if (e) v.epaper = { ram: Array.from(e.shown), refreshing: e.busy() && e.refreshes > 0, refreshes: e.refreshes };
           break;
         }
         case 'neopixel-ring':
@@ -639,6 +754,18 @@ export class SimEngine {
       i2c_read: (b: number, a: number, n: number) => this.i2cRead(b, a, n),
       i2c_scan: (b: number) => this.i2cScan(b),
       mcp3008_read: (ch: number) => this.mcp3008Read(ch),
+      spi_default: (id: number) => this.spiDefault(id),
+      spi_open: (sck: number, mosi: number, miso: number) => this.spiOpen(sck, mosi, miso),
+      spi_write: (b: number, hex: string) => this.spiWrite(b, hex),
+      wifi_connect: (ssid: string) => this.wifiConnect(ssid),
+      wifi_status: () => this.wifiStatus(),
+      wifi_disconnect: () => {
+        this.wifi.status = 0;
+      },
+      wifi_available: () => this.wifiAvailable(),
+      http: (method: string, url: string, body: string) => this.http(method, url, body),
+      ntp_sync: () => this.ntpSync(),
+      epoch: () => this.epoch(),
     };
   }
 
@@ -664,8 +791,8 @@ export class SimEngine {
       mp.FS.mkdir('/project');
     } catch {}
     const lib: Record<string, string> = isPi
-      ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY }
-      : { '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY };
+      ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY, 'requests.py': REQUESTS_PY }
+      : { '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
     for (const [name, src] of Object.entries(lib)) mp.FS.writeFile(`/lib/${name}`, src);
     for (const [name, src] of Object.entries(this.project.files)) mp.FS.writeFile(`/project/${name}`, src);
     this.status = 'running';
@@ -774,3 +901,25 @@ export function explainError(raw: string, project?: Project): NonNullable<SimFra
 }
 
 export { pinKey };
+
+/** Built-in sample responses so internet projects work offline and in tests. */
+export function sampleResponse(url: string): { status: number; text: string } {
+  if (/open-meteo\.com/.test(url)) {
+    const daily = { time: ['2026-10-20', '2026-10-21', '2026-10-22'], temperature_2m_max: [17.4, 15.1, 19.8], temperature_2m_min: [9.2, 8.7, 11.3], weather_code: [3, 61, 1], precipitation_probability_max: [20, 80, 5] };
+    const hourly = { time: Array.from({ length: 24 }, (_, h) => `2026-10-20T${String(h).padStart(2, '0')}:00`), temperature_2m: Array.from({ length: 24 }, (_, h) => +(12 + 5 * Math.sin(((h - 9) / 24) * 2 * Math.PI)).toFixed(1)) };
+    return {
+      status: 200,
+      text: JSON.stringify({
+        latitude: 40.71,
+        longitude: -74.01,
+        timezone: 'America/New_York',
+        utc_offset_seconds: -14400,
+        current: { time: '2026-10-20T10:30', temperature_2m: 14.6, relative_humidity_2m: 62, apparent_temperature: 13.1, weather_code: 3, wind_speed_10m: 11.2, is_day: 1 },
+        daily,
+        hourly,
+      }),
+    };
+  }
+  if (/worldtimeapi|timeapi/.test(url)) return { status: 200, text: JSON.stringify({ datetime: '2026-10-20T10:30:00-04:00', unixtime: 1792506600, utc_offset: '-04:00' }) };
+  return { status: 404, text: 'Not found (the simulator only has sample data for api.open-meteo.com)' };
+}

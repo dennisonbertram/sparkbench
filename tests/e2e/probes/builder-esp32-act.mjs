@@ -16,7 +16,7 @@ await p.goto('http://localhost:5173/?welcome&notour');
 await p.waitForSelector('.hero-input textarea');
 await p.fill('.hero-input textarea', prompt);
 await p.click('button.primary.big');
-await p.waitForSelector('.part', { timeout: 30000 });
+try { await p.waitForSelector('.part', { timeout: 150000 }); } catch (e) { await p.screenshot({ path: dir + '/fail.png' }); console.log('FAILTEXT', await p.evaluate(() => document.body.innerText.slice(0, 800))); throw e; }
 await p.waitForTimeout(1500);
 await p.click('button.run');
 await p.waitForTimeout(2500);

@@ -27,6 +27,18 @@ self.onmessage = async (ev: MessageEvent<StartMsg>) => {
     wallNowMs: () => performance.now(),
     shouldStop: () => Atomics.load(control, 0) !== 0,
     emit: (frame: unknown) => (self as any).postMessage({ type: 'frame', frame }),
+    // Real internet access for the simulated board (synchronous XHR is allowed in workers).
+    httpRequest: (method: string, url: string, body: string) => {
+      try {
+        const x = new XMLHttpRequest();
+        x.open(method, url, false);
+        x.send(body || null);
+        return { status: x.status || -1, text: x.responseText };
+      } catch {
+        return { status: -1, text: '' };
+      }
+    },
+    nowEpochMs: () => Date.now(),
     pollInputs: (): InputChange[] | null => {
       const g = Atomics.load(control, 1);
       if (g === gen) return null;

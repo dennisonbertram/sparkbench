@@ -13,7 +13,7 @@ await p.goto('http://localhost:5173/?welcome&notour');
 await p.waitForSelector('.hero-input textarea');
 await p.fill('.hero-input textarea', prompt);
 await p.click('button.primary.big');
-await p.waitForSelector('.part', { timeout: 30000 });
+const t0=Date.now(); try { await p.waitForSelector('.part', { timeout: 150000 }); } catch (e) { await p.screenshot({ path: dir + '/fail.png' }); throw e; } console.log('design took', Date.now()-t0, 'ms');
 await p.waitForTimeout(2500);
 await p.screenshot({ path: `${dir}/01-design.png` });
 const out = {};

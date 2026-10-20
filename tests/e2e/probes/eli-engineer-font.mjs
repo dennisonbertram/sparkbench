@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+await p.goto('http://localhost:5173/?example=esp32-weather-imu&notour');
+await p.waitForSelector('.part'); await p.click('.tabs button:has-text("Schematic")'); await p.waitForTimeout(600);
+const r = await p.$$eval('[data-testid=schematic] text', ts => ts.map(t => ({ s: t.textContent, h: t.getBoundingClientRect().height })).filter(x => /^(D21|U1|GPIO22_SCL|SCL|DATA)$/.test(x.s)).slice(0, 8));
+console.log(r);
+await p.mouse.move(700, 400); await p.keyboard.down('Control'); await p.mouse.wheel(0, -500); await p.keyboard.up('Control'); await p.waitForTimeout(300);
+const r2 = await p.$$eval('[data-testid=schematic] text', ts => ts.filter(t => t.textContent === 'U1').map(t => t.getBoundingClientRect().height));
+console.log('after ctrl+wheel', r2);
+await b.close();

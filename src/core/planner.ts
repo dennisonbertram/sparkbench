@@ -22,6 +22,8 @@ interface KindRule {
 
 // Order matters: more specific phrases first.
 const RULES: KindRule[] = [
+  { kind: 'epaper', re: /\b(e-?ink|e-?paper|epd|paper display|kindle-like)\b/ },
+  { kind: 'internet', re: /\b(internet|wi-?fi|online|forecast|weather api|from the web|web api|cloud|ntp|time server|network time|connected to the net|weather service|api)\b/ },
   { kind: 'oled', re: /\b(oled|ssd1306|screen|display|monitor)\b/ },
   { kind: 'lcd', re: /\b(lcd|16x2|1602|character display|text display)\b/ },
   { kind: 'mpu6050', re: /\b(imu|accelerometer|accel|gyro|gyroscope|mpu-?6050|tilt sensor|orientation|motion tracking|step counter|pedometer|shake)\b/ },
@@ -42,7 +44,7 @@ const RULES: KindRule[] = [
   { kind: 'relay', re: /\b(relay|pump|fan|heater|mains|appliance)\b/ },
 ];
 
-const SINGLE = new Set<FeatureKind>(['oled', 'lcd', 'mpu6050', 'dht22', 'hcsr04', 'neopixel', 'relay', 'buzzer']);
+const SINGLE = new Set<FeatureKind>(['epaper', 'internet', 'oled', 'lcd', 'mpu6050', 'dht22', 'hcsr04', 'neopixel', 'relay', 'buzzer']);
 
 const DISCRETE_RE = /\b(555|ne555|no (micro ?controller|mcu)|without (a )?(micro ?controller|mcu)|discrete|astable|analog blinker)\b/;
 
@@ -102,6 +104,14 @@ export function parseIntent(prompt: string): DesignSpec {
   }
   // Disambiguate: "temperature" with a thermistor mentioned → NTC only
   if (features.some((f) => f.kind === 'ntc')) removeKind(features, 'dht22');
+  // An e-ink display is the display
+  if (features.some((f) => f.kind === 'epaper') && !/\b(oled|ssd1306)\b/.test(t)) removeKind(features, 'oled');
+  // Internet weather: "weather" means the forecast, not a local sensor, unless one is asked for.
+  const net = features.find((f) => f.kind === 'internet');
+  if (net) {
+    net.props = { service: /\b(clock|time|ntp)\b/.test(t) && !/\b(weather|forecast|rain)\b/.test(t) ? 'time' : /\b(clock|time)\b/.test(t) ? 'weather+time' : 'weather' };
+    if (!/\b(temperature sensor|humidity|dht\d*|indoor|room temp|inside)\b/.test(t)) removeKind(features, 'dht22');
+  }
   // LCD mentioned explicitly → it is the display
   if (features.some((f) => f.kind === 'lcd') && !/\boled\b/.test(t)) removeKind(features, 'oled');
   // "alarm" alone shouldn't add a buzzer if a buzzer is already there; "light sensor" isn't an LED
@@ -110,11 +120,18 @@ export function parseIntent(prompt: string): DesignSpec {
     if (/night ?light/.test(t)) features.push({ kind: 'led', props: { color: 'white' }, label: 'Night light' });
   }
   if (features.length === 0) features.push({ kind: 'led', label: 'Status' }, { kind: 'button' });
-  // LED colours for multiples
+  if (board === 'pico' && features.some((f) => f.kind === 'internet') && !/pico ?w\b/.test(t)) {
+    // The Pico has no Wi-Fi radio; an internet project needs a board that does.
+    return { board: 'esp32', features: colourLeds(features), title: titleFrom(prompt), note: 'The Raspberry Pi Pico has no Wi-Fi, so I used an ESP32 instead.' } as DesignSpec;
+  }
+  return { board, features: colourLeds(features), title: titleFrom(prompt) };
+}
+
+function colourLeds(features: FeatureReq[]): FeatureReq[] {
   const leds = features.filter((f) => f.kind === 'led' && !f.props?.color);
   const palette = ['red', 'green', 'blue', 'yellow', 'white', 'orange'];
   leds.forEach((f, i) => (f.props = { ...(f.props ?? {}), color: palette[i % palette.length] }));
-  return { board, features, title: titleFrom(prompt) };
+  return features;
 }
 
 function removeKind(features: FeatureReq[], kind: FeatureKind) {
@@ -165,12 +182,12 @@ const WIRE_COLORS = { gnd: '#1f2328', v33: '#d32f2f', v5: '#ef6c00', sda: '#1e88
 const NAMES: Record<FeatureKind, string> = {
   oled: 'oled', lcd: 'lcd', button: 'btn', switch: 'switch', pot: 'knob', dht22: 'dht_sensor', mpu6050: 'imu', hcsr04: 'sonar',
   pir: 'pir', ldr: 'light', ntc: 'thermistor', soil: 'soil', led: 'led', rgb: 'rgb', neopixel: 'pixels', buzzer: 'buzzer',
-  servo: 'servo', relay: 'relay', astable555: 'timer', 'transistor-led': 'switch_q',
+  servo: 'servo', relay: 'relay', astable555: 'timer', 'transistor-led': 'switch_q', epaper: 'epd', internet: 'wifi',
 };
 const LABELS: Record<FeatureKind, string> = {
   oled: 'OLED display', lcd: 'LCD display', button: 'Button', switch: 'Slide switch', pot: 'Knob', dht22: 'Temperature/humidity sensor',
   mpu6050: 'IMU', hcsr04: 'Distance sensor', pir: 'Motion sensor', ldr: 'Light sensor', ntc: 'Thermistor', soil: 'Soil moisture sensor',
-  led: 'LED', rgb: 'RGB LED', neopixel: 'NeoPixel ring', buzzer: 'Buzzer', servo: 'Servo', relay: 'Relay', astable555: '555 blinker', 'transistor-led': 'Transistor switch',
+  led: 'LED', rgb: 'RGB LED', neopixel: 'NeoPixel ring', buzzer: 'Buzzer', servo: 'Servo', relay: 'Relay', astable555: '555 blinker', 'transistor-led': 'Transistor switch', epaper: 'E-paper display', internet: 'Wi-Fi internet',
 };
 
 class Builder {
@@ -196,6 +213,7 @@ class Builder {
       const reserved: string[] = [];
       const needsI2C = spec.features.some((f) => ['oled', 'lcd', 'mpu6050'].includes(f.kind));
       if (needsI2C) reserved.push(this.board.i2c.sda, this.board.i2c.scl);
+      if (spec.features.some((f) => f.kind === 'epaper') && this.board.spi) reserved.push(this.board.spi.sck, this.board.spi.mosi, this.board.spi.cs);
       const needsAnalog = spec.features.some((f) => ['pot', 'ldr', 'ntc', 'soil'].includes(f.kind));
       if (spec.board === 'rpi4' && needsAnalog && this.board.spi) reserved.push(this.board.spi.sck, this.board.spi.mosi, this.board.spi.miso, this.board.spi.cs);
       // Never auto-assign the Pi's HAT EEPROM or serial pins for plain I/O unless needed.
@@ -302,6 +320,33 @@ class Builder {
         i2c(id, 'v33');
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'right' });
+        break;
+      }
+      case 'epaper': {
+        if (b!.id === 'rpi4') throw new PlanError('E-paper displays are supported on the ESP32 and Pico for now. Try “ESP32 with an e-ink display”.');
+        const id = this.addPart('epaper29', {}, label);
+        const spi = b!.spi!;
+        this.v33(id);
+        this.gnd(id);
+        this.wire({ part: id, pin: 'CLK' }, this.bp(spi.sck), '#5c6bc0');
+        this.wire({ part: id, pin: 'DIN' }, this.bp(spi.mosi), '#8e24aa');
+        this.wire({ part: id, pin: 'CS' }, this.bp(spi.cs), '#6d4c41');
+        const pin = (n: string) => b!.pins.find((p) => p.name === n)!;
+        setPin('sck', pin(spi.sck));
+        setPin('mosi', pin(spi.mosi));
+        setPin('cs', pin(spi.cs));
+        setPin('dc', this.gpio(id, 'DC', 'out', `${label} DC`));
+        setPin('rst', this.gpio(id, 'RST', 'out', `${label} reset`));
+        setPin('busy', this.gpio(id, 'BUSY', 'in', `${label} busy`));
+        fi.parts.push(id);
+        this.groups.push({ main: id, parts: [id], side: 'right' });
+        this.notes.push('The e-paper display talks SPI (CLK, DIN, CS on the board\'s hardware SPI pins) plus three control lines: DC selects command/data, RST resets it and BUSY tells the board when a refresh has finished.');
+        break;
+      }
+      case 'internet': {
+        if (b!.id === 'pico') throw new PlanError('The Raspberry Pi Pico has no Wi-Fi. Use an ESP32 (or a Pico W) for internet projects — try “ESP32 …”.');
+        fi.props = { service: req.props?.service ?? 'weather' };
+        this.notes.push(b!.id === 'esp32' ? 'Internet access uses the ESP32\'s built-in Wi-Fi — no extra parts. Put your network name and password in the settings at the top of main.py.' : 'Internet access uses the Raspberry Pi\'s own network connection.');
         break;
       }
       case 'lcd': {
@@ -543,7 +588,7 @@ class Builder {
 export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: string; previous?: Project } = {}): Project {
   const b = new Builder(spec);
   // Group order: inputs first so buttons get the nicest pins, analog before generic I/O.
-  const order: FeatureKind[] = ['oled', 'lcd', 'mpu6050', 'pot', 'ldr', 'ntc', 'soil', 'dht22', 'hcsr04', 'pir', 'button', 'switch', 'buzzer', 'servo', 'neopixel', 'rgb', 'led', 'relay', 'astable555', 'transistor-led'];
+  const order: FeatureKind[] = ['internet', 'epaper', 'oled', 'lcd', 'mpu6050', 'pot', 'ldr', 'ntc', 'soil', 'dht22', 'hcsr04', 'pir', 'button', 'switch', 'buzzer', 'servo', 'neopixel', 'rgb', 'led', 'relay', 'astable555', 'transistor-led'];
   const sorted = [...spec.features].sort((x, y) => order.indexOf(x.kind) - order.indexOf(y.kind));
   const nButtons = sorted.filter((f) => f.kind === 'button').length;
   let bi = 0;
@@ -581,6 +626,7 @@ export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: s
     });
   }
   project.notes.unshift(...pinNotes(project));
+  if (spec.note) project.notes.unshift(spec.note);
   const files = generateFiles(project);
   if (opts.previous?.codeCustom) {
     project.files = { ...files, 'main.py': opts.previous.files['main.py'] };
@@ -598,6 +644,7 @@ function pinNotes(project: Project): string[] {
     const pins = Object.entries(f.pins)
       .filter(([s]) => s !== 'sda' && s !== 'scl')
       .map(([s, p]) => `${s === 'pin' ? '' : s.toUpperCase() + '→'}${p}`);
+    if (f.kind === 'internet') continue;
     if (['oled', 'lcd', 'mpu6050'].includes(f.kind)) notes.push(`${f.label}: shares the I2C bus (SDA ${board.i2c.sda}, SCL ${board.i2c.scl}).`);
     else if (f.mcpChannel !== undefined) notes.push(`${f.label}: MCP3008 channel ${f.mcpChannel}.`);
     else if (pins.length) notes.push(`${f.label}: ${pins.join(', ')}${f.kind === 'button' ? ' (internal pull-up, button to GND)' : ''}.`);
@@ -613,7 +660,11 @@ export function projectName(spec: DesignSpec): string {
   const display = k.has('oled') || k.has('lcd');
   const leds = spec.features.filter((f) => f.kind === 'led');
   let n = '';
-  if ((k.has('dht22') || k.has('ntc')) && k.has('mpu6050')) n = 'Weather & Motion Station';
+  if (k.has('internet') && k.has('epaper')) n = 'E-ink Weather Display';
+  else if (k.has('internet') && (spec.features.find((f) => f.kind === 'internet')?.props?.service ?? '').startsWith('time')) n = 'Internet Clock';
+  else if (k.has('internet')) n = display ? 'Weather Dashboard' : 'Weather Fetcher';
+  else if (k.has('epaper')) n = 'E-ink Display';
+  else if ((k.has('dht22') || k.has('ntc')) && k.has('mpu6050')) n = 'Weather & Motion Station';
   else if (k.has('soil')) n = k.has('relay') ? 'Plant Waterer' : 'Plant Monitor';
   else if (k.has('hcsr04')) n = k.has('buzzer') ? 'Parking Sensor' : 'Distance Meter';
   else if (k.has('pir')) n = k.has('relay') ? 'Motion Light' : k.has('buzzer') ? 'Motion Alarm' : 'Motion Detector';

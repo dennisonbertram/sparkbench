@@ -2,7 +2,7 @@
 // MicroPython (ESP32 / Pico) or Python + gpiozero (Raspberry Pi) code.
 import type { FeatureInstance, FeatureKind, Project } from './types';
 import { BOARDS } from './boards';
-import { SSD1306_PY, MPU6050_PY, I2C_LCD_PY, OLED_PI_PY, MPU6050_PI_PY, LCD_PI_PY } from './drivers';
+import { SSD1306_PY, MPU6050_PY, I2C_LCD_PY, OLED_PI_PY, MPU6050_PI_PY, LCD_PI_PY, EPAPER_PY } from './drivers';
 
 type Lang = 'mp' | 'py';
 
@@ -32,6 +32,7 @@ export function generateFiles(project: Project): Record<string, string> {
     if (has(fs, 'oled')) files['ssd1306.py'] = SSD1306_PY;
     if (has(fs, 'mpu6050')) files['mpu6050.py'] = MPU6050_PY;
     if (has(fs, 'lcd')) files['i2c_lcd.py'] = I2C_LCD_PY;
+    if (has(fs, 'epaper')) files['epaper2in9.py'] = EPAPER_PY;
   } else {
     if (has(fs, 'oled')) files['oled.py'] = OLED_PI_PY;
     if (has(fs, 'mpu6050')) files['mpu6050.py'] = MPU6050_PI_PY;
@@ -80,6 +81,13 @@ function readings(fs: FeatureInstance[]): Reading[] {
       case 'switch':
         out.push({ f, vars: [`${f.name}_on`], lines: [`Switch {"ON" if ${f.name}_on else "off"}`] });
         break;
+      case 'internet': {
+        const svc = String(f.props?.service ?? 'weather');
+        if (svc.includes('time')) out.push({ f, vars: ['clock'], lines: ['Time {clock}'] });
+        if (svc.includes('weather'))
+          out.push({ f, vars: ['out_temp', 'sky', 'out_hi', 'out_lo'], lines: ['Out {out_temp:.1f} C {sky}', 'Hi {out_hi:.0f} Lo {out_lo:.0f} C'], level: { expr: 'out_temp', lo: 0, hi: 30, label: 'outside temperature' } });
+        break;
+      }
     }
   }
   return out;
@@ -103,6 +111,11 @@ function generateMain(project: Project, lang: Lang): string {
   const imu = first(fs, 'mpu6050');
   const dhtF = first(fs, 'dht22');
   const sonar = first(fs, 'hcsr04');
+  const epd = first(fs, 'epaper');
+  const net = first(fs, 'internet');
+  const svc = String(net?.props?.service ?? '');
+  const wantWeather = svc.includes('weather');
+  const wantTime = svc.includes('time');
   const display = oled ?? lcd;
   const knob = R.find((r) => r.f.kind === 'pot');
   const levelSrc = knob ?? R.find((r) => r.level);
@@ -125,7 +138,11 @@ function generateMain(project: Project, lang: Lang): string {
     if (needADC) mi.push('ADC');
     if (needPWM) mi.push('PWM');
     if (sonar) mi.push('time_pulse_us');
+    if (epd) mi.push('SPI');
     c.add(0, `from machine import ${mi.join(', ')}`, 'import time');
+    if (net) c.add(0, 'import network', 'import urequests as requests');
+    if (wantTime) c.add(0, 'import ntptime');
+    if (epd) c.add(0, 'import epaper2in9');
     if (needMath) c.add(0, 'import math');
     if (oled) c.add(0, 'import ssd1306');
     if (lcd) c.add(0, 'from i2c_lcd import I2cLcd');
@@ -145,6 +162,7 @@ function generateMain(project: Project, lang: Lang): string {
     if (relay) gz.push('OutputDevice');
     if (has(fs, 'switch')) gz.push('Button');
     c.add(0, 'import time');
+    if (net) c.add(0, 'import requests');
     if (needMath) c.add(0, 'import math');
     if (gz.length) c.add(0, `from gpiozero import ${[...new Set(gz)].join(', ')}`);
     if (oled) c.add(0, 'from oled import OLED');
@@ -161,6 +179,10 @@ function generateMain(project: Project, lang: Lang): string {
   if (sonar) settings.push('NEAR_CM = 20       # cm: closer than this counts as "close"');
   if (has(fs, 'ldr')) settings.push('DARK_PCT = 30      # %: below this light level counts as "dark"');
   if (has(fs, 'soil')) settings.push('DRY_PCT = 30       # %: water when soil is drier than this', 'WET_PCT = 60       # %: stop watering above this');
+  if (net && mp) settings.push('WIFI_SSID = "MyHomeWiFi"        # your Wi-Fi network name', 'WIFI_PASSWORD = "change-me"     # your Wi-Fi password');
+  if (wantWeather) settings.push('LATITUDE = 40.71     # where to get the weather for (New York; change to yours)', 'LONGITUDE = -74.01', 'WEATHER_EVERY_S = 600  # fetch a new forecast every 10 minutes');
+  if (wantTime && mp) settings.push('UTC_OFFSET_H = -4    # your time zone offset from UTC, in hours');
+  if (epd) settings.push('EPD_MIN_S = 60      # e-ink: redraw at most once a minute (refreshes are slow)');
   settings.push(`LOOP_MS = ${mp ? 50 : 50}       # main loop period`);
   c.add(0, '# ---- settings you can tweak ----', ...settings);
   c.blank();
@@ -170,6 +192,10 @@ function generateMain(project: Project, lang: Lang): string {
   if (mp && (display || imu)) {
     const id = board.id === 'pico' ? 0 : 0;
     c.add(0, `i2c = I2C(${id}, scl=Pin(${display?.gpio.scl ?? imu!.gpio.scl}), sda=Pin(${display?.gpio.sda ?? imu!.gpio.sda}), freq=400000)`);
+  }
+  if (epd && mp) {
+    c.add(0, `spi = SPI(${board.id === 'esp32' ? 2 : 0}, baudrate=4_000_000, sck=Pin(${epd.gpio.sck}), mosi=Pin(${epd.gpio.mosi}))`);
+    c.add(0, `epd = epaper2in9.EPD(spi, cs=Pin(${epd.gpio.cs}), dc=Pin(${epd.gpio.dc}), rst=Pin(${epd.gpio.rst}), busy=Pin(${epd.gpio.busy}))`);
   }
   for (const f of fs) {
     const g = f.gpio.pin;
@@ -276,6 +302,56 @@ function generateMain(project: Project, lang: Lang): string {
   }
   c.add(0, 'def clamp(v, lo, hi):', '    return lo if v < lo else hi if v > hi else v', '');
   c.add(0, 'def scale(v, in_lo, in_hi, out_lo, out_hi):', '    """Map v from one range to another (like Arduino map())."""', '    v = clamp(v, min(in_lo, in_hi), max(in_lo, in_hi))', '    return out_lo + (v - in_lo) * (out_hi - out_lo) / (in_hi - in_lo)', '');
+  if (net && mp)
+    c.add(
+      0,
+      'def connect_wifi():',
+      '    """Join the Wi-Fi network (waits up to 10 s). Returns True when connected."""',
+      '    wlan = network.WLAN(network.STA_IF)',
+      '    wlan.active(True)',
+      '    if not wlan.isconnected():',
+      '        print("Connecting to Wi-Fi", WIFI_SSID, "...")',
+      '        wlan.connect(WIFI_SSID, WIFI_PASSWORD)',
+      '        for _ in range(100):',
+      '            if wlan.isconnected():',
+      '                break',
+      '            time.sleep_ms(100)',
+      '    print("Wi-Fi", "connected:" if wlan.isconnected() else "NOT connected", wlan.ifconfig()[0])',
+      '    return wlan.isconnected()',
+      '',
+    );
+  if (wantWeather)
+    c.add(
+      0,
+      'WEATHER_URL = ("https://api.open-meteo.com/v1/forecast?latitude={:.4f}&longitude={:.4f}"',
+      '               "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m"',
+      '               "&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=3")',
+      '',
+      '# WMO weather codes → words (https://open-meteo.com/en/docs)',
+      'SKY = {0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy", 45: "Fog", 48: "Fog",',
+      '       51: "Drizzle", 53: "Drizzle", 55: "Drizzle", 61: "Rain", 63: "Rain", 65: "Heavy rain",',
+      '       71: "Snow", 73: "Snow", 75: "Heavy snow", 80: "Showers", 81: "Showers", 82: "Downpour",',
+      '       95: "Thunder", 96: "Thunder", 99: "Thunder"}',
+      '',
+      'def fetch_weather():',
+      '    """Download the current weather from open-meteo.com (free, no API key). None on failure."""',
+      '    try:',
+      '        r = requests.get(WEATHER_URL.format(LATITUDE, LONGITUDE))',
+      '        data = r.json()',
+      '        r.close()',
+      '        cur = data["current"]',
+      '        day = data["daily"]',
+      '        return {"temp": cur["temperature_2m"], "sky": SKY.get(cur["weather_code"], "?"),',
+      '                "hi": day["temperature_2m_max"][0], "lo": day["temperature_2m_min"][0]}',
+      '    except Exception as e:',
+      '        print("Weather download failed:", e)',
+      '        return None',
+      '',
+    );
+  if (wantTime) {
+    if (mp) c.add(0, 'def clock_text():', '    t = time.localtime(time.time() + UTC_OFFSET_H * 3600)', '    return "{:02d}:{:02d}".format(t[3], t[4])', '');
+    else c.add(0, 'def clock_text():', '    return time.strftime("%H:%M")', '');
+  }
   if (leds.length) {
     c.add(0, 'def set_led(led, level):', '    """level: 0.0 (off) … 1.0 (full brightness)."""');
     c.add(1, mp ? 'led.duty_u16(int(clamp(level, 0, 1) * 65535))' : 'led.value = clamp(level, 0, 1)', '');
@@ -326,7 +402,9 @@ function generateMain(project: Project, lang: Lang): string {
   // ---------------------------------------------------------------- state
   c.add(0, '# ---- state ----');
   for (const b of buttons) c.add(0, `${b.name}_edge = Edge(${b.name})`);
-  for (const r of R) for (const v of r.vars) c.add(0, `${v} = ${v === 'shakes' ? '0' : v === 'motion' || v.endsWith('_on') ? 'False' : '0.0'}`);
+  for (const r of R) for (const v of r.vars) c.add(0, `${v} = ${v === 'shakes' ? '0' : v === 'sky' || v === 'clock' ? '"--"' : v === 'motion' || v.endsWith('_on') ? 'False' : '0.0'}`);
+  if (wantWeather) c.add(0, `last_weather = ${now} - WEATHER_EVERY_S * 1000  # fetch straight away`);
+  if (epd) c.add(0, 'last_epd = None   # when the e-ink screen was last redrawn', 'shown_lines = None  # what it shows now');
   if (dhtF) c.add(0, `last_dht = ${mp ? 'time.ticks_ms()' : 'now_ms()'} - 5000`);
   const pages = displayPages(R, !!lcd);
   if (display && pages.length > 1) c.add(0, 'page = 0', `PAGES = ${pages.length}`, `last_page_flip = ${now}`);
@@ -339,6 +417,7 @@ function generateMain(project: Project, lang: Lang): string {
 
   // Button actions, in order of usefulness.
   const actions: { code: string[]; desc: string }[] = [];
+  if (wantWeather) actions.push({ code: ['last_weather = now - WEATHER_EVERY_S * 1000', ...(epd ? ['last_epd = None'] : [])], desc: 'refresh the weather now' });
   if (display && pages.length > 1) actions.push({ code: ['page = (page + 1) % PAGES', `last_page_flip = ${now}`], desc: 'show the next screen' });
   if (relay && !R.some((r) => r.alarm && ['soil', 'dht22', 'ntc', 'pir', 'ldr'].includes(r.f.kind))) actions.push({ code: ['relay_on = not relay_on'], desc: `toggle the ${relay.label.toLowerCase()}` });
   if (has(fs, 'pir') && buzzer) actions.push({ code: ['armed = not armed', 'beep(1500 if armed else 600, 120)'], desc: 'arm / disarm the alarm' });
@@ -358,6 +437,8 @@ function generateMain(project: Project, lang: Lang): string {
   c.add(0, `print("${project.name} starting…")`);
   if (oled) c.add(0, 'oled.fill(0)', `oled.text("${short(project.name, 16)}", 0, 0)`, 'oled.text("Starting...", 0, 24)', 'oled.show()');
   if (lcd) c.add(0, 'lcd.clear()', `lcd.putstr("${short(project.name, 16)}")`, 'lcd.move_to(0, 1)', 'lcd.putstr("Starting...")');
+  if (net && mp) c.add(0, 'online = connect_wifi()');
+  if (wantTime && mp) c.add(0, 'if online:', '    try:', '        ntptime.settime()  # set the clock from the internet', '    except OSError:', '        print("Could not get the time from the internet")');
   if (buzzer) c.add(0, 'for f in (1047, 1319, 1568):  # little start-up chirp', '    beep(f, 70)');
   if (servo) c.add(0, 'set_angle(90)');
   buttons.forEach((b, i) => {
@@ -371,6 +452,9 @@ function generateMain(project: Project, lang: Lang): string {
   const L = (...ls: string[]) => c.add(1, ...ls);
   L(`now = ${now}`);
   // Readings
+  if (wantWeather)
+    L(`if ${since('last_weather')} >= WEATHER_EVERY_S * 1000:`, '    last_weather = now', '    w = fetch_weather()', '    if w:', '        out_temp, sky, out_hi, out_lo = w["temp"], w["sky"], w["hi"], w["lo"]');
+  if (wantTime) L('clock = clock_text()');
   for (const r of R) {
     const f = r.f;
     switch (f.kind) {
@@ -459,6 +543,16 @@ function generateMain(project: Project, lang: Lang): string {
     if (rgb) L('set_rgb(*wheel(hue))');
   }
   // Display
+  if (epd) {
+    const lines = R.flatMap((r) => r.lines);
+    L('# e-ink: only redraw when something changed, and not more than once a minute');
+    L(`lines = [${lines.map((l) => `f"${l}"`).join(', ')}]`);
+    L(`if lines != shown_lines and (last_epd is None or ${since('last_epd')} >= EPD_MIN_S * 1000):`);
+    L('    epd.fill(0)', `    epd.text("${short(project.name, 34)}", 6, 6, 1)`, '    epd.hline(0, 18, 296, 1)');
+    if (wantWeather) L('    epd.big_text(f"{out_temp:.0f}C", 8, 30, 4, 1)  # big outside temperature', '    epd.text(sky, 8, 70, 1)');
+    L(`    for i, line in enumerate(lines${wantWeather ? '[1:]' : ''}):`, `        epd.text(line, ${wantWeather ? 150 : 8}, ${wantWeather ? 34 : 30} + i * 14, 1)`);
+    L('    epd.show()  # takes about 2 seconds', '    shown_lines = lines', '    last_epd = now');
+  }
   if (oled) {
     L('oled.fill(0)');
     L(`oled.text("${short(project.name, pages.length > 1 ? 12 : 16)}", 0, 0)`, 'oled.hline(0, 10, 128, 1)');

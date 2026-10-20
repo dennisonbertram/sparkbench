@@ -8,6 +8,7 @@ export const PART_SIZE: Record<string, [number, number]> = {
   rpi4: [330, 220],
   ssd1306: [150, 116],
   lcd1602: [302, 140],
+  epaper29: [340, 190],
   pushbutton: [67, 45],
   'slide-switch': [32, 35],
   potentiometer: [76, 76],
