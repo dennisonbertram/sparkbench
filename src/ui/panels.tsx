@@ -342,6 +342,11 @@ export function Console() {
           {infos > 0 && errs + warns === 0 && <span className="count info" title="Tips, not problems">{infos}</span>}
           {errs + warns + infos === 0 && <span className="count ok">✓</span>}
         </button>
+        {!discrete && (
+          <button role="tab" aria-selected={tab === 'pins'} className={tab === 'pins' ? 'active' : ''} onClick={() => useStore.getState().set({ bottomTab: 'pins' })}>
+            Pins
+          </button>
+        )}
         <span className="spacer" />
         <span className="sim-time">{sim.status !== 'idle' ? `${(sim.t / 1000).toFixed(1)} s simulated` : ''}</span>
       </div>
@@ -352,6 +357,7 @@ export function Console() {
         </pre>
       )}
       {tab === 'serial' && discrete && <Scope />}
+      {tab === 'pins' && !discrete && <PinsPanel />}
       {tab === 'problems' && (
         <div className="problems" data-testid="problems">
           {sim.error && (
@@ -384,6 +390,60 @@ export function Console() {
         </div>
       )}
     </section>
+  );
+}
+
+/** Live GPIO table (mode, level, PWM, voltage, current) and recent I2C traffic. */
+function PinsPanel() {
+  const project = useStore((s) => s.project)!;
+  const sim = useStore((s) => s.sim);
+  const { netOf } = useMemo(() => buildNets(project), [project.parts, project.wires]);
+  const board = project.parts.find((p) => partDef(p.type).category === 'board');
+  const rows = Object.entries(sim.pins).sort((a, b) => Number(a[0]) - Number(b[0]));
+  if (!rows.length) return <div className="serial muted">Press Run: every pin your program uses appears here with its mode, level, PWM duty, voltage and current.</div>;
+  const bpins = board ? partDef(board.type).pins : [];
+  return (
+    <div className="pins-panel">
+      <table className="pins-live">
+        <thead>
+          <tr>
+            <th>Pin</th>
+            <th>Mode</th>
+            <th>Level</th>
+            <th>PWM</th>
+            <th className="num">Volts</th>
+            <th className="num">mA</th>
+            <th>Connected to</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([g, p]) => {
+            const bp = bpins.find((x) => x.fn === `gpio${g}`);
+            const net = board && bp ? netOf.get(pinKey({ part: board.id, pin: bp.name })) : undefined;
+            const others = (net?.pins ?? []).filter((r) => r.part !== board?.id).map((r) => `${project.parts.find((x) => x.id === r.part)?.ref}.${r.pin}`);
+            return (
+              <tr key={g}>
+                <td className="mono">{bp?.name ?? `GPIO${g}`} <span className="muted">GPIO{g}</span></td>
+                <td>{p.mode === 'out' ? 'output' : p.mode === 'in' ? 'input' : p.mode}</td>
+                <td>
+                  <span className={`lvl ${p.level ? 'hi' : 'lo'}`}>{p.level ? 'HIGH' : 'LOW'}</span>
+                </td>
+                <td className="mono">{p.mode === 'pwm' ? `${Math.round(((p.duty ?? 0) / 65535) * 100)}% @ ${p.freq} Hz` : ''}</td>
+                <td className="num mono">{p.v.toFixed(2)}</td>
+                <td className="num mono">{Math.abs(p.ma) >= 0.05 ? p.ma.toFixed(1) : ''}</td>
+                <td className="small">{others.join(', ')}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {sim.i2c.length > 0 && (
+        <div className="i2c-log">
+          <div className="muted small">Recent I2C traffic (address, bytes)</div>
+          <pre>{sim.i2c.slice(-12).join('\n')}</pre>
+        </div>
+      )}
+    </div>
   );
 }
 

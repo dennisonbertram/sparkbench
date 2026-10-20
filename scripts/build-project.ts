@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { planFromPrompt } from '../src/core/planner';
 import { EXAMPLES, buildExample } from '../src/core/examples';
 import { renderSchematicSvg } from '../src/core/schematic';
-import { exportKicadSchematic, exportKicadProject, exportKicadNetlist } from '../src/core/kicad';
+import { exportKicadSchematic, exportKicadProject, exportKicadNetlist, exportKicadFootprints } from '../src/core/kicad';
 import { exportSpice } from '../src/core/spice';
 import { buildBom, bomToCsv, bomTotal } from '../src/core/bom';
 import { buildGuide, buildBlogPost } from '../src/core/docs';
@@ -27,7 +27,11 @@ async function emit(project: Project, outRoot = 'out') {
   writeFileSync(join(dir, `${name}.kicad_sch`), exportKicadSchematic(project));
   writeFileSync(join(dir, `${name}.kicad_pro`), exportKicadProject(project));
   writeFileSync(join(dir, `${name}.net`), exportKicadNetlist(project));
-  writeFileSync(join(dir, `${name}.cir`), exportSpice(project));
+  for (const [f, src] of Object.entries(exportKicadFootprints(project))) {
+    mkdirSync(join(dir, f, '..'), { recursive: true });
+    writeFileSync(join(dir, f), src);
+  }
+  writeFileSync(join(dir, `${name}.cir`), exportSpice(project, project.board === 'none' ? { analysis: 'tran', tranStop: 3, tranStep: 1e-4 } : {}));
   const bom = buildBom(project);
   writeFileSync(join(dir, 'bom.csv'), bomToCsv(bom));
   writeFileSync(join(dir, 'BUILD.md'), buildGuide(project));

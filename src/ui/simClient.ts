@@ -37,7 +37,7 @@ export function startSim(project: Project, speed = 1) {
   control[2] = Math.round(speed * 100);
   const inputMap: Record<string, number> = {};
   keys.forEach((k, i) => (inputMap[k] = initial[i]));
-  st.setSim(() => ({ status: 'booting', t: 0, parts: {}, pins: {}, serial: [], warnings: [], nets: {}, scope: [], inputs: inputMap }));
+  st.setSim(() => ({ status: 'booting', t: 0, parts: {}, pins: {}, serial: [], warnings: [], nets: {}, scope: [], inputs: inputMap, i2c: [] }));
   const w = new Worker(new URL('../sim/worker.ts', import.meta.url), { type: 'module' });
   worker = w;
   w.onmessage = (ev) => {
@@ -64,7 +64,8 @@ function applyFrame(f: SimFrame) {
     const serial = f.serial.length ? [...s.serial, ...f.serial].slice(-600) : s.serial;
     const warnings = f.warnings.length ? [...s.warnings, ...f.warnings] : s.warnings;
     const scope = f.scope?.length ? [...s.scope, ...f.scope].slice(-1500) : s.scope;
-    return { ...s, status: f.status, t: f.t, parts: f.parts, pins: f.pins, serial, warnings, error: f.error ?? s.error, nets: f.nets ?? s.nets, scope };
+    const i2c = f.i2c?.length ? [...s.i2c, ...f.i2c].slice(-40) : s.i2c;
+    return { ...s, status: f.status, t: f.t, parts: f.parts, pins: f.pins, serial, warnings, error: f.error ?? s.error, nets: f.nets ?? s.nets, scope, i2c };
   });
   // Buzzer audio follows the loudest active tone.
   const tone = Object.values(f.parts).find((p) => p.tone && p.tone > 0)?.tone ?? 0;

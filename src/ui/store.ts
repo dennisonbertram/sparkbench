@@ -27,9 +27,10 @@ export interface SimView {
   nets: Record<string, number>;
   scope: { t: number; v: Record<string, number> }[];
   inputs: Record<string, number>; // "part.key" → value
+  i2c: string[];
 }
 
-const emptySim = (): SimView => ({ status: 'idle', t: 0, parts: {}, pins: {}, serial: [], warnings: [], nets: {}, scope: [], inputs: {} });
+const emptySim = (): SimView => ({ status: 'idle', t: 0, parts: {}, pins: {}, serial: [], warnings: [], nets: {}, scope: [], inputs: {}, i2c: [] });
 
 export type Selection = { kind: 'part'; id: string } | { kind: 'wire'; id: string } | null;
 
@@ -44,7 +45,7 @@ interface State {
   wiringFrom: PinRef | null;
   hoverNet: string | null;
   activeFile: string;
-  bottomTab: 'serial' | 'problems';
+  bottomTab: 'serial' | 'problems' | 'pins';
   showWelcome: boolean;
   /** Set while the AI is working, with a short status line. */
   busy: string | null;

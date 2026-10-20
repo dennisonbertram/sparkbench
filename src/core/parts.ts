@@ -32,7 +32,7 @@ export const PARTS: PartDef[] = [
     currentMa: 80,
     controls: [{ key: 'wifi', label: 'Wi-Fi network in range', kind: 'toggle', default: 1 }],
     bom: { mpn: 'ESP32-DEVKIT-V1 (ESP-WROOM-32)', description: 'ESP32 development board, 30-pin, USB', priceUsd: 6.5, supplierQuery: 'ESP32 DevKit V1 30 pin' },
-    kicad: { symbol: 'Sparkbench:ESP32_DevKit_V1', footprint: 'Module:ESP32_DevKit_V1_30pin' },
+    kicad: { symbol: 'Sparkbench:ESP32_DevKit_V1', footprint: 'Sparkbench:ESP32_DevKit_V1_30pin' },
     wokwi: { tag: 'wokwi-esp32-devkit-v1' },
     keywords: ['esp32', 'esp-32', 'wifi', 'wi-fi', 'bluetooth', 'devkit'],
   },
@@ -64,7 +64,7 @@ export const PARTS: PartDef[] = [
     currentMa: 600,
     controls: [{ key: 'wifi', label: 'Network connected', kind: 'toggle', default: 1 }],
     bom: { mpn: 'SC0194(9)', description: 'Raspberry Pi 4 Model B 2GB', priceUsd: 45, supplierQuery: 'Raspberry Pi 4 Model B 2GB' },
-    kicad: { symbol: 'Sparkbench:Raspberry_Pi_4_Header', footprint: 'Module:Raspberry_Pi_4_Header' },
+    kicad: { symbol: 'Sparkbench:Raspberry_Pi_4_Header', footprint: 'Connector_PinHeader_2.54mm:PinHeader_2x20_P2.54mm_Vertical' },
     keywords: ['raspberry pi', 'rpi', 'pi 4', 'pi4', 'raspberry pi 4', 'linux'],
   },
 
@@ -524,8 +524,8 @@ export const PARTS: PartDef[] = [
     refPrefix: 'BT',
     pins: [p('+', 'power'), p('-', 'gnd')],
     props: [{ key: 'volts', label: 'Voltage', type: 'number', default: 9, unit: 'V' }],
-    bom: { mpn: '9V PP3 + snap', description: '9V battery with snap clip', priceUsd: 3, supplierQuery: '9V battery snap connector' },
-    kicad: { symbol: 'Sparkbench:Battery', footprint: 'Battery:BatteryHolder_Keystone_1294_1x9V', value: (pr) => `${pr.volts ?? 9}V` },
+    bom: { mpn: '9V PP3 alkaline', description: '9V PP3 battery', priceUsd: 2.5, supplierQuery: '9V alkaline battery PP3' },
+    kicad: { symbol: 'Sparkbench:Battery', footprint: 'Battery:BatteryHolder_MPD_BA9VPC_1xPP3', value: (pr) => `${pr.volts ?? 9}V` },
     keywords: ['9v', 'battery', 'battery powered'],
   },
 ];

@@ -145,27 +145,6 @@ export function Breadboard() {
       data-testid="breadboard"
     >
       <div className="world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})` }}>
-        {project.parts.map((part) => {
-          const sel = selection?.kind === 'part' && selection.id === part.id;
-          const v = sim.parts[part.id];
-          const unpowered = running && v && v.powered === false;
-          return (
-            <div
-              key={part.id}
-              className={`part ${sel ? 'selected' : ''} ${unpowered ? 'unpowered' : ''}`}
-              style={{ left: part.x, top: part.y }}
-              onPointerDown={(e) => onPartDown(e, part.id)}
-              data-part={part.id}
-              title={`${part.ref ?? ''} ${part.label ?? partDef(part.type).name}`}
-            >
-              <PartView part={part} visual={v} onPins={onPins} onInput={onInput} inputs={sim.inputs} />
-              <div className="part-tag">{partTag(part)}</div>
-              {running && sel && <SimControls part={part} compact />}
-              {running && !sel && <ValueChip part={part} />}
-              {unpowered && <div className="nopower">No power</div>}
-            </div>
-          );
-        })}
         <svg className="wires" width={1} height={1} style={{ overflow: 'visible' }}>
           {project.wires.map((w) => {
             const a = pinAbs(w.a);
@@ -193,6 +172,29 @@ export function Breadboard() {
               </g>
             );
           })}
+        </svg>
+        {project.parts.map((part) => {
+          const sel = selection?.kind === 'part' && selection.id === part.id;
+          const v = sim.parts[part.id];
+          const unpowered = running && v && v.powered === false;
+          return (
+            <div
+              key={part.id}
+              className={`part ${sel ? 'selected' : ''} ${unpowered ? 'unpowered' : ''}`}
+              style={{ left: part.x, top: part.y }}
+              onPointerDown={(e) => onPartDown(e, part.id)}
+              data-part={part.id}
+              title={`${part.ref ?? ''} ${part.label ?? partDef(part.type).name}`}
+            >
+              <PartView part={part} visual={v} onPins={onPins} onInput={onInput} inputs={sim.inputs} />
+              <div className="part-tag">{partTag(part)}</div>
+              {running && sel && <SimControls part={part} compact />}
+              {running && !sel && <ValueChip part={part} />}
+              {unpowered && <div className="nopower">No power</div>}
+            </div>
+          );
+        })}
+        <svg className="wires pins-layer" width={1} height={1} style={{ overflow: 'visible' }}>
           {wiringFrom && mouse && (() => {
             const a = pinAbs(wiringFrom);
             return a ? <path d={wirePath(a, mouse)} className="wire-rubber" /> : null;

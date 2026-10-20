@@ -1,0 +1,17 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+p.on('console', m => console.log('console', m.type(), m.text().slice(0, 300)));
+p.on('response', async r => { if (r.url().includes('/api/ai')) console.log('resp', r.status(), (await r.text()).slice(0, 600)); });
+await p.goto('http://localhost:5173/?welcome&notour');
+await p.waitForSelector('.hero-input textarea');
+await p.waitForTimeout(1500);
+await p.fill('.hero-input textarea', 'ESP32 tilt-controlled servo using an MPU6050 IMU');
+const t0 = Date.now();
+await p.click('button.primary.big');
+await p.waitForFunction(() => !document.querySelector('.welcome.designing'), null, { timeout: 150000 });
+console.log('left designing after', (Date.now() - t0) / 1000);
+await p.waitForTimeout(2000);
+console.log(await p.evaluate(() => ({ welcome: !!document.querySelector('.welcome'), parts: document.querySelectorAll('.part').length, chat: [...document.querySelectorAll('.msg')].map(m => m.textContent.slice(0, 200)) })));
+await p.screenshot({ path: 'test-results/qa/verify-loading/after.png' });
+await b.close();

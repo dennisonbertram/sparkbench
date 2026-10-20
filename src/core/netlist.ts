@@ -91,7 +91,15 @@ export function buildNets(project: Project): { nets: Net[]; netOf: Map<string, N
       if (pw) name = pw.voltage === 3.3 ? '+3V3' : '+5V';
       else {
         const g = bpins.find((b) => b.gpio !== undefined);
-        if (g) name = `GPIO${g.gpio}${g.alt?.length ? '_' + g.alt[0].replace(/^I2C\d_/, '') : ''}`;
+        if (g) {
+          // Only mention the pin's special function (SDA, SCK…) when the net actually uses it.
+          const fns = pins.map((r) => project.parts.find((x) => x.id === r.part)).filter(Boolean).flatMap((part, i) => {
+            const pd = partDef(part!.type).pins.find((x) => x.name === pins[i].pin);
+            return pd?.fn ? [pd.fn] : [];
+          });
+          const alt = (g.alt ?? []).map((x) => x.replace(/^I2C\d_/, '')).find((x) => fns.some((fn) => fn.toUpperCase().endsWith(x.replace(/\d$/, '').toUpperCase())));
+          name = `GPIO${g.gpio}${alt ? '_' + alt : ''}`;
+        }
       }
     }
     if (!name) {

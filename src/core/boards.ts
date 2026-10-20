@@ -108,6 +108,14 @@ const rpiPins: BoardPin[] = piHeader.map((p, i) => {
   return { name: p, role: 'other', physical, caution: 'HAT EEPROM pins — do not use.' } as BoardPin;
 });
 
+// DevKit V1 header numbering: left row 1–15 top→bottom, right row 16–30 bottom→top (USB at the bottom).
+const ESP32_LEFT = ['EN', 'VP', 'VN', 'D34', 'D35', 'D32', 'D33', 'D25', 'D26', 'D27', 'D14', 'D12', 'D13', 'GND.2', 'VIN'];
+const ESP32_RIGHT = ['3V3', 'GND.1', 'D15', 'D2', 'D4', 'RX2', 'TX2', 'D5', 'D18', 'D19', 'D21', 'RX0', 'TX0', 'D22', 'D23'];
+for (const p of esp32Pins) {
+  const l = ESP32_LEFT.indexOf(p.name);
+  p.physical = l >= 0 ? l + 1 : 16 + ESP32_RIGHT.indexOf(p.name);
+}
+
 export const BOARDS: Record<Exclude<BoardId, 'none'>, BoardDef> = {
   esp32: {
     id: 'esp32',
