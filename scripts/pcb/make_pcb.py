@@ -57,14 +57,24 @@ def overlaps(a, b, gap):
 def place(board, fps, spec):
     by_ref = {p['ref']: p for p in spec['parts']}
     snaps = {ref: [snapshot(fp, 0), snapshot(fp, 90)] for ref, fp in fps.items()}
+    # ESP32 DevKit: its antenna sticks out ~13 mm past pin 1 (the end opposite USB). Reserve it.
+    for ref, ss in snaps.items():
+        if by_ref[ref].get('antenna'):
+            b0 = ss[0]['box']
+            ss[0]['box'] = (b0[0], b0[1] - 13.0, b0[2], b0[3])
+            b9 = ss[1]['box']
+            ss[1]['box'] = (b9[0] - 13.0, b9[1], b9[2], b9[3])
+            ss[0]['antenna'] = (b0[0], b0[1] - 13.0, b0[2], b0[1])
+            ss[1]['antenna'] = (b9[0] - 13.0, b9[1], b9[0], b9[3])
     # Sockets get their pin names printed beside them: keep that strip free.
     for ref, ss in snaps.items():
         p = by_ref[ref]
         if p['footprint'].startswith('Connector_PinHeader') and p.get('pinNames'):
+            both = 4.0 if '2x' in p['footprint'] else 0.0
             b0 = ss[0]['box']
-            ss[0]['box'] = (b0[0], b0[1], b0[2] + 4.0, b0[3])
+            ss[0]['box'] = (b0[0] - both, b0[1], b0[2] + 4.0, b0[3])
             b9 = ss[1]['box']
-            ss[1]['box'] = (b9[0], b9[1] - 4.0, b9[2], b9[3])
+            ss[1]['box'] = (b9[0], b9[1] - 4.0, b9[2], b9[3] + both)
     gnd = spec.get('groundNet')
     placed = {}  # ref -> (x, y, snap)
     boxes = []
@@ -117,16 +127,24 @@ def place(board, fps, spec):
                     nb = (min(cl[0], box[0]), min(cl[1], box[1]), max(cl[2], box[2]), max(cl[3], box[3]))
                     growth = (nb[2] - nb[0]) * (nb[3] - nb[1]) - area0
                     cost = wl + 0.08 * growth
+                    if by_ref[ref].get('edge'):
+                        # Cables plug in here: prefer the outside of the board.
+                        cost += 3.0 * min(box[0] - nb[0], nb[2] - box[2], box[1] - nb[1], nb[3] - box[3])
                     if best is None or cost < best[0]:
                         best = (cost, x, y, s)
         _, x, y, s = best
         placed[ref] = (x, y, s)
         boxes.append((s['box'][0] + x, s['box'][1] + y, s['box'][2] + x, s['box'][3] + y))
 
+    keepouts = []
     for ref, (x, y, s) in placed.items():
         fp = fps[ref]
         fp.SetOrientationDegrees(s['rot'])
         fp.SetPosition(pcbnew.VECTOR2I(MM(x + 100), MM(y + 100)))
+        if s.get('antenna'):
+            a = s['antenna']
+            keepouts.append((a[0] + x + 100, a[1] + y + 100, a[2] + x + 100, a[3] + y + 100))
+    place.keepouts = keepouts
     cl = (min(b[0] for b in boxes) + 100, min(b[1] for b in boxes) + 100, max(b[2] for b in boxes) + 100, max(b[3] for b in boxes) + 100)
     return cl
 
@@ -168,31 +186,44 @@ def add_text(board, text, x, y, size=1.5, layer=None):
     board.Add(t)
 
 
+def short_pin(name):
+    """Silkscreen-sized pin name that is never misleading (GPIO17 -> IO17, never GPIO1)."""
+    n = name.replace('GPIO', 'IO')
+    return n if len(n) <= 6 else n[:6]
+
+
 def add_pin_labels(board, fps, spec):
     """Print each pin's name beside the pads of sockets for plug-in boards/modules."""
     for p in spec['parts']:
         if not p['footprint'].startswith('Connector_PinHeader') or not p.get('pinNames'):
             continue
         fp = fps[p['ref']]
-        cx = mm(fp.GetPosition().x)
-        for pad in fp.Pads():
+        cx, cy = mm(fp.GetPosition().x), mm(fp.GetPosition().y)
+        pads = list(fp.Pads())
+        vertical = abs(fp.GetOrientationDegrees()) % 180 == 0
+        two_rows = '2x' in p['footprint']
+        mid_x = sum(mm(q.GetPosition().x) for q in pads) / len(pads)
+        mid_y = sum(mm(q.GetPosition().y) for q in pads) / len(pads)
+        for pad in pads:
             name = p['pinNames'].get(pad.GetNumber())
             if not name:
                 continue
             x, y = mm(pad.GetPosition().x), mm(pad.GetPosition().y)
-            vertical = abs(fp.GetOrientationDegrees()) % 180 == 0
             t = pcbnew.PCB_TEXT(board)
-            t.SetText(name[:5])
+            t.SetText(short_pin(name))
             t.SetLayer(pcbnew.F_SilkS)
             t.SetTextSize(pcbnew.VECTOR2I(MM(0.8), MM(0.8)))
             t.SetTextThickness(MM(0.12))
             if vertical:
-                t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
-                t.SetPosition(pcbnew.VECTOR2I(MM(x + 1.9), MM(y)))
+                # Two-row headers: left row labelled on the left, right row on the right.
+                left = two_rows and x < mid_x
+                t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_RIGHT if left else pcbnew.GR_TEXT_H_ALIGN_LEFT)
+                t.SetPosition(pcbnew.VECTOR2I(MM(x - 1.9 if left else x + 1.9), MM(y)))
             else:
+                below = two_rows and y > mid_y
                 t.SetTextAngleDegrees(90)
-                t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
-                t.SetPosition(pcbnew.VECTOR2I(MM(x), MM(y - 1.9)))
+                t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_RIGHT if below else pcbnew.GR_TEXT_H_ALIGN_LEFT)
+                t.SetPosition(pcbnew.VECTOR2I(MM(x), MM(y + 1.9 if below else y - 1.9)))
             board.Add(t)
 
 
@@ -226,6 +257,28 @@ def add_logo(board, x, y, s=2.4):
     poly.SetWidth(0)
     poly.SetLayer(pcbnew.F_SilkS)
     board.Add(poly)
+
+
+def add_keepout(board, rect):
+    """No copper (pour, tracks or vias) under a radio antenna."""
+    z = pcbnew.ZONE(board)
+    z.SetIsRuleArea(True)
+    z.SetDoNotAllowZoneFills(True)
+    z.SetDoNotAllowTracks(True)
+    z.SetDoNotAllowVias(True)
+    z.SetDoNotAllowPads(False)
+    z.SetDoNotAllowFootprints(False)
+    ls = pcbnew.LSET()
+    ls.AddLayer(pcbnew.F_Cu)
+    ls.AddLayer(pcbnew.B_Cu)
+    z.SetLayerSet(ls)
+    z.SetZoneName('Antenna keep-out')
+    ol = z.Outline()
+    ol.NewOutline()
+    x0, y0, x1, y1 = rect
+    for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+        ol.Append(MM(x), MM(y))
+    board.Add(z)
 
 
 def add_zone(board, outline, net, layer):
@@ -325,6 +378,9 @@ def main():
     outline = add_outline(board, cl, 6.0)
     x0, y0, x1, y1 = outline
     add_pin_labels(board, fps, spec)
+    for k in getattr(place, 'keepouts', []):
+        add_keepout(board, k)
+        add_text(board, 'ANTENNA: keep clear', (k[0] + k[2]) / 2, (k[1] + k[3]) / 2, 1.0)
     if qr:
         qx, qy = x0 + 6.5, y1 - 6.0 - qr_size
         add_qr(board, qr['modules'], qx, qy, qr_size)

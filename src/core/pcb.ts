@@ -20,7 +20,14 @@ export interface PcbPart {
   /** Plain-English role, for placement hints and the assembly notes. */
   role: 'board' | 'connector' | 'module' | 'ic' | 'passive' | 'indicator' | 'input' | 'power';
   description: string;
+  /** Cables plug in here (off-board screen, servo, battery…): place it at the board edge. */
+  edge?: boolean;
+  /** ESP32 DevKit: keep copper away from its antenna end. */
+  antenna?: boolean;
 }
+
+/** Parts that connect to something off the board through a cable. */
+const EDGE_TYPES = new Set(['lcd1602', 'epaper29', 'neopixel-ring', 'servo', 'relay', 'dc-motor', 'battery-9v', 'hcsr04', 'pir', 'soil']);
 
 export interface PcbSpec {
   name: string;
@@ -77,6 +84,8 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       pinNames,
       role: ROLE[def.category] ?? 'passive',
       description: def.name,
+      ...(EDGE_TYPES.has(p.type) ? { edge: true } : {}),
+      ...(p.type === 'esp32-devkit' ? { antenna: true } : {}),
     };
   });
   const power = nets.filter((n) => n.pins.length > 1 && /^(GND|\+3V3|\+5V|VBAT)/.test(n.name)).map((n) => n.name);
