@@ -2,6 +2,7 @@
 // "here's what I designed and why" explanation for the AI chat reply.
 // Everything is written for a total beginner and derived from the actual design
 // (parts, wires, pins, firmware), so it stays correct when the design changes.
+import { planBreadboard } from './bbplace';
 import type { FeatureInstance, FeatureKind, PartDef, PartInstance, PinRef, Project, Wire } from './types';
 import { partDef, formatOhms, formatFarads } from './parts';
 import { boardFor, boardPin, type BoardDef } from './boards';
@@ -951,8 +952,18 @@ export function buildGuide(project: Project): string {
   out.push(`Every connection in the project${b && b.id !== 'esp32' ? ', with the physical pin numbers on the header (counted from pin 1)' : ''}. Wire colours are only a suggestion, but sticking to red/orange for power and black for GND makes mistakes easy to spot.`, '');
   out.push(...wiringTable(c), '');
 
+  // ---- exact layout
+  const plan = planBreadboard(project);
+  if (!plan.problems.length) {
+    out.push('## Hole-by-hole breadboard layout', '');
+    out.push(`One tested way to lay this out on a standard 830-hole breadboard. Hole names are column number plus row letter, like **j12**. Sparkbench checked that these holes and jumpers make exactly the connections in the wiring table. In the app, **Build it step by step** shows one step at a time with the holes highlighted.`, '');
+    out.push('![Breadboard layout](breadboard.svg)', '');
+    plan.steps.forEach((st, i) => out.push(`${i + 1}. ${st.text}`));
+    out.push('');
+  }
+
   // ---- assembly
-  out.push('## Step-by-step assembly', '');
+  out.push(plan.problems.length ? '## Step-by-step assembly' : '## Step-by-step assembly (by connection)', '');
   let n = 1;
   out.push(`### Step ${n++}: ${b ? `Place the ${b.name}` : 'Get your breadboard ready'}`, '', boardPlacement(c), '');
   const power = powerStep(c);

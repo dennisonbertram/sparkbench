@@ -254,7 +254,10 @@ export async function aiCheckPhoto(project: Project, images: { data: string; med
   const { wireEndLabel, buildGuide } = await import('../src/core/docs');
   const parts = project.parts.map((p) => `- ${p.ref ?? p.id}: ${p.label ?? p.type}${p.props?.value ? ` (${p.props.value})` : ''}${p.props?.color ? `, ${p.props.color}` : ''}`).join('\n');
   const conns = project.wires.map((w) => `- ${wireEndLabel(project, w.a)} → ${wireEndLabel(project, w.b)}`).join('\n');
-  const guide = buildGuide(project).slice(0, 14000);
-  const prompt = `Project: ${project.name}\n\nParts:\n${parts}\n\nEvery connection the build must make:\n${conns}\n\nThe build guide the user followed:\n${guide}\n\n${note ? `The user says: ${note}\n\n` : ''}Check the photo${images.length > 1 ? 's' : ''} of their build against this design.`;
+  const { planBreadboard } = await import('../src/core/bbplace');
+  const plan = planBreadboard(project);
+  const layout = plan.problems.length ? '' : `\n\nThe hole-by-hole layout Sparkbench gave them (hole = row letter + column number; check each leg and jumper end against it, but a different layout that makes the same connections is also fine — judge connections, not exact holes):\n${plan.steps.map((st, i) => `${i + 1}. ${st.text}`).join('\n')}`;
+  const guide = layout ? '' : `\n\nThe build guide the user followed:\n${buildGuide(project).slice(0, 14000)}`;
+  const prompt = `Project: ${project.name}\n\nParts:\n${parts}\n\nEvery connection the build must make:\n${conns}${layout}${guide}\n\n${note ? `The user says: ${note}\n\n` : ''}Check the photo${images.length > 1 ? 's' : ''} of their build against this design.`;
   return askJson(PHOTO_SYSTEM, [{ role: 'user', content: prompt }], PhotoCheckSchema, { effort: 'medium', images: images as any });
 }

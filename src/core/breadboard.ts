@@ -8,6 +8,11 @@ const X0 = 60;
 const ROW_Y: Record<string, number> = { a: 100, b: 120, c: 140, d: 160, e: 180, f: 240, g: 260, h: 280, i: 300, j: 320 };
 const RAIL_Y: Record<string, number> = { 'T+': 30, 'T-': 50, 'B-': 370, 'B+': 390 };
 export const BOARD_W = X0 * 2 + (COLS - 1) * PITCH;
+export const boardWidth = (cols = COLS) => X0 * 2 + (cols - 1) * PITCH;
+export const ROWS_TOP = 'abcde';
+export const ROWS_BOTTOM = 'fghij';
+/** Rail holes come in groups of five: every sixth column has none. */
+export const railHoleAt = (col: number) => col % 6 !== 0;
 export const BOARD_H = 420;
 
 /** Hole names: "a1".."j63" for the main area, "T+5" / "T-5" / "B-5" / "B+5" for rails. */
@@ -30,7 +35,9 @@ export function stripOf(h: Hole): string {
   throw new Error(`bad hole ${h}`);
 }
 
-export type BbKind = 'pico' | 'led' | 'resistor' | 'button' | 'ldr' | 'ne555' | 'capacitor' | 'electrolytic' | 'battery';
+export type BbKind =
+  | 'pico' | 'esp32' | 'cobbler' | 'led' | 'rgbled' | 'resistor' | 'diode' | 'button' | 'switch' | 'ldr' | 'ntc' | 'ne555' | 'dip'
+  | 'capacitor' | 'electrolytic' | 'buzzer' | 'to92' | 'pot' | 'battery' | 'module' | 'offboard';
 
 export interface BbPart {
   ref: string; // "R1", "D1", "U1"
@@ -41,6 +48,14 @@ export interface BbPart {
   ohms?: number;
   farads?: number;
   label?: string;
+  /** Pin name → short label printed on the part (modules, off-board parts). */
+  pinLabels?: Record<string, string>;
+  /** Off-board parts: where the body sits (outside the board), in board px. */
+  at?: { x: number; y: number; w: number; h: number };
+  /** Off-board parts: lead colour per pin. */
+  leadColors?: Record<string, string>;
+  /** Body colour for modules / off-board parts. */
+  body?: string;
 }
 
 export interface BbWire {
@@ -51,6 +66,8 @@ export interface BbWire {
 
 export interface BbLayout {
   name: string;
+  /** Columns on the board (63 for one 830-point breadboard; more = boards joined end to end). */
+  cols?: number;
   parts: BbPart[];
   wires: BbWire[];
 }
@@ -128,6 +145,7 @@ function resistorBands(ohms: number): string[] {
   return [BAND[d1], BAND[d2], BAND[exp], '#c9a227'];
 }
 
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const lead = (a: { x: number; y: number }, b: { x: number; y: number }, w = 2) => `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#b8b8b8" stroke-width="${w}" stroke-linecap="round"/><circle cx="${a.x}" cy="${a.y}" r="2.6" fill="#8d8d8d" stroke="#555" stroke-width="0.8"/>`;
 /** Small parts with legs one hole apart are drawn leaning back, as in a real photo, so each leg's hole stays visible. */
 const LIFT = 24;
@@ -138,7 +156,9 @@ function liftFor(p: BbPart, layout: BbLayout, cx: number, cy: number): number {
   return hidden(cy - LIFT) <= hidden(cy + LIFT) ? LIFT : -LIFT;
 }
 
-function renderBoard(): string {
+function renderBoard(cols = COLS): string {
+  const BOARD_W = boardWidth(cols);
+  const COLS_ = cols;
   const out: string[] = [];
   out.push(`<rect x="0" y="0" width="${BOARD_W}" height="${BOARD_H}" rx="10" fill="#f1ede3" stroke="#d6cfbf"/>`);
   out.push(`<rect x="20" y="${(ROW_Y.e + ROW_Y.f) / 2 - 9}" width="${BOARD_W - 40}" height="18" fill="#e2dccd"/>`);
@@ -146,7 +166,7 @@ function renderBoard(): string {
     const plus = r.endsWith('+');
     const ly = r.startsWith('T') ? (plus ? 18 : 62) : plus ? 402 : 358;
     out.push(`<line x1="40" y1="${ly}" x2="${BOARD_W - 40}" y2="${ly}" stroke="${plus ? '#d33' : '#36c'}" stroke-width="2"/>`);
-    for (let c = 1; c <= COLS; c++) if (c % 6 !== 0) {
+    for (let c = 1; c <= COLS_; c++) if (c % 6 !== 0) {
       const x = X0 + (c - 1) * PITCH;
       out.push(`<rect x="${x - 3.5}" y="${y - 3.5}" width="7" height="7" rx="1" fill="#3b3833"/>`);
     }
@@ -155,12 +175,12 @@ function renderBoard(): string {
   for (const [r, y] of Object.entries(ROW_Y)) {
     out.push(`<text x="36" y="${y + 4}" font-size="11" fill="#6d665a" font-family="Arial">${r}</text>`);
     out.push(`<text x="${BOARD_W - 46}" y="${y + 4}" font-size="11" fill="#6d665a" font-family="Arial">${r}</text>`);
-    for (let c = 1; c <= COLS; c++) {
+    for (let c = 1; c <= COLS_; c++) {
       const x = X0 + (c - 1) * PITCH;
       out.push(`<rect x="${x - 3.5}" y="${y - 3.5}" width="7" height="7" rx="1" fill="#3b3833"/>`);
     }
   }
-  for (let c = 1; c <= COLS; c++) if (c === 1 || c % 5 === 0) {
+  for (let c = 1; c <= COLS_; c++) if (c === 1 || c % 5 === 0) {
     const x = X0 + (c - 1) * PITCH;
     out.push(`<text x="${x}" y="${ROW_Y.a - 18}" font-size="10" fill="#6d665a" font-family="Arial" text-anchor="middle">${c}</text>`);
     out.push(`<text x="${x}" y="${ROW_Y.j + 24}" font-size="10" fill="#6d665a" font-family="Arial" text-anchor="middle">${c}</text>`);
@@ -173,7 +193,7 @@ function renderPart(p: BbPart, layout: BbLayout): string {
   const pts = Object.values(L);
   const cx = pts.reduce((s, q) => s + q.x, 0) / pts.length;
   const cy = pts.reduce((s, q) => s + q.y, 0) / pts.length;
-  const lift = ['led', 'ldr', 'capacitor', 'electrolytic'].includes(p.kind) ? liftFor(p, layout, cx, cy) : 0;
+  const lift = ['led', 'rgbled', 'ldr', 'ntc', 'capacitor', 'electrolytic', 'to92'].includes(p.kind) ? liftFor(p, layout, cx, cy) : 0;
   switch (p.kind) {
     case 'pico': {
       const xs = pts.map((q) => q.x);
@@ -231,6 +251,94 @@ function renderPart(p: BbPart, layout: BbLayout): string {
       const x2 = Math.max(...xs) + 10;
       return `<g filter="url(#sh)"><rect x="${x1}" y="${ROW_Y.e - 2}" width="${x2 - x1}" height="${ROW_Y.f - ROW_Y.e + 4}" rx="3" fill="#202020"/>${pts.map((q) => `<rect x="${q.x - 3}" y="${q.y - 5}" width="6" height="10" fill="#c8c8c8"/>`).join('')}<path d="M ${x1} ${cy - 7} A 7 7 0 0 1 ${x1} ${cy + 7}" fill="#444"/><circle cx="${x1 + 9}" cy="${ROW_Y.f - 12}" r="2.5" fill="#444"/><text x="${cx}" y="${cy + 4}" font-size="10" fill="#ddd" text-anchor="middle" font-family="Arial">NE555P</text></g>`;
     }
+    case 'esp32': {
+      // ESP32 DevKit V1 lying across the gap, USB end at column 1, antenna to the right.
+      const xs = pts.map((q) => q.x);
+      const x1 = Math.min(...xs) - 14;
+      const x2 = Math.max(...xs) + 14 + 4 * PITCH;
+      const y1 = ROW_Y.b - 13;
+      const y2 = ROW_Y.i + 13;
+      const my = (y1 + y2) / 2;
+      const pins = Object.entries(L).map(([n, q]) => `<circle cx="${q.x}" cy="${q.y}" r="5" fill="#d8c27a" stroke="#9c8742"/><text x="${q.x}" y="${q.y < my ? q.y + 15 : q.y - 9}" fill="#fff" font-size="6.5" text-anchor="middle" font-family="Arial">${esc((p.pinLabels?.[n] ?? n).replace(/\.\d+$/, ''))}</text>`).join('');
+      return `<g filter="url(#sh)"><rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" rx="5" fill="#1d1f24"/>${pins}
+        <rect x="${x1 - 16}" y="${my - 14}" width="26" height="28" rx="3" fill="#c7cbd0" stroke="#8b9096"/>
+        <rect x="${x2 - 4 * PITCH - 60}" y="${my - 34}" width="${4 * PITCH + 56}" height="68" rx="3" fill="#b9bec4" stroke="#8b9096"/><text x="${x2 - 2 * PITCH - 32}" y="${my + 4}" fill="#555" font-size="9" text-anchor="middle" font-family="Arial">ESP-WROOM-32</text>
+        <path d="M ${x2 - 2} ${my - 30} v 60 M ${x2 - 10} ${my - 30} v 60" stroke="#c9a227" stroke-width="2"/>
+        <rect x="${x1 + 20}" y="${my - 8}" width="10" height="10" fill="#eee"/><rect x="${x1 + 40}" y="${my - 8}" width="10" height="10" fill="#eee"/><text x="${x1 + 35}" y="${my + 14}" fill="#ccc" font-size="6.5" text-anchor="middle" font-family="Arial">EN  BOOT</text></g>`;
+    }
+    case 'cobbler': {
+      // Raspberry Pi T-Cobbler: 2×20 breakout across the gap, ribbon cable off to the Pi.
+      const xs = pts.map((q) => q.x);
+      const x1 = Math.min(...xs) - 14;
+      const x2 = Math.max(...xs) + 14;
+      const y1 = ROW_Y.c - 14;
+      const y2 = ROW_Y.h + 14;
+      const my = (y1 + y2) / 2;
+      const pins = Object.entries(L).map(([n, q]) => `<circle cx="${q.x}" cy="${q.y}" r="5" fill="#d8c27a" stroke="#9c8742"/><text x="${q.x}" y="${q.y < my ? q.y + 15 : q.y - 9}" fill="#fff" font-size="6.5" text-anchor="middle" font-family="Arial">${esc(p.pinLabels?.[n] ?? n)}</text>`).join('');
+      return `<g filter="url(#sh)"><path d="M ${x1 + 10} ${my - 30} C ${x1 - 40} ${my - 30}, ${x1 - 40} ${-60}, ${x1 - 60} ${-80} L ${x1 - 20} ${-80} C ${x1} ${-60}, ${x1 + 10} ${my - 50}, ${x1 + 40} ${my - 30} Z" fill="#9aa0a6" opacity="0.9"/><rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" rx="4" fill="#1d2f5e"/>${pins}<rect x="${x1 + 8}" y="${my - 22}" width="${x2 - x1 - 16}" height="44" rx="3" fill="#2a2a2a"/><text x="${(x1 + x2) / 2}" y="${my + 4}" fill="#ddd" font-size="10" text-anchor="middle" font-family="Arial">T-Cobbler · ribbon to Raspberry Pi</text></g>`;
+    }
+    case 'dip': {
+      const xs = pts.map((q) => q.x);
+      const x1 = Math.min(...xs) - 10;
+      const x2 = Math.max(...xs) + 10;
+      return `<g filter="url(#sh)"><rect x="${x1}" y="${ROW_Y.e - 2}" width="${x2 - x1}" height="${ROW_Y.f - ROW_Y.e + 4}" rx="3" fill="#202020"/>${pts.map((q) => `<rect x="${q.x - 3}" y="${q.y - 5}" width="6" height="10" fill="#c8c8c8"/>`).join('')}<path d="M ${x1} ${cy - 7} A 7 7 0 0 1 ${x1} ${cy + 7}" fill="#444"/><circle cx="${x1 + 9}" cy="${ROW_Y.f - 12}" r="2.5" fill="#444"/><text x="${cx}" y="${cy + 4}" font-size="10" fill="#ddd" text-anchor="middle" font-family="Arial">${esc(p.label ?? '')}</text></g>`;
+    }
+    case 'diode': {
+      const a = L.A;
+      const k = L.K;
+      const ang = (Math.atan2(k.y - a.y, k.x - a.x) * 180) / Math.PI;
+      return `${lead(a, k)}${lead(k, a)}<g transform="translate(${cx} ${cy}) rotate(${ang})" filter="url(#sh)"><rect x="-14" y="-5" width="28" height="10" rx="3" fill="#222"/><rect x="7" y="-5" width="4" height="10" fill="#ccc"/></g>`;
+    }
+    case 'to92': {
+      const y = cy - lift;
+      return `${pts.map((q) => lead(q, { x: cx + (q.x - cx) * 0.5, y })).join('')}<g filter="url(#sh)"><path d="M ${cx - 12} ${y + 6} L ${cx + 12} ${y + 6} L ${cx + 12} ${y - 2} A 12 12 0 0 0 ${cx - 12} ${y - 2} Z" fill="#1c1c1c"/><text x="${cx}" y="${y + 3}" font-size="5.5" fill="#bbb" text-anchor="middle" font-family="Arial">${esc(p.label ?? '')}</text></g>`;
+    }
+    case 'rgbled': {
+      const y = cy - lift;
+      return `${pts.map((q) => lead(q, { x: cx + (q.x - cx) * 0.4, y })).join('')}<g filter="url(#sh)"><circle cx="${cx}" cy="${y}" r="12" fill="#eef1f4" stroke="#0003"/><circle cx="${cx - 3}" cy="${y - 3}" r="3" fill="#fff"/></g>`;
+    }
+    case 'ntc': {
+      const y = cy - lift;
+      return `${pts.map((q) => lead(q, { x: q.x < cx ? cx - 3 : cx + 3, y })).join('')}<g filter="url(#sh)"><ellipse cx="${cx}" cy="${y}" rx="8" ry="7" fill="#2b2b2b"/></g>`;
+    }
+    case 'pot': {
+      return `${pts.map((q) => lead(q, { x: q.x, y: q.y - 12 })).join('')}<g filter="url(#sh)"><rect x="${cx - 26}" y="${cy - 40}" width="52" height="34" rx="3" fill="#2f63b8"/><circle cx="${cx}" cy="${cy - 23}" r="11" fill="#e8e8e8" stroke="#999"/><rect x="${cx - 1.5}" y="${cy - 33}" width="3" height="11" fill="#777"/></g>`;
+    }
+    case 'switch': {
+      return `${pts.map((q) => lead(q, { x: q.x, y: q.y - 10 })).join('')}<g filter="url(#sh)"><rect x="${cx - 28}" y="${cy - 26}" width="56" height="18" rx="2" fill="#1f1f1f"/><rect x="${cx - 14}" y="${cy - 34}" width="10" height="12" rx="1" fill="#d0d0d0"/></g>`;
+    }
+    case 'buzzer': {
+      const plus = L['+'];
+      return `${pts.map((q) => lead(q, { x: cx, y: cy })).join('')}<g filter="url(#sh)"><circle cx="${cx}" cy="${cy}" r="22" fill="#1a1a1a"/><circle cx="${cx}" cy="${cy}" r="3" fill="#444"/><text x="${plus.x}" y="${cy - 9}" font-size="10" fill="#ddd" text-anchor="middle" font-family="Arial">+</text></g>`;
+    }
+    case 'module': {
+      // Breakout board standing in one row of holes; its body covers the row nearer the board edge.
+      const xs = pts.map((q) => q.x);
+      const x1 = Math.min(...xs) - 12;
+      const x2 = Math.max(...xs) + 12;
+      const up = cy < (ROW_Y.e + ROW_Y.f) / 2;
+      const yEdge = up ? cy + 10 : cy - 10;
+      const yFar = up ? cy - 68 : cy + 68;
+      const top = Math.min(yEdge, yFar);
+      const h = Math.abs(yFar - yEdge);
+      const fill = p.body ?? '#1f4e9a';
+      const labels = Object.entries(L).map(([n, q]) => `<circle cx="${q.x}" cy="${q.y}" r="4.5" fill="#d8c27a" stroke="#9c8742"/><text x="${q.x}" y="${up ? q.y - 9 : q.y + 14}" fill="#fff" font-size="6.5" text-anchor="middle" font-family="Arial">${esc(p.pinLabels?.[n] ?? n)}</text>`).join('');
+      const art = p.label?.includes('OLED') ? `<rect x="${x1 + 6}" y="${up ? top + 6 : top + 22}" width="${x2 - x1 - 12}" height="${h - 30}" rx="2" fill="#05070c"/>` : '';
+      return `<g filter="url(#sh)"><rect x="${x1}" y="${top}" width="${x2 - x1}" height="${h}" rx="4" fill="${fill}"/>${art}<text x="${(x1 + x2) / 2}" y="${up ? top + h - 26 : top + 30}" fill="#fff" font-size="8" text-anchor="middle" font-family="Arial" font-weight="bold">${esc(p.label ?? p.ref)}</text>${labels}</g>`;
+    }
+    case 'offboard': {
+      // A part off the breadboard (screen, servo, Raspberry Pi…), joined by leads ending in holes.
+      const at = p.at!;
+      const n = Object.keys(L).length;
+      const leads = Object.entries(L).map(([pin, q], i) => {
+        const px = at.x + ((i + 1) * at.w) / (n + 1);
+        const py = at.y + at.h;
+        const color = p.leadColors?.[pin] ?? '#666';
+        const d = `M ${px} ${py} C ${px} ${py + 40}, ${q.x} ${q.y - 60}, ${q.x} ${q.y}`;
+        return `<path d="${d}" stroke="#0004" stroke-width="5" fill="none"/><path d="${d}" stroke="${color}" stroke-width="3.5" fill="none"/><circle cx="${q.x}" cy="${q.y}" r="3.5" fill="#aaa"/><text x="${px}" y="${py - 5}" fill="#fff" font-size="7" text-anchor="middle" font-family="Arial">${esc(p.pinLabels?.[pin] ?? pin)}</text>`;
+      }).join('');
+      return `<g filter="url(#sh)"><rect x="${at.x}" y="${at.y}" width="${at.w}" height="${at.h}" rx="6" fill="${p.body ?? '#33475b'}"/><text x="${at.x + at.w / 2}" y="${at.y + 16}" fill="#fff" font-size="10" text-anchor="middle" font-family="Arial" font-weight="bold">${esc(`${p.ref} ${p.label ?? ''}`)}</text></g>${leads}`;
+    }
     case 'battery': {
       const plus = L['+'];
       const minus = L['-'];
@@ -258,8 +366,45 @@ function renderWire(w: BbWire, i: number): string {
 }
 
 /** Full SVG of the build. Parts first, then wires on top (as they would be on a real board). */
-export function renderBreadboardSvg(layout: BbLayout, opts: { margin?: number } = {}): string {
+export interface BbRenderOptions {
+  margin?: number;
+  /** Only draw these parts (refs) and jumpers (indexes) — for step-by-step build views. */
+  show?: { parts: string[]; wires: number[] };
+  /** Holes to ring in yellow (the current step). */
+  highlight?: Hole[];
+  /** Print reference labels (R1, D1…) next to parts. */
+  labels?: boolean;
+}
+
+/** Full SVG of the build. Parts first, then wires on top (as they would be on a real board). */
+export function renderBreadboardSvg(layout: BbLayout, opts: BbRenderOptions = {}): string {
   const m = opts.margin ?? 90;
-  const body = [renderBoard(), ...layout.parts.map((p) => renderPart(p, layout)), ...layout.wires.map(renderWire)].join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-m} ${-m} ${BOARD_W + 2 * m} ${BOARD_H + 2 * m}" width="${BOARD_W + 2 * m}" height="${BOARD_H + 2 * m}"><defs><filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="2" dy="3" stdDeviation="2" flood-opacity="0.35"/></filter></defs>${body}</svg>`;
+  const W = boardWidth(layout.cols);
+  const parts = opts.show ? layout.parts.filter((p) => opts.show!.parts.includes(p.ref)) : layout.parts;
+  const wires = layout.wires.map((w, i) => [w, i] as const).filter(([, i]) => !opts.show || opts.show.wires.includes(i));
+  const labels = opts.labels
+    ? parts
+        .filter((p) => !['pico', 'esp32', 'cobbler', 'module', 'offboard', 'battery'].includes(p.kind))
+        .map((p) => {
+          const pts = Object.values(p.legs).map(holeXY);
+          const x = pts.reduce((a, q) => a + q.x, 0) / pts.length;
+          const y = Math.max(...pts.map((q) => q.y));
+          const below = y > (ROW_Y.e + ROW_Y.f) / 2 ? y + 13 : Math.min(...pts.map((q) => q.y)) - 8;
+          return `<text x="${x}" y="${p.kind === 'dip' ? (ROW_Y.e + ROW_Y.f) / 2 + 22 : below}" font-size="9" font-weight="bold" fill="#3d2b6b" text-anchor="middle" font-family="Arial" stroke="#f1ede3" stroke-width="2.5" paint-order="stroke">${esc(p.ref)}</text>`;
+        })
+        .join('')
+    : '';
+  const rings = (opts.highlight ?? [])
+    .map((h) => {
+      const q = holeXY(h);
+      return `<circle cx="${q.x}" cy="${q.y}" r="9" fill="none" stroke="#f5c518" stroke-width="3.5"><animate attributeName="r" values="8;11;8" dur="1.4s" repeatCount="indefinite"/></circle><text x="${q.x}" y="${q.y - 13}" font-size="9" font-weight="bold" fill="#7a5a00" text-anchor="middle" font-family="Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(h)}</text>`;
+    })
+    .join('');
+  const body = [renderBoard(layout.cols), ...parts.map((p) => renderPart(p, layout)), ...wires.map(([w, i]) => renderWire(w, i)), labels, rings].join('');
+  const ats = layout.parts.flatMap((p) => (p.at ? [p.at] : []));
+  const minY = Math.min(-m, ...ats.map((a) => a.y - 20));
+  const maxY = Math.max(BOARD_H + m, ...ats.map((a) => a.y + a.h + 20));
+  const minX = Math.min(-m, ...ats.map((a) => a.x - 20));
+  const maxX = Math.max(W + m, ...ats.map((a) => a.x + a.w + 20));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" width="${maxX - minX}" height="${maxY - minY}"><defs><filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="2" dy="3" stdDeviation="2" flood-opacity="0.35"/></filter></defs>${body}</svg>`;
 }

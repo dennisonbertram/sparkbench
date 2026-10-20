@@ -10,6 +10,9 @@ import { buildGuide, buildBlogPost } from '../core/docs';
 import { CodeEditor } from './CodeEditor';
 import { CodeAssistant } from './CodeAssistant';
 import { PhotoCheck } from './PhotoCheck';
+import { BuildMode } from './BuildMode';
+import { planBreadboard } from '../core/bbplace';
+import { renderBreadboardSvg } from '../core/breadboard';
 import { download, slug } from './exporters';
 import { generateFiles } from '../core/codegen';
 import { buildNets } from '../core/netlist';
@@ -263,6 +266,10 @@ export function MarkdownView({ kind }: { kind: 'guide' | 'blog' }) {
       const svg = renderSchematicSvg(project, { theme });
       h = h.replace(/<img[^>]*src="schematic\.svg"[^>]*>/, `<div class="schematic inline">${svg}</div>`);
     }
+    if (h.includes('breadboard.svg')) {
+      const bb = renderBreadboardSvg(planBreadboard(project).layout, { labels: true });
+      h = h.replace(/<img[^>]*src="breadboard\.svg"[^>]*>/, `<div class="breadboard-figure">${bb}</div>`);
+    }
     return h;
   }, [md, theme]);
   const file = kind === 'guide' ? 'BUILD.md' : 'BLOG.md';
@@ -274,6 +281,7 @@ export function MarkdownView({ kind }: { kind: 'guide' | 'blog' }) {
         <button onClick={() => navigator.clipboard?.writeText(md)}>Copy Markdown</button>
         <button onClick={() => window.print()}>Print</button>
       </div>
+      {kind === 'guide' && <BuildMode />}
       {kind === 'guide' && <PhotoCheck />}
       <article className="prose" data-testid={`doc-${kind}`} dangerouslySetInnerHTML={{ __html: html }} />
     </div>

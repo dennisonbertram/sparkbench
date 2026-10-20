@@ -2,7 +2,9 @@
 //   npx tsx scripts/build-project.ts "Pico traffic light"            (from a prompt)
 //   npx tsx scripts/build-project.ts --example pico-traffic-light      (from the gallery)
 //   npx tsx scripts/build-project.ts --all-examples                   (all of them)
-// Output: out/<slug>/{firmware/*, schematic.svg, *.kicad_sch, *.net, *.cir, bom.csv, BUILD.md, BLOG.md, simulation.log, checks.txt}
+// Output: out/<slug>/{firmware/*, schematic.svg, breadboard.svg, *.kicad_sch, *.net, *.cir, bom.csv, BUILD.md, BLOG.md, simulation.log, checks.txt}
+import { planBreadboard } from '../src/core/bbplace';
+import { renderBreadboardSvg } from '../src/core/breadboard';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { planFromPrompt } from '../src/core/planner';
@@ -24,6 +26,7 @@ async function emit(project: Project, outRoot = 'out') {
   mkdirSync(join(dir, 'firmware'), { recursive: true });
   for (const [f, src] of Object.entries(project.files)) writeFileSync(join(dir, 'firmware', f), src);
   writeFileSync(join(dir, 'schematic.svg'), renderSchematicSvg(project, { theme: 'light' }));
+  writeFileSync(join(dir, 'breadboard.svg'), renderBreadboardSvg(planBreadboard(project).layout, { labels: true }));
   writeFileSync(join(dir, `${name}.kicad_sch`), exportKicadSchematic(project));
   writeFileSync(join(dir, `${name}.kicad_pro`), exportKicadProject(project));
   writeFileSync(join(dir, `${name}.net`), exportKicadNetlist(project));

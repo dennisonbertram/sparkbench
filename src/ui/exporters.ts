@@ -6,6 +6,8 @@ import { renderSchematicSvg } from '../core/schematic';
 import { exportSpice, defaultSpiceOptions } from '../core/spice';
 import { buildBom, bomToCsv } from '../core/bom';
 import { buildGuide, buildBlogPost } from '../core/docs';
+import { planBreadboard } from '../core/bbplace';
+import { renderBreadboardSvg } from '../core/breadboard';
 
 export function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'project';
@@ -39,13 +41,14 @@ export async function buildZip(project: Project): Promise<Blob> {
   for (const [f, src] of Object.entries(exportKicadFootprints(project))) hw.file(f, src);
   hw.file(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)));
   root.file('schematic.svg', renderSchematicSvg(project, { theme: 'light' }));
+  root.file('breadboard.svg', renderBreadboardSvg(planBreadboard(project).layout, { labels: true }));
   root.file('bom.csv', bomToCsv(buildBom(project)));
   root.file('BUILD.md', buildGuide(project));
   root.file('BLOG.md', buildBlogPost(project, { schematicSvgPath: 'schematic.svg' }));
   root.file('project.sparkbench.json', JSON.stringify(project, null, 2));
   root.file(
     'README.md',
-    `# ${project.name}\n\n${project.summary}\n\n${hasCode ? '- `firmware/` — copy these files to the board (see BUILD.md)\n' : ''}- \`hardware/\` — KiCad schematic, project and netlist; SPICE netlist for ngspice\n- \`schematic.svg\`, \`bom.csv\`, \`BUILD.md\`, \`BLOG.md\`\n- \`project.sparkbench.json\` — open this in Sparkbench (Projects → Import)\n`,
+    `# ${project.name}\n\n${project.summary}\n\n${hasCode ? '- `firmware/` — copy these files to the board (see BUILD.md)\n' : ''}- \`hardware/\` — KiCad schematic, project and netlist; SPICE netlist for ngspice\n- \`schematic.svg\`, \`breadboard.svg\` (hole-by-hole layout), \`bom.csv\`, \`BUILD.md\`, \`BLOG.md\`\n- \`project.sparkbench.json\` — open this in Sparkbench (Projects → Import)\n`,
   );
   return zip.generateAsync({ type: 'blob' });
 }
