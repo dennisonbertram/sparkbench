@@ -42,6 +42,8 @@ const RULES: KindRule[] = [
   { kind: 'relay', re: /\b(relay|pump|fan|heater|mains|appliance)\b/ },
 ];
 
+const SINGLE = new Set<FeatureKind>(['oled', 'lcd', 'mpu6050', 'dht22', 'hcsr04', 'neopixel', 'relay', 'buzzer']);
+
 const DISCRETE_RE = /\b(555|ne555|no (micro ?controller|mcu)|without (a )?(micro ?controller|mcu)|discrete|astable|analog blinker)\b/;
 
 export function detectBoard(text: string): BoardId {
@@ -54,11 +56,13 @@ export function detectBoard(text: string): BoardId {
 }
 
 function countNear(t: string, idx: number): number | undefined {
-  const before = t.slice(Math.max(0, idx - 18), idx).trim().split(/\s+/);
-  for (let i = before.length - 1; i >= Math.max(0, before.length - 3); i--) {
+  // Look at the (up to) three whole words right before the match, so "esp32" is never read as "32".
+  const before = t.slice(0, idx).trim().split(/\s+/).slice(-3);
+  for (let i = before.length - 1; i >= 0; i--) {
     const w = before[i].replace(/[^a-z0-9]/g, '');
     if (/^\d+$/.test(w)) return Math.min(12, Number(w));
     if (w in NUMBER_WORDS) return NUMBER_WORDS[w];
+    if (/^(esp32|pico|pi|with|and|a|an|the)$/.test(w) === false && i < before.length - 1) break;
   }
   return undefined;
 }
@@ -74,7 +78,7 @@ export function parseIntent(prompt: string): DesignSpec {
   }
   const taken: [number, number][] = [];
   for (const rule of RULES) {
-    const re = new RegExp(rule.re.source, 'g');
+    const re = new RegExp(rule.re.source.replace(/\)\\b$/, ')(?:s|es)?\\b'), 'g');
     let m: RegExpExecArray | null;
     let count = 0;
     while ((m = re.exec(t))) {
@@ -86,6 +90,8 @@ export function parseIntent(prompt: string): DesignSpec {
       count = Math.max(count, n);
     }
     if (rule.kind === 'rgb' && features.some((f) => f.kind === 'neopixel')) count = 0;
+    // One per I2C address / one screen: two identical modules would clash on the bus.
+    if (SINGLE.has(rule.kind)) count = Math.min(count, 1);
     for (let i = 0; i < count; i++) features.push({ kind: rule.kind });
   }
   // "traffic light" → red, yellow, green LEDs
@@ -180,6 +186,8 @@ class Builder {
   private counters = new Map<string, number>();
   private mcp?: { id: string; next: number };
   private nameCount = new Map<string, number>();
+  /** Hand-tuned breadboard positions (discrete circuits), applied after auto layout. */
+  fixed: Record<string, [number, number]> = {};
 
   constructor(public spec: DesignSpec) {
     if (spec.board !== 'none') {
@@ -501,6 +509,7 @@ class Builder {
     w(rl, '2', led, 'A');
     w(led, 'C', bat, '-', WIRE_COLORS.gnd);
     fi.parts.push(u, bat, r1, r2, c1, c2, rl, led);
+    Object.assign(this.fixed, { [bat]: [40, 110], [r1]: [250, 60], [r2]: [330, 60], [u]: [280, 150], [c1]: [190, 300], [c2]: [360, 300], [rl]: [450, 210], [led]: [540, 186] });
     this.groups.push({ main: bat, parts: [bat], side: 'left' }, { main: u, parts: [r1, r2, u], side: 'right' }, { main: c1, parts: [c1, c2], side: 'left' }, { main: led, parts: [rl, led], side: 'right' });
     this.notes.push('f = 1.44 / ((R1 + 2·R2)·C) = 1.44 / ((10k + 94k) · 10 µF) ≈ 1.4 Hz — the LED blinks about 1.4 times per second.');
   }
@@ -522,6 +531,7 @@ class Builder {
     w(led, 'C', q, 'C');
     w(q, 'E', bat, '-', WIRE_COLORS.gnd);
     fi.parts.push(q, bat, sw, rb, rl, led);
+    Object.assign(this.fixed, { [bat]: [40, 110], [sw]: [170, 60], [rb]: [270, 76], [q]: [370, 150], [rl]: [300, 260], [led]: [410, 236] });
     this.groups.push({ main: bat, parts: [bat], side: 'left' }, { main: sw, parts: [sw, rb], side: 'left' }, { main: q, parts: [q], side: 'right' }, { main: led, parts: [rl, led], side: 'right' });
     this.notes.push('Pressing the button sends ~0.8 mA into the transistor base; with a gain of ~100+ the transistor saturates and lets ~15 mA flow through the LED.');
   }
@@ -560,6 +570,7 @@ export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: s
   };
   project = annotate(project);
   project = autoLayout(project, b.groups);
+  if (Object.keys(b.fixed).length) project.parts = project.parts.map((p) => (b.fixed[p.id] ? { ...p, x: b.fixed[p.id][0], y: b.fixed[p.id][1] } : p));
   if (opts.previous) {
     const prevPos = new Map(opts.previous.parts.map((p) => [p.id, p]));
     project.parts = project.parts.map((p) => {
@@ -606,6 +617,7 @@ export function projectName(spec: DesignSpec): string {
   else if (k.has('pir')) n = k.has('relay') ? 'Motion Light' : k.has('buzzer') ? 'Motion Alarm' : 'Motion Detector';
   else if (k.has('dht22') || k.has('ntc')) n = k.has('relay') ? 'Thermostat' : display ? 'Weather Station' : 'Thermometer';
   else if (k.has('mpu6050')) n = display ? 'Tilt Meter' : 'Motion Sensor';
+  else if (k.has('neopixel')) n = k.has('ldr') ? 'NeoPixel Night Light' : 'NeoPixel Mood Lamp';
   else if (k.has('ldr')) n = k.has('relay') ? 'Dusk Switch' : 'Night Light';
   else if (k.has('pot') && k.has('servo')) n = 'Servo Dial';
   else if (k.has('neopixel')) n = 'NeoPixel Mood Lamp';
@@ -615,6 +627,7 @@ export function projectName(spec: DesignSpec): string {
   else if (k.has('button') && k.has('buzzer')) n = 'Button Buzzer';
   else if (k.has('pot')) n = 'Dimmer';
   else if (k.has('relay')) n = 'Relay Switch';
+  else if (display) n = k.has('button') ? 'Button Display' : 'Display';
   else n = leds.length > 1 ? 'LED Chaser' : 'Blinky';
   return `${board} ${n}`;
 }

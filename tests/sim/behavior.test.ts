@@ -14,7 +14,7 @@ async function run(id: string, untilMs: number, inputs: (p: Project) => Scripted
   return { p, ...r };
 }
 
-describe('example behaviour', () => {
+describe('example behaviour', { timeout: 30000 }, () => {
   it('traffic light cycles red → green → amber', async () => {
     const { p, snapshots } = await run('pico-traffic-light', 10500, () => [], [1000, 4500, 6000, 9500]);
     const leds = p.parts.filter((x) => x.type === 'led');

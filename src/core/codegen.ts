@@ -286,8 +286,9 @@ function generateMain(project: Project, lang: Lang): string {
     c.add(0, 'def beep(freq=2000, ms=60):', '    tone(freq)', mp ? '    time.sleep_ms(ms)' : '    time.sleep(ms / 1000)', '    tone(0)', '');
   }
   if (servo) {
-    if (mp) c.add(0, 'def set_angle(deg):', '    """0–180°: 0.5 ms … 2.5 ms pulse every 20 ms."""', `    ${servo.name}.duty_ns(int(500_000 + clamp(deg, 0, 180) * 2_000_000 / 180))`, '');
-    else c.add(0, 'def set_angle(deg):', `    ${servo.name}.angle = clamp(deg, 0, 180)`, '');
+    const servos = all(fs, 'servo');
+    if (mp) c.add(0, 'def set_angle(deg):', '    """0–180°: 0.5 ms … 2.5 ms pulse every 20 ms."""', ...servos.map((sv) => `    ${sv.name}.duty_ns(int(500_000 + clamp(deg, 0, 180) * 2_000_000 / 180))`), '');
+    else c.add(0, 'def set_angle(deg):', ...servos.map((sv) => `    ${sv.name}.angle = clamp(deg, 0, 180)`), '');
   }
   if (pixels || rgb) {
     c.add(0, 'def wheel(pos):', '    """Colour wheel: 0–255 → (r, g, b) going red → green → blue → red."""', '    pos = int(pos) % 256', '    if pos < 85:', '        return (255 - pos * 3, pos * 3, 0)', '    if pos < 170:', '        pos -= 85', '        return (0, 255 - pos * 3, pos * 3)', '    pos -= 170', '    return (pos * 3, 0, 255 - pos * 3)', '');
@@ -481,7 +482,7 @@ function generateMain(project: Project, lang: Lang): string {
         const ind = pages.length > 1 ? '        ' : '    ';
         const rows = pg.lines.slice(0, 2);
         while (rows.length < 2) rows.push('');
-        rows.forEach((ln, j) => L(`${ind}lcd.move_to(0, ${j})`, `${ind}lcd.putstr(f"${ln}"[:16] + " " * (16 - len(f"${ln}"[:16])))`));
+        rows.forEach((ln, j) => (ln ? L(`${ind}lcd.move_to(0, ${j})`, `${ind}lcd.putstr(f"{f'${ln}':<16}"[:16])`) : L(`${ind}lcd.move_to(0, ${j})`, `${ind}lcd.putstr(" " * 16)`)));
       });
     } else L('    lcd.move_to(0, 0)', `    lcd.putstr("${short(project.name, 16)}")`);
   }

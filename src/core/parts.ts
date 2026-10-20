@@ -120,7 +120,7 @@ export const PARTS: PartDef[] = [
     controls: [{ key: 'pressed', label: 'Press', kind: 'momentary', default: 0 }],
     bom: { mpn: 'B3F-1000', description: 'Tactile switch 6x6mm through-hole', priceUsd: 0.15, supplierQuery: 'tactile switch 6x6 B3F-1000' },
     kicad: { symbol: 'Sparkbench:SW_Push', footprint: 'Button_Switch_THT:SW_PUSH_6mm' },
-    wokwi: { tag: 'wokwi-pushbutton', attrs: (pr) => ({ color: pr.color ?? 'red', label: pr.label ?? '' }) },
+    wokwi: { tag: 'wokwi-pushbutton', attrs: (pr) => ({ color: pr.color ?? 'red' }) },
     keywords: ['button', 'buttons', 'push button', 'pushbutton', 'switch', 'press'],
     buildNotes: ['Tactile buttons have 4 legs in two connected pairs; place it across the breadboard\'s centre gap so the pairs are separated.'],
   },

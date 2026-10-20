@@ -59,6 +59,7 @@ for (const id of examples) {
       await page.click('button.run');
       await page.waitForTimeout(4500);
       r.checks.status = await page.textContent('.status');
+      r.checks.simTime = await page.textContent('.sim-time');
       r.checks.serial = (await page.textContent('[data-testid="serial"]').catch(() => ''))?.slice(-300);
       await page.screenshot({ path: join(OUT, `${id}-2-running.png`) });
       await page.click('.console-tabs button:nth-child(2)');
@@ -83,7 +84,7 @@ for (const id of examples) {
   r.errors = errors;
   report.push(r);
   await page.close();
-  console.log(`${id}: ${r.failure ? 'FAIL ' + r.failure : 'ok'} | status=${r.checks.status} | console errors=${errors.length}`);
+  console.log(`${id}: ${r.failure ? 'FAIL ' + r.failure : 'ok'} | status=${r.checks.status} ${r.checks.simTime} | console errors=${errors.length}`);
 }
 
 writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 2));

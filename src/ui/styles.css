@@ -90,7 +90,7 @@ h2, h3 { margin: 0; }
 .run-group { display: flex; align-items: center; gap: 6px; margin-left: 10px; }
 .run { background: var(--signal); color: var(--signal-ink); border: 1px solid #c79f00; font-weight: 600; padding: 6px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; }
 .run:hover:not(:disabled) { background: #ffd43a; border-color: #a88700; }
-.run.stop { background: var(--ink); color: var(--signal); border-color: var(--ink); }
+.run.stop, .run.stop:hover:not(:disabled) { background: var(--ink); color: var(--signal); border-color: var(--ink); }
 .run-icon { font-size: 11px; }
 .status { font-size: 12px; color: var(--ink-3); margin-left: 4px; white-space: nowrap; }
 .status-running { color: var(--ok); }
@@ -297,6 +297,7 @@ h2, h3 { margin: 0; }
 .hero-input textarea { flex: 1; resize: none; font-size: 16px; padding: 12px 14px; border-radius: 8px; border: none; background: var(--surface); }
 .hero-input .primary.big { background: var(--signal); color: var(--signal-ink); border-color: #c79f00; font-weight: 600; font-size: 16px; padding: 0 22px; border-radius: 8px; }
 .hero-input .primary.big:hover:not(:disabled) { background: #ffd43a; }
+.hero-input .primary.big:disabled { opacity: 1; background: #d9cf9a; border-color: #b9ad6a; color: #5a5130; }
 .hero-hint { color: var(--ink-3); font-size: 13px; margin: 10px 0 0; }
 .gallery { max-width: 1180px; margin: 48px auto 60px; padding: 0 24px; }
 .gallery h2 { font-size: 17px; font-weight: 600; margin-bottom: 14px; }
@@ -336,3 +337,5 @@ h2, h3 { margin: 0; }
   .main { display: block; }
   .docview { position: static; overflow: visible; }
 }
+
+.value-chip { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); background: var(--signal); color: var(--signal-ink); font: 500 11px/1 var(--mono); padding: 4px 7px; border-radius: 99px; white-space: nowrap; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.35); }

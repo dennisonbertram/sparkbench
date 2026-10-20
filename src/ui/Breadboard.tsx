@@ -158,11 +158,9 @@ export function Breadboard() {
               title={`${part.ref ?? ''} ${part.label ?? partDef(part.type).name}`}
             >
               <PartView part={part} visual={v} onPins={onPins} onInput={onInput} inputs={sim.inputs} />
-              <div className="part-tag">
-                {part.ref}
-                {part.type === 'resistor' ? ` · ${fmtOhm(part.props.ohms)}` : part.label && !/resistor|divider/i.test(part.label) && partDef(part.type).category !== 'board' ? ` · ${part.label}` : ''}
-              </div>
-              {running && <SimControls part={part} compact />}
+              <div className="part-tag">{partTag(part)}</div>
+              {running && sel && <SimControls part={part} compact />}
+              {running && !sel && <ValueChip part={part} />}
               {unpowered && <div className="nopower">No power</div>}
             </div>
           );
@@ -271,6 +269,37 @@ function wirePath(a: { x: number; y: number }, b: { x: number; y: number }) {
   const c1 = { x: a.x + dx * 0.25, y: a.y + dy * 0.1 + sag };
   const c2 = { x: b.x - dx * 0.25, y: b.y - dy * 0.1 + sag };
   return `M${a.x},${a.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${b.x},${b.y}`;
+}
+
+function partTag(part: { ref?: string; type: string; label?: string; props: Record<string, any> }) {
+  const def = partDef(part.type);
+  if (part.type === 'resistor') return `${part.ref} ${fmtOhm(part.props.ohms)}`;
+  if (part.type === 'capacitor' || part.type === 'electrolytic') return `${part.ref} ${fmtF(part.props.farads)}`;
+  if (def.category === 'board' || def.category === 'passive') return part.ref ?? '';
+  const label = part.label && part.label !== def.name && part.label.length <= 22 ? part.label : '';
+  return label ? `${part.ref} · ${label}` : part.ref ?? '';
+}
+
+function fmtF(f: number) {
+  return f >= 1e-6 ? `${+(f * 1e6).toFixed(1)}µF` : `${Math.round(f * 1e9)}nF`;
+}
+
+/** While simulating, unselected sensors show their current setting; click to change it. */
+function ValueChip({ part }: { part: { id: string; type: string } }) {
+  const inputs = useStore((s) => s.sim.inputs);
+  const controls = (partDef(part.type).controls ?? []).filter((c) => c.kind !== 'toggle');
+  if (!controls.length || ['potentiometer', 'pushbutton', 'slide-switch'].includes(part.type)) return null;
+  return (
+    <div className="value-chip" title="Click the part to change this">
+      {controls
+        .map((c) => {
+          const v = inputs[`${part.id}.${c.key}`] ?? c.default;
+          if (c.kind === 'momentary') return `${c.label}: ${v ? 'yes' : 'no'}`;
+          return `${Number.isInteger(c.step) ? Math.round(v) : v.toFixed(1)}${c.unit}`;
+        })
+        .join(' · ')}
+    </div>
+  );
 }
 
 function fmtOhm(o: number) {
