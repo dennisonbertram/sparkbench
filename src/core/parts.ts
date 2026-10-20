@@ -546,9 +546,85 @@ export const PARTS: PartDef[] = [
     kicad: { symbol: 'Sparkbench:Battery', footprint: 'Battery:BatteryHolder_MPD_BA9VPC_1xPP3', value: (pr) => `${pr.volts ?? 9}V` },
     keywords: ['9v', 'battery', 'battery powered'],
   },
+
+  // ------------------------------------------------------------------ product version (bare chips on the board)
+  {
+    type: 'esp32-wroom',
+    name: 'ESP32-WROOM-32E module',
+    category: 'board',
+    production: true,
+    description: 'The ESP32 module itself (Wi-Fi/Bluetooth, 4 MB flash, certified antenna), soldered directly to the board. This is the chip on an ESP32 DevKit, without the USB, regulator and buttons around it.',
+    eli5: 'The real brain of an ESP32 DevKit, as a small metal-covered module that a factory solders onto your board.',
+    refPrefix: 'U',
+    pins: [
+      ...['3V3', 'EN', 'VP', 'VN', 'D34', 'D35', 'D32', 'D33', 'D25', 'D26', 'D27', 'D14', 'D12', 'D13', 'D15', 'D2', 'IO0', 'D4', 'RX2', 'TX2', 'D5', 'D18', 'D19', 'D21', 'RX0', 'TX0', 'D22', 'D23'].map((n) => p(n, n === '3V3' ? 'power' : 'io', undefined, { required: false })),
+      ...['GND.1', 'GND.2', 'GND.3', 'GND.4'].map((n) => p(n, 'gnd', undefined, { required: false })),
+    ],
+    bom: { mpn: 'ESP32-WROOM-32E-N4', description: 'ESP32-WROOM-32E module, 4 MB flash, PCB antenna', priceUsd: 3.2, supplierQuery: 'ESP32-WROOM-32E-N4' },
+    kicad: { symbol: 'Sparkbench:ESP32-WROOM-32E', footprint: 'RF_Module:ESP32-WROOM-32E', value: () => 'ESP32-WROOM-32E' },
+    keywords: [],
+  },
+  {
+    type: 'usb-micro',
+    name: 'Micro-USB socket',
+    category: 'power',
+    production: true,
+    description: 'Micro-USB B receptacle: 5 V power in, plus the data lines for programming.',
+    eli5: 'Where the USB cable plugs in.',
+    refPrefix: 'J',
+    pins: [p('VBUS', 'power'), p('DM', 'io'), p('DP', 'io'), p('ID', 'nc', undefined, { required: false }), p('GND', 'gnd'), p('SHIELD', 'passive', undefined, { required: false })],
+    bom: { mpn: '105017-0001', description: 'Micro-USB B receptacle, SMD', priceUsd: 0.5, supplierQuery: 'Molex 105017-0001' },
+    kicad: { symbol: 'Sparkbench:USB_Micro_B', footprint: 'Connector_USB:USB_Micro-B_Molex-105017-0001', value: () => 'USB_Micro-B' },
+    keywords: [],
+  },
+  {
+    type: 'ldo-3v3',
+    name: '3.3 V regulator (AMS1117-3.3)',
+    category: 'power',
+    production: true,
+    description: 'Low-dropout regulator: turns the 5 V from USB into the 3.3 V the ESP32 needs (up to 1 A).',
+    eli5: 'Steps the USB 5 V down to the 3.3 V the chips run on.',
+    refPrefix: 'U',
+    pins: [p('GND', 'gnd'), p('VOUT', 'power'), p('VIN', 'power')],
+    bom: { mpn: 'AMS1117-3.3', description: 'AMS1117-3.3 LDO regulator, SOT-223', priceUsd: 0.15, supplierQuery: 'AMS1117-3.3' },
+    kicad: { symbol: 'Sparkbench:AMS1117-3.3', footprint: 'Package_TO_SOT_SMD:SOT-223-3_TabPin2', value: () => 'AMS1117-3.3' },
+    keywords: [],
+  },
+  {
+    type: 'ch340c',
+    name: 'USB-to-serial chip (CH340C)',
+    category: 'ic',
+    production: true,
+    description: 'Lets a computer talk to the ESP32 over USB (programming and print output). The C version has its own clock, so no crystal is needed.',
+    eli5: 'Translates between USB and the ESP32\'s serial port, so you can program it.',
+    refPrefix: 'U',
+    // With VCC at 5 V, V3 is the chip's internal 3.3 V regulator output: it only needs a 100 nF capacitor to GND.
+    pins: ['GND', 'TXD', 'RXD', 'V3', 'UDP', 'UDM', 'NC1', 'NC2', 'CTS', 'DSR', 'RI', 'DCD', 'DTR', 'RTS', 'R232', 'VCC'].map((n) => p(n, n === 'GND' ? 'gnd' : n === 'VCC' ? 'power' : n === 'V3' ? 'passive' : n.startsWith('NC') ? 'nc' : 'io', undefined, { required: !/^(NC|CTS|DSR|RI|DCD|R232)/.test(n) })),
+    bom: { mpn: 'CH340C', description: 'CH340C USB to UART, SOIC-16', priceUsd: 0.45, supplierQuery: 'CH340C' },
+    kicad: { symbol: 'Sparkbench:CH340C', footprint: 'Package_SO:SOIC-16_3.9x9.9mm_P1.27mm', value: () => 'CH340C' },
+    keywords: [],
+  },
+  {
+    type: 'npn-smd',
+    name: 'NPN transistor, SMD (MMBT3904)',
+    category: 'passive',
+    production: true,
+    description: 'Small surface-mount NPN transistor.',
+    eli5: 'A tiny electronic switch.',
+    refPrefix: 'Q',
+    pins: [p('B', 'passive'), p('E', 'passive'), p('C', 'passive')],
+    bom: { mpn: 'MMBT3904', description: 'MMBT3904 NPN, SOT-23', priceUsd: 0.02, supplierQuery: 'MMBT3904' },
+    kicad: { symbol: 'Sparkbench:MMBT3904', footprint: 'Package_TO_SOT_SMD:SOT-23', value: () => 'MMBT3904' },
+    keywords: [],
+  },
 ];
 
 const BY_TYPE = new Map(PARTS.map((d) => [d.type, d]));
+
+/** The KiCad footprint for one placed part: a per-part override (e.g. a surface-mount variant) or the part type's default. */
+export function footprintOf(part: { type: string; props?: Record<string, any> }): string {
+  return part.props?.footprint ?? partDef(part.type).kicad.footprint ?? '';
+}
 
 export function partDef(type: string): PartDef {
   const d = BY_TYPE.get(type) ?? customDef(type);

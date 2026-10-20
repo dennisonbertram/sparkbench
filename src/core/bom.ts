@@ -229,7 +229,7 @@ export function buildBom(project: Project): BomLine[] {
       description: value ? `${def.bom.description}, ${value}` : def.bom.description,
       value,
       mpn: def.bom.mpn,
-      footprint: def.bom.footprint ?? def.kicad.footprint ?? '',
+      footprint: part.props?.footprint ?? def.bom.footprint ?? def.kicad.footprint ?? '',
       unitPrice: unit,
       linePrice: round2(unit * refs.length),
       suppliers: supplierLinks(searchQuery(part, def), def.category),

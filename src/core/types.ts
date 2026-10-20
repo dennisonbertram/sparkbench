@@ -67,6 +67,8 @@ export interface PartDef {
   keywords: string[];
   /** Build tips shown in the build guide. */
   buildNotes?: string[];
+  /** Only used by the "product" version of a board (bare chips); hidden from the parts library. */
+  production?: boolean;
 }
 
 export interface PartInstance {

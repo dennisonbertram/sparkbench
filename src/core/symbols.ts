@@ -114,6 +114,12 @@ const NUMBER_OVERRIDES: Record<string, Record<string, string>> = {
   led: { C: '1', A: '2' },
   diode: { K: '1', A: '2' },
   mcp3008: { DGND: '9', CS: '10', DIN: '11', DOUT: '12', CLK: '13', AGND: '14', VREF: '15', VDD: '16' },
+  // ESP32-WROOM-32E module pads (flash pins 17–22 and NC 32 are not used).
+  'esp32-wroom': {
+    'GND.1': '1', '3V3': '2', EN: '3', VP: '4', VN: '5', D34: '6', D35: '7', D32: '8', D33: '9', D25: '10', D26: '11', D27: '12', D14: '13', D12: '14', 'GND.2': '15', D13: '16',
+    D15: '23', D2: '24', IO0: '25', D4: '26', RX2: '27', TX2: '28', D5: '29', D18: '30', D19: '31', D21: '33', RX0: '34', TX0: '35', D22: '36', D23: '37', 'GND.3': '38', 'GND.4': '39',
+  },
+  'usb-micro': { SHIELD: 'SH' },
   // ESP32 DevKit V1: left header 1–15 top to bottom, right header 16–30 bottom to top (DIP style).
   'esp32-devkit': Object.fromEntries(
     [

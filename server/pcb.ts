@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import type { Project } from '../src/core/types';
 import { pcbSpec, FABS, type PcbSpec, type FabId } from '../src/core/pcb';
 import { exportKicadFootprints, exportKicadProject, exportKicadSchematic } from '../src/core/kicad';
+import { partDef as partDefSync } from '../src/core/parts';
 
 const KICAD_APP = [process.env.KICAD_APP, join(homedir(), 'Applications/KiCad.app'), '/Applications/KiCad/KiCad.app', '/Applications/KiCad.app'].find((p) => p && existsSync(p));
 export const KICAD_CLI = KICAD_APP ? join(KICAD_APP, 'Contents/MacOS/kicad-cli') : ['/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find(existsSync);
@@ -48,6 +49,9 @@ export interface PcbResult {
   /** Live parts data, cost at 5/50/500 boards, and design-for-manufacture notes (null when offline). */
   sourcing: PcbSourcing | null;
   fab: { id: FabId; name: string; track: number; drill: number; quote: string };
+  variant: 'prototype' | 'product';
+  /** What the product version changed. */
+  productNotes: string[];
   /** Where each part is (origin and reserved area, mm from the board's top-left), for the board editor. */
   placement: { ref: string; x: number; y: number; rot: number; reserved: [number, number, number, number] }[];
 }
@@ -65,10 +69,20 @@ export interface PcbOptions {
   qrUrl?: string;
   /** User-arranged part positions (from the board editor). */
   fixed?: Record<string, { x: number; y: number; rot: number }>;
+  /** 'product': bare module + support circuit + surface-mount parts (see production.ts). */
+  variant?: 'prototype' | 'product';
 }
 
-export async function buildPcb(project: Project, dir: string, onStep: (msg: string) => void = () => {}, opts: PcbOptions = {}): Promise<PcbResult> {
+export async function buildPcb(source: Project, dir: string, onStep: (msg: string) => void = () => {}, opts: PcbOptions = {}): Promise<PcbResult> {
   if (!KICAD_CLI) throw new Error('KiCad is not installed (needed for circuit boards).');
+  let project = source;
+  let productNotes: string[] = [];
+  if (opts.variant === 'product') {
+    const { productionize } = await import('../src/core/production');
+    const pr = productionize(source);
+    project = pr.project;
+    productNotes = pr.notes;
+  }
   const spec: PcbSpec = pcbSpec(project, { fab: opts.fab });
   if (opts.qrUrl) {
     const QRCode = (await import('qrcode')).default;
@@ -91,6 +105,12 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
   // A full KiCad project around the board: rules + net classes (.kicad_pro) and the schematic.
   writeFileSync(join(dir, `${spec.name}.kicad_pro`), exportKicadProject(project, FABS[spec.fab]));
   writeFileSync(join(dir, `${spec.name}.kicad_sch`), exportKicadSchematic(project));
+  // Edge connectors (USB) are meant to sit on the board edge: relax edge clearance for them only.
+  const edgeRefs = spec.parts.filter((p) => p.flushEdge !== undefined).map((p) => p.ref);
+  writeFileSync(
+    join(dir, `${spec.name}.kicad_dru`),
+    `(version 1)\n${edgeRefs.map((r) => `(rule "${r} sits on the board edge"\n  (constraint edge_clearance (min 0mm))\n  (condition "A.memberOfFootprint('${r}')"))\n`).join('')}`,
+  );
   // Net names come from KiCad's own reading of the schematic, so the board and schematic agree
   // exactly (and any disagreement with Sparkbench's netlist is caught here).
   const problems: string[] = [];
@@ -161,7 +181,7 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
   await run(KICAD_CLI, ['pcb', 'export', 'step', '--output', join(dir, 'board.step'), '--subst-models', pcb], 300_000);
 
   const files = [...walk(dir)].map((f) => f.slice(dir.length + 1)).filter((f) => !/^(spec|layout)\.json$|\.(dsn|ses|kicad_prl)$/.test(f));
-  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing, placement: (layout.parts ?? []).map((p: any) => ({ ref: p.ref, x: p.x, y: p.y, rot: p.rot, reserved: p.reserved ?? p.box })), fab: { id: spec.fab, name: FABS[spec.fab].name, track: FABS[spec.fab].track, drill: FABS[spec.fab].drill, quote: FABS[spec.fab].quote } };
+  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing, variant: opts.variant ?? 'prototype', productNotes, placement: (layout.parts ?? []).map((p: any) => ({ ref: p.ref, x: p.x, y: p.y, rot: p.rot, reserved: p.reserved ?? p.box })), fab: { id: spec.fab, name: FABS[spec.fab].name, track: FABS[spec.fab].track, drill: FABS[spec.fab].drill, quote: FABS[spec.fab].quote } };
 }
 
 /** Rename the spec's nets to KiCad's names; report any grouping that differs between the two netlists. */
@@ -227,6 +247,10 @@ function jlcBom(spec: PcbSpec, sourcing: PcbSourcing | null): string {
   return csv([['Comment', 'Designator', 'Footprint', 'LCSC Part #'], ...[...groups.values()].map((g) => [g.value, g.refs.join(','), g.footprint, g.lcsc])]);
 }
 
+function partDefOf(type: string): string {
+  return partDefSync(type).kicad.footprint ?? '';
+}
+
 async function sourceForPcb(project: Project, layout: { width_mm: number; height_mm: number }): Promise<PcbSourcing> {
   const { sourcePcb, unitPrice } = await import('./sourcing');
   const src = await sourcePcb(project);
@@ -253,7 +277,9 @@ async function sourceForPcb(project: Project, layout: { width_mm: number; height
   if (low.length) dfm.push({ level: 'warn', text: `Low stock for 50 boards: ${low.map((x) => `${x.ref} (${x.part!.lcsc}, ${x.part!.stock} left)`).join(', ')}.` });
   const ext = src.filter((x) => x.part && !x.part.basic);
   dfm.push(ext.length ? { level: 'note', text: `${ext.length} of ${src.filter((x) => x.part).length} parts are JLCPCB "extended" parts. If you use their assembly service, each extended part type adds a small one-time loading fee; basic parts don't.` } : { level: 'ok', text: 'Every part is a JLCPCB "basic" part (no loading fees).' });
-  dfm.push({ level: 'note', text: 'All parts are through-hole, which beginners can solder by hand. Factory assembly mostly places surface-mount parts, so through-hole assembly costs extra; most makers solder these boards themselves.' });
+  const smdCount = project.parts.filter((p) => /SMD|_0805_|SOIC|SOT|RF_Module|Connector_USB/.test(p.props?.footprint ?? partDefOf(p.type))).length;
+  if (smdCount) dfm.push({ level: 'ok', text: `${smdCount} surface-mount parts can be placed and soldered by the factory (upload the BOM and CPL). The few through-hole parts left (sockets, buttons) are quick to hand-solder.` });
+  else dfm.push({ level: 'note', text: 'All parts are through-hole, which beginners can solder by hand. Factory assembly mostly places surface-mount parts, so through-hole assembly costs extra; most makers solder these boards themselves.' });
   if (area < 30 * 30) dfm.push({ level: 'note', text: 'This board is small: ask the maker to panelise it (several boards on one sheet) to save money on larger orders.' });
   return { lines, cost, dfm };
 }

@@ -3,7 +3,7 @@
 // The layout itself (placement, routing, ground pour, fab outputs) is done by scripts/pcb/
 // with KiCad's own pcbnew + Freerouting, then checked with kicad-cli DRC.
 import type { Project } from './types';
-import { partDef } from './parts';
+import { partDef, footprintOf } from './parts';
 import { buildNets, annotate } from './netlist';
 import { pinNumber, defaultValue } from './symbols';
 import { kicadName } from './kicad';
@@ -26,6 +26,8 @@ export interface PcbPart {
   antenna?: boolean;
   /** Dev board: pads at its USB end (the USB cable must reach the board edge there). */
   usbPads?: [string, string];
+  /** USB socket soldered on the board: its opening must sit flush with the bottom edge (mm from origin to the edge line). */
+  flushEdge?: number;
   /** A plug-in module lying flat above its socket: body width along the header, depth away from it, height above the board (mm). */
   module?: { w: number; d: number; h: number; window?: { w: number; d: number; off: number } };
 }
@@ -93,7 +95,7 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
     }
     return {
       ref: p.ref ?? p.id,
-      footprint: def.kicad.footprint ?? 'Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical',
+      footprint: footprintOf(p) || 'Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical',
       value: defaultValue(def, p.props),
       pads,
       pinNames,
@@ -102,6 +104,7 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       ...(EDGE_TYPES.has(p.type) ? { edge: true } : {}),
       ...(p.type === 'esp32-devkit' ? { antenna: true, usbPads: ['15', '16'] as [string, string] } : {}),
       ...(p.type === 'pi-pico' ? { usbPads: ['1', '40'] as [string, string] } : {}),
+      ...(p.type === 'usb-micro' ? { flushEdge: 2.6875 } : {}),
       ...(MODULE_BODY[p.type] ? { module: MODULE_BODY[p.type] } : {}),
     };
   });

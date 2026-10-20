@@ -20,7 +20,7 @@ const jobs = new Map<string, Job>();
 const ROOT = join(tmpdir(), 'sparkbench-pcb');
 
 export function startPcb(project: Project, opts: PcbOptions = {}): Job {
-  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null])).digest('hex').slice(0, 16);
+  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null, opts.variant ?? 'prototype'])).digest('hex').slice(0, 16);
   const existing = jobs.get(id);
   if (existing && !existing.error) return existing;
   const job: Job = { id, log: [], done: false };
@@ -63,7 +63,8 @@ export async function buildEnclosure(id: string, project: Project, style: import
   const stl = stlNs.default ?? stlNs;
   const { mkdirSync, writeFileSync } = await import('node:fs');
   const layout = JSON.parse(readFileSync(join(job.result.dir, 'layout.json'), 'utf8'));
-  const p = project.parts.some((x) => !x.ref) ? annotate(project) : project;
+  let p = project.parts.some((x) => !x.ref) ? annotate(project) : project;
+  if (job.result.variant === 'product') p = (await import('../src/core/production')).productionize(project).project;
   const types = Object.fromEntries(p.parts.map((x) => [x.ref ?? x.id, x.type]));
   const r = buildCase({ board: layout, types, style, name: p.name });
   const dir = join(job.result.dir, 'enclosure', style);

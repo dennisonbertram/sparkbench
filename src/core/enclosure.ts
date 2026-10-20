@@ -80,13 +80,19 @@ const HEIGHT: Record<string, number> = {
   ldr: 5.0,
   ntc: 5.0,
   'battery-9v': 18.0,
+  'esp32-wroom': 3.2,
+  'usb-micro': 3.0,
+  'ldo-3v3': 1.8,
+  ch340c: 1.8,
+  'npn-smd': 1.2,
 };
 const CABLE_TYPES = new Set(['servo', 'dc-motor', 'relay', 'soil', 'neopixel-ring', 'lcd1602', 'epaper29', 'battery-9v', 'rpi4']);
 
 export function partHeight(type: string): number {
   if (MODULE_BODY[type]) return MODULE_BODY[type].h;
   if (CABLE_TYPES.has(type) && type !== 'battery-9v' && type !== 'rpi4') return SOCKET + 6; // header + plugged cable
-  return HEIGHT[type] ?? 8;
+  if (HEIGHT[type] !== undefined) return HEIGHT[type];
+  return 8;
 }
 
 export function buildCase(input: CaseInput): CaseResult {
@@ -186,6 +192,9 @@ export function buildCase(input: CaseInput): CaseResult {
       continue;
     }
     switch (t) {
+      case 'usb-micro':
+        wallSlot(cx, cy, 11, 6.5, boardTop + 1.6, p.ref, 'USB cable opening');
+        break;
       case 'pushbutton': {
         lidCuts.push(hole(cx, cy, 3.75));
         const len = innerTop - (boardTop + 5) + LID + 2;

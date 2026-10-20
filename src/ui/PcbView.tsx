@@ -20,6 +20,8 @@ interface Result {
   problems: string[];
   fab: { id: string; name: string; track: number; drill: number; quote: string };
   placement: PlacedPart[];
+  variant: 'prototype' | 'product';
+  productNotes: string[];
   sourcing: {
     lines: { ref: string; item: string; quantity: number; lcsc: string | null; mfr: string | null; stock: number; basic: boolean; unit: number | null; url: string | null }[];
     cost: { boards: number; parts: number; perBoard: number; missing: number }[];
@@ -59,6 +61,7 @@ export function PcbView() {
   const [fab, setFab] = useState<'jlcpcb' | 'pcbway' | 'oshpark'>('jlcpcb');
   const [qrUrl, setQrUrl] = useState('');
   const [editing, setEditing] = useState(false);
+  const [variant, setVariant] = useState<'prototype' | 'product'>('prototype');
   const [error, setError] = useState('');
   const designKey = useMemo(() => JSON.stringify([project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b]), project.revision]), [project]);
   const [builtFor, setBuiltFor] = useState<string | null>(null);
@@ -93,7 +96,7 @@ export function PcbView() {
     setStatus(null);
     setEditing(false);
     try {
-      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl, fixed }) });
+      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl, fixed, variant }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? 'Could not start the board design.');
       setJob(d.id);
@@ -143,6 +146,17 @@ export function PcbView() {
         <Revisions />
         {!running && (
           <div className="pcb-options">
+            <fieldset className="pcb-variant" data-testid="pcb-variant">
+              <legend>Version</legend>
+              <label className={variant === 'prototype' ? 'on' : ''}>
+                <input type="radio" name="variant" checked={variant === 'prototype'} onChange={() => setVariant('prototype')} />
+                <strong>Prototype</strong> <span>Your dev board and modules plug into sockets. You solder it yourself.</span>
+              </label>
+              <label className={variant === 'product' ? 'on' : ''}>
+                <input type="radio" name="variant" checked={variant === 'product'} onChange={() => setVariant('product')} data-testid="pcb-variant-product" />
+                <strong>Product</strong> <span>The chips go on the board{project.board === 'esp32' ? ' (bare ESP32 module, USB, regulator)' : ''}, with small surface-mount parts the factory assembles.</span>
+              </label>
+            </fieldset>
             <label>
               Made by
               <select value={fab} onChange={(e) => setFab(e.target.value as any)} data-testid="pcb-fab">
@@ -184,6 +198,13 @@ export function PcbView() {
         {res && (
           <div className="pcb-result" data-testid="pcb-result">
             {stale && <div className="banner">You changed the design since this board was made. Click <strong>Update the board</strong> to redo it.</div>}
+            {res.variant === 'product' && res.productNotes.length > 0 && (
+              <div className="pcb-product-notes" data-testid="pcb-product-notes">
+                <strong>Product version: what changed</strong>
+                <ul>{res.productNotes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+                <p className="muted">The program stays the same. The KiCad project in "All board files" has the full product schematic.</p>
+              </div>
+            )}
             <div className={`pcb-verdict ${ok ? 'ok' : 'bad'}`}>
               <strong>{ok ? '✓ Ready to order' : 'Needs attention before ordering'}</strong>
               <p>

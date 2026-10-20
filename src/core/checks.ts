@@ -74,6 +74,9 @@ class Ctx {
           if (r.pin === '-') this.gnd.add(net);
           else this.addSupply(net, Number(part.props?.volts ?? 9));
         }
+        // Product version: the USB socket and the 3.3 V regulator are the supplies.
+        if (part?.type === 'usb-micro' && r.pin === 'VBUS') this.addSupply(net, 5);
+        if (part?.type === 'ldo-3v3' && r.pin === 'VOUT') this.addSupply(net, 3.3);
       }
     }
     try {

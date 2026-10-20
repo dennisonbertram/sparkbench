@@ -550,7 +550,7 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
       .catch(() => {});
   }, []);
   const match = (text: string) => !q || text.toLowerCase().includes(q.toLowerCase());
-  const list = PARTS.filter((p) => p.category !== 'board').filter((p) => match(`${p.name} ${p.description} ${p.keywords.join(' ')}`));
+  const list = PARTS.filter((p) => p.category !== 'board' && !p.production).filter((p) => match(`${p.name} ${p.description} ${p.keywords.join(' ')}`));
   const myList = mine.filter((s) => match(`${s.name} ${s.mpn} ${s.description}`));
   const cats = ['display', 'input', 'sensor', 'output', 'actuator', 'passive', 'ic', 'power'];
   return (

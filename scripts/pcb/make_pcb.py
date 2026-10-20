@@ -98,7 +98,9 @@ def place(board, fps, spec):
                 s['box'] = (min(b[0], cx - m['w'] / 2), b[3] - m['d'], max(b[2], cx + m['w'] / 2), b[3])
         del ss[2:]
     for ref, ss in snaps.items():
-        if not by_ref[ref].get('usbPads') and len(ss) > 2:
+        if by_ref[ref].get('flushEdge') is not None:
+            del ss[1:]  # USB socket: opening faces down (towards the bottom edge)
+        elif not by_ref[ref].get('usbPads') and len(ss) > 2:
             del ss[2:]
     # Sockets get their pin names printed beside them: keep that strip free.
     for ref, ss in snaps.items():
@@ -174,7 +176,8 @@ def place(board, fps, spec):
         pick = placed.get(first, (0, 0, pick))[2]
         forbid = []
     while remaining:
-        remaining.sort(key=lambda r: (-links(r), -len(by_ref[r]['pads'])))
+        # Edge connectors first (after the board), so they claim their edge before anything else.
+        remaining.sort(key=lambda r: (by_ref[r].get('flushEdge') is None, -links(r), -len(by_ref[r]['pads'])))
         ref = remaining.pop(0)
         pts = net_points()
         cl = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
@@ -202,6 +205,8 @@ def place(board, fps, spec):
                     nb = (min(cl[0], box[0]), min(cl[1], box[1]), max(cl[2], box[2]), max(cl[3], box[3]))
                     growth = (nb[2] - nb[0]) * (nb[3] - nb[1]) - area0
                     cost = wl + 0.08 * growth
+                    if by_ref[ref].get('flushEdge') is not None:
+                        cost += 40.0 * (nb[3] - box[3])  # as low as possible: it ends up on the bottom edge
                     if by_ref[ref].get('edge'):
                         # Cables plug in here: prefer the outside of the board.
                         cost += 3.0 * min(box[0] - nb[0], nb[2] - box[2], box[1] - nb[1], nb[3] - box[3])
@@ -212,6 +217,15 @@ def place(board, fps, spec):
         _, x, y, s = best
         placed[ref] = (x, y, s)
         boxes.append((s['box'][0] + x, s['box'][1] + y, s['box'][2] + x, s['box'][3] + y))
+        if by_ref[ref].get('flushEdge') is not None:
+            # Nothing else may go below the USB socket's top: it owns the bottom edge.
+            forbid.append((-1e6, s['box'][1] + y - 3.0, 1e6, 1e6))
+            boxes[-1] = (boxes[-1][0], boxes[-1][1], boxes[-1][2], boxes[-1][3] + 2.0)
+    place.flush = None
+    for ref, (x, y, s) in placed.items():
+        fe = by_ref[ref].get('flushEdge')
+        if fe is not None:
+            place.flush = y + fe + 100
     place.usb = None
     if first in placed and 'usb' in placed[first][2]:
         fx, fy, fs = placed[first]
@@ -238,11 +252,14 @@ def place(board, fps, spec):
     return cl
 
 
-def add_outline(board, cl, margin):
+def add_outline(board, cl, margin, flush_bottom=None):
     x0, y0, x1, y1 = cl[0] - margin, cl[1] - margin, cl[2] + margin, cl[3] + margin
+    if flush_bottom is not None:
+        y1 = flush_bottom  # the USB socket's opening sits exactly on the edge
     # Round to 0.5 mm so the board size is a tidy number.
     x0, y0 = math.floor(x0 * 2) / 2, math.floor(y0 * 2) / 2
-    x1, y1 = math.ceil(x1 * 2) / 2, math.ceil(y1 * 2) / 2
+    x1 = math.ceil(x1 * 2) / 2
+    y1 = y1 if flush_bottom is not None else math.ceil(y1 * 2) / 2
     r = 2.0
     segs = [((x0 + r, y0), (x1 - r, y0)), ((x1, y0 + r), (x1, y1 - r)), ((x1 - r, y1), (x0 + r, y1)), ((x0, y1 - r), (x0, y0 + r))]
     for a, b in segs:
@@ -439,6 +456,7 @@ def main():
 
     fps = {}
     problems = []
+    problems_note = []
     for p in spec['parts']:
         lib, name = p['footprint'].split(':', 1)
         fp = pcbnew.FootprintLoad(fp_lib_path(lib, lib_dirs), name)
@@ -451,6 +469,14 @@ def main():
         except Exception:
             pass
         fp.SetValue(p['value'])
+        # Thermal vias inside a footprint's ground pad that are smaller than the factory can drill
+        # (e.g. ESP32-WROOM's 0.2 mm ones): drop them; the pad still connects through the pour.
+        min_drill = (spec.get('fabRules') or {}).get('drill', 0.3)
+        smd_numbers = {pad.GetNumber() for pad in fp.Pads() if pad.GetAttribute() == pcbnew.PAD_ATTRIB_SMD}
+        for pad in list(fp.Pads()):
+            if pad.GetAttribute() == pcbnew.PAD_ATTRIB_PTH and pad.GetNumber() in smd_numbers and mm(pad.GetDrillSize().x) < min_drill - 1e-6:
+                fp.Remove(pad)
+                problems_note.append(f'{p["ref"]}: removed a {mm(pad.GetDrillSize().x):.2f} mm thermal via (smaller than the factory minimum)')
         pad_names = {pad.GetNumber() for pad in fp.Pads()}
         for num, net in p['pads'].items():
             if num not in pad_names:
@@ -469,7 +495,7 @@ def main():
         # A label strip along the bottom edge for the QR code.
         qr_size = 12.0 if len(qr['modules']) <= 29 else 16.0
         cl = (cl[0], cl[1], max(cl[2], cl[0] + qr_size + 30), cl[3] + qr_size + 3)
-    outline = add_outline(board, cl, 6.0)
+    outline = add_outline(board, cl, 6.0, getattr(place, 'flush', None))
     x0, y0, x1, y1 = outline
     add_pin_labels(board, fps, spec)
     # Outline of each plug-in module's body on the silkscreen: "plug it in so it covers this".
@@ -565,6 +591,7 @@ def main():
         'usb': [round(place.usb[0] - x0, 2), round(place.usb[1] - y0, 2)] if getattr(place, 'usb', None) else None,
         'holes': holes,
         'problems': problems,
+        'notes': problems_note,
         'route_log_tail': route_log[-1500:],
     }, open(os.path.join(work, 'layout.json'), 'w'), indent=1)
 

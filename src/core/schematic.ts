@@ -2,7 +2,7 @@
 // Board projects use a label style (board on the left, feature groups in a grid to the right);
 // the classic discrete circuits get hand-drawn layouts with real wires.
 import type { Net, PartInstance, Project } from './types';
-import { partDef } from './parts';
+import { partDef, footprintOf } from './parts';
 import { annotate, buildNets, isBoardPart, pinKey } from './netlist';
 import { boardFor } from './boards';
 import {
@@ -279,7 +279,7 @@ function placeSymbol(f: Frag, ctx: Ctx, part: PartInstance, x: number, y: number
     type: part.type,
     ref,
     value,
-    footprint: def.kicad.footprint ?? '',
+    footprint: footprintOf(part),
     libId: symbolLibId(part.type),
     x,
     y,

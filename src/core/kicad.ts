@@ -1,7 +1,7 @@
 // KiCad export: .kicad_sch (KiCad 8 format, opens in KiCad 8–10), a minimal .kicad_pro and a netlist.
 // Geometry comes from buildSchematic(), so the KiCad drawing matches the in-app schematic.
 import type { Project } from './types';
-import { partDef } from './parts';
+import { partDef, footprintOf } from './parts';
 import { annotate, buildNets } from './netlist';
 import { buildSchematic, powerText, type FieldText, type SchPower } from './schematic';
 import { LIB, POWER_NETS, allSymbols, defaultValue, pinNumber, snapUp, symbolFor, textWidth, type Dir, type Graphic, type SymbolDef, type SymPin } from './symbols';
@@ -312,8 +312,8 @@ export function exportKicadNetlist(project: Project): string {
     const sym = symbolFor(p.type);
     const value = defaultValue(def, p.props);
     out.push(
-      `    (comp (ref ${q(p.ref ?? p.id)}) (value ${q(value)}) (footprint ${q(def.kicad.footprint ?? '')}) (description ${q(def.name)})` +
-        ` (fields (field (name "Footprint") ${q(def.kicad.footprint ?? '')}) (field (name "Datasheet")) (field (name "Description") ${q(def.description)}))` +
+      `    (comp (ref ${q(p.ref ?? p.id)}) (value ${q(value)}) (footprint ${q(footprintOf(p))}) (description ${q(def.name)})` +
+        ` (fields (field (name "Footprint") ${q(footprintOf(p))}) (field (name "Datasheet")) (field (name "Description") ${q(def.description)}))` +
         ` (libsource (lib ${q(LIB)}) (part ${q(sym.name)}) (description ${q(def.name)}))` +
         ` (property (name "Sparkbench_id") (value ${q(p.id)})) (sheetpath (names "/") (tstamps "/")) (tstamps ${q(uuid())}))`,
     );

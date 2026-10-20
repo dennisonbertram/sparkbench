@@ -66,7 +66,28 @@ const tht = (p: LivePart) => /^(Plugin|TO-92|DIP|PDIP|TH)/i.test(p.pkg);
 
 /** What to search for each part type, and which results are acceptable (through-hole, right kind). */
 function queries(type: string, props: Record<string, any>): { q: string[]; ok: (p: LivePart) => boolean; pages?: number } | null {
+  // Surface-mount variants (product version of a board).
+  const fp = String(props.footprint ?? '');
+  if (/_0805_/.test(fp)) {
+    if (type === 'resistor') return { q: [`${fmtR(props.ohms ?? 220)} 0805`], ok: (p) => p.pkg === '0805' && /resist/i.test(p.description) };
+    if (type === 'capacitor') return { q: [`${fmtC(props.farads ?? 1e-7)} 0805`], ok: (p) => p.pkg === '0805' && /capacitor|MLCC/i.test(p.description) };
+    if (type === 'led') return { q: [`0805 ${props.color ?? 'red'} LED`, 'LED 0805'], ok: (p) => p.pkg === '0805' && /LED|emitting/i.test(p.description) };
+  }
+  if (/CP_Elec/.test(fp)) return { q: [`${fmtC(props.farads ?? 1e-5)} 25V SMD electrolytic`], ok: (p) => /SMD/.test(p.pkg) && /electrolytic/i.test(p.description) };
+  if (/SOD-123/.test(fp)) return { q: ['1N4148W'], ok: (p) => /SOD-123/.test(p.pkg) };
+  if (type === 'ne555' && /SOIC/.test(fp)) return { q: ['NE555DR'], ok: (p) => /SOIC-8|SOP-8/.test(p.pkg) };
+  if (type === 'mcp3008' && /SOIC/.test(fp)) return { q: ['MCP3008-I/SL'], ok: (p) => /SOIC-16|SOP-16/.test(p.pkg) };
   switch (type) {
+    case 'esp32-wroom':
+      return { q: ['ESP32-WROOM-32E-N4'], ok: (p) => /WROOM/i.test(p.mfr) };
+    case 'ldo-3v3':
+      return { q: ['AMS1117-3.3'], ok: (p) => /SOT-223/.test(p.pkg) };
+    case 'ch340c':
+      return { q: ['CH340C'], ok: (p) => /SOP-16|SOIC-16/.test(p.pkg) };
+    case 'npn-smd':
+      return { q: ['MMBT3904'], ok: (p) => /SOT-23/.test(p.pkg) };
+    case 'usb-micro':
+      return { q: ['105017-0001', 'Micro USB B SMD'], ok: (p) => /USB/i.test(p.description) };
     case 'resistor':
       return { q: [`${fmtR(props.ohms ?? 220)} 1/4W`], ok: (p) => tht(p) && /resist/i.test(p.description) };
     case 'capacitor':
@@ -180,10 +201,10 @@ export async function sourcePcb(project: Project): Promise<PcbSourced[]> {
   const { partDef } = await import('../src/core/parts');
   for (const p of project.parts) {
     const def = partDef(p.type);
-    const fp = def.kicad.footprint ?? '';
+    const fp = p.props?.footprint ?? def.kicad.footprint ?? '';
     const ref = p.ref ?? p.id;
     const rows: number[] =
-      p.type === 'esp32-devkit' ? [15, 15] : p.type === 'pi-pico' ? [20, 20] : p.type === 'rpi4' ? [] : /PinHeader_1x(\d+)/.test(fp) ? [Number(/PinHeader_1x(\d+)/.exec(fp)![1])] : [];
+      p.type === 'esp32-devkit' ? [15, 15] : p.type === 'pi-pico' && !p.props?.footprint ? [20, 20] : p.type === 'rpi4' ? [] : /PinHeader_1x(\d+)/.test(fp) ? [Number(/PinHeader_1x(\d+)/.exec(fp)![1])] : [];
     if (p.type === 'rpi4') {
       const h = await bestFor(['2x20P female header 2.54mm', 'Female Header 2.54mm 2*20P'], (x) => /2\.54/.test(x.pkg), 1).catch(() => null);
       out.push({ ref, item: '2×20 socket for the Raspberry Pi ribbon cable', quantity: 1, part: h });
