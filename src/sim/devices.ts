@@ -1,0 +1,304 @@
+// Register-level models of I2C peripherals. They receive exactly the bytes the real
+// MicroPython / Python drivers put on the bus, so driver bugs show up in simulation too.
+
+export interface I2CDevice {
+  addr: number;
+  partId: string;
+  write(bytes: number[]): void;
+  read(n: number): number[];
+}
+
+const CMD_ARGS: Record<number, number> = { 0x20: 1, 0x21: 2, 0x22: 2, 0x81: 1, 0xa8: 1, 0xd3: 1, 0xda: 1, 0xd5: 1, 0xd9: 1, 0xdb: 1, 0x8d: 1, 0xad: 1 };
+
+export class SSD1306Device implements I2CDevice {
+  addr = 0x3c;
+  ram = new Uint8Array(1024);
+  on = false;
+  invert = false;
+  contrast = 255;
+  col0 = 0;
+  col1 = 127;
+  page0 = 0;
+  page1 = 7;
+  col = 0;
+  page = 0;
+  private pending: number[] = [];
+  private pendingCmd = -1;
+  dirty = true;
+  frames = 0;
+  constructor(public partId: string) {}
+
+  write(bytes: number[]) {
+    let i = 0;
+    while (i < bytes.length) {
+      const ctrl = bytes[i++];
+      const co = (ctrl & 0x80) !== 0;
+      const dc = (ctrl & 0x40) !== 0;
+      if (co) {
+        // single byte follows, then another control byte
+        if (i < bytes.length) {
+          const b = bytes[i++];
+          dc ? this.data(b) : this.command(b);
+        }
+      } else {
+        // rest of the transaction is all commands or all data
+        while (i < bytes.length) {
+          const b = bytes[i++];
+          dc ? this.data(b) : this.command(b);
+        }
+      }
+    }
+    if (bytes.length > 2 && (bytes[0] & 0x40)) this.frames++;
+  }
+  read(n: number) {
+    return new Array(n).fill(this.on ? 0x03 : 0x43);
+  }
+  private command(b: number) {
+    if (this.pendingCmd >= 0) {
+      this.pending.push(b);
+      if (this.pending.length >= CMD_ARGS[this.pendingCmd]) {
+        this.exec(this.pendingCmd, this.pending);
+        this.pendingCmd = -1;
+        this.pending = [];
+      }
+      return;
+    }
+    if (CMD_ARGS[b] !== undefined) {
+      this.pendingCmd = b;
+      this.pending = [];
+      return;
+    }
+    this.exec(b, []);
+  }
+  private exec(cmd: number, args: number[]) {
+    switch (cmd) {
+      case 0xae:
+        this.on = false;
+        break;
+      case 0xaf:
+        this.on = true;
+        break;
+      case 0xa6:
+        this.invert = false;
+        break;
+      case 0xa7:
+        this.invert = true;
+        break;
+      case 0x81:
+        this.contrast = args[0];
+        break;
+      case 0x21:
+        this.col0 = args[0] & 127;
+        this.col1 = args[1] & 127;
+        this.col = this.col0;
+        break;
+      case 0x22:
+        this.page0 = args[0] & 7;
+        this.page1 = args[1] & 7;
+        this.page = this.page0;
+        break;
+      default:
+        if (cmd >= 0xb0 && cmd <= 0xb7) this.page = cmd & 7; // page addressing mode
+        else if (cmd < 0x10) this.col = (this.col & 0xf0) | cmd;
+        else if (cmd < 0x20) this.col = (this.col & 0x0f) | ((cmd & 0x0f) << 4);
+    }
+    this.dirty = true;
+  }
+  private data(b: number) {
+    this.ram[this.page * 128 + this.col] = b;
+    this.col++;
+    if (this.col > this.col1) {
+      this.col = this.col0;
+      this.page++;
+      if (this.page > this.page1) this.page = this.page0;
+    }
+    this.dirty = true;
+  }
+  /** 128×64 pixel bitmap, one byte per pixel (0/1). */
+  pixels(): Uint8Array {
+    const out = new Uint8Array(128 * 64);
+    if (!this.on) return out;
+    for (let page = 0; page < 8; page++)
+      for (let x = 0; x < 128; x++) {
+        const b = this.ram[page * 128 + x];
+        for (let bit = 0; bit < 8; bit++) out[(page * 8 + bit) * 128 + x] = ((b >> bit) & 1) ^ (this.invert ? 1 : 0);
+      }
+    return out;
+  }
+  /** Text-ish dump for tests: rows of '#'/'.'. */
+  ascii(scaleX = 2, scaleY = 4): string {
+    const px = this.pixels();
+    const rows: string[] = [];
+    for (let y = 0; y < 64; y += scaleY) {
+      let r = '';
+      for (let x = 0; x < 128; x += scaleX) {
+        let on = 0;
+        for (let dy = 0; dy < scaleY; dy++) for (let dx = 0; dx < scaleX; dx++) on |= px[(y + dy) * 128 + x + dx];
+        r += on ? '#' : '.';
+      }
+      rows.push(r);
+    }
+    return rows.join('\n');
+  }
+}
+
+export interface ImuInputs {
+  tiltX: number; // roll, degrees
+  tiltY: number; // pitch, degrees
+  rotZ: number; // deg/s
+  shake: number; // 0/1
+}
+
+export class MPU6050Device implements I2CDevice {
+  addr = 0x68;
+  regs = new Uint8Array(128);
+  ptr = 0;
+  private prev = { x: 0, y: 0, t: 0 };
+  constructor(public partId: string, public inputs: () => ImuInputs, public now: () => number, ad0High = false) {
+    if (ad0High) this.addr = 0x69;
+    this.regs[0x6b] = 0x40; // powers up asleep
+    this.regs[0x75] = 0x68;
+  }
+  write(bytes: number[]) {
+    if (!bytes.length) return;
+    this.ptr = bytes[0] & 0x7f;
+    for (let i = 1; i < bytes.length; i++) {
+      const r = (this.ptr + i - 1) & 0x7f;
+      if (r === 0x6b && bytes[i] & 0x80) {
+        this.regs.fill(0);
+        this.regs[0x6b] = 0x40;
+        this.regs[0x75] = 0x68;
+      } else this.regs[r] = bytes[i];
+    }
+    if (bytes.length > 1) this.ptr = (this.ptr + bytes.length - 1) & 0x7f;
+  }
+  private refresh() {
+    const asleep = (this.regs[0x6b] & 0x40) !== 0;
+    const inp = this.inputs();
+    const rad = Math.PI / 180;
+    const roll = inp.tiltX * rad;
+    const pitch = inp.tiltY * rad;
+    let ax = -Math.sin(pitch);
+    let ay = Math.sin(roll) * Math.cos(pitch);
+    let az = Math.cos(roll) * Math.cos(pitch);
+    const t = this.now();
+    if (inp.shake) {
+      const ph = t / 37000;
+      ax += 1.6 * Math.sin(ph * 7.1);
+      ay += 1.4 * Math.cos(ph * 5.3);
+      az += 1.2 * Math.sin(ph * 3.7);
+    }
+    // tiny sensor noise so values look alive
+    const n = () => (Math.random() - 0.5) * 0.004;
+    const dt = Math.max(1e-3, (t - this.prev.t) / 1e6);
+    const gx = (inp.tiltX - this.prev.x) / dt;
+    const gy = (inp.tiltY - this.prev.y) / dt;
+    this.prev = { x: inp.tiltX, y: inp.tiltY, t };
+    const afs = [16384, 8192, 4096, 2048][(this.regs[0x1c] >> 3) & 3];
+    const gfs = [131, 65.5, 32.8, 16.4][(this.regs[0x1b] >> 3) & 3];
+    const put = (reg: number, v: number) => {
+      let iv = Math.round(asleep ? 0 : v);
+      iv = Math.max(-32768, Math.min(32767, iv));
+      const u = iv & 0xffff;
+      this.regs[reg] = u >> 8;
+      this.regs[reg + 1] = u & 0xff;
+    };
+    put(0x3b, (ax + n()) * afs);
+    put(0x3d, (ay + n()) * afs);
+    put(0x3f, (az + n()) * afs);
+    put(0x41, (24.5 - 36.53) * 340);
+    put(0x43, (Math.abs(gx) < 2000 ? gx : 0) * gfs);
+    put(0x45, (Math.abs(gy) < 2000 ? gy : 0) * gfs);
+    put(0x47, inp.rotZ * gfs);
+  }
+  read(n: number) {
+    if (this.ptr >= 0x3b && this.ptr <= 0x48) this.refresh();
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) out.push(this.regs[(this.ptr + i) & 0x7f]);
+    this.ptr = (this.ptr + n) & 0x7f;
+    return out;
+  }
+}
+
+/** HD44780 16×2 behind a PCF8574 backpack (P0=RS, P1=RW, P2=E, P3=backlight, P4–P7=D4–D7). */
+export class Lcd1602Device implements I2CDevice {
+  addr = 0x27;
+  ddram = new Uint8Array(128).fill(0x20);
+  addrPtr = 0;
+  displayOn = false;
+  cursor = false;
+  blink = false;
+  backlight = false;
+  private port = 0;
+  private eightBit = true;
+  private hiNibble: number | null = null;
+  dirty = true;
+  constructor(public partId: string) {}
+  write(bytes: number[]) {
+    for (const b of bytes) {
+      const prevE = this.port & 0x04;
+      this.port = b;
+      this.backlight = (b & 0x08) !== 0;
+      if (prevE && !(b & 0x04)) this.latch((b >> 4) & 0x0f, (b & 0x01) !== 0);
+    }
+    this.dirty = true;
+  }
+  read(n: number) {
+    return new Array(n).fill(this.port);
+  }
+  private latch(nib: number, rs: boolean) {
+    if (this.eightBit) {
+      const cmd = nib << 4;
+      if (!rs) this.exec(cmd);
+      return;
+    }
+    if (this.hiNibble === null) {
+      this.hiNibble = nib;
+      return;
+    }
+    const v = (this.hiNibble << 4) | nib;
+    this.hiNibble = null;
+    if (rs) this.putc(v);
+    else this.exec(v);
+  }
+  private exec(cmd: number) {
+    if (cmd & 0x80) {
+      this.addrPtr = cmd & 0x7f;
+    } else if (cmd & 0x40) {
+      // CGRAM address: custom characters not modelled
+    } else if (cmd & 0x20) {
+      this.eightBit = (cmd & 0x10) !== 0;
+      this.hiNibble = null;
+    } else if (cmd & 0x10) {
+      // cursor/display shift: ignored
+    } else if (cmd & 0x08) {
+      this.displayOn = (cmd & 0x04) !== 0;
+      this.cursor = (cmd & 0x02) !== 0;
+      this.blink = (cmd & 0x01) !== 0;
+    } else if (cmd & 0x04) {
+      // entry mode: assume increment
+    } else if (cmd & 0x02) {
+      this.addrPtr = 0;
+    } else if (cmd & 0x01) {
+      this.ddram.fill(0x20);
+      this.addrPtr = 0;
+    }
+  }
+  private putc(v: number) {
+    this.ddram[this.addrPtr & 0x7f] = v;
+    this.addrPtr = (this.addrPtr + 1) & 0x7f;
+  }
+  lines(): [string, string] {
+    if (!this.displayOn) return ['                ', '                '];
+    const row = (base: number) => Array.from(this.ddram.subarray(base, base + 16), (c) => String.fromCharCode(c < 32 ? 32 : c)).join('');
+    return [row(0x00), row(0x40)];
+  }
+  /** Raw character codes for the Wokwi element (32 bytes). */
+  characters(): Uint8Array {
+    const out = new Uint8Array(32);
+    if (!this.displayOn) return out.fill(32);
+    out.set(this.ddram.subarray(0, 16), 0);
+    out.set(this.ddram.subarray(0x40, 0x50), 16);
+    return out;
+  }
+}

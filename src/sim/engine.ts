@@ -1,0 +1,776 @@
+// The simulation engine. Environment-agnostic: runs in a Web Worker (real-time, inputs via
+// SharedArrayBuffer) and in Node tests (fast virtual time, scripted inputs).
+import type { Project, PartInstance } from '../core/types';
+import { ElectricalModel } from '../core/circuit';
+import { partDef } from '../core/parts';
+import { pinKey } from '../core/netlist';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, type I2CDevice } from './devices';
+import { SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, bootstrapPy } from './pyshims';
+
+export class SimStop extends Error {
+  constructor(public reason: 'user' | 'time' | 'reset') {
+    super(`SIM_STOP:${reason}`);
+  }
+}
+
+export interface InputChange {
+  part: string;
+  key: string;
+  value: number;
+}
+
+export interface SimHost {
+  /** Block for `us` microseconds of wall time (no-op in fast mode). */
+  waitUs(us: number): void;
+  wallNowMs(): number;
+  pollInputs(): InputChange[] | null;
+  shouldStop(): boolean;
+  emit(frame: SimFrame): void;
+}
+
+export interface PartVisual {
+  led?: number; // 0..1 brightness
+  ma?: number; // LED current
+  rgb?: [number, number, number];
+  pixels?: number[]; // flat r,g,b
+  oled?: number[]; // 1024 bytes GDDRAM
+  oledOn?: boolean;
+  lcd?: { chars: number[]; backlight: boolean };
+  angle?: number;
+  tone?: number;
+  relay?: boolean;
+  powered?: boolean;
+}
+
+export interface SimWarning {
+  id: string;
+  severity: 'error' | 'warning' | 'info';
+  text: string;
+  parts?: string[];
+}
+
+export interface SimFrame {
+  t: number; // sim ms
+  status: 'booting' | 'running' | 'stopped' | 'error' | 'finished';
+  parts: Record<string, PartVisual>;
+  pins: Record<number, { mode: string; level: number; duty?: number; freq?: number; v: number; ma: number }>;
+  serial: string[];
+  warnings: SimWarning[];
+  error?: { message: string; line?: number; file?: string; hint?: string; raw: string };
+  nets?: Record<string, number>;
+  scope?: { t: number; v: Record<string, number> }[];
+  i2c?: string[];
+}
+
+export interface MicroPythonLike {
+  registerJsModule(name: string, mod: Record<string, unknown>): void;
+  runPython(code: string): unknown;
+  FS: { mkdir(p: string): void; writeFile(p: string, data: string): void };
+}
+
+export type MicroPythonLoader = (opts: { stdout: (s: string) => void; stderr: (s: string) => void }) => Promise<MicroPythonLike>;
+
+export interface EngineOptions {
+  mode: 'realtime' | 'fast';
+  speed?: number;
+  untilMs?: number; // fast mode: stop after this much sim time
+  frameMs?: number; // realtime: emit frames this often (wall ms)
+}
+
+const ENODEV = 19;
+const ETIMEDOUT = 116;
+
+export class SimEngine {
+  model: ElectricalModel;
+  timeUs = 0;
+  status: SimFrame['status'] = 'booting';
+  serialAll: string[] = [];
+  private serialNew: string[] = [];
+  private warnings = new Map<string, SimWarning>();
+  private warningsNew: SimWarning[] = [];
+  private devices: { dev: I2CDevice; part: PartInstance }[] = [];
+  private buses: { sda: number; scl: number }[] = [];
+  private pwm = new Map<number, { freq: number; duty: number }>();
+  private outLevel = new Map<number, number>();
+  private trig = new Map<number, { rise: number; pulse: number; at: number }>();
+  private irqWatch = new Map<number, number>();
+  private irqQueue: number[] = [];
+  private pixels = new Map<string, number[]>();
+  private servos = new Map<string, number>();
+  private tones = new Map<string, number>();
+  private relays = new Map<string, boolean>();
+  private pirHold = new Map<string, number>();
+  private i2cLog: string[] = [];
+  private wallStart = 0;
+  private simStart = 0;
+  private lastFrameWall = 0;
+  private lastInputPoll = 0;
+  error?: SimFrame['error'];
+  scope: { t: number; v: Record<string, number> }[] = [];
+  speed: number;
+  lines = 0;
+
+  constructor(public project: Project, public host: SimHost, public opts: EngineOptions) {
+    this.model = new ElectricalModel(project);
+    this.speed = opts.speed ?? 1;
+    for (const part of project.parts) {
+      if (part.type === 'ssd1306') this.devices.push({ dev: new SSD1306Device(part.id), part });
+      if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
+      if (part.type === 'mpu6050') {
+        const st = () => this.model.states.get(part.id)! as any;
+        const ad0 = this.model.gpiosOnNet(part.id, 'AD0').length === 0 && this.model.pinVoltage(part.id, 'AD0') > 2;
+        this.devices.push({ dev: new MPU6050Device(part.id, st, () => this.timeUs, ad0), part });
+      }
+    }
+  }
+
+  get board() {
+    return this.model.board;
+  }
+
+  // ------------------------------------------------------------------ clock
+  private realtime() {
+    return this.opts.mode === 'realtime';
+  }
+  private syncClock() {
+    if (this.realtime()) {
+      const simFromWall = this.simStart + (this.host.wallNowMs() - this.wallStart) * 1000 * this.speed;
+      if (simFromWall > this.timeUs) this.timeUs = simFromWall;
+    } else this.timeUs += 15; // every hardware call costs a little time, so polling loops advance
+  }
+  private checkStop() {
+    if (this.host.shouldStop()) throw new SimStop('user');
+    if (!this.realtime() && this.opts.untilMs !== undefined && this.timeUs >= this.opts.untilMs * 1000) throw new SimStop('time');
+  }
+  private tick() {
+    this.checkStop();
+    this.syncClock();
+    this.pollInputs();
+    this.maybeFrame();
+  }
+  sleepUs(us: number) {
+    this.checkStop();
+    us = Math.max(0, us);
+    if (!this.realtime()) {
+      this.timeUs += us;
+      this.pollInputs();
+      this.checkStop();
+      return;
+    }
+    const target = this.timeUs + us;
+    this.timeUs = target;
+    const wallTarget = this.wallStart + (target - this.simStart) / 1000 / this.speed;
+    let wait = wallTarget - this.host.wallNowMs();
+    if (wait < -250) {
+      // we're far behind (slow code); re-anchor so we don't race to catch up
+      this.wallStart = this.host.wallNowMs();
+      this.simStart = this.timeUs;
+      wait = 0;
+    }
+    while (wait > 0) {
+      const chunk = Math.min(wait, 16);
+      this.host.waitUs(chunk * 1000);
+      this.checkStop();
+      this.pollInputs();
+      this.maybeFrame();
+      wait = wallTarget - this.host.wallNowMs();
+    }
+    this.pollInputs();
+    this.maybeFrame();
+  }
+
+  // ------------------------------------------------------------------ inputs
+  pollInputs() {
+    const changes = this.host.pollInputs();
+    if (changes) for (const ch of changes) this.applyInput(ch);
+    // Release PIR holds
+    for (const [id, until] of this.pirHold) {
+      if (this.timeUs >= until) {
+        this.pirHold.delete(id);
+        this.model.setPartState(id, 'motion', 0);
+      }
+    }
+    if (this.irqWatch.size && (changes?.length || this.model.dirty)) this.checkIrqs();
+  }
+  applyInput(ch: InputChange) {
+    const part = this.project.parts.find((p) => p.id === ch.part);
+    if (!part) return;
+    if (part.type === 'pir' && ch.key === 'motion') {
+      if (ch.value) {
+        this.pirHold.delete(part.id);
+        this.model.setPartState(part.id, 'motion', 1);
+      } else this.pirHold.set(part.id, this.timeUs + 2_000_000); // HC-SR501 holds OUT high ~2 s
+      return;
+    }
+    this.model.setPartState(ch.part, ch.key, ch.value);
+  }
+  private checkIrqs() {
+    for (const [g, last] of this.irqWatch) {
+      const v = this.readPin(g);
+      if (v !== last) {
+        this.irqWatch.set(g, v);
+        this.irqQueue.push(g, v);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------ warnings / serial
+  warn(id: string, severity: SimWarning['severity'], text: string, parts?: string[]) {
+    if (this.warnings.has(id)) return;
+    const w = { id, severity, text, parts };
+    this.warnings.set(id, w);
+    this.warningsNew.push(w);
+  }
+  get allWarnings() {
+    return [...this.warnings.values()];
+  }
+  serial(line: string) {
+    this.lines++;
+    this.serialAll.push(line);
+    if (this.serialAll.length > 2000) this.serialAll.splice(0, 500);
+    this.serialNew.push(line);
+  }
+
+  // ------------------------------------------------------------------ GPIO
+  private gpioValid(g: number) {
+    return !!this.board?.pins.find((p) => p.gpio === g);
+  }
+  pinInit(g: number, mode: number, pull: number, value: number): number {
+    this.tick();
+    if (this.board?.id === 'pico' && g === 25) {
+      if (value >= 0) this.outLevel.set(25, value);
+      return 0;
+    }
+    if (!this.gpioValid(g)) return -1;
+    const bp = this.board!.pins.find((p) => p.gpio === g)!;
+    if ((mode === 3 || mode === 7) && !bp.caps?.includes('out')) return -2;
+    if (mode === 3 || mode === 7) {
+      const level = value >= 0 ? value : this.outLevel.get(g) ?? 0;
+      this.outLevel.set(g, level);
+      this.pwm.delete(g);
+      this.model.setPinMode(g, { kind: 'out', level });
+    } else {
+      if (pull === 1 && !bp.caps?.includes('out')) this.warn(`nopull${g}`, 'warning', `GPIO${g} is input-only and has no internal pull-up resistor — Pin.PULL_UP is ignored. Add an external 10 kΩ pull-up or use another pin.`);
+      const pullKind = pull === 1 && bp.caps?.includes('out') ? 'up' : pull === 2 ? 'down' : 'none';
+      this.model.setPinMode(g, { kind: 'in', pull: pullKind });
+    }
+    if (bp.caution && /strapping|serial|USB|Reset/i.test(bp.caution)) this.warn(`caution${g}`, 'info', `${bp.name} (GPIO${g}): ${bp.caution}`);
+    return 0;
+  }
+  pinWrite(g: number, v: number) {
+    this.tick();
+    if (this.board?.id === 'pico' && g === 25) {
+      this.outLevel.set(25, v);
+      return;
+    }
+    const prev = this.outLevel.get(g) ?? 0;
+    this.outLevel.set(g, v);
+    const mode = this.model.pinModes.get(g);
+    if (mode?.kind === 'out' || mode?.kind === 'pwm') this.model.setPinMode(g, { kind: 'out', level: v });
+    // Track trigger pulses (HC-SR04)
+    const tr = this.trig.get(g) ?? { rise: -1, pulse: 0, at: -1 };
+    if (v && !prev) tr.rise = this.timeUs;
+    if (!v && prev && tr.rise >= 0) {
+      tr.pulse = this.timeUs - tr.rise;
+      tr.at = this.timeUs;
+    }
+    this.trig.set(g, tr);
+    this.updateActuators(g);
+  }
+  readPin(g: number): number {
+    if (this.board?.id === 'pico' && g === 25) return this.outLevel.get(25) ?? 0;
+    const mode = this.model.pinModes.get(g);
+    if (mode?.kind === 'out') return mode.level;
+    return this.model.readDigital(g);
+  }
+  pinRead(g: number): number {
+    this.tick();
+    const v = this.readPin(g);
+    const volts = this.model.gpioVoltage(g);
+    if (volts > 3.7) this.warn(`overv${g}`, 'error', `GPIO${g} sees ${volts.toFixed(1)} V — more than the 3.3 V it can take. Use a voltage divider or level shifter.`);
+    return v;
+  }
+  adcInit(g: number): number {
+    this.tick();
+    const bp = this.board?.pins.find((p) => p.gpio === g);
+    if (!bp?.caps?.includes('adc')) return -1;
+    this.model.setPinMode(g, { kind: 'analog' });
+    return 0;
+  }
+  adcRead(g: number, atten: number): number {
+    this.tick();
+    const v = this.model.gpioVoltage(g);
+    const full = this.board?.id === 'esp32' ? [1.1, 1.5, 2.2, 3.3][atten] ?? 3.3 : 3.3;
+    if (v > 3.6) this.warn(`overv${g}`, 'error', `GPIO${g} (ADC) sees ${v.toFixed(1)} V — above 3.3 V. Use a divider.`);
+    const noise = (Math.random() - 0.5) * 60;
+    return Math.max(0, Math.min(65535, Math.round((v / full) * 65535 + noise)));
+  }
+  pwmSet(g: number, freq: number, duty: number) {
+    this.tick();
+    if (!this.gpioValid(g)) return;
+    if (duty < 0) {
+      this.pwm.delete(g);
+      this.model.setPinMode(g, { kind: 'unused' });
+    } else {
+      this.pwm.set(g, { freq, duty });
+      this.model.setPinMode(g, { kind: 'pwm', duty, freq });
+    }
+    this.updateActuators(g);
+  }
+
+  /** Servos, buzzers and relays react to pin changes immediately. */
+  private updateActuators(g: number) {
+    for (const part of this.project.parts) {
+      if (part.type === 'servo' && this.model.gpiosReachable(part.id, 'PWM').includes(g)) {
+        const p = this.pwm.get(g);
+        if (!this.model.modulePowered(part.id)) {
+          this.warn(`servo-power-${part.id}`, 'warning', `${part.ref ?? part.id}: the servo has no power — connect V+ to 5 V and GND to ground.`, [part.id]);
+          continue;
+        }
+        if (p && p.duty > 0) {
+          if (p.freq < 40 || p.freq > 60) {
+            this.warn(`servo-freq-${part.id}`, 'warning', `${part.ref ?? part.id}: servos expect a 50 Hz PWM signal, got ${p.freq} Hz.`, [part.id]);
+            continue;
+          }
+          const pulseUs = (p.duty / 65535) * (1e6 / p.freq);
+          this.servos.set(part.id, Math.max(0, Math.min(180, ((pulseUs - 500) / 2000) * 180)));
+        }
+      }
+      if (part.type === 'buzzer' && this.model.gpiosReachable(part.id, '+').includes(g)) {
+        const p = this.pwm.get(g);
+        this.tones.set(part.id, p && p.duty > 0 && p.duty < 65535 ? p.freq : 0);
+      }
+    }
+  }
+
+  pulseIn(g: number, level: number, timeoutUs: number): number {
+    this.tick();
+    for (const part of this.project.parts) {
+      if (part.type !== 'hcsr04') continue;
+      if (!this.model.gpiosReachable(part.id, 'ECHO').includes(g)) continue;
+      const trigGpios = this.model.gpiosReachable(part.id, 'TRIG');
+      const recent = trigGpios.some((tg) => {
+        const tr = this.trig.get(tg);
+        return tr && tr.pulse >= 5 && this.timeUs - tr.at < 50_000;
+      });
+      if (!recent) {
+        this.warn(`hc-trig-${part.id}`, 'warning', `${part.ref}: no 10 µs trigger pulse seen on its TRIG pin before reading ECHO.`, [part.id]);
+        continue;
+      }
+      const vcc = this.model.moduleSupply(part.id);
+      if (vcc < 4.5) {
+        this.warn(`hc-power-${part.id}`, 'warning', `${part.ref}: the HC-SR04 needs 5 V but gets ${vcc.toFixed(1)} V — it won't measure reliably. Connect VCC to 5 V (VIN/VBUS).`, [part.id]);
+        this.sleepUs(Math.min(timeoutUs, 30000));
+        return -2;
+      }
+      // Electrically check that the echo actually reaches the pin as a logic high.
+      this.model.setModuleOutput(part.id, 'echo', vcc);
+      const ok = this.model.readDigital(g) === level;
+      const v = this.model.gpioVoltage(g);
+      this.model.setModuleOutput(part.id, 'echo', 0);
+      if (v > 3.7) this.warn(`overv${g}`, 'error', `GPIO${g} sees ${v.toFixed(1)} V from the HC-SR04 echo — that's above 3.3 V! Use a 1 kΩ/2 kΩ divider.`, [part.id]);
+      if (!ok) {
+        this.warn(`hc-echo-${part.id}`, 'warning', `${part.ref}: the ECHO signal only reaches ${v.toFixed(2)} V at GPIO${g}, too low to read as HIGH.`, [part.id]);
+        return -2;
+      }
+      const st = this.model.states.get(part.id)!;
+      const d = Math.max(2, Math.min(400, st.distance));
+      const dur = Math.round(d * 58 + (Math.random() - 0.5) * 20);
+      this.sleepUs(450 + dur);
+      return dur;
+    }
+    this.sleepUs(timeoutUs);
+    return -2;
+  }
+
+  dhtRead(g: number): number[] {
+    this.tick();
+    for (const part of this.project.parts) {
+      if (part.type !== 'dht22') continue;
+      if (!this.model.gpiosOnNet(part.id, 'DATA').includes(g)) continue;
+      if (!this.model.modulePowered(part.id)) {
+        this.warn(`dht-power-${part.id}`, 'warning', `${part.ref}: the DHT22 isn't powered — check VCC and GND.`, [part.id]);
+        break;
+      }
+      this.sleepUs(5000);
+      const st = this.model.states.get(part.id)!;
+      return [0, st.temperature, st.humidity];
+    }
+    this.warn(`dht-missing-${g}`, 'warning', `Your code reads a DHT sensor on GPIO${g}, but no powered DHT22 DATA pin is wired to GPIO${g}.`);
+    this.sleepUs(5000);
+    return [-ETIMEDOUT, 0, 0];
+  }
+
+  neopixelWrite(g: number, hex: string) {
+    this.tick();
+    const bytes = hexToBytes(hex);
+    this.sleepUs(bytes.length * 1.25 * 8 + 50);
+    let found = false;
+    for (const part of this.project.parts) {
+      if (part.type !== 'neopixel-ring') continue;
+      if (!this.model.gpiosReachable(part.id, 'DIN', 1000).includes(g)) continue;
+      found = true;
+      if (!this.model.modulePowered(part.id)) {
+        this.warn(`np-power-${part.id}`, 'warning', `${part.ref}: the NeoPixels aren't powered — connect VCC (5 V) and GND.`, [part.id]);
+        continue;
+      }
+      this.pixels.set(part.id, bytes);
+    }
+    if (!found) this.warn(`np-missing-${g}`, 'warning', `NeoPixel data was sent on GPIO${g}, but no NeoPixel DIN is connected there.`);
+  }
+
+  // ------------------------------------------------------------------ I2C
+  i2cDefault(id: number): number[] {
+    const b = this.board;
+    if (!b) return [22, 21];
+    const pin = (n: string) => b.pins.find((p) => p.name === n)?.gpio ?? -1;
+    if (b.id === 'pico') return id === 1 ? [7, 6] : [9, 8];
+    return [pin(b.i2c.scl), pin(b.i2c.sda)];
+  }
+  i2cOpen(sda: number, scl: number): number {
+    this.tick();
+    this.buses.push({ sda, scl });
+    return this.buses.length - 1;
+  }
+  private devicesOn(bus: number) {
+    const b = this.buses[bus];
+    if (!b) return [];
+    return this.devices.filter(({ part }) => this.model.gpiosOnNet(part.id, 'SDA').includes(b.sda) && this.model.gpiosOnNet(part.id, 'SCL').includes(b.scl) && this.model.modulePowered(part.id));
+  }
+  private diagnoseI2c(bus: number, addr: number) {
+    const b = this.buses[bus];
+    const cand = this.devices.filter(({ dev }) => dev.addr === addr);
+    const hex = `0x${addr.toString(16).padStart(2, '0')}`;
+    let why = `Nothing answered at I2C address ${hex} on SDA=GPIO${b.sda}, SCL=GPIO${b.scl}.`;
+    for (const { part } of cand) {
+      const sdaG = this.model.gpiosOnNet(part.id, 'SDA');
+      const sclG = this.model.gpiosOnNet(part.id, 'SCL');
+      const name = part.ref ?? part.id;
+      if (!this.model.modulePowered(part.id)) why += ` ${name} (${partDef(part.type).name}) has no power — check its VCC/GND wires.`;
+      else if (sdaG.includes(b.scl) && sclG.includes(b.sda)) why += ` ${name}'s SDA and SCL wires are swapped.`;
+      else if (!sdaG.length || !sclG.length) why += ` ${name}'s SDA/SCL pins aren't wired to the board.`;
+      else why += ` ${name} is wired to SDA=GPIO${sdaG[0]}, SCL=GPIO${sclG[0]} — the code uses different pins.`;
+    }
+    if (!cand.length) why += ' No part with that address is in the design.';
+    this.warn(`i2c-${bus}-${addr}`, 'error', why, cand.map((c) => c.part.id));
+  }
+  i2cWrite(bus: number, addr: number, hex: string): number {
+    this.tick();
+    const bytes = hexToBytes(hex);
+    this.sleepUs((bytes.length + 1) * 22.5);
+    const d = this.devicesOn(bus).find(({ dev }) => dev.addr === addr);
+    if (!d) {
+      this.diagnoseI2c(bus, addr);
+      return -ENODEV;
+    }
+    d.dev.write(bytes);
+    if (this.i2cLog.length < 400) this.i2cLog.push(`W ${addr.toString(16)} ${bytes.length}B`);
+    return bytes.length;
+  }
+  i2cRead(bus: number, addr: number, n: number): string {
+    this.tick();
+    this.sleepUs((n + 1) * 22.5);
+    const d = this.devicesOn(bus).find(({ dev }) => dev.addr === addr);
+    if (!d) {
+      this.diagnoseI2c(bus, addr);
+      return `-${ENODEV}`;
+    }
+    return bytesToHex(d.dev.read(n));
+  }
+  i2cScan(bus: number): number[] {
+    this.tick();
+    this.sleepUs(2000);
+    return this.devicesOn(bus).map(({ dev }) => dev.addr);
+  }
+
+  // ------------------------------------------------------------------ MCP3008 (Raspberry Pi)
+  mcp3008Read(ch: number): number {
+    this.tick();
+    const part = this.project.parts.find((p) => p.type === 'mcp3008');
+    if (!part) return -1;
+    const need: [string, number[]][] = [['CLK', [11]], ['DOUT', [9]], ['DIN', [10]], ['CS', [8, 7]]];
+    for (const [pin, gpios] of need) {
+      const on = this.model.gpiosOnNet(part.id, pin);
+      if (!on.some((g) => gpios.includes(g))) {
+        this.warn(`mcp-${pin}`, 'error', `${part.ref}: ${pin} must connect to GPIO${gpios.join(' or GPIO')} (SPI0) but is ${on.length ? `on GPIO${on[0]}` : 'not connected'}.`, [part.id]);
+        return -1;
+      }
+    }
+    if (!this.model.modulePowered(part.id)) {
+      this.warn('mcp-power', 'error', `${part.ref}: the MCP3008 has no power on VDD.`, [part.id]);
+      return -1;
+    }
+    this.sleepUs(30);
+    const vref = this.model.pinVoltage(part.id, 'VREF') || 3.3;
+    const v = this.model.pinVoltage(part.id, `CH${ch}`);
+    return Math.max(0, Math.min(1023, Math.round((v / vref) * 1023)));
+  }
+
+  // ------------------------------------------------------------------ frames
+  maybeFrame(force = false) {
+    if (!this.realtime() && !force) return;
+    const now = this.host.wallNowMs();
+    if (!force && now - this.lastFrameWall < (this.opts.frameMs ?? 33)) return;
+    this.lastFrameWall = now;
+    this.host.emit(this.frame());
+  }
+
+  /** Resolve the electrical state and build what the UI needs to draw. */
+  frame(): SimFrame {
+    const m = this.model;
+    m.solve();
+    const parts: Record<string, PartVisual> = {};
+    const brightness = (ma: number) => Math.min(1, Math.sqrt(Math.max(0, ma) / 20));
+    const pwmScale = (partId: string, pins: string[]) => {
+      for (const pin of pins) {
+        for (const g of m.gpiosReachable(partId, pin)) {
+          const p = this.pwm.get(g);
+          if (p && p.freq >= 60) return p.duty / 65535;
+        }
+      }
+      return 1;
+    };
+    for (const part of this.project.parts) {
+      const v: PartVisual = {};
+      switch (part.type) {
+        case 'led': {
+          const ma = m.ledCurrentMa(part.id);
+          v.ma = ma * pwmScale(part.id, ['A', 'C']);
+          v.led = brightness(ma) * pwmScale(part.id, ['A', 'C']);
+          if (ma > 30) this.warn(`led-oc-${part.id}`, 'error', `${part.ref}: ${ma.toFixed(0)} mA through the LED — too much! It needs a series resistor (220–330 Ω).`, [part.id]);
+          break;
+        }
+        case 'rgb-led': {
+          const ch = (c: string) => brightness(m.ledCurrentMa(part.id, c)) * pwmScale(part.id, [c]);
+          v.rgb = [ch('R'), ch('G'), ch('B')];
+          break;
+        }
+        case 'ssd1306':
+        case 'lcd1602': {
+          const d = this.devices.find((x) => x.part.id === part.id)?.dev;
+          v.powered = m.modulePowered(part.id);
+          if (d instanceof SSD1306Device) {
+            v.oled = v.powered ? Array.from(d.ram) : new Array(1024).fill(0);
+            v.oledOn = v.powered && d.on;
+          }
+          if (d instanceof Lcd1602Device) v.lcd = { chars: v.powered ? Array.from(d.characters()) : new Array(32).fill(32), backlight: !!v.powered && d.backlight };
+          break;
+        }
+        case 'neopixel-ring':
+          v.pixels = this.pixels.get(part.id) ?? [];
+          v.powered = m.modulePowered(part.id);
+          break;
+        case 'servo':
+          v.angle = this.servos.get(part.id) ?? 90;
+          break;
+        case 'buzzer':
+          v.tone = this.tones.get(part.id) ?? 0;
+          break;
+        case 'relay': {
+          const on = m.modulePowered(part.id) && m.pinVoltage(part.id, 'IN') - m.pinVoltage(part.id, 'GND') > 1.5;
+          if (on !== this.relays.get(part.id)) {
+            this.relays.set(part.id, on);
+            m.setRelay(part.id, on);
+          }
+          v.relay = on;
+          break;
+        }
+        default:
+          if (partDef(part.type).vmin !== undefined) v.powered = m.modulePowered(part.id);
+      }
+      parts[part.id] = v;
+    }
+    const pins: SimFrame['pins'] = {};
+    for (const [g, mode] of m.pinModes) {
+      if (mode.kind === 'unused') continue;
+      const ma = m.gpioCurrentMa(g);
+      const max = this.board?.maxPinMa ?? 20;
+      if (Math.abs(ma) > max) this.warn(`pin-oc-${g}`, 'error', `GPIO${g} is supplying ${Math.abs(ma).toFixed(0)} mA — the ${this.board?.short} pin limit is about ${max} mA. Add a resistor or use a transistor.`);
+      pins[g] = { mode: mode.kind, level: mode.kind === 'out' ? mode.level : this.readPin(g), duty: mode.kind === 'pwm' ? mode.duty : undefined, freq: mode.kind === 'pwm' ? mode.freq : undefined, v: m.gpioVoltage(g), ma };
+    }
+    if (this.board?.id === 'pico' && this.outLevel.has(25)) pins[25] = { mode: 'out', level: this.outLevel.get(25)!, v: 0, ma: 0 };
+    const f: SimFrame = {
+      t: this.timeUs / 1000,
+      status: this.status,
+      parts,
+      pins,
+      serial: this.serialNew,
+      warnings: this.warningsNew,
+      error: this.error,
+      nets: m.netVoltages(),
+      i2c: this.i2cLog.length ? this.i2cLog.splice(0) : undefined,
+    };
+    if (this.scope.length) f.scope = this.scope.splice(0);
+    this.serialNew = [];
+    this.warningsNew = [];
+    return f;
+  }
+
+  // ------------------------------------------------------------------ JS module exposed to Python
+  hwModule() {
+    return {
+      ticks_us: () => {
+        this.tick();
+        return Math.floor(this.timeUs);
+      },
+      sleep_us: (us: number) => this.sleepUs(us),
+      board: () => this.board?.id ?? 'none',
+      pin_by_name: (n: string) => (n === 'LED' ? (this.board?.id === 'pico' ? 25 : 2) : this.board?.pins.find((p) => p.name === n)?.gpio ?? -1),
+      pin_init: (g: number, mode: number, pull: number, value: number) => this.pinInit(g, mode, pull, value),
+      pin_write: (g: number, v: number) => this.pinWrite(g, v),
+      pin_read: (g: number) => this.pinRead(g),
+      adc_init: (g: number) => this.adcInit(g),
+      adc_read: (g: number, a: number) => this.adcRead(g, a),
+      pwm: (g: number, f: number, d: number) => this.pwmSet(g, f, d),
+      irq_watch: (g: number) => {
+        this.irqWatch.set(g, this.readPin(g));
+      },
+      irq_events: () => {
+        this.tick();
+        if (!this.irqQueue.length) return null;
+        return this.irqQueue.splice(0);
+      },
+      pulse_in: (g: number, l: number, t: number) => this.pulseIn(g, l, t),
+      dht_read: (g: number) => this.dhtRead(g),
+      neopixel_write: (g: number, hex: string) => this.neopixelWrite(g, hex),
+      i2c_default: (id: number) => this.i2cDefault(id),
+      i2c_open: (sda: number, scl: number) => this.i2cOpen(sda, scl),
+      i2c_write: (b: number, a: number, hex: string) => this.i2cWrite(b, a, hex),
+      i2c_read: (b: number, a: number, n: number) => this.i2cRead(b, a, n),
+      i2c_scan: (b: number) => this.i2cScan(b),
+      mcp3008_read: (ch: number) => this.mcp3008Read(ch),
+    };
+  }
+
+  // ------------------------------------------------------------------ running
+  async run(loader: MicroPythonLoader): Promise<void> {
+    this.wallStart = this.host.wallNowMs();
+    this.simStart = 0;
+    if (this.project.board === 'none') return this.runDiscrete();
+    const isPi = this.project.board === 'rpi4';
+    let stdoutBuf = '';
+    const mp = await loader({
+      stdout: (s) => {
+        for (const line of s.split('\n')) this.serial(line);
+        stdoutBuf += s;
+      },
+      stderr: (s) => this.serial(s),
+    });
+    mp.registerJsModule('_hw', this.hwModule());
+    try {
+      mp.FS.mkdir('/lib');
+    } catch {}
+    try {
+      mp.FS.mkdir('/project');
+    } catch {}
+    const lib: Record<string, string> = isPi
+      ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY }
+      : { '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY };
+    for (const [name, src] of Object.entries(lib)) mp.FS.writeFile(`/lib/${name}`, src);
+    for (const [name, src] of Object.entries(this.project.files)) mp.FS.writeFile(`/project/${name}`, src);
+    this.status = 'running';
+    this.maybeFrame(true);
+    try {
+      mp.runPython(bootstrapPy(isPi ? 'pi' : 'mp'));
+      const main = this.project.files['main.py'] ?? '';
+      // exec main.py as a file so tracebacks name it
+      mp.runPython(`__file__ = "/project/main.py"\nexec(compile(open("/project/main.py").read(), "main.py", "exec"), {"__name__": "__main__"})`);
+      this.status = 'finished';
+      if (main.trim()) this.serial('[program finished]');
+    } catch (e: any) {
+      if (e instanceof SimStop || String(e?.message ?? e).includes('SIM_STOP')) {
+        this.status = 'stopped';
+      } else {
+        this.status = 'error';
+        this.error = explainError(String(e?.message ?? e), this.project);
+        this.serial(this.error.raw);
+      }
+    }
+    this.maybeFrame(true);
+  }
+
+  /** Battery-powered discrete circuits: transient simulation of the whole circuit. */
+  runDiscrete() {
+    const c = this.model.circuit;
+    this.status = 'running';
+    this.model.solve();
+    c.initCaps(true);
+    const dt = 2e-4;
+    const probeNets = this.model.nets.filter((n) => n.pins.length > 1).slice(0, 8);
+    let lastScope = -1;
+    try {
+      for (;;) {
+        this.checkStop();
+        this.pollInputs();
+        if (this.model.dirty) this.model.dirty = false;
+        c.step(dt);
+        this.timeUs += dt * 1e6;
+        if (this.timeUs - lastScope >= 5000) {
+          lastScope = this.timeUs;
+          const v: Record<string, number> = {};
+          for (const n of probeNets) v[n.id] = n === this.model.groundNet ? 0 : c.voltage(n.id);
+          this.scope.push({ t: this.timeUs / 1000, v });
+          if (this.scope.length > 2000) this.scope.splice(0, 1000);
+        }
+        if (this.realtime()) {
+          const wallTarget = this.wallStart + this.timeUs / 1000 / this.speed;
+          const wait = wallTarget - this.host.wallNowMs();
+          if (wait > 2) this.host.waitUs(wait * 1000);
+          this.maybeFrame();
+        }
+      }
+    } catch (e) {
+      if (!(e instanceof SimStop)) {
+        this.status = 'error';
+        this.error = { message: String((e as any)?.message ?? e), raw: String(e) };
+      } else this.status = 'stopped';
+    }
+    this.maybeFrame(true);
+  }
+}
+
+export function hexToBytes(hex: string): number[] {
+  const out: number[] = [];
+  for (let i = 0; i + 1 < hex.length; i += 2) out.push(parseInt(hex.slice(i, i + 2), 16));
+  return out;
+}
+export function bytesToHex(b: number[]): string {
+  let s = '';
+  for (const x of b) s += (x & 255).toString(16).padStart(2, '0');
+  return s;
+}
+
+const HINTS: [RegExp, string][] = [
+  [/ENODEV|Errno 19|Errno 121|not responding/, 'An I2C device did not answer. Check that SDA and SCL go to the right pins (and are not swapped), and that the module has power (VCC + GND).'],
+  [/ETIMEDOUT|Errno 116/, 'A sensor did not answer in time. Check its data wire goes to the pin your code uses, and that it has power.'],
+  [/ImportError: no module named '(\w+)'/, 'A Python module is missing. Driver files (like ssd1306.py) must be copied to the board next to main.py.'],
+  [/IndentationError|unexpected indent|unindent/, 'Python uses indentation to group code. Make sure blocks line up with 4 spaces.'],
+  [/SyntaxError/, 'Python could not understand this line — look for a missing colon, bracket or quote.'],
+  [/NameError: name '(\w+)'/, 'You used a name that was never defined. Check the spelling, or that it was created earlier in the program.'],
+  [/invalid pin|ValueError: Pin/, 'That pin number does not exist on this board, or it cannot do that job (e.g. input-only pins cannot be outputs).'],
+  [/has no ADC/, 'Only some pins can read analog voltages. On the ESP32 use GPIO32–39; on the Pico use GP26–28.'],
+  [/TypeError/, 'A value had the wrong type, e.g. adding text to a number. Check the values on that line.'],
+  [/ZeroDivisionError/, 'Something was divided by zero — often a sensor returned 0. Guard the division with an if.'],
+  [/MemoryError/, 'The board ran out of memory. Avoid building very large lists or strings in a loop.'],
+];
+
+export function explainError(raw: string, project?: Project): NonNullable<SimFrame['error']> {
+  const lines = raw.trim().split('\n');
+  const last = lines[lines.length - 1] ?? raw;
+  let line: number | undefined;
+  let file: string | undefined;
+  for (const l of lines) {
+    const m = /File "([^"]+)", line (\d+)/.exec(l);
+    if (m && !m[1].startsWith('/lib/') && m[1] !== '<stdin>') {
+      file = m[1].replace('/project/', '');
+      line = Number(m[2]);
+    }
+  }
+  const hint = HINTS.find(([re]) => re.test(raw))?.[1];
+  let message = last.replace(/^\w+Error: /, (s) => s);
+  if (/OSError: (19|\[Errno 19\])/.test(raw)) message = 'OSError: [Errno 19] ENODEV — no I2C device answered';
+  void project;
+  return { message, line, file, hint, raw: raw.trim() };
+}
+
+export { pinKey };
