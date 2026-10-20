@@ -1,21 +1,10 @@
 // "Check my build": the user uploads a photo of their breadboard and Claude compares it with the design.
 import React, { useRef, useState } from 'react';
 import { useStore } from './store';
+import { shrinkImage as shrink } from './images';
 
 interface Issue { parts: string[]; problem: string; fix: string; confidence: 'high' | 'medium' | 'low' }
 interface Result { verdict: 'looks-right' | 'problems' | 'cant-tell'; summary: string; issues: Issue[]; could_not_check: string[]; photo_tips: string | null }
-
-/** Shrink a photo to at most 1800 px on its long side, as JPEG base64 (phone photos are often 5–12 MB). */
-async function shrink(file: File): Promise<{ data: string; mediaType: 'image/jpeg'; preview: string }> {
-  const bmp = await createImageBitmap(file);
-  const k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * k);
-  c.height = Math.round(bmp.height * k);
-  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
-  const url = c.toDataURL('image/jpeg', 0.85);
-  return { data: url.split(',')[1], mediaType: 'image/jpeg', preview: url };
-}
 
 export function PhotoCheck() {
   const project = useStore((s) => s.project)!;

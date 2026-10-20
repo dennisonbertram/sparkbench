@@ -11,6 +11,8 @@ import { runChecks } from '../core/checks';
 import { SimControls } from './SimControls';
 import { TestsPanel, TestsBadge } from './TestsPanel';
 import { RequirementsCard, QuestionsCard } from './Requirements';
+import { AttachImages } from './Attach';
+import type { Shrunk } from './images';
 import type { CheckResult, FixAction } from '../core/types';
 import { annotate } from '../core/netlist';
 import { registerCustomPart, type CustomPartSpec } from '../core/customParts';
@@ -24,14 +26,16 @@ export function Copilot() {
   const ai = useStore((s) => s.aiStatus);
   const busy = useStore((s) => s.busy);
   const [text, setText] = useState('');
+  const [images, setImages] = useState<Shrunk[]>([]);
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => {
     log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' });
   }, [chat]);
   const submit = () => {
-    if (!text.trim()) return;
-    sendPrompt(text);
+    if (!text.trim() && !images.length) return;
+    sendPrompt(text, images);
     setText('');
+    setImages([]);
   };
   const suggestions = suggestFor(project);
   return (
@@ -52,6 +56,9 @@ export function Copilot() {
         {chat.map((m) => (
           <div key={m.id} className={`msg ${m.role} ${m.pending ? 'pending' : ''}`}>
             {m.role === 'ai' && !m.pending ? <div className="msg-text md" dangerouslySetInnerHTML={{ __html: marked.parse(m.text, { async: false, breaks: true }) as string }} /> : <div className="msg-text">{m.text}</div>}
+            {m.images && m.images.length > 0 && (
+              <div className="msg-images">{m.images.map((src, i) => <img key={i} src={src} alt={`Attached image ${i + 1}`} />)}</div>
+            )}
             {m.questions && <QuestionsCard questions={m.questions} />}
             {m.requirements && <RequirementsCard requirements={m.requirements} />}
             {m.details && m.details.length > 0 && (
@@ -114,7 +121,8 @@ export function Copilot() {
             }
           }}
         />
-        <button type="submit" className="primary" disabled={!text.trim() || !!busy}>
+        <AttachImages images={images} onChange={setImages} label="" />
+        <button type="submit" className="primary" disabled={(!text.trim() && !images.length) || !!busy}>
           {busy ? 'Working…' : 'Send'}
         </button>
       </form>

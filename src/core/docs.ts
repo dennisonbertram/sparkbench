@@ -3,6 +3,7 @@
 // Everything is written for a total beginner and derived from the actual design
 // (parts, wires, pins, firmware), so it stays correct when the design changes.
 import { planBreadboard } from './bbplace';
+import { toolkit } from './toolkit';
 import type { FeatureInstance, FeatureKind, PartDef, PartInstance, PinRef, Project, Wire } from './types';
 import { partDef, formatOhms, formatFarads } from './parts';
 import { boardFor, boardPin, type BoardDef } from './boards';
@@ -875,14 +876,7 @@ function safetyNotes(c: Ctx): string[] {
 }
 
 function toolsList(c: Ctx): string[] {
-  const out: string[] = [];
-  if (c.project.board === 'rpi4') out.push('A computer on the same network (to log in over SSH), or a monitor, keyboard and mouse for the Pi');
-  else if (c.board) out.push('A computer with a USB port (Windows, macOS or Linux) and Python 3 installed');
-  out.push('Optional: a multimeter, for checking voltages and connections');
-  if (c.project.parts.some((p) => p.type === 'neopixel-ring')) out.push('A soldering iron and solder — the NeoPixel ring has bare pads, so its three wires need soldering on');
-  out.push('Optional: small pliers or tweezers for pushing parts into the breadboard');
-  if (c.project.parts.some((p) => p.type === 'lcd1602' || p.type === 'pir')) out.push('A small screwdriver (for the adjustment screws on the module)');
-  return out;
+  return toolkit(c.project).map((t) => `${t.name}: ${t.why}`);
 }
 
 function howItWorksDiscrete(c: Ctx): string[] {

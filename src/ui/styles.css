@@ -599,3 +599,19 @@ h2, h3 { margin: 0; }
 .pcb-dfm li.ok { color: var(--ok); }
 .pcb-dfm li.warn { color: var(--warn); }
 .pcb-cost { max-width: 420px; }
+.toolkit { max-width: 74ch; margin: 16px auto 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); font-size: 14px; }
+.toolkit ul { list-style: none; padding: 0; margin: 10px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 16px; }
+.toolkit li { display: flex; gap: 10px; align-items: flex-start; }
+.toolkit li svg { flex: none; color: var(--mat); background: var(--surface-2); border-radius: 8px; padding: 4px; }
+.toolkit li.optional { opacity: 0.8; }
+.toolkit .tk-name { font-weight: 600; }
+.toolkit .tk-why { color: var(--ink-2); font-size: 13px; line-height: 1.45; }
+@media print { .toolkit { display: none; } }
+.attach { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.attach-thumb { position: relative; }
+.attach-thumb img { height: 40px; border-radius: 4px; border: 1px solid var(--line); display: block; }
+.attach-thumb button { position: absolute; top: -6px; right: -6px; font-size: 10px; padding: 0 4px; border-radius: 999px; line-height: 16px; }
+.attach-btn { font-size: 13px; }
+.hero-attach { margin-top: 8px; }
+.msg-images { display: flex; gap: 6px; margin-top: 6px; }
+.msg-images img { max-height: 80px; border-radius: 4px; border: 1px solid var(--line); }

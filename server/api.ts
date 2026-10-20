@@ -38,8 +38,9 @@ export function apiPlugin(): Plugin {
       if (req.url === '/api/ai/design' && req.method === 'POST') {
         const { aiDesign, aiStatus } = await import('./ai');
         if (!aiStatus().enabled) return send(res, 400, { error: 'No AI available: set ANTHROPIC_API_KEY or log in to Claude Code.' });
-        const { prompt, project, history } = await body(req);
-        return send(res, 200, await aiDesign(prompt, project ?? undefined, history ?? []));
+        const { prompt, project, history, images } = await body(req);
+        const imgs = Array.isArray(images) ? images.filter((im: any) => /^image\/(jpeg|png|webp)$/.test(im?.mediaType) && typeof im?.data === 'string' && im.data.length < 8_000_000).slice(0, 3) : [];
+        return send(res, 200, await aiDesign(prompt, project ?? undefined, history ?? [], imgs));
       }
       if (req.url === '/api/ai/code' && req.method === 'POST') {
         const { aiEditFile, aiStatus } = await import('./ai');

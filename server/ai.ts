@@ -142,10 +142,12 @@ function partSkills(p: Project): string {
     .join('\n\n')}\n`;
 }
 
-export async function aiDesign(prompt: string, current?: Project, history: Turn[] = []): Promise<AiDesignResult> {
+export async function aiDesign(prompt: string, current?: Project, history: Turn[] = [], images: { data: string; mediaType: string }[] = []): Promise<AiDesignResult> {
   registerProjectParts(current);
   const log: string[] = [];
-  const d = await askJson(SYSTEM, [...history.slice(-6), { role: 'user', content: `${projectContext(current)}\n\nRequest: ${prompt}` }], DesignSchema);
+  const pictured = images.length ? `\n\nThe user attached ${images.length === 1 ? 'a photo or sketch' : `${images.length} photos or sketches`}: work out what the gadget does (screens, buttons, lights, sensors, sounds, motors, how it's powered) and design the closest version Sparkbench can build. Say in your reply what you saw and anything you substituted.` : '';
+  const d = await askJson(SYSTEM, [...history.slice(-6), { role: 'user', content: `${projectContext(current)}\n\nRequest: ${prompt}${pictured}` }], DesignSchema, { images: images as any });
+  if (images.length) log.push(`Read ${images.length} image${images.length > 1 ? 's' : ''} you attached.`);
   log.push(`Claude: intent=${d.intent}, board=${d.board}, ${d.features.length} part groups.`);
   if (d.intent === 'question') return { reply: d.reply, intent: 'question', log };
   if (d.intent === 'new' && d.questions.length && !history.some((t) => t.role === 'assistant')) {

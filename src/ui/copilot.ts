@@ -11,6 +11,7 @@ import { startSim, stopSim } from './simClient';
 import type { Project } from '../core/types';
 import { GLOSSARY } from './glossary';
 import { deriveRequirements } from '../core/requirements';
+import { thumbnail, type Shrunk } from './images';
 
 const NEW_RE = /^\s*(start over|new project|(build|create|design|make)( me)? an? (new|different|whole new) |i want to build|i'd like to build|let'?s build|help me build)/i;
 const BUILD_RE = /^\s*(build|create|design|i want|i'd like|i would like|can you (build|make|design)|make me)\b/i;
@@ -33,11 +34,12 @@ function setBusy(label: string | null) {
   useStore.getState().set({ busy: label });
 }
 
-export async function sendPrompt(text: string) {
+export async function sendPrompt(text: string, images: Shrunk[] = []) {
   const st = useStore.getState();
-  const trimmed = text.trim();
+  const trimmed = text.trim() || (images.length ? 'Make something like this.' : '');
   if (!trimmed || st.busy) return;
-  st.addChat({ role: 'user', text: trimmed });
+  const thumbs = await Promise.all(images.map((im) => thumbnail(im.preview).catch(() => '')));
+  st.addChat({ role: 'user', text: trimmed, ...(images.length ? { images: thumbs.filter(Boolean) } : {}) });
   const current = st.project;
   const pending = st.addChat({ role: 'ai', text: current ? 'Thinking…' : 'Designing…', pending: true });
 
@@ -57,7 +59,7 @@ export async function sendPrompt(text: string) {
         .slice(-7, -1)
         .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
       try {
-        const res = await fetch('/api/ai/design', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: trimmed, project: current, history }) });
+        const res = await fetch('/api/ai/design', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: trimmed, project: current, history, images: images.map(({ data, mediaType }) => ({ data, mediaType })) }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? 'AI request failed');
         if (data.intent === 'clarify') {
@@ -73,6 +75,10 @@ export async function sendPrompt(text: string) {
       } finally {
         setBusy(null);
       }
+    }
+    if (images.length) {
+      st.patchChat(pending, { text: 'Designing from a photo or sketch needs Claude (set ANTHROPIC_API_KEY or log in to Claude Code). Describe it in words instead and I will design it offline.', pending: false });
+      return;
     }
     offline(trimmed, current, pending);
   } catch (e: any) {

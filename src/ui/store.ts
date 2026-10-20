@@ -12,6 +12,8 @@ export interface ChatMsg {
   id: string;
   role: 'user' | 'ai';
   text: string;
+  /** Small thumbnails of images the user attached. */
+  images?: string[];
   /** Multiple-choice questions before designing (clarify). */
   questions?: { question: string; options: string[] }[];
   /** Requirements card shown with a design. */

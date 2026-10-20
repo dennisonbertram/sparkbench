@@ -11,6 +11,7 @@ import { CodeEditor } from './CodeEditor';
 import { CodeAssistant } from './CodeAssistant';
 import { PhotoCheck } from './PhotoCheck';
 import { BuildMode } from './BuildMode';
+import { Toolkit } from './Toolkit';
 import { planBreadboard } from '../core/bbplace';
 import { renderBreadboardSvg } from '../core/breadboard';
 import { download, slug } from './exporters';
@@ -321,6 +322,7 @@ export function MarkdownView({ kind }: { kind: 'guide' | 'blog' }) {
         <button onClick={() => navigator.clipboard?.writeText(md)}>Copy Markdown</button>
         <button onClick={() => window.print()}>Print</button>
       </div>
+      {kind === 'guide' && <Toolkit />}
       {kind === 'guide' && <BuildMode />}
       {kind === 'guide' && <PhotoCheck />}
       <article className="prose" data-testid={`doc-${kind}`} dangerouslySetInnerHTML={{ __html: html }} />

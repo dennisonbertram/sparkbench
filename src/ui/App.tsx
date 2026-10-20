@@ -12,6 +12,8 @@ import { Tour } from './Tour';
 import { PcbView } from './PcbView';
 import { useTestRunner } from './TestsPanel';
 import { BoardPanel } from './BoardPanel';
+import { AttachImages } from './Attach';
+import type { Shrunk } from './images';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
 
@@ -348,12 +350,13 @@ export function Logo() {
 
 function Welcome() {
   const [text, setText] = useState('');
+  const [images, setImages] = useState<Shrunk[]>([]);
   const busy = useStore((s) => s.busy);
   const chat = useStore((s) => s.chat);
   const lastAi = [...chat].reverse().find((m) => m.role === 'ai' && !m.pending);
   if (busy) return <Designing text={useStore.getState().chat.find((m) => m.role === 'user')?.text ?? ''} status={busy} />;
   const saved = listSaved();
-  const go = () => text.trim() && sendPrompt(text);
+  const go = () => (text.trim() || images.length) && sendPrompt(text, images);
   const boardName = (b: string) => (b === 'none' ? 'No MCU' : BOARDS[b as 'esp32'].short);
   return (
     <div className="welcome">
@@ -391,10 +394,13 @@ function Welcome() {
               }
             }}
           />
-          <button className="primary big" type="submit" disabled={!text.trim() || !!busy}>
+          <button className="primary big" type="submit" disabled={(!text.trim() && !images.length) || !!busy}>
             Design it
           </button>
         </form>
+        <div className="hero-attach">
+          <AttachImages images={images} onChange={setImages} label="Or start from a photo or sketch of a gadget" />
+        </div>
         {lastAi && (
           <div className="hero-reply" role="status">
             <b>Copilot:</b> {lastAi.text}
