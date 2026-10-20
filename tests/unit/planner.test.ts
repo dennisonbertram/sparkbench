@@ -106,3 +106,13 @@ describe('editing keeps the user oriented', () => {
     expect(kinds('esp32 plant pot moisture monitor with an oled')).toEqual(['oled', 'soil']);
   });
 });
+
+describe('pins survive edits that add resistor-using parts before them', () => {
+  it('adding a light sensor (with its divider resistor) does not move an LED', () => {
+    const base = planFromPrompt('esp32 with a red led, a buzzer and a button');
+    const next = buildProject(editSpec(base.spec!, 'add a light sensor').spec, { previous: base });
+    for (const k of ['led', 'buzzer', 'button'] as const) {
+      expect(next.features!.find((f) => f.kind === k)!.pins).toEqual(base.features!.find((f) => f.kind === k)!.pins);
+    }
+  });
+});

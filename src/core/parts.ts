@@ -306,7 +306,7 @@ export const PARTS: PartDef[] = [
     type: 'led',
     name: 'LED 5 mm',
     category: 'output',
-    description: 'Standard 5 mm LED. Needs a series resistor (≈220–330 Ω from 3.3 V).',
+    description: 'Standard 5 mm LED. Always used with a series resistor; Sparkbench picks the value for the LED colour (see the parts list).',
     eli5: 'A little light. The long leg (+) goes toward the board pin; it always needs a resistor.',
     refPrefix: 'D',
     pins: [p('A', 'passive', 'led.anode', { description: 'Anode (+, long leg)' }), p('C', 'passive', 'led.cathode', { description: 'Cathode (−, short leg, flat side)' })],

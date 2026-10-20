@@ -468,6 +468,58 @@ _simtime._hooks.append(_service)
 _simtime._next_fns.append(_next_timer_us)
 `;
 
+export const ESP32_PY = `# Simulated esp32 module (wake sources and sensors are accepted but have no effect).
+WAKEUP_ALL_LOW = 0
+WAKEUP_ANY_HIGH = 1
+
+
+def wake_on_ext0(pin, level):
+    pass
+
+
+def wake_on_ext1(pins, level):
+    pass
+
+
+def wake_on_touch(wake):
+    pass
+
+
+def raw_temperature():
+    return 120
+
+
+def hall_sensor():
+    return 0
+
+
+class NVS:
+    def __init__(self, namespace):
+        self._d = {}
+
+    def set_i32(self, k, v):
+        self._d[k] = v
+
+    def get_i32(self, k):
+        if k not in self._d:
+            raise OSError(-4354)
+        return self._d[k]
+
+    def set_blob(self, k, v):
+        self._d[k] = bytes(v)
+
+    def get_blob(self, k, buf):
+        b = self._d.get(k, b"")
+        buf[: len(b)] = b
+        return len(b)
+
+    def erase_key(self, k):
+        self._d.pop(k, None)
+
+    def commit(self):
+        pass
+`;
+
 export const DHT_PY = `import _hw
 
 

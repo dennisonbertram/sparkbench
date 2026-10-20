@@ -583,8 +583,10 @@ function generateMain(project: Project, lang: Lang): string {
   }
   // Serial log
   const logParts = R.flatMap((r) => r.lines.map((l) => l.replace(/\s+/g, ' ')));
-  L(`if ${since('last_print')} >= 1000:  # log once a second to the serial console`, '    last_print = now');
-  L(`    print(f"${logParts.join(' | ') || 'running, frame {frame}'}")`);
+  if (logParts.length) {
+    L(`if ${since('last_print')} >= 1000:  # log once a second to the serial console`, '    last_print = now');
+    L(`    print(f"${logParts.join(' | ')}")`);
+  }
   L('frame += 1');
   L(mp ? 'time.sleep_ms(LOOP_MS)' : 'time.sleep(LOOP_MS / 1000)');
   return c.toString();

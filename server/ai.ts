@@ -24,6 +24,7 @@ const DesignSchema = z.object({
         label: z.string().nullable().describe('Optional human label, e.g. "Up button" or "Red"'),
         color: z.string().nullable().describe('LED / button colour if relevant'),
         count: z.number().nullable().describe('NeoPixel ring only: number of LEDs (8, 12, 16 or 24); null otherwise'),
+        pin: z.string().nullable().describe('Only when the user asks for a specific pin for this part: the board pin name (e.g. "D14", "GP14", "GPIO14") or GPIO number; otherwise null'),
       }),
     )
     .describe('Every part-level feature in the FINAL design (for edits: the full updated list; for code/question: the current list unchanged)'),
@@ -53,6 +54,7 @@ ${Object.entries(FEATURE_LABELS)
 At most one each of: oled, lcd, mpu6050, dht22, hcsr04, neopixel, relay, buzzer (I2C address / bus limits).
 Pin assignment, resistors, dividers and wiring are done automatically by the tool — never list resistors yourself.
 Unsupported boards (Arduino Uno, STM32…) → pick the closest supported board and say so. Unsupported parts → pick the closest supported part and say so.
+To move a part to another pin, keep it in the features list with its "pin" set (intent "edit"); never move a part by editing code alone — the tool rewires the breadboard and keeps the code in sync. Keep the same labels for parts that stay, so their wiring is kept.
 If you substitute a part or reduce a quantity, say exactly what you built instead (e.g. "a 12-LED NeoPixel ring", not "a ring").
 Default to esp32 when no board is named. Keep replies short, warm and concrete.`;
 
@@ -89,28 +91,61 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
   if (d.intent === 'question') return { reply: d.reply, intent: 'question', log };
   if (d.intent === 'code' && current) {
     const r = await aiEditFile(current, 'main.py', d.firmware_brief ?? prompt);
-    return { project: r.project, reply: `${d.reply}\n\n${r.reply}`.trim(), intent: 'code', log: [...log, ...r.log] };
+    return finish(r.project, `${d.reply}\n\n${r.reply}`.trim(), 'code', [...log, ...r.log]);
   }
+  const boardDef = d.board === 'none' ? undefined : BOARDS[d.board];
+  const pinName = (p: string | null) => {
+    if (!p || !boardDef) return undefined;
+    const num = /(\d+)\s*$/.exec(p)?.[1];
+    const byName = boardDef.pins.find((x) => x.name.toLowerCase() === p.trim().toLowerCase());
+    return byName?.name ?? (num !== undefined ? boardDef.pins.find((x) => x.gpio === Number(num))?.name : undefined);
+  };
   const spec: DesignSpec = {
     board: d.board,
     title: d.title,
     features: d.features.map((f) => ({
+      ...(pinName(f.pin) ? { pins: { pin: pinName(f.pin)! } } : {}),
       kind: f.kind as DesignSpec['features'][number]['kind'],
       label: f.label ?? undefined,
       props: f.color || f.count ? { ...(f.color ? { color: f.color } : {}), ...(f.count && f.kind === 'neopixel' ? { pixels: f.count } : {}) } : undefined,
     })),
   };
   const isEdit = d.intent === 'edit' && !!current;
-  let project = buildProject(spec, { name: isEdit ? current!.name : d.title, prompt, previous: isEdit ? { ...current!, codeCustom: false } : undefined });
+  let project = buildProject(spec, { name: isEdit ? renameForBoard(current!, d.board) : d.title, prompt, previous: isEdit ? { ...current!, codeCustom: false } : undefined });
+  if (isEdit && current!.codeCustom && project.board !== 'none' && current!.board === project.board) {
+    // The user's (or Claude's) custom program must survive a wiring change: adapt it rather than replace it.
+    const adapted = { ...project, files: { ...project.files, 'main.py': current!.files['main.py'] }, behavior: current!.behavior };
+    const r = await aiEditFile(adapted, 'main.py', `The hardware design just changed (${prompt}). Update this program so it uses the new wiring listed above${d.write_firmware && d.firmware_brief ? ` and also: ${d.firmware_brief}` : ''}. Keep everything else it already does.`);
+    return finish(r.project, d.reply, d.intent, [...log, ...r.log]);
+  }
   if (d.write_firmware && d.firmware_brief && project.board !== 'none') {
     const r = await aiEditFile(project, 'main.py', d.firmware_brief);
     project = r.project;
     log.push(...r.log);
   }
-  // Be upfront about anything the design checker flags (e.g. too much current for USB power).
+  return finish(project, d.reply, d.intent, log, current);
+}
+
+/** Append honest notes: design-check errors and any wiring that moved. */
+function finish(project: Project, reply: string, intent: AiDesignResult['intent'], log: string[], previous?: Project): AiDesignResult {
   const problems = runChecks(project).filter((x) => x.severity === 'error');
-  const warn = problems.length ? `\n\nHeads up — the design checker found ${problems.length === 1 ? 'one problem' : `${problems.length} problems`}: ${problems.map((x) => `${x.title}${x.detail ? ` (${x.detail.split('. ')[0]})` : ''}`).join('; ')}. See the Problems tab for details and fixes.` : '';
-  return { project, reply: d.reply + warn, intent: d.intent, log };
+  let extra = problems.length ? `\n\nHeads up — the design checker found ${problems.length === 1 ? 'one problem' : `${problems.length} problems`}: ${problems.map((x) => `${x.title}${x.detail ? ` (${x.detail.split('. ')[0]})` : ''}`).join('; ')}. See the Problems tab for details and fixes.` : '';
+  if (previous?.features && previous.board === project.board) {
+    const moved: string[] = [];
+    for (const f of project.features ?? []) {
+      const old = previous.features.find((g) => g.kind === f.kind && g.label === f.label);
+      if (old && old.pins.pin && f.pins.pin && old.pins.pin !== f.pins.pin) moved.push(`${f.label} ${old.pins.pin} → ${f.pins.pin}`);
+    }
+    if (moved.length) extra += `\n\nWiring moved: ${moved.join(', ')}.`;
+  }
+  return { project, reply: reply + extra, intent, log };
+}
+
+function renameForBoard(prev: Project, board: Project['board']) {
+  if (board === prev.board) return prev.name;
+  const short: Record<string, string> = { esp32: 'ESP32', pico: 'Pico', rpi4: 'Raspberry Pi', none: '' };
+  const old = short[prev.board];
+  return old && prev.name.startsWith(old) ? prev.name.replace(old, short[board]) : prev.name;
 }
 
 export interface AiCodeResult {

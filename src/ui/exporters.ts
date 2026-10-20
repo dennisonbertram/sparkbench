@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import type { Project } from '../core/types';
 import { exportKicadSchematic, exportKicadProject, exportKicadNetlist, exportKicadFootprints } from '../core/kicad';
 import { renderSchematicSvg } from '../core/schematic';
-import { exportSpice } from '../core/spice';
+import { exportSpice, defaultSpiceOptions } from '../core/spice';
 import { buildBom, bomToCsv } from '../core/bom';
 import { buildGuide, buildBlogPost } from '../core/docs';
 
@@ -37,7 +37,7 @@ export async function buildZip(project: Project): Promise<Blob> {
   hw.file(`${name}.kicad_pro`, exportKicadProject(project));
   hw.file(`${name}.net`, exportKicadNetlist(project));
   for (const [f, src] of Object.entries(exportKicadFootprints(project))) hw.file(f, src);
-  hw.file(`${name}.cir`, exportSpice(project, project.board === 'none' ? { analysis: 'tran', tranStop: 3, tranStep: 1e-4 } : {}));
+  hw.file(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)));
   root.file('schematic.svg', renderSchematicSvg(project, { theme: 'light' }));
   root.file('bom.csv', bomToCsv(buildBom(project)));
   root.file('BUILD.md', buildGuide(project));

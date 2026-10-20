@@ -131,6 +131,8 @@ function applyProject(p: Project, fresh: boolean) {
   stopSim(true);
   st.setProject(p);
   if (fresh) st.setTab('breadboard');
+  // New parts may land outside the current view: refit once the canvas has their pins.
+  setTimeout(() => window.dispatchEvent(new Event('sparkbench:fit')), 250);
 }
 
 function summarizeChecks(p: Project) {

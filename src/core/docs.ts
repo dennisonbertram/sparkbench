@@ -595,7 +595,7 @@ const TROUBLE: Record<string, string[]> = {
   ],
   mpu6050: ['**IMU errors or all-zero readings:** an I2C scan should show 104 (0x68). If not, check VCC/GND and the SDA/SCL wires — the IMU shares them with any display.'],
   dht22: [
-    '**"DHT22 read failed" now and then:** that\'s normal — the sensor is slow and the code simply tries again 2 seconds later.',
+    '**"DHT22 read failed" now and then:** that\'s normal — the sensor is slow and the code simply tries again on its next reading.',
     '**It fails every time:** check the DATA wire, and if you have a bare 4-pin sensor (not on a little board) add a 10 kΩ resistor between DATA and VCC.',
   ],
   ntc: ['**Temperature reads nan or a crazy value:** the thermistor and its 10 kΩ partner must form a divider: thermistor from 3.3 V to the analog pin, resistor from the analog pin to GND.'],
@@ -978,8 +978,7 @@ export function buildGuide(project: Project): string {
   if (b) {
     out.push('## Load the program', '');
     out.push(b.language === 'python' ? 'The Raspberry Pi runs your program as ordinary Python 3 on Linux, using the friendly **gpiozero** library.' : `The ${b.name} runs **MicroPython** — a small version of Python made for microcontrollers. You flash MicroPython once, then copy your program onto the board.`, '');
-    if (c.features.some((f) => f.kind === 'internet') && b.id === 'esp32')
-      out.push('**Enter your Wi-Fi details:** open `main.py` and change `WIFI_SSID` and `WIFI_PASSWORD` near the top to your network name and password (the ESP32 only works with 2.4 GHz Wi-Fi). If you want weather for your own town, also change `LATITUDE` and `LONGITUDE` — you can look them up on open-meteo.com.', '');
+    out.push(...netSetup(c));
     out.push('**First, get the files out of Sparkbench:** click **Export → Everything (.zip)** and unzip it — the `firmware` folder holds the program. (Or use **Download** on each file in the Code tab.)', '');
     if (b.language === 'micropython')
       out.push(
@@ -1339,7 +1338,7 @@ function codeSectionBlog(c: Ctx): string[] {
   const loopMs = c.settings.LOOP_MS ?? 50;
   out.push('### The main loop', '', `Microcontroller programs usually end in a \`while True:\` loop that runs forever. This one goes round roughly ${Math.round(1000 / (loopMs + 5))} times a second: read the inputs, decide what to do, update the outputs, then sleep for ${loopMs} ms.`, '', '```python', quoteLoop(main), '```', '');
   const notes: string[] = [];
-  if (/ticks_diff|now_ms\(\) -/.test(main)) notes.push('Instead of sleeping for seconds at a time, the loop checks the clock to decide when to do slow jobs (like printing once a second). That keeps everything else responsive.');
+  if (!c.project.codeCustom && /ticks_diff|now_ms\(\) -/.test(main)) notes.push('Instead of sleeping for seconds at a time, the loop checks the clock to decide when to do slow jobs (like printing once a second). That keeps everything else responsive.');
   if (main.includes('last_dht')) notes.push('The DHT22 is only read every 2 seconds, because asking it more often just returns errors.');
   if (main.includes('_edge.pressed()')) notes.push('Button presses come through the `Edge` helper, so one press is one action, no matter how long you hold the button down.');
   if (main.includes('frame % 5 == 0')) notes.push('The LCD only gets refreshed every fifth time round the loop — character LCDs are slow, and redrawing them constantly makes them flicker.');
@@ -1358,7 +1357,7 @@ function simSection(c: Ctx): string[] {
   if (c.board && outputs.length) out.push(`As you play, watch the outputs react. ${outputs.slice(0, 2).join(' ')}`, '');
   if (c.board) {
     const knob = Object.keys(c.settings).find((k) => k !== 'LOOP_MS');
-    out.push(`Keep an eye on the serial console too: once a second it prints what the board is seeing. Then try editing ${knob ? `a setting such as \`${knob}\`` : 'the code'} and running it again — it's the quickest way to learn what each line does.`, '');
+    out.push(`Keep an eye on the serial console too: ${c.project.codeCustom ? 'it shows everything the program prints' : 'once a second it prints what the board is seeing'}. Then try editing ${knob ? `a setting such as \`${knob}\`` : 'the code'} and running it again — it's the quickest way to learn what each line does.`, '');
   }
   return out;
 }
@@ -1398,7 +1397,8 @@ function buildTipsSection(c: Ctx): string[] {
 
 function ideasSection(c: Ctx): string[] {
   const kinds = [...new Set(c.features.map((f) => f.kind))];
-  const ideas = kinds.map((k) => FEATURE_IDEAS[k]).filter(Boolean) as string[];
+  // Custom programs may already do the stock ideas, so only suggest hardware additions for them.
+  const ideas = c.project.codeCustom ? [] : (kinds.map((k) => FEATURE_IDEAS[k]).filter(Boolean) as string[]);
   const tone = !!analyze555(c.project)?.tone;
   const picked = tone
     ? ['Swap R2 for a 100 kΩ potentiometer (wired as a variable resistor) to make a pitch knob — a tiny synthesiser.', 'Add a second 555 running slowly (like the 555 blinker) and use its output to drive this one\'s RESET pin: the beeper turns into a pulsing alarm.', 'Add an LED and 470 Ω resistor from the output to GND so you can see when it is sounding.']
@@ -1428,7 +1428,7 @@ export function buildBlogPost(project: Project, opts: { schematicSvgPath?: strin
   const kinds = new Set<FeatureKind>(c.features.map((f) => f.kind));
   const schematic = opts.schematicSvgPath ?? 'schematic.svg';
   const tone555 = !!analyze555(project)?.tone;
-  const tag = tone555 ? 'a beeper made from a 555 timer, a button and a piezo — no code at all' : matchByKinds(TAGLINES, kinds);
+  const tag = tone555 ? 'a beeper made from a 555 timer, a button and a piezo — no code at all' : project.codeCustom ? undefined : matchByKinds(TAGLINES, kinds);
   const total = formatUsd(bomTotal(c.bom));
   const out: string[] = [];
   out.push(`# Build ${withArticle(project.name)}${tag ? `: ${tag}` : ''}`, '');
@@ -1445,6 +1445,8 @@ export function buildBlogPost(project: Project, opts: { schematicSvgPath?: strin
   out.push('## What it does', '', ...behaviours(c).map((be) => `- ${be.does}`), '');
   out.push('## Meet the parts', '', ...blogPartsSection(c));
   out.push(...circuitSection(c, schematic));
+  const net = netSetup(c);
+  if (net.length) out.push('## Connecting it to the internet', '', ...net);
   out.push('## Parts list', '', '| Qty | Part | Approx. price |', '|----:|------|------:|');
   for (const l of c.bom) out.push(`| ${l.quantity} | ${l.name}${l.value && !l.name.includes(l.value) ? ` (${l.value})` : ''}${l.optional ? ' *(recommended)*' : ''} | ${formatUsd(l.linePrice)} |`);
   out.push(`| | **Total** | **${total}** |`, '');
@@ -1542,4 +1544,21 @@ function piify(project: Project, md: string): string {
     .replace(/`OSError: \[Errno 19\] ENODEV`/g, '`OSError: [Errno 121] Remote I/O error`')
     .replace(/MicroPython's driver also enables the internal pull-up\./g, '')
     .replace(/`mpremote repl`/g, 'the terminal where you ran `python3 main.py`');
+}
+
+/** Getting an internet project online: only mentions the settings this project's main.py really has. */
+function netSetup(c: Ctx): string[] {
+  const b = c.board;
+  const main = c.main;
+  if (!b || !c.features.some((f) => f.kind === 'internet')) return [];
+  const has = (name: string) => new RegExp(`^${name}\\s*=`, 'm').test(main);
+  const out: string[] = [];
+  if (b.id === 'rpi4') out.push('**Get the Pi online:** the easiest way is to enter your Wi-Fi name and password in Raspberry Pi Imager when you flash the SD card (*Edit settings → Wireless LAN*). On a Pi that is already running, use `sudo raspi-config` → *System Options → Wireless LAN*.');
+  else if (has('WIFI_SSID')) out.push('**Enter your Wi-Fi details:** open `main.py` and change `WIFI_SSID` and `WIFI_PASSWORD` near the top to your network name and password. The ESP32 only works with 2.4 GHz Wi-Fi.');
+  const extras: string[] = [];
+  if (has('LATITUDE')) extras.push('`LATITUDE` and `LONGITUDE` to your town (look them up on open-meteo.com — the weather comes from there, free and without an account)');
+  if (has('UTC_OFFSET_H')) extras.push('`UTC_OFFSET_H` to your time zone (hours ahead of or behind UTC, e.g. 1 for Paris in winter, −5 for New York)');
+  if (has('CITY_NAME') || has('CITY')) extras.push('the city name shown on screen');
+  if (extras.length) out.push(`Also set ${listJoin(extras)}.`);
+  return out.length ? [...out.map((x) => x), ''] : [];
 }

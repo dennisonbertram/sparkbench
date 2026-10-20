@@ -96,6 +96,12 @@ export const useStore = create<State>((set, get) => ({
   setProject(p, opts = {}) {
     const cur = get().project;
     if (!p || p.id !== cur?.id) set({ pinnedNet: null, hoverNet: null });
+    // Each project keeps its own copilot conversation.
+    if (p && p.id !== cur?.id) {
+      const saved = loadChat(p.id);
+      const pendingNew = !cur && get().chat.length > 0;
+      set({ chat: pendingNew ? get().chat : saved });
+    }
     const record = opts.record ?? true;
     set({
       project: p,
@@ -139,10 +145,12 @@ export const useStore = create<State>((set, get) => ({
   addChat(m) {
     const id = Math.random().toString(36).slice(2);
     set({ chat: [...get().chat, { ...m, id }] });
+    saveChat(get().project?.id, get().chat);
     return id;
   },
   patchChat(id, m) {
     set({ chat: get().chat.map((c) => (c.id === id ? { ...c, ...m } : c)) });
+    saveChat(get().project?.id, get().chat);
   },
   setSim(fn) {
     set({ sim: fn(get().sim) });
@@ -221,6 +229,20 @@ export function saveProject(p: Project) {
     localStorage.setItem(CUR, p.id);
   } catch {}
 }
+function saveChat(id: string | undefined, chat: ChatMsg[]) {
+  if (!id) return;
+  try {
+    localStorage.setItem(`sparkbench.chat.${id}`, JSON.stringify(chat.filter((m) => !m.pending).slice(-60)));
+  } catch {}
+}
+function loadChat(id: string): ChatMsg[] {
+  try {
+    return JSON.parse(localStorage.getItem(`sparkbench.chat.${id}`) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
 export function deleteSaved(id: string) {
   try {
     const all = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, Project>;

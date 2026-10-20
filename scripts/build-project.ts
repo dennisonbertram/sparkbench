@@ -9,7 +9,7 @@ import { planFromPrompt } from '../src/core/planner';
 import { EXAMPLES, buildExample } from '../src/core/examples';
 import { renderSchematicSvg } from '../src/core/schematic';
 import { exportKicadSchematic, exportKicadProject, exportKicadNetlist, exportKicadFootprints } from '../src/core/kicad';
-import { exportSpice } from '../src/core/spice';
+import { exportSpice, defaultSpiceOptions } from '../src/core/spice';
 import { buildBom, bomToCsv, bomTotal } from '../src/core/bom';
 import { buildGuide, buildBlogPost } from '../src/core/docs';
 import { runChecks } from '../src/core/checks';
@@ -31,7 +31,7 @@ async function emit(project: Project, outRoot = 'out') {
     mkdirSync(join(dir, f, '..'), { recursive: true });
     writeFileSync(join(dir, f), src);
   }
-  writeFileSync(join(dir, `${name}.cir`), exportSpice(project, project.board === 'none' ? { analysis: 'tran', tranStop: 3, tranStep: 1e-4 } : {}));
+  writeFileSync(join(dir, `${name}.cir`), exportSpice(project, defaultSpiceOptions(project)));
   const bom = buildBom(project);
   writeFileSync(join(dir, 'bom.csv'), bomToCsv(bom));
   writeFileSync(join(dir, 'BUILD.md'), buildGuide(project));

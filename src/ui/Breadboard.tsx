@@ -8,6 +8,7 @@ import { partDef, pinDef } from '../core/parts';
 import { partSize } from '../core/layout';
 import { buildNets, pinKey } from '../core/netlist';
 import { setInput } from './simClient';
+import { audio } from './audio';
 import type { PinRef } from '../core/types';
 
 interface View {
@@ -30,6 +31,19 @@ export function Breadboard() {
   const wrap = useRef<HTMLDivElement>(null);
   const drag = useRef<{ kind: 'pan' | 'part'; id?: string; sx: number; sy: number; ox: number; oy: number; moved: boolean; snapshot?: any } | null>(null);
   const fitted = useRef<string>('');
+  const [hintDismissed, setHintDismissed] = useState(() => {
+    try {
+      return !!localStorage.getItem('sparkbench.hint.done');
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    // The how-to hint goes away for good once the user has moved a part or added a wire.
+    if (hintDismissed) return;
+    const t = setTimeout(() => setHintDismissed(true), 20000);
+    return () => clearTimeout(t);
+  }, [hintDismissed]);
 
   const { netOf } = useMemo(() => buildNets(project), [project.parts, project.wires]);
 
@@ -47,7 +61,9 @@ export function Breadboard() {
       minX = Math.min(minX, p.x);
       minY = Math.min(minY, p.y);
       maxX = Math.max(maxX, p.x + w);
-      maxY = Math.max(maxY, p.y + h + (partDef(p.type).controls?.length ? 60 : 0));
+      minY = Math.min(minY, p.y - 26); // value chips sit above parts
+      maxY = Math.max(maxY, p.y + h + 22); // labels sit below parts
+      maxX = Math.max(maxX, p.x + Math.max(w, 150)); // long labels
     }
     const r = el.getBoundingClientRect();
     const k = Math.min(2.2, Math.max(0.35, Math.min((r.width - 60) / (maxX - minX), (r.height - 60) / (maxY - minY))));
@@ -103,6 +119,11 @@ export function Breadboard() {
     const d = drag.current;
     drag.current = null;
     if (!d) return;
+    if (d.moved) {
+      try {
+        localStorage.setItem('sparkbench.hint.done', '1');
+      } catch {}
+    }
     if (d.kind === 'part' && d.moved && d.snapshot) {
       const st = useStore.getState();
       st.set({ past: [...st.past.slice(-50), d.snapshot], future: [] });
@@ -180,7 +201,7 @@ export function Breadboard() {
           return (
             <div
               key={part.id}
-              className={`part ${sel ? 'selected' : ''} ${unpowered ? 'unpowered' : ''}`}
+              className={`part ${partDef(part.type).category === 'board' ? 'board' : ''} ${sel ? 'selected' : ''} ${unpowered ? 'unpowered' : ''}`}
               style={{ left: part.x, top: part.y }}
               onPointerDown={(e) => onPartDown(e, part.id)}
               data-part={part.id}
@@ -190,6 +211,7 @@ export function Breadboard() {
               <div className="part-tag">{partTag(part)}</div>
               {running && sel && <SimControls part={part} compact />}
               {running && !sel && <ValueChip part={part} />}
+              {running && (v?.tone ?? 0) > 0 && <div className="value-chip tone">♪ {v!.tone} Hz{audio.enabled ? '' : ' (sound off)'}</div>}
               {unpowered && <div className="nopower">No power</div>}
             </div>
           );
@@ -238,7 +260,7 @@ export function Breadboard() {
       </div>
       {wiringFrom && <div className="canvas-hint">Click another pin to connect it · Esc to cancel</div>}
       {pinnedNet && !wiringFrom && <div className="canvas-hint">Highlighting net {buildNets(project).nets.find((n) => n.id === pinnedNet)?.name} from the schematic · click the mat to clear</div>}
-      {!wiringFrom && !running && project.parts.length > 0 && <div className="canvas-hint subtle">Drag parts to move them · click a pin, then another pin, to add a wire</div>}
+      {!wiringFrom && !running && !hintDismissed && project.parts.length > 0 && <div className="canvas-hint subtle">Drag parts to move them · click a pin, then another pin, to add a wire</div>}
       {tip && <PinTip tip={tip} />}
     </div>
   );

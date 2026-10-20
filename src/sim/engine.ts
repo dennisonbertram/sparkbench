@@ -5,7 +5,7 @@ import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
 import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, type I2CDevice } from './devices';
-import { SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
+import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
 export class SimStop extends Error {
   constructor(public reason: 'user' | 'time' | 'reset') {
@@ -280,7 +280,6 @@ export class SimEngine {
       const pullKind = pull === 1 && bp.caps?.includes('out') ? 'up' : pull === 2 ? 'down' : 'none';
       this.model.setPinMode(g, { kind: 'in', pull: pullKind });
     }
-    if (bp.caution && /strapping|serial|USB|Reset/i.test(bp.caution)) this.warn(`caution${g}`, 'info', `${bp.name} (GPIO${g}): ${bp.caution}`);
     return 0;
   }
   pinWrite(g: number, v: number) {
@@ -806,7 +805,7 @@ export class SimEngine {
     } catch {}
     const lib: Record<string, string> = isPi
       ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY, 'requests.py': REQUESTS_PY, 'signal.py': SIGNAL_PY }
-      : { '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
+      : { 'esp32.py': ESP32_PY, '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
     for (const [name, src] of Object.entries(lib)) mp.FS.writeFile(`/lib/${name}`, src);
     for (const [name, src] of Object.entries(this.project.files)) mp.FS.writeFile(`/project/${name}`, src);
     this.status = 'running';
@@ -868,7 +867,7 @@ export class SimEngine {
           // Only audible pitches count as a tone; slow blinking just clicks.
           this.tones.set(b.id, f >= 20 ? Math.round(f) : 0);
         }
-        if (this.timeUs - lastScope >= 5000) {
+        if (this.timeUs - lastScope >= (tonePairs.length ? Math.max(dt * 1e6, 40) : 5000)) {
           lastScope = this.timeUs;
           const v: Record<string, number> = {};
           for (const n of probeNets) v[n.id] = n === this.model.groundNet ? 0 : c.voltage(n.id);

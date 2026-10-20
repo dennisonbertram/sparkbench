@@ -212,3 +212,11 @@ export function parseNgspiceTran(stdout: string): Record<string, number[]> {
   }
   return out;
 }
+
+/** Export options that make a quick ngspice run meaningful: discrete circuits get a transient, microcontroller outputs are driven high. */
+export function defaultSpiceOptions(project: Project): Parameters<typeof exportSpice>[1] {
+  if (project.board === 'none') return { analysis: 'tran', tranStop: 3, tranStep: 1e-4, partStates: Object.fromEntries(project.parts.filter((p) => p.type === 'pushbutton').map((p) => [p.id, { pressed: 1 }])) };
+  const levels: Record<number, number> = {};
+  for (const f of project.features ?? []) if (['led', 'rgb', 'relay', 'buzzer'].includes(f.kind)) for (const [sig, g] of Object.entries(f.gpio)) if (sig !== 'sda' && sig !== 'scl') levels[g] = 1;
+  return { analysis: 'op', gpioLevels: levels };
+}

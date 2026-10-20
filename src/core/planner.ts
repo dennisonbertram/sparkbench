@@ -285,17 +285,20 @@ class Builder {
   /** Pin the user explicitly asked for, consumed by the current feature's first signal. */
   requested?: string;
   rejected: string[] = [];
-  prefer(part: string, pin: string): string | undefined {
-    if (this.requested) {
+  /** Pins the same feature had in the previous design, by signal (pin, trig, echo, r, g, b…). */
+  prevSignals = new Map<string, Record<string, string>>();
+  private sigPrefs: Record<string, string> = {};
+  prefer(part: string, pin: string, sig?: string): string | undefined {
+    if (this.requested && (sig === 'pin' || sig === undefined)) {
       const r = this.requested;
       this.requested = undefined;
       return r;
     }
-    return this.prevWiring.get(`${part}:${pin}`);
+    return (sig && this.sigPrefs[sig]) || this.prevWiring.get(`${part}:${pin}`);
   }
-  gpio(part: string, pin: string, need: Need, what: string): BoardPin {
-    const explicit = this.requested;
-    const want = this.prefer(part, pin);
+  gpio(part: string, pin: string, need: Need, what: string, sig?: string): BoardPin {
+    const explicit = this.requested && (sig === 'pin' || sig === undefined) ? this.requested : undefined;
+    const want = this.prefer(part, pin, sig);
     const bpin = this.alloc!.take(need, what, want);
     if (explicit && bpin.name !== explicit) this.rejected.push(`${explicit} can't be used for ${what} (it's taken or can't do that job), so ${bpin.name} was used instead.`);
     this.wire({ part, pin }, this.bp(bpin.name));
@@ -316,7 +319,7 @@ class Builder {
     return n === 1 ? base : `${base}${n}`;
   }
   /** Analog input: direct ADC pin, or an MCP3008 channel on the Raspberry Pi. */
-  analog(part: string, pin: string, what: string): { pin?: BoardPin; ch?: number } {
+  analog(part: string, pin: string, what: string, sig?: string): { pin?: BoardPin; ch?: number } {
     if (this.board?.id === 'rpi4') {
       if (!this.mcp) {
         const id = this.addPart('mcp3008', {}, 'MCP3008 ADC');
@@ -338,12 +341,18 @@ class Builder {
       this.wire({ part, pin }, { part: this.mcp.id, pin: `CH${ch}` });
       return { ch };
     }
-    return { pin: this.gpio(part, pin, 'adc', what) };
+    return { pin: this.gpio(part, pin, 'adc', what, sig) };
   }
 
+  private seenKeys = new Map<string, number>();
   feature(req: FeatureReq) {
     const b = this.board;
     this.requested = req.pins?.pin;
+    // Same kind + label (+ occurrence) as in the previous design → keep its pins.
+    const base = featureKey(req.kind, req.label);
+    const nth = (this.seenKeys.get(base) ?? 0) + 1;
+    this.seenKeys.set(base, nth);
+    this.sigPrefs = this.prevSignals.get(`${base}#${nth}`) ?? {};
     const kind = req.kind;
     const label = req.label ?? LABELS[kind];
     const name = this.varName(kind, req.label);
@@ -383,9 +392,9 @@ class Builder {
         setPin('sck', pin(spi.sck));
         setPin('mosi', pin(spi.mosi));
         setPin('cs', pin(spi.cs));
-        setPin('dc', this.gpio(id, 'DC', 'out', `${label} DC`));
-        setPin('rst', this.gpio(id, 'RST', 'out', `${label} reset`));
-        setPin('busy', this.gpio(id, 'BUSY', 'in', `${label} busy`));
+        setPin('dc', this.gpio(id, 'DC', 'out', `${label} DC`, 'dc'));
+        setPin('rst', this.gpio(id, 'RST', 'out', `${label} reset`, 'rst'));
+        setPin('busy', this.gpio(id, 'BUSY', 'in', `${label} busy`, 'busy'));
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'right' });
         this.notes.push('The e-paper display talks SPI (CLK, DIN, CS on the board\'s hardware SPI pins) plus three control lines: DC selects command/data, RST resets it and BUSY tells the board when a refresh has finished.');
@@ -414,7 +423,7 @@ class Builder {
       case 'button': {
         const color = req.props?.color ?? ['green', 'red', 'blue', 'yellow', 'white', 'black'][this.features.filter((f) => f.kind === 'button').length % 6];
         const id = this.addPart('pushbutton', { color, label: req.label ?? '' }, label);
-        setPin('pin', this.gpio(id, '1', 'in-pullup', label));
+        setPin('pin', this.gpio(id, '1', 'in-pullup', label, 'pin'));
         this.gnd(id, '2');
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'left' });
@@ -422,7 +431,7 @@ class Builder {
       }
       case 'switch': {
         const id = this.addPart('slide-switch', {}, label);
-        setPin('pin', this.gpio(id, '2', 'in-pullup', label));
+        setPin('pin', this.gpio(id, '2', 'in-pullup', label, 'pin'));
         this.gnd(id, '1');
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'left' });
@@ -432,7 +441,7 @@ class Builder {
         const id = this.addPart('potentiometer', {}, label);
         this.v33(id);
         this.gnd(id);
-        const a = this.analog(id, 'SIG', label);
+        const a = this.analog(id, 'SIG', label, 'pin');
         if (a.pin) setPin('pin', a.pin);
         fi.mcpChannel = a.ch;
         fi.parts.push(id);
@@ -443,7 +452,7 @@ class Builder {
         const id = this.addPart('dht22', {}, label);
         this.v33(id);
         this.gnd(id);
-        setPin('pin', this.gpio(id, 'DATA', 'in-pullup', label));
+        setPin('pin', this.gpio(id, 'DATA', 'in-pullup', label, 'pin'));
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'right' });
         break;
@@ -452,12 +461,12 @@ class Builder {
         const id = this.addPart('hcsr04', {}, label);
         this.v5(id);
         this.gnd(id);
-        setPin('trig', this.gpio(id, 'TRIG', 'out', `${label} trigger`));
+        setPin('trig', this.gpio(id, 'TRIG', 'out', `${label} trigger`, 'trig'));
         // ECHO is a 5 V signal: divide it down to 3.3 V with 1 kΩ / 2 kΩ.
         const r1 = this.addPart('resistor', { ohms: 1000 }, 'Echo divider (top)');
         const r2 = this.addPart('resistor', { ohms: 2000 }, 'Echo divider (bottom)');
         this.wire({ part: id, pin: 'ECHO' }, { part: r1, pin: '1' });
-        const echo = this.alloc!.take('in', `${label} echo`, this.prevWiring.get(`${r1}:2`));
+        const echo = this.alloc!.take('in', `${label} echo`, this.sigPrefs.echo ?? this.prevWiring.get(`${r1}:2`));
         this.wire({ part: r1, pin: '2' }, this.bp(echo.name));
         this.wire({ part: r2, pin: '1' }, { part: r1, pin: '2' });
         this.gnd(r2, '2');
@@ -471,7 +480,7 @@ class Builder {
         const id = this.addPart('pir', {}, label);
         this.v5(id);
         this.gnd(id);
-        setPin('pin', this.gpio(id, 'OUT', 'in', label));
+        setPin('pin', this.gpio(id, 'OUT', 'in', label, 'pin'));
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'right' });
         break;
@@ -483,7 +492,7 @@ class Builder {
         this.v33(id, '1');
         this.wire({ part: id, pin: '2' }, { part: r, pin: '1' });
         this.gnd(r, '2');
-        const a = this.analog(id, '2', label);
+        const a = this.analog(id, '2', label, 'pin');
         if (a.pin) setPin('pin', a.pin);
         fi.mcpChannel = a.ch;
         fi.parts.push(id, r);
@@ -494,7 +503,7 @@ class Builder {
         const id = this.addPart('soil', {}, label);
         this.v33(id);
         this.gnd(id);
-        const a = this.analog(id, 'AOUT', label);
+        const a = this.analog(id, 'AOUT', label, 'pin');
         if (a.pin) setPin('pin', a.pin);
         fi.mcpChannel = a.ch;
         fi.parts.push(id);
@@ -506,7 +515,7 @@ class Builder {
         const id = this.addPart('led', { color }, req.label ? (/\bled\b/i.test(req.label) ? req.label : `${req.label} LED`) : `${color[0].toUpperCase()}${color.slice(1)} LED`);
         const ohms = color === 'blue' || color === 'white' ? 47 : 220;
         const r = this.addPart('resistor', { ohms }, `${color} LED resistor`);
-        setPin('pin', this.gpio(r, '1', 'pwm', fi.label));
+        setPin('pin', this.gpio(r, '1', 'pwm', fi.label, 'pin'));
         this.wire({ part: r, pin: '2' }, { part: id, pin: 'A' });
         this.gnd(id, 'C');
         fi.parts.push(id, r);
@@ -534,7 +543,7 @@ class Builder {
         this.v5(id);
         this.gnd(id);
         const r = this.addPart('resistor', { ohms: 330 }, 'NeoPixel data resistor');
-        setPin('pin', this.gpio(r, '1', 'out', label));
+        setPin('pin', this.gpio(r, '1', 'out', label, 'pin'));
         this.wire({ part: r, pin: '2' }, { part: id, pin: 'DIN' });
         fi.parts.push(id, r);
         fi.props = { pixels: req.props?.pixels ?? 12 };
@@ -543,7 +552,7 @@ class Builder {
       }
       case 'buzzer': {
         const id = this.addPart('buzzer', {}, label);
-        setPin('pin', this.gpio(id, '+', 'pwm', label));
+        setPin('pin', this.gpio(id, '+', 'pwm', label, 'pin'));
         this.gnd(id, '-');
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'left' });
@@ -553,7 +562,7 @@ class Builder {
         const id = this.addPart('servo', {}, label);
         this.v5(id, 'V+');
         this.gnd(id);
-        setPin('pin', this.gpio(id, 'PWM', 'pwm', label));
+        setPin('pin', this.gpio(id, 'PWM', 'pwm', label, 'pin'));
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'left' });
         break;
@@ -562,7 +571,7 @@ class Builder {
         const id = this.addPart('relay', {}, label);
         this.v5(id);
         this.gnd(id);
-        setPin('pin', this.gpio(id, 'IN', 'out', label));
+        setPin('pin', this.gpio(id, 'IN', 'out', label, 'pin'));
         fi.parts.push(id);
         const load = req.props?.load as string | undefined;
         if (load) {
@@ -679,10 +688,23 @@ class Builder {
   }
 }
 
+/** Identity of a feature across edits: its kind plus any meaningful (user-given) label. */
+function featureKey(kind: FeatureKind, label?: string): string {
+  const auto = !label || label === LABELS[kind] || /^Button [A-Z]$/.test(label) || /^(Red|Green|Blue|Yellow|White|Orange) LED$/.test(label);
+  return `${kind}:${auto ? '' : label}`;
+}
+
 /** Build a complete project from a spec. Keeps positions of parts that already existed (same id). */
 export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: string; previous?: Project } = {}): Project {
   const b = new Builder(spec);
   if (opts.previous && opts.previous.board === spec.board) {
+    const seen = new Map<string, number>();
+    for (const f of opts.previous.features ?? []) {
+      const base = featureKey(f.kind, f.label);
+      const nth = (seen.get(base) ?? 0) + 1;
+      seen.set(base, nth);
+      b.prevSignals.set(`${base}#${nth}`, f.pins);
+    }
     const bp = opts.previous.parts.find((p) => partDef(p.type).category === 'board');
     for (const w of opts.previous.wires) {
       if (bp && w.b.part === bp.id) b.prevWiring.set(`${w.a.part}:${w.a.pin}`, w.b.pin);

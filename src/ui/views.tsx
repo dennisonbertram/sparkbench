@@ -4,7 +4,7 @@ import { marked } from 'marked';
 import { useStore } from './store';
 import { renderSchematicSvg } from '../core/schematic';
 import { exportKicadSchematic, exportKicadProject, exportKicadNetlist } from '../core/kicad';
-import { exportSpice } from '../core/spice';
+import { exportSpice, defaultSpiceOptions } from '../core/spice';
 import { buildBom, bomToCsv, bomTotal } from '../core/bom';
 import { buildGuide, buildBlogPost } from '../core/docs';
 import { CodeEditor } from './CodeEditor';
@@ -33,6 +33,7 @@ export function SchematicView() {
   const aiStatus = useStore((s) => s.aiStatus);
   const theme = useTheme();
   const [kicad, setKicad] = useState<{ svg?: string; erc?: any; error?: string; busy?: boolean } | null>(null);
+  const [zoom, setZoom] = useState(1.4);
   const svg = useMemo(() => {
     try {
       return renderSchematicSvg(project, { theme, highlightNet: pinnedName });
@@ -62,7 +63,12 @@ export function SchematicView() {
         <button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Open in KiCad's Schematic Editor">KiCad schematic</button>
         <button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))}>KiCad project</button>
         <button onClick={() => download(`${name}.net`, exportKicadNetlist(project))}>Netlist</button>
-        <button onClick={() => download(`${name}.cir`, exportSpice(project))} title="SPICE netlist for ngspice">SPICE (.cir)</button>
+        <button onClick={() => download(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)))} title="SPICE netlist for ngspice">SPICE (.cir)</button>
+        <span className="zoom-group">
+          <button onClick={() => setZoom((z) => Math.max(0.6, z / 1.25))} aria-label="Zoom out">−</button>
+          <button onClick={() => setZoom(1)} title="Fit width">{Math.round(zoom * 100)}%</button>
+          <button onClick={() => setZoom((z) => Math.min(5, z * 1.25))} aria-label="Zoom in">+</button>
+        </span>
         {aiStatus.kicad && (
           <button onClick={renderKicad} disabled={kicad?.busy} title="Run the exported file through kicad-cli to check it">
             {kicad?.busy ? 'Running KiCad…' : 'Check in KiCad'}
@@ -77,6 +83,12 @@ export function SchematicView() {
       )}
       <div
         className={`schematic ${hoverNet ? 'has-hl' : ''}`}
+        style={{ ['--z' as any]: zoom }}
+        onWheel={(e) => {
+          if (!e.ctrlKey && !e.metaKey) return;
+          e.preventDefault();
+          setZoom((z) => Math.min(5, Math.max(0.6, z * Math.exp(-e.deltaY * 0.002))));
+        }}
         data-testid="schematic"
         dangerouslySetInnerHTML={{ __html: kicad?.svg ?? svg }}
         onClick={(e) => {

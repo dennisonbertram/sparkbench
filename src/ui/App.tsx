@@ -141,8 +141,8 @@ function Topbar() {
           </button>
         )}
         {running && (
-          <button className="ghost" onClick={() => startSim(useStore.getState().project!, speed)} title="Restart from the beginning">
-            Restart
+          <button className="ghost" onClick={() => startSim(useStore.getState().project!, speed)} title="Restart from the beginning" aria-label="Restart">
+            ↻<span className="restart-label"> Restart</span>
           </button>
         )}
         <select
