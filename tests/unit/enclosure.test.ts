@@ -23,7 +23,7 @@ describe('3D-printable case', () => {
     const inner = { w: r.outer.w - 2 * CASE_DIMS.WALL, d: r.outer.d - 2 * CASE_DIMS.WALL };
     expect(inner.w).toBeGreaterThan(board.width_mm);
     expect(inner.d).toBeGreaterThan(board.height_mm);
-    expect(r.tallest.ref).toBe('DS1');
+    expect(r.tallest.ref).toBe('U1'); // Pico on its socket (12.7 mm) is just taller than the OLED module
     const what = r.openings.map((o) => o.what).join(' | ');
     expect(what).toMatch(/USB cable opening \(bottom side\)/);
     expect(what).toMatch(/button hole/);
