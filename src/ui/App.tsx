@@ -9,6 +9,7 @@ import { EXAMPLES, buildExample } from '../core/examples';
 import { downloadZip, download, slug } from './exporters';
 import { audio } from './audio';
 import { Tour } from './Tour';
+import { PcbView } from './PcbView';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
 
@@ -18,6 +19,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'code', label: 'Code' },
   { id: 'bom', label: 'Parts list' },
   { id: 'guide', label: 'Build guide' },
+  { id: 'pcb', label: 'Circuit board' },
   { id: 'blog', label: 'Blog post' },
 ];
 
@@ -29,7 +31,7 @@ export function App() {
   useEffect(() => {
     fetch('/api/status')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && useStore.getState().set({ aiStatus: { enabled: !!d.ai?.enabled, model: d.ai?.model, via: d.ai?.via, kicad: d.kicad, ngspice: d.ngspice } }))
+      .then((d) => d && useStore.getState().set({ aiStatus: { enabled: !!d.ai?.enabled, model: d.ai?.model, via: d.ai?.via, kicad: d.kicad, ngspice: d.ngspice, pcb: d.pcb } }))
       .catch(() => {});
     const p = loadCurrent();
     const url = new URL(location.href);
@@ -91,6 +93,7 @@ export function App() {
             {tab === 'code' && <CodeView />}
             {tab === 'bom' && <BomView />}
             {tab === 'guide' && <MarkdownView kind="guide" />}
+            {tab === 'pcb' && <PcbView />}
             {tab === 'blog' && <MarkdownView kind="blog" />}
           </div>
           <Console />

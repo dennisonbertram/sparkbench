@@ -503,3 +503,30 @@ h2, h3 { margin: 0; }
 .prose .breadboard-figure svg { display: block; width: 100%; height: auto; min-width: 640px; }
 @media print { .build-mode { display: none; } }
 @media (max-width: 640px) { .build-mode .bm-hint { display: none; } }
+.pcb-view { max-width: 980px; margin: 0 auto; padding: 18px 22px 40px; font-size: 14.5px; }
+.pcb-view h2 { margin: 0 0 6px; font-size: 22px; }
+.pcb-head { display: flex; gap: 18px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.pcb-head p { margin: 0; color: var(--ink-2); max-width: 62ch; line-height: 1.55; }
+.pcb-steps { list-style: none; padding: 0; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; font-size: 15px; color: var(--ink-3); }
+.pcb-steps li::before { content: '○'; display: inline-block; width: 26px; }
+.pcb-steps li.current { color: var(--ink); }
+.pcb-steps li.current::before { content: '◐'; color: var(--warn); animation: pcb-spin 1s linear infinite; display: inline-block; }
+.pcb-steps li.done { color: var(--ink-2); }
+.pcb-steps li.done::before { content: '✓'; color: var(--ok); }
+@keyframes pcb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pcb-steps li.current::before { animation: none; } }
+.pcb-result { margin-top: 18px; display: grid; gap: 16px; }
+.pcb-picture { background: #2b2f2d; border-radius: var(--radius); padding: 10px; position: relative; }
+.pcb-picture img { display: block; width: 100%; max-height: 56vh; object-fit: contain; }
+.pcb-picture img.copper { background: #fff; border-radius: 6px; }
+.pcb-toggle { display: flex; gap: 4px; margin-bottom: 8px; }
+.pcb-toggle button { font-size: 12.5px; background: #3a3f3c; color: #e7ebe8; border-color: #4a504c; }
+.pcb-toggle button.active { background: #e7ebe8; color: #1a1d1c; }
+.pcb-verdict { padding: 12px 14px; border-radius: 6px; background: var(--surface-2); border-left: 4px solid var(--ok); }
+.pcb-verdict.bad { border-left-color: var(--warn); }
+.pcb-verdict p, .pcb-verdict ul { margin: 6px 0 0; line-height: 1.5; }
+.pcb-tech, .pcb-note { color: var(--ink-3); font-size: 12.5px; }
+.pcb-downloads { display: flex; flex-wrap: wrap; gap: 8px; }
+.pcb-downloads a.button { display: inline-flex; align-items: center; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; text-decoration: none; color: var(--ink); background: var(--surface); font-size: 13.5px; }
+.pcb-downloads a.button.primary { background: var(--ink); color: var(--bench); border-color: var(--ink); }
+.pcb-order { padding: 0; max-width: 74ch; }

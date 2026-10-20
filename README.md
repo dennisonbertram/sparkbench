@@ -46,6 +46,9 @@ npm test                    # unit, simulation behaviour, KiCad and ngspice cros
 npm run typecheck
 npm run dev & node tests/e2e/visual.mjs   # screenshot every view of every example
 node tests/e2e/photo-check.mjs            # live: upload breadboard photos in the Build guide, check Claude's verdict
+node tests/e2e/build-mode.mjs             # step-by-step breadboard build mode
+node tests/e2e/pcb.mjs <example>          # Circuit board tab: design, check and download a PCB
+npx tsx scripts/breadboard-all.ts         # plan + verify the breadboard layout of every example
 ```
 
 ### Photo wiring check eval
@@ -57,6 +60,17 @@ npx tsx scripts/vision-eval/check.ts    # sanity: layouts match their circuits, 
 npx tsx scripts/vision-eval/render.ts   # → test-results/vision/images
 npx tsx scripts/vision-eval/run.ts      # asks Claude, writes test-results/vision/REPORT.md
 ```
+
+## Circuit boards
+
+The **Circuit board** tab (or `npx tsx scripts/make-pcb.ts <example|--all>`) makes a manufacturable 2-layer PCB with open-source tools:
+
+1. `src/core/pcb.ts` writes the board spec: a footprint per part and each pad's net. Net names come from KiCad's own netlist of the exported schematic, and any disagreement is reported.
+2. `scripts/pcb/make_pcb.py` (KiCad's Python, `pcbnew`) places parts to minimise wire length, then draws a rounded outline, M3 mounting holes and silkscreen.
+3. [Freerouting](https://github.com/freerouting/freerouting) routes the board, offline with analytics disabled. `pcbnew` then pours ground on both layers.
+4. `kicad-cli` runs DRC with schematic parity against common factory limits (0.15 mm track and space, 0.3 mm drill). It then exports Gerbers, drill files, positions, a 3D render and STEP. Sparkbench adds a JLCPCB-style BOM and CPL.
+
+Needs KiCad 8+ and Java 21+ with `freerouting-2.5.0.jar` in `~/.cache/sparkbench/freerouting/`. The paths can be overridden with the `KICAD_APP`, `JAVA` and `FREEROUTING_JAR` environment variables. The native `freerouting-cli` build crashes in 2.5.0, so use the jar.
 
 ## How it fits together
 

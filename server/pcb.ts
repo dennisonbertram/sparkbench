@@ -1,0 +1,184 @@
+// Build a manufacturable circuit board for a project with open-source tools:
+// pcbnew (placement, outline, ground pour) → Freerouting (auto-routing) → kicad-cli (DRC, Gerbers,
+// drill, pick-and-place, 3D render, STEP) → JLCPCB-style BOM + CPL.
+import { execFile } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import type { Project } from '../src/core/types';
+import { pcbSpec, type PcbSpec } from '../src/core/pcb';
+import { exportKicadFootprints, exportKicadProject, exportKicadSchematic } from '../src/core/kicad';
+
+const KICAD_APP = [process.env.KICAD_APP, join(homedir(), 'Applications/KiCad.app'), '/Applications/KiCad/KiCad.app', '/Applications/KiCad.app'].find((p) => p && existsSync(p));
+export const KICAD_CLI = KICAD_APP ? join(KICAD_APP, 'Contents/MacOS/kicad-cli') : ['/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find(existsSync);
+const KICAD_PY = KICAD_APP ? join(KICAD_APP, 'Contents/Frameworks/Python.framework/Versions/Current/bin/python3') : '/usr/bin/python3';
+const FP_DIR = KICAD_APP ? join(KICAD_APP, 'Contents/SharedSupport/footprints') : '/usr/share/kicad/footprints';
+export const FREEROUTING = [process.env.FREEROUTING_JAR, join(homedir(), '.cache/sparkbench/freerouting/freerouting-2.5.0.jar')].find((p) => p && existsSync(p));
+const JAVA = [process.env.JAVA, '/opt/homebrew/opt/openjdk/bin/java', '/usr/local/opt/openjdk/bin/java', '/usr/lib/jvm/default-java/bin/java'].find((p) => p && existsSync(p));
+
+export function pcbToolsStatus() {
+  return { kicad: !!KICAD_CLI && existsSync(KICAD_PY), freerouting: !!FREEROUTING && !!JAVA };
+}
+
+function run(cmd: string, args: string[], timeout = 600_000): Promise<{ code: number; out: string }> {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { timeout, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => resolve({ code: err ? ((err as any).code ?? 1) : 0, out: `${stdout}${stderr}` }));
+  });
+}
+
+export interface DrcItem {
+  severity: string;
+  type: string;
+  description: string;
+}
+
+export interface PcbResult {
+  dir: string;
+  name: string;
+  widthMm: number;
+  heightMm: number;
+  routed: boolean;
+  unrouted: number | null;
+  tracks: number;
+  vias: number;
+  drc: { errors: DrcItem[]; warnings: DrcItem[]; unconnected: number };
+  files: string[];
+  problems: string[];
+  log: string[];
+}
+
+/** Lay out, route, check and export a board for `project` into `dir`. */
+export async function buildPcb(project: Project, dir: string, onStep: (msg: string) => void = () => {}): Promise<PcbResult> {
+  if (!KICAD_CLI) throw new Error('KiCad is not installed (needed for circuit boards).');
+  const spec: PcbSpec = pcbSpec(project);
+  mkdirSync(dir, { recursive: true });
+  const log: string[] = [];
+  const step = (m: string) => (log.push(m), onStep(m));
+
+  // Generated footprints (e.g. the ESP32 DevKit) live in a Sparkbench.pretty next to the board.
+  for (const [f, src] of Object.entries(exportKicadFootprints(project))) {
+    mkdirSync(join(dir, f, '..'), { recursive: true });
+    writeFileSync(join(dir, f), src);
+  }
+  // A full KiCad project around the board: rules + net classes (.kicad_pro) and the schematic.
+  writeFileSync(join(dir, `${spec.name}.kicad_pro`), exportKicadProject(project));
+  writeFileSync(join(dir, `${spec.name}.kicad_sch`), exportKicadSchematic(project));
+  // Net names come from KiCad's own reading of the schematic, so the board and schematic agree
+  // exactly (and any disagreement with Sparkbench's netlist is caught here).
+  const problems: string[] = [];
+  const netlistPath = join(dir, `${spec.name}.net`);
+  await run(KICAD_CLI, ['sch', 'export', 'netlist', '--format', 'kicadsexpr', '--output', netlistPath, join(dir, `${spec.name}.kicad_sch`)]);
+  if (existsSync(netlistPath)) problems.push(...adoptKicadNets(spec, readFileSync(netlistPath, 'utf8')));
+  else problems.push('KiCad could not read the schematic to export its netlist.');
+  writeFileSync(join(dir, 'spec.json'), JSON.stringify(spec, null, 1));
+
+  step('Placing parts and drawing the board outline');
+  const py = await run(KICAD_PY, [join(process.cwd(), 'scripts/pcb/make_pcb.py'), join(dir, 'spec.json'), dir, '--fplib-dir', FP_DIR, '--fplib-dir', dir, ...(FREEROUTING && JAVA ? ['--java', JAVA, '--freerouting', FREEROUTING] : [])]);
+  if (py.code !== 0 || !existsSync(join(dir, 'layout.json'))) throw new Error(`Board layout failed: ${py.out.slice(-1500)}`);
+  const layout = JSON.parse(readFileSync(join(dir, 'layout.json'), 'utf8'));
+  step(layout.routed ? `Routed ${layout.tracks} tracks and ${layout.vias} vias` : 'Routing did not complete');
+  const pcb = layout.pcb as string;
+
+  step('Checking design rules (KiCad DRC)');
+  const drcPath = join(dir, 'drc.json');
+  await run(KICAD_CLI, ['pcb', 'drc', '--format', 'json', '--severity-all', '--schematic-parity', '--output', drcPath, pcb]);
+  let drcRaw = existsSync(drcPath) ? JSON.parse(readFileSync(drcPath, 'utf8')) : { violations: [], unconnected_items: [] };
+  if ((drcRaw.violations ?? []).some((v: any) => v.type === 'starved_thermal')) {
+    // A ground pad that only fits one thermal spoke gets a solid connection instead; then re-check.
+    step('Strengthening ground connections and re-checking');
+    await run(KICAD_PY, [join(process.cwd(), 'scripts/pcb/fix_thermals.py'), pcb, drcPath]);
+    await run(KICAD_CLI, ['pcb', 'drc', '--format', 'json', '--severity-all', '--schematic-parity', '--output', drcPath, pcb]);
+    drcRaw = JSON.parse(readFileSync(drcPath, 'utf8'));
+  }
+  // lib_footprint_issues only means this KiCad has no global library table to compare against.
+  const items: DrcItem[] = [
+    ...(drcRaw.violations ?? []).filter((v: any) => v.type !== 'lib_footprint_issues').map((v: any) => ({ severity: v.severity, type: v.type, description: v.description })),
+    ...(drcRaw.schematic_parity ?? []).map((v: any) => ({ severity: 'error', type: `schematic_parity:${v.type}`, description: v.description })),
+  ];
+  const drc = { errors: items.filter((i) => i.severity === 'error'), warnings: items.filter((i) => i.severity !== 'error'), unconnected: (drcRaw.unconnected_items ?? []).length };
+
+  step('Exporting manufacturing files');
+  const fab = join(dir, 'fab');
+  mkdirSync(join(fab, 'gerbers'), { recursive: true });
+  await run(KICAD_CLI, ['pcb', 'export', 'gerbers', '--output', join(fab, 'gerbers') + '/', '--layers', 'F.Cu,B.Cu,F.Paste,B.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts', pcb]);
+  await run(KICAD_CLI, ['pcb', 'export', 'drill', '--output', join(fab, 'gerbers') + '/', '--format', 'excellon', '--excellon-separate-th', pcb]);
+  await run(KICAD_CLI, ['pcb', 'export', 'pos', '--output', join(fab, 'positions.csv'), '--format', 'csv', '--units', 'mm', '--side', 'both', pcb]);
+  writeFileSync(join(fab, 'bom-jlcpcb.csv'), jlcBom(spec));
+  writeFileSync(join(fab, 'cpl-jlcpcb.csv'), jlcCpl(join(fab, 'positions.csv')));
+  step('Rendering the board');
+  await run(KICAD_CLI, ['pcb', 'render', '--output', join(dir, 'board-top.png'), '--side', 'top', '--width', '1600', '--height', '1100', '--quality', 'basic', '--floor', pcb], 300_000);
+  await run(KICAD_CLI, ['pcb', 'render', '--output', join(dir, 'board-bottom.png'), '--side', 'bottom', '--width', '1600', '--height', '1100', '--quality', 'basic', pcb], 300_000);
+  await run(KICAD_CLI, ['pcb', 'export', 'svg', '--output', join(dir, 'board.svg'), '--layers', 'F.Cu,B.Cu,F.SilkS,Edge.Cuts', '--mode-single', '--page-size-mode', '2', '--exclude-drawing-sheet', pcb]);
+  await run(KICAD_CLI, ['pcb', 'export', 'step', '--output', join(dir, 'board.step'), '--subst-models', pcb], 300_000);
+
+  const files = [...walk(dir)].map((f) => f.slice(dir.length + 1)).filter((f) => !/^(spec|layout)\.json$|\.(dsn|ses|kicad_prl)$/.test(f));
+  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log };
+}
+
+/** Rename the spec's nets to KiCad's names; report any grouping that differs between the two netlists. */
+export function adoptKicadNets(spec: PcbSpec, netlist: string): string[] {
+  const kicad = new Map<string, string>(); // "REF:pad" → KiCad net name
+  for (const block of netlist.split(/\(net\s*\(code/).slice(1)) {
+    const name = /\(name "((?:[^"\\]|\\.)*)"\)/.exec(block)?.[1];
+    if (!name) continue;
+    for (const m of block.matchAll(/\(ref "([^"]*)"\)\s*\(pin "([^"]*)"\)/g)) kicad.set(`${m[1]}:${m[2]}`, name);
+  }
+  const problems: string[] = [];
+  const ours = new Map<string, string>(); // our net → KiCad net
+  for (const part of spec.parts) {
+    for (const [pad, net] of Object.entries(part.pads)) {
+      const k = kicad.get(`${part.ref}:${pad}`);
+      if (!k) {
+        problems.push(`${part.ref} pad ${pad} (${net}) is not in KiCad's schematic netlist`);
+        continue;
+      }
+      const prev = ours.get(net);
+      if (prev && prev !== k) problems.push(`net ${net} is split in KiCad's schematic (${prev} / ${k})`);
+      ours.set(net, k);
+    }
+  }
+  const back = new Map<string, string>();
+  for (const [o, k] of ours) {
+    if (back.has(k) && back.get(k) !== o) problems.push(`nets ${back.get(k)} and ${o} are joined in KiCad's schematic (${k})`);
+    back.set(k, o);
+  }
+  // Use KiCad's names everywhere, including single-pin (unconnected) pads.
+  for (const part of spec.parts) {
+    const pads: Record<string, string> = {};
+    for (const [key, name] of kicad) if (key.startsWith(`${part.ref}:`)) pads[key.slice(part.ref.length + 1)] = name;
+    part.pads = pads;
+  }
+  spec.powerNets = spec.powerNets.map((n) => ours.get(n) ?? n);
+  spec.groundNet = spec.groundNet ? (ours.get(spec.groundNet) ?? spec.groundNet) : null;
+  return problems;
+}
+
+function* walk(d: string): Generator<string> {
+  for (const e of readdirSync(d, { withFileTypes: true })) {
+    const p = join(d, e.name);
+    if (e.isDirectory()) yield* walk(p);
+    else yield p;
+  }
+}
+
+const csv = (rows: string[][]) => rows.map((r) => r.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n') + '\n';
+
+/** JLCPCB assembly BOM: one row per value+footprint, with designators. */
+function jlcBom(spec: PcbSpec): string {
+  const groups = new Map<string, { value: string; footprint: string; refs: string[] }>();
+  for (const p of spec.parts) {
+    const k = `${p.value}|${p.footprint}`;
+    if (!groups.has(k)) groups.set(k, { value: p.value, footprint: p.footprint.split(':')[1], refs: [] });
+    groups.get(k)!.refs.push(p.ref);
+  }
+  return csv([['Comment', 'Designator', 'Footprint', 'LCSC Part #'], ...[...groups.values()].map((g) => [g.value, g.refs.join(','), g.footprint, ''])]);
+}
+
+/** JLCPCB CPL from KiCad's position file. */
+function jlcCpl(posCsv: string): string {
+  if (!existsSync(posCsv)) return csv([['Designator', 'Mid X', 'Mid Y', 'Layer', 'Rotation']]);
+  const lines = readFileSync(posCsv, 'utf8').trim().split('\n').slice(1);
+  const rows = lines.map((l) => l.split(',').map((c) => c.replace(/^"|"$/g, '')));
+  // KiCad: Ref,Val,Package,PosX,PosY,Rot,Side
+  return csv([['Designator', 'Mid X', 'Mid Y', 'Layer', 'Rotation'], ...rows.map((r) => [r[0], `${r[3]}mm`, `${r[4]}mm`, r[6] === 'bottom' ? 'Bottom' : 'Top', r[5]])]);
+}

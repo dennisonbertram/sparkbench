@@ -32,7 +32,8 @@ export function apiPlugin(): Plugin {
     try {
       if (req.url === '/api/status') {
         const { aiStatus } = await import('./ai');
-        return send(res, 200, { ai: aiStatus(), kicad: !!KICAD_CLI, ngspice: !!NGSPICE });
+        const { pcbToolsStatus } = await import('./pcbjobs');
+        return send(res, 200, { ai: aiStatus(), kicad: !!KICAD_CLI, ngspice: !!NGSPICE, pcb: pcbToolsStatus() });
       }
       if (req.url === '/api/ai/design' && req.method === 'POST') {
         const { aiDesign, aiStatus } = await import('./ai');
@@ -84,6 +85,40 @@ export function apiPlugin(): Plugin {
           erc: existsSync(join(dir, 'erc.json')) ? JSON.parse(readFileSync(join(dir, 'erc.json'), 'utf8')) : null,
           log: svg.stderr + erc.stderr,
         });
+      }
+      if (req.url === '/api/pcb/start' && req.method === 'POST') {
+        const { startPcb, pcbToolsStatus } = await import('./pcbjobs');
+        const tools = pcbToolsStatus();
+        if (!tools.kicad) return send(res, 400, { error: 'Circuit boards need KiCad 8 or newer installed (kicad.org).' });
+        const { project } = await body(req);
+        const job = startPcb(project);
+        return send(res, 200, { id: job.id, routing: tools.freerouting });
+      }
+      if (req.url?.startsWith('/api/pcb/') && req.method === 'GET') {
+        const { pcbJob, pcbFile, pcbZip } = await import('./pcbjobs');
+        const u = new URL(req.url, 'http://x');
+        const id = u.searchParams.get('id') ?? '';
+        if (u.pathname === '/api/pcb/status') {
+          const job = pcbJob(id);
+          if (!job) return send(res, 404, { error: 'unknown job' });
+          return send(res, 200, { log: job.log, done: job.done, error: job.error, result: job.result && { ...job.result, dir: undefined } });
+        }
+        if (u.pathname === '/api/pcb/file') {
+          const f = pcbFile(id, u.searchParams.get('path') ?? '');
+          if (!f) return send(res, 404, { error: 'not found' });
+          const types: Record<string, string> = { png: 'image/png', svg: 'image/svg+xml', csv: 'text/csv', json: 'application/json' };
+          res.setHeader('Content-Type', types[f.split('.').pop()!] ?? 'application/octet-stream');
+          if (!/\.(png|svg)$/.test(f)) res.setHeader('Content-Disposition', `attachment; filename="${f.split('/').pop()}"`);
+          return res.end(readFileSync(f));
+        }
+        if (u.pathname === '/api/pcb/zip') {
+          const kind = u.searchParams.get('kind') === 'all' ? 'all' : 'fab';
+          const buf = await pcbZip(id, kind);
+          if (!buf) return send(res, 404, { error: 'not ready' });
+          res.setHeader('Content-Type', 'application/zip');
+          res.setHeader('Content-Disposition', `attachment; filename="${u.searchParams.get('name') || 'board'}-${kind === 'fab' ? 'gerbers' : 'board-files'}.zip"`);
+          return res.end(buf);
+        }
       }
       if (req.url === '/api/spice/run' && req.method === 'POST') {
         if (!NGSPICE) return send(res, 404, { error: 'ngspice not found' });

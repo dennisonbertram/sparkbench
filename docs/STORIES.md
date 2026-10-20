@@ -111,3 +111,12 @@ Verification: `npm test` (unit, simulation behaviour for every example, KiCad ER
 - ☑ O1 As Max, I can take a phone photo of my breadboard in the Build guide and Claude compares it with the design, listing each mistake (part, what's wrong, exactly what to move) with a confidence.
 - ☑ O2 As Nia, when something can't be seen in the photo (LED direction, legs hidden under a part), I'm told what to check by eye and how to take a better photo. I'm never given a plain "looks right" for something that wasn't actually checked.
 - ☑ O3 As Tess, there is a measured eval of how well photo checks work (`scripts/vision-eval/`): ground-truth breadboard layouts, injected beginner faults, clean and phone-photo renders, two prompt conditions, scored detection / localisation / false alarms.
+
+## P. Exact build plan and circuit board
+- ☑ P1 As Sam, every project comes with a hole-by-hole breadboard layout (Pico, ESP32, Raspberry Pi via a T-Cobbler, chips, modules, off-board parts) that Sparkbench has checked makes exactly the schematic's connections.
+- ☑ P2 As Sam, **Build it step by step** shows one step at a time, draws only what's placed so far, rings the holes to use, and remembers where I stopped.
+- ☑ P3 As Priya, the **Circuit board** tab turns my design into a routed 2-layer PCB:
+  - KiCad places the parts, Freerouting routes them, and both sides get a ground pour and M3 mounting holes;
+  - KiCad checks it against factory limits (DRC) and against the schematic (parity);
+  - I get Gerbers, drill, BOM, CPL, the KiCad project and a STEP model, plus plain-English ordering steps.
+- ☑ P4 As Tess, `npx tsx scripts/make-pcb.ts --all` builds every example's board: all 19 route fully with 0 DRC errors and 0 schematic-parity differences.

@@ -236,12 +236,27 @@ export function exportKicadSchematic(project: Project): string {
 export function exportKicadProject(project: Project): string {
   const name = kicadName(project);
   const root = uuidGen(`${project.id}:${name}`)();
+  // Power nets get a wider track class; board minimums match common 2-layer fab capabilities.
+  const powerNets = buildNets(project).nets.filter((n) => n.pins.length > 1 && /^(GND|\+3V3|\+5V|VBAT)/.test(n.name)).map((n) => n.name);
   const pro = {
-    board: { design_settings: {}, layer_presets: [], viewports: [] },
+    board: {
+      design_settings: {
+        rules: { min_track_width: 0.15, min_clearance: 0.15, min_through_hole_diameter: 0.3, min_via_diameter: 0.6, min_via_annular_width: 0.13, min_hole_to_hole: 0.25, min_copper_edge_clearance: 0.3, min_silk_clearance: 0, min_resolved_spokes: 2 },
+      },
+      layer_presets: [],
+      viewports: [],
+    },
     boards: [],
     libraries: { pinned_footprint_libs: [], pinned_symbol_libs: [] },
     meta: { filename: `${name}.kicad_pro`, version: 1 },
-    net_settings: { classes: [{ name: 'Default', clearance: 0.2, track_width: 0.25, via_diameter: 0.6, via_drill: 0.3, wire_width: 6, bus_width: 12 }], meta: { version: 3 } },
+    net_settings: {
+      classes: [
+        { name: 'Default', clearance: 0.2, track_width: 0.3, via_diameter: 0.8, via_drill: 0.4, wire_width: 6, bus_width: 12 },
+        { name: 'Power', clearance: 0.2, track_width: 0.6, via_diameter: 1.0, via_drill: 0.5, wire_width: 6, bus_width: 12 },
+      ],
+      netclass_patterns: powerNets.map((n) => ({ netclass: 'Power', pattern: n })),
+      meta: { version: 3 },
+    },
     schematic: { legacy_lib_dir: '', legacy_lib_list: [], drawing: { default_text_size: 50 } },
     sheets: [[root, 'Root']],
     text_variables: { PROJECT_NAME: project.name, GENERATOR: 'Sparkbench' },

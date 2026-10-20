@@ -109,28 +109,28 @@ Status legend: ✅ built · 🟡 partly built · ⬜ not started
 
 ### E. Prototype build (breadboard)
 - ✅ E1 Build guide, wiring table and blog post.
-- 🟡 E2 **Exact breadboard layout** for every project: every leg and jumper in a named hole, verified to match the schematic. *(in progress)*
-- ⬜ E3 Step-by-step build mode: one step per screen, a picture of each step, progress saved.
+- ✅ E2 **Exact breadboard layout** for every project: every leg and jumper in a named hole, verified net-for-net against the schematic.
+- ✅ E3 Step-by-step build mode: one step per screen, a picture of each step, progress saved.
 - ⬜ E4 One-click kit cart at a distributor (DigiKey, Mouser, Adafruit, AliExpress), with live price and stock.
 - ⬜ E5 A "what you'll need" tools list (USB cable type, wire strippers…) with pictures.
 
 ### F. Verify the real thing
 - ✅ F1 Photo wiring check: Claude compares a photo with the design, lists fixes, and says what it couldn't see.
-- 🟡 F2 The photo check uses the exact hole-by-hole layout. In our eval this raised correct localisation from 52% to 86%.
+- ✅ F2 The photo check uses the exact hole-by-hole layout. In our eval this raised correct localisation from 52% to 86%.
 - ⬜ F3 **Flash from the browser** (WebSerial / esptool-js / Pico UF2) with no installs.
 - ⬜ F4 **Self-test firmware**: an I2C scan, "press each button", "watch the LED blink", sensor readings within plausible ranges, all compared with the simulator.
 - ⬜ F5 AI debugging that combines the serial log, photos, the self-test result and the schematic.
 - ⬜ F6 Measure with a multimeter, guided ("touch the red probe to hole j12: you should see about 3.3 V").
 
 ### G. Product: PCB
-- 🟡 G1 KiCad schematic, netlist and footprint library export, all verified with KiCad's own tools.
-- ⬜ G2 **Auto-placement**:
+- ✅ G1 KiCad schematic, netlist and footprint library export, all verified with KiCad's own tools.
+- 🟡 G2 **Auto-placement** (built: compact wirelength-driven placement, outline, mounting holes; not yet: edge connectors, antenna keep-out, decoupling-cap proximity rules):
   - board outline sized to the parts and the enclosure;
   - connectors on the edges, mounting holes, antenna keep-out;
   - decoupling capacitors placed next to their chips.
-- ⬜ G3 **Auto-routing** (Freerouting) with sensible trace widths for power, plus a ground pour.
-- ⬜ G4 **DRC** with the chosen factory's rules (JLCPCB/PCBWay/OSH Park), explained in plain words.
-- ⬜ G5 3D board view (KiCad render / STEP).
+- ✅ G3 **Auto-routing** (Freerouting) with sensible trace widths for power, plus a ground pour.
+- 🟡 G4 **DRC** with the chosen factory's rules (JLCPCB/PCBWay/OSH Park), explained in plain words.
+- ✅ G5 3D board view (KiCad render / STEP).
 - ⬜ G6 Manual nudge: drag parts on the board and the AI re-routes.
 - ⬜ G7 Silkscreen with labels, the logo, the project name and a QR code to the build page.
 
@@ -140,7 +140,7 @@ Status legend: ✅ built · 🟡 partly built · ⬜ not started
 - ⬜ H3 STL/STEP export, and an order link for a 3D-printing service.
 
 ### I. Manufacture and order
-- ⬜ I1 **Fab package**:
+- 🟡 I1 **Fab package** (built: Gerbers, drill, BOM, CPL, KiCad project, STEP; not yet: LCSC part numbers, assembly drawing, test procedure):
   - Gerbers and drill files;
   - BOM with LCSC/DigiKey part numbers;
   - pick-and-place (CPL);
@@ -184,8 +184,8 @@ my-plant-monitor/
 
 ## Build order (each step stands on its own)
 
-1. **E2/F2:** exact breadboard layout, and the photo check using it *(in progress)*.
-2. **G2–G5 + I1: the PCB.** Open-source tools do the heavy lifting:
+1. ✅ **E2/F2:** exact breadboard layout, and the photo check using it.
+2. ✅ (first version) **G2–G5 + I1: the PCB.** Open-source tools do the heavy lifting:
    - Sparkbench writes the `.kicad_pcb` with auto-placement and a ground pour;
    - [Freerouting](https://github.com/freerouting/freerouting) routes the board;
    - `kicad-cli` produces DRC, Gerbers, drill files, the 3D render and STEP;

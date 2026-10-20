@@ -6,7 +6,7 @@ import { defaultProps, partDef } from '../core/parts';
 import { registerProjectParts } from '../core/customParts';
 import type { PartVisual, SimFrame, SimWarning } from '../sim/engine';
 
-export type Tab = 'breadboard' | 'schematic' | 'code' | 'bom' | 'guide' | 'blog';
+export type Tab = 'breadboard' | 'schematic' | 'code' | 'bom' | 'guide' | 'pcb' | 'blog';
 
 export interface ChatMsg {
   id: string;
@@ -53,7 +53,7 @@ interface State {
   /** Net highlighted from the schematic (sticky, unlike hover). */
   pinnedNet: string | null;
   tourStep: number | null;
-  aiStatus: { enabled: boolean; model?: string; via?: string; kicad?: boolean; ngspice?: boolean };
+  aiStatus: { enabled: boolean; model?: string; via?: string; kicad?: boolean; ngspice?: boolean; pcb?: { kicad: boolean; freerouting: boolean } };
 
   setProject(p: Project | null, opts?: { record?: boolean; keepSim?: boolean }): void;
   update(fn: (p: Project) => Project, record?: boolean): void;
