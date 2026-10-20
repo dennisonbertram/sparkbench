@@ -10,6 +10,8 @@ Sparkbench is an AI-assisted hardware design studio for microcontroller and disc
 4. **Produces the deliverables**: schematic (SVG + KiCad `.kicad_sch`/`.kicad_pro`/netlist), SPICE netlist for ngspice, parts list with prices and supplier links, a step-by-step build guide, and a full blog post.
 5. **Checks the design** with plain-English electrical rules (LED without a resistor, 5 V into a 3.3 V pin, I2C address clashes, missing ground, current budget…) with one-click fixes.
 
+**Any component, from its datasheet.** Not in the library? Type a part number (or paste a datasheet URL) under *+ Add part → Add any component*. Claude finds and reads the datasheet, extracts the pinout, supply range, interface (I2C address, SPI…), price, build tips and — for protocol parts — writes a MicroPython driver. You review it, and Sparkbench wires it in, draws it, simulates it (analog/digital sensors, actuators, I2C register devices), and puts it in the schematic, KiCad export, BOM and docs. Each fetched part is saved as a **Claude Code skill** in `.claude/skills/part-<mpn>/` (`SKILL.md` + `part.json` + driver), so the in-app AI and Claude Code itself both reuse that datasheet knowledge. The repo ships skills for the TMP36, BME280 and VL53L0X.
+
 Follow-ups work conversationally: *"add a buzzer"*, *"use a Raspberry Pi Pico instead"*, *"move button A to GPIO 14"*, *"make it beep when it's too hot"*. In the **Code** tab, an AI pair-programmer edits the firmware on request ("show the temperature in Fahrenheit"), runs the new code in the simulator first (auto-fixing crashes), and shows you a diff to accept.
 
 ## Run it

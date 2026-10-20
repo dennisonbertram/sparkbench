@@ -99,3 +99,10 @@ Status legend: ☐ todo · ◐ partial · ☑ done (verified by automated test o
 - ☑ M3 As Tess, I can open advanced examples (e-ink weather station, internet alarm clock, Simon game, step counter, Pi weather dashboard) that go beyond the default behaviour.
 
 Verification: `npm test` (unit, simulation behaviour for every example, KiCad ERC/netlist, ngspice cross-checks), `node tests/e2e/visual.mjs` (screenshots of every view of every example), `node tests/e2e/ai-design.mjs` and `node tests/e2e/ai-code.mjs` (live Claude flows).
+
+## N. Any component (datasheet-driven)
+- ☑ N1 As Eli, I can add a component that isn't in the library by typing its part number or datasheet URL; the AI finds the datasheet and extracts pins, voltages, interface, price and build tips, which I review before adding.
+- ☑ N2 As Max, the new part is wired for me (power at an allowed voltage, ground, I2C/SPI bus pins, an ADC pin for analog outputs, free GPIOs for digital pins), drawn on the breadboard, and appears in the schematic, KiCad export, BOM, checks and docs.
+- ☑ N3 As Nia, I can simulate it: analog sensors get a slider that sets the real output voltage, digital sensors a toggle, actuators light up when driven, and I2C parts answer at their address with datasheet register values.
+- ☑ N4 As Max, the AI writes a MicroPython driver from the datasheet and uses the part's datasheet knowledge when changing my code.
+- ☑ N5 As Tess, each datasheet becomes a reusable Claude Code skill (`.claude/skills/part-<mpn>/SKILL.md`) that also appears as "Your components" in the parts library.

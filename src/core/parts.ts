@@ -133,7 +133,7 @@ export const PARTS: PartDef[] = [
     type: 'pushbutton',
     name: 'Push button',
     category: 'input',
-    description: '6×6 mm momentary tactile switch. Wired between a GPIO and GND using the internal pull-up.',
+    description: '6×6 mm momentary tactile switch: its two sides connect only while you press it. With a microcontroller it usually goes between a GPIO pin and GND, using the pin\'s internal pull-up.',
     eli5: 'A button. Pressing it connects its two legs, which the board reads as "pressed".',
     refPrefix: 'SW',
     pins: [p('1', 'passive', 'switch', { wokwi: '1.l' }), p('2', 'passive', 'switch', { wokwi: '2.l' })],
