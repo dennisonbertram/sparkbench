@@ -333,6 +333,8 @@ export function Logo() {
 function Welcome() {
   const [text, setText] = useState('');
   const busy = useStore((s) => s.busy);
+  const chat = useStore((s) => s.chat);
+  const lastAi = [...chat].reverse().find((m) => m.role === 'ai' && !m.pending);
   if (busy) return <Designing text={useStore.getState().chat.find((m) => m.role === 'user')?.text ?? ''} status={busy} />;
   const saved = listSaved();
   const go = () => text.trim() && sendPrompt(text);
@@ -373,10 +375,15 @@ function Welcome() {
               }
             }}
           />
-          <button className="primary big" type="submit" disabled={!text.trim()}>
+          <button className="primary big" type="submit" disabled={!text.trim() || !!busy}>
             Design it
           </button>
         </form>
+        {lastAi && (
+          <div className="hero-reply" role="status">
+            <b>Copilot:</b> {lastAi.text}
+          </div>
+        )}
         <p className="hero-hint">Works with ESP32, Raspberry Pi Pico, Raspberry Pi 4, or plain components (555 timers, transistors).</p>
       </section>
       <section className="gallery" aria-label="Example projects">

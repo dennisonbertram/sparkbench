@@ -127,6 +127,15 @@ export const EXAMPLES: Example[] = [
     tryIt: ['Press Run and watch the LED blink by itself.', 'Change R2 or the capacitor in the Inspector and run again.'],
   },
   {
+    id: '555-tone',
+    title: '555 tone generator',
+    blurb: 'No code at all: a 555 timer oscillating at about 465 Hz drives a piezo buzzer while you hold the button.',
+    prompt: 'a 555 timer that drives a buzzer, with a button',
+    board: 'none',
+    level: 'Beginner',
+    tryIt: ['Press Run, then hold the button: the buzzer sounds (turn Sound on to hear it).', 'Change R2 or the timing capacitor in the Inspector to change the pitch.'],
+  },
+  {
     id: 'transistor-switch',
     title: 'Transistor button light',
     blurb: 'A push button drives an NPN transistor that switches an LED — how every motor driver works.',

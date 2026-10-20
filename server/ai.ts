@@ -9,6 +9,7 @@ import { buildProject, FEATURE_LABELS } from '../src/core/planner';
 import { BOARDS } from '../src/core/boards';
 import { simulate } from '../src/sim/node-runner';
 import { askJson, backend, MODEL, type Turn } from './llm';
+import { runChecks } from '../src/core/checks';
 
 const FEATURE_KINDS = Object.keys(FEATURE_LABELS) as [string, ...string[]];
 
@@ -22,6 +23,7 @@ const DesignSchema = z.object({
         kind: z.enum(FEATURE_KINDS),
         label: z.string().nullable().describe('Optional human label, e.g. "Up button" or "Red"'),
         color: z.string().nullable().describe('LED / button colour if relevant'),
+        count: z.number().nullable().describe('NeoPixel ring only: number of LEDs (8, 12, 16 or 24); null otherwise'),
       }),
     )
     .describe('Every part-level feature in the FINAL design (for edits: the full updated list; for code/question: the current list unchanged)'),
@@ -51,6 +53,7 @@ ${Object.entries(FEATURE_LABELS)
 At most one each of: oled, lcd, mpu6050, dht22, hcsr04, neopixel, relay, buzzer (I2C address / bus limits).
 Pin assignment, resistors, dividers and wiring are done automatically by the tool — never list resistors yourself.
 Unsupported boards (Arduino Uno, STM32…) → pick the closest supported board and say so. Unsupported parts → pick the closest supported part and say so.
+If you substitute a part or reduce a quantity, say exactly what you built instead (e.g. "a 12-LED NeoPixel ring", not "a ring").
 Default to esp32 when no board is named. Keep replies short, warm and concrete.`;
 
 const CODE_SYSTEM = `You are the firmware assistant inside Sparkbench. You edit code for a real hardware project; the same code runs in Sparkbench's simulator and on the physical board.
@@ -91,7 +94,11 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
   const spec: DesignSpec = {
     board: d.board,
     title: d.title,
-    features: d.features.map((f) => ({ kind: f.kind as DesignSpec['features'][number]['kind'], label: f.label ?? undefined, props: f.color ? { color: f.color } : undefined })),
+    features: d.features.map((f) => ({
+      kind: f.kind as DesignSpec['features'][number]['kind'],
+      label: f.label ?? undefined,
+      props: f.color || f.count ? { ...(f.color ? { color: f.color } : {}), ...(f.count && f.kind === 'neopixel' ? { pixels: f.count } : {}) } : undefined,
+    })),
   };
   const isEdit = d.intent === 'edit' && !!current;
   let project = buildProject(spec, { name: isEdit ? current!.name : d.title, prompt, previous: isEdit ? { ...current!, codeCustom: false } : undefined });
@@ -100,7 +107,10 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
     project = r.project;
     log.push(...r.log);
   }
-  return { project, reply: d.reply, intent: d.intent, log };
+  // Be upfront about anything the design checker flags (e.g. too much current for USB power).
+  const problems = runChecks(project).filter((x) => x.severity === 'error');
+  const warn = problems.length ? `\n\nHeads up — the design checker found ${problems.length === 1 ? 'one problem' : `${problems.length} problems`}: ${problems.map((x) => `${x.title}${x.detail ? ` (${x.detail.split('. ')[0]})` : ''}`).join('; ')}. See the Problems tab for details and fixes.` : '';
+  return { project, reply: d.reply + warn, intent: d.intent, log };
 }
 
 export interface AiCodeResult {

@@ -62,7 +62,7 @@ function countNear(t: string, idx: number): number | undefined {
   const before = t.slice(0, idx).trim().split(/\s+/).slice(-3);
   for (let i = before.length - 1; i >= 0; i--) {
     const w = before[i].replace(/[^a-z0-9]/g, '');
-    if (/^\d+$/.test(w)) return Math.min(12, Number(w));
+    if (/^\d+$/.test(w)) return Number(w);
     if (w in NUMBER_WORDS) return NUMBER_WORDS[w];
     if (/^(esp32|pico|pi|with|and|a|an|the)$/.test(w) === false && i < before.length - 1) break;
   }
@@ -75,10 +75,11 @@ export function parseIntent(prompt: string): DesignSpec {
   const features: FeatureReq[] = [];
   if (board === 'none') {
     if (/transistor/.test(t) && !/555/.test(t)) features.push({ kind: 'transistor-led' });
-    else features.push({ kind: 'astable555' });
+    else features.push({ kind: 'astable555', props: /\b(buzz\w*|beep\w*|sound|tone|siren|noise|speaker|piezo)\b/.test(t) ? { output: 'buzzer' } : undefined });
     return { board, features, title: titleFrom(prompt) };
   }
   const taken: [number, number][] = [];
+  const notes: string[] = [];
   for (const rule of RULES) {
     const re = new RegExp(rule.re.source.replace(/\)\\b$/, ')(?:s|es)?\\b'), 'g');
     let m: RegExpExecArray | null;
@@ -93,7 +94,14 @@ export function parseIntent(prompt: string): DesignSpec {
     }
     if (rule.kind === 'rgb' && features.some((f) => f.kind === 'neopixel')) count = 0;
     // One per I2C address / one screen: two identical modules would clash on the bus.
-    if (SINGLE.has(rule.kind)) count = Math.min(count, 1);
+    if (SINGLE.has(rule.kind) && count > 1) {
+      notes.push(`Only one ${LABELS[rule.kind].toLowerCase()} is supported per design (they would clash on the same bus), so I used one.`);
+      count = 1;
+    }
+    if (count > 8) {
+      notes.push(`${count} separate ${LABELS[rule.kind].toLowerCase()}s would use too many pins, so I used 8.${rule.kind === 'led' ? ' For lots of LEDs, ask for a NeoPixel ring instead — they all share one wire.' : ''}`);
+      count = 8;
+    }
     for (let i = 0; i < count; i++) features.push({ kind: rule.kind });
   }
   // "traffic light" → red, yellow, green LEDs
@@ -127,7 +135,10 @@ export function parseIntent(prompt: string): DesignSpec {
     removeKind(features, 'led');
     if (/night ?light/.test(t)) features.push({ kind: 'led', props: { color: 'white' }, label: 'Night light' });
   }
-  if (features.length === 0) features.push({ kind: 'led', label: 'Status' }, { kind: 'button' });
+  if (features.length === 0) {
+    notes.push('I didn’t recognise any parts in that request, so this is a simple starter: an LED and a button. Name the parts you want, e.g. “an ESP32 with a screen, a temperature sensor and two buttons”.');
+    features.push({ kind: 'led', label: 'Status' }, { kind: 'button' });
+  }
   const unsupported = /\b(arduino|uno|nano|mega|stm32|teensy|micro:?bit|attiny|esp8266|nodemcu|beaglebone|jetson)\b/.exec(t);
   if (unsupported && board === 'esp32' && !/esp-?32/.test(t)) {
     return { board, features: colourLeds(features), title: titleFrom(prompt), note: `Sparkbench doesn't support the ${unsupported[1] === 'uno' || unsupported[1] === 'nano' || unsupported[1] === 'mega' ? 'Arduino' : unsupported[1].replace(/^./, (c) => c.toUpperCase())} yet, so I used an ESP32 instead — it's just as easy to program (in Python) and adds Wi-Fi.` };
@@ -136,7 +147,7 @@ export function parseIntent(prompt: string): DesignSpec {
     // The Pico has no Wi-Fi radio; an internet project needs a board that does.
     return { board: 'esp32', features: colourLeds(features), title: titleFrom(prompt), note: 'The Raspberry Pi Pico has no Wi-Fi, so I used an ESP32 instead.' } as DesignSpec;
   }
-  return { board, features: colourLeds(features), title: titleFrom(prompt) };
+  return { board, features: colourLeds(features), title: titleFrom(prompt), note: notes.join(' ') || undefined };
 }
 
 function colourLeds(features: FeatureReq[]): FeatureReq[] {
@@ -567,7 +578,8 @@ class Builder {
         break;
       }
       case 'astable555':
-        this.build555(fi);
+        if (req.props?.output === 'buzzer') this.build555Tone(fi);
+        else this.build555(fi);
         break;
       case 'transistor-led':
         this.buildTransistorLed(fi);
@@ -606,6 +618,38 @@ class Builder {
     Object.assign(this.fixed, { [bat]: [40, 110], [r1]: [250, 60], [r2]: [330, 60], [u]: [280, 150], [c1]: [190, 300], [c2]: [360, 300], [rl]: [450, 210], [led]: [540, 186] });
     this.groups.push({ main: bat, parts: [bat], side: 'left' }, { main: u, parts: [r1, r2, u], side: 'right' }, { main: c1, parts: [c1, c2], side: 'left' }, { main: led, parts: [rl, led], side: 'right' });
     this.notes.push('f = 1.44 / ((R1 + 2·R2)·C) = 1.44 / ((10k + 94k) · 10 µF) ≈ 1.4 Hz — the LED blinks about 1.4 times per second.');
+  }
+
+  /** 555 astable at audio frequency driving a piezo buzzer (a simple tone generator). */
+  build555Tone(fi: FeatureInstance) {
+    const bat = this.addPart('battery-9v', { volts: 9 }, '9 V battery');
+    const u = this.addPart('ne555', {}, 'NE555 timer');
+    const r1 = this.addPart('resistor', { ohms: 1000 }, 'R1 (timing)');
+    const r2 = this.addPart('resistor', { ohms: 15000 }, 'R2 (timing)');
+    const c1 = this.addPart('capacitor', { farads: 100e-9 }, 'Timing capacitor');
+    const c2 = this.addPart('capacitor', { farads: 10e-9 }, 'Control capacitor');
+    const bz = this.addPart('buzzer', {}, 'Piezo buzzer');
+    const sw = this.addPart('pushbutton', { color: 'red' }, 'Sound button');
+    const w = (a: string, ap: string, bb: string, bpn: string, color?: string) => this.wire({ part: a, pin: ap }, { part: bb, pin: bpn }, color);
+    w(bat, '+', sw, '1', WIRE_COLORS.v33);
+    w(sw, '2', u, 'VCC', WIRE_COLORS.v33);
+    w(u, 'RESET', u, 'VCC', WIRE_COLORS.v33);
+    w(bat, '-', u, 'GND', WIRE_COLORS.gnd);
+    w(r1, '1', u, 'VCC', WIRE_COLORS.v33);
+    w(r1, '2', u, 'DIS');
+    w(r2, '1', u, 'DIS');
+    w(r2, '2', u, 'THR');
+    w(u, 'TRIG', u, 'THR');
+    w(c1, '1', u, 'THR');
+    w(c1, '2', bat, '-', WIRE_COLORS.gnd);
+    w(c2, '1', u, 'CTRL');
+    w(c2, '2', bat, '-', WIRE_COLORS.gnd);
+    w(u, 'OUT', bz, '+');
+    w(bz, '-', bat, '-', WIRE_COLORS.gnd);
+    fi.parts.push(u, bat, r1, r2, c1, c2, bz, sw);
+    Object.assign(this.fixed, { [bat]: [40, 110], [sw]: [150, 40], [r1]: [250, 60], [r2]: [330, 60], [u]: [280, 150], [c1]: [200, 300], [c2]: [360, 300], [bz]: [480, 170] });
+    this.groups.push({ main: bat, parts: [bat], side: 'left' }, { main: u, parts: [r1, r2, u], side: 'right' });
+    this.notes.push('f = 1.44 / ((R1 + 2·R2)·C) = 1.44 / ((1k + 30k) · 100 nF) ≈ 465 Hz — a clear beep while you hold the button. Bigger R2 or C = lower pitch.');
   }
 
   /** LED switched by an NPN transistor and a push button (no microcontroller). */
@@ -738,7 +782,7 @@ function pinNotes(project: Project): string[] {
 /** A short, friendly project name from what the design does. */
 export function projectName(spec: DesignSpec): string {
   const k = new Set(spec.features.map((f) => f.kind));
-  if (spec.board === 'none') return k.has('transistor-led') ? 'Transistor Button Light' : '555 LED Blinker';
+  if (spec.board === 'none') return k.has('transistor-led') ? 'Transistor Button Light' : spec.features[0]?.props?.output === 'buzzer' ? '555 Tone Generator' : '555 LED Blinker';
   const board = BOARDS[spec.board].short;
   const display = k.has('oled') || k.has('lcd');
   const leds = spec.features.filter((f) => f.kind === 'led');

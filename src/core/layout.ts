@@ -1,6 +1,7 @@
 // Approximate on-canvas sizes (CSS px) of each part's breadboard picture, plus auto-placement.
 import type { Project, PartInstance } from './types';
 import { partDef } from './parts';
+import { BOARDS } from './boards';
 
 export const PART_SIZE: Record<string, [number, number]> = {
   'esp32-devkit': [107, 204],
@@ -38,6 +39,19 @@ export const PART_SIZE: Record<string, [number, number]> = {
 
 export function partSize(type: string): [number, number] {
   return PART_SIZE[type] ?? [80, 60];
+}
+
+/** Where a board pin sits on the board picture: which side, and how far down (0 = top, 1 = bottom). */
+export function boardPinPlace(boardType: string, pin: string): { side: 'left' | 'right'; t: number } | undefined {
+  const b = Object.values(BOARDS).find((x) => x.partType === boardType);
+  const bp = b?.pins.find((p) => p.name === pin);
+  if (!b || !bp?.physical) return undefined;
+  const n = bp.physical;
+  if (b.id === 'esp32') return n <= 15 ? { side: 'left', t: (n - 1) / 14 } : { side: 'right', t: (30 - n) / 14 };
+  if (b.id === 'pico') return n <= 20 ? { side: 'left', t: (n - 1) / 19 } : { side: 'right', t: (40 - n) / 19 };
+  // Raspberry Pi: header along the top edge; left half of it → left column.
+  const col = Math.floor((n - 1) / 2) / 19;
+  return { side: col < 0.5 ? 'left' : 'right', t: col < 0.5 ? col : 1 - col };
 }
 
 export interface Group {
@@ -87,11 +101,25 @@ export function autoLayout(project: Project, groups: Group[]): Project {
     if (cat === 'input') return 'left';
     return undefined;
   };
+  // Where each group's signal wires land on the board (power and ground pins don't count).
+  const pinPlace = (g: Group) => {
+    if (!board) return undefined;
+    const places = project.wires
+      .flatMap((w) => [[w.a, w.b], [w.b, w.a]])
+      .filter(([x, y]) => g.parts.includes(x.part) && y.part === board.id && !/^(GND|3V3|5V|VIN|VBUS|VSYS|AGND)/.test(y.pin))
+      .map(([, y]) => boardPinPlace(board.type, y.pin))
+      .filter((x): x is { side: 'left' | 'right'; t: number } => !!x);
+    if (!places.length) return undefined;
+    const left = places.filter((x) => x.side === 'left').length;
+    return { side: left * 2 >= places.length ? ('left' as const) : ('right' as const), t: places.reduce((s, x) => s + x.t, 0) / places.length };
+  };
+  const placeOf = new Map(all.map((g) => [g, pinPlace(g)]));
+  all.sort((a, b) => (placeOf.get(a)?.t ?? 0.5) - (placeOf.get(b)?.t ?? 0.5));
   for (const g of all) {
     const [, h] = rowSize(g);
-    const side = pref(g) ?? (leftH <= rightH ? 'left' : 'right');
+    const side = placeOf.get(g)?.side ?? pref(g) ?? (leftH <= rightH ? 'left' : 'right');
     // keep columns roughly balanced
-    const useLeft = side === 'left' ? leftH <= rightH + 260 : leftH + 260 < rightH;
+    const useLeft = side === 'left' ? leftH <= rightH + 420 : leftH + 420 < rightH;
     if (useLeft) {
       left.push(g);
       leftH += h + GAP;

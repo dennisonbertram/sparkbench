@@ -835,9 +835,19 @@ export class SimEngine {
     this.status = 'running';
     this.model.solve();
     c.initCaps(true);
-    const dt = 2e-4;
+    // Fast enough to resolve the quickest RC in the circuit (audio-rate 555s need small steps).
+    const rcs: number[] = [];
+    for (const p of this.project.parts) if (p.type === 'capacitor' || p.type === 'electrolytic') for (const r of this.project.parts) if (r.type === 'resistor') rcs.push(Number(r.props.ohms) * Number(p.props.farads));
+    const tau = rcs.length ? Math.min(...rcs.filter((x) => x > 2e-5)) : 1;
+    const dt = Math.min(2e-4, Math.max(1e-5, tau / 40));
     const probeNets = this.model.nets.filter((n) => n.pins.length > 1).slice(0, 8);
     let lastScope = -1;
+    // Tone detection: watch 555 outputs that drive a buzzer.
+    const tonePairs = this.project.parts
+      .filter((p) => p.type === 'ne555')
+      .flatMap((u) => this.project.parts.filter((b) => b.type === 'buzzer' && this.model.netOf.get(`${b.id}:+`) === this.model.netOf.get(`${u.id}:OUT`)).map((b) => ({ u, b })));
+    const edges: number[] = [];
+    let lastHigh = false;
     try {
       for (;;) {
         this.checkStop();
@@ -845,6 +855,19 @@ export class SimEngine {
         if (this.model.dirty) this.model.dirty = false;
         c.step(dt);
         this.timeUs += dt * 1e6;
+        for (const { u, b } of tonePairs) {
+          const vout = this.model.pinVoltage(u.id, 'OUT') - this.model.pinVoltage(u.id, 'GND');
+          const high = vout > 3;
+          if (high && !lastHigh) {
+            edges.push(this.timeUs);
+            if (edges.length > 8) edges.shift();
+          }
+          lastHigh = high;
+          const recent = edges.length >= 3 && this.timeUs - edges[edges.length - 1] < 50_000;
+          const f = recent ? ((edges.length - 1) * 1e6) / (edges[edges.length - 1] - edges[0]) : 0;
+          // Only audible pitches count as a tone; slow blinking just clicks.
+          this.tones.set(b.id, f >= 20 ? Math.round(f) : 0);
+        }
         if (this.timeUs - lastScope >= 5000) {
           lastScope = this.timeUs;
           const v: Record<string, number> = {};
