@@ -70,6 +70,13 @@ const FOOTPRINTS: Record<string, Footprint> = {
 };
 
 function footprintFor(type: string, pinCount: number): Footprint {
+  if (FOOTPRINTS[type]) return FOOTPRINTS[type];
+  // Datasheet-defined parts: take the physical form from their KiCad footprint.
+  const def = partDef(type);
+  const fpName = def.kicad.footprint ?? '';
+  if (/TO-92/.test(fpName) && def.pins.length === 3) return { kind: 'inline', bb: 'to92', offsets: [0, 1, 2] };
+  const dip = /DIP-(\d+)/.exec(fpName);
+  if (dip && Number(dip[1]) === def.pins.length) return { kind: 'dip', label: def.name.split(/[ (]/)[0], order: def.pins.map((p) => p.name) };
   return FOOTPRINTS[type] ?? (pinCount <= 8 ? { kind: 'module', label: partDef(type).name.split(/[ (]/)[0], body: '#3a4a5c' } : { kind: 'offboard', label: partDef(type).name, body: '#3a4a5c', w: 40 + pinCount * 22, h: 80 });
 }
 
@@ -205,7 +212,7 @@ export function planBreadboard(project: Project): BreadboardPlan {
     const pref = fp.axial ? ROWS[h].axial : ROWS[h].radial;
     const row = [pref, ...ROWS[h].alt].find((r) => fp.offsets.every((o) => free(holeIn(r, col + o)) && col + o <= cols));
     if (!row) return false;
-    const bp: BbPart = { ref: refOf(part), kind: fp.bb, legs: {}, color: part.props.color, ohms: part.props.ohms ?? part.props.resistance, farads: part.props.farads ?? part.props.capacitance, label: part.type === 'npn' ? '2N2222' : undefined };
+    const bp: BbPart = { ref: refOf(part), kind: fp.bb, legs: {}, color: part.props.color, ohms: part.props.ohms ?? part.props.resistance, farads: part.props.farads ?? part.props.capacitance, label: part.type === 'npn' ? '2N2222' : fp.bb === 'to92' ? partDef(part.type).name.split(/[ (]/)[0] : undefined };
     pinOrder.forEach((pin, i) => {
       bp.legs[pin] = holeIn(row, col + fp.offsets[i]);
       put(part, pin, bp.legs[pin]);
