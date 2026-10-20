@@ -106,12 +106,14 @@ function featureName(f: FeatureInstance, article = true): string {
 function designPhrase(c: Ctx): string {
   const counts = new Map<string, number>();
   for (const f of c.features) {
+    if (f.kind === 'internet') continue;
     const n = f.kind === 'button' ? 'button' : f.kind === 'led' ? 'LED' : featureName(f, false);
     counts.set(n, (counts.get(n) ?? 0) + 1);
   }
   const items = [...counts].map(([n, k]) => (k > 1 ? plural(k, n, { words: true }) : withArticle(n)));
   if (!c.board) return c.project.parts.some((p) => p.type === 'ne555') ? 'a classic 555 timer circuit that blinks an LED, running from a 9 V battery with no microcontroller' : 'a push button that switches an LED through a transistor, running from a 9 V battery with no microcontroller';
-  return `${withArticle(c.board.name)} with ${listJoin(items)}`;
+  const online = c.features.some((f) => f.kind === 'internet') ? `, connected to the internet over ${c.board.id === 'rpi4' ? 'its network' : 'Wi-Fi'}` : '';
+  return `${withArticle(c.board.name)} with ${listJoin(items)}${online}`;
 }
 
 /** Board pin as printed on the board plus the physical header pin where that helps (Pi / Pico). */
@@ -797,6 +799,7 @@ function assemblySteps(c: Ctx): Step[] {
       addStep(`Add the ${partLabel(p)}`, [p], body.filter(Boolean));
     }
     for (const f of c.features) {
+      if (f.kind === 'internet') continue; // no parts to place; Wi-Fi details are set in the program
       const ps = f.parts.map((id) => c.parts.get(id)).filter((p): p is PartInstance => !!p);
       const main = ps[0];
       const d = main ? safeDef(main.type) : undefined;
@@ -967,6 +970,8 @@ export function buildGuide(project: Project): string {
   if (b) {
     out.push('## Load the program', '');
     out.push(b.language === 'python' ? 'The Raspberry Pi runs your program as ordinary Python 3 on Linux, using the friendly **gpiozero** library.' : `The ${b.name} runs **MicroPython** — a small version of Python made for microcontrollers. You flash MicroPython once, then copy your program onto the board.`, '');
+    if (c.features.some((f) => f.kind === 'internet') && b.id === 'esp32')
+      out.push('**Enter your Wi-Fi details:** open `main.py` and change `WIFI_SSID` and `WIFI_PASSWORD` near the top to your network name and password (the ESP32 only works with 2.4 GHz Wi-Fi). If you want weather for your own town, also change `LATITUDE` and `LONGITUDE` — you can look them up on open-meteo.com.', '');
     out.push('**First, get the files out of Sparkbench:** click **Export → Everything (.zip)** and unzip it — the `firmware` folder holds the program. (Or use **Download** on each file in the Code tab.)', '');
     if (b.language === 'micropython')
       out.push(
