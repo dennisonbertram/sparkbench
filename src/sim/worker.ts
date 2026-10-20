@@ -51,7 +51,7 @@ self.onmessage = async (ev: MessageEvent<StartMsg>) => {
           out.push({ part, key, value: inputs[i] });
         }
       }
-      engine.speed = Atomics.load(control, 2) / 100 || 1;
+      engine.setSpeed(Atomics.load(control, 2) / 100 || 1);
       return out;
     },
   };

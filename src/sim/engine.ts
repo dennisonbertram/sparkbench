@@ -209,6 +209,14 @@ export class SimEngine {
     }
     if (this.irqWatch.size && (changes?.length || this.model.dirty)) this.checkIrqs();
   }
+  /** Change speed without jumping simulated time: re-anchor the wall clock mapping. */
+  setSpeed(speed: number) {
+    if (speed === this.speed) return;
+    this.syncClock();
+    this.wallStart = this.host.wallNowMs();
+    this.simStart = this.timeUs;
+    this.speed = speed;
+  }
   applyInput(ch: InputChange) {
     const part = this.project.parts.find((p) => p.id === ch.part);
     if (!part) return;
@@ -691,7 +699,7 @@ export class SimEngine {
           break;
         }
         default:
-          if (partDef(part.type).vmin !== undefined) v.powered = m.modulePowered(part.id);
+          if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
       }
       parts[part.id] = v;
     }
@@ -810,7 +818,6 @@ export class SimEngine {
       } else {
         this.status = 'error';
         this.error = explainError(String(e?.message ?? e), this.project);
-        this.serial(this.error.raw);
       }
     }
     this.maybeFrame(true);
@@ -897,7 +904,9 @@ export function explainError(raw: string, project?: Project): NonNullable<SimFra
   let message = last.replace(/^\w+Error: /, (s) => s);
   if (/OSError: (19|\[Errno 19\])/.test(raw)) message = 'OSError: [Errno 19] ENODEV — no I2C device answered';
   void project;
-  return { message, line, file, hint, raw: raw.trim() };
+  // Hide the simulator's own frames (bootstrap exec and hardware shims) from the traceback.
+  const clean = lines.filter((l) => !/File "(<stdin>|\/lib\/)/.test(l)).join('\n');
+  return { message, line, file, hint, raw: clean.trim() };
 }
 
 export { pinKey };

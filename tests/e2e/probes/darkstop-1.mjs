@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ colorScheme: 'dark', viewport:{width:1400,height:900} });
+await p.goto('http://localhost:5173/?example=esp32-weather-imu&notour');
+await p.waitForSelector('button.run');
+await p.click('button.run');
+await p.waitForTimeout(1500);
+const info = await p.$eval('button.run', el => { const s=getComputedStyle(el); return {cls:el.className, text:el.textContent, bg:s.backgroundColor, color:s.color}; });
+console.log(JSON.stringify(info));
+await p.screenshot({path:'test-results/qa/darkstop/full.png'});
+const bb = await (await p.$('button.run')).boundingBox();
+await p.screenshot({path:'test-results/qa/darkstop/zoom.png', clip:{x:Math.max(0,bb.x-100),y:Math.max(0,bb.y-20),width:bb.width+200,height:bb.height+40}});
+await b.close();

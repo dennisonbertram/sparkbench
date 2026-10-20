@@ -1,7 +1,9 @@
 // Side and bottom panels: copilot chat, inspector, console (serial / problems / scope), part library.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
-import { sendPrompt } from './copilot';
+import { sendPrompt, suggestions as suggestFor } from './copilot';
+import { marked } from 'marked';
+import { Glossed } from './Glossed';
 import { startSim } from './simClient';
 import { PARTS, partDef } from '../core/parts';
 import { buildNets, pinKey } from '../core/netlist';
@@ -15,6 +17,7 @@ export function Copilot() {
   const chat = useStore((s) => s.chat);
   const project = useStore((s) => s.project);
   const ai = useStore((s) => s.aiStatus);
+  const busy = useStore((s) => s.busy);
   const [text, setText] = useState('');
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -25,9 +28,7 @@ export function Copilot() {
     sendPrompt(text);
     setText('');
   };
-  const suggestions = project
-    ? ['Add a buzzer', 'Add two more LEDs', 'Use a Raspberry Pi Pico instead', 'Remove the LED', 'What is I2C?']
-    : ['ESP32 with an OLED, two buttons, temperature sensor and IMU', 'Pico traffic light', 'Raspberry Pi plant waterer with an LCD'];
+  const suggestions = suggestFor(project);
   return (
     <aside className="copilot" data-tour="copilot">
       <header className="panel-head">
@@ -45,13 +46,15 @@ export function Copilot() {
         )}
         {chat.map((m) => (
           <div key={m.id} className={`msg ${m.role} ${m.pending ? 'pending' : ''}`}>
-            <div className="msg-text">{m.text}</div>
+            {m.role === 'ai' && !m.pending ? <div className="msg-text md" dangerouslySetInnerHTML={{ __html: marked.parse(m.text, { async: false, breaks: true }) as string }} /> : <div className="msg-text">{m.text}</div>}
             {m.details && m.details.length > 0 && (
               <details className="msg-details">
                 <summary>Why it's wired this way</summary>
                 <ul>
                   {m.details.map((d, i) => (
-                    <li key={i}>{d}</li>
+                    <li key={i}>
+                      <Glossed text={d} />
+                    </li>
                   ))}
                 </ul>
               </details>
@@ -77,7 +80,7 @@ export function Copilot() {
       </div>
       <div className="suggest">
         {suggestions.map((s) => (
-          <button key={s} onClick={() => sendPrompt(s)}>
+          <button key={s} onClick={() => sendPrompt(s)} disabled={!!busy}>
             {s}
           </button>
         ))}
@@ -92,7 +95,8 @@ export function Copilot() {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={project ? 'Ask for a change… (Enter to send)' : 'Describe your gadget… (Enter to send)'}
+          placeholder={busy ? busy : project ? 'Ask a question or for a change… (Enter to send)' : 'Describe your gadget… (Enter to send)'}
+          disabled={!!busy}
           rows={3}
           aria-label="Message the copilot"
           onKeyDown={(e) => {
@@ -102,8 +106,8 @@ export function Copilot() {
             }
           }}
         />
-        <button type="submit" className="primary" disabled={!text.trim()}>
-          Send
+        <button type="submit" className="primary" disabled={!text.trim() || !!busy}>
+          {busy ? 'Working…' : 'Send'}
         </button>
       </form>
     </aside>
@@ -119,7 +123,8 @@ export function Inspector() {
   const wire = selection?.kind === 'wire' ? project.wires.find((w) => w.id === selection.id) : undefined;
   const { netOf } = useMemo(() => buildNets(project), [project.parts, project.wires]);
   const running = sim.status === 'running' || sim.status === 'booting';
-  const interactive = project.parts.filter((p) => (partDef(p.type).controls ?? []).length > 0);
+  const usesNet = (project.features ?? []).some((f) => f.kind === 'internet') || /network|urequests|requests/.test(project.files['main.py'] ?? '');
+  const interactive = project.parts.filter((p) => (partDef(p.type).controls ?? []).some((c) => c.key !== 'wifi' || usesNet));
 
   if (part) {
     const def = partDef(part.type);
@@ -315,6 +320,7 @@ export function Console() {
   }, [sim.serial.length, tab]);
   const errs = checks.filter((c) => c.severity === 'error').length + sim.warnings.filter((w) => w.severity === 'error').length + (sim.error ? 1 : 0);
   const warns = checks.filter((c) => c.severity === 'warning').length + sim.warnings.filter((w) => w.severity === 'warning').length;
+  const infos = checks.filter((c) => c.severity === 'info').length + sim.warnings.filter((w) => w.severity === 'info').length;
   const discrete = project.board === 'none';
   return (
     <section className="console" data-tour="console">
@@ -326,7 +332,8 @@ export function Console() {
           Problems
           {errs > 0 && <span className="count err">{errs}</span>}
           {warns > 0 && <span className="count warn">{warns}</span>}
-          {errs + warns === 0 && <span className="count ok">✓</span>}
+          {infos > 0 && errs + warns === 0 && <span className="count info" title="Tips, not problems">{infos}</span>}
+          {errs + warns + infos === 0 && <span className="count ok">✓</span>}
         </button>
         <span className="spacer" />
         <span className="sim-time">{sim.status !== 'idle' ? `${(sim.t / 1000).toFixed(1)} s simulated` : ''}</span>
@@ -475,7 +482,10 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
                   }}
                 >
                   <span className="lib-name">{p.name}</span>
-                  <span className="lib-desc">{p.eli5}</span>
+                  <span className="lib-desc">
+                    {p.eli5}
+                    {p.vmin !== undefined && ` · ${p.vmin}–${p.vmax} V`}
+                  </span>
                   <span className="lib-price">${p.bom.priceUsd.toFixed(2)}</span>
                 </button>
               ))}

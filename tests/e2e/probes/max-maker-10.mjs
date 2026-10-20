@@ -15,12 +15,8 @@ console.log('PROBLEMS after fix', await p.locator('[data-testid=problems]').inne
 await p.screenshot({ path: OUT + '71-led-fixed.png' });
 await tab(p, 'Code');
 console.log('led in code before regen?', /Pin\(25/.test(pr.files['main.py']));
-p.once('dialog', d => { console.log('DIALOG', d.message()); d.accept(); });
-await p.click('text=Regenerate main.py'); await p.waitForTimeout(800);
-pr = await proj();
-console.log('led in code after regen?', /Pin\(25/.test(pr.files['main.py']), pr.files['main.py'].split('\n').filter(l => /25/.test(l)).join(' / '));
-await p.screenshot({ path: OUT + '72-regen.png' });
-// schematic shows the new parts?
-await tab(p, 'Schematic'); await p.waitForTimeout(800); await p.screenshot({ path: OUT + '73-schematic.png' });
-console.log('ERRS', errs);
+console.log('features', JSON.stringify(pr.features.map(f=>f.label)));
+await p.click('button.run'); await p.waitForTimeout(3000);
+console.log('PROBLEMS running', await p.locator('[data-testid=problems]').innerText().catch(()=>'-'));
+await tab(p, 'Breadboard'); await p.screenshot({ path: OUT + '74-manual-led-running.png' });
 await b.close();

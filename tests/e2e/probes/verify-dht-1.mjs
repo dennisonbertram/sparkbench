@@ -1,0 +1,26 @@
+import { chromium } from 'playwright';
+const D='test-results/qa/verify-dht/';
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 1366, height: 820 } });
+await ctx.addInitScript(()=>{try{localStorage.setItem('sparkbench.tour.done','1')}catch{}});
+const p = await ctx.newPage();
+await p.route('**/api/status', r=>r.fulfill({status:200, contentType:'application/json', body: JSON.stringify({ai:{enabled:false}})}));
+await p.route('**/api/ai/**', r=>r.abort());
+await p.goto('http://localhost:5173/?welcome&notour');
+await p.fill('.hero-input textarea','a thermometer with a screen for my desk');
+await p.click('button.primary.big'); await p.waitForSelector('.part'); await p.waitForTimeout(1000);
+console.log('INITIAL PARTS', await p.$$eval('.part', es=>es.map(e=>e.getAttribute('data-part'))));
+let i=0;
+async function ask(q){ await p.fill('.composer textarea', q); await p.press('.composer textarea','Enter'); await p.waitForTimeout(3000);
+  const msgs = await p.$$eval('[data-tour=copilot] .msg, [data-tour=copilot] [class*=msg]', es=>es.map(e=>e.innerText));
+  console.log('\n=== Q:', q, '\nLAST:', msgs.slice(-1).join(' || '));
+  console.log('PARTS', await p.$$eval('.part', es=>es.map(e=>e.getAttribute('data-part'))));
+  await p.screenshot({ path: D+`q${++i}.png` }); }
+await ask("what is a DHT22?");
+await ask("what is a DHT22?");
+await ask("what do I need to buy?");
+await ask("how much will this cost?");
+await ask("how do I build it?");
+await ask("why do I need an ESP32?");
+await ask("beep when the temperature is above 30");
+await b.close();

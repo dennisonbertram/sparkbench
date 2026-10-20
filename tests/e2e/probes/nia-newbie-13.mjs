@@ -1,0 +1,21 @@
+import { chromium } from 'playwright';
+const D='test-results/qa/nia-newbie/';
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 1366, height: 820 } });
+await ctx.addInitScript(()=>{try{localStorage.setItem('sparkbench.tour.done','1')}catch{}});
+await ctx.route('**/api/status', r=>r.fulfill({status:200, contentType:'application/json', body: JSON.stringify({ai:{enabled:false},kicad:false,ngspice:false})}));
+const p = await ctx.newPage(); p.on('load',()=>console.log('LOAD'));
+await p.goto('http://localhost:5173/'); await p.waitForTimeout(1000);
+await p.fill('.hero-input textarea','a thermometer with a screen for my desk');
+await p.click('button.primary.big'); await p.waitForSelector('.part'); await p.waitForTimeout(800);
+await p.click('button.run'); await p.waitForTimeout(1500);
+async function ask(q,shot){ await p.fill('.composer textarea', q); await p.press('.composer textarea','Enter'); await p.waitForTimeout(2000);
+  const msgs = await p.$$eval('.msg.ai', es=>es.map(e=>e.innerText.split('\n')[0]));
+  console.log('\n=== Q:', q, '\nREPLY:', msgs.slice(-1)[0], '\nPARTS', await p.$$eval('.part', es=>es.map(e=>e.getAttribute('data-part'))), '| title:', await p.innerText('.project-name, header h1, .doc-title').catch(()=>''));
+  if(shot) await p.screenshot({path:D+shot}); }
+await ask("what is a DHT22?", 'C0-what-dht22.png');
+await p.click('button:has-text("Undo")'); await p.waitForTimeout(500);
+await ask("make it beep when it's too hot", 'C1-offline-beep.png');
+await p.waitForTimeout(2000);
+console.log('SERIAL tail (stale?):', (await p.innerText('[data-testid=serial]')).slice(-150), '| run:', (await p.innerText('.run-group')).replace(/\n/g,' '));
+await b.close();

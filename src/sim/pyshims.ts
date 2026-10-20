@@ -65,6 +65,7 @@ def localtime(secs=None):
         secs = time()
     secs = int(secs)
     days, rem = divmod(secs, 86400)
+    wday = (days + 3) % 7  # 1970-01-01 was a Thursday; 0 = Monday
     h, rem = divmod(rem, 3600)
     m, s = divmod(rem, 60)
     y = 1970
@@ -75,11 +76,12 @@ def localtime(secs=None):
         days -= yd
         y += 1
     mdays = [31, 29 if yd == 366 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    yday = days + 1
     mo = 0
     while days >= mdays[mo]:
         days -= mdays[mo]
         mo += 1
-    return (y, mo + 1, days + 1, h, m, s, 0, 0)
+    return (y, mo + 1, days + 1, h, m, s, wday, yday)
 
 gmtime = localtime
 

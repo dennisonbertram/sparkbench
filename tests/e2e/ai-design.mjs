@@ -1,0 +1,21 @@
+// E2E: describe a project in plain English on the welcome screen; Claude designs it; run it.
+import { chromium } from 'playwright';
+const prompt = process.argv[2] ?? 'a desk thermometer with a little screen that beeps when it gets too hot, and a button to silence the alarm';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(String(e)));
+await p.goto('http://localhost:5173/?welcome&notour');
+await p.fill('.hero-input textarea', prompt);
+await p.click('.hero-input button');
+await p.waitForSelector('.msg.ai:not(.pending)', { timeout: 300000 });
+await p.waitForTimeout(800);
+console.log('name:', await p.inputValue('.project-name'));
+console.log('reply:', (await p.textContent('.msg.ai .msg-text')).slice(0, 600));
+await p.screenshot({ path: 'test-results/ai-design-1.png' });
+await p.click('button.run');
+await p.waitForTimeout(6000);
+console.log('serial:', (await p.textContent('[data-testid=serial]')).slice(-400));
+await p.screenshot({ path: 'test-results/ai-design-2-running.png' });
+console.log('errors:', errors);
+await b.close();

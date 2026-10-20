@@ -19,4 +19,12 @@ export const GLOSSARY: Record<string, string> = {
   'Voltage divider': 'Two resistors in series that output a fraction of the input voltage — used here to bring 5 V signals down to 3.3 V.',
   Servo: 'A motor that turns to an exact angle (0–180°) set by the length of a pulse every 20 ms.',
   Relay: 'An electrically controlled switch for bigger loads like pumps, fans or lamps.',
+  'Strapping pin': 'A pin the ESP32 reads at power-up to decide how to boot. Wiring it the wrong way can stop the board from starting.',
+  'Input-only': 'Pins that can read signals but cannot drive outputs (ESP32 GPIO34–39), and have no internal pull-up resistor.',
+  'Pull-down': 'A resistor that holds a pin at 0 V (ground) until something pulls it up to 3.3 V.',
+  SPI: 'A fast 4-wire bus (clock, data out, data in, chip select) used by displays like the e-paper screen.',
+  'E-paper': 'A paper-like display that keeps its picture without power. Refreshing takes a couple of seconds.',
+  'Wi-Fi': 'The wireless network. The ESP32 and Raspberry Pi have it built in; the Pico does not (the Pico W does).',
+  MCP3008: 'An add-on chip that lets the Raspberry Pi measure voltages, which it cannot do on its own.',
+  NeoPixel: 'An LED with its own tiny controller, so a whole strip or ring can be set to any colours over one wire.',
 };

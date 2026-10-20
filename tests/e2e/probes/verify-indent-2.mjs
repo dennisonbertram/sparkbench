@@ -1,0 +1,23 @@
+import { chromium } from 'playwright';
+const OUT='test-results/qa/verify-indent/';
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1400,height:900}});
+await p.goto('http://localhost:5173/?example=pico-traffic-light&notour'); await p.waitForSelector('.part',{timeout:30000}); await p.waitForTimeout(1500);
+await p.locator('.tabs button',{hasText:'Code'}).click(); await p.waitForTimeout(800);
+await p.locator('.cm-content').click(); await p.keyboard.press('Meta+End'); await p.keyboard.press('Control+End'); await p.waitForTimeout(400);
+const lines = await p.locator('.cm-line').allInnerTexts();
+console.log(lines.map(l=>JSON.stringify(l)).join('\n'));
+let target=null; let inWhile=false;
+for (const l of lines){ if(/^while True:/.test(l)) inWhile=true; else if(inWhile && /^    \S/.test(l) && !/:\s*$/.test(l)) {target=l;break;} }
+console.log('TARGET', JSON.stringify(target));
+const loc = p.locator('.cm-line', { hasText: target.trim() }).first();
+await loc.click(); await p.keyboard.press('End'); await p.keyboard.press('Enter');
+await p.keyboard.type('print(temprature)'); await p.waitForTimeout(400);
+const al = (await p.locator('.cm-line').allInnerTexts()); const i = al.findIndex(l=>l.includes('temprature'));
+console.log('AFTER', JSON.stringify(al.slice(i-2,i+2)));
+await p.screenshot({path:OUT+'3-while-enter.png'});
+await p.click('button.run'); await p.waitForTimeout(3000);
+const pt = p.locator('.console-tabs button',{hasText:'Problems'}); if (await pt.count()) await pt.click();
+await p.waitForTimeout(300);
+console.log('PROBLEMS', await p.locator('[data-testid=problems]').innerText().catch(e=>String(e)));
+await p.screenshot({path:OUT+'4-while-run.png'});
+await b.close();

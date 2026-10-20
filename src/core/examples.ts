@@ -2,6 +2,7 @@
 // prompt goes through, so every example is also a regression test of the whole pipeline.
 import type { Project } from './types';
 import { planFromPrompt } from './planner';
+import { ADVANCED_FIRMWARE } from './firmware';
 
 export interface Example {
   id: string;
@@ -9,9 +10,11 @@ export interface Example {
   blurb: string;
   prompt: string;
   board: 'esp32' | 'pico' | 'rpi4' | 'none';
-  level: 'Beginner' | 'Intermediate';
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
   /** What to try in the simulator. */
   tryIt: string[];
+  /** Key into ADVANCED_FIRMWARE: a hand-written main.py replacing the generated one. */
+  firmware?: string;
 }
 
 export const EXAMPLES: Example[] = [
@@ -132,11 +135,70 @@ export const EXAMPLES: Example[] = [
     level: 'Beginner',
     tryIt: ['Hold the button: the transistor turns on and the LED lights.'],
   },
+  {
+    id: 'esp32-eink-weather',
+    title: 'E-ink weather station',
+    blurb: 'A 2.9″ e-paper dashboard with a drawn weather icon, big outside temperature, a 3-day forecast from the internet and the room climate from a DHT22.',
+    prompt: 'ESP32 e-ink weather station with an indoor temperature sensor and a refresh button that gets the forecast from the internet',
+    board: 'esp32',
+    level: 'Advanced',
+    firmware: 'esp32-eink-weather',
+    tryIt: ['Press Run: it joins Wi-Fi, downloads the forecast and draws the dashboard (the e-ink takes ~2 s to refresh).', 'Change the DHT22 temperature, wait a minute and press the button — the indoor panel updates.', 'Press the button twice quickly: the second update waits, because e-ink is never refreshed more than once a minute.', 'Switch the board\'s Wi-Fi off and press the button to see the offline message.'],
+  },
+  {
+    id: 'esp32-internet-clock',
+    title: 'Internet alarm clock',
+    blurb: 'Sets itself from an internet time server, shows time, date and room temperature on a 16×2 LCD, and beeps you awake. Snooze and alarm on/off buttons.',
+    prompt: 'ESP32 internet alarm clock with an LCD, a DHT22 temperature sensor, a buzzer and two buttons',
+    board: 'esp32',
+    level: 'Advanced',
+    firmware: 'esp32-internet-clock',
+    tryIt: ['Press Run: the clock sets itself over NTP and shows local time (UTC_OFFSET_H in the code).', 'Set ALARM_TIME in the code to a minute from now and run again: the buzzer beeps.', 'Press button A to snooze for 5 minutes ("z" on the LCD); press button B to switch the alarm off ("*" marks it on).'],
+  },
+  {
+    id: 'pico-simon',
+    title: 'Simon memory game',
+    blurb: 'The classic memory game: four coloured LEDs with their own tones, four matching buttons, a growing random sequence and a high score on the OLED.',
+    prompt: 'Raspberry Pi Pico Simon memory game with four LEDs, four buttons, a buzzer and an OLED',
+    board: 'pico',
+    level: 'Advanced',
+    firmware: 'pico-simon',
+    tryIt: ['Press any button to start, watch the light, then press the button of the same colour.', 'Each round adds one colour and plays a little faster.', 'Press a wrong colour to see Game over — the serial console prints the sequence if you need a hint.'],
+  },
+  {
+    id: 'esp32-pedometer',
+    title: 'Step counter',
+    blurb: 'Real step detection on MPU-6050 data (filtered magnitude + peak detection) with cadence, distance, calories and a one-minute bar graph on an OLED.',
+    prompt: 'ESP32 step counter with an accelerometer, an OLED and a button',
+    board: 'esp32',
+    level: 'Advanced',
+    firmware: 'esp32-pedometer',
+    tryIt: ['Switch the IMU\'s "Walking" toggle on: steps and cadence (~108 steps/min) count up.', 'Switch walking off: the count stops and the bar graph scrolls along.', 'Press the button to reset.'],
+  },
+  {
+    id: 'rpi-weather-dashboard',
+    title: 'Raspberry Pi weather dashboard',
+    blurb: 'Downloads the Open-Meteo forecast with requests, shows NOW / TODAY / 3-DAY pages on an OLED and lights a red LED when rain is likely today.',
+    prompt: 'Raspberry Pi weather dashboard with an OLED, a button and a red LED rain warning that gets the forecast from the internet',
+    board: 'rpi4',
+    level: 'Advanced',
+    firmware: 'rpi-weather-dashboard',
+    tryIt: ['Press Run: the forecast downloads and the NOW page appears.', 'Press the button to flip to TODAY and the 3-day page.', 'The red LED lights when today\'s rain chance is 50 % or more (change RAIN_WARN_PCT to try it).'],
+  },
 ];
 
 export function buildExample(id: string): Project {
   const ex = EXAMPLES.find((e) => e.id === id);
   if (!ex) throw new Error(`Unknown example ${id}`);
   const p = planFromPrompt(ex.prompt);
-  return { ...p, name: p.name, prompt: ex.prompt, id: `${ex.id}-${Date.now().toString(36)}` };
+  const project: Project = { ...p, name: p.name, prompt: ex.prompt, id: `${ex.id}-${Date.now().toString(36)}` };
+  if (ex.firmware) {
+    // Advanced examples: hand-written main.py; driver files still come from the generated project.
+    const main = ADVANCED_FIRMWARE[ex.firmware];
+    if (!main) throw new Error(`Missing firmware ${ex.firmware}`);
+    project.name = ex.title;
+    project.files = { ...p.files, 'main.py': main };
+    project.codeCustom = true;
+  }
+  return project;
 }

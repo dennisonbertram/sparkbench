@@ -276,6 +276,39 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
   );
 }
 
+const STEPS = ['Reading your description', 'Choosing parts', 'Assigning pins and wiring', 'Writing the code', 'Testing it in the simulator'];
+
+/** Shown while Claude designs a project from the welcome screen (it can take up to a minute). */
+function Designing({ text, status }: { text: string; status: string }) {
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setT((x) => x + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const step = Math.min(STEPS.length - 1, Math.floor(t / 9));
+  return (
+    <div className="welcome designing" aria-live="polite">
+      <header className="welcome-top">
+        <span className="brand">
+          <Logo /> <span>Sparkbench</span>
+        </span>
+      </header>
+      <section className="hero">
+        <p className="lede">“{text}”</p>
+        <h1>{status}</h1>
+        <ol className="design-steps">
+          {STEPS.map((s, i) => (
+            <li key={s} className={i < step ? 'done' : i === step ? 'now' : ''}>
+              {s}
+            </li>
+          ))}
+        </ol>
+        <p className="hero-hint">{t} s — designs with custom code usually take 30–60 seconds.</p>
+      </section>
+    </div>
+  );
+}
+
 export function Logo() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden>
@@ -293,6 +326,8 @@ export function Logo() {
 
 function Welcome() {
   const [text, setText] = useState('');
+  const busy = useStore((s) => s.busy);
+  if (busy) return <Designing text={useStore.getState().chat.find((m) => m.role === 'user')?.text ?? ''} status={busy} />;
   const saved = listSaved();
   const go = () => text.trim() && sendPrompt(text);
   const boardName = (b: string) => (b === 'none' ? 'No MCU' : BOARDS[b as 'esp32'].short);

@@ -1,0 +1,15 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1440,height:900}});
+await p.goto('http://localhost:5173/?welcome&notour');
+await p.click('.hero-input textarea');
+await p.keyboard.type('ESP32 plant pot moisture monitor with a soil moisture sensor and an OLED display showing the moisture percentage');
+await p.click('button.primary.big');
+await p.waitForSelector('.part', {timeout:60000});
+await p.waitForTimeout(3000);
+await p.screenshot({path:'test-results/qa/plantpot/01-board.png'});
+console.log('parts:', await p.$$eval('.part', els=>els.map(e=>e.getAttribute('data-part'))));
+console.log('knob text:', await p.evaluate(()=>document.body.innerText.match(/[^\n]*knob[^\n]*/gi)));
+await p.click('.tabs button:has-text("Parts list")'); await p.waitForTimeout(800);
+await p.screenshot({path:'test-results/qa/plantpot/02-parts.png'});
+console.log('parts tab knob:', await p.evaluate(()=>document.body.innerText.match(/[^\n]*(knob|potentiometer)[^\n]*/gi)));
+await b.close();

@@ -7,7 +7,9 @@ import { useStore } from './store';
 
 export function SimControls({ part, compact }: { part: PartInstance; compact?: boolean }) {
   const inputs = useStore((s) => s.sim.inputs);
-  const controls = partDef(part.type).controls ?? [];
+  const project = useStore((s) => s.project);
+  const usesNet = (project?.features ?? []).some((f) => f.kind === 'internet') || /network|urequests|requests|socket/.test(project?.files['main.py'] ?? '');
+  const controls = (partDef(part.type).controls ?? []).filter((c) => c.key !== 'wifi' || usesNet);
   // Buttons, knobs and switches are operated directly on their picture.
   if (compact && ['pushbutton', 'potentiometer', 'slide-switch'].includes(part.type)) return null;
   if (!controls.length) return null;

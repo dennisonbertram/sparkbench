@@ -61,13 +61,13 @@ function readings(fs: FeatureInstance[]): Reading[] {
         out.push({ f, vars: [`${f.name}_c`], lines: [`Temp {${f.name}_c:.1f} C`], level: { expr: `${f.name}_c`, lo: 15, hi: 35, label: 'temperature' }, alarm: { cond: `${f.name}_c > TEMP_HIGH`, label: 'too hot' } });
         break;
       case 'mpu6050':
-        out.push({ f, vars: ['roll', 'pitch', 'shakes'], lines: ['Roll  {roll:5.0f}', 'Pitch {pitch:5.0f}', 'Shakes {shakes}'], level: { expr: 'roll', lo: -90, hi: 90, label: 'tilt' }, alarm: { cond: 'abs(roll) > 30 or abs(pitch) > 30', label: 'tilted' } });
+        out.push({ f, vars: ['roll', 'pitch', 'shakes'], lines: ['Roll  {round(roll):5d}', 'Pitch {round(pitch):5d}', 'Shakes {shakes}'], level: { expr: 'roll', lo: -90, hi: 90, label: 'tilt' }, alarm: { cond: 'abs(roll) > 30 or abs(pitch) > 30', label: 'tilted' } });
         break;
       case 'hcsr04':
         out.push({ f, vars: ['distance_cm'], lines: ['Dist {distance_cm:5.1f} cm'], level: { expr: 'distance_cm', lo: 5, hi: 100, label: 'distance' }, alarm: { cond: 'distance_cm < NEAR_CM', label: 'object close' } });
         break;
       case 'pir':
-        out.push({ f, vars: ['motion'], lines: ['Motion {"YES" if motion else "no"}'], alarm: { cond: 'motion', label: 'motion' } });
+        out.push({ f, vars: ['motion'], lines: ["Motion {'YES' if motion else 'no'}"], alarm: { cond: 'motion', label: 'motion' } });
         break;
       case 'ldr':
         out.push({ f, vars: [`${f.name}_pct`], lines: [`Light {${f.name}_pct:3.0f} %`], level: { expr: `${f.name}_pct`, lo: 0, hi: 100, label: 'light' }, alarm: { cond: `${f.name}_pct < DARK_PCT`, label: 'dark' } });
@@ -79,7 +79,7 @@ function readings(fs: FeatureInstance[]): Reading[] {
         out.push({ f, vars: [`${f.name}_pct`], lines: [`Knob {${f.name}_pct:3.0f} %`], level: { expr: `${f.name}_pct`, lo: 0, hi: 100, label: 'knob' } });
         break;
       case 'switch':
-        out.push({ f, vars: [`${f.name}_on`], lines: [`Switch {"ON" if ${f.name}_on else "off"}`] });
+        out.push({ f, vars: [`${f.name}_on`], lines: [`Switch {'ON' if ${f.name}_on else 'off'}`] });
         break;
       case 'internet': {
         const svc = String(f.props?.service ?? 'weather');
@@ -352,6 +352,7 @@ function generateMain(project: Project, lang: Lang): string {
     if (mp) c.add(0, 'def clock_text():', '    t = time.localtime(time.time() + UTC_OFFSET_H * 3600)', '    return "{:02d}:{:02d}".format(t[3], t[4])', '');
     else c.add(0, 'def clock_text():', '    return time.strftime("%H:%M")', '');
   }
+  if (lcd) c.add(0, 'def row16(s):', '    """Pad or cut text to exactly one 16-character LCD row."""', '    s = str(s)[:16]', '    return s + " " * (16 - len(s))', '');
   if (leds.length) {
     c.add(0, 'def set_led(led, level):', '    """level: 0.0 (off) … 1.0 (full brightness)."""');
     c.add(1, mp ? 'led.duty_u16(int(clamp(level, 0, 1) * 65535))' : 'led.value = clamp(level, 0, 1)', '');
@@ -576,7 +577,7 @@ function generateMain(project: Project, lang: Lang): string {
         const ind = pages.length > 1 ? '        ' : '    ';
         const rows = pg.lines.slice(0, 2);
         while (rows.length < 2) rows.push('');
-        rows.forEach((ln, j) => (ln ? L(`${ind}lcd.move_to(0, ${j})`, `${ind}lcd.putstr(f"{f'${ln}':<16}"[:16])`) : L(`${ind}lcd.move_to(0, ${j})`, `${ind}lcd.putstr(" " * 16)`)));
+        rows.forEach((ln, j) => L(`${ind}lcd.move_to(0, ${j})`, `${ind}lcd.putstr(row16(${ln ? `f"${ln}"` : '""'}))`));
       });
     } else L('    lcd.move_to(0, 0)', `    lcd.putstr("${short(project.name, 16)}")`);
   }

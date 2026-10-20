@@ -4,6 +4,7 @@ import { EditorView, basicSetup } from 'codemirror';
 import { python } from '@codemirror/lang-python';
 import { EditorState, StateEffect, StateField } from '@codemirror/state';
 import { Decoration, type DecorationSet } from '@codemirror/view';
+import { indentUnit } from '@codemirror/language';
 
 const setErrorLine = StateEffect.define<number | null>();
 const errorField = StateField.define<DecorationSet>({
@@ -44,6 +45,8 @@ export function CodeEditor({ value, onChange, errorLine, fileKey }: { value: str
         extensions: [
           basicSetup,
           python(),
+          indentUnit.of('    '),
+          EditorState.tabSize.of(4),
           errorField,
           EditorView.updateListener.of((u) => {
             if (u.docChanged) onChangeRef.current(u.state.doc.toString());

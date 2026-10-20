@@ -266,7 +266,7 @@ export const PARTS: PartDef[] = [
     eli5: 'A resistor that changes with light. Paired with a normal resistor it lets the board measure brightness.',
     refPrefix: 'R',
     pins: [p('1', 'passive'), p('2', 'passive')],
-    controls: [{ key: 'lux', label: 'Light', kind: 'slider', min: 0.1, max: 2000, step: 1, default: 300, unit: 'lux' }],
+    controls: [{ key: 'lux', label: 'Light', kind: 'slider', min: 1, max: 2000, step: 1, default: 300, unit: ' lux' }],
     bom: { mpn: 'GL5528', description: 'Photoresistor LDR 5mm', priceUsd: 0.2, supplierQuery: 'GL5528 photoresistor' },
     kicad: { symbol: 'Sparkbench:R_Photo', footprint: 'OptoDevice:R_LDR_5.1x4.3mm_P3.4mm_Vertical', value: () => 'GL5528' },
     keywords: ['light', 'ldr', 'photoresistor', 'brightness', 'dark', 'night light', 'lux', 'sunlight'],

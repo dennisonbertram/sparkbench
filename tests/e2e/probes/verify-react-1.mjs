@@ -1,0 +1,18 @@
+import { chromium } from 'playwright';
+const out = 'test-results/qa/verify-react';
+const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1400, height: 900 } });
+await p.goto('http://localhost:5173/?welcome&notour');
+await p.fill('.hero-input textarea', 'ESP32 reaction time game with 3 buttons, 3 LEDs and a buzzer');
+await p.click('button.primary.big');
+await p.waitForTimeout(6000);
+await p.screenshot({ path: `${out}/01-designed.png` });
+console.log('TITLE/HEADER:', (await p.locator('header, .topbar').first().innerText().catch(()=>'')).slice(0,300));
+console.log('CHAT:', (await p.locator('.chat, .copilot, .messages').first().innerText().catch(()=>'')).slice(0,1500));
+await p.click('button.run'); await p.waitForTimeout(3000);
+const btns = p.locator('.momentary button');
+console.log('momentary:', await btns.allInnerTexts());
+const leds = async () => p.evaluate(() => [...document.querySelectorAll('.part[data-part^=led], .part[data-part*=LED], .part[data-part^=D]')].map(e => e.getAttribute('data-part') + ':' + (e.getAttribute('class')||'') + ':' + (e.querySelector('[filter],[opacity]')?.getAttribute('opacity')||'')));
+const press = async (i, name) => { const bt = btns.nth(i); await bt.dispatchEvent('mousedown'); await bt.dispatchEvent('pointerdown'); await p.waitForTimeout(250); await bt.dispatchEvent('mouseup'); await bt.dispatchEvent('pointerup'); await p.waitForTimeout(900); await p.screenshot({ path: `${out}/${name}.png` }); };
+await press(0,'02-pressA'); await press(2,'03-pressC'); await press(1,'04-pressB');
+console.log('SERIAL:', (await p.locator('[data-testid=serial]').innerText()).slice(-500));
+await b.close();

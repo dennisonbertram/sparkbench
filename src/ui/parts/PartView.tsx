@@ -125,7 +125,9 @@ export function PartView({ part, visual, onPins, onInput, inputs }: Props) {
       case 'neopixel-ring': {
         const px = v.pixels ?? [];
         const n = Number(part.props.pixels ?? 12);
-        for (let i = 0; i < n; i++) el.setPixel?.(i, { r: (px[i * 3] ?? 0) / 255, g: (px[i * 3 + 1] ?? 0) / 255, b: (px[i * 3 + 2] ?? 0) / 255 });
+        // Real NeoPixels look bright even at 1/4 power; boost for the screen.
+        const lum = (v: number) => Math.min(1, Math.sqrt((v ?? 0) / 255) * 1.15);
+        for (let i = 0; i < n; i++) el.setPixel?.(i, { r: lum(px[i * 3]), g: lum(px[i * 3 + 1]), b: lum(px[i * 3 + 2]) });
         break;
       }
     }

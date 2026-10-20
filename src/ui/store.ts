@@ -46,6 +46,10 @@ interface State {
   activeFile: string;
   bottomTab: 'serial' | 'problems';
   showWelcome: boolean;
+  /** Set while the AI is working, with a short status line. */
+  busy: string | null;
+  /** Net highlighted from the schematic (sticky, unlike hover). */
+  pinnedNet: string | null;
   tourStep: number | null;
   aiStatus: { enabled: boolean; model?: string; via?: string; kicad?: boolean; ngspice?: boolean };
 
@@ -83,6 +87,8 @@ export const useStore = create<State>((set, get) => ({
   activeFile: 'main.py',
   bottomTab: 'serial',
   showWelcome: true,
+  busy: null,
+  pinnedNet: null,
   tourStep: null,
   aiStatus: { enabled: false },
 

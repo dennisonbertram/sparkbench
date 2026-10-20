@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1400, height: 900 } });
+await p.goto('http://localhost:5173/?example=esp32-weather-imu&notour');
+await p.waitForTimeout(2500);
+await p.locator('.tabs button', { hasText: 'Build guide' }).click();
+await p.waitForTimeout(800);
+await p.emulateMedia({ media: 'print' });
+console.log(JSON.stringify(await p.evaluate(() => { const r=[]; let e=document.querySelector('.docview'); while(e){const s=getComputedStyle(e); r.push([e.tagName+'.'+e.className, s.height, s.overflow, s.position, s.display]); e=e.parentElement;} return r; }), null, 1));
+await b.close();

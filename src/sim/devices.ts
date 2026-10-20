@@ -238,6 +238,9 @@ export class Lcd1602Device implements I2CDevice {
   backlight = false;
   private port = 0;
   private eightBit = true;
+  private cgMode = false;
+  cgram = new Uint8Array(64);
+  private cgAddr = 0;
   private hiNibble: number | null = null;
   dirty = true;
   constructor(public partId: string) {}
@@ -271,8 +274,10 @@ export class Lcd1602Device implements I2CDevice {
   private exec(cmd: number) {
     if (cmd & 0x80) {
       this.addrPtr = cmd & 0x7f;
+      this.cgMode = false;
     } else if (cmd & 0x40) {
-      // CGRAM address: custom characters not modelled
+      this.cgMode = true;
+      this.cgAddr = cmd & 0x3f;
     } else if (cmd & 0x20) {
       this.eightBit = (cmd & 0x10) !== 0;
       this.hiNibble = null;
@@ -292,6 +297,11 @@ export class Lcd1602Device implements I2CDevice {
     }
   }
   private putc(v: number) {
+    if (this.cgMode) {
+      this.cgram[this.cgAddr] = v;
+      this.cgAddr = (this.cgAddr + 1) & 0x3f;
+      return;
+    }
     this.ddram[this.addrPtr & 0x7f] = v;
     this.addrPtr = (this.addrPtr + 1) & 0x7f;
   }

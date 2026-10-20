@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1440,height:900}});
+p.on('console', m=>console.log('console:', m.text().slice(0,200)));
+await p.goto('http://localhost:5173/?welcome&notour');
+await p.click('.hero-input textarea');
+await p.keyboard.type('ESP32 plant pot moisture monitor with a soil moisture sensor and an OLED display showing the moisture percentage');
+await p.click('button.primary.big');
+await p.waitForTimeout(15000);
+await p.screenshot({path:'test-results/qa/plantpot/00-after.png'});
+console.log(p.url());
+console.log((await p.evaluate(()=>document.body.innerText)).slice(0,1500));
+await b.close();

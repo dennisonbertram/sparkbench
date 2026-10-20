@@ -1,0 +1,24 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch(); const p = await b.newPage({viewport:{width:1400,height:900}});
+await p.goto('http://localhost:5173/?example=esp32-parking-sensor&notour'); await p.waitForTimeout(2000);
+await p.locator('.tabs button', {hasText:'Schematic'}).click(); await p.waitForTimeout(800);
+const nets = await p.$$eval('[data-testid=schematic] [data-net]', els => [...new Set(els.map(e=>e.getAttribute('data-net')))]);
+console.log('nets', nets.join(','));
+const target = nets.find(n=>/17/.test(n)) || nets.find(n=>!/GND|3V3|VCC|5V/.test(n));
+console.log('target', target);
+const el = p.locator(`[data-testid=schematic] .lbl[data-net="${target}"], [data-testid=schematic] [data-net="${target}"]`).first();
+const bb = await el.boundingBox(); console.log('bbox', JSON.stringify(bb), await el.evaluate(e=>e.outerHTML.slice(0,200)));
+await p.mouse.move(bb.x+bb.width/2, bb.y+bb.height/2); await p.waitForTimeout(300);
+console.log('after hover class', await p.getAttribute('[data-testid=schematic]','class'));
+await p.mouse.click(bb.x+bb.width/2, bb.y+bb.height/2); await p.waitForTimeout(500);
+console.log('class', await p.getAttribute('[data-testid=schematic]','class'));
+console.log('sch hl', await p.locator('[data-testid=schematic] .hl').count());
+console.log('hoverNet', await p.evaluate(()=>{ try { return JSON.stringify(window.useStore?.getState?.().hoverNet) } catch(e){return 'n/a'} }));
+await p.screenshot({path:'test-results/qa/verify-d5/schematic-click.png'});
+await p.locator('.tabs button', {hasText:'Breadboard'}).click(); await p.waitForTimeout(800);
+console.log('bb wire hl', await p.locator('g.wire.hl').count(), 'pin hl', await p.locator('circle.pin.hl').count(), 'any hl', await p.locator('.hl').count());
+await p.screenshot({path:'test-results/qa/verify-d5/breadboard-after.png'});
+// control: hover a wire on breadboard
+const w = p.locator('g.wire').first(); await w.hover({force:true}); await p.waitForTimeout(300);
+console.log('control bb hover hl', await p.locator('.hl').count());
+await b.close();
