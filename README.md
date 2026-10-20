@@ -10,7 +10,7 @@ Sparkbench is an AI-assisted hardware design studio for microcontroller and disc
 4. **Produces the deliverables**: schematic (SVG + KiCad `.kicad_sch`/`.kicad_pro`/netlist), SPICE netlist for ngspice, parts list with prices and supplier links, a step-by-step build guide, and a full blog post.
 5. **Checks the design** with plain-English electrical rules (LED without a resistor, 5 V into a 3.3 V pin, I2C address clashes, missing ground, current budget…) with one-click fixes.
 
-Follow-ups work conversationally: *"add a buzzer"*, *"use a Raspberry Pi Pico instead"*, *"remove the LED"*.
+Follow-ups work conversationally: *"add a buzzer"*, *"use a Raspberry Pi Pico instead"*, *"move button A to GPIO 14"*, *"make it beep when it's too hot"*. In the **Code** tab, an AI pair-programmer edits the firmware on request ("show the temperature in Fahrenheit"), runs the new code in the simulator first (auto-fixing crashes), and shows you a diff to accept.
 
 ## Run it
 
@@ -19,18 +19,23 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-- **AI mode.** With `ANTHROPIC_API_KEY` set in the environment, the copilot uses Claude (`claude-opus-5-5`) to interpret requests and write custom firmware; the firmware is simulated on the server and crashes are fed back to Claude to fix. Without a key, the built-in offline planner handles requests (the badge in the Copilot panel shows which).
+- **AI mode.** The copilot and code assistant use Claude (`claude-opus-5-5`): through the Anthropic SDK when `ANTHROPIC_API_KEY` is set, or otherwise through your logged-in **Claude Code** CLI (`claude -p`). Claude turns requests into a parts-level design and writes custom firmware; every firmware change is simulated on the server and crashes are fed back to Claude to fix. With neither available (or `SPARKBENCH_AI=off`), the built-in offline planner handles requests — the badge in the Copilot panel shows which.
 - **KiCad / ngspice.** If `kicad-cli` (KiCad 8+) and `ngspice` are installed, the Schematic tab can render and ERC-check the exported KiCad file, and tests cross-check our solver against ngspice.
 
 ## Supported hardware
 
 | Boards | Parts |
 |---|---|
-| ESP32 DevKit V1 (MicroPython) · Raspberry Pi Pico (MicroPython) · Raspberry Pi 4 (Python + gpiozero) · no microcontroller (battery circuits) | SSD1306 OLED, 16×2 I2C LCD, push buttons, slide switch, potentiometer, DHT22, MPU-6050 IMU, HC-SR04 ultrasonic, PIR, photoresistor, NTC thermistor, soil moisture probe, LEDs, RGB LED, NeoPixel ring, buzzer, servo, relay module, resistors, capacitors, diode, NPN transistor, NE555, MCP3008, 9 V battery |
+| ESP32 DevKit V1 (MicroPython, Wi-Fi) · Raspberry Pi Pico (MicroPython) · Raspberry Pi 4 (Python + gpiozero, network) · no microcontroller (battery circuits) | 2.9" e-paper (SPI), SSD1306 OLED, 16×2 I2C LCD, push buttons, slide switch, potentiometer, DHT22, MPU-6050 IMU, HC-SR04 ultrasonic, PIR, photoresistor, NTC thermistor, soil moisture probe, LEDs, RGB LED, NeoPixel ring, buzzer, servo, relay module, 5 V pump / fan, resistors, capacitors, diode, NPN transistor, NE555, MCP3008, 9 V battery |
 
 ## Example projects
 
-Open any from the welcome screen (or `/?example=<id>`): weather & motion station, traffic light, parking sensor, servo dial, plant waterer, motion alarm, night light, NeoPixel thermometer, fan thermostat, tilt meter, RGB mood lamp, 555 blinker, transistor switch.
+Open any of the 19 from the welcome screen (or `/?example=<id>`):
+
+- **Beginner / intermediate:** weather & motion station (ESP32, OLED, DHT22, MPU-6050, 2 buttons), traffic light, parking sensor, servo dial, plant waterer (Raspberry Pi + MCP3008 + pump relay), motion alarm, night light, NeoPixel thermometer, fan thermostat, tilt meter, RGB mood lamp, 555 blinker, 555 tone generator, transistor switch.
+- **Advanced (hand-written firmware):** e-ink weather station (Wi-Fi + Open-Meteo + 2.9" e-paper), internet alarm clock (NTP + LCD), Simon memory game, step counter (IMU peak detection), Raspberry Pi weather dashboard.
+
+`npx tsx scripts/build-project.ts --all-examples` writes every deliverable for every example to `out/<project>/` (firmware, schematic.svg, KiCad schematic/project/netlist/footprints, SPICE netlist, bom.csv, BUILD.md, BLOG.md, simulation log, design-check report).
 
 ## Tests
 
@@ -57,4 +62,4 @@ prompt ─▶ planner (offline) or Claude ─▶ DesignSpec ─▶ buildProject:
 - `src/ui` — React app
 - `server` — Vite middleware: Claude copilot, kicad-cli and ngspice endpoints
 
-Part artwork uses [@wokwi/elements](https://github.com/wokwi/wokwi-elements) (MIT). Simulation uses the [MicroPython](https://micropython.org) WebAssembly port (MIT).
+Part artwork uses [@wokwi/elements](https://github.com/wokwi/wokwi-elements) (MIT). Simulation uses the [MicroPython](https://micropython.org) WebAssembly port (MIT). Internet examples use the free [Open-Meteo](https://open-meteo.com) API (the simulator makes real requests from the browser and falls back to sample data offline).
