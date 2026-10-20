@@ -791,9 +791,9 @@ export function summarize(spec: DesignSpec): string {
 }
 
 /** Natural language → project, in one call. */
-export function planFromPrompt(prompt: string, previous?: Project): Project {
+export function planFromPrompt(prompt: string, previous?: Project, name?: string): Project {
   const spec = parseIntent(prompt);
-  return buildProject(spec, { prompt, previous });
+  return buildProject(spec, { prompt, previous, name });
 }
 
 // ------------------------------------------------------------------ conversational edits

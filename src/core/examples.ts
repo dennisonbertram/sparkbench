@@ -187,11 +187,42 @@ export const EXAMPLES: Example[] = [
   },
 ];
 
+/** What the hand-written firmware of each advanced example does (for the build guide and blog). */
+const ADVANCED_BEHAVIOR: Record<string, NonNullable<Project['behavior']>> = {
+  'esp32-eink-weather': [
+    { does: 'At power-up it joins your Wi-Fi, sets its clock from the internet and downloads the current weather and a 3-day forecast from open-meteo.com (free, no account needed).', test: 'Watch the serial console: you should see "Wi-Fi connected", the forecast request and the temperatures.', sim: 'Press Run and watch the serial monitor.' },
+    { does: 'The e-ink screen shows a weather icon, the outside temperature in big digits, today’s high and low, the indoor temperature and humidity from the DHT22, a 3-day forecast strip and the time of the last update.', test: 'After about 2 seconds of flashing, the dashboard appears and stays even if you unplug the board.', sim: 'The e-paper picture on the breadboard is exactly what the panel would show.' },
+    { does: 'It refreshes by itself every 15 minutes, or straight away when you press the button — but never more than once a minute, to look after the e-ink.', test: 'Press the button: the screen redraws within a minute.', sim: 'Press the button twice quickly and see the second update wait.' },
+    { does: 'If Wi-Fi or the weather service is down, it shows a clear message on the screen and tries again later.', test: 'Turn your router off (or use a wrong password) and restart: you should see the offline message.', sim: 'Untick "Wi-Fi network in range" on the ESP32 and press the button.' },
+  ],
+  'esp32-internet-clock': [
+    { does: 'It sets the time over the internet (NTP) and shows the time and date on the first line of the LCD, adjusted by your time-zone offset.', test: 'After power-up the LCD shows the correct local time within a few seconds.', sim: 'Press Run and read the LCD.' },
+    { does: 'The second line shows the room temperature and humidity from the DHT22 and the alarm time, with * when the alarm is on.', test: 'Breathe on the sensor: the humidity rises within a few seconds.', sim: 'Move the DHT22 sliders.' },
+    { does: 'At the alarm time the buzzer beeps a pattern. Button A snoozes it for 5 minutes (z on the LCD); button B turns the alarm on or off.', test: 'Set ALARM_TIME to a minute from now, wait, then try both buttons.', sim: 'Set ALARM_TIME in the Code tab, Run, then press the buttons.' },
+  ],
+  'pico-simon': [
+    { does: 'Press any button to start. The Pico plays a sequence of coloured lights, each with its own tone, and you repeat it by pressing the button of the same colour.', test: 'Press a button: the first light and tone play; press the matching button to go to level 2.', sim: 'Click the buttons on the breadboard.' },
+    { does: 'Each round adds one more colour and plays a little faster; the OLED shows your level and best score.', test: 'Get a few rounds right and watch the level on the OLED go up.', sim: 'Read the OLED as you play.' },
+    { does: 'A wrong press plays a low buzz and shows "Game over" with your score; press any button to play again.', test: 'Press a wrong colour on purpose.', sim: 'The serial monitor prints the sequence if you want to cheat while testing.' },
+  ],
+  'esp32-pedometer': [
+    { does: 'It reads the MPU-6050 accelerometer 50 times a second, smooths the signal and counts a step at each peak (with a minimum gap of 250 ms so one step is never counted twice).', test: 'Walk around holding the circuit: the count goes up once per step.', sim: 'Switch on "Walking (steps)" on the IMU.' },
+    { does: 'The OLED shows steps, cadence (steps per minute), estimated distance and calories, plus a bar graph of steps per 10 seconds over the last minute.', test: 'Walk for a minute and check the cadence is around 100–120.', sim: 'Leave walking on for 20 seconds and watch the bars grow.' },
+    { does: 'Press the button to reset everything to zero.', test: 'Press the button: the counters reset.', sim: 'Press the button on the breadboard.' },
+  ],
+  'rpi-weather-dashboard': [
+    { does: 'The Raspberry Pi downloads the forecast from open-meteo.com every 10 minutes using the requests library.', test: 'Run python3 main.py and watch the terminal for the forecast lines.', sim: 'Press Run and read the serial monitor.' },
+    { does: 'The OLED has three pages — now, today and the next 3 days — and the button flips between them.', test: 'Press the button and check each page appears in turn.', sim: 'Click the button on the breadboard.' },
+    { does: 'The red LED lights when there is a 50 % or higher chance of rain today, so you know to take an umbrella.', test: 'Change RAIN_WARN_PCT to 10 and restart: the LED should light.', sim: 'Change RAIN_WARN_PCT in the Code tab and run again.' },
+  ],
+};
+
 export function buildExample(id: string): Project {
   const ex = EXAMPLES.find((e) => e.id === id);
   if (!ex) throw new Error(`Unknown example ${id}`);
-  const p = planFromPrompt(ex.prompt);
-  const project: Project = { ...p, name: p.name, prompt: ex.prompt, id: `${ex.id}-${Date.now().toString(36)}` };
+  // The card title is the project name everywhere (UI, OLED splash, docs).
+  const p = planFromPrompt(ex.prompt, undefined, ex.title);
+  const project: Project = { ...p, prompt: ex.prompt, id: `${ex.id}-${Date.now().toString(36)}` };
   if (ex.firmware) {
     // Advanced examples: hand-written main.py; driver files still come from the generated project.
     const main = ADVANCED_FIRMWARE[ex.firmware];
@@ -199,6 +230,7 @@ export function buildExample(id: string): Project {
     project.name = ex.title;
     project.files = { ...p.files, 'main.py': main };
     project.codeCustom = true;
+    project.behavior = ADVANCED_BEHAVIOR[ex.id];
   }
   return project;
 }
