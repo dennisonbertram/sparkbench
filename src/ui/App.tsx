@@ -11,6 +11,7 @@ import { audio } from './audio';
 import { Tour } from './Tour';
 import { PcbView } from './PcbView';
 import { useTestRunner } from './TestsPanel';
+import { BoardPanel } from './BoardPanel';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
 
@@ -28,6 +29,7 @@ export function App() {
   const project = useStore((s) => s.project);
   const tab = useStore((s) => s.tab);
   const tourStep = useStore((s) => s.tourStep);
+  const boardPanel = useStore((s) => s.boardPanel);
   useTestRunner();
 
   useEffect(() => {
@@ -102,6 +104,7 @@ export function App() {
         </section>
         <Inspector />
       </div>
+      {boardPanel && <BoardPanel onClose={() => useStore.getState().set({ boardPanel: false })} />}
       {tourStep !== null && <Tour />}
     </div>
   );
@@ -192,6 +195,9 @@ function Topbar() {
       </button>
       <button className="ghost" onClick={() => useStore.getState().set({ tourStep: 0 })}>
         Tour
+      </button>
+      <button className="board-btn" onClick={() => useStore.getState().set({ boardPanel: !useStore.getState().boardPanel })} data-testid="board-open" title="Program and test the real hardware over USB">
+        Your board
       </button>
       <div className="menu-anchor">
         <button className="primary" onClick={() => setMenu(menu === 'export' ? null : 'export')} data-tour="export">

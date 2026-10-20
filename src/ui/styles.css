@@ -558,3 +558,38 @@ h2, h3 { margin: 0; }
 .req-card.editing label { display: grid; gap: 3px; color: var(--ink-3); }
 .req-card.editing textarea, .req-card.editing input { font: inherit; color: var(--ink); }
 .req-actions { display: flex; gap: 6px; }
+.board-btn { border: 1px solid var(--line); background: var(--surface); }
+.board-panel { position: fixed; top: 50px; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -8px 0 24px #0002; z-index: 30; display: flex; flex-direction: column; }
+.board-panel .bp-body { overflow: auto; padding: 12px 16px 30px; font-size: 13.5px; line-height: 1.5; display: grid; gap: 12px; align-content: start; }
+.board-panel h3 { margin: 0; font-size: 14px; }
+.bp-steps { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
+.bp-steps li.done::marker { color: var(--ok); }
+.bp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.bp-ok { color: var(--ok); font-weight: 600; }
+.bp-warn { color: var(--warn); }
+.bp-progress { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.bp-progress span { display: block; height: 100%; background: var(--signal); }
+.bp-monitor-head { display: flex; align-items: center; gap: 10px; }
+.bp-monitor-head h3 { flex: 1; }
+.bp-monitor { background: #111614; color: #cfe9d9; font-family: var(--mono); font-size: 12px; padding: 8px 10px; border-radius: 6px; min-height: 90px; max-height: 220px; overflow: auto; white-space: pre-wrap; margin: 0; }
+.bp-paste { display: grid; gap: 4px; color: var(--ink-3); }
+.bp-paste textarea, .bp-debug textarea { font: inherit; color: var(--ink); width: 100%; }
+.bp-debug { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 12px; }
+.bp-debug .primary { justify-self: start; }
+.bp-answer { background: var(--surface-2); border-radius: 6px; padding: 8px 12px; }
+.bp-answer ol { padding-left: 18px; margin: 6px 0; display: grid; gap: 6px; }
+.selftest ul { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
+.selftest li { padding: 4px 6px; border-radius: 5px; }
+.selftest .st-fail { background: color-mix(in srgb, var(--error) 10%, transparent); }
+.selftest .st-action { background: color-mix(in srgb, var(--signal) 18%, transparent); }
+.selftest .st-mark { display: inline-block; width: 1.4em; }
+.selftest .st-pass .st-mark { color: var(--ok); }
+.selftest .st-fail .st-mark { color: var(--error); }
+.selftest .st-part { font-weight: 600; }
+.selftest .st-look { margin-left: 6px; white-space: nowrap; }
+.selftest .st-look button { font-size: 12px; padding: 1px 8px; }
+.selftest .st-look button.on { background: var(--ink); color: var(--bench); }
+.selftest .st-sim { color: var(--ink-3); font-size: 12px; padding-left: 1.4em; }
+.meter summary { cursor: pointer; font-weight: 600; }
+.meter ol { padding-left: 20px; display: grid; gap: 8px; }
+.selftest .st-action.st-answered { background: none; color: var(--ink-3); }

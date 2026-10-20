@@ -52,6 +52,8 @@ interface State {
   activeFile: string;
   bottomTab: 'serial' | 'problems' | 'pins' | 'tests';
   /** Latest acceptance-test run for the open project (see TestsPanel). */
+  /** The "Your board" panel (real hardware over USB) is open. */
+  boardPanel: boolean;
   testRun: { key: string; running: boolean; results: import('../core/acceptance').TestResult[]; error?: string } | null;
   showWelcome: boolean;
   /** Set while the AI is working, with a short status line. */
@@ -95,6 +97,7 @@ export const useStore = create<State>((set, get) => ({
   activeFile: 'main.py',
   bottomTab: 'serial',
   testRun: null,
+  boardPanel: false,
   showWelcome: true,
   busy: null,
   pinnedNet: null,
@@ -268,3 +271,6 @@ export function loadCurrent(): Project | null {
     return null;
   }
 }
+
+// Development only: lets end-to-end tests (e.g. the fake USB board) read the open project.
+if (import.meta.env?.DEV && typeof window !== 'undefined') (window as any).__sparkbench = useStore;

@@ -72,6 +72,43 @@ export function apiPlugin(): Plugin {
         const tests = await aiWriteTests(project, String(text ?? '').slice(0, 1000), 'user');
         return send(res, 200, { tests, results: await runTests(project, tests) });
       }
+      if (req.url?.startsWith('/api/firmware') && req.method === 'GET') {
+        const board = new URL(req.url, 'http://x').searchParams.get('board');
+        if (board !== 'esp32' && board !== 'pico') return send(res, 400, { error: 'board must be esp32 or pico' });
+        const { latestFirmware } = await import('./firmware');
+        const fw = await latestFirmware(board);
+        res.setHeader('Content-Type', 'application/octet-stream');
+        res.setHeader('X-Firmware-Name', fw.name);
+        res.setHeader('Content-Disposition', `attachment; filename="${fw.name}"`);
+        return res.end(fw.data);
+      }
+      if (req.url === '/api/selftest' && req.method === 'POST') {
+        const { project } = await body(req);
+        const { generateSelfTest } = await import('../src/core/selftest');
+        const { simulateSelfTest } = await import('../src/sim/selftest-sim');
+        const { registerProjectParts } = await import('../src/core/customParts');
+        registerProjectParts(project);
+        return send(res, 200, { code: generateSelfTest(project), expected: await simulateSelfTest(project) });
+      }
+      if (req.url === '/api/ai/debug' && req.method === 'POST') {
+        const { aiDebug, aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'Debugging with AI needs Claude: set ANTHROPIC_API_KEY or log in to Claude Code.' });
+        const { project, symptom, serial, selftest, images } = await body(req);
+        const imgs = Array.isArray(images) ? images.filter((im: any) => /^image\/(jpeg|png|webp)$/.test(im?.mediaType) && typeof im?.data === 'string').slice(0, 3) : [];
+        return send(res, 200, await aiDebug(project, { symptom: String(symptom ?? '').slice(0, 2000), serial: typeof serial === 'string' ? serial : undefined, selftest: typeof selftest === 'string' ? selftest : undefined, images: imgs }));
+      }
+      if (req.url === '/api/multimeter' && req.method === 'POST') {
+        const { project } = await body(req);
+        const { simulate } = await import('../src/sim/node-runner');
+        const { multimeterChecks } = await import('../src/core/multimeter');
+        const { registerProjectParts } = await import('../src/core/customParts');
+        registerProjectParts(project);
+        const at = Array.from({ length: 12 }, (_, i) => 1000 + i * 100);
+        const r = await simulate(project, { untilMs: 2200, onFrameAt: at });
+        const samples: Record<string, number[]> = {};
+        for (const s of r.snapshots) for (const [k, v] of Object.entries(s.frame.nets ?? {})) (samples[k] ??= []).push(v);
+        return send(res, 200, { checks: multimeterChecks(project, samples) });
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });

@@ -366,3 +366,46 @@ export async function aiCheckPhoto(project: Project, images: { data: string; med
   const prompt = `Project: ${project.name}\n\nParts:\n${parts}\n\nEvery connection the build must make:\n${conns}${layout}${guide}\n\n${note ? `The user says: ${note}\n\n` : ''}Check the photo${images.length > 1 ? 's' : ''} of their build against this design.`;
   return askJson(PHOTO_SYSTEM, [{ role: 'user', content: prompt }], PhotoCheckSchema, { effort: 'medium', images: images as any });
 }
+
+// ---------- Debugging a real build ----------
+
+const DebugSchema = z.object({
+  summary: z.string().describe('1-2 friendly sentences: what is most likely wrong'),
+  causes: z
+    .array(
+      z.object({
+        cause: z.string().describe('A likely cause, most likely first'),
+        check: z.string().describe('How to check it (look at hole X, measure Y, run Z)'),
+        fix: z.string().describe('Exactly what to change'),
+        confidence: z.enum(['high', 'medium', 'low']),
+      }),
+    )
+    .describe('1-4 likely causes, most likely first'),
+  next_step: z.string().describe('The single next thing to do'),
+});
+export type DebugResult = z.infer<typeof DebugSchema>;
+
+const DEBUG_SYSTEM = `You help beginners debug a real electronics build in Sparkbench. You get the design (parts, every connection, the exact breadboard layout, the program), what the user says is wrong, and whatever evidence there is: the board's serial output, the self-test output from the real board, the same self-test's output in the simulator (what a correct build prints), and photos.
+Reason from the evidence: a self-test FAIL line or a difference from the simulator's output is the strongest clue; an I2C device missing usually means swapped SDA/SCL, a loose wire or no power; a reading stuck at 0 % or 100 % means an open or shorted divider; tracebacks name the line. Be concrete (hole names, pin names, part refs). Never invent evidence. Keep it short and kind.`;
+
+export async function aiDebug(project: Project, input: { symptom: string; serial?: string; selftest?: string; images?: { data: string; mediaType: string }[] }): Promise<DebugResult> {
+  const { wireEndLabel } = await import('../src/core/docs');
+  const { planBreadboard } = await import('../src/core/bbplace');
+  const { simulateSelfTest } = await import('../src/sim/selftest-sim');
+  const conns = project.wires.map((w) => `- ${wireEndLabel(project, w.a)} → ${wireEndLabel(project, w.b)}`).join('\n');
+  const plan = planBreadboard(project);
+  const expected = project.board === 'none' ? '' : await simulateSelfTest(project).catch(() => '');
+  const content = [
+    `Project: ${project.name} (${project.board})`,
+    `Connections:\n${conns}`,
+    plan.problems.length ? '' : `Breadboard layout:\n${plan.steps.map((s, i) => `${i + 1}. ${s.text}`).join('\n')}`,
+    `main.py:\n\`\`\`python\n${(project.files['main.py'] ?? '').slice(0, 12000)}\n\`\`\``,
+    `What the user says: ${input.symptom}`,
+    input.serial ? `Serial output from the real board (latest):\n${input.serial.slice(-6000)}` : 'No serial output captured.',
+    input.selftest ? `Self-test output from the real board:\n${input.selftest.slice(-4000)}` : 'The self-test has not been run on the real board.',
+    expected ? `The same self-test in the simulator (correct build):\n${expected}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+  return askJson(DEBUG_SYSTEM, [{ role: 'user', content }], DebugSchema, { effort: 'medium', images: input.images as any });
+}
