@@ -91,7 +91,7 @@ function offline(text: string, current: Project | null, pending: string) {
     const p = planFromPrompt(text);
     applyProject(p, true);
     const behaviour = behaviourNote(text);
-    st.patchChat(pending, { text: `${explainDesign(p)}${behaviour}`, details: p.notes, pending: false, actions: nextActions() });
+    st.patchChat(pending, { text: `${p.spec?.note ? `${p.spec.note}\n\n` : ''}${explainDesign(p)}${behaviour}`, details: p.notes, pending: false, actions: nextActions() });
     return;
   }
   const spec = current!.spec ?? { board: current!.board, features: [] };

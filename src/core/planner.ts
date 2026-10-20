@@ -128,6 +128,10 @@ export function parseIntent(prompt: string): DesignSpec {
     if (/night ?light/.test(t)) features.push({ kind: 'led', props: { color: 'white' }, label: 'Night light' });
   }
   if (features.length === 0) features.push({ kind: 'led', label: 'Status' }, { kind: 'button' });
+  const unsupported = /\b(arduino|uno|nano|mega|stm32|teensy|micro:?bit|attiny|esp8266|nodemcu|beaglebone|jetson)\b/.exec(t);
+  if (unsupported && board === 'esp32' && !/esp-?32/.test(t)) {
+    return { board, features: colourLeds(features), title: titleFrom(prompt), note: `Sparkbench doesn't support the ${unsupported[1] === 'uno' || unsupported[1] === 'nano' || unsupported[1] === 'mega' ? 'Arduino' : unsupported[1].replace(/^./, (c) => c.toUpperCase())} yet, so I used an ESP32 instead — it's just as easy to program (in Python) and adds Wi-Fi.` };
+  }
   if (board === 'pico' && features.some((f) => f.kind === 'internet') && !/pico ?w\b/.test(t)) {
     // The Pico has no Wi-Fi radio; an internet project needs a board that does.
     return { board: 'esp32', features: colourLeds(features), title: titleFrom(prompt), note: 'The Raspberry Pi Pico has no Wi-Fi, so I used an ESP32 instead.' } as DesignSpec;

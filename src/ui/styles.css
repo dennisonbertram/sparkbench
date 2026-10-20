@@ -325,8 +325,14 @@ h2, h3 { margin: 0; }
   .project-name { width: 180px; }
 }
 @media (max-width: 900px) {
-  .main { grid-template-columns: 1fr; grid-template-rows: auto minmax(420px, 1fr) auto; overflow: auto; }
-  .copilot { max-height: 320px; }
+  .main { display: block; overflow: auto; }
+  .copilot { max-height: none; border-bottom: 1px solid var(--line); }
+  .center { height: 620px; }
+  .copilot .chat-log { max-height: 220px; }
+  .copilot .chat-empty { display: none; }
+  .canvas-hint.subtle { display: none; }
+  .topbar .ghost[title^="Undo"], .topbar .ghost[title^="Redo"] { display: none; }
+  .project-name { width: 100%; order: 10; }
   .center { border: none; min-height: 520px; }
   .inspector { max-height: 360px; }
   .topbar { flex-wrap: wrap; }

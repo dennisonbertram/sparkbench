@@ -58,6 +58,7 @@ export function SchematicView() {
       <div className="doc-toolbar">
         <span className="doc-title">Schematic</span>
         <button onClick={() => download(`${name}-schematic.svg`, renderSchematicSvg(project, { theme: 'light' }), 'image/svg+xml')}>Download SVG</button>
+        <button onClick={() => svgToPng(renderSchematicSvg(project, { theme: 'light' })).then((b) => download(`${name}-schematic.png`, b))}>Download PNG</button>
         <button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Open in KiCad's Schematic Editor">KiCad schematic</button>
         <button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))}>KiCad project</button>
         <button onClick={() => download(`${name}.net`, exportKicadNetlist(project))}>Netlist</button>
@@ -98,6 +99,30 @@ export function SchematicView() {
       <p className="doc-foot">Each wire ends in a <b>net label</b>: pins with the same label are connected. Click a wire or label to highlight that net on the breadboard too. Open the KiCad file in KiCad to lay out a PCB.</p>
     </div>
   );
+}
+
+/** Rasterise an SVG string to a PNG blob (2× for crisp text). */
+async function svgToPng(svg: string): Promise<Blob> {
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  const img = new Image();
+  await new Promise((res, rej) => {
+    img.onload = res;
+    img.onerror = rej;
+    img.src = url;
+  });
+  const vb = /viewBox="([\d.\s-]+)"/.exec(svg)?.[1].split(/\s+/).map(Number);
+  const w = vb ? vb[2] : img.width;
+  const h = vb ? vb[3] : img.height;
+  const scale = Math.max(2, 2400 / w);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  URL.revokeObjectURL(url);
+  return new Promise((res) => canvas.toBlob((b) => res(b!), 'image/png'));
 }
 
 export function CodeView() {
