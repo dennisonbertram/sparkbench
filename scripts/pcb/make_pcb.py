@@ -66,9 +66,30 @@ def place(board, fps, spec):
             ss[1]['box'] = (b9[0] - 13.0, b9[1], b9[2], b9[3])
             ss[0]['antenna'] = (b0[0], b0[1] - 13.0, b0[2], b0[1])
             ss[1]['antenna'] = (b9[0] - 13.0, b9[1], b9[0], b9[3])
+    # Plug-in modules lie flat above their socket and overhang it: reserve the whole body
+    # (on the side away from the pin names).
+    for ref, ss in snaps.items():
+        m = by_ref[ref].get('module')
+        if not m:
+            continue
+        for s in ss:
+            b = s['box']
+            vertical = s['rot'] % 180 == 0
+            if vertical:  # header runs along y; body extends to the right
+                cy = (b[1] + b[3]) / 2
+                s['box'] = (b[0], min(b[1], cy - m['w'] / 2), b[0] + m['d'], max(b[3], cy + m['w'] / 2))
+            else:  # header runs along x; body extends upwards
+                cx = (b[0] + b[2]) / 2
+                s['box'] = (min(b[0], cx - m['w'] / 2), b[3] - m['d'], max(b[2], cx + m['w'] / 2), b[3])
     # Sockets get their pin names printed beside them: keep that strip free.
     for ref, ss in snaps.items():
         p = by_ref[ref]
+        if p.get('module'):
+            # Labels go on the open side (left / below), away from the module body.
+            for s in ss:
+                b = s['box']
+                s['box'] = (b[0] - 4.0, b[1], b[2], b[3]) if s['rot'] % 180 == 0 else (b[0], b[1], b[2], b[3] + 4.0)
+            continue
         if p['footprint'].startswith('Connector_PinHeader') and p.get('pinNames'):
             both = 4.0 if '2x' in p['footprint'] else 0.0
             b0 = ss[0]['box']
@@ -137,6 +158,7 @@ def place(board, fps, spec):
         boxes.append((s['box'][0] + x, s['box'][1] + y, s['box'][2] + x, s['box'][3] + y))
 
     keepouts = []
+    bodies = {}
     for ref, (x, y, s) in placed.items():
         fp = fps[ref]
         fp.SetOrientationDegrees(s['rot'])
@@ -144,7 +166,13 @@ def place(board, fps, spec):
         if s.get('antenna'):
             a = s['antenna']
             keepouts.append((a[0] + x + 100, a[1] + y + 100, a[2] + x + 100, a[3] + y + 100))
+        if by_ref[ref].get('module'):
+            b = s['box']
+            # The body part of the reserved box (without the label strip on the open side).
+            body = (b[0] + 4.0, b[1], b[2], b[3]) if s['rot'] % 180 == 0 else (b[0], b[1], b[2], b[3] - 4.0)
+            bodies[ref] = (body[0] + x + 100, body[1] + y + 100, body[2] + x + 100, body[3] + y + 100)
     place.keepouts = keepouts
+    place.bodies = bodies
     cl = (min(b[0] for b in boxes) + 100, min(b[1] for b in boxes) + 100, max(b[2] for b in boxes) + 100, max(b[3] for b in boxes) + 100)
     return cl
 
@@ -216,11 +244,12 @@ def add_pin_labels(board, fps, spec):
             t.SetTextThickness(MM(0.12))
             if vertical:
                 # Two-row headers: left row labelled on the left, right row on the right.
-                left = two_rows and x < mid_x
+                # Modules overhang to the right, so their labels go on the left.
+                left = (two_rows and x < mid_x) or bool(p.get('module'))
                 t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_RIGHT if left else pcbnew.GR_TEXT_H_ALIGN_LEFT)
                 t.SetPosition(pcbnew.VECTOR2I(MM(x - 1.9 if left else x + 1.9), MM(y)))
             else:
-                below = two_rows and y > mid_y
+                below = (two_rows and y > mid_y) or bool(p.get('module'))
                 t.SetTextAngleDegrees(90)
                 t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_RIGHT if below else pcbnew.GR_TEXT_H_ALIGN_LEFT)
                 t.SetPosition(pcbnew.VECTOR2I(MM(x), MM(y + 1.9 if below else y - 1.9)))
@@ -378,6 +407,19 @@ def main():
     outline = add_outline(board, cl, 6.0)
     x0, y0, x1, y1 = outline
     add_pin_labels(board, fps, spec)
+    # Outline of each plug-in module's body on the silkscreen: "plug it in so it covers this".
+    for ref, box in getattr(place, 'bodies', {}).items():
+        fps[ref].Reference().SetVisible(False)  # "U2 sits here" inside the outline says it
+        x0b, y0b, x1b, y1b = box
+        for a, b in (((x0b, y0b), (x1b, y0b)), ((x1b, y0b), (x1b, y1b)), ((x1b, y1b), (x0b, y1b)), ((x0b, y1b), (x0b, y0b))):
+            seg = pcbnew.PCB_SHAPE(board)
+            seg.SetShape(pcbnew.SHAPE_T_SEGMENT)
+            seg.SetStart(pcbnew.VECTOR2I(MM(a[0]), MM(a[1])))
+            seg.SetEnd(pcbnew.VECTOR2I(MM(b[0]), MM(b[1])))
+            seg.SetLayer(pcbnew.F_SilkS)
+            seg.SetWidth(MM(0.15))
+            board.Add(seg)
+        add_text(board, ref + ' sits here', (x0b + x1b) / 2, (y0b + y1b) / 2, 1.0)
     for k in getattr(place, 'keepouts', []):
         add_keepout(board, k)
         add_text(board, 'ANTENNA: keep clear', (k[0] + k[2]) / 2, (k[1] + k[3]) / 2, 1.0)
@@ -433,6 +475,16 @@ def main():
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     pcbnew.SaveBoard(pcb_path, board)
 
+    # Where every part ended up, relative to the board's top-left corner (for the enclosure).
+    parts_out = []
+    for fp in board.GetFootprints():
+        ref = fp.GetReference()
+        if ref.startswith('H') and ref[1:].isdigit():
+            continue
+        b = bbox_of(fp)
+        parts_out.append({'ref': ref, 'x': round(mm(fp.GetPosition().x) - x0, 2), 'y': round(mm(fp.GetPosition().y) - y0, 2), 'rot': fp.GetOrientationDegrees(),
+                          'box': [round(b[0] - x0, 2), round(b[1] - y0, 2), round(b[2] - x0, 2), round(b[3] - y0, 2)]})
+    holes = [[3.5, 3.5], [x1 - x0 - 3.5, 3.5], [x1 - x0 - 3.5, y1 - y0 - 3.5], [3.5, y1 - y0 - 3.5]]
     unrouted = board.GetConnectivity().GetUnconnectedCount(False) if hasattr(board.GetConnectivity(), 'GetUnconnectedCount') else None
     json.dump({
         'pcb': pcb_path,
@@ -443,6 +495,8 @@ def main():
         'tracks': len([t for t in board.GetTracks() if t.GetClass() == 'PCB_TRACK']),
         'vias': len([t for t in board.GetTracks() if t.GetClass() == 'PCB_VIA']),
         'rules': rules,
+        'parts': parts_out,
+        'holes': holes,
         'problems': problems,
         'route_log_tail': route_log[-1500:],
     }, open(os.path.join(work, 'layout.json'), 'w'), indent=1)

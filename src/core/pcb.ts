@@ -24,7 +24,18 @@ export interface PcbPart {
   edge?: boolean;
   /** ESP32 DevKit: keep copper away from its antenna end. */
   antenna?: boolean;
+  /** A plug-in module lying flat above its socket: body width along the header, depth away from it, height above the board (mm). */
+  module?: { w: number; d: number; h: number; window?: { w: number; d: number; off: number } };
 }
+
+/** Plug-in breakout modules (sitting on a female socket, parallel to the board). Dimensions of the common boards. */
+export const MODULE_BODY: Record<string, NonNullable<PcbPart['module']>> = {
+  ssd1306: { w: 27.5, d: 27.8, h: 12.5, window: { w: 25, d: 15, off: 6 } },
+  mpu6050: { w: 21, d: 16, h: 11.5 },
+  hcsr04: { w: 45, d: 20, h: 24 },
+  pir: { w: 32, d: 24, h: 26 },
+  'level-shifter': { w: 18, d: 13, h: 11 },
+};
 
 /** Parts that connect to something off the board through a cable. */
 const EDGE_TYPES = new Set(['lcd1602', 'epaper29', 'neopixel-ring', 'servo', 'relay', 'dc-motor', 'battery-9v', 'hcsr04', 'pir', 'soil']);
@@ -86,6 +97,7 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       description: def.name,
       ...(EDGE_TYPES.has(p.type) ? { edge: true } : {}),
       ...(p.type === 'esp32-devkit' ? { antenna: true } : {}),
+      ...(MODULE_BODY[p.type] ? { module: MODULE_BODY[p.type] } : {}),
     };
   });
   const power = nets.filter((n) => n.pins.length > 1 && /^(GND|\+3V3|\+5V|VBAT)/.test(n.name)).map((n) => n.name);
