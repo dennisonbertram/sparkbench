@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
 import { slug } from './exporters';
 import { Revisions } from './Revisions';
+import { CaseSection } from './CaseSection';
 
 interface DrcItem { severity: string; type: string; description: string }
 interface Result {
@@ -255,6 +256,8 @@ export function PcbView() {
             ) : (
               <p className="pcb-note">Live part prices were unavailable (no internet?). The BOM file still lists every part.</p>
             )}
+
+            {job && <CaseSection jobId={job} />}
 
             <div className="prose pcb-order">
               <h3>How to order it</h3>

@@ -42,12 +42,18 @@ def bbox_of(fp):
     return (mm(b.GetLeft()), mm(b.GetTop()), mm(b.GetRight()), mm(b.GetBottom()))
 
 
-def snapshot(fp, rot):
+def snapshot(fp, rot, usb=None):
     """Pad offsets (by net) and box relative to the footprint origin at rotation rot."""
     fp.SetPosition(pcbnew.VECTOR2I(0, 0))
     fp.SetOrientationDegrees(rot)
     pads = [(mm(p.GetPosition().x), mm(p.GetPosition().y), p.GetNetname()) for p in fp.Pads()]
-    return {'rot': rot, 'pads': pads, 'box': bbox_of(fp)}
+    out = {'rot': rot, 'pads': pads, 'box': bbox_of(fp)}
+    if usb:
+        pp = {p.GetNumber(): (mm(p.GetPosition().x), mm(p.GetPosition().y)) for p in fp.Pads()}
+        a, b = pp.get(usb[0]), pp.get(usb[1])
+        if a and b:
+            out['usb'] = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+    return out
 
 
 def overlaps(a, b, gap):
@@ -56,23 +62,32 @@ def overlaps(a, b, gap):
 
 def place(board, fps, spec):
     by_ref = {p['ref']: p for p in spec['parts']}
-    snaps = {ref: [snapshot(fp, 0), snapshot(fp, 90)] for ref, fp in fps.items()}
+    snaps = {ref: [snapshot(fp, r, by_ref[ref].get('usbPads')) for r in (0, 90, 180, 270)] for ref, fp in fps.items()}
     # ESP32 DevKit: its antenna sticks out ~13 mm past pin 1 (the end opposite USB). Reserve it.
     for ref, ss in snaps.items():
         if by_ref[ref].get('antenna'):
-            b0 = ss[0]['box']
-            ss[0]['box'] = (b0[0], b0[1] - 13.0, b0[2], b0[3])
-            b9 = ss[1]['box']
-            ss[1]['box'] = (b9[0] - 13.0, b9[1], b9[2], b9[3])
-            ss[0]['antenna'] = (b0[0], b0[1] - 13.0, b0[2], b0[1])
-            ss[1]['antenna'] = (b9[0] - 13.0, b9[1], b9[0], b9[3])
+            for s in ss:
+                b = s['box']
+                ux, uy = s.get('usb', ((b[0] + b[2]) / 2, b[3]))
+                cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
+                # The antenna end is opposite the USB end.
+                if abs(uy - cy) > abs(ux - cx):
+                    if uy > cy:
+                        s['antenna'] = (b[0], b[1] - 13.0, b[2], b[1]); s['box'] = (b[0], b[1] - 13.0, b[2], b[3])
+                    else:
+                        s['antenna'] = (b[0], b[3], b[2], b[3] + 13.0); s['box'] = (b[0], b[1], b[2], b[3] + 13.0)
+                else:
+                    if ux > cx:
+                        s['antenna'] = (b[0] - 13.0, b[1], b[0], b[3]); s['box'] = (b[0] - 13.0, b[1], b[2], b[3])
+                    else:
+                        s['antenna'] = (b[2], b[1], b[2] + 13.0, b[3]); s['box'] = (b[0], b[1], b[2] + 13.0, b[3])
     # Plug-in modules lie flat above their socket and overhang it: reserve the whole body
     # (on the side away from the pin names).
     for ref, ss in snaps.items():
         m = by_ref[ref].get('module')
         if not m:
             continue
-        for s in ss:
+        for s in ss[:2]:
             b = s['box']
             vertical = s['rot'] % 180 == 0
             if vertical:  # header runs along y; body extends to the right
@@ -81,6 +96,10 @@ def place(board, fps, spec):
             else:  # header runs along x; body extends upwards
                 cx = (b[0] + b[2]) / 2
                 s['box'] = (min(b[0], cx - m['w'] / 2), b[3] - m['d'], max(b[2], cx + m['w'] / 2), b[3])
+        del ss[2:]
+    for ref, ss in snaps.items():
+        if not by_ref[ref].get('usbPads') and len(ss) > 2:
+            del ss[2:]
     # Sockets get their pin names printed beside them: keep that strip free.
     for ref, ss in snaps.items():
         p = by_ref[ref]
@@ -116,8 +135,21 @@ def place(board, fps, spec):
 
     order = sorted(fps, key=lambda r: (by_ref[r]['role'] != 'board', by_ref[r]['role'] != 'ic', -len(by_ref[r]['pads'])))
     first = order[0]
-    placed[first] = (0.0, 0.0, snaps[first][0])
-    boxes.append(tuple(v + o for v, o in zip(snaps[first][0]['box'], (0, 0, 0, 0))))
+    # Dev boards: turn so the USB end faces down (it ends up at the bottom edge, antenna at the top).
+    pick = snaps[first][0]
+    for s in snaps[first]:
+        if 'usb' in s:
+            b = s['box']
+            if s['usb'][1] >= b[3] - 6:
+                pick = s
+                break
+    placed[first] = (0.0, 0.0, pick)
+    boxes.append(tuple(pick['box']))
+    # Keep the space below the USB connector free, so the cable can reach the board edge.
+    forbid = []
+    if 'usb' in pick:
+        ux = pick['usb'][0]
+        forbid.append((ux - 9, pick['box'][3] - 1, ux + 9, 1e6))
     remaining = [r for r in order if r != first]
     while remaining:
         remaining.sort(key=lambda r: (-links(r), -len(by_ref[r]['pads'])))
@@ -139,7 +171,7 @@ def place(board, fps, spec):
                 for j in range(ny):
                     y = y0 + j * step - bx[1]
                     box = (bx[0] + x, bx[1] + y, bx[2] + x, bx[3] + y)
-                    if any(overlaps(box, b, 1.0) for b in boxes):
+                    if any(overlaps(box, b, 1.0) for b in boxes) or any(overlaps(box, f, 0) for f in forbid):
                         continue
                     wl = 0.0
                     for px, py, n in s['pads']:
@@ -153,9 +185,14 @@ def place(board, fps, spec):
                         cost += 3.0 * min(box[0] - nb[0], nb[2] - box[2], box[1] - nb[1], nb[3] - box[3])
                     if best is None or cost < best[0]:
                         best = (cost, x, y, s)
+        if best is None:
+            raise SystemExit(f'could not place {ref}')
         _, x, y, s = best
         placed[ref] = (x, y, s)
         boxes.append((s['box'][0] + x, s['box'][1] + y, s['box'][2] + x, s['box'][3] + y))
+    place.usb = None
+    if 'usb' in pick:
+        place.usb = (pick['usb'][0] + 100, pick['usb'][1] + 100)
 
     keepouts = []
     bodies = {}
@@ -385,6 +422,10 @@ def main():
             raise SystemExit(f'footprint {p["footprint"]} not found')
         fp.SetFPID(pcbnew.LIB_ID(lib, name))
         fp.SetReference(p['ref'])
+        try:
+            fp.Reference().SetKeepUpright(True)
+        except Exception:
+            pass
         fp.SetValue(p['value'])
         pad_names = {pad.GetNumber() for pad in fp.Pads()}
         for num, net in p['pads'].items():
@@ -496,6 +537,7 @@ def main():
         'vias': len([t for t in board.GetTracks() if t.GetClass() == 'PCB_VIA']),
         'rules': rules,
         'parts': parts_out,
+        'usb': [round(place.usb[0] - x0, 2), round(place.usb[1] - y0, 2)] if getattr(place, 'usb', None) else None,
         'holes': holes,
         'problems': problems,
         'route_log_tail': route_log[-1500:],

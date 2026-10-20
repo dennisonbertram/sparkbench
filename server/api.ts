@@ -167,6 +167,14 @@ export function apiPlugin(): Plugin {
         const job = startPcb(project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl });
         return send(res, 200, { id: job.id, routing: tools.freerouting });
       }
+      if (req.url === '/api/pcb/enclosure' && req.method === 'POST') {
+        const { buildEnclosure } = await import('./pcbjobs');
+        const { id, project, style } = await body(req);
+        const st = ['rounded', 'minimal', 'wall-mount', 'desk-stand'].includes(style) ? style : 'rounded';
+        const r = await buildEnclosure(String(id), project, st);
+        if (!r) return send(res, 404, { error: 'Design the circuit board first.' });
+        return send(res, 200, r);
+      }
       if (req.url?.startsWith('/api/pcb/') && req.method === 'GET') {
         const { pcbJob, pcbFile, pcbZip } = await import('./pcbjobs');
         const u = new URL(req.url, 'http://x');
@@ -179,9 +187,9 @@ export function apiPlugin(): Plugin {
         if (u.pathname === '/api/pcb/file') {
           const f = pcbFile(id, u.searchParams.get('path') ?? '');
           if (!f) return send(res, 404, { error: 'not found' });
-          const types: Record<string, string> = { png: 'image/png', svg: 'image/svg+xml', csv: 'text/csv', json: 'application/json' };
+          const types: Record<string, string> = { png: 'image/png', svg: 'image/svg+xml', csv: 'text/csv', json: 'application/json', stl: 'model/stl', md: 'text/markdown; charset=utf-8', pdf: 'application/pdf' };
           res.setHeader('Content-Type', types[f.split('.').pop()!] ?? 'application/octet-stream');
-          if (!/\.(png|svg)$/.test(f)) res.setHeader('Content-Disposition', `attachment; filename="${f.split('/').pop()}"`);
+          if (!/\.(png|svg|stl)$/.test(f) || new URL(req.url, 'http://x').searchParams.has('download')) res.setHeader('Content-Disposition', `attachment; filename="${f.split('/').pop()}"`);
           return res.end(readFileSync(f));
         }
         if (u.pathname === '/api/pcb/zip') {

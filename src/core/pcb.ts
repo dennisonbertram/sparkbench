@@ -24,6 +24,8 @@ export interface PcbPart {
   edge?: boolean;
   /** ESP32 DevKit: keep copper away from its antenna end. */
   antenna?: boolean;
+  /** Dev board: pads at its USB end (the USB cable must reach the board edge there). */
+  usbPads?: [string, string];
   /** A plug-in module lying flat above its socket: body width along the header, depth away from it, height above the board (mm). */
   module?: { w: number; d: number; h: number; window?: { w: number; d: number; off: number } };
 }
@@ -96,7 +98,8 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       role: ROLE[def.category] ?? 'passive',
       description: def.name,
       ...(EDGE_TYPES.has(p.type) ? { edge: true } : {}),
-      ...(p.type === 'esp32-devkit' ? { antenna: true } : {}),
+      ...(p.type === 'esp32-devkit' ? { antenna: true, usbPads: ['15', '16'] as [string, string] } : {}),
+      ...(p.type === 'pi-pico' ? { usbPads: ['1', '40'] as [string, string] } : {}),
       ...(MODULE_BODY[p.type] ? { module: MODULE_BODY[p.type] } : {}),
     };
   });

@@ -52,3 +52,31 @@ export async function pcbZip(id: string, kind: 'fab' | 'all'): Promise<Buffer | 
   for (const f of files) zip.file(kind === 'fab' ? f.slice('fab/gerbers/'.length) : `${job.result.name}-board/${f}`, readFileSync(join(job.result.dir, f)));
   return zip.generateAsync({ type: 'nodebuffer' });
 }
+
+/** Generate the 3D-printable case for a finished board job (fast: plain JS CAD). */
+export async function buildEnclosure(id: string, project: Project, style: import('../src/core/enclosure').CaseStyle) {
+  const job = jobs.get(id);
+  if (!job?.result) return null;
+  const { buildCase } = await import('../src/core/enclosure');
+  const { annotate } = await import('../src/core/netlist');
+  const stlNs: any = await import('@jscad/stl-serializer');
+  const stl = stlNs.default ?? stlNs;
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  const layout = JSON.parse(readFileSync(join(job.result.dir, 'layout.json'), 'utf8'));
+  const p = project.parts.some((x) => !x.ref) ? annotate(project) : project;
+  const types = Object.fromEntries(p.parts.map((x) => [x.ref ?? x.id, x.type]));
+  const r = buildCase({ board: layout, types, style, name: p.name });
+  const dir = join(job.result.dir, 'enclosure', style);
+  mkdirSync(dir, { recursive: true });
+  const files: string[] = [];
+  for (const part of r.parts) {
+    const buf = Buffer.concat(stl.serialize({ binary: true }, part.geom).map((d: ArrayBuffer) => Buffer.from(d)));
+    writeFileSync(join(dir, `${part.name}.stl`), buf);
+    files.push(`enclosure/${style}/${part.name}.stl`);
+  }
+  const notes = [`# ${p.name} case (${style})`, '', `Outside: ${r.outer.w} × ${r.outer.d} × ${r.outer.h} mm. Tallest part: ${r.tallest.ref} (${r.tallest.h} mm above the board).`, '', '## Print', '', ...r.parts.map((x) => `- \`${x.name}.stl\`: ${x.note}`), '', '## Openings', '', ...r.openings.map((o) => `- ${o.where}: ${o.ref ? `${o.ref} — ` : ''}${o.what}`), '', '## Assemble', '', '1. Screw the board onto the four posts with M3 × 6 mm self-tapping screws.', '2. Push the button caps into their lid holes from inside (flange inside).', '3. Press the lid on; the lip holds it. A dab of glue makes it permanent.', ...(r.warnings.length ? ['', '## Notes', '', ...r.warnings.map((w) => `- ${w}`)] : []), ''].join('\n');
+  writeFileSync(join(dir, 'CASE.md'), notes);
+  files.push(`enclosure/${style}/CASE.md`);
+  job.result.files = [...new Set([...job.result.files, ...files])];
+  return { files, outer: r.outer, openings: r.openings, warnings: r.warnings, tallest: r.tallest, notes: r.parts.map((x) => ({ name: x.name, note: x.note })), board: { w: layout.width_mm, d: layout.height_mm, holes: layout.holes } };
+}
