@@ -45,6 +45,14 @@ export interface PcbResult {
   files: string[];
   problems: string[];
   log: string[];
+  /** Live parts data, cost at 5/50/500 boards, and design-for-manufacture notes (null when offline). */
+  sourcing: PcbSourcing | null;
+}
+
+export interface PcbSourcing {
+  lines: { ref: string; item: string; quantity: number; lcsc: string | null; mfr: string | null; stock: number; basic: boolean; unit: number | null; url: string | null }[];
+  cost: { boards: number; parts: number; perBoard: number; missing: number }[];
+  dfm: { level: 'ok' | 'note' | 'warn'; text: string }[];
 }
 
 /** Lay out, route, check and export a board for `project` into `dir`. */
@@ -103,7 +111,10 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
   await run(KICAD_CLI, ['pcb', 'export', 'gerbers', '--output', join(fab, 'gerbers') + '/', '--layers', 'F.Cu,B.Cu,F.Paste,B.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts', pcb]);
   await run(KICAD_CLI, ['pcb', 'export', 'drill', '--output', join(fab, 'gerbers') + '/', '--format', 'excellon', '--excellon-separate-th', pcb]);
   await run(KICAD_CLI, ['pcb', 'export', 'pos', '--output', join(fab, 'positions.csv'), '--format', 'csv', '--units', 'mm', '--side', 'both', pcb]);
-  writeFileSync(join(fab, 'bom-jlcpcb.csv'), jlcBom(spec));
+  step('Looking up parts at LCSC (stock, price, LCSC numbers)');
+  const sourcing = await sourceForPcb(project, layout).catch(() => null);
+  writeFileSync(join(fab, 'bom-jlcpcb.csv'), jlcBom(spec, sourcing));
+  if (sourcing) writeFileSync(join(fab, 'sourcing.json'), JSON.stringify(sourcing, null, 1));
   writeFileSync(join(fab, 'cpl-jlcpcb.csv'), jlcCpl(join(fab, 'positions.csv')));
   step('Rendering the board');
   await run(KICAD_CLI, ['pcb', 'render', '--output', join(dir, 'board-top.png'), '--side', 'top', '--width', '1600', '--height', '1100', '--quality', 'basic', '--floor', pcb], 300_000);
@@ -112,7 +123,7 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
   await run(KICAD_CLI, ['pcb', 'export', 'step', '--output', join(dir, 'board.step'), '--subst-models', pcb], 300_000);
 
   const files = [...walk(dir)].map((f) => f.slice(dir.length + 1)).filter((f) => !/^(spec|layout)\.json$|\.(dsn|ses|kicad_prl)$/.test(f));
-  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log };
+  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing };
 }
 
 /** Rename the spec's nets to KiCad's names; report any grouping that differs between the two netlists. */
@@ -163,15 +174,50 @@ function* walk(d: string): Generator<string> {
 
 const csv = (rows: string[][]) => rows.map((r) => r.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n') + '\n';
 
-/** JLCPCB assembly BOM: one row per value+footprint, with designators. */
-function jlcBom(spec: PcbSpec): string {
-  const groups = new Map<string, { value: string; footprint: string; refs: string[] }>();
+/** JLCPCB assembly BOM: one row per value+footprint, with designators and LCSC numbers when known. */
+function jlcBom(spec: PcbSpec, sourcing: PcbSourcing | null): string {
+  const groups = new Map<string, { value: string; footprint: string; refs: string[]; lcsc: string }>();
   for (const p of spec.parts) {
-    const k = `${p.value}|${p.footprint}`;
-    if (!groups.has(k)) groups.set(k, { value: p.value, footprint: p.footprint.split(':')[1], refs: [] });
+    const line = sourcing?.lines.find((l) => l.ref === p.ref);
+    const lcsc = line?.lcsc ?? '';
+    // Plug-in boards and modules are soldered as sockets: say so, with how many.
+    const value = line && /socket/.test(line.item) ? `${line.quantity > 1 ? `${line.quantity}× ` : ''}${line.item}` : p.value;
+    const k = `${value}|${p.footprint}|${lcsc}`;
+    if (!groups.has(k)) groups.set(k, { value, footprint: p.footprint.split(':')[1], refs: [], lcsc });
     groups.get(k)!.refs.push(p.ref);
   }
-  return csv([['Comment', 'Designator', 'Footprint', 'LCSC Part #'], ...[...groups.values()].map((g) => [g.value, g.refs.join(','), g.footprint, ''])]);
+  return csv([['Comment', 'Designator', 'Footprint', 'LCSC Part #'], ...[...groups.values()].map((g) => [g.value, g.refs.join(','), g.footprint, g.lcsc])]);
+}
+
+async function sourceForPcb(project: Project, layout: { width_mm: number; height_mm: number }): Promise<PcbSourcing> {
+  const { sourcePcb, unitPrice } = await import('./sourcing');
+  const src = await sourcePcb(project);
+  const lines = src.map((x) => ({ ref: x.ref, item: x.item, quantity: x.quantity, lcsc: x.part?.lcsc ?? null, mfr: x.part?.mfr ?? null, stock: x.part?.stock ?? 0, basic: !!x.part?.basic, unit: x.part ? unitPrice(x.part, x.quantity) : null, url: x.part?.url ?? null }));
+  const cost = [5, 50, 500].map((boards) => {
+    let parts = 0;
+    let missing = 0;
+    for (const x of src) {
+      if (!x.part) {
+        missing++;
+        continue;
+      }
+      const n = x.quantity * boards;
+      parts += unitPrice(x.part, n) * n;
+    }
+    return { boards, parts: Math.round(parts * 100) / 100, perBoard: Math.round((parts / boards) * 100) / 100, missing };
+  });
+  const dfm: PcbSourcing['dfm'] = [];
+  const area = layout.width_mm * layout.height_mm;
+  dfm.push(layout.width_mm <= 100 && layout.height_mm <= 100 ? { level: 'ok', text: `The board is ${layout.width_mm} × ${layout.height_mm} mm, within 100 × 100 mm, the cheapest size class at most PCB makers.` } : { level: 'note', text: `The board is ${layout.width_mm} × ${layout.height_mm} mm. Boards with a side longer than 100 mm cost more at most PCB makers.` });
+  const unfound = src.filter((x) => !x.part);
+  if (unfound.length) dfm.push({ level: 'note', text: `Buy separately (not in LCSC's catalogue): ${[...new Set(unfound.map((x) => x.item))].join(', ')}.` });
+  const low = src.filter((x) => x.part && x.part.stock < x.quantity * 50);
+  if (low.length) dfm.push({ level: 'warn', text: `Low stock for 50 boards: ${low.map((x) => `${x.ref} (${x.part!.lcsc}, ${x.part!.stock} left)`).join(', ')}.` });
+  const ext = src.filter((x) => x.part && !x.part.basic);
+  dfm.push(ext.length ? { level: 'note', text: `${ext.length} of ${src.filter((x) => x.part).length} parts are JLCPCB "extended" parts. If you use their assembly service, each extended part type adds a small one-time loading fee; basic parts don't.` } : { level: 'ok', text: 'Every part is a JLCPCB "basic" part (no loading fees).' });
+  dfm.push({ level: 'note', text: 'All parts are through-hole, which beginners can solder by hand. Factory assembly mostly places surface-mount parts, so through-hole assembly costs extra; most makers solder these boards themselves.' });
+  if (area < 30 * 30) dfm.push({ level: 'note', text: 'This board is small: ask the maker to panelise it (several boards on one sheet) to save money on larger orders.' });
+  return { lines, cost, dfm };
 }
 
 /** JLCPCB CPL from KiCad's position file. */

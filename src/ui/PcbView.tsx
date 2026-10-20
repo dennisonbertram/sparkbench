@@ -15,6 +15,11 @@ interface Result {
   drc: { errors: DrcItem[]; warnings: DrcItem[]; unconnected: number };
   files: string[];
   problems: string[];
+  sourcing: {
+    lines: { ref: string; item: string; quantity: number; lcsc: string | null; mfr: string | null; stock: number; basic: boolean; unit: number | null; url: string | null }[];
+    cost: { boards: number; parts: number; perBoard: number; missing: number }[];
+    dfm: { level: 'ok' | 'note' | 'warn'; text: string }[];
+  } | null;
 }
 interface Status { log: string[]; done: boolean; error?: string; result?: Result }
 
@@ -187,6 +192,45 @@ export function PcbView() {
               </div>
               <img src={file(side === 'top' ? 'board-top.png' : side === 'bottom' ? 'board-bottom.png' : 'board.svg')} alt={`Circuit board, ${side} view`} className={side === 'copper' ? 'copper' : ''} />
             </div>
+
+            {res.sourcing ? (
+              <div className="pcb-sourcing" data-testid="pcb-sourcing">
+                <h3>Before you order</h3>
+                <ul className="pcb-dfm">
+                  {res.sourcing.dfm.map((d, i) => (
+                    <li key={i} className={d.level}>{d.level === 'ok' ? '✓' : d.level === 'warn' ? '!' : 'ℹ'} {d.text}</li>
+                  ))}
+                </ul>
+                <h3>What the parts cost</h3>
+                <table className="bom pcb-cost">
+                  <thead><tr><th>Boards</th><th className="num">Parts (LCSC, live)</th><th className="num">Per board</th></tr></thead>
+                  <tbody>
+                    {res.sourcing.cost.map((c) => (
+                      <tr key={c.boards}><td>{c.boards}</td><td className="num">${c.parts.toFixed(2)}</td><td className="num">${c.perBoard.toFixed(2)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="pcb-note">Live LCSC prices for the parts that go on the board (sockets for plug-in boards and modules; buy those separately{res.sourcing.cost[0].missing ? `, plus ${res.sourcing.cost[0].missing} part${res.sourcing.cost[0].missing > 1 ? 's' : ''} not stocked at LCSC` : ''}). The bare boards are priced by the maker when you upload the files: <a href="https://cart.jlcpcb.com/quote" target="_blank" rel="noreferrer">JLCPCB quote</a>, <a href="https://www.pcbway.com/orderonline.aspx" target="_blank" rel="noreferrer">PCBWay quote</a>.</p>
+                <details>
+                  <summary>Parts for the board ({res.sourcing.lines.length})</summary>
+                  <table className="bom">
+                    <thead><tr><th>Ref</th><th>What</th><th>Qty</th><th>LCSC</th><th className="num">Stock</th><th className="num">Each</th></tr></thead>
+                    <tbody>
+                      {res.sourcing.lines.map((l, i) => (
+                        <tr key={i}>
+                          <td>{l.ref}</td><td>{l.item}</td><td>{l.quantity}</td>
+                          <td>{l.lcsc ? <a href={l.url ?? '#'} target="_blank" rel="noreferrer">{l.lcsc}</a> : <span className="muted">buy separately</span>}{l.lcsc && (l.basic ? ' · basic' : ' · extended')}</td>
+                          <td className="num">{l.lcsc ? l.stock.toLocaleString() : ''}</td>
+                          <td className="num">{l.unit !== null ? `$${l.unit.toFixed(3)}` : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              </div>
+            ) : (
+              <p className="pcb-note">Live part prices were unavailable (no internet?). The BOM file still lists every part.</p>
+            )}
 
             <div className="prose pcb-order">
               <h3>How to order it</h3>

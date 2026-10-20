@@ -199,16 +199,48 @@ export function CodeView() {
   );
 }
 
+interface LiveLine { key: string; name: string; quantity: number; part: { lcsc: string; mfr: string; pkg: string; stock: number; basic: boolean; prices: [number, number][]; url: string } | null }
+
 export function BomView() {
   const project = useStore((s) => s.project)!;
   const lines = useMemo(() => buildBom(project), [project.parts, project.wires, project.board]);
   const total = bomTotal(lines);
+  const [live, setLive] = useState<LiveLine[] | null>(null);
+  const [liveErr, setLiveErr] = useState('');
+  const [loading, setLoading] = useState(false);
+  useEffect(() => setLive(null), [project.parts, project.board]);
+  async function loadLive() {
+    setLoading(true);
+    setLiveErr('');
+    try {
+      const r = await fetch('/api/sourcing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? 'Could not load live prices');
+      setLive(d.lines);
+    } catch (e: any) {
+      setLiveErr(e.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+  const liveFor = (key: string) => live?.find((x) => x.key === key)?.part;
+  const price = (p: NonNullable<LiveLine['part']>, q: number) => p.prices.reduce((v, [min, u]) => (q >= min ? u : v), p.prices[0]?.[1] ?? 0);
+  const lcscCsv = () => ['LCSC Part Number,Quantity,Comment', ...(live ?? []).filter((l) => l.part).map((l) => `${l.part!.lcsc},${l.quantity},${l.name.replace(/,/g, ' ')}`)].join('\n') + '\n';
+  const found = (live ?? []).filter((l) => l.part);
   return (
     <div className="docview">
       <div className="doc-toolbar">
         <span className="doc-title">Parts list</span>
         <button onClick={() => download(`${slug(project.name)}-bom.csv`, bomToCsv(lines), 'text/csv')}>Download CSV</button>
+        {!live && <button onClick={loadLive} disabled={loading} data-testid="bom-live">{loading ? 'Checking stock and prices…' : 'Check live stock and prices'}</button>}
+        {live && found.length > 0 && <button onClick={() => download(`${slug(project.name)}-lcsc-cart.csv`, lcscCsv(), 'text/csv')} data-testid="bom-cart">Download LCSC cart ({found.length} parts)</button>}
       </div>
+      {liveErr && <div className="banner error">{liveErr}</div>}
+      {live && (
+        <div className="banner" data-testid="bom-live-note">
+          {found.length} of {live.length} parts are stocked at LCSC right now (prices below). To order them in one go, download the LCSC cart and upload it at <a href="https://www.lcsc.com/bom" target="_blank" rel="noreferrer">lcsc.com/bom</a>. Boards and plug-in modules are sold by hobby stores: use the links in the Buy column.
+        </div>
+      )}
       <table className="bom" data-testid="bom">
         <thead>
           <tr>
@@ -222,26 +254,34 @@ export function BomView() {
           </tr>
         </thead>
         <tbody>
-          {lines.map((l: any, i: number) => (
-            <tr key={i} className={l.kind === 'supply' ? 'supply' : ''}>
-              <td>{l.quantity}</td>
-              <td>
-                <div className="bom-name">{l.name}</div>
-                <div className="bom-desc">{l.description}</div>
-              </td>
-              <td>{l.value ?? ''}</td>
-              <td className="refs">{Array.isArray(l.references) ? l.references.join(', ') : l.references ?? ''}</td>
-              <td className="num">${Number(l.unitPrice ?? l.unitPriceUsd ?? 0).toFixed(2)}</td>
-              <td className="num">${Number(l.linePrice ?? l.linePriceUsd ?? 0).toFixed(2)}</td>
-              <td className="links">
-                {(l.links ?? l.suppliers ?? []).slice(0, 3).map((s: any) => (
-                  <a key={s.name ?? s.label} href={s.url} target="_blank" rel="noreferrer">
-                    {s.name ?? s.label}
-                  </a>
-                ))}
-              </td>
-            </tr>
-          ))}
+          {lines.map((l: any, i: number) => {
+            const lp = liveFor(l.key);
+            return (
+              <tr key={i} className={l.kind === 'supply' ? 'supply' : ''}>
+                <td>{l.quantity}</td>
+                <td>
+                  <div className="bom-name">{l.name}</div>
+                  <div className="bom-desc">{l.description}</div>
+                  {lp && (
+                    <div className="bom-live" data-testid="bom-live-part">
+                      LCSC <a href={lp.url} target="_blank" rel="noreferrer">{lp.lcsc}</a> · {lp.mfr} · {lp.stock.toLocaleString()} in stock · ${price(lp, l.quantity).toFixed(3)} each
+                    </div>
+                  )}
+                </td>
+                <td>{l.value ?? ''}</td>
+                <td className="refs">{Array.isArray(l.references) ? l.references.join(', ') : l.references ?? ''}</td>
+                <td className="num">${Number(l.unitPrice ?? l.unitPriceUsd ?? 0).toFixed(2)}</td>
+                <td className="num">${Number(l.linePrice ?? l.linePriceUsd ?? 0).toFixed(2)}</td>
+                <td className="links">
+                  {(l.links ?? l.suppliers ?? []).slice(0, 3).map((s: any) => (
+                    <a key={s.name ?? s.label} href={s.url} target="_blank" rel="noreferrer">
+                      {s.name ?? s.label}
+                    </a>
+                  ))}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
         <tfoot>
           <tr>

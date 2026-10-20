@@ -1,0 +1,31 @@
+// E2E (needs internet): live LCSC stock/prices in the Parts list, the LCSC cart download, and the
+// board's cost + manufacturability section.
+import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true })).newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(String(e)));
+await p.goto('http://localhost:5173/?example=555-tone&notour');
+await p.waitForSelector('.part');
+await p.click('.tabs button:has-text("Parts list")');
+await p.click('[data-testid=bom-live]');
+await p.waitForSelector('[data-testid=bom-live-note]', { timeout: 180000 });
+const note = await p.textContent('[data-testid=bom-live-note]');
+const liveParts = await p.$$eval('[data-testid=bom-live-part]', (els) => els.map((e) => e.textContent));
+console.log(note.slice(0, 80), '\n ' + liveParts.join('\n '));
+const [dl] = await Promise.all([p.waitForEvent('download'), p.click('[data-testid=bom-cart]')]);
+await dl.saveAs('test-results/lcsc-cart.csv');
+const cart = readFileSync('test-results/lcsc-cart.csv', 'utf8');
+console.log(cart);
+await p.screenshot({ path: 'test-results/bom-live.png' });
+await p.click('.tabs button:has-text("Circuit board")');
+await p.click('[data-testid=pcb-build]');
+await p.waitForSelector('[data-testid=pcb-sourcing]', { timeout: 400000 });
+console.log('board:', (await p.textContent('[data-testid=pcb-sourcing]')).replace(/\s+/g, ' ').slice(0, 500));
+await p.locator('[data-testid=pcb-sourcing]').screenshot({ path: 'test-results/pcb-sourcing.png' });
+console.log('errors:', errors);
+await b.close();
+const pass = liveParts.length >= 5 && /^LCSC Part Number,Quantity/.test(cart) && cart.trim().split('\n').length >= 6 && !errors.length;
+console.log(pass ? 'PASS' : 'FAIL');
+process.exit(pass ? 0 : 1);

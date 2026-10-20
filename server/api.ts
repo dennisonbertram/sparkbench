@@ -109,6 +109,17 @@ export function apiPlugin(): Plugin {
         for (const s of r.snapshots) for (const [k, v] of Object.entries(s.frame.nets ?? {})) (samples[k] ??= []).push(v);
         return send(res, 200, { checks: multimeterChecks(project, samples) });
       }
+      if (req.url === '/api/sourcing' && req.method === 'POST') {
+        const { project } = await body(req);
+        const { sourceBom } = await import('./sourcing');
+        const { registerProjectParts } = await import('../src/core/customParts');
+        registerProjectParts(project);
+        try {
+          return send(res, 200, { lines: await sourceBom(project) });
+        } catch (e: any) {
+          return send(res, 502, { error: `Live prices are unavailable right now (${e?.message ?? e}).` });
+        }
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });
