@@ -9,6 +9,7 @@ import { buildBom, bomToCsv, bomTotal } from '../core/bom';
 import { buildGuide, buildBlogPost } from '../core/docs';
 import { CodeEditor } from './CodeEditor';
 import { CodeAssistant } from './CodeAssistant';
+import { PhotoCheck } from './PhotoCheck';
 import { download, slug } from './exporters';
 import { generateFiles } from '../core/codegen';
 import { buildNets } from '../core/netlist';
@@ -273,6 +274,7 @@ export function MarkdownView({ kind }: { kind: 'guide' | 'blog' }) {
         <button onClick={() => navigator.clipboard?.writeText(md)}>Copy Markdown</button>
         <button onClick={() => window.print()}>Print</button>
       </div>
+      {kind === 'guide' && <PhotoCheck />}
       <article className="prose" data-testid={`doc-${kind}`} dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );

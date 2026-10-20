@@ -46,6 +46,14 @@ export function apiPlugin(): Plugin {
         const { project, file, instruction, error, selection } = await body(req);
         return send(res, 200, await aiEditFile(project, file, instruction, { error, selection }));
       }
+      if (req.url === '/api/ai/photo-check' && req.method === 'POST') {
+        const { aiCheckPhoto, aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'Checking a photo needs Claude: set ANTHROPIC_API_KEY or log in to Claude Code.' });
+        const { project, images, note } = await body(req);
+        const ok = Array.isArray(images) && images.length > 0 && images.length <= 4 && images.every((im: any) => /^image\/(jpeg|png|webp)$/.test(im?.mediaType) && typeof im?.data === 'string' && im.data.length < 8_000_000);
+        if (!project || !ok) return send(res, 400, { error: 'Send 1–4 JPEG/PNG/WebP photos (under ~6 MB each).' });
+        return send(res, 200, await aiCheckPhoto(project, images, typeof note === 'string' ? note.slice(0, 500) : undefined));
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });

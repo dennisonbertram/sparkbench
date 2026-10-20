@@ -45,6 +45,17 @@ Open any of the 19 from the welcome screen (or `/?example=<id>`):
 npm test                    # unit, simulation behaviour, KiCad and ngspice cross-checks
 npm run typecheck
 npm run dev & node tests/e2e/visual.mjs   # screenshot every view of every example
+node tests/e2e/photo-check.mjs            # live: upload breadboard photos in the Build guide, check Claude's verdict
+```
+
+### Photo wiring check eval
+
+`scripts/vision-eval/` measures how reliably Claude spots wiring mistakes in a photo of a breadboard. It renders five reference builds (Pico blink, traffic light, button, night light, 555 blinker) on a modelled 830-point breadboard (`src/core/breadboard.ts`) and injects typical beginner faults: reversed LED, a leg one hole off, the wrong Pico pin, a missing ground wire, a jumper on the wrong rail, a shorted resistor. Every fault is verified to change the circuit's connectivity. Each build is rendered clean and as a tilted, blurred, JPEG "phone photo". The model sees only a neutral file name, so the name can't give the answer away.
+
+```bash
+npx tsx scripts/vision-eval/check.ts    # sanity: layouts match their circuits, faults change them
+npx tsx scripts/vision-eval/render.ts   # → test-results/vision/images
+npx tsx scripts/vision-eval/run.ts      # asks Claude, writes test-results/vision/REPORT.md
 ```
 
 ## How it fits together

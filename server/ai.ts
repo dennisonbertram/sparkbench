@@ -223,3 +223,38 @@ Request: ${instruction}`,
   log.push('The change still crashes in the simulator — review it before accepting.');
   return { project: best!, reply, log, ok: false };
 }
+
+// ---------- Photo wiring check ----------
+
+const PhotoCheckSchema = z.object({
+  verdict: z.enum(['looks-right', 'problems', 'cant-tell']).describe("'cant-tell' when the photo is too blurry, dark, cropped or angled to check the wiring"),
+  summary: z.string().describe('1-3 friendly sentences for a beginner: the overall result'),
+  issues: z
+    .array(
+      z.object({
+        parts: z.array(z.string()).describe('Part refs (R1, D1…), board pins and/or breadboard holes involved'),
+        problem: z.string().describe('What is wrong, as seen in the photo'),
+        fix: z.string().describe('Exactly what to move, turn round or add'),
+        confidence: z.enum(['high', 'medium', 'low']),
+      }),
+    )
+    .describe('Wiring mistakes visible in the photo; empty when it looks right'),
+  could_not_check: z.array(z.string()).describe('Short items you could NOT verify from the photo (e.g. "which way round D1–D3 are", "the GND wire under the Pico"); empty if everything was visible'),
+  photo_tips: z.string().nullable().describe('If parts of the build could not be checked: how to take a better photo (closer, from straight above, better light); otherwise null'),
+});
+export type PhotoCheckResult = z.infer<typeof PhotoCheckSchema>;
+
+const PHOTO_SYSTEM = `You check beginners' breadboard builds from a photo inside Sparkbench, a hardware design studio.
+You get the intended design (parts and every connection) and one or more photos of the real build.
+Breadboard facts: in each numbered column, holes a–e are connected together and f–j are connected together; the centre gap separates the halves. The long power rails along the edges (+ red line, − blue line) run the length of the board (some boards split them in the middle).
+Trace every leg and jumper end to the hole it actually sits in. Typical mistakes: LED in backwards (the longer leg / anode must face the resistor or the GPIO; the flat edge is the cathode), electrolytic capacitor reversed (striped leg is −), a leg one hole off, a jumper on the neighbouring board pin, a missing wire, a wire on the wrong rail, both legs of a part in the same column (shorted), a board not straddling the centre gap.
+Only report what you can actually see. Anything you can't verify (hidden legs, polarity you can't make out, blurry areas) goes in could_not_check, with photo tips; never guess and never invent problems. 'looks-right' means no problems were seen, not that unseen things are fine. Be warm, short and concrete.`;
+
+export async function aiCheckPhoto(project: Project, images: { data: string; mediaType: string }[], note?: string): Promise<PhotoCheckResult> {
+  const { wireEndLabel, buildGuide } = await import('../src/core/docs');
+  const parts = project.parts.map((p) => `- ${p.ref ?? p.id}: ${p.label ?? p.type}${p.props?.value ? ` (${p.props.value})` : ''}${p.props?.color ? `, ${p.props.color}` : ''}`).join('\n');
+  const conns = project.wires.map((w) => `- ${wireEndLabel(project, w.a)} → ${wireEndLabel(project, w.b)}`).join('\n');
+  const guide = buildGuide(project).slice(0, 14000);
+  const prompt = `Project: ${project.name}\n\nParts:\n${parts}\n\nEvery connection the build must make:\n${conns}\n\nThe build guide the user followed:\n${guide}\n\n${note ? `The user says: ${note}\n\n` : ''}Check the photo${images.length > 1 ? 's' : ''} of their build against this design.`;
+  return askJson(PHOTO_SYSTEM, [{ role: 'user', content: prompt }], PhotoCheckSchema, { effort: 'medium', images: images as any });
+}

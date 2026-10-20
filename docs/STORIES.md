@@ -106,3 +106,8 @@ Verification: `npm test` (unit, simulation behaviour for every example, KiCad ER
 - ☑ N3 As Nia, I can simulate it: analog sensors get a slider that sets the real output voltage, digital sensors a toggle, actuators light up when driven, and I2C parts answer at their address with datasheet register values.
 - ☑ N4 As Max, the AI writes a MicroPython driver from the datasheet and uses the part's datasheet knowledge when changing my code.
 - ☑ N5 As Tess, each datasheet becomes a reusable Claude Code skill (`.claude/skills/part-<mpn>/SKILL.md`) that also appears as "Your components" in the parts library.
+
+## O. Check the real build (vision)
+- ☑ O1 As Max, I can take a phone photo of my breadboard in the Build guide and Claude compares it with the design, listing each mistake (part, what's wrong, exactly what to move) with a confidence.
+- ☑ O2 As Nia, when something can't be seen in the photo (LED direction, legs hidden under a part), I'm told what to check by eye and how to take a better photo. I'm never given a plain "looks right" for something that wasn't actually checked.
+- ☑ O3 As Tess, there is a measured eval of how well photo checks work (`scripts/vision-eval/`): ground-truth breadboard layouts, injected beginner faults, clean and phone-photo renders, two prompt conditions, scored detection / localisation / false alarms.
