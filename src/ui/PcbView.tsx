@@ -5,6 +5,7 @@ import { useStore } from './store';
 import { slug } from './exporters';
 import { Revisions } from './Revisions';
 import { CaseSection } from './CaseSection';
+import { BoardEditor, type PlacedPart } from './BoardEditor';
 
 interface DrcItem { severity: string; type: string; description: string }
 interface Result {
@@ -18,6 +19,7 @@ interface Result {
   files: string[];
   problems: string[];
   fab: { id: string; name: string; track: number; drill: number; quote: string };
+  placement: PlacedPart[];
   sourcing: {
     lines: { ref: string; item: string; quantity: number; lcsc: string | null; mfr: string | null; stock: number; basic: boolean; unit: number | null; url: string | null }[];
     cost: { boards: number; parts: number; perBoard: number; missing: number }[];
@@ -56,6 +58,7 @@ export function PcbView() {
   const [side, setSide] = useState<'top' | 'bottom' | 'copper'>('top');
   const [fab, setFab] = useState<'jlcpcb' | 'pcbway' | 'oshpark'>('jlcpcb');
   const [qrUrl, setQrUrl] = useState('');
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   const designKey = useMemo(() => JSON.stringify([project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b]), project.revision]), [project]);
   const [builtFor, setBuiltFor] = useState<string | null>(null);
@@ -85,11 +88,12 @@ export function PcbView() {
     };
   }, [job]);
 
-  async function build() {
+  async function build(fixed?: Record<string, { x: number; y: number; rot: number }>) {
     setError('');
     setStatus(null);
+    setEditing(false);
     try {
-      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl }) });
+      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl, fixed }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? 'Could not start the board design.');
       setJob(d.id);
@@ -130,7 +134,7 @@ export function PcbView() {
             <p>Turn this design into a real printed circuit board: a sturdy, permanent version of your breadboard that a factory makes for you. Sparkbench places the parts, draws the copper tracks, checks everything against the factory's rules, and gives you the files to order it.</p>
           </div>
           {!running && (
-            <button className="primary" onClick={build} data-testid="pcb-build">
+            <button className="primary" onClick={() => build()} data-testid="pcb-build">
               {res ? (stale ? 'Update the board for the changed design' : 'Design it again') : 'Design my circuit board'}
             </button>
           )}
@@ -206,6 +210,11 @@ export function PcbView() {
               <a className="button" href={file('TEST.md')}>Test procedure</a>
               <a className="button" href={file('COMPLIANCE.md')}>Selling it? Compliance checklist</a>
             </div>
+
+            <div className="pcb-arrange">
+              <button onClick={() => setEditing((e) => !e)} data-testid="pcb-arrange">{editing ? 'Close the editor' : 'Arrange the parts myself'}</button>
+            </div>
+            {editing && res.placement?.length > 0 && <BoardEditor parts={res.placement} width={res.widthMm} height={res.heightMm} busy={running} onApply={(f) => build(f)} />}
 
             <div className="pcb-picture">
               <div className="pcb-toggle" role="tablist">

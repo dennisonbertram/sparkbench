@@ -53,6 +53,8 @@ export interface PcbSpec {
   fab: FabId;
   /** Optional link printed as a QR code on the back of the board. */
   qr?: { url: string; modules: boolean[][] };
+  /** Positions the user chose (part origin, mm, rotation in degrees): placement keeps them. */
+  fixed?: Record<string, { x: number; y: number; rot: number }>;
 }
 
 export type FabId = 'jlcpcb' | 'pcbway' | 'oshpark';

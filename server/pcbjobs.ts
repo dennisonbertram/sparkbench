@@ -20,7 +20,7 @@ const jobs = new Map<string, Job>();
 const ROOT = join(tmpdir(), 'sparkbench-pcb');
 
 export function startPcb(project: Project, opts: PcbOptions = {}): Job {
-  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A'])).digest('hex').slice(0, 16);
+  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null])).digest('hex').slice(0, 16);
   const existing = jobs.get(id);
   if (existing && !existing.error) return existing;
   const job: Job = { id, log: [], done: false };

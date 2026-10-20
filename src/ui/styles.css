@@ -636,3 +636,10 @@ h2, h3 { margin: 0; }
 .case-canvas canvas { display: block; width: 100% !important; height: auto !important; }
 .case-viewer-tools { display: flex; gap: 10px; align-items: center; padding: 6px 10px; background: var(--surface); }
 .case-notes { font-size: 13px; padding-left: 18px; }
+.board-editor { border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--surface); outline: none; }
+.board-editor svg { display: block; max-width: 100%; height: auto; background: var(--surface-2); border-radius: 4px; touch-action: none; }
+.be-part rect { fill: #c9d3dc; stroke: #50606e; stroke-width: 0.3; cursor: grab; }
+.be-part.sel rect { fill: #f5e3a3; stroke: #8a6d00; }
+.be-part.bad rect { fill: #f3b4b4; stroke: var(--error); }
+.be-part text { pointer-events: none; fill: #1a1d1c; font-family: var(--sans); }
+.be-tools { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }

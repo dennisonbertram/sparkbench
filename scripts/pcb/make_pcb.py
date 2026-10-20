@@ -151,6 +151,28 @@ def place(board, fps, spec):
         ux = pick['usb'][0]
         forbid.append((ux - 9, pick['box'][3] - 1, ux + 9, 1e6))
     remaining = [r for r in order if r != first]
+    fixed = spec.get('fixed') or {}
+    if fixed:
+        # The user arranged the parts: keep their positions and rotations exactly.
+        def snap_for(ref, rot):
+            want = round(rot) % 360
+            for s in snaps[ref]:
+                if round(s['rot']) % 360 == want:
+                    return s
+            fp = fps[ref]
+            return snapshot(fp, want, by_ref[ref].get('usbPads'))
+        placed.clear()
+        boxes.clear()
+        for ref in fps:
+            f = fixed.get(ref)
+            if not f:
+                continue
+            s = snap_for(ref, f['rot'])
+            placed[ref] = (f['x'], f['y'], s)
+            boxes.append((s['box'][0] + f['x'], s['box'][1] + f['y'], s['box'][2] + f['x'], s['box'][3] + f['y']))
+        remaining = [r for r in order if r not in placed]
+        pick = placed.get(first, (0, 0, pick))[2]
+        forbid = []
     while remaining:
         remaining.sort(key=lambda r: (-links(r), -len(by_ref[r]['pads'])))
         ref = remaining.pop(0)
@@ -191,11 +213,13 @@ def place(board, fps, spec):
         placed[ref] = (x, y, s)
         boxes.append((s['box'][0] + x, s['box'][1] + y, s['box'][2] + x, s['box'][3] + y))
     place.usb = None
-    if 'usb' in pick:
-        place.usb = (pick['usb'][0] + 100, pick['usb'][1] + 100)
+    if first in placed and 'usb' in placed[first][2]:
+        fx, fy, fs = placed[first]
+        place.usb = (fx + fs['usb'][0] + 100, fy + fs['usb'][1] + 100)
 
     keepouts = []
     bodies = {}
+    place.reserved = {ref: (s['box'][0] + x + 100, s['box'][1] + y + 100, s['box'][2] + x + 100, s['box'][3] + y + 100) for ref, (x, y, s) in placed.items()}
     for ref, (x, y, s) in placed.items():
         fp = fps[ref]
         fp.SetOrientationDegrees(s['rot'])
@@ -524,6 +548,7 @@ def main():
             continue
         b = bbox_of(fp)
         parts_out.append({'ref': ref, 'x': round(mm(fp.GetPosition().x) - x0, 2), 'y': round(mm(fp.GetPosition().y) - y0, 2), 'rot': fp.GetOrientationDegrees(),
+                          'reserved': [round(v - (x0 if i % 2 == 0 else y0), 2) for i, v in enumerate(getattr(place, 'reserved', {}).get(ref, b))],
                           'box': [round(b[0] - x0, 2), round(b[1] - y0, 2), round(b[2] - x0, 2), round(b[3] - y0, 2)]})
     holes = [[3.5, 3.5], [x1 - x0 - 3.5, 3.5], [x1 - x0 - 3.5, y1 - y0 - 3.5], [3.5, y1 - y0 - 3.5]]
     unrouted = board.GetConnectivity().GetUnconnectedCount(False) if hasattr(board.GetConnectivity(), 'GetUnconnectedCount') else None

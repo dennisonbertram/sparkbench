@@ -162,9 +162,10 @@ export function apiPlugin(): Plugin {
         const { startPcb, pcbToolsStatus } = await import('./pcbjobs');
         const tools = pcbToolsStatus();
         if (!tools.kicad) return send(res, 400, { error: 'Circuit boards need KiCad 8 or newer installed (kicad.org).' });
-        const { project, fab, qrUrl } = await body(req);
+        const { project, fab, qrUrl, fixed } = await body(req);
         const okUrl = typeof qrUrl === 'string' && /^https?:\/\/\S{3,300}$/.test(qrUrl.trim()) ? qrUrl.trim() : undefined;
-        const job = startPcb(project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl });
+        const okFixed = fixed && typeof fixed === 'object' ? Object.fromEntries(Object.entries(fixed).filter(([, v]: any) => [v?.x, v?.y, v?.rot].every((n) => typeof n === 'number' && isFinite(n)))) : undefined;
+        const job = startPcb(project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl, fixed: okFixed as any });
         return send(res, 200, { id: job.id, routing: tools.freerouting });
       }
       if (req.url === '/api/pcb/enclosure' && req.method === 'POST') {

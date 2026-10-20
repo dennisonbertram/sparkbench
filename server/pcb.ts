@@ -48,6 +48,8 @@ export interface PcbResult {
   /** Live parts data, cost at 5/50/500 boards, and design-for-manufacture notes (null when offline). */
   sourcing: PcbSourcing | null;
   fab: { id: FabId; name: string; track: number; drill: number; quote: string };
+  /** Where each part is (origin and reserved area, mm from the board's top-left), for the board editor. */
+  placement: { ref: string; x: number; y: number; rot: number; reserved: [number, number, number, number] }[];
 }
 
 export interface PcbSourcing {
@@ -61,6 +63,8 @@ export interface PcbOptions {
   fab?: FabId;
   /** Printed as a QR code on the board (e.g. the project's blog post or repo). */
   qrUrl?: string;
+  /** User-arranged part positions (from the board editor). */
+  fixed?: Record<string, { x: number; y: number; rot: number }>;
 }
 
 export async function buildPcb(project: Project, dir: string, onStep: (msg: string) => void = () => {}, opts: PcbOptions = {}): Promise<PcbResult> {
@@ -73,6 +77,7 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
     spec.qr = { url: opts.qrUrl, modules: Array.from({ length: n + 4 }, (_, r) => Array.from({ length: n + 4 }, (_, c) => r >= 2 && c >= 2 && r < n + 2 && c < n + 2 && !!q.modules.get(r - 2, c - 2))) };
   }
   (spec as any).fabRules = FABS[spec.fab];
+  if (opts.fixed && Object.keys(opts.fixed).length) spec.fixed = opts.fixed;
   (spec as any).rev = project.revision ?? 'A';
   mkdirSync(dir, { recursive: true });
   const log: string[] = [];
@@ -156,7 +161,7 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
   await run(KICAD_CLI, ['pcb', 'export', 'step', '--output', join(dir, 'board.step'), '--subst-models', pcb], 300_000);
 
   const files = [...walk(dir)].map((f) => f.slice(dir.length + 1)).filter((f) => !/^(spec|layout)\.json$|\.(dsn|ses|kicad_prl)$/.test(f));
-  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing, fab: { id: spec.fab, name: FABS[spec.fab].name, track: FABS[spec.fab].track, drill: FABS[spec.fab].drill, quote: FABS[spec.fab].quote } };
+  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing, placement: (layout.parts ?? []).map((p: any) => ({ ref: p.ref, x: p.x, y: p.y, rot: p.rot, reserved: p.reserved ?? p.box })), fab: { id: spec.fab, name: FABS[spec.fab].name, track: FABS[spec.fab].track, drill: FABS[spec.fab].drill, quote: FABS[spec.fab].quote } };
 }
 
 /** Rename the spec's nets to KiCad's names; report any grouping that differs between the two netlists. */
