@@ -13,6 +13,7 @@ import { PcbView } from './PcbView';
 import { useTestRunner } from './TestsPanel';
 import { BoardPanel } from './BoardPanel';
 import { AttachImages } from './Attach';
+import { QuestionsCard } from './Requirements';
 import type { Shrunk } from './images';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
@@ -404,6 +405,7 @@ function Welcome() {
         {lastAi && (
           <div className="hero-reply" role="status">
             <b>Copilot:</b> {lastAi.text}
+            {lastAi.questions && <QuestionsCard questions={lastAi.questions} />}
           </div>
         )}
         <p className="hero-hint">Works with ESP32, Raspberry Pi Pico, Raspberry Pi 4, or plain components (555 timers, transistors).</p>

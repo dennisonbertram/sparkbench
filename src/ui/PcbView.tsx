@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
 import { slug } from './exporters';
+import { Revisions } from './Revisions';
 
 interface DrcItem { severity: string; type: string; description: string }
 interface Result {
@@ -55,7 +56,7 @@ export function PcbView() {
   const [fab, setFab] = useState<'jlcpcb' | 'pcbway' | 'oshpark'>('jlcpcb');
   const [qrUrl, setQrUrl] = useState('');
   const [error, setError] = useState('');
-  const designKey = useMemo(() => JSON.stringify([project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b])]), [project]);
+  const designKey = useMemo(() => JSON.stringify([project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b]), project.revision]), [project]);
   const [builtFor, setBuiltFor] = useState<string | null>(null);
 
   // Poll the job until it finishes.
@@ -134,6 +135,7 @@ export function PcbView() {
           )}
         </div>
 
+        <Revisions />
         {!running && (
           <div className="pcb-options">
             <label>
