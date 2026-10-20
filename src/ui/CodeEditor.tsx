@@ -2,11 +2,13 @@
 import React, { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { python } from '@codemirror/lang-python';
-import { EditorState, StateEffect, StateField } from '@codemirror/state';
+import { EditorState, StateEffect, StateField, Annotation } from '@codemirror/state';
 import { Decoration, type DecorationSet } from '@codemirror/view';
 import { indentUnit } from '@codemirror/language';
 
 const setErrorLine = StateEffect.define<number | null>();
+/** Marks document replacements that come from the app (not the user's typing). */
+const external = Annotation.define<boolean>();
 const errorField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
   update(deco, tr) {
@@ -49,7 +51,8 @@ export function CodeEditor({ value, onChange, errorLine, fileKey }: { value: str
           EditorState.tabSize.of(4),
           errorField,
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) onChangeRef.current(u.state.doc.toString());
+            // Only real typing counts as a hand edit; programmatic syncs (e.g. an accepted AI change) don't.
+            if (u.docChanged && !u.transactions.some((t) => t.annotation(external))) onChangeRef.current(u.state.doc.toString());
           }),
           EditorView.theme({ '&': { height: '100%' }, '.cm-scroller': { fontFamily: 'var(--mono)', fontSize: '13px' } }),
         ],
@@ -65,7 +68,7 @@ export function CodeEditor({ value, onChange, errorLine, fileKey }: { value: str
 
   useEffect(() => {
     const v = view.current;
-    if (v && v.state.doc.toString() !== value) v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value } });
+    if (v && v.state.doc.toString() !== value) v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value }, annotations: external.of(true) });
   }, [value]);
 
   useEffect(() => {

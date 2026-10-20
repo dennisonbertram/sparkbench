@@ -1,0 +1,10 @@
+import * as L from './r2-ai-builder-2-lib.mjs';
+const { ctx, p } = await L.open('http://localhost:5173/?notour', 'bp');
+const grab = async (tag) => { await L.tab(p, 'Blog post'); await p.waitForTimeout(800); const t = await p.locator('body').innerText(); const i = t.indexOf('What it does'); console.log('--', tag, '\n', t.slice(i, i + 600)); await L.shot(p, 'bp-' + tag); };
+const r = await L.codeAssist(p, 'show the total number of rolls in the top-right corner of the screen');
+console.log('CA', r.secs, r.text.slice(0, 400));
+await p.locator('[data-testid=ai-proposal] button', { hasText: /Accept/ }).first().click(); await p.waitForTimeout(6000);
+await grab('after-code');
+console.log('CHAT', await L.chat(p, 'add a red LED that lights up while the dice is rolling'));
+await grab('after-chat');
+await ctx.close();

@@ -1,0 +1,25 @@
+import { chromium } from 'playwright';
+const OUT = 'test-results/qa2/repro-behavior/';
+const browser = await chromium.launch();
+const p = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto('http://localhost:5173/?example=pico-simon&notour');
+await p.waitForTimeout(2500);
+const tab = async (n) => { await p.locator('.tabs button', { hasText: n }).first().click(); await p.waitForTimeout(800); };
+const grab = async (tag) => { await tab('Blog post'); const t = await p.locator('body').innerText(); const i = t.indexOf('What it does'); console.log('--', tag, '\n', t.slice(i, i + 700)); await p.screenshot({ path: OUT + 'bp-' + tag + '.png' }); };
+await grab('fresh');
+await tab('Code');
+const ca = p.locator('[data-testid=code-assistant]');
+await ca.locator('textarea').fill('also print "Simon ready" to the serial monitor once at startup');
+await ca.locator('button[type=submit]').click();
+const t0 = Date.now();
+while (Date.now() - t0 < 240000) { await p.waitForTimeout(3000); if (await p.locator('[data-testid=ai-proposal]').count()) break; }
+await p.waitForTimeout(1000);
+console.log('PROPOSAL secs', (Date.now()-t0)/1000, (await ca.innerText()).slice(0, 600));
+await p.screenshot({ path: OUT + 'proposal.png' });
+await p.locator('[data-testid=ai-proposal] button', { hasText: /Accept/ }).first().click();
+await p.waitForTimeout(5000);
+await grab('after-accept');
+await tab('Build guide');
+const bg = await p.locator('body').innerText(); const j = bg.search(/Test|test it/); console.log('-- BUILD GUIDE\n', bg.slice(j, j + 900));
+await p.screenshot({ path: OUT + 'bg-after-accept.png' });
+await browser.close();

@@ -412,6 +412,23 @@ export const PARTS: PartDef[] = [
     buildNotes: ['Motors cause electrical noise: if the board resets when the pump starts, power the pump from a separate 5 V supply (common ground) and add a 100 µF capacitor across it.', 'Run the pump with water in it — running dry wears it out.'],
   },
 
+  {
+    type: 'level-shifter',
+    name: 'I2C level shifter (BSS138, 4-ch)',
+    category: 'ic',
+    description: 'Bi-directional logic level converter (BSS138 MOSFETs, 10 kΩ pull-ups on both sides). Joins a 3.3 V bus to a 5 V module safely; works for I2C.',
+    eli5: 'A translator between 3.3 V and 5 V signals, so a 5 V module can talk to a 3.3 V board without hurting it.',
+    refPrefix: 'U',
+    pins: [p('LV', 'power', undefined, { description: 'Low-voltage side supply (3.3 V)' }), p('HV', 'power', undefined, { description: 'High-voltage side supply (5 V)' }), p('GND', 'gnd'), p('LV1', 'io', 'shift.lv'), p('HV1', 'io', 'shift.hv'), p('LV2', 'io', 'shift.lv'), p('HV2', 'io', 'shift.hv')],
+    vmin: 1.8,
+    vmax: 5.5,
+    currentMa: 0.5,
+    bom: { mpn: 'BSS138 4-channel level converter', description: 'I2C-safe bi-directional logic level shifter 3.3V-5V', priceUsd: 1.5, supplierQuery: 'BSS138 logic level converter 4 channel' },
+    kicad: { symbol: 'Sparkbench:Level_Shifter', footprint: 'Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical', value: () => 'BSS138_Level_Shifter' },
+    keywords: ['level shifter', 'logic level converter', 'level converter'],
+    buildNotes: ['LV goes to 3.3 V and HV to 5 V — don\'t swap them. Board-side signals go to the LV pins, module-side signals to the matching HV pins.'],
+  },
+
   // ------------------------------------------------------------------ passives & discretes
   {
     type: 'resistor',

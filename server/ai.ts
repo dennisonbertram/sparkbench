@@ -24,6 +24,7 @@ const DesignSchema = z.object({
         label: z.string().nullable().describe('Optional human label, e.g. "Up button" or "Red"'),
         color: z.string().nullable().describe('LED / button colour if relevant'),
         count: z.number().nullable().describe('NeoPixel ring only: number of LEDs (8, 12, 16 or 24); null otherwise'),
+        output: z.enum(['led', 'buzzer']).nullable().describe("astable555 only: 'buzzer' makes it a tone generator (piezo buzzer, ~465 Hz while a button is held), 'led' a blinker; null otherwise"),
         pin: z.string().nullable().describe('Only when the user asks for a specific pin for this part: the board pin name (e.g. "D14", "GP14", "GPIO14") or GPIO number; otherwise null'),
       }),
     )
@@ -46,7 +47,7 @@ You turn plain-English requests into a parts-level design for ONE of these targe
 - esp32: ESP32 DevKit V1, MicroPython
 - pico: Raspberry Pi Pico, MicroPython
 - rpi4: Raspberry Pi 4, Python 3 + gpiozero (no analog inputs: the tool adds an MCP3008 automatically)
-- none: battery-powered discrete circuit (features 'astable555' or 'transistor-led' only)
+- none: battery-powered discrete circuit (features 'astable555' or 'transistor-led' only). astable555 can blink an LED (output "led") or beep a piezo buzzer (output "buzzer").
 Available feature kinds (each list entry = one physical part group; two buttons = two entries):
 ${Object.entries(FEATURE_LABELS)
   .map(([k, v]) => `- ${k}: ${v}`)
@@ -107,7 +108,10 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
       ...(pinName(f.pin) ? { pins: { pin: pinName(f.pin)! } } : {}),
       kind: f.kind as DesignSpec['features'][number]['kind'],
       label: f.label ?? undefined,
-      props: f.color || f.count ? { ...(f.color ? { color: f.color } : {}), ...(f.count && f.kind === 'neopixel' ? { pixels: f.count } : {}) } : undefined,
+      props:
+        f.color || f.count || f.output
+          ? { ...(f.color ? { color: f.color } : {}), ...(f.count && f.kind === 'neopixel' ? { pixels: f.count } : {}), ...(f.output && f.kind === 'astable555' ? { output: f.output } : {}) }
+          : undefined,
     })),
   };
   const isEdit = d.intent === 'edit' && !!current;

@@ -1,0 +1,10 @@
+import * as L from './r2-ai-builder-2-lib.mjs';
+const prompt = process.argv[2];
+let { ctx, p } = await L.open('http://localhost:5173/?welcome&notour', 'bp');
+console.log('secs', await L.design(p, prompt));
+const grab = async (tag) => { await L.tab(p, 'Blog post'); await p.waitForTimeout(800); const t = await p.locator('body').innerText(); const i = t.indexOf('What it does'); console.log('--', tag, '\n', t.slice(i, i + 700)); await L.shot(p, 'bp-' + tag); };
+await grab('fresh');
+await ctx.close();
+({ ctx, p } = await L.open('http://localhost:5173/?notour', 'bp'));
+await grab('reloaded');
+await ctx.close();

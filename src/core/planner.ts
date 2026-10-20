@@ -408,6 +408,25 @@ class Builder {
       }
       case 'lcd': {
         const id = this.addPart('lcd1602', {}, label);
+        if (b!.logicV < 5) {
+          // The LCD backpack pulls SDA/SCL up to its own 5 V; a level shifter keeps the 3.3 V pins safe.
+          const ls = this.addPart('level-shifter', {}, 'I2C level shifter');
+          this.v5(id);
+          this.gnd(id);
+          this.v33(ls, 'LV');
+          this.v5(ls, 'HV');
+          this.gnd(ls);
+          this.wire({ part: ls, pin: 'LV1' }, this.bp(b!.i2c.sda), WIRE_COLORS.sda);
+          this.wire({ part: ls, pin: 'LV2' }, this.bp(b!.i2c.scl), WIRE_COLORS.scl);
+          this.wire({ part: ls, pin: 'HV1' }, { part: id, pin: 'SDA' }, WIRE_COLORS.sda);
+          this.wire({ part: ls, pin: 'HV2' }, { part: id, pin: 'SCL' }, WIRE_COLORS.scl);
+          setPin('sda', b!.pins.find((p) => p.name === b!.i2c.sda)!);
+          setPin('scl', b!.pins.find((p) => p.name === b!.i2c.scl)!);
+          fi.parts.push(id, ls);
+          this.groups.push({ main: id, parts: [ls, id], side: 'right' });
+          this.notes.push('The LCD runs on 5 V and pulls its I2C lines up to 5 V, so an I2C level shifter sits between it and the 3.3 V board pins.');
+          break;
+        }
         i2c(id, 'v5');
         fi.parts.push(id);
         this.groups.push({ main: id, parts: [id], side: 'right' });

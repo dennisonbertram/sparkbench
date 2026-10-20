@@ -1,0 +1,14 @@
+import * as L from './r2-ai-builder-2-lib.mjs';
+const { ctx, p, errs } = await L.open('http://localhost:5173/?notour', 'clock');
+await L.tab(p, 'Breadboard');
+await L.run(p); await p.waitForTimeout(6000);
+await L.shot(p, 'clock-60-F');
+const btn = p.locator('.momentary').first();
+await btn.hover(); await p.mouse.down(); await p.waitForTimeout(200); await p.mouse.up(); await p.waitForTimeout(1500);
+await L.shot(p, 'clock-61-tomorrow');
+console.log(await p.evaluate(() => document.querySelector('.part[data-part=lcd16021]')?.textContent));
+await p.locator('.simctl input[type=checkbox]').first().uncheck(); await p.waitForTimeout(15000);
+await L.shot(p, 'clock-62-nowifi');
+console.log('SERIAL\n', await L.serial(p));
+console.log('ERRS', errs.join('\n'));
+await ctx.close();

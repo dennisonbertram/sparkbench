@@ -213,6 +213,13 @@ export class ElectricalModel {
             els.nc = c.add(new Switch(`${id}.nc`, n('COM'), n('NC'), true));
           }
           if (part.type === 'epaper29') els.busy = c.add(new VSource(`${id}.busy`, n('BUSY'), g, 0, 200));
+          if (part.type === 'level-shifter') {
+            // Each channel has a 10 kΩ pull-up on both sides; the MOSFET only conducts when a side is pulled low.
+            els.pl1 = c.add(new Resistor(`${id}.pl1`, n('LV'), n('LV1'), 10000));
+            els.pl2 = c.add(new Resistor(`${id}.pl2`, n('LV'), n('LV2'), 10000));
+            els.ph1 = c.add(new Resistor(`${id}.ph1`, n('HV'), n('HV1'), 10000));
+            els.ph2 = c.add(new Resistor(`${id}.ph2`, n('HV'), n('HV2'), 10000));
+          }
           if (part.type === 'servo') els.sig = c.add(new Resistor(`${id}.sig`, n('PWM'), g, 20000));
           if (part.type === 'mcp3008') {
             // VREF draws a tiny current; analog inputs are high impedance.
@@ -435,8 +442,11 @@ export class ElectricalModel {
         if (!part || !viaParts.includes(part.type)) continue;
         if (part.type === 'resistor' && Number(part.props.ohms) > maxOhms) continue;
         const def = partDef(part.type);
+        // A level shifter passes a signal only between matching channels (LV1 ↔ HV1).
+        const shifterMate = part.type === 'level-shifter' ? r.pin.replace(/^LV/, 'X').replace(/^HV/, 'LV').replace(/^X/, 'HV') : undefined;
         for (const other of def.pins) {
           if (other.name === r.pin) continue;
+          if (shifterMate !== undefined && other.name !== shifterMate) continue;
           const on = this.netOf.get(pinKey({ part: part.id, pin: other.name }));
           if (on && !seen.has(on.id) && on !== this.groundNet) {
             seen.add(on.id);

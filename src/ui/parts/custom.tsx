@@ -42,6 +42,7 @@ export const CUSTOM_PINS: Record<string, Pins> = {
   ]),
   'battery-9v': { '+': { x: 22, y: 6 }, '-': { x: 48, y: 6 } },
   'dc-motor': { '+': { x: 26, y: 68 }, '-': { x: 44, y: 68 } },
+  'level-shifter': { LV: { x: 5, y: 12 }, GND: { x: 5, y: 26 }, LV1: { x: 5, y: 40 }, LV2: { x: 5, y: 52 }, HV: { x: 75, y: 12 }, HV1: { x: 75, y: 40 }, HV2: { x: 75, y: 52 } },
   epaper29: Object.fromEntries(['VCC', 'GND', 'DIN', 'CLK', 'CS', 'DC', 'RST', 'BUSY'].map((n, i) => [n, { x: 58 + i * 32, y: 184 }])),
 };
 
@@ -235,6 +236,22 @@ export function CustomPart({ type, props, visual }: { type: string; props: Recor
       );
       break;
     }
+    case 'level-shifter':
+      body = (
+        <>
+          <rect x={0} y={2} width={80} height={58} rx={3} fill="#2b5fae" stroke="#163a72" />
+          {[22, 34, 46].map((y) => (
+            <rect key={y} x={33} y={y - 4} width={14} height={8} fill="#222" />
+          ))}
+          <text x={40} y={14} fontSize={6} fill="#e6eeff" textAnchor="middle">3V3 ⇄ 5V</text>
+          {Object.entries(pins).map(([n, p]) => (
+            <text key={`t${n}`} x={p.x < 40 ? p.x + 6 : p.x - 6} y={p.y + 2} fontSize={5} fill="#e6eeff" textAnchor={p.x < 40 ? 'start' : 'end'}>
+              {n}
+            </text>
+          ))}
+        </>
+      );
+      break;
     case 'battery-9v':
       body = (
         <>

@@ -461,7 +461,14 @@ export class SimEngine {
   private devicesOn(bus: number) {
     const b = this.buses[bus];
     if (!b) return [];
-    return this.devices.filter(({ part }) => this.model.gpiosOnNet(part.id, 'SDA').includes(b.sda) && this.model.gpiosOnNet(part.id, 'SCL').includes(b.scl) && this.model.modulePowered(part.id));
+    const via = ['level-shifter'];
+    const shifterOk = () => this.project.parts.filter((p) => p.type === 'level-shifter').every((p) => this.model.modulePowered(p.id));
+    return this.devices.filter(({ part }) => {
+      const sda = this.model.gpiosReachable(part.id, 'SDA', 0, via);
+      const scl = this.model.gpiosReachable(part.id, 'SCL', 0, via);
+      const direct = this.model.gpiosOnNet(part.id, 'SDA').includes(b.sda);
+      return sda.includes(b.sda) && scl.includes(b.scl) && this.model.modulePowered(part.id) && (direct || shifterOk());
+    });
   }
   private diagnoseI2c(bus: number, addr: number) {
     const b = this.buses[bus];
