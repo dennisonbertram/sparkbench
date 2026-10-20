@@ -529,7 +529,7 @@ function assignLedRoles(leds: FeatureInstance[], R: Reading[], hasButtons: boole
       return;
     }
     if (light && !roles.size && /white|yellow/.test(l.props?.color ?? '')) {
-      roles.set(l.name, { kind: 'night', expr: `scale(${light.f.name}_pct, DARK_PCT, 0, 0, 1)`, desc: 'night light: brighter as it gets darker' });
+      roles.set(l.name, { kind: 'night', expr: `scale(${light.f.name}_pct, DARK_PCT, 5, 0, 1)`, desc: 'night light: brighter as it gets darker' });
       return;
     }
     const a = alarms[ai++];

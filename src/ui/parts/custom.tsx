@@ -1,0 +1,227 @@
+// Breadboard pictures for parts that have no Wokwi element. Each part declares its pin
+// coordinates (relative to its top-left corner) next to the drawing that puts them there.
+import React from 'react';
+import { BOARDS } from '../../core/boards';
+import type { PartVisual } from '../../sim/engine';
+import { partSize } from '../../core/layout';
+
+type Pins = Record<string, { x: number; y: number }>;
+
+const pico = BOARDS.pico;
+const PICO_PITCH = 9.5;
+const picoPins: Pins = {};
+for (const p of pico.pins) {
+  const n = p.physical!;
+  if (n <= 20) picoPins[p.name] = { x: 5, y: 10 + (n - 1) * PICO_PITCH };
+  else picoPins[p.name] = { x: 79, y: 10 + (40 - n) * PICO_PITCH };
+}
+
+const rpi = BOARDS.rpi4;
+const rpiPins: Pins = {};
+for (const p of rpi.pins) {
+  const n = p.physical!;
+  const col = Math.floor((n - 1) / 2);
+  rpiPins[p.name] = { x: 34 + col * 13.5, y: n % 2 === 1 ? 30 : 16 };
+}
+
+export const CUSTOM_PINS: Record<string, Pins> = {
+  'pi-pico': picoPins,
+  rpi4: rpiPins,
+  ldr: { '1': { x: 14, y: 68 }, '2': { x: 26, y: 68 } },
+  ntc: { '1': { x: 14, y: 68 }, '2': { x: 26, y: 68 } },
+  soil: { VCC: { x: 16, y: 6 }, GND: { x: 30, y: 6 }, AOUT: { x: 44, y: 6 } },
+  relay: { VCC: { x: 4, y: 24 }, GND: { x: 4, y: 45 }, IN: { x: 4, y: 66 }, NO: { x: 96, y: 24 }, COM: { x: 96, y: 45 }, NC: { x: 96, y: 66 } },
+  capacitor: { '1': { x: 12, y: 54 }, '2': { x: 24, y: 54 } },
+  electrolytic: { '+': { x: 12, y: 68 }, '-': { x: 24, y: 68 } },
+  diode: { A: { x: 2, y: 8 }, K: { x: 62, y: 8 } },
+  npn: { E: { x: 10, y: 68 }, B: { x: 22, y: 68 }, C: { x: 34, y: 68 } },
+  ne555: { GND: { x: 18, y: 78 }, TRIG: { x: 36, y: 78 }, OUT: { x: 54, y: 78 }, RESET: { x: 72, y: 78 }, VCC: { x: 18, y: 2 }, DIS: { x: 36, y: 2 }, THR: { x: 54, y: 2 }, CTRL: { x: 72, y: 2 } },
+  mcp3008: Object.fromEntries([
+    ...['CH0', 'CH1', 'CH2', 'CH3', 'CH4', 'CH5', 'CH6', 'CH7'].map((n, i) => [n, { x: 12 + i * 18, y: 78 }]),
+    ...['VDD', 'VREF', 'AGND', 'CLK', 'DOUT', 'DIN', 'CS', 'DGND'].map((n, i) => [n, { x: 12 + i * 18, y: 2 }]),
+  ]),
+  'battery-9v': { '+': { x: 22, y: 6 }, '-': { x: 48, y: 6 } },
+};
+
+const pinDot = (x: number, y: number, key: string) => <rect key={key} x={x - 2.5} y={y - 2.5} width={5} height={5} rx={1} fill="#c9b37a" stroke="#6b5a2a" strokeWidth={0.6} />;
+
+export function CustomPart({ type, props, visual }: { type: string; props: Record<string, any>; visual?: PartVisual }) {
+  const [w, h] = partSize(type);
+  const pins = CUSTOM_PINS[type] ?? {};
+  let body: React.ReactNode = null;
+  switch (type) {
+    case 'pi-pico':
+      body = (
+        <>
+          <rect x={0} y={0} width={w} height={h} rx={4} fill="#1d6b3a" stroke="#0f4424" />
+          <rect x={30} y={-6} width={24} height={14} rx={2} fill="#b8bcc2" stroke="#80858c" />
+          <rect x={27} y={78} width={30} height={30} fill="#222" />
+          <text x={42} y={96} fontSize={5} fill="#ddd" textAnchor="middle">RP2040</text>
+          <rect x={33} y={22} width={18} height={10} rx={1} fill="#eee" />
+          <text x={42} y={30} fontSize={5} textAnchor="middle" fill="#333">BOOTSEL</text>
+          <circle cx={58} cy={18} r={3} fill={visual?.led ? '#7CFF6B' : '#3b5d3f'} />
+          <text x={42} y={150} fontSize={7} fill="#e8f5e9" textAnchor="middle" fontWeight={600}>Raspberry Pi</text>
+          <text x={42} y={160} fontSize={7} fill="#e8f5e9" textAnchor="middle" fontWeight={600}>Pico</text>
+          {Object.entries(picoPins).map(([n, p]) => (
+            <text key={`t${n}`} x={p.x < 40 ? p.x + 5 : p.x - 5} y={p.y + 2} fontSize={4.2} fill="#d8ead9" textAnchor={p.x < 40 ? 'start' : 'end'}>
+              {n.replace(/\.\d+$/, '')}
+            </text>
+          ))}
+        </>
+      );
+      break;
+    case 'rpi4':
+      body = (
+        <>
+          <rect x={0} y={0} width={w} height={h} rx={10} fill="#2f8a4a" stroke="#1d5c30" />
+          <rect x={26} y={8} width={276} height={30} rx={2} fill="#1c1c1c" />
+          <rect x={90} y={80} width={70} height={70} fill="#c0c4c8" stroke="#888" />
+          <text x={125} y={118} fontSize={9} textAnchor="middle" fill="#333">BCM2711</text>
+          <rect x={w - 50} y={60} width={56} height={44} fill="#c9ccd0" stroke="#888" />
+          <rect x={w - 50} y={112} width={56} height={44} fill="#c9ccd0" stroke="#888" />
+          <rect x={w - 46} y={164} width={52} height={40} fill="#d8dadd" stroke="#888" />
+          <text x={22} y={200} fontSize={12} fill="#e9f7ec" fontWeight={600}>Raspberry Pi 4</text>
+          {Object.entries(rpiPins).map(([n, p]) => (
+            <text key={`t${n}`} x={p.x} y={p.y === 16 ? 6 : 47} fontSize={4.4} fill="#eaf6ec" textAnchor="middle" transform={`rotate(-60 ${p.x} ${p.y === 16 ? 6 : 47})`}>
+              {n.replace('GPIO', '').replace(/\.\d+$/, '')}
+            </text>
+          ))}
+        </>
+      );
+      break;
+    case 'ldr':
+    case 'ntc':
+      body = (
+        <>
+          <line x1={14} y1={30} x2={14} y2={68} stroke="#aaa" strokeWidth={1.5} />
+          <line x1={26} y1={30} x2={26} y2={68} stroke="#aaa" strokeWidth={1.5} />
+          {type === 'ldr' ? (
+            <>
+              <circle cx={20} cy={20} r={15} fill="#d9b382" stroke="#8a6b3f" />
+              <path d="M10 14 h16 v4 h-12 v4 h12 v4 h-16" stroke="#b5452a" strokeWidth={1.6} fill="none" />
+            </>
+          ) : (
+            <>
+              <ellipse cx={20} cy={22} rx={9} ry={11} fill="#3a3a3a" />
+              <text x={20} y={25} fontSize={6} fill="#ddd" textAnchor="middle">NTC</text>
+            </>
+          )}
+        </>
+      );
+      break;
+    case 'soil':
+      body = (
+        <>
+          <path d={`M4 0 H56 V120 L46 168 L38 120 H22 L14 168 L4 120 Z`} fill="#16313b" stroke="#0a1a20" />
+          <rect x={10} y={12} width={40} height={18} fill="#0e2128" />
+          <text x={30} y={60} fontSize={6} fill="#bfe3ee" textAnchor="middle">Capacitive</text>
+          <text x={30} y={68} fontSize={6} fill="#bfe3ee" textAnchor="middle">Soil Moisture</text>
+          {['VCC', 'GND', 'AOUT'].map((n) => (
+            <text key={n} x={pins[n].x} y={24} fontSize={4.5} fill="#bfe3ee" textAnchor="middle">{n}</text>
+          ))}
+        </>
+      );
+      break;
+    case 'relay':
+      body = (
+        <>
+          <rect x={0} y={0} width={w} height={h} rx={4} fill="#1f4fa8" stroke="#123270" />
+          <rect x={28} y={14} width={44} height={56} rx={3} fill="#1b62d6" stroke="#0d3a85" />
+          <text x={50} y={40} fontSize={6} fill="#e8f0ff" textAnchor="middle">SRD-05VDC</text>
+          <text x={50} y={48} fontSize={6} fill="#e8f0ff" textAnchor="middle">SL-C</text>
+          <circle cx={18} cy={80} r={3.5} fill={visual?.relay ? '#ff4040' : '#5a1a1a'} />
+          <rect x={80} y={12} width={18} height={66} fill="#2a8c4a" stroke="#155a2c" />
+          {['VCC', 'GND', 'IN'].map((n) => (
+            <text key={n} x={10} y={pins[n].y + 2} fontSize={5} fill="#e8f0ff">{n}</text>
+          ))}
+          {['NO', 'COM', 'NC'].map((n) => (
+            <text key={n} x={78} y={pins[n].y + 2} fontSize={5} fill="#e8f0ff" textAnchor="end">{n}</text>
+          ))}
+        </>
+      );
+      break;
+    case 'capacitor':
+      body = (
+        <>
+          <line x1={12} y1={30} x2={12} y2={54} stroke="#aaa" strokeWidth={1.5} />
+          <line x1={24} y1={30} x2={24} y2={54} stroke="#aaa" strokeWidth={1.5} />
+          <ellipse cx={18} cy={20} rx={14} ry={13} fill="#d9922e" stroke="#9a6014" />
+          <text x={18} y={23} fontSize={6} fill="#3d2400" textAnchor="middle">{props.farads >= 1e-6 ? `${+(props.farads * 1e6).toFixed(1)}µ` : `${Math.round(props.farads * 1e9)}n`}</text>
+        </>
+      );
+      break;
+    case 'electrolytic':
+      body = (
+        <>
+          <line x1={12} y1={44} x2={12} y2={68} stroke="#aaa" strokeWidth={1.5} />
+          <line x1={24} y1={44} x2={24} y2={68} stroke="#aaa" strokeWidth={1.5} />
+          <rect x={4} y={2} width={28} height={44} rx={5} fill="#1b3d8f" stroke="#0e2357" />
+          <rect x={22} y={2} width={7} height={44} fill="#c9d4f0" />
+          <text x={25.5} y={28} fontSize={7} fill="#1b3d8f" textAnchor="middle">−</text>
+          <text x={14} y={30} fontSize={6} fill="#dfe7ff" textAnchor="middle" transform="rotate(-90 14 28)">{`${+(props.farads * 1e6).toFixed(0)}µF`}</text>
+        </>
+      );
+      break;
+    case 'diode':
+      body = (
+        <>
+          <line x1={2} y1={8} x2={62} y2={8} stroke="#aaa" strokeWidth={1.5} />
+          <rect x={18} y={3} width={28} height={10} rx={2} fill="#e9a35a" stroke="#8a5a20" />
+          <rect x={40} y={3} width={4} height={10} fill="#222" />
+        </>
+      );
+      break;
+    case 'npn':
+      body = (
+        <>
+          {[10, 22, 34].map((x) => (
+            <line key={x} x1={x} y1={34} x2={x} y2={68} stroke="#aaa" strokeWidth={1.5} />
+          ))}
+          <path d="M4 34 V14 A18 18 0 0 1 40 14 V34 Z" fill="#222" />
+          <text x={22} y={24} fontSize={6} fill="#ccc" textAnchor="middle">2222A</text>
+          <text x={10} y={42} fontSize={5} fill="#8a8f96" textAnchor="middle">E</text>
+          <text x={22} y={42} fontSize={5} fill="#8a8f96" textAnchor="middle">B</text>
+          <text x={34} y={42} fontSize={5} fill="#8a8f96" textAnchor="middle">C</text>
+        </>
+      );
+      break;
+    case 'ne555':
+    case 'mcp3008': {
+      const label = type === 'ne555' ? 'NE555P' : 'MCP3008';
+      body = (
+        <>
+          <rect x={4} y={8} width={w - 8} height={h - 16} rx={3} fill="#232323" stroke="#000" />
+          <path d={`M4 ${h / 2 - 6} A6 6 0 0 1 4 ${h / 2 + 6}`} fill="#555" />
+          <circle cx={14} cy={h - 18} r={2.5} fill="#444" />
+          <text x={w / 2} y={h / 2 + 3} fontSize={9} fill="#ddd" textAnchor="middle" fontWeight={600}>{label}</text>
+          {Object.entries(pins).map(([n, p]) => (
+            <g key={`l${n}`}>
+              <rect x={p.x - 3} y={p.y < 10 ? 0 : h - 9} width={6} height={9} fill="#c7c7c7" />
+              <text x={p.x} y={p.y < 10 ? 18 : h - 13} fontSize={4.4} fill="#aaa" textAnchor="middle">{n}</text>
+            </g>
+          ))}
+        </>
+      );
+      break;
+    }
+    case 'battery-9v':
+      body = (
+        <>
+          <rect x={2} y={14} width={66} height={104} rx={5} fill="#2b2b2b" />
+          <rect x={2} y={60} width={66} height={58} rx={5} fill="#d9a400" />
+          <rect x={14} y={2} width={16} height={14} rx={3} fill="#bbb" stroke="#777" />
+          <polygon points="40,4 56,4 58,9 56,15 40,15 38,9" fill="#bbb" stroke="#777" />
+          <text x={35} y={45} fontSize={18} fill="#eee" textAnchor="middle" fontWeight={700}>9V</text>
+          <text x={22} y={30} fontSize={9} fill="#f55" textAnchor="middle">+</text>
+          <text x={48} y={30} fontSize={9} fill="#aaa" textAnchor="middle">−</text>
+        </>
+      );
+      break;
+  }
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible', display: 'block' }}>
+      {body}
+      {Object.entries(pins).map(([n, p]) => pinDot(p.x, p.y, n))}
+    </svg>
+  );
+}

@@ -1,0 +1,217 @@
+// The non-canvas center views: schematic, code, parts list, build guide, blog post.
+import React, { useEffect, useMemo, useState } from 'react';
+import { marked } from 'marked';
+import { useStore } from './store';
+import { renderSchematicSvg } from '../core/schematic';
+import { exportKicadSchematic, exportKicadProject, exportKicadNetlist } from '../core/kicad';
+import { exportSpice } from '../core/spice';
+import { buildBom, bomToCsv, bomTotal } from '../core/bom';
+import { buildGuide, buildBlogPost } from '../core/docs';
+import { CodeEditor } from './CodeEditor';
+import { download, slug } from './exporters';
+import { generateFiles } from '../core/codegen';
+
+function useTheme(): 'light' | 'dark' {
+  const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const h = () => setDark(mq.matches);
+    mq?.addEventListener('change', h);
+    return () => mq?.removeEventListener('change', h);
+  }, []);
+  return document.documentElement.dataset.theme === 'dark' || (dark && document.documentElement.dataset.theme !== 'light') ? 'dark' : 'light';
+}
+
+export function SchematicView() {
+  const project = useStore((s) => s.project)!;
+  const hoverNet = useStore((s) => s.hoverNet);
+  const aiStatus = useStore((s) => s.aiStatus);
+  const theme = useTheme();
+  const [kicad, setKicad] = useState<{ svg?: string; erc?: any; error?: string; busy?: boolean } | null>(null);
+  const svg = useMemo(() => {
+    try {
+      return renderSchematicSvg(project, { theme });
+    } catch (e: any) {
+      return `<p class="err">Could not draw the schematic: ${e.message}</p>`;
+    }
+  }, [project.parts, project.wires, project.name, theme]);
+  const name = slug(project.name);
+  const renderKicad = async () => {
+    setKicad({ busy: true });
+    try {
+      const res = await fetch('/api/kicad/render', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sch: exportKicadSchematic(project), name }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setKicad({ svg: data.svg, erc: data.erc });
+    } catch (e: any) {
+      setKicad({ error: String(e.message ?? e) });
+    }
+  };
+  const ercCount = kicad?.erc?.sheets?.reduce((n: number, s: any) => n + (s.violations?.filter((v: any) => v.severity === 'error').length ?? 0), 0);
+  return (
+    <div className="docview">
+      <div className="doc-toolbar">
+        <span className="doc-title">Schematic</span>
+        <button onClick={() => download(`${name}-schematic.svg`, renderSchematicSvg(project, { theme: 'light' }), 'image/svg+xml')}>Download SVG</button>
+        <button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Open in KiCad's Schematic Editor">KiCad schematic</button>
+        <button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))}>KiCad project</button>
+        <button onClick={() => download(`${name}.net`, exportKicadNetlist(project))}>Netlist</button>
+        <button onClick={() => download(`${name}.cir`, exportSpice(project))} title="SPICE netlist for ngspice">SPICE (.cir)</button>
+        {aiStatus.kicad && (
+          <button onClick={renderKicad} disabled={kicad?.busy} title="Run the exported file through kicad-cli to check it">
+            {kicad?.busy ? 'Running KiCad…' : 'Check in KiCad'}
+          </button>
+        )}
+      </div>
+      {kicad?.error && <div className="banner warn">KiCad: {kicad.error}</div>}
+      {kicad?.svg && (
+        <div className="banner ok">
+          Rendered by KiCad · ERC: {ercCount === 0 ? 'no errors' : `${ercCount} error(s)`} <button onClick={() => setKicad(null)}>Show Sparkbench view</button>
+        </div>
+      )}
+      <div
+        className={`schematic ${hoverNet ? 'has-hl' : ''}`}
+        data-testid="schematic"
+        dangerouslySetInnerHTML={{ __html: kicad?.svg ?? svg }}
+        onClick={(e) => {
+          const el = (e.target as Element).closest('[data-part]');
+          if (el) useStore.getState().select({ kind: 'part', id: el.getAttribute('data-part')! });
+        }}
+      />
+      <p className="doc-foot">Each wire ends in a <b>net label</b>: pins with the same label are connected. Open the KiCad file in KiCad to lay out a PCB.</p>
+    </div>
+  );
+}
+
+export function CodeView() {
+  const project = useStore((s) => s.project)!;
+  const active = useStore((s) => s.activeFile);
+  const err = useStore((s) => s.sim.error);
+  const files = Object.keys(project.files);
+  if (!files.length)
+    return (
+      <div className="docview empty">
+        <h2>No code needed</h2>
+        <p>This circuit has no microcontroller — it works with just its components. Press Run to watch it in the simulator.</p>
+      </div>
+    );
+  const file = files.includes(active) ? active : files[0];
+  const errorLine = err?.file === file ? err.line : null;
+  return (
+    <div className="codeview">
+      <div className="file-tabs" role="tablist">
+        {files.map((f) => (
+          <button key={f} role="tab" aria-selected={f === file} className={f === file ? 'active' : ''} onClick={() => useStore.getState().set({ activeFile: f })}>
+            {f}
+            {f !== 'main.py' && <span className="file-hint">driver</span>}
+          </button>
+        ))}
+        <span className="spacer" />
+        {project.codeCustom && (
+          <button
+            className="ghost"
+            onClick={() => {
+              if (!confirm('Replace main.py with freshly generated code? Your edits will be lost.')) return;
+              useStore.getState().update((p) => ({ ...p, files: { ...p.files, ...generateFiles(p) }, codeCustom: false }));
+            }}
+          >
+            Regenerate main.py
+          </button>
+        )}
+        <button className="ghost" onClick={() => download(file, project.files[file], 'text/x-python')}>
+          Download {file}
+        </button>
+      </div>
+      {err && err.file === file && (
+        <div className="banner error">
+          <b>Line {err.line}:</b> {err.message}
+          {err.hint && <div className="hint">{err.hint}</div>}
+        </div>
+      )}
+      <CodeEditor fileKey={`${project.id}:${file}`} value={project.files[file]} onChange={(v) => useStore.getState().setFile(file, v)} errorLine={errorLine} />
+    </div>
+  );
+}
+
+export function BomView() {
+  const project = useStore((s) => s.project)!;
+  const lines = useMemo(() => buildBom(project), [project.parts, project.wires, project.board]);
+  const total = bomTotal(lines);
+  return (
+    <div className="docview">
+      <div className="doc-toolbar">
+        <span className="doc-title">Parts list</span>
+        <button onClick={() => download(`${slug(project.name)}-bom.csv`, bomToCsv(lines), 'text/csv')}>Download CSV</button>
+      </div>
+      <table className="bom" data-testid="bom">
+        <thead>
+          <tr>
+            <th>Qty</th>
+            <th>Part</th>
+            <th>Value</th>
+            <th>Refs</th>
+            <th className="num">Each</th>
+            <th className="num">Total</th>
+            <th>Buy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l: any, i: number) => (
+            <tr key={i} className={l.kind === 'supply' ? 'supply' : ''}>
+              <td>{l.quantity}</td>
+              <td>
+                <div className="bom-name">{l.name}</div>
+                <div className="bom-desc">{l.description}</div>
+              </td>
+              <td>{l.value ?? ''}</td>
+              <td className="refs">{Array.isArray(l.references) ? l.references.join(', ') : l.references ?? ''}</td>
+              <td className="num">${Number(l.unitPrice ?? l.unitPriceUsd ?? 0).toFixed(2)}</td>
+              <td className="num">${Number(l.linePrice ?? l.linePriceUsd ?? 0).toFixed(2)}</td>
+              <td className="links">
+                {(l.links ?? l.suppliers ?? []).slice(0, 3).map((s: any) => (
+                  <a key={s.name ?? s.label} href={s.url} target="_blank" rel="noreferrer">
+                    {s.name ?? s.label}
+                  </a>
+                ))}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={5}>Estimated total (hobby-store prices)</td>
+            <td className="num">${Number(typeof total === 'number' ? total : (total as any).total ?? 0).toFixed(2)}</td>
+            <td />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+export function MarkdownView({ kind }: { kind: 'guide' | 'blog' }) {
+  const project = useStore((s) => s.project)!;
+  const md = useMemo(() => (kind === 'guide' ? buildGuide(project) : buildBlogPost(project, { schematicSvgPath: 'schematic.svg' })), [project, kind]);
+  const theme = useTheme();
+  const html = useMemo(() => {
+    let h = marked.parse(md, { async: false }) as string;
+    // Inline the live schematic where the blog references schematic.svg
+    if (h.includes('schematic.svg')) {
+      const svg = renderSchematicSvg(project, { theme });
+      h = h.replace(/<img[^>]*src="schematic\.svg"[^>]*>/, `<div class="schematic inline">${svg}</div>`);
+    }
+    return h;
+  }, [md, theme]);
+  const file = kind === 'guide' ? 'BUILD.md' : 'BLOG.md';
+  return (
+    <div className="docview">
+      <div className="doc-toolbar">
+        <span className="doc-title">{kind === 'guide' ? 'Build guide' : 'Blog post'}</span>
+        <button onClick={() => download(`${slug(project.name)}-${file}`, md, 'text/markdown')}>Download Markdown</button>
+        <button onClick={() => navigator.clipboard?.writeText(md)}>Copy Markdown</button>
+        <button onClick={() => window.print()}>Print</button>
+      </div>
+      <article className="prose" data-testid={`doc-${kind}`} dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
+  );
+}

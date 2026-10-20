@@ -401,7 +401,7 @@ class Builder {
       case 'led': {
         const color = req.props?.color ?? 'red';
         const id = this.addPart('led', { color }, req.label ? `${req.label} LED` : `${color[0].toUpperCase()}${color.slice(1)} LED`);
-        const ohms = color === 'blue' || color === 'white' ? 100 : 220;
+        const ohms = color === 'blue' || color === 'white' ? 47 : 220;
         const r = this.addPart('resistor', { ohms }, `${color} LED resistor`);
         setPin('pin', this.gpio(r, '1', 'pwm', fi.label));
         this.wire({ part: r, pin: '2' }, { part: id, pin: 'A' });

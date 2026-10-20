@@ -1,0 +1,22 @@
+// Beginner glossary used for tooltips and "what is …?" questions in the copilot.
+export const GLOSSARY: Record<string, string> = {
+  GPIO: 'General-Purpose Input/Output — a numbered pin on the board your code can switch on/off or read.',
+  I2C: 'A two-wire bus (SDA = data, SCL = clock). Many modules share the same two wires; each has its own address like 0x3C.',
+  SDA: 'The data wire of the I2C bus.',
+  SCL: 'The clock wire of the I2C bus.',
+  'Pull-up': 'A resistor (often built into the chip) that holds a pin at 3.3 V until something — like a pressed button — pulls it to ground.',
+  PWM: 'Pulse-width modulation: switching a pin on and off very fast. The on-time fraction (duty) sets LED brightness, servo angle or buzzer tone.',
+  ADC: 'Analog-to-digital converter: lets a pin measure a voltage (0–3.3 V) instead of just on/off.',
+  GND: 'Ground — the 0 V reference. Every part must share the same ground with the board.',
+  Net: 'A group of pins that are all connected together by wires.',
+  Resistor: 'Limits current. LEDs need one in series so they do not burn out.',
+  LED: 'Light-emitting diode. Long leg (+, anode) toward the pin through a resistor; short leg (−, cathode) to ground.',
+  Breadboard: 'A plastic board with spring clips inside, so you can build circuits without soldering.',
+  MicroPython: 'A small version of Python that runs directly on microcontrollers like the ESP32 and Pico.',
+  Schematic: 'A diagram of the circuit using standard symbols — what engineers use to describe how things connect.',
+  KiCad: 'A free, open-source program for drawing schematics and designing printed circuit boards (PCBs).',
+  SPICE: 'A family of circuit simulators. Sparkbench can export your circuit for ngspice, the open-source one.',
+  'Voltage divider': 'Two resistors in series that output a fraction of the input voltage — used here to bring 5 V signals down to 3.3 V.',
+  Servo: 'A motor that turns to an exact angle (0–180°) set by the length of a pulse every 20 ms.',
+  Relay: 'An electrically controlled switch for bigger loads like pumps, fans or lamps.',
+};

@@ -187,7 +187,7 @@ export class ElectricalModel {
         // Modules: model their supply draw as a resistor, plus signal-pin behaviour.
         const vccPin = def.pins.find((p) => p.role === 'power' && p.name !== 'VREF')?.name;
         const gndPin = def.pins.find((p) => p.role === 'gnd')?.name;
-        if (vccPin && gndPin) {
+        if (vccPin && gndPin && def.category !== 'board') {
           const vnom = def.vmin && def.vmin > 4 ? 5 : 3.3;
           const ma = MODULE_LOAD_MA[part.type] ?? 5;
           els.load = c.add(new Resistor(`${id}.load`, n(vccPin), n(gndPin), vnom / (ma / 1000)));
