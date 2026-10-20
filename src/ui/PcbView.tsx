@@ -15,6 +15,7 @@ interface Result {
   drc: { errors: DrcItem[]; warnings: DrcItem[]; unconnected: number };
   files: string[];
   problems: string[];
+  fab: { id: string; name: string; track: number; drill: number; quote: string };
   sourcing: {
     lines: { ref: string; item: string; quantity: number; lcsc: string | null; mfr: string | null; stock: number; basic: boolean; unit: number | null; url: string | null }[];
     cost: { boards: number; parts: number; perBoard: number; missing: number }[];
@@ -51,6 +52,8 @@ export function PcbView() {
   });
   const [status, setStatus] = useState<Status | null>(null);
   const [side, setSide] = useState<'top' | 'bottom' | 'copper'>('top');
+  const [fab, setFab] = useState<'jlcpcb' | 'pcbway' | 'oshpark'>('jlcpcb');
+  const [qrUrl, setQrUrl] = useState('');
   const [error, setError] = useState('');
   const designKey = useMemo(() => JSON.stringify([project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b])]), [project]);
   const [builtFor, setBuiltFor] = useState<string | null>(null);
@@ -84,7 +87,7 @@ export function PcbView() {
     setError('');
     setStatus(null);
     try {
-      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project }) });
+      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? 'Could not start the board design.');
       setJob(d.id);
@@ -131,6 +134,22 @@ export function PcbView() {
           )}
         </div>
 
+        {!running && (
+          <div className="pcb-options">
+            <label>
+              Made by
+              <select value={fab} onChange={(e) => setFab(e.target.value as any)} data-testid="pcb-fab">
+                <option value="jlcpcb">JLCPCB</option>
+                <option value="pcbway">PCBWay</option>
+                <option value="oshpark">OSH Park</option>
+              </select>
+            </label>
+            <label className="grow">
+              QR code on the board (optional)
+              <input value={qrUrl} onChange={(e) => setQrUrl(e.target.value)} placeholder="https://… your blog post or repo" data-testid="pcb-qr" />
+            </label>
+          </div>
+        )}
         {error && <div className="banner error">{error}</div>}
         {tools && !tools.freerouting && <div className="banner">Automatic track routing needs Java and Freerouting. Without them you get the placed board and you route it yourself in KiCad.</div>}
 
@@ -162,7 +181,7 @@ export function PcbView() {
               <strong>{ok ? '✓ Ready to order' : 'Needs attention before ordering'}</strong>
               <p>
                 {res.widthMm} × {res.heightMm} mm, 2 copper layers, {res.tracks} tracks{res.vias ? ` and ${res.vias} vias (small holes that pass a track to the other side)` : ''}, ground fill on both sides, 4 M3 mounting holes.{' '}
-                {ok ? 'KiCad’s design rule check found no errors against common factory limits (tracks and gaps at least 0.15 mm, holes at least 0.3 mm). KiCad also confirmed that every pad matches the schematic and every connection has a track.' : ''}
+                {ok ? `KiCad’s design rule check found no errors against ${res.fab.name}’s standard limits (tracks and gaps at least ${res.fab.track} mm, holes at least ${res.fab.drill} mm). KiCad also confirmed that every pad matches the schematic and every connection has a track.` : ''}
               </p>
               {!ok && (
                 <ul>
@@ -180,6 +199,9 @@ export function PcbView() {
               <a className="button" href={`/api/pcb/zip?id=${job}&kind=all&name=${name}`}>All board files: KiCad, 3D, assembly (.zip)</a>
               <a className="button" href={file(`fab/bom-jlcpcb.csv`)}>Assembly parts list (BOM)</a>
               <a className="button" href={file(`fab/cpl-jlcpcb.csv`)}>Part positions (CPL)</a>
+              <a className="button" href={file('fab/assembly.pdf')}>Assembly drawing (PDF)</a>
+              <a className="button" href={file('TEST.md')}>Test procedure</a>
+              <a className="button" href={file('COMPLIANCE.md')}>Selling it? Compliance checklist</a>
             </div>
 
             <div className="pcb-picture">
@@ -210,7 +232,7 @@ export function PcbView() {
                     ))}
                   </tbody>
                 </table>
-                <p className="pcb-note">Live LCSC prices for the parts that go on the board (sockets for plug-in boards and modules; buy those separately{res.sourcing.cost[0].missing ? `, plus ${res.sourcing.cost[0].missing} part${res.sourcing.cost[0].missing > 1 ? 's' : ''} not stocked at LCSC` : ''}). The bare boards are priced by the maker when you upload the files: <a href="https://cart.jlcpcb.com/quote" target="_blank" rel="noreferrer">JLCPCB quote</a>, <a href="https://www.pcbway.com/orderonline.aspx" target="_blank" rel="noreferrer">PCBWay quote</a>.</p>
+                <p className="pcb-note">Live LCSC prices for the parts that go on the board (sockets for plug-in boards and modules; buy those separately{res.sourcing.cost[0].missing ? `, plus ${res.sourcing.cost[0].missing} part${res.sourcing.cost[0].missing > 1 ? 's' : ''} not stocked at LCSC` : ''}). The bare boards are priced by the maker when you upload the files: <a href={res.fab.quote} target="_blank" rel="noreferrer">get a {res.fab.name} quote</a>.</p>
                 <details>
                   <summary>Parts for the board ({res.sourcing.lines.length})</summary>
                   <table className="bom">
@@ -236,7 +258,7 @@ export function PcbView() {
               <h3>How to order it</h3>
               <ol>
                 <li>Click <strong>Download files for the factory</strong>. The zip holds the Gerber and drill files, the standard format every PCB maker accepts.</li>
-                <li>Go to a PCB maker such as JLCPCB, PCBWay or OSH Park and upload the zip. It reads the size and layers by itself. Keep the defaults: 2 layers, 1.6 mm thick, any colour you like.</li>
+                <li>Go to <a href={res.fab.quote} target="_blank" rel="noreferrer">{res.fab.name}</a> (or any PCB maker) and upload the zip. It reads the size and layers by itself. Keep the defaults: 2 layers, 1.6 mm thick, any colour you like.</li>
                 <li>Most makers produce at least 5 boards. Small 2-layer boards usually cost a few dollars plus shipping; their website shows the exact price before you pay.</li>
                 <li>Want them assembled? Upload the <strong>parts list (BOM)</strong> and <strong>part positions (CPL)</strong> too, and choose each part's stock number on their site.</li>
               </ol>

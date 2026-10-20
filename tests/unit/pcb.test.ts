@@ -19,9 +19,9 @@ describe('circuit-board spec', () => {
   }
 
   const net = (name: string, nodes: [string, string][]) => `(net (code "1") (name "${name}") ${nodes.map(([r, p]) => `(node (ref "${r}") (pin "${p}"))`).join(' ')})`;
-  const spec = () => ({ name: 't', title: 'T', powerNets: ['GND'], groundNet: 'GND', parts: [
-    { ref: 'R1', footprint: 'a:b', value: '1k', role: 'passive' as const, description: '', pads: { '1': 'GPIO2', '2': 'N5' } },
-    { ref: 'D1', footprint: 'a:b', value: 'LED', role: 'indicator' as const, description: '', pads: { '2': 'N5', '1': 'GND' } },
+  const spec = () => ({ name: 't', title: 'T', powerNets: ['GND'], groundNet: 'GND', fab: 'jlcpcb' as const, parts: [
+    { ref: 'R1', footprint: 'a:b', value: '1k', role: 'passive' as const, description: '', pinNames: {}, pads: { '1': 'GPIO2', '2': 'N5' } },
+    { ref: 'D1', footprint: 'a:b', value: 'LED', role: 'indicator' as const, description: '', pinNames: {}, pads: { '2': 'N5', '1': 'GND' } },
   ] });
 
   it('adopts KiCad net names when both netlists agree', () => {

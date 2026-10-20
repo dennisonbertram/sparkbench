@@ -117,9 +117,23 @@ export interface Project {
   requirements?: Requirements;
   /** Acceptance tests from the user's intent (AI or user written); auto-derived ones are recomputed. */
   tests?: import('./acceptance').AcceptanceTest[];
+  /** Current hardware revision letter ("A", "B"…) and the history of released revisions. */
+  revision?: string;
+  revisions?: Revision[];
   createdAt: number;
   updatedAt: number;
   version: 1;
+}
+
+export interface Revision {
+  rev: string;
+  date: string;
+  /** Why this revision exists, in the user's words. */
+  note: string;
+  /** What changed from the previous revision (computed). */
+  changes: string[];
+  /** Snapshot of the design at release. */
+  snapshot: { parts: PartInstance[]; wires: Wire[]; files: Record<string, string>; board: BoardId };
 }
 
 export interface Requirements {

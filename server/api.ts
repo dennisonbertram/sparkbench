@@ -162,8 +162,9 @@ export function apiPlugin(): Plugin {
         const { startPcb, pcbToolsStatus } = await import('./pcbjobs');
         const tools = pcbToolsStatus();
         if (!tools.kicad) return send(res, 400, { error: 'Circuit boards need KiCad 8 or newer installed (kicad.org).' });
-        const { project } = await body(req);
-        const job = startPcb(project);
+        const { project, fab, qrUrl } = await body(req);
+        const okUrl = typeof qrUrl === 'string' && /^https?:\/\/\S{3,300}$/.test(qrUrl.trim()) ? qrUrl.trim() : undefined;
+        const job = startPcb(project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl });
         return send(res, 200, { id: job.id, routing: tools.freerouting });
       }
       if (req.url?.startsWith('/api/pcb/') && req.method === 'GET') {

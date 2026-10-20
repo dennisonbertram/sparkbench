@@ -233,7 +233,7 @@ export function exportKicadSchematic(project: Project): string {
 
 // ------------------------------------------------------------------ project file
 
-export function exportKicadProject(project: Project): string {
+export function exportKicadProject(project: Project, fab?: { track: number; space: number; drill: number; annular: number; edge: number }): string {
   const name = kicadName(project);
   const root = uuidGen(`${project.id}:${name}`)();
   // Power nets get a wider track class; board minimums match common 2-layer fab capabilities.
@@ -241,7 +241,7 @@ export function exportKicadProject(project: Project): string {
   const pro = {
     board: {
       design_settings: {
-        rules: { min_track_width: 0.15, min_clearance: 0.15, min_through_hole_diameter: 0.3, min_via_diameter: 0.6, min_via_annular_width: 0.13, min_hole_to_hole: 0.25, min_copper_edge_clearance: 0.3, min_silk_clearance: 0, min_resolved_spokes: 2 },
+        rules: { min_track_width: fab?.track ?? 0.15, min_clearance: fab?.space ?? 0.15, min_through_hole_diameter: fab?.drill ?? 0.3, min_via_diameter: 0.6, min_via_annular_width: fab?.annular ?? 0.13, min_hole_to_hole: 0.25, min_copper_edge_clearance: fab?.edge ?? 0.3, min_silk_clearance: 0, min_resolved_spokes: 2 },
       },
       layer_presets: [],
       viewports: [],

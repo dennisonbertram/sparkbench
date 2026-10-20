@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Project } from '../src/core/types';
-import { pcbSpec, type PcbSpec } from '../src/core/pcb';
+import { pcbSpec, FABS, type PcbSpec, type FabId } from '../src/core/pcb';
 import { exportKicadFootprints, exportKicadProject, exportKicadSchematic } from '../src/core/kicad';
 
 const KICAD_APP = [process.env.KICAD_APP, join(homedir(), 'Applications/KiCad.app'), '/Applications/KiCad/KiCad.app', '/Applications/KiCad.app'].find((p) => p && existsSync(p));
@@ -47,6 +47,7 @@ export interface PcbResult {
   log: string[];
   /** Live parts data, cost at 5/50/500 boards, and design-for-manufacture notes (null when offline). */
   sourcing: PcbSourcing | null;
+  fab: { id: FabId; name: string; track: number; drill: number; quote: string };
 }
 
 export interface PcbSourcing {
@@ -56,9 +57,23 @@ export interface PcbSourcing {
 }
 
 /** Lay out, route, check and export a board for `project` into `dir`. */
-export async function buildPcb(project: Project, dir: string, onStep: (msg: string) => void = () => {}): Promise<PcbResult> {
+export interface PcbOptions {
+  fab?: FabId;
+  /** Printed as a QR code on the board (e.g. the project's blog post or repo). */
+  qrUrl?: string;
+}
+
+export async function buildPcb(project: Project, dir: string, onStep: (msg: string) => void = () => {}, opts: PcbOptions = {}): Promise<PcbResult> {
   if (!KICAD_CLI) throw new Error('KiCad is not installed (needed for circuit boards).');
-  const spec: PcbSpec = pcbSpec(project);
+  const spec: PcbSpec = pcbSpec(project, { fab: opts.fab });
+  if (opts.qrUrl) {
+    const QRCode = (await import('qrcode')).default;
+    const q = QRCode.create(opts.qrUrl, { errorCorrectionLevel: 'M' });
+    const n = q.modules.size;
+    spec.qr = { url: opts.qrUrl, modules: Array.from({ length: n + 4 }, (_, r) => Array.from({ length: n + 4 }, (_, c) => r >= 2 && c >= 2 && r < n + 2 && c < n + 2 && !!q.modules.get(r - 2, c - 2))) };
+  }
+  (spec as any).fabRules = FABS[spec.fab];
+  (spec as any).rev = project.revision ?? 'A';
   mkdirSync(dir, { recursive: true });
   const log: string[] = [];
   const step = (m: string) => (log.push(m), onStep(m));
@@ -69,7 +84,7 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
     writeFileSync(join(dir, f), src);
   }
   // A full KiCad project around the board: rules + net classes (.kicad_pro) and the schematic.
-  writeFileSync(join(dir, `${spec.name}.kicad_pro`), exportKicadProject(project));
+  writeFileSync(join(dir, `${spec.name}.kicad_pro`), exportKicadProject(project, FABS[spec.fab]));
   writeFileSync(join(dir, `${spec.name}.kicad_sch`), exportKicadSchematic(project));
   // Net names come from KiCad's own reading of the schematic, so the board and schematic agree
   // exactly (and any disagreement with Sparkbench's netlist is caught here).
@@ -116,6 +131,24 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
   writeFileSync(join(fab, 'bom-jlcpcb.csv'), jlcBom(spec, sourcing));
   if (sourcing) writeFileSync(join(fab, 'sourcing.json'), JSON.stringify(sourcing, null, 1));
   writeFileSync(join(fab, 'cpl-jlcpcb.csv'), jlcCpl(join(fab, 'positions.csv')));
+  // Assembly drawing, bring-up test procedure and pre-compliance checklist.
+  await run(KICAD_CLI, ['pcb', 'export', 'pdf', '--output', join(fab, 'assembly.pdf'), '--layers', 'F.Fab,F.SilkS,Edge.Cuts', '--mode-single', pcb]);
+  try {
+    const { deriveTests } = await import('../src/core/acceptance');
+    const { simulateSelfTest } = await import('../src/sim/selftest-sim');
+    const { simulate } = await import('../src/sim/node-runner');
+    const { multimeterChecks } = await import('../src/core/multimeter');
+    const { testProcedure, complianceChecklist } = await import('../src/core/manufacturing');
+    const at = Array.from({ length: 12 }, (_, i) => 1000 + i * 100);
+    const r = await simulate(project, { untilMs: 2200, onFrameAt: at });
+    const samples: Record<string, number[]> = {};
+    for (const sn of r.snapshots) for (const [k, v] of Object.entries(sn.frame.nets ?? {})) (samples[k] ??= []).push(v);
+    const expected = project.board === 'none' ? '' : await simulateSelfTest(project);
+    writeFileSync(join(dir, 'TEST.md'), testProcedure(project, { tests: [...deriveTests(project), ...(project.tests ?? [])], selftestExpected: expected, meter: multimeterChecks(project, samples) }));
+    writeFileSync(join(dir, 'COMPLIANCE.md'), complianceChecklist(project));
+  } catch (e: any) {
+    log.push(`Couldn't write the test procedure: ${e?.message ?? e}`);
+  }
   step('Rendering the board');
   await run(KICAD_CLI, ['pcb', 'render', '--output', join(dir, 'board-top.png'), '--side', 'top', '--width', '1600', '--height', '1100', '--quality', 'basic', '--floor', pcb], 300_000);
   await run(KICAD_CLI, ['pcb', 'render', '--output', join(dir, 'board-bottom.png'), '--side', 'bottom', '--width', '1600', '--height', '1100', '--quality', 'basic', pcb], 300_000);
@@ -123,7 +156,7 @@ export async function buildPcb(project: Project, dir: string, onStep: (msg: stri
   await run(KICAD_CLI, ['pcb', 'export', 'step', '--output', join(dir, 'board.step'), '--subst-models', pcb], 300_000);
 
   const files = [...walk(dir)].map((f) => f.slice(dir.length + 1)).filter((f) => !/^(spec|layout)\.json$|\.(dsn|ses|kicad_prl)$/.test(f));
-  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing };
+  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing, fab: { id: spec.fab, name: FABS[spec.fab].name, track: FABS[spec.fab].track, drill: FABS[spec.fab].drill, quote: FABS[spec.fab].quote } };
 }
 
 /** Rename the spec's nets to KiCad's names; report any grouping that differs between the two netlists. */

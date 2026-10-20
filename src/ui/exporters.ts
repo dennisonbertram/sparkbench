@@ -7,6 +7,7 @@ import { exportSpice, defaultSpiceOptions } from '../core/spice';
 import { buildBom, bomToCsv } from '../core/bom';
 import { buildGuide, buildBlogPost } from '../core/docs';
 import { planBreadboard } from '../core/bbplace';
+import { generateSelfTest } from '../core/selftest';
 import { renderBreadboardSvg } from '../core/breadboard';
 
 export function slug(s: string) {
@@ -33,6 +34,8 @@ export async function buildZip(project: Project): Promise<Blob> {
   if (hasCode) {
     const fw = root.folder('firmware')!;
     for (const [f, src] of Object.entries(project.files)) fw.file(f, src);
+    const st = generateSelfTest(project);
+    if (st) fw.file('selftest.py', st);
   }
   const hw = root.folder('hardware')!;
   hw.file(`${name}.kicad_sch`, exportKicadSchematic(project));

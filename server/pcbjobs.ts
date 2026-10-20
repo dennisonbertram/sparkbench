@@ -7,7 +7,7 @@ import { join, normalize, sep } from 'node:path';
 import JSZip from 'jszip';
 import type { Project } from '../src/core/types';
 import { pcbSpec } from '../src/core/pcb';
-import { buildPcb, pcbToolsStatus, type PcbResult } from './pcb';
+import { buildPcb, pcbToolsStatus, type PcbResult, type PcbOptions } from './pcb';
 
 interface Job {
   id: string;
@@ -19,13 +19,13 @@ interface Job {
 const jobs = new Map<string, Job>();
 const ROOT = join(tmpdir(), 'sparkbench-pcb');
 
-export function startPcb(project: Project): Job {
-  const id = createHash('sha1').update(JSON.stringify(pcbSpec(project))).digest('hex').slice(0, 16);
+export function startPcb(project: Project, opts: PcbOptions = {}): Job {
+  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A'])).digest('hex').slice(0, 16);
   const existing = jobs.get(id);
   if (existing && !existing.error) return existing;
   const job: Job = { id, log: [], done: false };
   jobs.set(id, job);
-  buildPcb(project, join(ROOT, id), (m) => job.log.push(m))
+  buildPcb(project, join(ROOT, id), (m) => job.log.push(m), opts)
     .then((r) => (job.result = r))
     .catch((e) => (job.error = String(e?.message ?? e)))
     .finally(() => (job.done = true));

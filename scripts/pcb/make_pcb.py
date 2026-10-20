@@ -57,6 +57,14 @@ def overlaps(a, b, gap):
 def place(board, fps, spec):
     by_ref = {p['ref']: p for p in spec['parts']}
     snaps = {ref: [snapshot(fp, 0), snapshot(fp, 90)] for ref, fp in fps.items()}
+    # Sockets get their pin names printed beside them: keep that strip free.
+    for ref, ss in snaps.items():
+        p = by_ref[ref]
+        if p['footprint'].startswith('Connector_PinHeader') and p.get('pinNames'):
+            b0 = ss[0]['box']
+            ss[0]['box'] = (b0[0], b0[1], b0[2] + 4.0, b0[3])
+            b9 = ss[1]['box']
+            ss[1]['box'] = (b9[0], b9[1] - 4.0, b9[2], b9[3])
     gnd = spec.get('groundNet')
     placed = {}  # ref -> (x, y, snap)
     boxes = []
@@ -160,6 +168,66 @@ def add_text(board, text, x, y, size=1.5, layer=None):
     board.Add(t)
 
 
+def add_pin_labels(board, fps, spec):
+    """Print each pin's name beside the pads of sockets for plug-in boards/modules."""
+    for p in spec['parts']:
+        if not p['footprint'].startswith('Connector_PinHeader') or not p.get('pinNames'):
+            continue
+        fp = fps[p['ref']]
+        cx = mm(fp.GetPosition().x)
+        for pad in fp.Pads():
+            name = p['pinNames'].get(pad.GetNumber())
+            if not name:
+                continue
+            x, y = mm(pad.GetPosition().x), mm(pad.GetPosition().y)
+            vertical = abs(fp.GetOrientationDegrees()) % 180 == 0
+            t = pcbnew.PCB_TEXT(board)
+            t.SetText(name[:5])
+            t.SetLayer(pcbnew.F_SilkS)
+            t.SetTextSize(pcbnew.VECTOR2I(MM(0.8), MM(0.8)))
+            t.SetTextThickness(MM(0.12))
+            if vertical:
+                t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
+                t.SetPosition(pcbnew.VECTOR2I(MM(x + 1.9), MM(y)))
+            else:
+                t.SetTextAngleDegrees(90)
+                t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
+                t.SetPosition(pcbnew.VECTOR2I(MM(x), MM(y - 1.9)))
+            board.Add(t)
+
+
+def add_rect(board, x, y, w, h, layer):
+    s = pcbnew.PCB_SHAPE(board)
+    s.SetShape(pcbnew.SHAPE_T_RECT)
+    s.SetStart(pcbnew.VECTOR2I(MM(x), MM(y)))
+    s.SetEnd(pcbnew.VECTOR2I(MM(x + w), MM(y + h)))
+    s.SetFilled(True)
+    s.SetWidth(0)
+    s.SetLayer(layer)
+    board.Add(s)
+
+
+def add_qr(board, modules, x, y, size):
+    n = len(modules)
+    m = size / n
+    for r, row in enumerate(modules):
+        for c, dark in enumerate(row):
+            if dark:
+                add_rect(board, x + c * m, y + r * m, m, m, pcbnew.F_SilkS)
+
+
+def add_logo(board, x, y, s=2.4):
+    """A small lightning-bolt mark (Sparkbench) on the silkscreen."""
+    pts = [(0.55, 0), (0.15, 0.55), (0.45, 0.55), (0.3, 1), (0.85, 0.38), (0.55, 0.38), (0.75, 0)]
+    poly = pcbnew.PCB_SHAPE(board)
+    poly.SetShape(pcbnew.SHAPE_T_POLY)
+    poly.SetPolyPoints([pcbnew.VECTOR2I(MM(x + px * s), MM(y + py * s)) for px, py in pts])
+    poly.SetFilled(True)
+    poly.SetWidth(0)
+    poly.SetLayer(pcbnew.F_SilkS)
+    board.Add(poly)
+
+
 def add_zone(board, outline, net, layer):
     z = pcbnew.ZONE(board)
     z.SetLayer(layer)
@@ -180,7 +248,8 @@ def setup_rules(board, spec):
     ds = board.GetDesignSettings()
     # Board minimums: a conservative version of common 2-layer fab capabilities (JLCPCB/PCBWay
     # standard service: 0.127 mm track/space, 0.3 mm drill). Normal tracks are much wider.
-    for attr, val in (('m_TrackMinWidth', 0.15), ('m_MinClearance', 0.15), ('m_ViasMinSize', 0.6), ('m_MinThroughDrill', 0.3), ('m_ViasMinAnnularWidth', 0.13)):
+    fab = spec.get('fabRules') or {}
+    for attr, val in (('m_TrackMinWidth', fab.get('track', 0.15)), ('m_MinClearance', fab.get('space', 0.15)), ('m_ViasMinSize', 0.6), ('m_MinThroughDrill', fab.get('drill', 0.3)), ('m_ViasMinAnnularWidth', fab.get('annular', 0.13))):
         try:
             setattr(ds, attr, MM(val))
         except Exception:
@@ -247,8 +316,26 @@ def main():
         fps[p['ref']] = fp
 
     cl = place(board, fps, spec)
+    qr = spec.get('qr')
+    qr_size = 0
+    if qr:
+        # A label strip along the bottom edge for the QR code.
+        qr_size = 12.0 if len(qr['modules']) <= 29 else 16.0
+        cl = (cl[0], cl[1], max(cl[2], cl[0] + qr_size + 30), cl[3] + qr_size + 3)
     outline = add_outline(board, cl, 6.0)
     x0, y0, x1, y1 = outline
+    add_pin_labels(board, fps, spec)
+    if qr:
+        qx, qy = x0 + 6.5, y1 - 6.0 - qr_size
+        add_qr(board, qr['modules'], qx, qy, qr_size)
+        t = pcbnew.PCB_TEXT(board)
+        t.SetText('Scan for the build guide')
+        t.SetLayer(pcbnew.F_SilkS)
+        t.SetTextSize(pcbnew.VECTOR2I(MM(1.0), MM(1.0)))
+        t.SetTextThickness(MM(0.15))
+        t.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
+        t.SetPosition(pcbnew.VECTOR2I(MM(qx + qr_size + 2), MM(qy + qr_size / 2)))
+        board.Add(t)
     for hx, hy in ((x0 + 3.5, y0 + 3.5), (x1 - 3.5, y0 + 3.5), (x1 - 3.5, y1 - 3.5), (x0 + 3.5, y1 - 3.5)):
         h = pcbnew.FootprintLoad(fp_lib_path('MountingHole', lib_dirs), 'MountingHole_3.2mm_M3')
         h.SetPosition(pcbnew.VECTOR2I(MM(hx), MM(hy)))
@@ -262,7 +349,8 @@ def main():
         h.Value().SetVisible(False)
         board.Add(h)
     add_text(board, spec['title'], (x0 + x1) / 2, y1 - 2.6, 1.4)
-    add_text(board, 'Sparkbench · Rev A', (x0 + x1) / 2, y0 + 2.6, 1.0)
+    add_text(board, 'Sparkbench · Rev ' + spec.get('rev', 'A'), (x0 + x1) / 2 + 1.6, y0 + 2.6, 1.0)
+    add_logo(board, (x0 + x1) / 2 - 12.5, y0 + 1.4)
 
     pcb_path = os.path.join(work, spec['name'] + '.kicad_pcb')
     pcbnew.SaveBoard(pcb_path, board)

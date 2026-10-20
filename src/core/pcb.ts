@@ -15,6 +15,8 @@ export interface PcbPart {
   value: string;
   /** Pad number → net name. */
   pads: Record<string, string>;
+  /** Pad number → pin name, printed next to sockets for plug-in boards and modules. */
+  pinNames: Record<string, string>;
   /** Plain-English role, for placement hints and the assembly notes. */
   role: 'board' | 'connector' | 'module' | 'ic' | 'passive' | 'indicator' | 'input' | 'power';
   description: string;
@@ -27,7 +29,20 @@ export interface PcbSpec {
   /** Net names that carry supply current (wider tracks). */
   powerNets: string[];
   groundNet: string | null;
+  /** Factory whose rules the board is checked against. */
+  fab: FabId;
+  /** Optional link printed as a QR code on the back of the board. */
+  qr?: { url: string; modules: boolean[][] };
 }
+
+export type FabId = 'jlcpcb' | 'pcbway' | 'oshpark';
+
+/** Published standard 2-layer capabilities (conservative), in mm. */
+export const FABS: Record<FabId, { name: string; track: number; space: number; drill: number; annular: number; edge: number; quote: string }> = {
+  jlcpcb: { name: 'JLCPCB', track: 0.127, space: 0.127, drill: 0.3, annular: 0.13, edge: 0.3, quote: 'https://cart.jlcpcb.com/quote' },
+  pcbway: { name: 'PCBWay', track: 0.127, space: 0.127, drill: 0.3, annular: 0.15, edge: 0.3, quote: 'https://www.pcbway.com/orderonline.aspx' },
+  oshpark: { name: 'OSH Park', track: 0.152, space: 0.152, drill: 0.254, annular: 0.127, edge: 0.381, quote: 'https://oshpark.com/' },
+};
 
 const ROLE: Record<string, PcbPart['role']> = {
   board: 'board',
@@ -41,13 +56,15 @@ const ROLE: Record<string, PcbPart['role']> = {
   actuator: 'connector',
 };
 
-export function pcbSpec(project: Project): PcbSpec {
+export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
   const proj = project.parts.some((p) => !p.ref) ? annotate(project) : project;
   const { nets, netOf } = buildNets(proj);
   const parts: PcbPart[] = proj.parts.map((p) => {
     const def = partDef(p.type);
     const pads: Record<string, string> = {};
+    const pinNames: Record<string, string> = {};
     for (const pin of def.pins) {
+      pinNames[pinNumber(p.type, pin.name)] = pin.name.replace(/\.\d+$/, '');
       const net = netOf.get(`${p.id}:${pin.name}`);
       if (!net || net.pins.length < 2) continue;
       pads[pinNumber(p.type, pin.name)] = net.name;
@@ -57,6 +74,7 @@ export function pcbSpec(project: Project): PcbSpec {
       footprint: def.kicad.footprint ?? 'Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical',
       value: defaultValue(def, p.props),
       pads,
+      pinNames,
       role: ROLE[def.category] ?? 'passive',
       description: def.name,
     };
@@ -68,5 +86,6 @@ export function pcbSpec(project: Project): PcbSpec {
     parts,
     powerNets: power,
     groundNet: power.find((n) => /^GND/.test(n)) ?? null,
+    fab: opts.fab ?? 'jlcpcb',
   };
 }
