@@ -346,6 +346,7 @@ class Builder {
   }
 
   private seenKeys = new Map<string, number>();
+  private seenKinds = new Map<string, number>();
   feature(req: FeatureReq) {
     const b = this.board;
     this.requested = req.pins?.pin;
@@ -353,7 +354,9 @@ class Builder {
     const base = featureKey(req.kind, req.label);
     const nth = (this.seenKeys.get(base) ?? 0) + 1;
     this.seenKeys.set(base, nth);
-    this.sigPrefs = this.prevSignals.get(`${base}#${nth}`) ?? {};
+    const kindNth = (this.seenKinds.get(req.kind) ?? 0) + 1;
+    this.seenKinds.set(req.kind, kindNth);
+    this.sigPrefs = this.prevSignals.get(`${base}#${nth}`) ?? this.prevSignals.get(`${req.kind}##${kindNth}`) ?? {};
     const kind = req.kind;
     const label = req.label ?? LABELS[kind];
     const name = this.varName(kind, req.label);
@@ -682,7 +685,7 @@ class Builder {
     fi.parts.push(u, bat, r1, r2, c1, c2, bz, sw, rr);
     Object.assign(this.fixed, { [bat]: [40, 110], [sw]: [430, 40], [rr]: [520, 110], [r1]: [250, 60], [r2]: [330, 60], [u]: [280, 150], [c1]: [200, 300], [c2]: [360, 300], [bz]: [480, 190] });
     this.groups.push({ main: bat, parts: [bat], side: 'left' }, { main: u, parts: [r1, r2, u], side: 'right' });
-    this.notes.push('f = 1.44 / ((R1 + 2·R2)·C) = 1.44 / ((1k + 30k) · 100 nF) ≈ 465 Hz — a clear beep while you hold the button. Bigger R2 or C = lower pitch.', 'The button connects the 555\'s RESET pin (4) to +; the 10 kΩ pull-down keeps RESET low — and the 555 silent — when you let go.');
+    this.notes.push('f = 1.44 / ((R1 + 2·R2)·C) = 1.44 / ((1k + 30k) · 100 nF) ≈ 460 Hz — a clear beep while you hold the button. Bigger R2 or C = lower pitch.', 'The button connects the 555\'s RESET pin (4) to +; the 10 kΩ pull-down keeps RESET low — and the 555 silent — when you let go.');
   }
 
   /** LED switched by an NPN transistor and a push button (no microcontroller). */
@@ -731,6 +734,9 @@ export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: s
       const nth = (seen.get(base) ?? 0) + 1;
       seen.set(base, nth);
       b.prevSignals.set(`${base}#${nth}`, f.pins);
+      const kn = (seen.get(`kind:${f.kind}`) ?? 0) + 1;
+      seen.set(`kind:${f.kind}`, kn);
+      b.prevSignals.set(`${f.kind}##${kn}`, f.pins);
     }
     const bp = opts.previous.parts.find((p) => partDef(p.type).category === 'board');
     for (const w of opts.previous.wires) {
@@ -830,7 +836,7 @@ function pinNotes(project: Project): string[] {
   for (const f of project.features) {
     const pins = Object.entries(f.pins)
       .filter(([s]) => s !== 'sda' && s !== 'scl')
-      .map(([s, p]) => `${s === 'pin' ? '' : s.toUpperCase() + '→'}${p}`);
+      .map(([s, p]) => `${s === 'pin' ? '' : s.toUpperCase() + '→'}${p}${f.gpio[s] !== undefined && !/^(GPIO|GP|D)\d+$/.test(p) ? ` (GPIO${f.gpio[s]})` : ''}`);
     if (f.kind === 'internet') continue;
     if (['oled', 'lcd', 'mpu6050'].includes(f.kind)) notes.push(`${f.label}: shares the I2C bus (SDA ${board.i2c.sda}, SCL ${board.i2c.scl}).`);
     else if (f.mcpChannel !== undefined) notes.push(`${f.label}: MCP3008 channel ${f.mcpChannel}.`);
@@ -887,7 +893,7 @@ export function projectName(spec: DesignSpec): string {
 }
 
 export function summarize(spec: DesignSpec): string {
-  if (spec.board === 'none') return spec.features.map((f) => LABELS[f.kind]).join(', ') + ' — battery powered, no microcontroller.';
+  if (spec.board === 'none') return spec.features.map((f) => (f.kind === 'astable555' && f.props?.output === 'buzzer' ? '555 tone generator' : LABELS[f.kind])).join(', ') + ' — battery powered, no microcontroller.';
   const counts = new Map<string, number>();
   for (const f of spec.features) counts.set(LABELS[f.kind], (counts.get(LABELS[f.kind]) ?? 0) + 1);
   const items = [...counts].map(([l, n]) => (n > 1 ? `${n}× ${l}` : l));

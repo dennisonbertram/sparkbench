@@ -4,7 +4,19 @@ import { EditorView, basicSetup } from 'codemirror';
 import { python } from '@codemirror/lang-python';
 import { EditorState, StateEffect, StateField, Annotation } from '@codemirror/state';
 import { Decoration, type DecorationSet } from '@codemirror/view';
-import { indentUnit } from '@codemirror/language';
+import { indentUnit, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
+
+// Colours come from CSS variables so the editor follows the light/dark theme.
+const highlight = HighlightStyle.define([
+  { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.definitionKeyword, t.moduleKeyword], color: 'var(--code-kw)' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.function(t.variableName))], color: 'var(--code-fn)' },
+  { tag: [t.number, t.bool, t.null, t.atom], color: 'var(--code-num)' },
+  { tag: [t.string, t.special(t.string)], color: 'var(--code-str)' },
+  { tag: [t.comment, t.lineComment], color: 'var(--code-comment)', fontStyle: 'italic' },
+  { tag: [t.className, t.definition(t.className)], color: 'var(--code-cls)' },
+  { tag: [t.propertyName], color: 'var(--code-prop)' },
+]);
 
 const setErrorLine = StateEffect.define<number | null>();
 /** Marks document replacements that come from the app (not the user's typing). */
@@ -47,6 +59,7 @@ export function CodeEditor({ value, onChange, errorLine, fileKey }: { value: str
         extensions: [
           basicSetup,
           python(),
+          syntaxHighlighting(highlight, { fallback: false }),
           indentUnit.of('    '),
           EditorState.tabSize.of(4),
           errorField,

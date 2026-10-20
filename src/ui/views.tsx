@@ -42,6 +42,13 @@ export function SchematicView() {
     }
   }, [project.parts, project.wires, project.name, theme, pinnedName]);
   const name = slug(project.name);
+  // Pick a zoom where pin labels are readable: the drawing is in millimetres; ~7 px per mm at the view's width.
+  useEffect(() => {
+    const vb = /viewBox="[\d.-]+ [\d.-]+ ([\d.]+) /.exec(svg);
+    const wmm = vb ? Number(vb[1]) : 300;
+    const viewPx = Math.max(600, (document.querySelector('.view') as HTMLElement | null)?.clientWidth ?? 900) - 40;
+    setZoom(Math.min(4, Math.max(1, +((7 * wmm) / viewPx).toFixed(2))));
+  }, [project.id, svg.length > 0]);
   const renderKicad = async () => {
     setKicad({ busy: true });
     try {

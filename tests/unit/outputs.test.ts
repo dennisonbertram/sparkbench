@@ -84,7 +84,9 @@ describe('BOM', () => {
       expect(rows.length).toBe(bom.length + 1);
       for (const r of rows) expect(r.length).toBe(BOM_CSV_HEADER.length);
       expect(rows.slice(1).map((r) => r[2])).toEqual(bom.map((l) => l.name));
-      expect(rows.slice(1).reduce((s, r) => s + Number(r[8]), 0)).toBeCloseTo(bomTotal(bom), 2);
+      // Optional extras are listed in the CSV but not counted in the "must buy" total.
+      expect(rows.slice(1).reduce((s, r) => s + Number(r[8]), 0)).toBeCloseTo(bomTotal(bom, { optional: true }), 2);
+      expect(rows.slice(1).filter((r) => !/optional/.test(r.join(','))).reduce((s, r) => s + Number(r[8]), 0)).toBeCloseTo(bomTotal(bom), 2);
     });
   }
   it('groups identical resistors and lists their references', () => {

@@ -39,10 +39,40 @@ async function emit(project: Project, outRoot = 'out') {
   writeFileSync(join(dir, 'project.sparkbench.json'), JSON.stringify(project, null, 2));
   const checks = runChecks(project);
   writeFileSync(join(dir, 'checks.txt'), checks.map((c) => `[${c.severity}] ${c.title} — ${c.detail}`).join('\n') || 'No problems found.');
-  const { engine } = await simulate(project, { untilMs: 5000 });
+  // Press every button halfway through so button-driven circuits show their behaviour too.
+  const buttons = project.parts.filter((p) => p.type === 'pushbutton');
+  const inputs = buttons.flatMap((b) => [{ atMs: 2500, part: b.id, key: 'pressed', value: 1 }, { atMs: 3500, part: b.id, key: 'pressed', value: 0 }]);
+  const at = [500, 1000, 1500, 2000, 2700, 3000, 3300, 4000, 4500];
+  const { engine, snapshots } = await simulate(project, { untilMs: 5000, inputs, onFrameAt: at });
+  const state = (f: any) =>
+    project.parts
+      .map((p) => {
+        const v = f.parts[p.id] ?? {};
+        const bits: string[] = [];
+        if (v.led !== undefined) bits.push(`${p.ref} ${v.led > 0.05 ? `ON ${(v.ma ?? 0).toFixed(1)} mA` : 'off'}`);
+        if (v.rgb) bits.push(`${p.ref} rgb(${v.rgb.map((x: number) => Math.round(x * 255)).join(',')})`);
+        if (v.tone) bits.push(`${p.ref} tone ${v.tone} Hz`);
+        if (v.angle !== undefined && p.type === 'servo') bits.push(`${p.ref} ${Math.round(v.angle)}°`);
+        if (v.relay !== undefined) bits.push(`${p.ref} relay ${v.relay ? 'ON' : 'off'}`);
+        if (v.spin) bits.push(`${p.ref} motor running`);
+        if (v.lcd) bits.push(`${p.ref} "${String.fromCharCode(...v.lcd.chars.slice(0, 16)).trimEnd()} / ${String.fromCharCode(...v.lcd.chars.slice(16)).trimEnd()}"`);
+        if (v.oledOn) bits.push(`${p.ref} OLED drawing (${v.oled.filter((b: number) => b).length} lit bytes)`);
+        if (v.epaper?.refreshes) bits.push(`${p.ref} e-paper refreshed ×${v.epaper.refreshes}`);
+        return bits.join(', ');
+      })
+      .filter(Boolean)
+      .join(' | ');
   writeFileSync(
     join(dir, 'simulation.log'),
-    [`status: ${engine.status}`, engine.error ? `error: ${engine.error.raw}` : 'error: none', ...engine.allWarnings.map((w) => `warning: ${w.text}`), '--- serial ---', ...engine.serialAll].join('\n'),
+    [
+      `status: ${engine.status} after ${(engine.timeUs / 1e6).toFixed(1)} s simulated`,
+      engine.error ? `error: ${engine.error.raw}` : 'error: none',
+      ...engine.allWarnings.map((w) => `${w.severity}: ${w.text}`),
+      buttons.length ? `--- outputs (buttons held from 2.5 s to 3.5 s) ---` : '--- outputs ---',
+      ...snapshots.map((s) => `t=${(s.atMs / 1000).toFixed(1)}s  ${state(s.frame) || '(no visible outputs)'}`),
+      '--- serial ---',
+      ...engine.serialAll,
+    ].join('\n'),
   );
   const total = bomTotal(bom) as any;
   console.log(`${project.name.padEnd(36)} parts=${project.parts.length} wires=${project.wires.length} bom=$${Number(typeof total === 'number' ? total : total.total).toFixed(2)} checks(err)=${checks.filter((c) => c.severity === 'error').length} sim=${engine.error ? 'CRASH' : 'ok'} → ${dir}`);

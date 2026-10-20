@@ -347,7 +347,7 @@ export const PARTS: PartDef[] = [
     kicad: { symbol: 'Sparkbench:Module_3pin_plus', footprint: 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical', value: () => 'WS2812B_Ring_12' },
     wokwi: { tag: 'wokwi-led-ring', attrs: (pr) => ({ pixels: pr.pixels ?? 12 }) },
     keywords: ['neopixel', 'ws2812', 'ws2812b', 'addressable', 'rgb ring', 'led ring', 'led strip', 'rainbow'],
-    buildNotes: ['Add a 300–500 Ω resistor in the data line and a 1000 µF capacitor across the ring\'s power for reliability.'],
+    buildNotes: ['Most rings come with bare solder pads: solder three wires or header pins to 5V (VCC), GND and DIN first — this is the only soldering in the build.', 'The 330 Ω resistor in the data line is already in this design; a 1000 µF capacitor across the ring\'s 5 V and GND (listed as optional) makes it more reliable.'],
   },
   {
     type: 'buzzer',

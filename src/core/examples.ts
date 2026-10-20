@@ -129,7 +129,7 @@ export const EXAMPLES: Example[] = [
   {
     id: '555-tone',
     title: '555 tone generator',
-    blurb: 'No code at all: a 555 timer oscillating at about 465 Hz drives a piezo buzzer while you hold the button.',
+    blurb: 'No code at all: a 555 timer oscillating at about 460 Hz drives a piezo buzzer while you hold the button.',
     prompt: 'a 555 timer that drives a buzzer, with a button',
     board: 'none',
     level: 'Beginner',

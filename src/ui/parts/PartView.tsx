@@ -176,7 +176,7 @@ function EPaperView({ visual }: { visual?: PartVisual }) {
             </text>
           </g>
         ))}
-        <text x={20} y={176} fontSize={8} fill="#9fb3d1">2.9" e-Paper · SSD1680</text>
+        <text x={22} y={11} fontSize={7} fill="#9fb3d1">2.9" e-Paper · SSD1680</text>
       </svg>
     </div>
   );

@@ -488,7 +488,8 @@ function Scope() {
   if (!scope.length) return <div className="serial muted">Press Run to see voltages over time.</div>;
   const keys = Object.keys(scope[scope.length - 1].v).filter((k) => nets.find((n) => n.id === k && !/^GND/.test(n.name)));
   const t1 = scope[scope.length - 1].t;
-  const t0 = Math.max(scope[0].t, t1 - 3000);
+  const span = Math.min(3000, Math.max(1, t1 - scope[0].t));
+  const t0 = t1 - span;
   const pts = scope.filter((s) => s.t >= t0);
   const vmax = Math.max(1, ...pts.flatMap((p) => keys.map((k) => p.v[k] ?? 0)));
   const colors = ['#f5c518', '#4fc3f7', '#ef5350', '#81c784', '#ce93d8', '#ffb74d'];
@@ -501,7 +502,7 @@ function Scope() {
           <line key={f} x1={0} x2={W} y1={H * f} y2={H * f} className="scope-grid" />
         ))}
         {keys.slice(0, 6).map((k, i) => (
-          <polyline key={k} fill="none" stroke={colors[i]} strokeWidth={1.6} vectorEffect="non-scaling-stroke" points={pts.map((p) => `${((p.t - t0) / 3000) * W},${H - ((p.v[k] ?? 0) / vmax) * (H - 6) - 3}`).join(' ')} />
+          <polyline key={k} fill="none" stroke={colors[i]} strokeWidth={1.6} vectorEffect="non-scaling-stroke" points={pts.map((p) => `${((p.t - t0) / span) * W},${H - ((p.v[k] ?? 0) / vmax) * (H - 6) - 3}`).join(' ')} />
         ))}
       </svg>
       <div className="scope-legend">
@@ -514,7 +515,7 @@ function Scope() {
             </span>
           );
         })}
-        <span className="muted">last 3 s · max {vmax.toFixed(1)} V</span>
+        <span className="muted">last {span >= 1000 ? `${(span / 1000).toFixed(1)} s` : `${Math.round(span)} ms`} · max {vmax.toFixed(1)} V</span>
       </div>
     </div>
   );

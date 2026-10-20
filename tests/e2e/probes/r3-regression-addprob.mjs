@@ -1,0 +1,12 @@
+import { open, OUT, proj, say } from './r3-regression-lib.mjs';
+const {b,p} = await open('?example=esp32-weather-imu&notour');
+const pt=p.locator('.console-tabs button',{hasText:'Problems'});
+console.log('tab0', await pt.innerText());
+await say(p, 'move button A to GPIO 14');
+console.log('tab1', await pt.innerText());
+const r = await say(p, "add a buzzer that beeps when it's too hot");
+console.log('reply', r.secs, JSON.stringify(r.reply.slice(0,300)));
+await pt.click(); await p.waitForTimeout(500);
+console.log('tab2', await pt.innerText(), '\n', await p.locator('[data-testid=problems]').innerText());
+await p.screenshot({path:OUT+'addprob.png'});
+await b.close();

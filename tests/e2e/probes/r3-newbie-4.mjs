@@ -1,0 +1,10 @@
+import {open,shot} from './r3-newbie-lib.mjs';
+const {ctx,p,errs}=await open('http://localhost:5173/?notour');
+await p.waitForTimeout(2500);
+await p.click('button.run');
+await p.waitForTimeout(3000);
+await shot(p,'30-running');
+console.log('SIMCTL:', JSON.stringify(await p.$$eval('.simctl', e=>e.map(x=>x.outerHTML.slice(0,600)))));
+console.log('SERIAL:', await p.locator('[data-testid=serial]').innerText());
+console.log('STATUS:', await p.locator('header').first().innerText().catch(()=>''));
+await ctx.close();

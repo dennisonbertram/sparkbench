@@ -1,0 +1,16 @@
+import {open,shot} from './r3-newbie-lib.mjs';
+const {ctx,p,errs}=await open('http://localhost:5173/?notour');
+await p.waitForTimeout(2500);
+await shot(p,'20-reload');
+console.log('TITLE', await p.locator('header, .topbar').first().innerText().catch(()=>'-'));
+console.log('PARTS', await p.$$eval('.part[data-part]', e=>e.map(x=>x.getAttribute('data-part'))));
+await p.locator('.console-tabs button', {hasText:'Problems'}).click();
+await p.waitForTimeout(500);
+console.log('PROBLEMS:', await p.locator('[data-testid=problems]').innerText());
+await shot(p,'21-problems');
+await p.locator('.tabs button',{hasText:'Code'}).click(); await p.waitForTimeout(800);
+await shot(p,'22-code');
+const code = await p.evaluate(()=>{const m=window.monaco?.editor?.getModels?.(); if(m&&m.length) return m.map(x=>x.getValue()).join('\n=====\n'); const cm=document.querySelector('.cm-content'); return cm?cm.innerText:document.querySelector('main')?.innerText});
+console.log('CODE:\n', code);
+console.log('ERRS',errs);
+await ctx.close();

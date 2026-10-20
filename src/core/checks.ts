@@ -856,7 +856,25 @@ export function runChecks(project: Project): CheckResult[] {
   checkSignalLevels(c);
   checkAnalog(c);
   checkPowerBudget(c);
+  checkNeoPixelLevels(c);
   return c.results.map((r, i) => [r, i] as const).sort((a, b) => SEVERITY_ORDER[a[0].severity] - SEVERITY_ORDER[b[0].severity] || a[1] - b[1]).map(([r]) => r);
+}
+
+/** WS2812 data must reach 0.7 × VDD: 3.3 V data into a ring powered from 5 V is marginal. */
+function checkNeoPixelLevels(c: Ctx) {
+  if (!c.board || c.board.logicV >= 5 || !c.model) return;
+  for (const p of c.project.parts) {
+    if (p.type !== 'neopixel-ring') continue;
+    const vdd = c.model.moduleSupply(p.id);
+    if (vdd < 4.5) continue;
+    c.add({
+      id: `neopixel-level:${p.id}`,
+      severity: 'info',
+      title: `${p.ref ?? p.id}: 3.3 V data into a 5 V NeoPixel ring is borderline`,
+      detail: `The ring runs on ${vdd.toFixed(1)} V, so it wants data signals of at least ${(0.7 * vdd).toFixed(1)} V, and the ${c.board.short} sends 3.3 V. It usually works with short wires; if the ring flickers or stays dark, add a 74AHCT125 level shifter on the data line or power the ring from 3.3 V (dimmer, fewer LEDs).`,
+      parts: [p.id],
+    });
+  }
 }
 
 /** One plain-English line summarising check results, e.g. for a status bar or the AI reply. */

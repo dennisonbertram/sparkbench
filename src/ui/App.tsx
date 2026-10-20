@@ -34,7 +34,12 @@ export function App() {
     const p = loadCurrent();
     const url = new URL(location.href);
     const ex = url.searchParams.get('example');
-    if (ex && EXAMPLES.some((e) => e.id === ex)) useStore.getState().setProject(buildExample(ex), { record: false });
+    if (ex && EXAMPLES.some((e) => e.id === ex)) {
+      useStore.getState().setProject(buildExample(ex), { record: false });
+      // Drop ?example= so a reload reopens this (possibly edited) project and its chat, not a fresh copy.
+      url.searchParams.delete('example');
+      history.replaceState(null, '', url.toString());
+    }
     else if (p && !url.searchParams.has('welcome')) useStore.getState().setProject(p, { record: false });
   }, []);
 
@@ -169,7 +174,7 @@ function Topbar() {
           title="Play the buzzer through your speakers"
           aria-pressed={sound}
         >
-          {sound ? 'Sound on' : 'Sound off'}
+          ♪<span className="sound-label"> {sound ? 'Sound on' : 'Sound off'}</span>
         </button>
         <span className={`status status-${status}`}>{statusText(status)}</span>
       </div>

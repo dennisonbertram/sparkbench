@@ -1,0 +1,16 @@
+import {open,shot} from './r3-newbie-lib.mjs';
+const {ctx,p,errs}=await open('http://localhost:5173/?notour');
+await p.waitForTimeout(2500);
+await p.click('button.run'); await p.waitForTimeout(2000);
+const setLux=async v=>{ await p.$eval('.simctl input[type=range]',(el,v)=>{const s=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set; s.call(el,String(v)); el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true}));}, v); };
+const btns = p.locator('.simctl button.momentary');
+console.log('buttons', await btns.count(), await p.locator('.simctl').allInnerTexts());
+const press=async i=>{ const b=btns.nth(i); await b.hover(); await p.mouse.down(); await p.waitForTimeout(250); await p.mouse.up(); };
+await setLux(2); await p.waitForTimeout(5000); await shot(p,'60-blue-dark');
+await press(1); await p.waitForTimeout(4000); await shot(p,'61-off');
+await press(0); await p.waitForTimeout(3000); await shot(p,'62-tune-while-off');
+await p.waitForTimeout(6000);
+await press(1); await p.waitForTimeout(4000); await shot(p,'63-back-auto');
+console.log('SERIAL:\n', await p.locator('[data-testid=serial]').innerText());
+console.log('ERRS',errs);
+await ctx.close();

@@ -147,7 +147,7 @@ function supplies(project: Project): BomLine[] {
   // Jumper wires
   const boardPart = project.parts.find((p) => partDef(p.type).category === 'board');
   const toPi = project.board === 'rpi4' && boardPart ? project.wires.filter((w) => w.a.part === boardPart.id || w.b.part === boardPart.id).length : 0;
-  const mm = project.wires.length - toPi + (project.board === 'none' ? 0 : 2); // + a couple of jumpers for the power rails
+  const mm = project.wires.length - toPi;
   if (mm > 0) {
     const packs = Math.max(1, Math.ceil(mm / 40));
     out.push(
@@ -245,7 +245,7 @@ export function buildBom(project: Project): BomLine[] {
 
 /** Sum of line prices in USD. By default includes supplies and optional extras. */
 export function bomTotal(lines: BomLine[], opts: { supplies?: boolean; optional?: boolean } = {}): number {
-  const { supplies: inclSupplies = true, optional = true } = opts;
+  const { supplies: inclSupplies = true, optional = false } = opts;
   return round2(lines.filter((l) => (inclSupplies || l.kind === 'part') && (optional || !l.optional)).reduce((s, l) => s + l.linePrice, 0));
 }
 

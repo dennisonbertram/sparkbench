@@ -14,7 +14,8 @@ import { runChecks, checkSummary } from './checks';
 const NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 export const numberWord = (n: number) => NUM_WORDS[n] ?? String(n);
 const capFirst = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-const lowerFirst = (s: string) => (s && !/^[A-Z0-9][A-Z0-9]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+// Keep acronyms and brand names (LED, OLED, NeoPixel, MicroPython) as they are.
+const lowerFirst = (s: string) => (s && !/^[A-Z0-9][A-Z0-9]/.test(s) && !/^[A-Z][a-z]+[A-Z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 /** "a" or "an" for a word or name ("an LED", "an ESP32", "a NeoPixel", "a 555"). */
 export function an(phrase: string): string {
@@ -486,7 +487,7 @@ function behaviours(c: Ctx): Behaviour[] {
       test: m ? `Change the ${m[1]} and watch the colour shift between blue and red.` : 'You should see a smooth, endless rainbow.',
     });
   }
-  out.push({ does: readings.length ? 'Once a second it prints the current readings to the serial console, so you can see exactly what the board sees.' : 'Once a second it prints a short status line to the serial console, so you can see the program is alive.', test: 'Keep the serial console open: a new line should appear every second.' });
+  if (/log once a second/.test(main)) out.push({ does: 'Once a second it prints the current readings to the serial console, so you can see exactly what the board sees.', test: 'Keep the serial console open: a new line should appear every second.' });
   return out;
 }
 
@@ -877,6 +878,7 @@ function toolsList(c: Ctx): string[] {
   if (c.project.board === 'rpi4') out.push('A computer on the same network (to log in over SSH), or a monitor, keyboard and mouse for the Pi');
   else if (c.board) out.push('A computer with a USB port (Windows, macOS or Linux) and Python 3 installed');
   out.push('Optional: a multimeter, for checking voltages and connections');
+  if (c.project.parts.some((p) => p.type === 'neopixel-ring')) out.push('A soldering iron and solder — the NeoPixel ring has bare pads, so its three wires need soldering on');
   out.push('Optional: small pliers or tweezers for pushing parts into the breadboard');
   if (c.project.parts.some((p) => p.type === 'lcd1602' || p.type === 'pir')) out.push('A small screwdriver (for the adjustment screws on the module)');
   return out;
@@ -1288,7 +1290,8 @@ function circuitSection(c: Ctx, schematic: string): string[] {
   const on5 = c.features.filter((f) => ['lcd', 'hcsr04', 'pir', 'servo', 'relay', 'neopixel'].includes(f.kind));
   const i2c = c.features.filter((f) => ['oled', 'lcd', 'mpu6050'].includes(f.kind));
   const on5Text = on5.length ? `, while ${listJoin(on5.map((f) => featureName(f)))} ${on5.length === 1 ? 'needs' : 'need'} 5 V and ${on5.length === 1 ? 'uses' : 'use'} ${fivePinName(b)} instead` : '';
-  out.push(`Everything plugs into the ${b.name}. The board gets its power over USB and passes it on: most parts use its 3.3 V pin${on5Text}. All the grounds are joined together — that shared GND is the reference every signal is measured against.`, '');
+  const uses33 = c.project.wires.some((w) => [w.a, w.b].some((r) => r.part === c.boardId && r.pin.startsWith(b.supply3v3.replace(/\.\d+$/, ''))));
+  out.push(`Everything plugs into the ${b.name}. The board gets its power over USB${uses33 ? ` and passes it on: most parts use its 3.3 V pin${on5Text}` : ' — the parts here are driven straight from its pins'}. All the grounds are joined together — that shared GND is the reference every signal is measured against.`, '');
   if (i2c.length) out.push(`${capFirst(listJoin(i2c.map((f) => featureName(f))))} ${i2c.length === 1 ? 'talks' : i2c.length === 2 ? 'both talk' : 'all talk'} over **I2C**, a two-wire bus: SDA on ${boardPinText(b, b.i2c.sda)} and SCL on ${boardPinText(b, b.i2c.scl)}.${i2c.length > 1 ? ' Each part has its own address, so they can share the same two wires without getting in each other\'s way.' : ''}`, '');
   const rows = c.features
     .filter((f) => Object.keys(f.pins).length || f.mcpChannel !== undefined)
@@ -1342,7 +1345,7 @@ function codeSectionBlog(c: Ctx): string[] {
   if (main.includes('last_dht')) notes.push('The DHT22 is only read every 2 seconds, because asking it more often just returns errors.');
   if (main.includes('_edge.pressed()')) notes.push('Button presses come through the `Edge` helper, so one press is one action, no matter how long you hold the button down.');
   if (main.includes('frame % 5 == 0')) notes.push('The LCD only gets refreshed every fifth time round the loop — character LCDs are slow, and redrawing them constantly makes them flicker.');
-  if (main.includes('scale(')) notes.push('`scale()` works like Arduino\'s `map()`: it converts a reading from one range (say 0–100 %) to another (say 0–180°).');
+  if ((main.match(/scale\(/g) ?? []).length > 1) notes.push('`scale()` works like Arduino\'s `map()`: it converts a reading from one range (say 0–100 %) to another (say 0–180°).');
   if (notes.length) out.push(...notes.map((x) => `- ${x}`), '');
   return out;
 }
@@ -1368,7 +1371,7 @@ function mistakesSection(c: Ctx): string[] {
   for (const p of c.project.parts) {
     if (seen.has(p.type)) continue;
     seen.add(p.type);
-    const t = TROUBLE[p.type]?.[0];
+    const t = p.type === 'ne555' && analyze555(c.project)?.tone ? '**No sound:** check the chip\'s notch/dot (pin 1), that the button connects pin 4 (RESET) to + when pressed, and that the buzzer is a passive piezo.' : TROUBLE[p.type]?.[0];
     if (t) items.push(t);
   }
   if (c.board) items.push(BOARD_TROUBLE[c.board.id]?.[0] ?? '');

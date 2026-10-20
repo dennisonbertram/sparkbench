@@ -1,0 +1,20 @@
+import { open, OUT, proj, say } from './r3-regression-lib.mjs';
+const {b,p} = await open('?example=pico-traffic-light&notour');
+await p.goto('http://localhost:5173/?notour'); await p.waitForTimeout(2500);
+const id0 = await p.evaluate(()=>localStorage.getItem('sparkbench.current.v1'));
+const r = await say(p, 'move the red LED to GP10');
+const w = (await proj(p)).wires.filter(w=>/led/.test(w.a.part+w.b.part)).map(w=>`${w.a.part}:${w.a.pin}-${w.b.part}:${w.b.pin}`);
+console.log('reply', r.secs, JSON.stringify(r.reply.slice(0,200)), '\nled wires', w);
+const before = await p.locator('.msg').count();
+await p.reload(); await p.waitForTimeout(3000);
+const id1 = await p.evaluate(()=>localStorage.getItem('sparkbench.current.v1'));
+const w1 = (await proj(p)).wires.filter(w=>/led/.test(w.a.part+w.b.part)).map(w=>`${w.a.part}:${w.a.pin}-${w.b.part}:${w.b.pin}`);
+console.log('bare reload: id', id0, id1, 'msgs', before, '->', await p.locator('.msg').count(), '\nled wires after', w1);
+await p.screenshot({path:OUT+'reload2-bare.png'});
+// now example URL reload: does it reset design?
+await p.goto('http://localhost:5173/?example=pico-traffic-light&notour'); await p.waitForTimeout(3000);
+const id2 = await p.evaluate(()=>localStorage.getItem('sparkbench.current.v1'));
+const w2 = (await proj(p)).wires.filter(w=>/led/.test(w.a.part+w.b.part)).map(w=>`${w.a.part}:${w.a.pin}-${w.b.part}:${w.b.pin}`);
+console.log('example url: id', id2, 'msgs', await p.locator('.msg').count(), 'led wires', w2.filter(x=>/GP10|GP2\b/.test(x)));
+console.log('keys', await p.evaluate(()=>Object.keys(localStorage)));
+await b.close();

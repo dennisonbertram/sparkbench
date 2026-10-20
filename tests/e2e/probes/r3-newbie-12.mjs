@@ -1,0 +1,11 @@
+import {open,shot} from './r3-newbie-lib.mjs';
+const {ctx,p,errs}=await open('http://localhost:5173/?notour');
+await p.waitForTimeout(2500);
+await p.locator('.tabs button',{hasText:'Parts list'}).click(); await p.waitForTimeout(1000);
+const links = await p.$$eval('a[href]', as=>as.filter(a=>/digikey|mouser|aliexpress/i.test(a.href)).map(a=>a.closest('tr')?.querySelector('td:nth-child(2)')?.innerText.split('\n')[0]+' -> '+a.href));
+console.log(links.join('\n'));
+await p.locator('.tabs button',{hasText:'Schematic'}).click(); await p.waitForTimeout(1500);
+await shot(p,'82-schematic');
+const svgText = await p.$$eval('svg text', t=>t.map(x=>x.textContent).join(' | '));
+console.log('SCH TEXT:', svgText.slice(0,1500));
+await ctx.close();
