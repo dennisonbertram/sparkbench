@@ -175,7 +175,6 @@ export const BOARDS: Record<Exclude<BoardId, 'none'>, BoardDef> = {
       'Flash Raspberry Pi OS with Raspberry Pi Imager and boot the Pi.',
       'Enable I2C/SPI if used: `sudo raspi-config` → Interface Options.',
       'Install libraries: `sudo apt install python3-gpiozero python3-smbus2 python3-spidev`.',
-      'If the project uses a DHT22 or NeoPixels: `pip install adafruit-circuitpython-dht adafruit-circuitpython-neopixel rpi_ws281x --break-system-packages` (NeoPixel programs must be run with `sudo`).',
       'Copy the project folder to the Pi (e.g. `scp -r project pi@raspberrypi.local:~`).',
       'Run it: `python3 main.py` (add it to crontab with @reboot to start automatically).',
     ],

@@ -81,3 +81,28 @@ describe('rebuild keeps manual positions', () => {
     expect([oled.x, oled.y]).toEqual([999, 777]);
   });
 });
+
+describe('editing keeps the user oriented', () => {
+  const base = planFromPrompt('ESP32 with an OLED screen, two buttons, a temperature sensor and an IMU');
+  const pinOf = (p: ReturnType<typeof planFromPrompt>, label: string) => p.features!.find((f) => f.label === label)!.pins.pin;
+  it('moves a button to a requested pin', () => {
+    const r = editSpec(base.spec!, 'move button A to GPIO 14');
+    expect(r.changed).toBe(true);
+    const next = buildProject(r.spec, { previous: base });
+    expect(pinOf(next, 'Button A')).toBe('D14');
+    expect(pinOf(next, 'Button B')).toBe(pinOf(base, 'Button B'));
+  });
+  it('adding a part does not move existing wires and places it clear of other parts', () => {
+    const next = buildProject(editSpec(base.spec!, 'add a buzzer and a red led').spec, { previous: base });
+    for (const f of base.features!) {
+      const g = next.features!.find((x) => x.kind === f.kind && x.label === f.label)!;
+      expect(g.pins).toEqual(f.pins);
+    }
+    const fresh = next.parts.filter((p) => !base.parts.some((q) => q.id === p.id));
+    const maxRight = Math.max(...base.parts.map((p) => p.x));
+    for (const p of fresh) expect(p.x).toBeGreaterThan(maxRight);
+  });
+  it('"plant pot" is not a potentiometer', () => {
+    expect(kinds('esp32 plant pot moisture monitor with an oled')).toEqual(['oled', 'soil']);
+  });
+});

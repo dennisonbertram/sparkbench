@@ -22,6 +22,7 @@ export function Breadboard() {
   const selection = useStore((s) => s.selection);
   const wiringFrom = useStore((s) => s.wiringFrom);
   const hoverNet = useStore((s) => s.hoverNet);
+  const pinnedNet = useStore((s) => s.pinnedNet);
   const [view, setView] = useState<View>({ x: 0, y: 0, k: 1 });
   const [pins, setPins] = useState<Record<string, PinMap>>({});
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
@@ -108,7 +109,7 @@ export function Breadboard() {
     }
     if (d.kind === 'pan' && !d.moved) {
       useStore.getState().select(null);
-      useStore.getState().set({ wiringFrom: null });
+      useStore.getState().set({ wiringFrom: null, pinnedNet: null });
     }
   };
 
@@ -130,7 +131,7 @@ export function Breadboard() {
   };
 
   const selWire = selection?.kind === 'wire' ? selection.id : null;
-  const hoverNetId = hoverNet;
+  const hoverNetId = hoverNet ?? pinnedNet;
 
   return (
     <div
@@ -234,6 +235,7 @@ export function Breadboard() {
         <button onClick={fit} title="Fit design to screen">Fit</button>
       </div>
       {wiringFrom && <div className="canvas-hint">Click another pin to connect it · Esc to cancel</div>}
+      {pinnedNet && !wiringFrom && <div className="canvas-hint">Highlighting net {buildNets(project).nets.find((n) => n.id === pinnedNet)?.name} from the schematic · click the mat to clear</div>}
       {!wiringFrom && !running && project.parts.length > 0 && <div className="canvas-hint subtle">Drag parts to move them · click a pin, then another pin, to add a wire</div>}
       {tip && <PinTip tip={tip} />}
     </div>

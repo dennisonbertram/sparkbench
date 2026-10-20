@@ -184,6 +184,9 @@ export class ElectricalModel {
       case 'buzzer':
         els.r = c.add(new Resistor(id, n('+'), n('-'), 10000));
         break;
+      case 'dc-motor':
+        els.r = c.add(new Resistor(id, n('+'), n('-'), 27));
+        break;
       default: {
         // Modules: model their supply draw as a resistor, plus signal-pin behaviour.
         const vccPin = def.pins.find((p) => p.role === 'power' && p.name !== 'VREF')?.name;

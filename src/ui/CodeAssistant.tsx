@@ -14,6 +14,7 @@ interface Proposal {
   reply: string;
   log: string[];
   ok: boolean;
+  behavior?: Project['behavior'];
 }
 
 export function CodeAssistant({ file }: { file: string }) {
@@ -39,7 +40,7 @@ export function CodeAssistant({ file }: { file: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'AI request failed');
       const after = (data.project as Project).files[file];
-      setProposal({ file, before: project.files[file], after, reply: data.reply, log: data.log ?? [], ok: data.ok });
+      setProposal({ file, before: project.files[file], after, reply: data.reply, log: data.log ?? [], ok: data.ok, behavior: (data.project as Project).behavior });
       setText('');
     } catch (e: any) {
       setError(String(e?.message ?? e));
@@ -99,7 +100,7 @@ function ProposalView({ p, onDone }: { p: Proposal; onDone(): void }) {
   const added = diff.filter((d) => d.t === '+').length;
   const removed = diff.filter((d) => d.t === '-').length;
   const accept = () => {
-    useStore.getState().update((pr) => ({ ...pr, files: { ...pr.files, [p.file]: p.after }, codeCustom: p.file === 'main.py' ? true : pr.codeCustom }));
+    useStore.getState().update((pr) => ({ ...pr, files: { ...pr.files, [p.file]: p.after }, codeCustom: p.file === 'main.py' ? true : pr.codeCustom, behavior: p.file === 'main.py' ? p.behavior : pr.behavior }));
     onDone();
     const project = useStore.getState().project!;
     startSim(project);

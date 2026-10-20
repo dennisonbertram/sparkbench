@@ -264,6 +264,12 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
             onClick={() => {
               if (confirm(`Delete “${p.name}”?`)) {
                 deleteSaved(p.id);
+                if (useStore.getState().project?.id === p.id) {
+                  // Deleting the open project: close it so it isn't saved again.
+                  stopSim(true);
+                  useStore.getState().set({ project: null, showWelcome: true, chat: [] });
+                  onClose();
+                }
                 force((n) => n + 1);
               }
             }}

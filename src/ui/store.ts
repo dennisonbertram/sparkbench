@@ -94,6 +94,7 @@ export const useStore = create<State>((set, get) => ({
 
   setProject(p, opts = {}) {
     const cur = get().project;
+    if (!p || p.id !== cur?.id) set({ pinnedNet: null, hoverNet: null });
     const record = opts.record ?? true;
     set({
       project: p,
@@ -191,7 +192,8 @@ export const useStore = create<State>((set, get) => ({
     get().update((p) => ({ ...p, parts: p.parts.map((q) => (q.id === id ? { ...q, props: { ...q.props, [key]: value } } : q)) }));
   },
   setFile(name, src) {
-    get().update((p) => ({ ...p, files: { ...p.files, [name]: src }, codeCustom: name === 'main.py' ? true : p.codeCustom }), false);
+    // A hand edit makes any stored behaviour description stale.
+    get().update((p) => ({ ...p, files: { ...p.files, [name]: src }, codeCustom: name === 'main.py' ? true : p.codeCustom, behavior: name === 'main.py' ? undefined : p.behavior }), false);
   },
   set(partial) {
     set(partial as any);

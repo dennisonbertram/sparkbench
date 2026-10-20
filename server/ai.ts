@@ -33,6 +33,9 @@ const DesignSchema = z.object({
 const FileEditSchema = z.object({
   reply: z.string().describe('1-4 sentences: what you changed and why, for a beginner'),
   content: z.string().describe('The complete new content of the file'),
+  behavior: z
+    .array(z.object({ does: z.string().describe('One full sentence: something the finished program does'), test: z.string().describe('How to check it on the real hardware'), sim: z.string().describe('How to try it in the Sparkbench simulator (sliders, buttons, Run)') }))
+    .describe('3-8 items describing what the WHOLE program (after your change) does, for the build guide and blog post'),
 });
 
 const SYSTEM = `You are the design copilot inside Sparkbench, a hardware design studio for beginners.
@@ -138,7 +141,7 @@ Request: ${instruction}`,
   for (let attempt = 0; attempt < 3; attempt++) {
     const out = await askJson(CODE_SYSTEM, turns, FileEditSchema, { effort: 'medium' });
     reply = reply || out.reply;
-    const candidate: Project = { ...project, files: { ...project.files, [file]: out.content }, codeCustom: file === 'main.py' ? true : project.codeCustom };
+    const candidate: Project = { ...project, files: { ...project.files, [file]: out.content }, codeCustom: file === 'main.py' ? true : project.codeCustom, behavior: file === 'main.py' ? out.behavior : project.behavior };
     best = candidate;
     if (project.board === 'none') return { project: candidate, reply, log, ok: true };
     const { engine } = await simulate(candidate, { untilMs: 4000 });

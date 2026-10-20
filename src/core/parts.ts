@@ -396,6 +396,22 @@ export const PARTS: PartDef[] = [
     buildNotes: ['Never work on mains wiring while plugged in. For a first build, switch a low-voltage load (a 5 V fan or pump).'],
   },
 
+  {
+    type: 'dc-motor',
+    name: 'DC pump / fan (5 V)',
+    category: 'actuator',
+    description: 'Small 5 V DC motor: a mini water pump or a cooling fan (~150–200 mA). Switched by a relay or transistor, never straight from a GPIO pin.',
+    eli5: 'The thing that actually moves: it spins (or pumps water) when the relay connects it to power.',
+    refPrefix: 'M',
+    pins: [p('+', 'passive'), p('-', 'passive')],
+    props: [{ key: 'kind', label: 'Type', type: 'select', default: 'pump', options: ['pump', 'fan'] }],
+    currentMa: 180,
+    bom: { mpn: 'DC 3-5V mini submersible pump / 5V fan', description: 'Mini 5V DC pump (with silicone tube) or 5V fan', priceUsd: 3, supplierQuery: '5V mini submersible water pump' },
+    kicad: { symbol: 'Sparkbench:Motor_DC', footprint: 'Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical', value: (pr) => (pr.kind === 'fan' ? 'Fan_5V' : 'Pump_5V') },
+    keywords: ['pump', 'fan', 'motor', 'dc motor', 'water pump'],
+    buildNotes: ['Motors cause electrical noise: if the board resets when the pump starts, power the pump from a separate 5 V supply (common ground) and add a 100 µF capacitor across it.', 'Run the pump with water in it — running dry wears it out.'],
+  },
+
   // ------------------------------------------------------------------ passives & discretes
   {
     type: 'resistor',

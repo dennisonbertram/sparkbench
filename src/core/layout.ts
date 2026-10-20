@@ -25,6 +25,7 @@ export const PART_SIZE: Record<string, [number, number]> = {
   buzzer: [64, 76],
   servo: [170, 120],
   relay: [100, 90],
+  'dc-motor': [70, 70],
   resistor: [59, 12],
   capacitor: [36, 56],
   electrolytic: [36, 70],

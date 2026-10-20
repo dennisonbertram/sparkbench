@@ -41,6 +41,7 @@ export const CUSTOM_PINS: Record<string, Pins> = {
     ...['VDD', 'VREF', 'AGND', 'CLK', 'DOUT', 'DIN', 'CS', 'DGND'].map((n, i) => [n, { x: 12 + i * 18, y: 2 }]),
   ]),
   'battery-9v': { '+': { x: 22, y: 6 }, '-': { x: 48, y: 6 } },
+  'dc-motor': { '+': { x: 26, y: 68 }, '-': { x: 44, y: 68 } },
   epaper29: Object.fromEntries(['VCC', 'GND', 'DIN', 'CLK', 'CS', 'DC', 'RST', 'BUSY'].map((n, i) => [n, { x: 58 + i * 32, y: 184 }])),
 };
 
@@ -201,6 +202,35 @@ export function CustomPart({ type, props, visual }: { type: string; props: Recor
               <text x={p.x} y={p.y < 10 ? 18 : h - 13} fontSize={4.4} fill="#aaa" textAnchor="middle">{n}</text>
             </g>
           ))}
+        </>
+      );
+      break;
+    }
+    case 'dc-motor': {
+      const fan = props.kind === 'fan';
+      const spin = visual?.spin ?? 0;
+      body = (
+        <>
+          <line x1={26} y1={50} x2={26} y2={68} stroke="#d32f2f" strokeWidth={1.6} />
+          <line x1={44} y1={50} x2={44} y2={68} stroke="#222" strokeWidth={1.6} />
+          {fan ? (
+            <>
+              <rect x={6} y={2} width={58} height={50} rx={6} fill="#2b2f33" />
+              <g className={spin > 0.1 ? 'spinning' : ''} style={{ transformOrigin: '35px 27px', animationDuration: `${0.5 / Math.max(spin, 0.1)}s` }}>
+                {[0, 72, 144, 216, 288].map((a) => (
+                  <ellipse key={a} cx={35} cy={14} rx={6} ry={12} fill="#9aa4ad" transform={`rotate(${a} 35 27)`} />
+                ))}
+              </g>
+              <circle cx={35} cy={27} r={5} fill="#444" />
+            </>
+          ) : (
+            <>
+              <rect x={14} y={4} width={42} height={44} rx={8} fill="#1d5fa8" />
+              <rect x={30} y={0} width={10} height={8} fill="#8fb8e6" />
+              <text x={35} y={30} fontSize={9} fill="#e6f0ff" textAnchor="middle">PUMP</text>
+              {spin > 0.1 && <path d="M40 -2 q8 -8 16 -2 q-8 2 -10 10" fill="#5ab0ff" className="droplet" />}
+            </>
+          )}
         </>
       );
       break;

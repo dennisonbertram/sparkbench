@@ -339,6 +339,10 @@ const BUTTON_ACTION: [RegExp, string, string][] = [
 
 function behaviours(c: Ctx): Behaviour[] {
   if (c.project.board === 'none') return behavioursDiscrete(c);
+  if (c.project.behavior?.length) {
+    // Code written by the AI (or a curated example) describes itself.
+    return c.project.behavior.map((b) => ({ does: b.does, test: b.test ?? `Check that: ${b.does.charAt(0).toLowerCase()}${b.does.slice(1)}`, sim: b.sim }));
+  }
   const out: Behaviour[] = [];
   const fs = c.features;
   const main = c.main;
@@ -390,7 +394,7 @@ function behaviours(c: Ctx): Behaviour[] {
   const leds = fs.filter((x) => x.kind === 'led');
   const isTraffic = leds.length === 3 && leds.every((l) => /traffic|amber|green for/.test(roles.get(l.label) ?? ''));
   if (isTraffic) {
-    out.push({ feature: leds[0], does: 'The three LEDs run a traffic-light cycle: red for 4 seconds, amber for 1 second, green for 4 seconds, amber again, and round it goes.', test: 'Watch the LEDs for 10 seconds: red → amber → green → amber, with only one LED on at a time.', sim: 'Just press ▶ Simulate and watch the lights change.' });
+    out.push({ feature: leds[0], does: 'The three LEDs run a traffic-light cycle: red for 4 seconds, amber for 1 second, green for 4 seconds, amber again, and round it goes.', test: 'Watch the LEDs for 10 seconds: red → amber → green → amber, with only one LED on at a time.', sim: 'Just press ▶ Run and watch the lights change.' });
   } else {
     const heartbeat: FeatureInstance[] = [];
     for (const f of leds) {
@@ -557,13 +561,13 @@ function behavioursDiscrete(c: Ctx): Behaviour[] {
   if (a) {
     const smaller = ohm(Math.max(1000, Math.round(a.r2 / 2000) * 1000));
     return [
-      { does: `The LED blinks by itself about ${a.f >= 1 ? `${a.f.toFixed(1)} times a second` : `once every ${fmtS(1 / a.f)}`} — on for about ${fmtS(a.tHigh)}, off for about ${fmtS(a.tLow)}.`, test: `Clip on the battery: the LED should start blinking straight away, roughly ${a.f >= 1 ? `${Math.round(a.f * 10)} times in 10 seconds` : `once every ${fmtS(1 / a.f)}`}.`, sim: 'Press ▶ Simulate and watch the LED blink; the solver runs the real 555 circuit, capacitor and all.' },
+      { does: `The LED blinks by itself about ${a.f >= 1 ? `${a.f.toFixed(1)} times a second` : `once every ${fmtS(1 / a.f)}`} — on for about ${fmtS(a.tHigh)}, off for about ${fmtS(a.tLow)}.`, test: `Clip on the battery: the LED should start blinking straight away, roughly ${a.f >= 1 ? `${Math.round(a.f * 10)} times in 10 seconds` : `once every ${fmtS(1 / a.f)}`}.`, sim: 'Press ▶ Run and watch the LED blink; the solver runs the real 555 circuit, capacitor and all.' },
       { does: 'There is no program: the timing comes entirely from the two resistors and the capacitor.', test: `Swap the ${ohm(a.r2)} resistor for a smaller one (say ${smaller}): the LED should blink noticeably faster.`, sim: `Change R2 from ${ohm(a.r2)} to ${smaller} in the properties panel and simulate again — it blinks faster.` },
     ];
   }
   const t = transistorValues(c.project);
   return [
-    { does: 'Press the button and the LED lights; let go and it goes out. The button only carries a tiny current — the transistor does the heavy lifting.', test: 'Clip on the battery and press the button: the LED should light at full brightness and go out as soon as you let go.', sim: 'Press ▶ Simulate, then click the button and watch the LED current appear.' },
+    { does: 'Press the button and the LED lights; let go and it goes out. The button only carries a tiny current — the transistor does the heavy lifting.', test: 'Clip on the battery and press the button: the LED should light at full brightness and go out as soon as you let go.', sim: 'Press ▶ Run, then click the button and watch the LED current appear.' },
     ...(t ? [{ does: `About ${t.ib.toFixed(1)} mA flows into the transistor's base, which lets about ${Math.round(t.ic)} mA flow through the LED.`, test: `If you have a multimeter, measure the LED current: it should be roughly ${Math.round(t.ic)} mA.` }] : []),
   ];
 }
@@ -963,6 +967,14 @@ export function buildGuide(project: Project): string {
   if (b) {
     out.push('## Load the program', '');
     out.push(b.language === 'python' ? 'The Raspberry Pi runs your program as ordinary Python 3 on Linux, using the friendly **gpiozero** library.' : `The ${b.name} runs **MicroPython** — a small version of Python made for microcontrollers. You flash MicroPython once, then copy your program onto the board.`, '');
+    out.push('**First, get the files out of Sparkbench:** click **Export → Everything (.zip)** and unzip it — the `firmware` folder holds the program. (Or use **Download** on each file in the Code tab.)', '');
+    if (b.language === 'micropython')
+      out.push(
+        `**Easiest way (no command line):** install [Thonny](https://thonny.org), plug in the ${b.short}, choose *Tools → Options → Interpreter → MicroPython (${b.id === 'pico' ? 'Raspberry Pi Pico' : 'ESP32'})* — Thonny can install MicroPython onto the board for you from that same screen. Then open each \`.py\` file from the \`firmware\` folder and use *File → Save as… → MicroPython device*, keeping the same name. Press the red Stop/Restart button to run \`main.py\`.`,
+        '',
+        '**Or from the command line:**',
+        '',
+      );
     const steps = [...b.flashing, ...(b.id === 'rpi4' ? piExtraLibraries(c) : [])];
     steps.forEach((s, i) => out.push(`${i + 1}. ${s}`));
     out.push('');
@@ -992,8 +1004,8 @@ export function buildGuide(project: Project): string {
     seen.add(p.type);
     for (const t of TROUBLE[p.type] ?? []) out.push(`- ${t}`);
   }
-  out.push('- **Still stuck?** Compare your breadboard with the Sparkbench breadboard view row by row, and run the design checks again.', '');
-  return out.join('\n');
+  out.push('- **Still stuck?** Go through the wiring table above one row at a time and check each wire really lands on the pin it names. Then compare with the breadboard picture in Sparkbench (hover a pin there to see what it should connect to).', '');
+  return piify(project, out.join('\n'));
 }
 
 // ==================================================================== blog post
@@ -1128,6 +1140,7 @@ function setupExplainers(c: Ctx, setup: string): string[] {
 
 function quoteLoop(main: string, maxLines = 34): string {
   const lines = codeSection(main, 'main loop');
+  if (!lines.length || lines[0].trim() !== 'while True:') lines.unshift('while True:');
   if (lines.length <= maxLines + 4) return lines.join('\n');
   return [...lines.slice(0, maxLines), '    # … (the rest of the loop is in main.py)'].join('\n');
 }
@@ -1308,7 +1321,7 @@ function codeSectionBlog(c: Ctx): string[] {
   const helper = pickHelper(main);
   if (helper) out.push('### A closer look at a helper', '', helper.why, '', '```python', helper.code, '```', '');
   const loopMs = c.settings.LOOP_MS ?? 50;
-  out.push('### The main loop', '', `Microcontroller programs usually end in a \`while True:\` loop that runs forever. This one goes round roughly ${Math.round(1000 / (loopMs + 5))} times a second: read the inputs, decide what to do, update the outputs, then sleep for ${loopMs} ms.`, '', '```python', 'while True:', quoteLoop(main), '```', '');
+  out.push('### The main loop', '', `Microcontroller programs usually end in a \`while True:\` loop that runs forever. This one goes round roughly ${Math.round(1000 / (loopMs + 5))} times a second: read the inputs, decide what to do, update the outputs, then sleep for ${loopMs} ms.`, '', '```python', quoteLoop(main), '```', '');
   const notes: string[] = [];
   if (/ticks_diff|now_ms\(\) -/.test(main)) notes.push('Instead of sleeping for seconds at a time, the loop checks the clock to decide when to do slow jobs (like printing once a second). That keeps everything else responsive.');
   if (main.includes('last_dht')) notes.push('The DHT22 is only read every 2 seconds, because asking it more often just returns errors.');
@@ -1321,7 +1334,7 @@ function codeSectionBlog(c: Ctx): string[] {
 
 function simSection(c: Ctx): string[] {
   const out: string[] = ['## Try it in the Sparkbench simulator', ''];
-  out.push(`You don't need any hardware to play with this design. Open it in Sparkbench and press **▶ Simulate**${c.board ? ' — the simulator runs the very same main.py, so anything you change in the code shows up immediately.' : ' — the circuit solver works out every voltage and current in real time.'}`, '');
+  out.push(`You don't need any hardware to play with this design. Open it in Sparkbench and press **▶ Run**${c.board ? ' — the simulator runs the very same main.py, so anything you change in the code shows up immediately.' : ' — the circuit solver works out every voltage and current in real time.'}`, '');
   const bs = behaviours(c);
   const items = [...new Set(bs.map((be) => be.sim).filter(Boolean) as string[])];
   if (items.length) out.push(...items.map((x) => `- ${x}`), '');
@@ -1432,7 +1445,7 @@ export function buildBlogPost(project: Project, opts: { schematicSvgPath?: strin
       : `That's it: ${withArticle(project.name)} for about ${total}, with no code at all. Try changing the ${c.project.parts.some((p) => p.type === 'capacitor' || p.type === 'electrolytic') ? 'resistor and capacitor values' : 'resistor values'} and predicting what will happen before you power it up — it's the best way to build an intuition for electronics.`,
     '',
   );
-  return out.join('\n').replace(/\n{3,}/g, '\n\n');
+  return piify(project, out.join('\n').replace(/\n{3,}/g, '\n\n'));
 }
 
 // ==================================================================== AI chat summary
@@ -1496,4 +1509,16 @@ export function explainDesign(project: Project): string {
   s.push(checkLine());
   while (s.length > 6) s.splice(s.length - 2, 1);
   return s.join(' ');
+}
+
+/** Raspberry Pi programs run on Linux: swap MicroPython-specific advice for the Pi equivalents. */
+function piify(project: Project, md: string): string {
+  if (project.board !== 'rpi4') return md;
+  return md
+    .replace(/Type `i2c\.scan\(\)` in the REPL — it should list `\[60\]` \(that's 0x3C\)\./g, 'Run `i2cdetect -y 1` in a terminal — the display should show up as `3c`.')
+    .replace(/Run an I2C scan/g, 'Run `i2cdetect -y 1`')
+    .replace(/an I2C scan should show 104 \(0x68\)/g, '`i2cdetect -y 1` should show `68`')
+    .replace(/`OSError: \[Errno 19\] ENODEV`/g, '`OSError: [Errno 121] Remote I/O error`')
+    .replace(/MicroPython's driver also enables the internal pull-up\./g, '')
+    .replace(/`mpremote repl`/g, 'the terminal where you ran `python3 main.py`');
 }

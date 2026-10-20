@@ -4,7 +4,7 @@ import type { BoardId, DesignSpec, FeatureInstance, FeatureKind, FeatureReq, Par
 import { BOARDS, type BoardDef, type BoardPin, type Cap } from './boards';
 import { defaultProps, partDef } from './parts';
 import { annotate } from './netlist';
-import { autoLayout, type Group } from './layout';
+import { autoLayout, partSize, type Group } from './layout';
 import { generateFiles } from './codegen';
 
 export class PlanError extends Error {}
@@ -102,6 +102,14 @@ export function parseIntent(prompt: string): DesignSpec {
     features.length = 0;
     features.push(...others, { kind: 'led', props: { color: 'red' }, label: 'Red' }, { kind: 'led', props: { color: 'yellow' }, label: 'Yellow' }, { kind: 'led', props: { color: 'green' }, label: 'Green' });
   }
+  // What the relay switches: a pump or fan gets drawn and wired; mains loads are only described.
+  const relay = features.find((f) => f.kind === 'relay');
+  if (relay) {
+    const load = /\b(pump|water(ing|s)?|irrigat\w*|plant)\b/.test(t) ? 'pump' : /\b(fan|cool\w*|thermostat)\b/.test(t) ? 'fan' : undefined;
+    if (load) relay.props = { ...(relay.props ?? {}), load };
+  }
+  // "plant pot" is a flower pot, not a potentiometer
+  if (/\b(plant|flower)[ -]?pots?\b/.test(t) && !/\b(potentiometer|knob|dial)\b/.test(t)) removeKind(features, 'pot');
   // Disambiguate: "temperature" with a thermistor mentioned → NTC only
   if (features.some((f) => f.kind === 'ntc')) removeKind(features, 'dht22');
   // An e-ink display is the display
@@ -153,8 +161,16 @@ class PinAllocator {
   constructor(public board: BoardDef, reserved: string[]) {
     for (const r of reserved) this.used.add(r);
   }
-  take(need: Need, what: string): BoardPin {
+  take(need: Need, what: string, prefer?: string): BoardPin {
     const caps: Cap[] = need === 'adc' ? ['adc'] : need === 'out' || need === 'pwm' ? ['out'] : ['in'];
+    if (prefer) {
+      const p = this.board.pins.find((x) => x.name === prefer);
+      const ok = p && p.role === 'gpio' && !this.used.has(p.name) && caps.every((c) => p.caps?.includes(c)) && (need === 'in' || need === 'adc' || p.caps?.includes('out'));
+      if (ok) {
+        this.used.add(p!.name);
+        return p!;
+      }
+    }
     let candidates = this.board.pins.filter((p) => p.role === 'gpio' && !this.used.has(p.name) && caps.every((c) => p.caps?.includes(c)));
     if (need === 'in-pullup' || need === 'out' || need === 'pwm') candidates = candidates.filter((p) => p.caps?.includes('out')); // input-only pins have no pull-ups
     const score = (p: BoardPin) => {
@@ -249,8 +265,24 @@ class Builder {
   v5(part: string, pin = 'VCC') {
     if (this.board) this.wire({ part, pin }, this.bp(this.board.supply5v), WIRE_COLORS.v5);
   }
+  /** Previous design's wiring (part:pin → board pin), so edits don't move existing wires. */
+  prevWiring = new Map<string, string>();
+  /** Pin the user explicitly asked for, consumed by the current feature's first signal. */
+  requested?: string;
+  rejected: string[] = [];
+  prefer(part: string, pin: string): string | undefined {
+    if (this.requested) {
+      const r = this.requested;
+      this.requested = undefined;
+      return r;
+    }
+    return this.prevWiring.get(`${part}:${pin}`);
+  }
   gpio(part: string, pin: string, need: Need, what: string): BoardPin {
-    const bpin = this.alloc!.take(need, what);
+    const explicit = this.requested;
+    const want = this.prefer(part, pin);
+    const bpin = this.alloc!.take(need, what, want);
+    if (explicit && bpin.name !== explicit) this.rejected.push(`${explicit} can't be used for ${what} (it's taken or can't do that job), so ${bpin.name} was used instead.`);
     this.wire({ part, pin }, this.bp(bpin.name));
     return bpin;
   }
@@ -296,6 +328,7 @@ class Builder {
 
   feature(req: FeatureReq) {
     const b = this.board;
+    this.requested = req.pins?.pin;
     const kind = req.kind;
     const label = req.label ?? LABELS[kind];
     const name = this.varName(kind, req.label);
@@ -409,7 +442,7 @@ class Builder {
         const r1 = this.addPart('resistor', { ohms: 1000 }, 'Echo divider (top)');
         const r2 = this.addPart('resistor', { ohms: 2000 }, 'Echo divider (bottom)');
         this.wire({ part: id, pin: 'ECHO' }, { part: r1, pin: '1' });
-        const echo = this.alloc!.take('in', `${label} echo`);
+        const echo = this.alloc!.take('in', `${label} echo`, this.prevWiring.get(`${r1}:2`));
         this.wire({ part: r1, pin: '2' }, this.bp(echo.name));
         this.wire({ part: r2, pin: '1' }, { part: r1, pin: '2' });
         this.gnd(r2, '2');
@@ -455,7 +488,7 @@ class Builder {
       }
       case 'led': {
         const color = req.props?.color ?? 'red';
-        const id = this.addPart('led', { color }, req.label ? `${req.label} LED` : `${color[0].toUpperCase()}${color.slice(1)} LED`);
+        const id = this.addPart('led', { color }, req.label ? (/\bled\b/i.test(req.label) ? req.label : `${req.label} LED`) : `${color[0].toUpperCase()}${color.slice(1)} LED`);
         const ohms = color === 'blue' || color === 'white' ? 47 : 220;
         const r = this.addPart('resistor', { ohms }, `${color} LED resistor`);
         setPin('pin', this.gpio(r, '1', 'pwm', fi.label));
@@ -516,7 +549,17 @@ class Builder {
         this.gnd(id);
         setPin('pin', this.gpio(id, 'IN', 'out', label));
         fi.parts.push(id);
-        this.groups.push({ main: id, parts: [id], side: 'left' });
+        const load = req.props?.load as string | undefined;
+        if (load) {
+          // The relay's contacts switch 5 V to the pump/fan: COM ← 5 V, NO → motor +, motor − → GND.
+          const m = this.addPart('dc-motor', { kind: load }, load === 'fan' ? 'Fan' : 'Water pump');
+          this.v5(id, 'COM');
+          this.wire({ part: id, pin: 'NO' }, { part: m, pin: '+' }, WIRE_COLORS.v5);
+          this.gnd(m, '-');
+          fi.parts.push(m);
+          this.groups.push({ main: id, parts: [m, id], side: 'left' });
+          this.notes.push(`The relay switches 5 V to the ${load}: COM goes to 5 V, NO (normally open) to the ${load}'s + wire, and its − wire to GND. NO means the ${load} is off until the relay clicks on.`);
+        } else this.groups.push({ main: id, parts: [id], side: 'left' });
         break;
       }
       case 'astable555':
@@ -587,6 +630,13 @@ class Builder {
 /** Build a complete project from a spec. Keeps positions of parts that already existed (same id). */
 export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: string; previous?: Project } = {}): Project {
   const b = new Builder(spec);
+  if (opts.previous && opts.previous.board === spec.board) {
+    const bp = opts.previous.parts.find((p) => partDef(p.type).category === 'board');
+    for (const w of opts.previous.wires) {
+      if (bp && w.b.part === bp.id) b.prevWiring.set(`${w.a.part}:${w.a.pin}`, w.b.pin);
+      else if (bp && w.a.part === bp.id) b.prevWiring.set(`${w.b.part}:${w.b.pin}`, w.a.pin);
+    }
+  }
   // Group order: inputs first so buttons get the nicest pins, analog before generic I/O.
   const order: FeatureKind[] = ['internet', 'epaper', 'oled', 'lcd', 'mpu6050', 'pot', 'ldr', 'ntc', 'soil', 'dht22', 'hcsr04', 'pir', 'button', 'switch', 'buzzer', 'servo', 'neopixel', 'rgb', 'led', 'relay', 'astable555', 'transistor-led'];
   const sorted = [...spec.features].sort((x, y) => order.indexOf(x.kind) - order.indexOf(y.kind));
@@ -620,11 +670,40 @@ export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: s
   if (Object.keys(b.fixed).length) project.parts = project.parts.map((p) => (b.fixed[p.id] ? { ...p, x: b.fixed[p.id][0], y: b.fixed[p.id][1] } : p));
   if (opts.previous) {
     const prevPos = new Map(opts.previous.parts.map((p) => [p.id, p]));
+    const kept = new Set<string>();
     project.parts = project.parts.map((p) => {
       const q = prevPos.get(p.id);
-      return q && q.type === p.type ? { ...p, x: q.x, y: q.y } : p;
+      if (q && q.type === p.type) {
+        kept.add(p.id);
+        return { ...p, x: q.x, y: q.y };
+      }
+      return p;
     });
+    // New parts go in a free column to the right of everything the user already arranged.
+    const fresh = project.parts.filter((p) => !kept.has(p.id));
+    if (fresh.length && kept.size) {
+      const placed = project.parts.filter((p) => kept.has(p.id));
+      const right = Math.max(...placed.map((p) => p.x + partSize(p.type)[0])) + 70;
+      let y = Math.min(...placed.map((p) => p.y));
+      const byGroup = b.groups.filter((g) => g.parts.some((id) => fresh.some((f) => f.id === id)));
+      const pos = new Map<string, [number, number]>();
+      for (const g of byGroup) {
+        let x = right;
+        let h = 0;
+        for (const id of g.parts) {
+          const part = project.parts.find((p) => p.id === id)!;
+          if (kept.has(id)) continue;
+          const [w, ph] = partSize(part.type);
+          pos.set(id, [x, y]);
+          x += w + 24;
+          h = Math.max(h, ph);
+        }
+        y += h + 48;
+      }
+      project.parts = project.parts.map((p) => (pos.has(p.id) ? { ...p, x: pos.get(p.id)![0], y: pos.get(p.id)![1] } : p));
+    }
   }
+  if (b.rejected.length) project.notes.push(...b.rejected);
   project.notes.unshift(...pinNotes(project));
   if (spec.note) project.notes.unshift(spec.note);
   const files = generateFiles(project);
@@ -660,7 +739,21 @@ export function projectName(spec: DesignSpec): string {
   const display = k.has('oled') || k.has('lcd');
   const leds = spec.features.filter((f) => f.kind === 'led');
   let n = '';
-  if (k.has('internet') && k.has('epaper')) n = 'E-ink Weather Display';
+  const words = (spec.title ?? '').toLowerCase();
+  const named: [RegExp, string][] = [
+    [/\bsimon|memory game/, 'Memory Game'],
+    [/\breaction/, 'Reaction Game'],
+    [/\bdice|\bdie\b/, 'Dice'],
+    [/\bgame\b/, 'Game'],
+    [/step counter|pedometer/, 'Step Counter'],
+    [/doorbell/, 'Doorbell'],
+    [/alarm clock/, 'Alarm Clock'],
+    [/\blogger|data log/, 'Data Logger'],
+    [/\bmetronome/, 'Metronome'],
+  ];
+  const hit = named.find(([re]) => re.test(words));
+  if (hit) n = hit[1];
+  else if (k.has('internet') && k.has('epaper')) n = 'E-ink Weather Display';
   else if (k.has('internet') && (spec.features.find((f) => f.kind === 'internet')?.props?.service ?? '').startsWith('time')) n = 'Internet Clock';
   else if (k.has('internet')) n = display ? 'Weather Dashboard' : 'Weather Fetcher';
   else if (k.has('epaper')) n = 'E-ink Display';
@@ -720,6 +813,21 @@ export function editSpec(spec: DesignSpec, instruction: string): EditResult {
       next.board = nb;
       msgs.push(`Switched the board to ${BOARDS[nb as Exclude<BoardId, 'none'>].name} and re-assigned every pin.`);
     }
+  }
+  // "move button A to GPIO 14" / "put the buzzer on GP15"
+  const mv = /\b(move|put|connect|wire)\b(.+?)\b(to|on|onto)\s+(?:pin\s*)?(gpio|gp|io|d)?\s*(\d{1,2})\b/.exec(t);
+  if (mv && spec.board !== 'none') {
+    const board = BOARDS[next.board as Exclude<BoardId, 'none'>];
+    const target = board.pins.find((p) => p.gpio === Number(mv[5]));
+    const what = mv[2].trim();
+    const byLabel = next.features.find((f) => f.label && what.includes(f.label.toLowerCase()));
+    const kind = parseIntent(what).features.find((f) => f.kind !== 'led' || /\b(led|light)/.test(what))?.kind;
+    const idx = byLabel ? next.features.indexOf(byLabel) : next.features.findIndex((f) => f.kind === kind);
+    if (!target) return { spec, changed: false, message: `The ${board.name} has no GPIO${mv[5]}.` };
+    if (idx < 0) return { spec, changed: false, message: `I couldn't tell which part to move. Try “move button A to GPIO ${mv[5]}”.` };
+    next.features[idx] = { ...next.features[idx], pins: { pin: target.name } };
+    const f = next.features[idx];
+    return { spec: next, changed: true, message: `Moved the ${(f.label ?? LABELS[f.kind]).toLowerCase()} to ${target.name} (GPIO${target.gpio}).${target.caution ? ` Note: ${target.caution}` : ''}` };
   }
   const removing = /\b(remove|delete|drop|without|get rid of|no more)\b/.test(t);
   const adding = /\b(add|plus|also|include|another|more|with|attach|put)\b/.test(t);

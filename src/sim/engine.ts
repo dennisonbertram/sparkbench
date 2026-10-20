@@ -5,7 +5,7 @@ import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
 import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, type I2CDevice } from './devices';
-import { SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, bootstrapPy } from './pyshims';
+import { SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
 export class SimStop extends Error {
   constructor(public reason: 'user' | 'time' | 'reset') {
@@ -44,6 +44,7 @@ export interface PartVisual {
   angle?: number;
   tone?: number;
   relay?: boolean;
+  spin?: number; // motor speed 0..1
   powered?: boolean;
 }
 
@@ -686,6 +687,11 @@ export class SimEngine {
         case 'servo':
           v.angle = this.servos.get(part.id) ?? 90;
           break;
+        case 'dc-motor': {
+          const volts = Math.abs(m.pinVoltage(part.id, '+') - m.pinVoltage(part.id, '-'));
+          v.spin = Math.min(1, Math.max(0, (volts - 1) / 4));
+          break;
+        }
         case 'buzzer':
           v.tone = this.tones.get(part.id) ?? 0;
           break;
@@ -799,7 +805,7 @@ export class SimEngine {
       mp.FS.mkdir('/project');
     } catch {}
     const lib: Record<string, string> = isPi
-      ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY, 'requests.py': REQUESTS_PY }
+      ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY, 'requests.py': REQUESTS_PY, 'signal.py': SIGNAL_PY }
       : { '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
     for (const [name, src] of Object.entries(lib)) mp.FS.writeFile(`/lib/${name}`, src);
     for (const [name, src] of Object.entries(this.project.files)) mp.FS.writeFile(`/project/${name}`, src);

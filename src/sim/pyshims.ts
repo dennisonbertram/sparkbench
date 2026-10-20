@@ -734,11 +734,25 @@ class InputDevice(Device):
 
 
 _watch = []
+_blinkers = {}
 
 
 def _service():
     for d in _watch:
         d._poll()
+    if _blinkers:
+        now = _time.monotonic()
+        for dev, b in list(_blinkers.items()):
+            dev._blink_step(now, b)
+
+
+def _start_blink(dev, on_time, off_time, n, fade_in=0, fade_out=0, background=True):
+    _blinkers[dev] = {"on": on_time, "off": off_time, "fi": fade_in, "fo": fade_out, "n": n, "t0": _time.monotonic()}
+    if not background:
+        total = (on_time + off_time + fade_in + fade_out) * (n or 1)
+        _time.sleep(total)
+        _blinkers.pop(dev, None)
+        dev._set(0)
 
 
 import _simtime
@@ -788,8 +802,21 @@ class OutputDevice(Device):
 
     @value.setter
     def value(self, v):
+        _blinkers.pop(self, None)
+        self._set(v)
+
+    def _set(self, v):
         self._v = 1 if v else 0
         _hw.pin_write(self.pin, self._v if self.active_high else 1 - self._v)
+
+    def _blink_step(self, now, b):
+        period = b["on"] + b["off"]
+        k = (now - b["t0"]) / period if period > 0 else 0
+        if b["n"] is not None and k >= b["n"]:
+            _blinkers.pop(self, None)
+            self._set(0)
+            return
+        self._set(1 if (k - int(k)) * period < b["on"] else 0)
 
     @property
     def is_active(self):
@@ -805,7 +832,7 @@ class OutputDevice(Device):
         self.value = 0 if self._v else 1
 
     def blink(self, on_time=1, off_time=1, n=None, background=True):
-        self.on()
+        _start_blink(self, on_time, off_time, n, background=background)
 
 
 DigitalOutputDevice = OutputDevice
@@ -819,7 +846,7 @@ class LED(OutputDevice):
 
 class Buzzer(OutputDevice):
     def beep(self, on_time=1, off_time=1, n=None, background=True):
-        self.on()
+        _start_blink(self, on_time, off_time, n, background=background)
 
 
 class PWMOutputDevice(Device):
@@ -838,8 +865,32 @@ class PWMOutputDevice(Device):
 
     @value.setter
     def value(self, v):
+        _blinkers.pop(self, None)
+        self._set(v)
+
+    def _set(self, v):
         self._v = max(0.0, min(1.0, float(v)))
         self._apply()
+
+    def _blink_step(self, now, b):
+        period = b["fi"] + b["on"] + b["fo"] + b["off"]
+        k = (now - b["t0"]) / period if period > 0 else 0
+        if b["n"] is not None and k >= b["n"]:
+            _blinkers.pop(self, None)
+            self._set(0)
+            return
+        t = (k - int(k)) * period
+        if t < b["fi"]:
+            self._set(t / b["fi"])
+        elif t < b["fi"] + b["on"]:
+            self._set(1)
+        elif t < b["fi"] + b["on"] + b["fo"]:
+            self._set(1 - (t - b["fi"] - b["on"]) / b["fo"])
+        else:
+            self._set(0)
+
+    def blink(self, on_time=1, off_time=1, fade_in_time=0, fade_out_time=0, n=None, background=True):
+        _start_blink(self, on_time, off_time, n, fade_in_time, fade_out_time, background)
 
     @property
     def frequency(self):
@@ -863,8 +914,8 @@ class PWMOutputDevice(Device):
     def toggle(self):
         self.value = 1 - self._v
 
-    def pulse(self, *a, **kw):
-        self.value = 0.5
+    def pulse(self, fade_in_time=1, fade_out_time=1, n=None, background=True):
+        _start_blink(self, 0, 0, n, fade_in_time, fade_out_time, background)
 
 
 class PWMLED(PWMOutputDevice):
@@ -1185,6 +1236,22 @@ class NeoPixel:
 
     def deinit(self):
         pass
+`;
+
+export const SIGNAL_PY = `# Simulated signal module: pause() waits forever while gpiozero callbacks keep running.
+import time
+
+SIGINT = 2
+SIGTERM = 15
+
+
+def pause():
+    while True:
+        time.sleep(0.05)
+
+
+def signal(sig, handler):
+    return None
 `;
 
 /** Time module for the Pi (CPython-style API on top of the simulated clock). */

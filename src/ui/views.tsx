@@ -11,6 +11,7 @@ import { CodeEditor } from './CodeEditor';
 import { CodeAssistant } from './CodeAssistant';
 import { download, slug } from './exporters';
 import { generateFiles } from '../core/codegen';
+import { buildNets } from '../core/netlist';
 
 function useTheme(): 'light' | 'dark' {
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches);
@@ -26,16 +27,19 @@ function useTheme(): 'light' | 'dark' {
 export function SchematicView() {
   const project = useStore((s) => s.project)!;
   const hoverNet = useStore((s) => s.hoverNet);
+  const pinnedNet = useStore((s) => s.pinnedNet);
+  const nets = useMemo(() => buildNets(project).nets, [project.parts, project.wires]);
+  const pinnedName = nets.find((n) => n.id === pinnedNet)?.name;
   const aiStatus = useStore((s) => s.aiStatus);
   const theme = useTheme();
   const [kicad, setKicad] = useState<{ svg?: string; erc?: any; error?: string; busy?: boolean } | null>(null);
   const svg = useMemo(() => {
     try {
-      return renderSchematicSvg(project, { theme });
+      return renderSchematicSvg(project, { theme, highlightNet: pinnedName });
     } catch (e: any) {
       return `<p class="err">Could not draw the schematic: ${e.message}</p>`;
     }
-  }, [project.parts, project.wires, project.name, theme]);
+  }, [project.parts, project.wires, project.name, theme, pinnedName]);
   const name = slug(project.name);
   const renderKicad = async () => {
     setKicad({ busy: true });
@@ -75,11 +79,23 @@ export function SchematicView() {
         data-testid="schematic"
         dangerouslySetInnerHTML={{ __html: kicad?.svg ?? svg }}
         onClick={(e) => {
+          const netEl = (e.target as Element).closest('[data-net]');
+          if (netEl) {
+            const net = nets.find((n) => n.name === netEl.getAttribute('data-net'));
+            useStore.getState().set({ pinnedNet: net && net.id !== pinnedNet ? net.id : null });
+            return;
+          }
           const el = (e.target as Element).closest('[data-part]');
           if (el) useStore.getState().select({ kind: 'part', id: el.getAttribute('data-part')! });
         }}
       />
-      <p className="doc-foot">Each wire ends in a <b>net label</b>: pins with the same label are connected. Open the KiCad file in KiCad to lay out a PCB.</p>
+      {pinnedName && (
+        <div className="banner ok net-banner">
+          Net <b>{pinnedName}</b> is highlighted.{' '}
+          <button onClick={() => useStore.getState().setTab('breadboard')}>Show it on the breadboard</button> <button onClick={() => useStore.getState().set({ pinnedNet: null })}>Clear</button>
+        </div>
+      )}
+      <p className="doc-foot">Each wire ends in a <b>net label</b>: pins with the same label are connected. Click a wire or label to highlight that net on the breadboard too. Open the KiCad file in KiCad to lay out a PCB.</p>
     </div>
   );
 }

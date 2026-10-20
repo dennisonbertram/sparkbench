@@ -109,6 +109,8 @@ export interface Project {
   features?: FeatureInstance[];
   /** True once the user (or AI) hand-edited main.py — the planner then won't overwrite it. */
   codeCustom?: boolean;
+  /** What custom (AI-written or curated) firmware does, used by the build guide and blog. */
+  behavior?: { does: string; test?: string; sim?: string }[];
   createdAt: number;
   updatedAt: number;
   version: 1;
@@ -145,6 +147,8 @@ export interface FeatureReq {
   kind: FeatureKind;
   label?: string;
   props?: Record<string, any>;
+  /** Board pin the user asked for, e.g. { pin: 'D14' } ("move the button to GPIO 14"). */
+  pins?: Record<string, string>;
 }
 
 export interface DesignSpec {

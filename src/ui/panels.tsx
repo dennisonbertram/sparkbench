@@ -140,7 +140,14 @@ export function Inspector() {
           </button>
         </header>
         <div className="panel-body">
-          <p className="eli5">{def.eli5}</p>
+          <p className="eli5">
+            <Glossed text={def.eli5} />
+          </p>
+          {def.category !== 'board' && def.category !== 'passive' && project.board !== 'none' && !(project.features ?? []).some((f) => f.parts.includes(part.id)) && !new RegExp(`\\b${part.id}\\b|${part.ref}`).test(project.files['main.py'] ?? '') && (
+            <div className="banner warn">
+              The code doesn't use {part.ref} yet. Wire it to a free pin, then ask the copilot to “use the {def.name.toLowerCase()} I added” (with Claude), or add it in the Code tab.
+            </div>
+          )}
           <p className="muted small">{def.description}</p>
           {running && (def.controls?.length ?? 0) > 0 && (
             <section>
