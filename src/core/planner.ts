@@ -6,6 +6,7 @@ import { defaultProps, partDef } from './parts';
 import { annotate } from './netlist';
 import { autoLayout, partSize, type Group } from './layout';
 import { generateFiles } from './codegen';
+import { customSpec, registerProjectParts } from './customParts';
 
 export class PlanError extends Error {}
 
@@ -715,7 +716,14 @@ function featureKey(kind: FeatureKind, label?: string): string {
 
 /** Build a complete project from a spec. Keeps positions of parts that already existed (same id). */
 export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: string; previous?: Project } = {}): Project {
+  // Datasheet-defined parts the user added by hand survive a re-plan, on the same board pins.
+  registerProjectParts(opts.previous);
+  const prevBoard = opts.previous?.parts.find((p) => partDef(p.type).category === 'board');
+  const keepCustom = opts.previous && opts.previous.board === spec.board ? opts.previous.parts.filter((p) => customSpec(p.type)) : [];
+  const keepIds = new Set(keepCustom.map((p) => p.id));
+  const keepWires = (opts.previous?.wires ?? []).filter((w) => keepIds.has(w.a.part) || keepIds.has(w.b.part));
   const b = new Builder(spec);
+  for (const w of keepWires) for (const r of [w.a, w.b]) if (r.part === prevBoard?.id && b.alloc && !/^(GND|3V3|5V|VIN|VBUS|VSYS)/.test(r.pin)) b.alloc.used.add(r.pin);
   if (opts.previous && opts.previous.board === spec.board) {
     const seen = new Map<string, number>();
     for (const f of opts.previous.features ?? []) {
@@ -758,6 +766,12 @@ export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: s
     updatedAt: now,
     version: 1,
   };
+  if (keepCustom.length && b.boardId) {
+    const remap = (r: PinRef): PinRef => (r.part === prevBoard?.id ? { part: b.boardId!, pin: r.pin } : r);
+    project.parts.push(...keepCustom);
+    project.wires.push(...keepWires.map((w, i) => ({ ...w, id: `wc${i + 1}`, a: remap(w.a), b: remap(w.b) })));
+    project.customParts = opts.previous!.customParts?.filter((s) => keepCustom.some((p) => p.type === s.type));
+  }
   project = annotate(project);
   project = autoLayout(project, b.groups);
   if (Object.keys(b.fixed).length) project.parts = project.parts.map((p) => (b.fixed[p.id] ? { ...p, x: b.fixed[p.id][0], y: b.fixed[p.id][1] } : p));
@@ -805,6 +819,7 @@ export function buildProject(spec: DesignSpec, opts: { name?: string; prompt?: s
     project.codeCustom = true;
     project.notes.push('Your hand-edited main.py was kept. The generated version would have been different — check pin numbers in the wiring table.');
   } else project.files = files;
+  for (const cs of project.customParts ?? []) if (cs.driver && BOARDS[spec.board as 'esp32']?.language === 'micropython') project.files[cs.driver.filename] = cs.driver.code;
   return project;
 }
 

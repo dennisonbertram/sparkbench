@@ -10,6 +10,7 @@ import { BOARDS } from '../src/core/boards';
 import { simulate } from '../src/sim/node-runner';
 import { askJson, backend, MODEL, type Turn } from './llm';
 import { runChecks } from '../src/core/checks';
+import { registerProjectParts } from '../src/core/customParts';
 
 const FEATURE_KINDS = Object.keys(FEATURE_LABELS) as [string, ...string[]];
 
@@ -85,7 +86,21 @@ ${p.files['main.py'] ?? '(none)'}
 \`\`\``;
 }
 
+/** Skills of datasheet-defined parts in the project, so Claude codes against the real datasheet. */
+function partSkills(p: Project): string {
+  const specs = p.customParts ?? [];
+  if (!specs.length) return '';
+  return `\nDatasheet-defined parts in this project (their pins are wired as shown in the wiring list; use their drivers if present):\n${specs
+    .map((s) => {
+      const part = p.parts.find((x) => x.type === s.type);
+      const wires = p.wires.filter((w) => w.a.part === part?.id || w.b.part === part?.id).map((w) => (w.a.part === part?.id ? `${w.a.pin}→${w.b.pin}` : `${w.b.pin}→${w.a.pin}`));
+      return `### ${s.name} (${s.mpn}) — ${part?.ref ?? ''} wired ${wires.join(', ')}${s.driver ? `; driver file ${s.driver.filename}` : ''}\n${(s.skill ?? s.description).slice(0, 7000)}`;
+    })
+    .join('\n\n')}\n`;
+}
+
 export async function aiDesign(prompt: string, current?: Project, history: Turn[] = []): Promise<AiDesignResult> {
+  registerProjectParts(current);
   const log: string[] = [];
   const d = await askJson(SYSTEM, [...history.slice(-6), { role: 'user', content: `${projectContext(current)}\n\nRequest: ${prompt}` }], DesignSchema);
   log.push(`Claude: intent=${d.intent}, board=${d.board}, ${d.features.length} part groups.`);
@@ -164,6 +179,7 @@ export interface AiCodeResult {
  * If it crashes, show Claude the traceback and let it repair (two rounds max).
  */
 export async function aiEditFile(project: Project, file: string, instruction: string, opts: { error?: string; selection?: string } = {}): Promise<AiCodeResult> {
+  registerProjectParts(project);
   const log: string[] = [];
   const board = project.board === 'none' ? null : BOARDS[project.board];
   const wiring = (project.features ?? []).map((f) => ({ label: f.label, kind: f.kind, gpio: f.gpio, mcpChannel: f.mcpChannel }));
@@ -175,7 +191,7 @@ export async function aiEditFile(project: Project, file: string, instruction: st
     {
       role: 'user',
       content: `Project: ${project.name} on ${board?.name ?? 'no microcontroller'} (${board?.language === 'python' ? 'Python 3 + gpiozero' : 'MicroPython'}).
-Wiring (feature → GPIO numbers): ${JSON.stringify(wiring)}
+Wiring (feature → GPIO numbers): ${JSON.stringify(wiring)}${partSkills(project)}
 ${others ? `Other project files:\n${others}\n` : ''}
 File to edit: ${file}
 \`\`\`python

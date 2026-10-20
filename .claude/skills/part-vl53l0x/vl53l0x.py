@@ -1,0 +1,157 @@
+# Minimal MicroPython driver for the ST VL53L0X time-of-flight sensor.
+# ST does not publish a register map (it ships a C API). This init sequence
+# follows the widely used Pololu port of that API.
+import time
+from micropython import const
+
+_SYSRANGE_START = const(0x00)
+_SYS_SEQ_CONFIG = const(0x01)
+_SYS_INT_CONFIG_GPIO = const(0x0A)
+_SYS_INT_CLEAR = const(0x0B)
+_RESULT_INT_STATUS = const(0x13)
+_RESULT_RANGE = const(0x1E)   # RESULT_RANGE_STATUS (0x14) + 10
+_MSRC_CONFIG = const(0x60)
+_SIG_RATE_LIMIT = const(0x44)
+_GPIO_HV_MUX = const(0x84)
+_VHV_PAD = const(0x89)
+_SPAD_REF_0 = const(0xB0)
+_ID_MODEL = const(0xC0)
+_I2C_ADDR_REG = const(0x8A)
+
+_TUNING = bytes((
+ 0xFF,0x01, 0x00,0x00, 0xFF,0x00, 0x09,0x00, 0x10,0x00, 0x11,0x00,
+ 0x24,0x01, 0x25,0xFF, 0x75,0x00, 0xFF,0x01, 0x4E,0x2C, 0x48,0x00,
+ 0x30,0x20, 0xFF,0x00, 0x30,0x09, 0x54,0x00, 0x31,0x04, 0x32,0x03,
+ 0x40,0x83, 0x46,0x25, 0x60,0x00, 0x27,0x00, 0x50,0x06, 0x51,0x00,
+ 0x52,0x96, 0x56,0x08, 0x57,0x30, 0x61,0x00, 0x62,0x00, 0x64,0x00,
+ 0x65,0x00, 0x66,0xA0, 0xFF,0x01, 0x22,0x32, 0x47,0x14, 0x49,0xFF,
+ 0x4A,0x00, 0xFF,0x00, 0x7A,0x0A, 0x7B,0x00, 0x78,0x21, 0xFF,0x01,
+ 0x23,0x34, 0x42,0x00, 0x44,0xFF, 0x45,0x26, 0x46,0x05, 0x40,0x40,
+ 0x0E,0x06, 0x20,0x1A, 0x43,0x40, 0xFF,0x00, 0x34,0x03, 0x35,0x44,
+ 0xFF,0x01, 0x31,0x04, 0x4B,0x09, 0x4C,0x05, 0x4D,0x04, 0xFF,0x00,
+ 0x44,0x00, 0x45,0x20, 0x47,0x08, 0x48,0x28, 0x67,0x00, 0x70,0x04,
+ 0x71,0x01, 0x72,0xFE, 0x76,0x00, 0x77,0x00, 0xFF,0x01, 0x0D,0x01,
+ 0xFF,0x00, 0x80,0x01, 0x01,0xF8, 0xFF,0x01, 0x8E,0x01, 0x00,0x01,
+ 0xFF,0x00, 0x80,0x00))
+
+
+class VL53L0X:
+    def __init__(self, i2c, address=0x29, io_2v8=True, timeout_ms=500):
+        self.i2c = i2c
+        self.addr = address
+        self.timeout_ms = timeout_ms
+        if bytes(self._rn(_ID_MODEL, 1)) != b'\xee':
+            raise OSError('VL53L0X not found (ID reg 0xC0 != 0xEE)')
+        self._init(io_2v8)
+
+    # ---- low level ----
+    def _w(self, reg, val):
+        self.i2c.writeto_mem(self.addr, reg, bytes((val & 0xFF,)))
+
+    def _r(self, reg):
+        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]
+
+    def _rn(self, reg, n):
+        return self.i2c.readfrom_mem(self.addr, reg, n)
+
+    def _r16(self, reg):
+        b = self._rn(reg, 2)
+        return (b[0] << 8) | b[1]
+
+    def _w16(self, reg, val):
+        self.i2c.writeto_mem(self.addr, reg, bytes(((val >> 8) & 0xFF, val & 0xFF)))
+
+    def _wait(self, cond):
+        t0 = time.ticks_ms()
+        while not cond():
+            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:
+                raise OSError('VL53L0X timeout')
+
+    # ---- init ----
+    def _init(self, io_2v8):
+        w, r = self._w, self._r
+        if io_2v8:
+            w(_VHV_PAD, r(_VHV_PAD) | 0x01)
+        w(0x88, 0x00)  # I2C standard mode
+        w(0x80, 0x01); w(0xFF, 0x01); w(0x00, 0x00)
+        self._stop = r(0x91)
+        w(0x00, 0x01); w(0xFF, 0x00); w(0x80, 0x00)
+        w(_MSRC_CONFIG, r(_MSRC_CONFIG) | 0x12)
+        self._w16(_SIG_RATE_LIMIT, int(0.25 * 128))  # 0.25 MCPS, Q9.7
+        w(_SYS_SEQ_CONFIG, 0xFF)
+        # SPAD info
+        w(0x80, 0x01); w(0xFF, 0x01); w(0x00, 0x00)
+        w(0xFF, 0x06); w(0x83, r(0x83) | 0x04); w(0xFF, 0x07); w(0x81, 0x01)
+        w(0x80, 0x01); w(0x94, 0x6B); w(0x83, 0x00)
+        self._wait(lambda: r(0x83) != 0x00)
+        w(0x83, 0x01)
+        tmp = r(0x92)
+        count = tmp & 0x7F
+        aperture = (tmp >> 7) & 0x01
+        w(0x81, 0x00); w(0xFF, 0x06); w(0x83, r(0x83) & ~0x04)
+        w(0xFF, 0x01); w(0x00, 0x01); w(0xFF, 0x00); w(0x80, 0x00)
+        # reference SPAD map
+        ref = bytearray(self._rn(_SPAD_REF_0, 6))
+        w(0xFF, 0x01); w(0x4F, 0x00); w(0x4E, 0x2C); w(0xFF, 0x00); w(0xB6, 0xB4)
+        first = 12 if aperture else 0
+        enabled = 0
+        for i in range(48):
+            if i < first or enabled == count:
+                ref[i // 8] &= ~(1 << (i % 8))
+            elif (ref[i // 8] >> (i % 8)) & 1:
+                enabled += 1
+        self.i2c.writeto_mem(self.addr, _SPAD_REF_0, ref)
+        # default tuning
+        for i in range(0, len(_TUNING), 2):
+            w(_TUNING[i], _TUNING[i + 1])
+        # interrupt: new sample ready, active low
+        w(_SYS_INT_CONFIG_GPIO, 0x04)
+        w(_GPIO_HV_MUX, r(_GPIO_HV_MUX) & ~0x10)
+        w(_SYS_INT_CLEAR, 0x01)
+        w(_SYS_SEQ_CONFIG, 0xE8)
+        # reference calibrations
+        w(_SYS_SEQ_CONFIG, 0x01); self._ref_cal(0x40)
+        w(_SYS_SEQ_CONFIG, 0x02); self._ref_cal(0x00)
+        w(_SYS_SEQ_CONFIG, 0xE8)
+
+    def _ref_cal(self, vhv):
+        self._w(_SYSRANGE_START, 0x01 | vhv)
+        self._wait(lambda: self._r(_RESULT_INT_STATUS) & 0x07)
+        self._w(_SYS_INT_CLEAR, 0x01)
+        self._w(_SYSRANGE_START, 0x00)
+
+    def _restore_stop(self):
+        w = self._w
+        w(0x80, 0x01); w(0xFF, 0x01); w(0x00, 0x00)
+        w(0x91, self._stop)
+        w(0x00, 0x01); w(0xFF, 0x00); w(0x80, 0x00)
+
+    # ---- public API ----
+    def read(self):
+        """Single-shot measurement. Returns distance in mm (8190/8191 = out of range)."""
+        self._restore_stop()
+        self._w(_SYSRANGE_START, 0x01)
+        self._wait(lambda: not (self._r(_SYSRANGE_START) & 0x01))
+        return self._read_result()
+
+    def _read_result(self):
+        self._wait(lambda: self._r(_RESULT_INT_STATUS) & 0x07)
+        mm = self._r16(_RESULT_RANGE)
+        self._w(_SYS_INT_CLEAR, 0x01)
+        return mm
+
+    def start_continuous(self):
+        self._restore_stop()
+        self._w(_SYSRANGE_START, 0x02)  # back-to-back mode
+
+    def read_continuous(self):
+        return self._read_result()
+
+    def stop_continuous(self):
+        w = self._w
+        w(_SYSRANGE_START, 0x01)
+        w(0xFF, 0x01); w(0x00, 0x00); w(0x91, 0x00); w(0x00, 0x01); w(0xFF, 0x00)
+
+    def set_address(self, new_addr):
+        self._w(_I2C_ADDR_REG, new_addr & 0x7F)
+        self.addr = new_addr

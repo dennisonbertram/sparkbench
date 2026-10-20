@@ -1,0 +1,103 @@
+{
+  "type": "custom-vl53l0x",
+  "name": "VL53L0X time-of-flight laser distance sensor",
+  "mpn": "VL53L0X",
+  "category": "sensor",
+  "description": "ST time-of-flight sensor that uses a 940 nm VCSEL laser to measure absolute distance up to about 2 m, read over I2C (up to 400 kHz) at address 0x29. The bare chip runs from 2.6–3.5 V. Common breakouts have a regulator, so they take 2.6–5 V on VIN. Sold as: GY-530 / GY-VL53L0XV2 breakout (6-pin: VIN, GND, SCL, SDA, GPIO1, XSHUT) with on-board 2.8 V regulator and level shifting.",
+  "eli5": "It fires a tiny invisible laser and times how long the light takes to bounce back, which tells you how far away something is in millimetres.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply input, 2.6–5 V on regulated breakouts (3.3 V recommended)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (the breakout has pull-ups)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (the breakout has pull-ups)",
+      "required": true
+    },
+    {
+      "name": "GPIO1",
+      "role": "io",
+      "fn": "irq",
+      "description": "Open-drain interrupt output that goes active-low when a measurement is ready",
+      "required": false
+    },
+    {
+      "name": "XSHUT",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Shutdown input, active low. It is pulled up on the board. Drive it low to hold the sensor in hardware standby, which lets you give several sensors different addresses",
+      "required": false
+    }
+  ],
+  "vmin": 2.6,
+  "vmax": 5,
+  "currentMa": 19,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vl53l0x.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "VL53L0X GY-530 time of flight distance sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Peel off the protective film (often yellow or orange) over the optical window before using the sensor. If you leave it on, readings will be wrong.",
+    "Every VL53L0X starts at address 0x29. To use several on one bus, hold each one's XSHUT low, release them one at a time and write a new address to register 0x8A.",
+    "Readings of 8190 or 8191 mm mean the sensor saw no target or is out of range. Expect about 1.2 m indoors in default mode and less in sunlight.",
+    "Ranging draws peaks of about 19 mA or more. Put a 10 µF capacitor near VIN if your supply is long or noisy.",
+    "Keep fingerprints and dust off the window. A cover glass needs a crosstalk calibration."
+  ],
+  "keywords": [
+    "vl53l0x",
+    "vl53l0x",
+    "time",
+    "flight",
+    "laser",
+    "distance",
+    "sensor"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 30,
+    "max": 2000,
+    "default": 500,
+    "registers": {
+      "0xc0": 238,
+      "0xc1": 170,
+      "0xc2": 16
+    },
+    "measure": {
+      "reg": "0x1e",
+      "bytes": 2,
+      "scale": 1,
+      "offset": 0,
+      "signed": false,
+      "littleEndian": false,
+      "shift": 0
+    }
+  },
+  "driver": {
+    "filename": "vl53l0x.py",
+    "code": "# Minimal MicroPython driver for the ST VL53L0X time-of-flight sensor.\n# ST does not publish a register map (it ships a C API). This init sequence\n# follows the widely used Pololu port of that API.\nimport time\nfrom micropython import const\n\n_SYSRANGE_START = const(0x00)\n_SYS_SEQ_CONFIG = const(0x01)\n_SYS_INT_CONFIG_GPIO = const(0x0A)\n_SYS_INT_CLEAR = const(0x0B)\n_RESULT_INT_STATUS = const(0x13)\n_RESULT_RANGE = const(0x1E)   # RESULT_RANGE_STATUS (0x14) + 10\n_MSRC_CONFIG = const(0x60)\n_SIG_RATE_LIMIT = const(0x44)\n_GPIO_HV_MUX = const(0x84)\n_VHV_PAD = const(0x89)\n_SPAD_REF_0 = const(0xB0)\n_ID_MODEL = const(0xC0)\n_I2C_ADDR_REG = const(0x8A)\n\n_TUNING = bytes((\n 0xFF,0x01, 0x00,0x00, 0xFF,0x00, 0x09,0x00, 0x10,0x00, 0x11,0x00,\n 0x24,0x01, 0x25,0xFF, 0x75,0x00, 0xFF,0x01, 0x4E,0x2C, 0x48,0x00,\n 0x30,0x20, 0xFF,0x00, 0x30,0x09, 0x54,0x00, 0x31,0x04, 0x32,0x03,\n 0x40,0x83, 0x46,0x25, 0x60,0x00, 0x27,0x00, 0x50,0x06, 0x51,0x00,\n 0x52,0x96, 0x56,0x08, 0x57,0x30, 0x61,0x00, 0x62,0x00, 0x64,0x00,\n 0x65,0x00, 0x66,0xA0, 0xFF,0x01, 0x22,0x32, 0x47,0x14, 0x49,0xFF,\n 0x4A,0x00, 0xFF,0x00, 0x7A,0x0A, 0x7B,0x00, 0x78,0x21, 0xFF,0x01,\n 0x23,0x34, 0x42,0x00, 0x44,0xFF, 0x45,0x26, 0x46,0x05, 0x40,0x40,\n 0x0E,0x06, 0x20,0x1A, 0x43,0x40, 0xFF,0x00, 0x34,0x03, 0x35,0x44,\n 0xFF,0x01, 0x31,0x04, 0x4B,0x09, 0x4C,0x05, 0x4D,0x04, 0xFF,0x00,\n 0x44,0x00, 0x45,0x20, 0x47,0x08, 0x48,0x28, 0x67,0x00, 0x70,0x04,\n 0x71,0x01, 0x72,0xFE, 0x76,0x00, 0x77,0x00, 0xFF,0x01, 0x0D,0x01,\n 0xFF,0x00, 0x80,0x01, 0x01,0xF8, 0xFF,0x01, 0x8E,0x01, 0x00,0x01,\n 0xFF,0x00, 0x80,0x00))\n\n\nclass VL53L0X:\n    def __init__(self, i2c, address=0x29, io_2v8=True, timeout_ms=500):\n        self.i2c = i2c\n        self.addr = address\n        self.timeout_ms = timeout_ms\n        if bytes(self._rn(_ID_MODEL, 1)) != b'\\xee':\n            raise OSError('VL53L0X not found (ID reg 0xC0 != 0xEE)')\n        self._init(io_2v8)\n\n    # ---- low level ----\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes((val & 0xFF,)))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _rn(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _r16(self, reg):\n        b = self._rn(reg, 2)\n        return (b[0] << 8) | b[1]\n\n    def _w16(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes(((val >> 8) & 0xFF, val & 0xFF)))\n\n    def _wait(self, cond):\n        t0 = time.ticks_ms()\n        while not cond():\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('VL53L0X timeout')\n\n    # ---- init ----\n    def _init(self, io_2v8):\n        w, r = self._w, self._r\n        if io_2v8:\n            w(_VHV_PAD, r(_VHV_PAD) | 0x01)\n        w(0x88, 0x00)  # I2C standard mode\n        w(0x80, 0x01); w(0xFF, 0x01); w(0x00, 0x00)\n        self._stop = r(0x91)\n        w(0x00, 0x01); w(0xFF, 0x00); w(0x80, 0x00)\n        w(_MSRC_CONFIG, r(_MSRC_CONFIG) | 0x12)\n        self._w16(_SIG_RATE_LIMIT, int(0.25 * 128))  # 0.25 MCPS, Q9.7\n        w(_SYS_SEQ_CONFIG, 0xFF)\n        # SPAD info\n        w(0x80, 0x01); w(0xFF, 0x01); w(0x00, 0x00)\n        w(0xFF, 0x06); w(0x83, r(0x83) | 0x04); w(0xFF, 0x07); w(0x81, 0x01)\n        w(0x80, 0x01); w(0x94, 0x6B); w(0x83, 0x00)\n        self._wait(lambda: r(0x83) != 0x00)\n        w(0x83, 0x01)\n        tmp = r(0x92)\n        count = tmp & 0x7F\n        aperture = (tmp >> 7) & 0x01\n        w(0x81, 0x00); w(0xFF, 0x06); w(0x83, r(0x83) & ~0x04)\n        w(0xFF, 0x01); w(0x00, 0x01); w(0xFF, 0x00); w(0x80, 0x00)\n        # reference SPAD map\n        ref = bytearray(self._rn(_SPAD_REF_0, 6))\n        w(0xFF, 0x01); w(0x4F, 0x00); w(0x4E, 0x2C); w(0xFF, 0x00); w(0xB6, 0xB4)\n        first = 12 if aperture else 0\n        enabled = 0\n        for i in range(48):\n            if i < first or enabled == count:\n                ref[i // 8] &= ~(1 << (i % 8))\n            elif (ref[i // 8] >> (i % 8)) & 1:\n                enabled += 1\n        self.i2c.writeto_mem(self.addr, _SPAD_REF_0, ref)\n        # default tuning\n        for i in range(0, len(_TUNING), 2):\n            w(_TUNING[i], _TUNING[i + 1])\n        # interrupt: new sample ready, active low\n        w(_SYS_INT_CONFIG_GPIO, 0x04)\n        w(_GPIO_HV_MUX, r(_GPIO_HV_MUX) & ~0x10)\n        w(_SYS_INT_CLEAR, 0x01)\n        w(_SYS_SEQ_CONFIG, 0xE8)\n        # reference calibrations\n        w(_SYS_SEQ_CONFIG, 0x01); self._ref_cal(0x40)\n        w(_SYS_SEQ_CONFIG, 0x02); self._ref_cal(0x00)\n        w(_SYS_SEQ_CONFIG, 0xE8)\n\n    def _ref_cal(self, vhv):\n        self._w(_SYSRANGE_START, 0x01 | vhv)\n        self._wait(lambda: self._r(_RESULT_INT_STATUS) & 0x07)\n        self._w(_SYS_INT_CLEAR, 0x01)\n        self._w(_SYSRANGE_START, 0x00)\n\n    def _restore_stop(self):\n        w = self._w\n        w(0x80, 0x01); w(0xFF, 0x01); w(0x00, 0x00)\n        w(0x91, self._stop)\n        w(0x00, 0x01); w(0xFF, 0x00); w(0x80, 0x00)\n\n    # ---- public API ----\n    def read(self):\n        \"\"\"Single-shot measurement. Returns distance in mm (8190/8191 = out of range).\"\"\"\n        self._restore_stop()\n        self._w(_SYSRANGE_START, 0x01)\n        self._wait(lambda: not (self._r(_SYSRANGE_START) & 0x01))\n        return self._read_result()\n\n    def _read_result(self):\n        self._wait(lambda: self._r(_RESULT_INT_STATUS) & 0x07)\n        mm = self._r16(_RESULT_RANGE)\n        self._w(_SYS_INT_CLEAR, 0x01)\n        return mm\n\n    def start_continuous(self):\n        self._restore_stop()\n        self._w(_SYSRANGE_START, 0x02)  # back-to-back mode\n\n    def read_continuous(self):\n        return self._read_result()\n\n    def stop_continuous(self):\n        w = self._w\n        w(_SYSRANGE_START, 0x01)\n        w(0xFF, 0x01); w(0x00, 0x00); w(0x91, 0x00); w(0x00, 0x01); w(0xFF, 0x00)\n\n    def set_address(self, new_addr):\n        self._w(_I2C_ADDR_REG, new_addr & 0x7F)\n        self.addr = new_addr\n"
+  },
+  "skill": "---\nname: part-vl53l0x\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the VL53L0X time-of-flight laser distance sensor (VL53L0X). Use when designing, wiring, simulating or writing code for a VL53L0X in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# VL53L0X time-of-flight laser distance sensor (VL53L0X)\n\n## Overview\nThe **VL53L0X** from STMicroelectronics is a FlightSense time-of-flight ranging sensor. It sends out 940 nm infrared laser pulses (Class 1, eye-safe) and times how long the reflections take to come back. This gives an absolute distance in millimetres, and the result does not depend on the target's colour or reflectance.\n- Typical range: up to about 1.2 m in default mode and about 2 m in long-range mode, depending on lighting and the target.\n- Each measurement takes about 30 ms with the default timing budget.\n- Hobbyists usually buy it on the **GY-530 / GY-VL53L0XV2** breakout (Pololu and Adafruit make similar boards). These boards have a 2.8 V LDO, I2C level shifting and pull-ups.\n\n## Pinout (GY-530 breakout)\n| Pin | Function |\n|---|---|\n| VIN | 2.6–5 V supply (3.3 V recommended) |\n| GND | Ground |\n| SCL | I2C clock |\n| SDA | I2C data |\n| GPIO1 | Interrupt output, open-drain, active-low when data is ready |\n| XSHUT | Shutdown input, active-low, pulled up on the board |\n\n## Electrical limits\n- Bare chip AVDD: 2.6–3.5 V (datasheet). Breakout VIN: about 2.6–5 V through the on-board regulator.\n- Current: about 19 mA on average while ranging and about 5 µA in hardware standby (XSHUT low). Peak current is higher, so add a 10 µF bulk capacitor.\n- I2C: up to 400 kHz.\n- Operating temperature: −20 to +70 °C.\n\n## Interface details\n- **I2C address: 0x29** (7-bit; the datasheet gives 0x52 as the 8-bit write address). You can change it in software through register **0x8A**, but the change is lost at power-down.\n- Identification registers: **0xC0 = 0xEE** (model ID), 0xC1 = 0xAA, 0xC2 = 0x10.\n- ST does **not** publish a full register map. The official driver is the C \"VL53L0X API\" (STSW-IMG005). The driver here follows the open-source Pololu port of that API. Registers it uses:\n  - 0x00 SYSRANGE_START: 0x01 = single shot, 0x02 = continuous.\n  - 0x13 RESULT_INTERRUPT_STATUS: bits 2:0 are non-zero when data is ready.\n  - 0x1E (RESULT_RANGE_STATUS + 10): 16-bit big-endian range in mm.\n  - 0x0B SYSTEM_INTERRUPT_CLEAR: write 0x01 after reading.\n  - 0x44: signal rate limit, 16-bit value in Q9.7 format (default 0.25 MCPS).\n- Out-of-range readings return **8190 or 8191**.\n\n## Wiring\n| Breakout | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VIN | 3V3 | 3V3(OUT) pin 36 | 3.3 V pin 1 |\n| GND | GND | GND pin 38 | GND pin 6 |\n| SDA | GPIO21 | GP4 (pin 6) | GPIO2 SDA pin 3 |\n| SCL | GPIO22 | GP5 (pin 7) | GPIO3 SCL pin 5 |\n| XSHUT | optional GPIO | optional GPIO | optional GPIO |\n| GPIO1 | optional GPIO (IRQ) | optional GPIO | optional GPIO |\n\nOn the Raspberry Pi 4 with Linux, use the `adafruit-circuitpython-vl53l0x` library instead of the MicroPython driver.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nimport time\nfrom vl53l0x import VL53L0X\n\ni2c = I2C(0, sda=Pin(4), scl=Pin(5), freq=400000)   # Pico\ntof = VL53L0X(i2c)\nwhile True:\n    mm = tof.read()\n    print('out of range' if mm >= 8190 else '%d mm' % mm)\n    time.sleep_ms(100)\n```\nFor faster streaming, call `tof.start_continuous()` once and then call `tof.read_continuous()` in a loop.\n\n**Several sensors on one bus:**\n1. Hold all XSHUT pins low.\n2. Release one sensor, create a `VL53L0X(i2c)` object for it and call `set_address(0x30)`.\n3. Release the next sensor and give it a different address. Repeat for the rest.\n\n## Gotchas\n- **Remove the protective film** from the sensor window before use.\n- The address resets to 0x29 on every power cycle or XSHUT reset.\n- This simplified driver keeps the default timing budget (about 33 ms) and does not do offset or crosstalk calibration. Expect accuracy of a few percent, with the worst results on very close targets (under 3 cm) or very dark ones.\n- Strong sunlight or infrared light shortens the range a lot.\n- The field of view is about 25°, so a wide cone may \"see\" the table or nearby walls.\n- If you use the bare chip without a regulator, never give it more than 3.5 V.\n- `io_2v8=True` sets the chip's I/O to 2.8 V mode, which matches typical breakouts. Use False only if you drive the bare chip's I/O at 1.8 V.\n\n## Datasheet\nhttps://www.st.com/resource/en/datasheet/vl53l0x.pdf\n\nThe datasheet would not load, so all values come from memory, not from reading the PDF. Values to check against it before relying on them: supply voltages, current draw, address and ID registers, range, field of view and temperature range. Register details are not in the datasheet and come from the ST API / Pololu port.\n\n---\n*Generated by Sparkbench from the datasheet: https://www.st.com/resource/en/datasheet/vl53l0x.pdf. Machine-readable definition: `part.json`; driver: `vl53l0x.py`.*\n"
+}

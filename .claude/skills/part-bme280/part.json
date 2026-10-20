@@ -1,0 +1,77 @@
+{
+  "type": "custom-bme280",
+  "name": "BME280 temperature/humidity/pressure sensor",
+  "mpn": "BME280",
+  "category": "sensor",
+  "description": "Bosch digital sensor that measures temperature (-40 to +85 °C), relative humidity (0–100 %) and air pressure (300–1100 hPa). It talks over I2C (up to 3.4 MHz) or SPI (up to 10 MHz). The bare chip runs on 1.71–3.6 V. Sold as: GY-BME280 breakout (4-pin: VIN, GND, SCL, SDA), I2C address 0x76.",
+  "eli5": "A tiny weather station on a chip: it tells your board how hot, how humid and how high the air pressure is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply. Use 3.3 V. Some GY boards have a regulator and accept 5 V, but treat it as 3.3 V-only unless your board clearly has a regulator.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SCK on SPI). Most breakouts have pull-ups already fitted.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SDI on SPI). Most breakouts have pull-ups already fitted.",
+      "required": true
+    }
+  ],
+  "vmin": 1.71,
+  "vmax": 3.6,
+  "currentMa": 0.7,
+  "i2cAddress": 118,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "GY-BME280 I2C temperature humidity pressure sensor module 3.3V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the chip ID: register 0xD0 must read 0x60 on a BME280. If it reads 0x58, you have a cheaper BMP280, which has no humidity sensor.",
+    "The I2C address is 0x76 when SDO is tied to GND (most GY boards) and 0x77 when SDO is tied to VDDIO (Adafruit and SparkFun boards). If 0x76 doesn't answer, try 0x77.",
+    "Write ctrl_hum (0xF2) before ctrl_meas (0xF4). A new humidity setting only takes effect after a write to ctrl_meas.",
+    "Use forced mode, with one measurement and then sleep, so the sensor doesn't heat itself and read high. Keep it away from voltage regulators and the MCU.",
+    "Raw readings mean nothing until you apply the factory calibration constants from 0x88–0xA1 and 0xE1–0xE7."
+  ],
+  "keywords": [
+    "bme280",
+    "bme280",
+    "temperature",
+    "humidity",
+    "pressure",
+    "sensor"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "registers": {
+      "0xd0": 96
+    }
+  },
+  "driver": {
+    "filename": "bme280.py",
+    "code": "# MicroPython driver for Bosch BME280 (I2C)\n# Written from Bosch datasheet BST-BME280-DS002 (registers sec. 5, compensation sec. 4.2.3 / 8.1)\nimport time\n\nREG_CHIP_ID = 0xD0   # reads 0x60\nREG_RESET = 0xE0     # write 0xB6\nREG_CTRL_HUM = 0xF2\nREG_STATUS = 0xF3\nREG_CTRL_MEAS = 0xF4\nREG_CONFIG = 0xF5\nREG_DATA = 0xF7      # 0xF7..0xFE: press[3], temp[3], hum[2]\n\n\ndef _s16(v):\n    return v - 65536 if v > 32767 else v\n\n\ndef _s12(v):\n    return v - 4096 if v > 2047 else v\n\n\nclass BME280:\n    def __init__(self, i2c, addr=0x76, osrs=1):\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(REG_CHIP_ID, 1)[0]\n        if cid != 0x60:\n            raise OSError(\"BME280 not found (chip id 0x%02X)\" % cid)\n        self._w(REG_RESET, 0xB6)\n        time.sleep_ms(5)\n        while self._r(REG_STATUS, 1)[0] & 0x01:  # im_update: NVM copy in progress\n            time.sleep_ms(1)\n        self._load_calib()\n        self.osrs = osrs & 0x07  # 1=x1, 2=x2, 3=x4, 4=x8, 5=x16\n        self._w(REG_CONFIG, 0x00)          # filter off, no SPI3W\n        self._w(REG_CTRL_HUM, self.osrs)   # must precede ctrl_meas\n        self._w(REG_CTRL_MEAS, (self.osrs << 5) | (self.osrs << 2) | 0x00)  # sleep\n        self.t_fine = 0.0\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _load_calib(self):\n        c = self._r(0x88, 26)\n        u = lambda i: c[i] | (c[i + 1] << 8)\n        self.T1 = u(0)\n        self.T2 = _s16(u(2))\n        self.T3 = _s16(u(4))\n        self.P1 = u(6)\n        self.P2, self.P3, self.P4, self.P5, self.P6, self.P7, self.P8, self.P9 = [\n            _s16(u(8 + 2 * k)) for k in range(8)]\n        self.H1 = c[25]  # 0xA1\n        h = self._r(0xE1, 7)\n        self.H2 = _s16(h[0] | (h[1] << 8))\n        self.H3 = h[2]\n        self.H4 = _s12((h[3] << 4) | (h[4] & 0x0F))\n        self.H5 = _s12((h[5] << 4) | (h[4] >> 4))\n        self.H6 = h[6] - 256 if h[6] > 127 else h[6]\n\n    def _measure(self):\n        # forced mode: one conversion then back to sleep\n        self._w(REG_CTRL_HUM, self.osrs)\n        self._w(REG_CTRL_MEAS, (self.osrs << 5) | (self.osrs << 2) | 0x01)\n        time.sleep_ms(2)\n        for _ in range(100):\n            if not (self._r(REG_STATUS, 1)[0] & 0x08):  # measuring bit\n                break\n            time.sleep_ms(2)\n        d = self._r(REG_DATA, 8)\n        adc_p = (d[0] << 12) | (d[1] << 4) | (d[2] >> 4)\n        adc_t = (d[3] << 12) | (d[4] << 4) | (d[5] >> 4)\n        adc_h = (d[6] << 8) | d[7]\n        return adc_t, adc_p, adc_h\n\n    def _comp_t(self, adc_t):\n        v1 = (adc_t / 16384.0 - self.T1 / 1024.0) * self.T2\n        v2 = ((adc_t / 131072.0 - self.T1 / 8192.0) ** 2) * self.T3\n        self.t_fine = v1 + v2\n        return self.t_fine / 5120.0\n\n    def _comp_p(self, adc_p):\n        v1 = self.t_fine / 2.0 - 64000.0\n        v2 = v1 * v1 * self.P6 / 32768.0\n        v2 = v2 + v1 * self.P5 * 2.0\n        v2 = v2 / 4.0 + self.P4 * 65536.0\n        v1 = (self.P3 * v1 * v1 / 524288.0 + self.P2 * v1) / 524288.0\n        v1 = (1.0 + v1 / 32768.0) * self.P1\n        if v1 == 0:\n            return 0.0\n        p = 1048576.0 - adc_p\n        p = (p - v2 / 4096.0) * 6250.0 / v1\n        v1 = self.P9 * p * p / 2147483648.0\n        v2 = p * self.P8 / 32768.0\n        return p + (v1 + v2 + self.P7) / 16.0  # Pa\n\n    def _comp_h(self, adc_h):\n        h = self.t_fine - 76800.0\n        h = (adc_h - (self.H4 * 64.0 + self.H5 / 16384.0 * h)) * (\n            self.H2 / 65536.0 * (1.0 + self.H6 / 67108864.0 * h * (1.0 + self.H3 / 67108864.0 * h)))\n        h = h * (1.0 - self.H1 * h / 524288.0)\n        return min(max(h, 0.0), 100.0)\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure hPa, humidity %RH).\"\"\"\n        adc_t, adc_p, adc_h = self._measure()\n        t = self._comp_t(adc_t)\n        p = self._comp_p(adc_p) / 100.0\n        h = self._comp_h(adc_h)\n        return t, p, h\n\n    def temperature(self):\n        return self.read()[0]\n\n    def pressure(self):\n        return self.read()[1]\n\n    def humidity(self):\n        return self.read()[2]\n\n    def altitude(self, sea_level_hpa=1013.25):\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_hpa) ** 0.1903)\n"
+  },
+  "skill": "---\nname: part-bme280\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the BME280 temperature/humidity/pressure sensor (BME280). Use when designing, wiring, simulating or writing code for a BME280 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# BME280 temperature/humidity/pressure sensor (BME280)\n\n## Overview\nThe Bosch **BME280** measures temperature, relative humidity and barometric pressure in one 2.5 × 2.5 × 0.93 mm LGA package. It talks over I2C (up to 3.4 MHz) or SPI (3- or 4-wire, up to 10 MHz). Hobbyists usually buy it on a **GY-BME280 4-pin breakout** (VIN, GND, SCL, SDA), wired for I2C at address 0x76. It shares a register layout with the BMP280, which is the pressure-and-temperature-only version.\n\n## Pinout (GY-BME280 4-pin)\n| Pin | Function | Notes |\n|---|---|---|\n| VIN | Supply | 3.3 V recommended |\n| GND | Ground | |\n| SCL | I2C clock (SPI SCK) | Pull-up usually on board |\n| SDA | I2C data (SPI SDI) | Pull-up usually on board |\n\n6-pin boards also break out **CSB** (tie high, or leave it to the board's pull-up, for I2C; pulling it low selects SPI) and **SDO** (GND gives 0x76, VDDIO gives 0x77; it is MISO in SPI mode).\n\n## Electrical limits (datasheet)\n- VDD: 1.71–3.6 V. VDDIO: 1.2–3.6 V. Absolute max is 4.25 V.\n- Operating range: -40…+85 °C, 0–100 %RH, 300–1100 hPa.\n- Current: about 3.6 µA average at 1 Hz with humidity, pressure and temperature all on. Peak current during a conversion is up to about 0.7 mA (pressure). Sleep current is about 0.1 µA.\n- Accuracy (typical): ±1 °C, ±3 %RH, ±1 hPa absolute and ±0.12 hPa relative (about ±1 m altitude).\n- Not in the datasheet: some breakouts include a 3.3 V regulator and level shifter, so their VIN accepts 5 V. This varies by vendor, so this entry conservatively assumes 3.3 V only.\n\n## Interface details\n- **I2C address:** 0x76 with SDO to GND (most GY boards) or 0x77 with SDO to VDDIO (Adafruit and SparkFun boards).\n- **Key registers:**\n  - `0xD0` chip_id = **0x60**. A BMP280 reads 0x58.\n  - `0xE0` reset: write 0xB6.\n  - `0x88–0xA1` and `0xE1–0xE7`: calibration constants (dig_T1–T3, P1–P9, H1–H6).\n  - `0xF2` ctrl_hum: osrs_h[2:0]. Takes effect only after a write to ctrl_meas.\n  - `0xF3` status: bit 3 = measuring, bit 0 = im_update.\n  - `0xF4` ctrl_meas: osrs_t[7:5], osrs_p[4:2], mode[1:0] (00 sleep, 01 forced, 11 normal).\n  - `0xF5` config: t_sb[7:5], filter[4:2], spi3w_en[0].\n  - `0xF7–0xF9` pressure (20-bit), `0xFA–0xFC` temperature (20-bit), `0xFD–0xFE` humidity (16-bit). All big-endian; the xlsb byte uses bits 7:4.\n- **Compensation:** every reading must be converted using the factory constants. Temperature is calculated first because it produces `t_fine`, which the pressure and humidity formulas need. The supplied driver implements the floating-point formulas from datasheet section 8.1.\n- **Timing:** one forced conversion at ×1 oversampling takes about 8 ms (maximum 9.3 ms).\n\n## Wiring\n| Board | VIN | GND | SDA | SCL |\n|---|---|---|---|---|\n| ESP32 | 3V3 | GND | GPIO21 | GPIO22 |\n| Raspberry Pi Pico | 3V3(OUT) pin 36 | GND | GP4 (I2C0) | GP5 (I2C0) |\n| Raspberry Pi 4 | Pin 1 (3.3 V) | Pin 6 | Pin 3 (GPIO2) | Pin 5 (GPIO3) |\n\nOn the Pi 4, enable I2C with `raspi-config`, then check that the sensor shows up with `i2cdetect -y 1`.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom bme280 import BME280\nimport time\n\ni2c = I2C(0, sda=Pin(4), scl=Pin(5), freq=400000)  # Pico; ESP32: sda=21, scl=22\nprint([hex(a) for a in i2c.scan()])\nbme = BME280(i2c, addr=0x76)\nwhile True:\n    t, p, h = bme.read()\n    print(\"%.2f C  %.2f hPa  %.1f %%RH\" % (t, p, h))\n    time.sleep(2)\n```\n\n## Gotchas\n- **BMP280 vs BME280:** many cheap \"BME280\" boards are really BMP280s, which have no humidity sensor. Check chip ID 0x60. On the chip itself, the BME280 package is square and the BMP280 is rectangular.\n- If nothing appears at 0x76, try 0x77.\n- Write ctrl_hum before ctrl_meas, or the humidity reading stays at 0x8000 (skipped).\n- Running in normal mode at a high data rate warms the sensor. For weather logging, use forced mode at ×1 oversampling with the filter off.\n- Mount the sensor away from heat sources, and keep the vent hole on the metal lid uncovered.\n- Pressure gives altitude only relative to the current sea-level pressure, so pass your local QNH to `altitude()`.\n\n## Datasheet\nhttps://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf (mirror: https://cdn.sparkfun.com/assets/5/3/0/f/7/BME280_Datasheet.pdf)\n\n---\n*Generated by Sparkbench from the datasheet: https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf. Machine-readable definition: `part.json`; driver: `bme280.py`.*\n"
+}

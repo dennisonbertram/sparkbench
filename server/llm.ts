@@ -37,7 +37,7 @@ export interface Turn {
 }
 
 /** Ask Claude for JSON matching `schema`. `turns` is the conversation (last turn = user). */
-export async function askJson<T extends z.ZodType>(system: string, turns: Turn[], schema: T, opts: { effort?: 'low' | 'medium' | 'high' } = {}): Promise<z.infer<T>> {
+export async function askJson<T extends z.ZodType>(system: string, turns: Turn[], schema: T, opts: { effort?: 'low' | 'medium' | 'high'; web?: boolean } = {}): Promise<z.infer<T>> {
   const b = backend();
   if (b === 'api') {
     const client = new Anthropic();
@@ -49,6 +49,7 @@ export async function askJson<T extends z.ZodType>(system: string, turns: Turn[]
       output_config: { effort: opts.effort ?? 'medium', format: betaZodOutputFormat(schema) },
       system,
       messages: turns.map((t) => ({ role: t.role, content: t.content })),
+      ...(opts.web ? { tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }, { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 5 }] as any } : {}),
     });
     if (res.stop_reason === 'refusal') throw new Error('Claude declined this request.');
     if (!res.parsed_output) throw new Error('Claude returned an unreadable answer.');
@@ -61,7 +62,8 @@ export async function askJson<T extends z.ZodType>(system: string, turns: Turn[]
         : turns.map((t) => `<${t.role}>\n${t.content}\n</${t.role}>`).join('\n\n') + '\n\nRespond to the last <user> message.';
     const { $schema: _drop, ...plain } = z.toJSONSchema(schema) as Record<string, unknown>;
     const jsonSchema = JSON.stringify(plain);
-    const args = ['-p', '--output-format', 'json', '--tools', '', '--strict-mcp-config', '--no-session-persistence', '--setting-sources', '', '--model', MODEL, '--effort', opts.effort ?? 'medium', '--system-prompt', system, '--json-schema', jsonSchema];
+    const tools = opts.web ? 'WebSearch,WebFetch' : '';
+    const args = ['-p', '--output-format', 'json', '--tools', tools, ...(opts.web ? ['--allowedTools', tools] : []), '--strict-mcp-config', '--no-session-persistence', '--setting-sources', '', '--model', MODEL, '--effort', opts.effort ?? 'medium', '--system-prompt', system, '--json-schema', jsonSchema];
     const out = await new Promise<string>((resolve, reject) => {
       const child = execFile(findCli()!, args, { cwd: mkdtempSync(join(tmpdir(), 'sparkbench-ai-')), timeout: 240000, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
         if (err && !stdout) reject(new Error(`Claude CLI failed: ${stderr || err.message}`));

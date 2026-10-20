@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type { Project, PinRef, Wire, PartInstance } from '../core/types';
 import { annotate, pinKey } from '../core/netlist';
 import { defaultProps, partDef } from '../core/parts';
+import { registerProjectParts } from '../core/customParts';
 import type { PartVisual, SimFrame, SimWarning } from '../sim/engine';
 
 export type Tab = 'breadboard' | 'schematic' | 'code' | 'bom' | 'guide' | 'blog';
@@ -94,6 +95,7 @@ export const useStore = create<State>((set, get) => ({
   aiStatus: { enabled: false },
 
   setProject(p, opts = {}) {
+    registerProjectParts(p);
     const cur = get().project;
     if (!p || p.id !== cur?.id) set({ pinnedNet: null, hoverNet: null });
     // Each project keeps its own copilot conversation.

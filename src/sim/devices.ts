@@ -429,3 +429,41 @@ export class EPaperDevice {
     return rows.join('\n');
   }
 }
+
+/** An I2C chip described by its datasheet: fixed registers plus one measured value. */
+export class GenericI2CDevice implements I2CDevice {
+  regs = new Uint8Array(256);
+  ptr = 0;
+  constructor(
+    public partId: string,
+    public addr: number,
+    registers: Record<string, number>,
+    private measure: { reg: string; bytes: number; scale: number; offset?: number; signed?: boolean; littleEndian?: boolean; shift?: number } | undefined,
+    private value: () => number,
+  ) {
+    for (const [k, v] of Object.entries(registers)) this.regs[Number(k) & 0xff] = v & 0xff;
+  }
+  write(bytes: number[]) {
+    if (!bytes.length) return;
+    this.ptr = bytes[0];
+    for (let i = 1; i < bytes.length; i++) this.regs[(this.ptr + i - 1) & 0xff] = bytes[i];
+  }
+  read(n: number) {
+    const m = this.measure;
+    if (m) {
+      const reg = Number(m.reg) & 0xff;
+      let raw = Math.round((this.value() - (m.offset ?? 0)) / (m.scale || 1)) << (m.shift ?? 0);
+      const bits = m.bytes * 8;
+      if (m.signed && raw < 0) raw += 2 ** bits;
+      raw = Math.max(0, Math.min(2 ** bits - 1, raw));
+      for (let i = 0; i < m.bytes; i++) {
+        const byte = (raw >> (8 * (m.littleEndian ? i : m.bytes - 1 - i))) & 0xff;
+        this.regs[(reg + i) & 0xff] = byte;
+      }
+    }
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) out.push(this.regs[(this.ptr + i) & 0xff]);
+    this.ptr = (this.ptr + n) & 0xff;
+    return out;
+  }
+}

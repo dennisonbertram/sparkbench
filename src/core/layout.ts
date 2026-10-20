@@ -2,6 +2,7 @@
 import type { Project, PartInstance } from './types';
 import { partDef } from './parts';
 import { BOARDS } from './boards';
+import { customSpec } from './customParts';
 
 export const PART_SIZE: Record<string, [number, number]> = {
   'esp32-devkit': [107, 204],
@@ -38,7 +39,14 @@ export const PART_SIZE: Record<string, [number, number]> = {
   'battery-9v': [70, 120],
 };
 
+/** Generic drawing for datasheet-defined parts: a module with its pins along the bottom edge. */
+export function customModuleSize(pins: number): [number, number] {
+  return [Math.max(96, pins * 18 + 24), 78];
+}
+
 export function partSize(type: string): [number, number] {
+  const cs = customSpec(type);
+  if (cs) return customModuleSize(cs.pins.length);
   return PART_SIZE[type] ?? [80, 60];
 }
 

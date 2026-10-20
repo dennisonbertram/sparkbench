@@ -4,7 +4,8 @@ import type { Project, PartInstance } from '../core/types';
 import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, type I2CDevice } from './devices';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, type I2CDevice } from './devices';
+import { registerProjectParts, customSpec } from '../core/customParts';
 import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
 export class SimStop extends Error {
@@ -45,6 +46,7 @@ export interface PartVisual {
   tone?: number;
   relay?: boolean;
   spin?: number; // motor speed 0..1
+  active?: boolean; // datasheet-defined actuator is switched on
   powered?: boolean;
 }
 
@@ -122,6 +124,7 @@ export class SimEngine {
   lines = 0;
 
   constructor(public project: Project, public host: SimHost, public opts: EngineOptions) {
+    registerProjectParts(project);
     this.model = new ElectricalModel(project);
     this.speed = opts.speed ?? 1;
     // A Raspberry Pi runs Linux and already knows the real time.
@@ -129,6 +132,9 @@ export class SimEngine {
     for (const part of project.parts) {
       if (part.type === 'ssd1306') this.devices.push({ dev: new SSD1306Device(part.id), part });
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, cs.sim.measure, () => this.model.states.get(part.id)?.value ?? 0), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
@@ -710,8 +716,14 @@ export class SimEngine {
           v.relay = on;
           break;
         }
-        default:
+        default: {
           if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
+          const cs = customSpec(part.type);
+          if (cs?.sim.kind === 'actuator' && cs.sim.inputPin) {
+            const gnd = cs.pins.find((p) => p.role === 'gnd')?.name;
+            v.active = !!v.powered && m.pinVoltage(part.id, cs.sim.inputPin) - (gnd ? m.pinVoltage(part.id, gnd) : 0) > 1.5;
+          }
+        }
       }
       parts[part.id] = v;
     }

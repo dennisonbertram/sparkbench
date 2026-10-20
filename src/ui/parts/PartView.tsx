@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import type { PartInstance } from '../../core/types';
 import { partDef } from '../../core/parts';
 import type { PartVisual } from '../../sim/engine';
-import { CustomPart, CUSTOM_PINS } from './custom';
+import { CustomPart, CUSTOM_PINS, genericPins } from './custom';
 
 export type PinMap = Record<string, { x: number; y: number }>;
 
@@ -24,7 +24,7 @@ export function PartView({ part, visual, onPins, onInput, inputs }: Props) {
   // Pin positions
   useEffect(() => {
     if (!tag) {
-      onPins(part.id, CUSTOM_PINS[part.type] ?? {});
+      onPins(part.id, CUSTOM_PINS[part.type] ?? genericPins(part.type));
       return;
     }
     let cancelled = false;

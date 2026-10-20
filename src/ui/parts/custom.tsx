@@ -3,7 +3,8 @@
 import React from 'react';
 import { BOARDS } from '../../core/boards';
 import type { PartVisual } from '../../sim/engine';
-import { partSize } from '../../core/layout';
+import { partSize, customModuleSize } from '../../core/layout';
+import { customSpec } from '../../core/customParts';
 
 type Pins = Record<string, { x: number; y: number }>;
 
@@ -48,7 +49,39 @@ export const CUSTOM_PINS: Record<string, Pins> = {
 
 const pinDot = (x: number, y: number, key: string) => <rect key={key} x={x - 2.5} y={y - 2.5} width={5} height={5} rx={1} fill="#c9b37a" stroke="#6b5a2a" strokeWidth={0.6} />;
 
+/** Pin positions for a datasheet-defined part (see GenericModule). */
+export function genericPins(type: string): Pins {
+  const cs = customSpec(type);
+  if (!cs) return {};
+  const [, h] = customModuleSize(cs.pins.length);
+  return Object.fromEntries(cs.pins.map((p, i) => [p.name, { x: 21 + i * 18, y: h - 4 }]));
+}
+
+function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) {
+  const cs = customSpec(type)!;
+  const [w, h] = customModuleSize(cs.pins.length);
+  const pins = genericPins(type);
+  const colour = { sensor: '#1f5e8a', display: '#1b2a44', actuator: '#6a3a1f', output: '#5b2a6e', input: '#2b6b3a', ic: '#222', passive: '#555', power: '#7a5a00', board: '#1d6b3a' }[cs.category] ?? '#2b3a4a';
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible', display: 'block' }}>
+      <rect x={0} y={0} width={w} height={h - 12} rx={5} fill={colour} stroke="#0008" />
+      <rect x={w / 2 - 14} y={8} width={28} height={20} rx={2} fill="#111" />
+      <text x={w / 2} y={40} fontSize={8} fill="#eef" textAnchor="middle" fontWeight={600}>{cs.mpn.slice(0, 16)}</text>
+      <text x={w / 2} y={50} fontSize={5.5} fill="#cdd" textAnchor="middle">{cs.name.slice(0, 34)}</text>
+      {visual?.active !== undefined && <circle cx={w - 10} cy={10} r={4} fill={visual.active ? '#ffd23f' : '#3a3a3a'} />}
+      {Object.entries(pins).map(([n, p]) => (
+        <g key={n}>
+          <rect x={p.x - 2.5} y={h - 16} width={5} height={14} fill="#c9b37a" />
+          <text x={p.x} y={h - 20} fontSize={5} fill="#eef" textAnchor="middle" transform={`rotate(-45 ${p.x} ${h - 20})`}>{n}</text>
+          {pinDot(p.x, p.y, n)}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 export function CustomPart({ type, props, visual }: { type: string; props: Record<string, any>; visual?: PartVisual }) {
+  if (customSpec(type)) return <GenericModule type={type} visual={visual} />;
   const [w, h] = partSize(type);
   const pins = CUSTOM_PINS[type] ?? {};
   let body: React.ReactNode = null;

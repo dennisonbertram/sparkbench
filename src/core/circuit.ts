@@ -3,6 +3,7 @@
 import type { Project, PartInstance, Net } from './types';
 import { buildNets, pinKey, boardPart } from './netlist';
 import { partDef } from './parts';
+import { customSpec } from './customParts';
 import { boardFor, type BoardDef } from './boards';
 import { Circuit, Resistor, VSource, Diode, NPN, Timer555, Switch, Capacitor, LED_PARAMS, type Element } from './mna';
 
@@ -212,6 +213,10 @@ export class ElectricalModel {
             els.no = c.add(new Switch(`${id}.no`, n('COM'), n('NO'), false));
             els.nc = c.add(new Switch(`${id}.nc`, n('COM'), n('NC'), true));
           }
+          const cs = customSpec(part.type);
+          if (cs?.sim.kind === 'analog-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 1000));
+          if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
+          if (cs?.sim.kind === 'actuator' && cs.sim.inputPin) els.in = c.add(new Resistor(`${id}.in`, n(cs.sim.inputPin), g, 10000));
           if (part.type === 'epaper29') els.busy = c.add(new VSource(`${id}.busy`, n('BUSY'), g, 0, 200));
           if (part.type === 'level-shifter') {
             // Each channel has a 10 kΩ pull-up on both sides; the MOSFET only conducts when a side is pulled low.
@@ -269,6 +274,25 @@ export class ElectricalModel {
       case 'pir':
         (els.out as VSource).volts = st.motion > 0 ? 3.3 : 0;
         break;
+      default: {
+        // Datasheet-defined sensors: map the slider / toggle to an output voltage.
+        const cs = customSpec(part.type);
+        if (!cs || !els.out) break;
+        const vcc = this.moduleSupply(partId);
+        const powered = vcc >= (cs.vmin ?? 2.7) * 0.85;
+        const s = cs.sim;
+        if (s.kind === 'analog-sensor') {
+          const lo = s.min ?? 0;
+          const hi = s.max ?? 100;
+          const f = hi === lo ? 0 : (st.value - lo) / (hi - lo);
+          const v = (s.vAtMin ?? 0) + f * ((s.vAtMax ?? vcc) - (s.vAtMin ?? 0));
+          (els.out as VSource).volts = powered ? Math.max(0, Math.min(vcc, v)) : 0;
+        } else if (s.kind === 'digital-sensor') {
+          const high = (st.active > 0) === (s.activeHigh ?? true);
+          (els.out as VSource).volts = powered && high ? vcc : 0;
+        }
+        break;
+      }
       case 'soil': {
         const vcc = this.moduleSupply(partId);
         (els.out as VSource).volts = vcc > 2.5 ? Math.max(0, 2.8 - 1.6 * (st.moisture / 100)) * Math.min(1, vcc / 3.3) : 0;
@@ -323,7 +347,7 @@ export class ElectricalModel {
     if (!this.dirty) return;
     // Two passes so module outputs that depend on supply voltage settle.
     this.circuit.dc();
-    for (const part of this.project.parts) if (part.type === 'soil') this.applyState(part.id);
+    for (const part of this.project.parts) if (part.type === 'soil' || customSpec(part.type)) this.applyState(part.id);
     this.circuit.dc();
     this.dirty = false;
   }

@@ -11,6 +11,9 @@ import { runChecks } from '../core/checks';
 import { SimControls } from './SimControls';
 import type { CheckResult, FixAction } from '../core/types';
 import { annotate } from '../core/netlist';
+import { registerCustomPart, type CustomPartSpec } from '../core/customParts';
+import { autoWirePart } from '../core/autowire';
+import { partSize } from '../core/layout';
 
 // ------------------------------------------------------------------ Copilot
 export function Copilot() {
@@ -520,10 +523,17 @@ function Scope() {
 // ------------------------------------------------------------------ Part library popover
 export function PartLibrary({ onClose }: { onClose(): void }) {
   const [q, setQ] = useState('');
-  const board = useStore((s) => s.project?.board);
-  const list = PARTS.filter((p) => p.category !== 'board').filter((p) => !q || `${p.name} ${p.description} ${p.keywords.join(' ')}`.toLowerCase().includes(q.toLowerCase()));
+  const [mine, setMine] = useState<CustomPartSpec[]>([]);
+  useEffect(() => {
+    fetch('/api/parts')
+      .then((r) => (r.ok ? r.json() : { parts: [] }))
+      .then((d) => setMine(d.parts ?? []))
+      .catch(() => {});
+  }, []);
+  const match = (text: string) => !q || text.toLowerCase().includes(q.toLowerCase());
+  const list = PARTS.filter((p) => p.category !== 'board').filter((p) => match(`${p.name} ${p.description} ${p.keywords.join(' ')}`));
+  const myList = mine.filter((s) => match(`${s.name} ${s.mpn} ${s.description}`));
   const cats = ['display', 'input', 'sensor', 'output', 'actuator', 'passive', 'ic', 'power'];
-  void board;
   return (
     <div className="library" role="dialog" aria-label="Add a part" onPointerDown={(e) => e.stopPropagation()}>
       <div className="library-head">
@@ -533,6 +543,23 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
         </button>
       </div>
       <div className="library-list">
+        <AddAnyComponent initial={list.length + myList.length === 0 ? q : ''} onDone={onClose} />
+        {myList.length > 0 && (
+          <div>
+            <div className="lib-cat">Your components (from datasheets)</div>
+            {myList.map((s) => (
+              <button key={s.type} className="lib-item" onClick={() => addCustomPart(s).then(onClose)}>
+                <span className="lib-name">
+                  {s.name} <span className="ds-badge">datasheet</span>
+                </span>
+                <span className="lib-desc">
+                  {s.eli5} · {s.vmin}–{s.vmax} V
+                </span>
+                <span className="lib-price">${s.priceUsd.toFixed(2)}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {cats.map((c) => {
           const items = list.filter((p) => p.category === c);
           if (!items.length) return null;
@@ -560,7 +587,114 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
           );
         })}
       </div>
-      <p className="library-foot">Added parts appear top-left. Wire them by clicking a pin and then another pin. Tip: asking the copilot (“add a buzzer”) also wires and codes it for you.</p>
+      <p className="library-foot">Built-in parts appear top-left — wire them by clicking a pin and then another pin. Parts added from a datasheet are wired for you. Wire them by clicking a pin and then another pin. Tip: asking the copilot (“add a buzzer”) also wires and codes it for you.</p>
+    </div>
+  );
+}
+
+/** Add a datasheet-defined part to the open project, wired to the board when possible. */
+export async function addCustomPart(spec: CustomPartSpec, wire = true) {
+  registerCustomPart(spec);
+  const st = useStore.getState();
+  const p = st.project;
+  if (!p) return;
+  const base = spec.type.replace(/[^a-z0-9]/g, '');
+  let n = 1;
+  while (p.parts.some((x) => x.id === `${base}${n}`)) n++;
+  const id = `${base}${n}`;
+  const right = Math.max(...p.parts.map((x) => x.x + partSize(x.type)[0]), 0) + 60;
+  const top = Math.min(...p.parts.map((x) => x.y), 40);
+  let next = annotate({ ...p, customParts: [...(p.customParts ?? []).filter((c) => c.type !== spec.type), spec], parts: [...p.parts, { id, type: spec.type, label: spec.name, props: {}, x: right, y: top }] });
+  let notes: string[] = [];
+  if (wire && p.board !== 'none') ({ project: next, notes } = autoWirePart(next, id));
+  st.update(() => next);
+  st.select({ kind: 'part', id });
+  st.addChat({ role: 'ai', text: `Added the ${spec.name} (${spec.mpn}) from its datasheet${wire && p.board !== 'none' ? ' and wired it to the board' : ''}. Ask me to “use the ${spec.mpn} in the code” and I'll update the program.${spec.datasheetUrl ? ` [Datasheet](${spec.datasheetUrl})` : ''}`, details: notes });
+  setTimeout(() => window.dispatchEvent(new Event('sparkbench:fit')), 250);
+}
+
+/** Search the web for any component's datasheet and turn it into a part (and a Claude Code skill). */
+function AddAnyComponent({ initial, onDone }: { initial: string; onDone(): void }) {
+  const ai = useStore((s) => s.aiStatus);
+  const [q, setQ] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [found, setFound] = useState<{ spec: CustomPartSpec; skillDir: string; reused: boolean } | null>(null);
+  useEffect(() => setQ((x) => x || initial), [initial]);
+  const go = async () => {
+    if (!q.trim()) return;
+    setBusy(true);
+    setErr(null);
+    setFound(null);
+    try {
+      const r = await fetch('/api/parts/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q.trim() }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? 'Lookup failed');
+      setFound(d);
+    } catch (e: any) {
+      setErr(String(e?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="any-part">
+      <div className="lib-cat">Not in the list? Add any component</div>
+      {!ai.enabled ? (
+        <p className="muted small">Needs Claude (an API key or a Claude Code login) to find and read datasheets.</p>
+      ) : (
+        <form
+          className="any-part-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            go();
+          }}
+        >
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Part number or datasheet URL, e.g. BME280, TMP36, VL53L0X" disabled={busy} aria-label="Part number or datasheet URL" />
+          <button className="primary" disabled={busy || !q.trim()}>
+            {busy ? 'Reading…' : 'Find datasheet'}
+          </button>
+        </form>
+      )}
+      {busy && <p className="assistant-status">Claude is finding and reading the datasheet (30–90 s)…</p>}
+      {err && <div className="banner error">{err}</div>}
+      {found && (
+        <div className="part-card">
+          <div className="part-card-head">
+            <b>{found.spec.name}</b> <span className="muted">{found.spec.mpn}</span>
+          </div>
+          <p className="small">{found.spec.description}</p>
+          <div className="small">
+            <b>Supply</b> {found.spec.vmin}–{found.spec.vmax} V · <b>Interface</b> {found.spec.interface}
+            {found.spec.i2cAddress !== undefined && ` (address 0x${found.spec.i2cAddress.toString(16)})`} · <b>≈ ${found.spec.priceUsd.toFixed(2)}</b>
+          </div>
+          <table className="pins">
+            <tbody>
+              {found.spec.pins.map((p) => (
+                <tr key={p.name}>
+                  <td className="pin-name">{p.name}</td>
+                  <td>{p.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="small muted">
+            {found.spec.datasheetUrl && (
+              <a href={found.spec.datasheetUrl} target="_blank" rel="noreferrer">
+                Datasheet
+              </a>
+            )}{' '}
+            · {found.reused ? 'Already in your library' : 'Saved as a Claude Code skill'}: <code>{found.skillDir.replace(/^.*\/(\.claude\/)/, '$1')}</code>
+            {found.spec.driver && <> · includes a MicroPython driver ({found.spec.driver.filename})</>}
+          </p>
+          <div className="part-card-actions">
+            <button className="primary" onClick={() => addCustomPart(found.spec, true).then(onDone)}>
+              Add & wire it
+            </button>
+            <button onClick={() => addCustomPart(found.spec, false).then(onDone)}>Add without wiring</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

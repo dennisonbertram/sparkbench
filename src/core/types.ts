@@ -109,6 +109,8 @@ export interface Project {
   features?: FeatureInstance[];
   /** True once the user (or AI) hand-edited main.py — the planner then won't overwrite it. */
   codeCustom?: boolean;
+  /** Components added from datasheets (see customParts.ts), carried with the project. */
+  customParts?: import('./customParts').CustomPartSpec[];
   /** What custom (AI-written or curated) firmware does, used by the build guide and blog. */
   behavior?: { does: string; test?: string; sim?: string }[];
   createdAt: number;

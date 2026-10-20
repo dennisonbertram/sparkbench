@@ -1,0 +1,65 @@
+{
+  "type": "custom-tmp36gt9z",
+  "name": "TMP36 analog temperature sensor",
+  "mpn": "TMP36GT9Z",
+  "category": "sensor",
+  "description": "Low-voltage precision centigrade temperature sensor from Analog Devices. It outputs a voltage proportional to temperature (10 mV/°C, 750 mV at 25 °C, 0.5 V offset) from −40 °C to +125 °C, runs on 2.7–5.5 V and draws under 50 µA. Sold as: TMP36 in a TO-92 3-pin through-hole package (flat face towards you, pins down: +Vs, Vout, GND).",
+  "eli5": "A tiny three-legged thermometer whose middle leg puts out a voltage that goes up as it gets warmer, so your board can read the temperature with its analog input.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "+Vs",
+      "role": "power",
+      "description": "Supply, 2.7 V to 5.5 V (pin 1, left with the flat face towards you). Use 3.3 V on 3.3 V boards.",
+      "required": true
+    },
+    {
+      "name": "VOUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog temperature output (pin 2, middle): Vout = 0.5 V + 10 mV/°C × T(°C). Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 3, right).",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.05,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/TMP35_36_37.pdf",
+  "priceUsd": 1.5,
+  "supplierQuery": "TMP36GT9Z TO-92 temperature sensor",
+  "footprint": "Package_TO_SOT_THT:TO-92_Inline",
+  "buildNotes": [
+    "Pin order with the flat face towards you, legs down: left = +Vs, middle = VOUT, right = GND. If you wire it backwards it gets very hot quickly, so unplug it right away.",
+    "Put a 0.1 µF ceramic capacitor between +Vs and GND close to the sensor. Long wires or capacitive loads can make the output ring, so the datasheet suggests a series resistor of about 750 Ω (or an RC filter) when driving cables.",
+    "Temperature (°C) = (Vout − 0.5 V) × 100. The output only goes from 0.1 V (−40 °C) to 1.75 V (125 °C), so it is safe for any 3.3 V ADC.",
+    "Average several ADC readings. On the ESP32, set 11 dB attenuation and remember its ADC is nonlinear near 0 V.",
+    "The sensor measures its own leads and case temperature. Keep it away from voltage regulators and the MCU, and don't power it from a noisy rail."
+  ],
+  "keywords": [
+    "tmp36gt9z",
+    "tmp36",
+    "analog",
+    "temperature",
+    "sensor"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "VOUT",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 25,
+    "vAtMin": 0.1,
+    "vAtMax": 1.75,
+    "registers": {}
+  },
+  "skill": "---\nname: part-tmp36gt9z\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the TMP36 analog temperature sensor (TMP36GT9Z). Use when designing, wiring, simulating or writing code for a TMP36GT9Z in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# TMP36 analog temperature sensor (TMP36GT9Z)\n\n## Overview\nThe **TMP36** (Analog Devices, part of the TMP35/TMP36/TMP37 family) is a low-voltage centigrade temperature sensor with a linear voltage output. It has no digital interface: you read the output with an ADC.\n- Scale factor: **10 mV/°C**\n- Output: **750 mV at 25 °C**, with a 500 mV offset so it can read below 0 °C\n- Range: **−40 °C to +125 °C**\n- Accuracy: typically ±1 °C at 25 °C and ±2 °C over −40 to +125 °C\n- Supply: **2.7 V to 5.5 V**, quiescent current **< 50 µA**\n\n## Pinout (TO-92, flat face towards you, legs down)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 (left) | +Vs | Supply, 2.7–5.5 V |\n| 2 (middle) | VOUT | Analog output |\n| 3 (right) | GND | Ground |\n\nThe SOIC-8 and SOT-23-5 versions also have an active-low SHUTDOWN pin, which cuts the current to under 0.5 µA. The TO-92 version does not have this pin.\n\n## Electrical limits\n- Supply: 2.7 V min, 5.5 V max (absolute max 7 V)\n- Output range: about 0.1 V (−40 °C) to 1.75 V (+125 °C)\n- Operating range: −40 °C to +125 °C (storage −65 °C to +160 °C)\n- Self-heating in still air is small because the sensor draws so little current\n\n## Interface details\nConversion formula:\n```\nT(°C) = (Vout − 0.5) × 100\n```\nExamples: 0.5 V = 0 °C, 0.75 V = 25 °C, 1.0 V = 50 °C.\nThe output can drive up to about 10 nF directly. For longer cables or higher capacitance, add about 750 Ω in series or an RC filter. Put a 0.1 µF bypass capacitor across the supply pins.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| +Vs | 3V3 | 3V3(OUT) (pin 36) | 3V3 (pin 1) via the ADC module |\n| VOUT | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC input (e.g. ADS1115 A0 or MCP3008 CH0) |\n| GND | GND | GND (or AGND pin 33) | GND |\n\nThe Raspberry Pi 4 has **no built-in ADC**, so you need an external ADC such as an ADS1115 (I2C) or MCP3008 (SPI). On the ESP32, use ADC1 pins (GPIO32–39), because ADC2 stops working while Wi-Fi is on.\n\n## Using it (MicroPython)\nNo driver is needed. Just read the ADC.\n\n**Raspberry Pi Pico:**\n```python\nfrom machine import ADC\nimport time\n\nadc = ADC(26)  # GP26 = ADC0\n\ndef read_c(samples=16):\n    total = 0\n    for _ in range(samples):\n        total += adc.read_u16()\n    v = (total / samples) * 3.3 / 65535\n    return (v - 0.5) * 100\n\nwhile True:\n    print(\"%.1f C\" % read_c())\n    time.sleep(1)\n```\n\n**ESP32:**\n```python\nfrom machine import ADC, Pin\nadc = ADC(Pin(34))\nadc.atten(ADC.ATTN_11DB)\nv = adc.read_uv() / 1_000_000  # calibrated microvolts (recent MicroPython)\nprint((v - 0.5) * 100, \"C\")\n```\n\n## Gotchas\n- **Pin orientation:** the pinout is shown with the *flat* face towards you. Reversing +Vs and GND makes the part very hot.\n- **Look-alikes:** LM35 (10 mV/°C, no offset, needs at least 4 V) and TMP37 (20 mV/°C) use different formulas, so check the part marking.\n- **ADC reference:** the formula assumes the ADC reference really is 3.3 V. Measure your 3V3 rail, or use a calibrated read (ESP32 `read_uv`).\n- **Noise:** jumpy readings are normal with a 12-bit ADC (about 0.08 °C per LSB on the Pico, but noise is larger). Average the samples and add the 0.1 µF bypass capacitor.\n- **Placement:** heat from the board, regulator or your fingers gets into the leads and changes the reading.\n\n## Datasheet\nhttps://www.analog.com/media/en/technical-documentation/data-sheets/TMP35_36_37.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://www.analog.com/media/en/technical-documentation/data-sheets/TMP35_36_37.pdf. Machine-readable definition: `part.json`.*\n"
+}

@@ -1,6 +1,7 @@
 // The parts library. Every part the planner, schematic, simulator and BOM know about.
 import type { PartDef, PinDef } from './types';
 import { BOARDS } from './boards';
+import { customDef } from './customParts';
 
 const p = (name: string, role: PinDef['role'], fn?: string, extra: Partial<PinDef> = {}): PinDef => ({ name, role, fn, ...extra });
 
@@ -550,13 +551,13 @@ export const PARTS: PartDef[] = [
 const BY_TYPE = new Map(PARTS.map((d) => [d.type, d]));
 
 export function partDef(type: string): PartDef {
-  const d = BY_TYPE.get(type);
+  const d = BY_TYPE.get(type) ?? customDef(type);
   if (!d) throw new Error(`Unknown part type: ${type}`);
   return d;
 }
 
 export function hasPart(type: string): boolean {
-  return BY_TYPE.has(type);
+  return BY_TYPE.has(type) || !!customDef(type);
 }
 
 export function defaultProps(type: string): Record<string, any> {

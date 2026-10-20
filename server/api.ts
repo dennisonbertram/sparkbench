@@ -46,6 +46,21 @@ export function apiPlugin(): Plugin {
         const { project, file, instruction, error, selection } = await body(req);
         return send(res, 200, await aiEditFile(project, file, instruction, { error, selection }));
       }
+      if (req.url === '/api/parts' && req.method === 'GET') {
+        const { listParts } = await import('./parts');
+        return send(res, 200, { parts: listParts() });
+      }
+      if (req.url === '/api/parts/fetch' && req.method === 'POST') {
+        const { fetchPart } = await import('./parts');
+        const { aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'Fetching datasheets needs Claude: set ANTHROPIC_API_KEY or log in to Claude Code.' });
+        const { query } = await body(req);
+        try {
+          return send(res, 200, await fetchPart(String(query ?? '').slice(0, 300)));
+        } catch (e: any) {
+          return send(res, 422, { error: String(e?.message ?? e) });
+        }
+      }
       if (req.url === '/api/kicad/render' && req.method === 'POST') {
         if (!KICAD_CLI) return send(res, 404, { error: 'kicad-cli not found' });
         const { sch, name } = await body(req);
