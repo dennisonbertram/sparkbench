@@ -173,6 +173,9 @@ export interface CustomPartSpec {
   buildNotes?: string[];
   keywords?: string[];
   sim: CustomSim;
+  /** The board has connectors on more than one edge (e.g. a signal header and a screw terminal): it is wired
+   * with jumper leads (off the breadboard, a cable connector on the circuit board) rather than plugged in. */
+  cabled?: boolean;
   /** MicroPython driver written from the datasheet, copied into projects that use the part. */
   driver?: { filename: string; code: string };
   /** The part's skill (markdown) — given to the AI whenever the part is in a project. */

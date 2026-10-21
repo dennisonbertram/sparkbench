@@ -4,6 +4,7 @@
 // breadboard picture and the photo wiring check.
 import type { Net, PartInstance, Project } from './types';
 import { partDef } from './parts';
+import { customSpec } from './customParts';
 import { buildNets } from './netlist';
 import { boardFor, ESP32_LEFT, ESP32_RIGHT } from './boards';
 import { connectivity, diffConnectivity, holeXY, picoLegs, railHoleAt, stripOf, COLS, ROWS_TOP, ROWS_BOTTOM, type BbKind, type BbLayout, type BbPart, type BbWire, type Hole } from './breadboard';
@@ -85,6 +86,8 @@ function footprintFor(type: string, pinCount: number): Footprint {
   if (/TO-92/.test(fpName) && def.pins.length === 3) return { kind: 'inline', bb: 'to92', offsets: [0, 1, 2] };
   const dip = /DIP-(\d+)/.exec(fpName);
   if (dip && Number(dip[1]) === def.pins.length) return { kind: 'dip', label: def.name.split(/[ (]/)[0], order: def.pins.map((p) => p.name) };
+  // Datasheet modules with connectors on more than one edge are wired with jumper leads, whatever their size.
+  if (customSpec(type)?.cabled) return { kind: 'offboard', label: partDef(type).name, body: '#3a4a5c', w: 40 + pinCount * 22, h: 80 };
   return FOOTPRINTS[type] ?? (pinCount <= 8 ? { kind: 'module', label: partDef(type).name.split(/[ (]/)[0], body: '#3a4a5c' } : { kind: 'offboard', label: partDef(type).name, body: '#3a4a5c', w: 40 + pinCount * 22, h: 80 });
 }
 

@@ -70,7 +70,7 @@ export function compare(spec: CustomPartSpec, v: VerifyFacts): string[] {
       else if (!roleOk) diffs.push(`header pin ${i + 1} (${spec.pins[i].name}): part says ${x.role}, datasheet reading says ${y.role}`);
     });
   // Small modules (≤ 8 pins) plug straight into the breadboard and a socket; larger ones are cabled, so any shape works.
-  if ((v.headerRows ?? 1) > 1 && spec.pins.length <= 8 && /PinHeader_1x/.test(spec.footprint ?? 'PinHeader_1x')) diffs.push(`physical layout: the board has ${v.headerRows} header rows, but this small module is modelled as plugging in as a single row`);
+  if ((v.headerRows ?? 1) > 1 && spec.pins.length <= 8 && !spec.cabled && /PinHeader_1x/.test(spec.footprint ?? 'PinHeader_1x')) diffs.push(`physical layout: the board has ${v.headerRows} header rows, but this small module is modelled as plugging in as a single row`);
   if (spec.interface === 'i2c' || spec.i2cAddress !== undefined) {
     if (v.defaultI2cAddress === null && !v.i2cAddresses.length) diffs.push('part has an I2C address but the datasheet reading has none');
     else if (spec.i2cAddress === undefined || ![v.defaultI2cAddress, ...v.i2cAddresses].includes(spec.i2cAddress)) diffs.push(`I2C address: part 0x${spec.i2cAddress?.toString(16)}, datasheet reading 0x${v.defaultI2cAddress?.toString(16)} (also ${v.i2cAddresses.map((x) => `0x${x.toString(16)}`).join(', ')})`);

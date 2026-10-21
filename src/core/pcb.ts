@@ -109,7 +109,7 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       description: def.name,
       // Datasheet modules with more than 8 pins are wired with a cable (the breadboard plan keeps them off-board too):
       // their header is a cable connector at the board edge, not a socket the module plugs into.
-      ...(EDGE_TYPES.has(p.type) || (customSpec(p.type) && def.pins.length > 8) ? { edge: true } : {}),
+      ...(EDGE_TYPES.has(p.type) || (customSpec(p.type) && (def.pins.length > 8 || customSpec(p.type)!.cabled)) ? { edge: true } : {}),
       ...(p.type === 'esp32-devkit' ? { antenna: true, usbPads: ['15', '16'] as [string, string] } : {}),
       ...(p.type === 'pi-pico' ? { usbPads: ['1', '40'] as [string, string] } : {}),
       ...(p.type === 'usb-micro' ? { flushEdge: 2.6875 } : {}),
