@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-pcf8574",
+  "board": "Adafruit PCF8574 I2C GPIO Expander Breakout (#5545)",
+  "reason": "Modelled from the TI PCF8574 datasheet as a pointerless i2c-device (one-byte write sets P7..P0 latches, one-byte read returns levels, quasi-bidirectional inputs only read when latched high); the button-on-P7 / active-low-LED-on-P0 example passes on ESP32 and Pico, and the PCB, footprint and LCSC stages pass. The lookup's 'already in Sparkbench' hit was only the lcd1602 LCD backpack, not a standalone expander.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/pcf8574.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-pcf8574/pinouts plus Fritzing Adafruit PCF8574 breadboard SVG pin positions (rows VIN GND SCL SDA INT A0 and + P7..P0 -)",
+  "checkRuns": 2
+}

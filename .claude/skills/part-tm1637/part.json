@@ -1,0 +1,115 @@
+{
+  "type": "custom-tm1637",
+  "name": "TM1637 4-digit 7-segment display (clock colon)",
+  "mpn": "TM1637",
+  "category": "display",
+  "description": "Titan Micro TM1637 LED driver on a 4-digit 0.36\" red 7-segment display module with a centre clock colon, driven over a two-wire CLK/DIO bus (not I2C, no address) with 8 brightness steps. The chip's datasheet characterises it at 4.5-5.5 V; the module vendor rates it for 3.3 or 5 V to match the microcontroller. Sold as: ProtoSupplies TM1637 4-Digit 0.36\" Red Display, the common blue-PCB clone clock module with a 4-pin header CLK, DIO, VCC, GND.",
+  "eli5": "Four big glowing digits with a blinking-clock colon, perfect for showing a time, a count or a temperature using only two wires.",
+  "refPrefix": "DS",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Clock input from the microcontroller (10k pull-up and 100 pF on the module)",
+      "required": true
+    },
+    {
+      "name": "DIO",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Data in/out (LSB first; the chip pulls it low for each ACK clock)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V or 5 V: use the same voltage as the microcontroller's logic (datasheet characterises the chip at 4.5-5.5 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 80,
+  "datasheetUrl": "https://akizukidenshi.com/goodsaffix/TM1637_V2.4_EN.PDF",
+  "priceUsd": 2,
+  "supplierQuery": "TM1637 4 digit 0.36 inch 7 segment display module clock colon",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "It is NOT I2C, even though it has two wires: there is no address, bytes go LSB first, start = DIO falls while CLK is high, stop = DIO rises while CLK is high.",
+    "To show digits send data command 0x40 (auto-increment), then 0xC0 followed by one segment byte per digit (leftmost first), then display control 0x88 | brightness 0-7.",
+    "The clock colon is bit 7 (0x80) of the second digit's segment byte; the other digits' bit 7 is not wired on this module.",
+    "Power VCC from the same voltage as your microcontroller (3V3 on ESP32/Pico): the module pulls CLK and DIO up to VCC, so 5 V on VCC would put 5 V on 3.3 V GPIO pins and the datasheet needs 0.7 x VCC (3.5 V) for a logic high at 5 V.",
+    "At 3.3 V the LEDs are a little dimmer; the datasheet itself only characterises the chip at 4.5-5.5 V.",
+    "Peak current is about 80 mA with all segments lit at full brightness, so lower the brightness on a weak supply."
+  ],
+  "keywords": [
+    "tm1637",
+    "7-segment",
+    "seven segment",
+    "4 digit",
+    "clock display",
+    "led display",
+    "colon"
+  ],
+  "sources": [
+    "https://akizukidenshi.com/goodsaffix/TM1637_V2.4_EN.PDF",
+    "https://protosupplies.com/product/tm1637-4-digit-0-36-red-display/",
+    "https://github.com/mcauser/micropython-tm1637"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "tm1637",
+    "digits": 4
+  },
+  "driver": {
+    "filename": "tm1637.py",
+    "code": "# TM1637 4-digit 7-segment LED display (Titan Micro TM1637), MicroPython driver.\n# Two-wire bus from the datasheet (not I2C, no address): start = DIO falls while CLK is high,\n# stop = DIO rises while CLK is high, DIO only changes while CLK is low, bytes go LSB first,\n# and the chip pulls DIO low for the 9th (ACK) clock of every byte.\n# Writes use auto-increment mode: data command 0x40, address command 0xC0 + digits,\n# then display control 0x88 | brightness (0-7 = 1/16 ... 14/16 pulse width).\nfrom machine import Pin\nimport time\n\n_DATA_CMD = 0x40   # write display registers, auto-increment address, normal mode\n_ADDR_CMD = 0xC0   # display register C0H = leftmost digit (GRID1)\n_DISP_CTRL = 0x80  # display control; 0x08 = display on, low 3 bits = brightness\n_DELAY_US = 5      # half clock period: ~100 kHz, well under the 250-500 kHz limit\n\n# Segment bits: bit0 = a, bit1 = b ... bit6 = g, bit7 = DP (the colon on digit 2 of clock modules).\n_DIGITS = (0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F)\n_CHARS = {\n    ' ': 0x00, '-': 0x40, '_': 0x08, '*': 0x63,  # '*' = degree sign\n    'A': 0x77, 'B': 0x7C, 'C': 0x39, 'D': 0x5E, 'E': 0x79, 'F': 0x71, 'G': 0x3D, 'H': 0x76,\n    'I': 0x30, 'J': 0x1E, 'L': 0x38, 'N': 0x54, 'O': 0x5C, 'P': 0x73, 'Q': 0x67, 'R': 0x50,\n    'T': 0x78, 'U': 0x3E, 'Y': 0x6E,\n}\n\n\ndef encode(ch):\n    \"\"\"Segment byte for one character (digits, a few letters, space, '-', '_', '*' = degree).\"\"\"\n    if '0' <= ch <= '9':\n        return _DIGITS[ord(ch) - 48]\n    return _CHARS.get(ch.upper(), 0x00)\n\n\nclass TM1637:\n    def __init__(self, clk, dio, brightness=7, digits=4):\n        # Push-pull outputs, idle high. DIO is driven low during each ACK clock (the chip also\n        # pulls it low then), so the pins never fight the chip and never see the module's VCC.\n        self.clk = Pin(clk, Pin.OUT, value=1)\n        self.dio = Pin(dio, Pin.OUT, value=1)\n        self.digits = digits\n        self._bright = brightness & 0x07\n        self._on = True\n        time.sleep_us(_DELAY_US)\n        self.clear()\n\n    # --- bus primitives (datasheet \"Interface interpretation\") ---\n    def _start(self):\n        # bus idle: CLK high, DIO high\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(0)\n        time.sleep_us(_DELAY_US)\n\n    def _stop(self):\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(1)\n        time.sleep_us(_DELAY_US)\n        self.dio(1)\n        time.sleep_us(_DELAY_US)\n\n    def _write_byte(self, b):\n        for i in range(8):  # LSB first, DIO changes only while CLK is low\n            self.dio((b >> i) & 1)\n            time.sleep_us(_DELAY_US)\n            self.clk(1)\n            time.sleep_us(_DELAY_US)\n            self.clk(0)\n        # 9th clock: the TM1637 holds DIO low as its ACK; drive low too so nothing contends\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(1)\n        time.sleep_us(_DELAY_US)\n        self.clk(0)\n        time.sleep_us(_DELAY_US)\n\n    def _command(self, c):\n        self._start()\n        self._write_byte(c)\n        self._stop()\n\n    # --- display ---\n    def write(self, segments, pos=0):\n        \"\"\"Write raw segment bytes starting at digit pos (0 = leftmost).\"\"\"\n        if not 0 <= pos < 6:\n            raise ValueError('position 0-5')\n        self._command(_DATA_CMD)\n        self._start()\n        self._write_byte(_ADDR_CMD | pos)\n        for s in segments:\n            self._write_byte(s & 0xFF)\n        self._stop()\n        self._command(_DISP_CTRL | (0x08 if self._on else 0) | self._bright)\n\n    def brightness(self, value=None):\n        \"\"\"Get or set brightness 0-7 (1/16 to 14/16 pulse width).\"\"\"\n        if value is None:\n            return self._bright\n        if not 0 <= value <= 7:\n            raise ValueError('brightness 0-7')\n        self._bright = value\n        self._command(_DISP_CTRL | (0x08 if self._on else 0) | self._bright)\n\n    def power(self, on):\n        self._on = bool(on)\n        self._command(_DISP_CTRL | (0x08 if self._on else 0) | self._bright)\n\n    def clear(self):\n        self.write([0] * self.digits)\n\n    def show(self, text, colon=False):\n        \"\"\"Show up to `digits` characters, left aligned. colon=True lights the clock colon.\"\"\"\n        text = (text + ' ' * self.digits)[:self.digits]\n        segs = [encode(c) for c in text]\n        if colon and self.digits > 1:\n            segs[1] |= 0x80\n        self.write(segs)\n\n    def number(self, n):\n        \"\"\"Show an integer right aligned (-999 to 9999).\"\"\"\n        n = int(n)\n        if not -999 <= n <= 9999:\n            raise ValueError('number out of range')\n        self.show('%4d' % n)\n\n    def numbers(self, left, right, colon=True):\n        \"\"\"Show two 2-digit numbers, e.g. hours and minutes as 12:34.\"\"\"\n        if not (0 <= left <= 99 and 0 <= right <= 99):\n            raise ValueError('numbers 0-99')\n        self.show('%02d%02d' % (left, right), colon)\n"
+  },
+  "example": {
+    "code": "from tm1637 import TM1637\nimport time\n\ndisplay = TM1637({CLK}, {DIO}, brightness=4)\nwhile True:\n    display.numbers(12, 34)  # 12:34 with the colon lit\n    print('showing 12:34')\n    time.sleep(1)\n    display.number(-7)\n    print('showing -7')\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows",
+      "title": "Shows a clock time, then a negative number",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "1234",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "-7",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "showing -7",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:57:05.749Z",
+    "verifiedSources": [
+      "https://github.com/avishorp/TM1637/raw/master/docs/TM1637_V2.4_EN.pdf",
+      "https://www.protosupplies.com/product/tm1637-4-digit-0-36-red-display/"
+    ]
+  }
+}

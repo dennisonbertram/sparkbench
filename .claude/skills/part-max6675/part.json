@@ -1,0 +1,166 @@
+{
+  "type": "custom-max6675",
+  "name": "MAX6675 K-type thermocouple amplifier",
+  "mpn": "MAX6675",
+  "category": "sensor",
+  "description": "Maxim/Analog Devices cold-junction-compensated K-type thermocouple-to-digital converter: reads 0 to +1023.75 °C in 0.25 °C steps over a read-only SPI interface (SO, SCK, CS), with open-thermocouple detection. Runs on 3.0–5.5 V. Sold as: MAX6675 K-type thermocouple module (common red clone breakout, 5-pin header GND VCC SCK CS SO, screw terminal for the probe) with K-type probe.",
+  "eli5": "Lets your board read very hot temperatures, like an oven or a soldering iron, from a metal thermocouple probe.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.0–5.5 V (use 3.3 V with an ESP32 or Pico so SO stays at 3.3 V logic)",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Serial clock input, up to 4.3 MHz",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low. Low stops a conversion and starts the read; high starts a new conversion",
+      "required": true
+    },
+    {
+      "name": "SO",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "Serial data out (16 bits, MSB first) to the board's MISO",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX6675.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "MAX6675 K-type thermocouple module with probe",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the module from 3.3 V when using an ESP32 or Pico: SO swings to VCC, and 5 V on a GPIO can damage the board.",
+    "The chip only sends data (no MOSI). Read 16 bits with CS low in SPI mode 0, at most 4.3 MHz.",
+    "Taking CS low stops the conversion in progress; a new one starts when CS goes high and takes up to 0.22 s. Do not read faster than about 4 times a second or the reading never updates.",
+    "Temperature = bits D14..D3 × 0.25 °C. Bit D2 = 1 means the probe is not connected; bit D15 and D1 are always 0.",
+    "Keep the probe polarity right (red/+ and blue or yellow/− vary by vendor): a reversed probe reads down when it heats up.",
+    "Use only a K-type thermocouple; the module reads 0 °C and up, not below freezing."
+  ],
+  "keywords": [
+    "max6675",
+    "thermocouple",
+    "k-type",
+    "temperature",
+    "spi",
+    "high temperature",
+    "oven"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX6675.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/MAX6675.pdf",
+    "https://microcontrollerslab.com/max6675-thermocouple-arduino-tutorial/"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "Thermocouple temperature",
+    "unit": "°C",
+    "min": 0,
+    "max": 1023.75,
+    "default": 25,
+    "controls": [
+      {
+        "key": "open",
+        "quantity": "Thermocouple disconnected (1 = open)",
+        "min": 0,
+        "max": 1,
+        "default": 0
+      }
+    ],
+    "spiReplies": [
+      {
+        "match": "",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 1
+          },
+          {
+            "control": "value",
+            "bits": 12,
+            "scale": 0.25
+          },
+          {
+            "control": "open",
+            "bits": 1,
+            "scale": 1
+          },
+          {
+            "const": 0,
+            "bits": 1
+          },
+          {
+            "const": 0,
+            "bits": 1
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "max6675.py",
+    "code": "# MAX6675 cold-junction-compensated K-type thermocouple-to-digital converter, MicroPython driver.\n# Written from the Maxim/Analog Devices MAX6675 datasheet (19-2235):\n#  - CS low stops any conversion and puts D15 on SO; 16 clocks read D15..D0 MSB first.\n#  - CS high starts a new conversion, which takes up to 0.22 s.\n#  - D15 = dummy sign bit (always 0), D14..D3 = 12-bit temperature, 0.25 degC per LSB,\n#    D2 = 1 when the thermocouple input is open, D1 = device ID (always 0), D0 = three-state.\n#  - SCK up to 4.3 MHz; SO changes after SCK falls, so read in SPI mode 0.\nfrom machine import Pin\nimport time\n\nCONVERSION_MS = 220  # datasheet maximum conversion time\n\n\nclass MAX6675:\n    def __init__(self, spi, cs):\n        \"\"\"spi: a machine.SPI (mode 0, <= 4.3 MHz) with SO on MISO; cs: GPIO number or Pin.\"\"\"\n        self.spi = spi\n        self.cs = cs if isinstance(cs, Pin) else Pin(cs, Pin.OUT, value=1)\n        self.cs.value(1)  # CS high starts the first conversion (pass a Pin already set to Pin.OUT)\n        self._started = time.ticks_ms()\n\n    def read_raw(self):\n        \"\"\"Return the 16-bit word D15..D0, waiting for a conversion to finish first.\"\"\"\n        wait = CONVERSION_MS - time.ticks_diff(time.ticks_ms(), self._started)\n        if wait > 0:\n            time.sleep_ms(wait)\n        self.cs.value(0)\n        b = self.spi.read(2)\n        self.cs.value(1)  # start the next conversion\n        self._started = time.ticks_ms()\n        return (b[0] << 8) | b[1]\n\n    def read(self):\n        \"\"\"Thermocouple temperature in degC (0 to 1023.75, 0.25 degC steps).\"\"\"\n        raw = self.read_raw()\n        if raw & 0x8002:\n            # D15 and D1 are always 0 on a working MAX6675; 1s mean SO is floating.\n            raise OSError('MAX6675 not responding: check SO, SCK, CS and power')\n        if raw & 0x0004:\n            raise OSError('thermocouple open: check the probe on T+ / T-')\n        return ((raw >> 3) & 0x0FFF) * 0.25\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport sys, time\nfrom max6675 import MAX6675\n\n# Pico: SPI0 reaches GP16/GP18; ESP32: any pins via SPI(1). SO goes to MISO, MOSI is not used.\nspi = SPI(0 if sys.platform == 'rp2' else 1, baudrate=1000000, polarity=0, phase=0, sck=Pin({SCK}), miso=Pin({SO}))\ntc = MAX6675(spi, {CS})\nwhile True:\n    try:\n        print('T=%.2fC' % tc.read())\n    except OSError as e:\n        print(e)\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the thermocouple temperature and an open probe",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 487.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=487.25C",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "open",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "thermocouple open: check the probe on T+ / T-",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:49:31.062Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/MAX6675.pdf"
+    ]
+  }
+}

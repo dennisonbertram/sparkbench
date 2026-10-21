@@ -1,0 +1,111 @@
+{
+  "type": "custom-sh1106",
+  "name": "SH1106 1.3\" 128×64 OLED display (I2C)",
+  "mpn": "SH1106",
+  "category": "display",
+  "description": "1.3 inch monochrome 128×64 OLED driven by a Sino Wealth SH1106 controller (132×64 RAM, the panel shows columns 2–129) over I2C at address 0x3C. The module has its own 3.3 V regulator and runs on 3.0–5.0 V. Sold as: AZ-Delivery 1.3 inch OLED I2C Display 128×64 (SH1106, 4-pin header in this order: VDD, GND, SCK (= I2C SCL), SDA), and the many identical 4-pin 1.3\" I2C clones.",
+  "eli5": "A small, sharp black-and-white screen that your board can draw text and pictures on using just two wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.0–5.0 V (on-board 3.3 V regulator; use 3.3 V on a Raspberry Pi)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (printed \"SCK\" on the AZ-Delivery board, \"SCL\" on most clones); pull-up fitted on the module",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; pull-up fitted on the module",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 40,
+  "i2cAddress": 60,
+  "datasheetUrl": "https://www.pololu.com/file/0J1813/SH1106.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "1.3 inch OLED SH1106 128x64 I2C 4 pin module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the pin order printed on your board: the AZ-Delivery module is VDD, GND, SCK(SCL), SDA, but many other 1.3\" I2C modules (e.g. The Pi Hut's) are GND, VCC, SCL, SDA. Swapping VCC and GND destroys the module.",
+    "The SH1106 is not an SSD1306: it has 132 RAM columns and no horizontal addressing mode. A SSD1306 driver shows a shifted picture with a garbage stripe; use the sh1106.py driver, which writes each page from column 2.",
+    "I2C address 0x3C (7-bit). Some boards have a solder jumper for 0x3D.",
+    "Fully lit the panel draws about 40 mA at 3.3 V; power it from the 3V3 or 5V pin, not a GPIO.",
+    "OLEDs burn in: blank the screen or call poweroff() when nothing needs to be shown for a long time."
+  ],
+  "keywords": [
+    "sh1106",
+    "oled",
+    "1.3 inch",
+    "1.3\"",
+    "128x64",
+    "display",
+    "i2c display",
+    "screen"
+  ],
+  "sources": [
+    "https://www.pololu.com/file/0J1813/SH1106.pdf",
+    "https://cdn.shopify.com/s/files/1/1509/1638/files/1.3_inch_OLED_I2C_Display_-_pinout.pdf?v=1592850629",
+    "https://cdn.shopify.com/s/files/1/1509/1638/files/1_3_Zoll_Display_Datenblatt_AZ-Delivery_Vertriebs_GmbH_rev.pdf?v=1606164520",
+    "https://www.az-delivery.de/en/products/1-3zoll-i2c-oled-display",
+    "https://thepihut.com/collections/all/products/1-3-oled-display-module-128x64"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "controller": "sh1106",
+    "rows": 64
+  },
+  "driver": {
+    "filename": "sh1106.py",
+    "code": "# SH1106 132x64 OLED controller (Sino Wealth), MicroPython I2C driver for 1.3\" 128x64 modules.\n# Command set and power-on sequence from the SH1106 datasheet V2.3:\n#   I2C control byte: Co (bit 7) and D/C (bit 6); 0x80 = one command byte follows, 0x40 = display data follows.\n#   The SH1106 has 132 RAM columns; 1.3\" 128-pixel panels show columns 2..129, so each page is written from column 2.\n#   Page addressing only (B0h-B7h page, 00h-0Fh / 10h-1Fh column): the SH1106 has no 20h/21h/22h address-window commands.\nimport time\nimport framebuf\n\n\nclass SH1106_I2C(framebuf.FrameBuffer):\n    def __init__(self, width, height, i2c, addr=0x3C, col_offset=2):\n        self.width = width\n        self.height = height\n        self.i2c = i2c\n        self.addr = addr\n        self.col_offset = col_offset\n        self.pages = height // 8\n        self.buffer = bytearray(self.pages * width)\n        super().__init__(self.buffer, width, height, framebuf.MONO_VLSB)\n        self.init_display()\n\n    def cmd(self, c):\n        self.i2c.writeto(self.addr, bytes((0x80, c)))\n\n    def init_display(self):\n        for c in (\n            0xAE,              # display off (sleep)\n            0xD5, 0x80,        # clock divide ratio 1, oscillator +15 %\n            0xA8, self.height - 1,  # multiplex ratio\n            0xD3, 0x00,        # display offset 0\n            0x40,              # display start line 0\n            0xAD, 0x8B,        # DC-DC control: built-in DC-DC on (needed by these modules)\n            0x32,              # charge pump output 8.0 V (POR)\n            0xA1,              # segment re-map: column 131 -> SEG0 (module orientation)\n            0xC8,              # COM scan COM[N-1] -> COM0\n            0xDA, 0x12,        # common pads: alternative (POR)\n            0x81, 0x80,        # contrast 128 (POR)\n            0xD9, 0x22,        # discharge/precharge 2/2 DCLKs (POR)\n            0xDB, 0x35,        # VCOM deselect level (POR)\n            0xA4,              # display follows RAM\n            0xA6,              # normal (not inverted)\n        ):\n            self.cmd(c)\n        # Clear all 132 RAM columns of every page (datasheet: clear RAM before display on)\n        blank = b'\\x40' + bytes(132)\n        for page in range(8):\n            self.cmd(0xB0 | page)\n            self.cmd(0x00)\n            self.cmd(0x10)\n            self.i2c.writeto(self.addr, blank)\n        self.cmd(0xAF)         # display on\n        time.sleep_ms(100)     # datasheet: wait 100 ms after display on before sending data\n        self.fill(0)\n        self.show()\n\n    def poweroff(self):\n        self.cmd(0xAE)\n\n    def poweron(self):\n        self.cmd(0xAF)\n\n    def contrast(self, value):\n        self.cmd(0x81)\n        self.cmd(value & 0xFF)\n\n    def invert(self, on):\n        self.cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        col = self.col_offset\n        for page in range(self.pages):\n            self.cmd(0xB0 | page)\n            self.cmd(col & 0x0F)\n            self.cmd(0x10 | (col >> 4))\n            start = page * self.width\n            self.i2c.writeto(self.addr, b'\\x40' + self.buffer[start:start + self.width])\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sh1106 import SH1106_I2C\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\noled = SH1106_I2C(128, 64, i2c)\noled.fill(0)\noled.text('Hello 1.3in', 0, 0)\noled.text('SH1106 OLED', 0, 16)\noled.text('128x64 I2C', 0, 32)\noled.show()\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Draws text on the 1.3\" OLED",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SH1106 OLED",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:04:17.853Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J1813/SH1106.pdf",
+      "https://www.az-delivery.de/en/products/1-3zoll-i2c-oled-display"
+    ]
+  }
+}

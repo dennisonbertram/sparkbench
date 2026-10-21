@@ -143,6 +143,11 @@ export class SimEngine {
       const cs = customSpec(part.type);
       if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller, rows: cs.sim.rows }), part });
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
+        for (const al of cs.sim.i2cAliases ?? []) {
+          const owner = () => this.devices.find((x) => x.part.id === part.id && x.dev instanceof GenericI2CDevice)?.dev as GenericI2CDevice | undefined;
+          this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
+        }
+      if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
         this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, pointerless: cs.sim.pointerless, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000 }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
@@ -1061,7 +1066,8 @@ export class SimEngine {
             const d = this.segDev(part)!;
             if (d instanceof TM1637Device) {
               v.segOn = !!v.powered && d.on;
-              v.segText = v.segOn ? segText(d.segs.slice(0, cs.sim.digits ?? 4)) : '';
+              const order = cs.sim.digitMap ?? Array.from({ length: cs.sim.digits ?? 4 }, (_, i) => i);
+              v.segText = v.segOn ? segText(order.map((i) => d.segs[i] ?? 0)) : '';
             } else if (cs.sim.matrix) {
               v.segOn = !!v.powered && !d.shutdown;
               v.pixels = v.powered ? d.matrix().flatMap((x) => [x, 0, 0]) : [];

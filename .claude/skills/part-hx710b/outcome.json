@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hx710b",
+  "board": "HX710B air pressure sensor module (red board, MPS20N0040D-S 0-40 kPa, header VCC OUT SCK GND)",
+  "reason": "Modelled per the Avia HX710(A/B) datasheet: 24-bit two's-complement output, 25 PD_SCK pulses select the next conversion (differential, 10 Hz), and 1 LSB = VREF/2^31 with VREF = VCC = 3.3 V. The sim slider is the bridge mV signal. Header order comes from the vendor photo (VCC, OUT, SCK, GND), and the check passed on ESP32 and Pico.",
+  "datasheetUrl": "https://www.datasheetcafe.com/wp-content/uploads/2015/09/HX710B.pdf",
+  "breakoutPinoutSource": "https://quartzcomponents.com/cdn/shop/files/HX710B-air-pressure-sensor-module.jpg",
+  "checkRuns": 1
+}

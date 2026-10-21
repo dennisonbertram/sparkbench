@@ -1,0 +1,79 @@
+{
+  "type": "custom-3x4-membrane-keypad",
+  "mpn": "3x4 membrane keypad (Adafruit 419)",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; SW1.R1 → D25 (GPIO25). SW1.R2 → D26 (GPIO26). SW1.R3 → D27 (GPIO27). SW1.R4 → D13 (GPIO13). SW1.C1 → D23 (GPIO23). SW1.C2 → D19 (GPIO19). SW1.C3 → D18 (GPIO18). Added the keypad.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Prints the key held on the keypad: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; SW1.R1 → GP2 (GPIO2). SW1.R2 → GP3 (GPIO3). SW1.R3 → GP6 (GPIO6). SW1.R4 → GP7 (GPIO7). SW1.C1 → GP8 (GPIO8). SW1.C2 → GP9 (GPIO9). SW1.C3 → GP10 (GPIO10). Added the keypad.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Prints the key held on the keypad: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T05:55:23.176Z"
+}

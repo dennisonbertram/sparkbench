@@ -1,0 +1,130 @@
+{
+  "type": "custom-hx710b",
+  "name": "HX710B air pressure sensor module",
+  "mpn": "HX710B",
+  "category": "sensor",
+  "description": "Avia HX710B 24-bit bridge ADC (fixed gain 128, 10 or 40 samples/s, two-wire PD_SCK/DOUT serial interface) wired to an MPS20N0040D-S 0-40 kPa piezoresistive pressure bridge; reads the bridge's millivolt output, which you calibrate to pressure. Runs on 2.7-5.5 V. Sold as: HX710B air pressure sensor module (red board, MPS20N0040D-S 0-40 kPa sensor with hose barb, 4-pin header VCC, OUT, SCK, GND).",
+  "eli5": "Feels how hard air is pushing into its little tube (like in a cuff or a water tank) and turns it into a number your board can read.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V (use the same supply as the microcontroller, 3.3 V on ESP32/Pico); also the bridge excitation and ADC reference",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "HX710B DOUT: serial data out; high = conversion not ready, low = data ready",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "HX710B PD_SCK: serial clock in; keep low between reads (high > 60 us powers the chip down)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.datasheetcafe.com/wp-content/uploads/2015/09/HX710B.pdf",
+  "priceUsd": 2.5,
+  "supplierQuery": "HX710B air pressure sensor module 0-40kPa MPS20N0040D",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wait for OUT (DOUT) to go low, then give 25 SCK pulses: pulses 1-24 shift the 24-bit two's-complement result out MSB first, and the pulse count picks the next conversion (25 = differential 10 Hz, 26 = DVDD-AVDD 40 Hz, 27 = differential 40 Hz).",
+    "Keep SCK low between reads and each high pulse short (0.2-50 us): SCK high for more than 60 us powers the chip down.",
+    "Full scale is +/-0.5 x VREF / 128 (about +/-12.9 mV at 3.3 V), so 1 count = VREF / 2^31 V. VREF comes from VCC on this module, so the reading scales with the supply.",
+    "The pressure sensor is uncalibrated: read the count with the port open to air (zero), then at one known pressure, and fit a straight line. The 0-40 kPa range is gauge pressure on the hose barb.",
+    "Power it from the same 3.3 V rail as the ESP32/Pico so OUT never swings above 3.3 V."
+  ],
+  "keywords": [
+    "hx710b",
+    "hx710",
+    "mps20n0040d",
+    "pressure",
+    "air pressure",
+    "kpa",
+    "bridge adc",
+    "24-bit adc",
+    "blood pressure"
+  ],
+  "sources": [
+    "https://www.datasheetcafe.com/wp-content/uploads/2015/09/HX710B.pdf",
+    "https://quartzcomponents.com/products/hx710b-air-pressure-sensor-module-0-40kpa-3-3v-5v",
+    "https://quartzcomponents.com/cdn/shop/files/HX710B-air-pressure-sensor-module.jpg",
+    "https://forum.fritzing.org/t/modulo-de-sensor-de-presion/34090",
+    "https://www.lcsc.com/product-detail/C78447.html"
+  ],
+  "sim": {
+    "kind": "hx711",
+    "outputPin": "OUT",
+    "clockPin": "SCK",
+    "countsPerUnit": 650752.6206,
+    "offsetCounts": 0,
+    "quantity": "Bridge signal INP-INN (at VCC = 3.3 V)",
+    "unit": "mV",
+    "min": -12.8,
+    "max": 12.8,
+    "default": 0
+  },
+  "driver": {
+    "filename": "hx710b.py",
+    "code": "# HX710B 24-bit bridge ADC (Avia Semiconductor), MicroPython driver.\n# Protocol per the HX710(A/B) datasheet: DOUT high = conversion not ready; when DOUT goes low,\n# give 25-27 positive PD_SCK pulses. Pulses 1-24 shift the 24-bit two's-complement result out\n# MSB first (read DOUT after each rising edge); the total pulse count selects the NEXT conversion:\n#   25 = differential input (INP-INN), 10 Hz\n#   26 = (DVDD-AVDD) voltage difference, 40 Hz\n#   27 = differential input (INP-INN), 40 Hz\n# PD_SCK must stay low between reads: high for more than 60 us powers the chip down.\n# Full scale: +/-0.5 * VREF / 128 V maps to 0x800000..0x7FFFFF, so 1 LSB = VREF / 2**31 V.\nfrom machine import Pin, disable_irq, enable_irq\nimport time\n\nDIFF_10HZ = 25\nDVDD_AVDD_40HZ = 26\nDIFF_40HZ = 27\n\n\nclass HX710B:\n    def __init__(self, dout, sck, mode=DIFF_10HZ, vref=3.3):\n        if mode not in (25, 26, 27):\n            raise ValueError('mode must be 25, 26 or 27 PD_SCK pulses')\n        self.sck = Pin(sck, Pin.OUT, value=0)\n        self.dout = Pin(dout, Pin.IN)\n        self.mode = mode\n        self.vref = vref  # the module feeds VREF from VCC: pass the supply voltage you use\n        self.offset = 0\n\n    def ready(self):\n        return self.dout.value() == 0\n\n    def read_raw(self, timeout_ms=1000):\n        \"\"\"Wait for a conversion and return it as a signed 24-bit count.\"\"\"\n        t = time.ticks_ms()\n        while self.dout.value():\n            if time.ticks_diff(time.ticks_ms(), t) > timeout_ms:\n                raise OSError('HX710B not ready: check OUT, SCK and power')\n        sck = self.sck\n        dout = self.dout\n        v = 0\n        irq = disable_irq()  # keep each PD_SCK high time well under 60 us\n        try:\n            for _ in range(24):\n                sck.value(1)\n                sck.value(0)\n                v = (v << 1) | dout.value()\n            for _ in range(self.mode - 24):\n                sck.value(1)\n                sck.value(0)\n        finally:\n            enable_irq(irq)\n        return v - 0x1000000 if v & 0x800000 else v\n\n    def millivolts(self, raw=None):\n        \"\"\"Differential input INP-INN in mV (1 LSB = VREF / 2**31).\"\"\"\n        if raw is None:\n            raw = self.read_raw()\n        return raw * self.vref * 1000 / 2147483648\n\n    def tare(self, samples=10):\n        \"\"\"Remember the current reading (e.g. port open to air) as zero.\"\"\"\n        s = 0\n        for _ in range(samples):\n            s += self.read_raw()\n        self.offset = s // samples\n        return self.offset\n\n    def power_down(self):\n        self.sck.value(0)\n        self.sck.value(1)\n        time.sleep_us(100)  # > 60 us high = power down\n\n    def power_up(self):\n        self.sck.value(0)  # chip resets; the next conversion is differential, 10 Hz\n"
+  },
+  "example": {
+    "code": "from hx710b import HX710B\nimport time\n\nadc = HX710B({OUT}, {SCK}, vref=3.3)\nwhile True:\n    raw = adc.read_raw()\n    print('IN=%.3fmV' % adc.millivolts(raw))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the bridge voltage set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "IN=5.200mV",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -3.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "IN=-3.500mV",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:31:22.130Z",
+    "verifiedSources": [
+      "https://components101.com/sites/default/files/component_datasheet/hx710b_datasheet.pdf",
+      "https://forum.arduino.cc/t/mps20n0040d-hx710-module/1119285",
+      "https://zbotic.in/?p=17539"
+    ]
+  }
+}

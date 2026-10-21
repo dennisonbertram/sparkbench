@@ -1,0 +1,79 @@
+{
+  "type": "custom-mcp23008",
+  "mpn": "MCP23008-E/P",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "18 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "8 pins wired; Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. It shares the I2C bus (SDA D21, SCL D22) at address 0x20. Added the mcp23008.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "22 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Button on GP7 is read and lights the LED on GP0: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "55.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "18 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "8 pins wired; Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x20. Added the mcp23008.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "22 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Button on GP7 is read and lights the LED on GP0: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-18_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C646745 MCP23008-E/P (100 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T06:01:13.063Z"
+}

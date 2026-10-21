@@ -1,0 +1,248 @@
+{
+  "type": "custom-pms7003",
+  "name": "PMS7003 particulate matter (PM2.5) sensor",
+  "mpn": "PMS7003",
+  "category": "sensor",
+  "description": "Plantower slim laser-scattering dust sensor reporting PM1.0, PM2.5 and PM10 mass concentration (µg/m³, 0-500 effective, >=1000 max, resolution 1) and particle counts per 0.1 L over a 9600-baud UART (3.3 V logic). The bare sensor needs 4.5-5.5 V for its fan and draws up to 100 mA; this adapter boosts a 3.3 V supply to 5 V for it. Sold as: Soldered PMS7003 sensor adapter (333058) with a PMS7003 plugged into its 1.27 mm 2x5 socket, 6-pin 2.54 mm header: VCC, GND, RX, TX, RESET, SET.",
+  "eli5": "A thin box with a tiny fan pulls air past a laser and counts the dust and smoke specks, then tells your board how dirty the air is.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V (3.0-5.5 V): an on-board TPS613222A boost converter makes the sensor's 5 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (the sensor's metal case is grounded too)",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Sensor serial input (3.3 V logic): wire to the board's UART TX; only needed to send commands",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Sensor serial output (3.3 V logic, 9600 baud): wire to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "RESET",
+      "role": "io",
+      "description": "Reset, active low, pulled up inside the sensor; leave open if unused",
+      "required": false
+    },
+    {
+      "name": "SET",
+      "role": "io",
+      "description": "Sleep control, 3.3 V logic, pulled up inside: high/open = run, low = sleep",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 180,
+  "datasheetUrl": "https://download.kamami.pl/p564008-PMS7003%20series%20data%20manua_English_V2.5.pdf",
+  "priceUsd": 25,
+  "supplierQuery": "PMS7003 particulate sensor with adapter board",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the Soldered adapter's VCC from 3.3 V: its TPS613222A boost converter makes the 5 V the sensor's fan needs (allow about 180 mA from 3.3 V). The data pins are 3.3 V logic, safe straight into an ESP32 or Pico.",
+    "Cross the serial wires: adapter TX (sensor output) -> board RX, adapter RX (sensor input) -> board TX. RX is only needed to send commands.",
+    "9600 baud 8N1. In active mode (power-up default) the sensor sends a 32-byte frame on its own about every 2.3 s (200-800 ms when readings change fast): 0x42 0x4D, length 28, 13 big-endian words, then a 16-bit sum of the first 30 bytes. Resync on 0x42 0x4D and drop frames whose sum does not match.",
+    "Data 4-6 are PM1.0/PM2.5/PM10 'under atmospheric environment' (use these); data 1-3 are the CF=1 values meant for factory use.",
+    "Leave SET and RESET unconnected unless you use them (both are pulled up inside); SET low stops the fan. Readings need at least 30 s after waking to settle.",
+    "Mount it at least 20 cm above the floor, keep the inlet and outlet clear, and keep the grounded metal case away from other conductors."
+  ],
+  "keywords": [
+    "pms7003",
+    "pm2.5",
+    "pm10",
+    "pm1.0",
+    "particulate",
+    "dust",
+    "air quality",
+    "plantower",
+    "g7",
+    "soldered"
+  ],
+  "sources": [
+    "https://download.kamami.pl/p564008-PMS7003%20series%20data%20manua_English_V2.5.pdf",
+    "https://github.com/SolderedElectronics/PMS7003-sensor-adapter-hardware-design",
+    "https://raw.githubusercontent.com/SolderedElectronics/PMS7003-sensor-adapter-hardware-design/HEAD/OUTPUTS/V1.1.1/PMS7003%20sensor%20adapter%20Pinout.jpg",
+    "https://raw.githubusercontent.com/SolderedElectronics/PMS7003-sensor-adapter-hardware-design/HEAD/OUTPUTS/V1.1.1/PMS7003%20sensor%20adapter%20Schematics.pdf",
+    "https://www.ti.com/lit/ds/symlink/tps61322.pdf",
+    "https://solde.red/333058"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "PM2.5 (atmospheric)",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0 (atmospheric)",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10 (atmospheric)",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      },
+      {
+        "key": "n03",
+        "quantity": "Particles over 0.3 µm per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 1500
+      }
+    ],
+    "uartStream": {
+      "everyMs": 2300,
+      "bytes": [
+        {
+          "const": 66,
+          "bits": 8
+        },
+        {
+          "const": 77,
+          "bits": 8
+        },
+        {
+          "const": 28,
+          "bits": 16
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "n03",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "crc": "sum16",
+          "over": 30
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "pms7003.py",
+    "code": "# Plantower PMS7003 particulate matter sensor, MicroPython driver.\n# Written from the Plantower \"PMS7003 series data manual\" V2.5 (Appendix I and II):\n# 9600 baud, 8 data bits, no parity, 1 stop bit. In active mode (the power-up default) the sensor sends\n# 32-byte frames by itself (every ~2.3 s when steady, 200-800 ms when the concentration changes fast):\n#   0x42 0x4D, frame length (2 bytes, = 2*13+2 = 28), 13 big-endian 16-bit data words,\n#   check code (2 bytes) = sum of the 30 bytes from start character 1 up to data 13 low byte.\n# Host commands are 7 bytes: 0x42 0x4D CMD DATAH DATAL LRCH LRCL, LRC = 16-bit sum of the first 5 bytes.\nimport time\n\n_START = b'\\x42\\x4d'\n_FRAME_LEN = 32\n\n\ndef _command(cmd, datah, datal):\n    body = bytes((0x42, 0x4D, cmd, datah, datal))\n    s = sum(body) & 0xFFFF\n    return body + bytes((s >> 8, s & 0xFF))\n\n\nclass PMS7003:\n    def __init__(self, uart, set_pin=None, reset_pin=None):\n        \"\"\"uart: a machine.UART at 9600 baud whose RX is wired to the sensor's TX.\n        set_pin / reset_pin: optional machine.Pin outputs wired to SET / RESET (both pulled up inside).\"\"\"\n        self.uart = uart\n        self.set_pin = set_pin\n        self.reset_pin = reset_pin\n        self._buf = b''\n\n    def _frame(self, timeout_ms):\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while time.ticks_diff(deadline, time.ticks_ms()) > 0:\n            n = self.uart.any()\n            if n:\n                got = self.uart.read(n)\n                if got:\n                    self._buf += got\n            else:\n                time.sleep_ms(10)\n            while True:\n                i = self._buf.find(_START)\n                if i < 0:\n                    self._buf = self._buf[-1:]  # keep a trailing 0x42\n                    break\n                self._buf = self._buf[i:]\n                if len(self._buf) < _FRAME_LEN:\n                    break\n                f = self._buf[:_FRAME_LEN]\n                length = (f[2] << 8) | f[3]\n                check = (f[30] << 8) | f[31]\n                if length == 2 * 13 + 2 and (sum(f[:30]) & 0xFFFF) == check:\n                    self._buf = self._buf[_FRAME_LEN:]\n                    return f\n                self._buf = self._buf[2:]  # false start or corrupted frame: resync\n        raise OSError('PMS7003: no valid frame (check the TX wire, the supply, and that SET is not low)')\n\n    def read(self, timeout_ms=5000):\n        \"\"\"Wait for the next checksum-valid frame and return its readings as a dict.\n        pm1_0 / pm2_5 / pm10: 'under atmospheric environment' values (data 4-6, ug/m3);\n        *_cf1: CF=1 'standard particle' values (data 1-3, ug/m3, for factory use);\n        n0_3 ... n10: particles beyond that diameter (um) in 0.1 L of air (data 7-12).\"\"\"\n        f = self._frame(timeout_ms)\n        w = [(f[4 + 2 * k] << 8) | f[5 + 2 * k] for k in range(13)]\n        return {\n            'pm1_0_cf1': w[0], 'pm2_5_cf1': w[1], 'pm10_cf1': w[2],\n            'pm1_0': w[3], 'pm2_5': w[4], 'pm10': w[5],\n            'n0_3': w[6], 'n0_5': w[7], 'n1_0': w[8], 'n2_5': w[9], 'n5_0': w[10], 'n10': w[11],\n        }\n\n    def flush(self):\n        \"\"\"Throw away buffered (possibly stale) bytes.\"\"\"\n        while self.uart.any():\n            self.uart.read(self.uart.any())\n        self._buf = b''\n\n    # ---- commands (Appendix II); need the sensor's RX wired to the UART TX ----\n    def passive_mode(self):\n        self.uart.write(_command(0xE1, 0x00, 0x00))\n\n    def active_mode(self):\n        self.uart.write(_command(0xE1, 0x00, 0x01))\n\n    def request(self, timeout_ms=5000):\n        \"\"\"Passive mode: ask for one frame (command 0xE2) and return its readings.\"\"\"\n        self.flush()\n        self.uart.write(_command(0xE2, 0x00, 0x00))\n        return self.read(timeout_ms)\n\n    def sleep(self):\n        \"\"\"Stop the fan and laser (standby <= 200 uA). Uses the SET pin if given, else command 0xE4 00.\"\"\"\n        if self.set_pin is not None:\n            self.set_pin.value(0)\n        else:\n            self.uart.write(_command(0xE4, 0x00, 0x00))\n\n    def wake(self):\n        \"\"\"Restart the fan. Data is only stable at least 30 s after waking.\"\"\"\n        if self.set_pin is not None:\n            self.set_pin.value(1)\n        else:\n            self.uart.write(_command(0xE4, 0x00, 0x01))\n\n    def reset(self):\n        \"\"\"Pulse RESET low (needs reset_pin).\"\"\"\n        if self.reset_pin is not None:\n            self.reset_pin.value(0)\n            time.sleep_ms(100)\n            self.reset_pin.value(1)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nfrom pms7003 import PMS7003\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\npms = PMS7003(uart)\nwhile True:\n    r = pms.read()\n    print('PM1=%d PM2.5=%d PM10=%d' % (r['pm1_0'], r['pm2_5'], r['pm10']))\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM1.0, PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 43
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1",
+          "value": 27
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 61
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1=27 PM2.5=43 PM10=61",
+          "within": 7000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:56:54.024Z",
+    "verifiedSources": [
+      "https://www.espruino.com/datasheets/PMS7003.pdf",
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/5858/333058%20PMS7003%20sensor%20adapter%20datasheet.pdf",
+      "https://github.com/SolderedElectronics/PMS7003-sensor-adapter-hardware-design"
+    ]
+  }
+}

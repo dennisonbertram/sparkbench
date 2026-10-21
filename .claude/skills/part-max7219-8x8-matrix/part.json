@@ -1,0 +1,142 @@
+{
+  "type": "custom-max7219-8x8-matrix",
+  "name": "MAX7219 8x8 LED dot matrix",
+  "mpn": "MAX7219",
+  "category": "display",
+  "description": "64 red LEDs in an 8x8 grid driven by a Maxim MAX7219 LED driver, which multiplexes the rows itself and sets brightness in 16 steps. Talks a write-only SPI-style serial bus (DIN, CLK, LOAD/CS), up to 10 MHz. Runs on 4.0–5.5 V. Sold as: FC-16 style MAX7219 8x8 dot matrix module (single 32 mm matrix, input header VCC, GND, DIN, CS, CLK; output header VCC, GND, DOUT, CS, CLK for chaining).",
+  "eli5": "A little square of 64 red lights you can switch on one by one to draw pictures, letters or scrolling text.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 4.0–5.5 V (use 5 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Serial data in (MOSI), sampled on CLK rising edge, MSB first",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "LOAD/chip select: hold low while sending, rising edge latches the 16-bit frame",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Serial clock (SCK), up to 10 MHz",
+      "required": true
+    }
+  ],
+  "vmin": 4,
+  "vmax": 5.5,
+  "currentMa": 320,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX7219-MAX7221.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "MAX7219 8x8 dot matrix module FC-16",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (VBUS/VIN on ESP32 and Pico boards), not 3.3 V: the MAX7219 needs 4.0–5.5 V.",
+    "With VCC at 5 V the datasheet's logic-high threshold is 3.5 V; 3.3 V GPIO usually works with short wires, but for a guaranteed margin put a 74HCT125 or similar level shifter on DIN, CS and CLK.",
+    "All 64 LEDs on can draw over 300 mA. Keep brightness low (intensity 0–4) when powering from USB, and add a 10 µF and 0.1 µF capacitor across VCC/GND near the module, as the datasheet recommends.",
+    "The chip powers up in shutdown with a one-row scan limit and minimum brightness: the driver must set scan limit 7, decode mode 0, display test 0 and then leave shutdown (register 0x0C = 1).",
+    "Use the input side (DIN) of the module. To chain modules, wire DOUT of one to DIN of the next and share CS and CLK; send one 16-bit frame per module, last module first, then raise CS."
+  ],
+  "keywords": [
+    "max7219",
+    "8x8",
+    "dot matrix",
+    "led matrix",
+    "fc-16",
+    "fc16",
+    "max7221",
+    "led display"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX7219-MAX7221.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/MAX7219.pdf",
+    "https://docs.wokwi.com/parts/wokwi-max7219-matrix",
+    "https://docs.sunfounder.com/projects/raphael-kit/it/latest/_shared/component/cpn_max7219_module.html",
+    "https://www.digikey.com/es/maker/projects/max7219-8x8-led-matrix-module-arduino-interfacing/3bfeffd9a5b148a5869688ecf40e952d"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "max7219",
+    "digits": 8,
+    "matrix": true
+  },
+  "driver": {
+    "filename": "max7219.py",
+    "code": "# MAX7219 8x8 LED dot matrix (FC-16 style module), MicroPython driver.\n# Register map, power-up state and serial format from the Maxim/Analog Devices MAX7219 datasheet:\n# 16-bit frames (D15..D8 = address, D7..D0 = data) shifted MSB first on CLK rising edge\n# (SPI mode 0, up to 10 MHz) and latched on the rising edge of LOAD (the CS pin).\n# Cascaded modules: every module gets one frame per LOAD pulse; the first frame sent\n# ends up in the LAST module of the chain, so frames are sent last module first.\nfrom machine import Pin\n\n_NOOP = 0x00\n_DIGIT0 = 0x01      # digit registers 0x01..0x08 = matrix rows 0..7\n_DECODEMODE = 0x09\n_INTENSITY = 0x0A\n_SCANLIMIT = 0x0B\n_SHUTDOWN = 0x0C\n_DISPLAYTEST = 0x0F\n\n\nclass MAX7219:\n    def __init__(self, spi, cs, num=1, brightness=3):\n        \"\"\"spi: a machine.SPI (polarity=0, phase=0, <= 10 MHz); cs: GPIO number of the CS/LOAD pin;\n        num: how many 8x8 modules are chained (DOUT -> DIN).\"\"\"\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.num = num\n        self.rows = [bytearray(8) for _ in range(num)]\n        # Power-up state per datasheet: shutdown, scan one digit, no decode, minimum intensity.\n        self._all(_DISPLAYTEST, 0)   # normal operation (test mode overrides everything)\n        self._all(_SCANLIMIT, 7)     # scan all 8 digits = all 8 rows\n        self._all(_DECODEMODE, 0)    # no Code-B decode: raw bits for a matrix\n        self.brightness(brightness)\n        self.clear()\n        self.show()\n        self._all(_SHUTDOWN, 1)      # leave shutdown: display on\n\n    def _write(self, frames):\n        # frames: list of (reg, data), index 0 = first module (nearest the microcontroller).\n        buf = bytearray(2 * self.num)\n        for i, (reg, val) in enumerate(reversed(frames)):\n            buf[2 * i] = reg\n            buf[2 * i + 1] = val\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)  # LOAD rising edge latches the last 16 bits in each chip\n\n    def _all(self, reg, val):\n        self._write([(reg, val)] * self.num)\n\n    def brightness(self, level):\n        \"\"\"0 (dimmest, 1/32 duty) .. 15 (brightest, 31/32 duty).\"\"\"\n        self._all(_INTENSITY, max(0, min(15, level)))\n\n    def power(self, on):\n        \"\"\"True = normal operation, False = shutdown (display dark, data kept).\"\"\"\n        self._all(_SHUTDOWN, 1 if on else 0)\n\n    def clear(self):\n        for m in self.rows:\n            for r in range(8):\n                m[r] = 0\n\n    def pixel(self, x, y, on=True):\n        \"\"\"x = 0..8*num-1 left to right, y = 0..7 top to bottom (FC-16 orientation: bit 7 is the left column).\"\"\"\n        m, c = divmod(x, 8)\n        if on:\n            self.rows[m][y] |= 0x80 >> c\n        else:\n            self.rows[m][y] &= ~(0x80 >> c) & 0xFF\n\n    def set_row(self, y, bits, module=0):\n        \"\"\"Set row y (0 = top) of one module to an 8-bit pattern, bit 7 = leftmost LED.\"\"\"\n        self.rows[module][y] = bits & 0xFF\n\n    def show(self):\n        for r in range(8):\n            self._write([(_DIGIT0 + r, self.rows[m][r]) for m in range(self.num)])\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom max7219 import MAX7219\n\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}))\ntime.sleep(1)\nm = MAX7219(spi, {CS})\nfor y, bits in enumerate([0x3C, 0x42, 0xA5, 0x81, 0xA5, 0x99, 0x42, 0x3C]):\n    m.set_row(y, bits)\nm.show()\nprint('face on')\ntime.sleep(4)\nm.power(False)\nprint('display off')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "face",
+      "title": "Draws a face on the matrix, then shuts the display down",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "face on",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 2500
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "display off",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:00:30.506Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/MAX7219.pdf",
+      "https://lastminuteengineers.com/max7219-dot-matrix-arduino-tutorial/"
+    ]
+  }
+}

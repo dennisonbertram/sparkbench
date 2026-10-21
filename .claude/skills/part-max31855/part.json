@@ -1,0 +1,177 @@
+{
+  "type": "custom-max31855",
+  "name": "MAX31855 K-type thermocouple amplifier",
+  "mpn": "MAX31855K",
+  "category": "sensor",
+  "description": "Maxim/Analog Devices cold-junction-compensated thermocouple-to-digital converter for K-type thermocouples (about -200 to +1350 °C, 0.25 °C resolution, plus 0.0625 °C cold-junction reading and open/short fault flags), read over SPI (read-only, mode 0, up to 5 MHz). Sold as: Adafruit MAX31855 Thermocouple Amplifier breakout (#269, v2; 6-pin header Vin, 3Vo, GND, DO, CS, CLK; on-board 3.3 V regulator, Vin 3-5 V; 2-pin screw terminal for the thermocouple).",
+  "eli5": "Plugs into a thermocouple wire probe and tells your board how hot the probe tip is, even inside an oven or a fire.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Supply, 3-5 V DC (on-board 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "SPI data out (MISO), 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low (level-shifted, 3-5 V logic)",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock, up to 5 MHz (level-shifted, 3-5 V logic)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31855.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "MAX31855 K-type thermocouple amplifier breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "SPI mode 0, read only: pull CS low and read 4 bytes. D31-D18 = signed 14-bit thermocouple temperature x 0.25 °C; D15-D4 = signed 12-bit cold-junction temperature x 0.0625 °C.",
+    "D16 is the fault flag; D0 = open thermocouple, D1 = shorted to GND, D2 = shorted to VCC. An open-circuit fault usually means the thermocouple is not screwed in tightly.",
+    "Conversions take up to 100 ms and only update while CS is high: read no faster than every 100 ms, and wait 200 ms after power-up for the first valid reading.",
+    "K-type wire only. Yellow lead to +, red lead to -; if the reading drops as the probe heats, the leads are swapped.",
+    "3Vo is the regulator's output: leave it unconnected. Several boards can share CLK and DO with one CS each."
+  ],
+  "keywords": [
+    "max31855",
+    "max31855k",
+    "thermocouple",
+    "k-type",
+    "temperature",
+    "spi",
+    "cold junction"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31855.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/MAX31855.pdf",
+    "https://www.adafruit.com/product/269",
+    "https://github.com/adafruit/Adafruit-MAX31855-breakout-board",
+    "https://learn.adafruit.com/thermocouple/python-circuitpython"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "Thermocouple temperature",
+    "unit": "°C",
+    "min": -200,
+    "max": 1350,
+    "default": 25,
+    "controls": [
+      {
+        "key": "internal",
+        "quantity": "Cold-junction (board) temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "spiReplies": [
+      {
+        "match": "",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.25,
+            "signed": true
+          },
+          {
+            "const": 0,
+            "bits": 1
+          },
+          {
+            "const": 0,
+            "bits": 1
+          },
+          {
+            "control": "internal",
+            "bits": 12,
+            "scale": 0.0625,
+            "signed": true
+          },
+          {
+            "const": 0,
+            "bits": 1
+          },
+          {
+            "const": 0,
+            "bits": 3
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "max31855.py",
+    "code": "# MAX31855 cold-junction-compensated thermocouple-to-digital converter, MicroPython driver.\n# Read-only SPI, mode 0 (CPOL=0, CPHA=0), SCK up to 5 MHz. While CS is low the chip shifts out\n# one 32-bit frame MSB first (datasheet Table 2):\n#   D31..D18 signed 14-bit thermocouple temperature, 0.25 degC per LSB\n#   D17 reserved (0), D16 fault (1 = any of SCV/SCG/OC)\n#   D15..D4  signed 12-bit internal (cold-junction) temperature, 0.0625 degC per LSB\n#   D3 reserved (0), D2 SCV (short to VCC), D1 SCG (short to GND), D0 OC (open circuit)\n# Conversions run continuously (70-100 ms each); results only update while CS is high.\nfrom machine import Pin\nimport time\n\n\nclass MAX31855:\n    def __init__(self, spi, cs):\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self._buf = bytearray(4)\n        time.sleep_ms(200)  # tCONV_PU: first valid conversion needs 200 ms after power-up\n\n    def raw(self):\n        \"\"\"Read the 32-bit frame.\"\"\"\n        self.cs.value(0)\n        self.spi.readinto(self._buf)\n        self.cs.value(1)\n        b = self._buf\n        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n\n    def read(self):\n        \"\"\"Return (thermocouple degC, cold-junction degC). Raises OSError on a thermocouple fault.\"\"\"\n        v = self.raw()\n        if v & 0x00010000:\n            if v & 0x1:\n                why = 'open circuit (thermocouple not connected)'\n            elif v & 0x2:\n                why = 'thermocouple shorted to GND'\n            elif v & 0x4:\n                why = 'thermocouple shorted to VCC'\n            else:\n                why = 'fault'\n            raise OSError('MAX31855: ' + why)\n        tc = (v >> 18) & 0x3FFF\n        if tc & 0x2000:\n            tc -= 0x4000\n        cj = (v >> 4) & 0xFFF\n        if cj & 0x800:\n            cj -= 0x1000\n        return tc * 0.25, cj * 0.0625\n\n    def temperature(self):\n        return self.read()[0]\n\n    def internal(self):\n        return self.read()[1]\n"
+  },
+  "skill": "---\nname: part-max31855\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MAX31855 K-type thermocouple amplifier (MAX31855K). Use when designing, wiring, simulating or writing code for a MAX31855 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MAX31855 K-type thermocouple amplifier (MAX31855)\n\n## Overview\nThe **MAX31855K** (Maxim / Analog Devices) is a cold-junction-compensated thermocouple-to-digital converter. It reads a K-type thermocouple from about −200 °C to +1350 °C with 0.25 °C resolution, measures its own die temperature (the cold junction) with 0.0625 °C resolution, and flags an open, shorted-to-GND or shorted-to-VCC thermocouple. It is read-only SPI. Hobbyists buy it on the **Adafruit MAX31855 Thermocouple Amplifier breakout (#269, v2)**, which adds a 3.3 V regulator, level shifting on CLK/CS, a 2-pin screw terminal for the thermocouple and a 6-pin header.\n\n## Pinout (Adafruit #269 v2, header order as printed)\n| Pin | Function |\n|---|---|\n| Vin | Supply, 3–5 V DC (on-board 3.3 V regulator) |\n| 3Vo | 3.3 V output of the regulator (up to 100 mA); leave unconnected |\n| GND | Ground |\n| DO | Data out (SPI MISO) |\n| CS | Chip select, active low |\n| CLK | SPI clock |\n\nThe thermocouple goes in the screw terminal: **yellow (+) and red (−)** for US-coloured K-type wire.\n\n## Electrical limits\n- Chip VCC: 3.0–3.6 V (absolute max 4.0 V); the breakout's regulator accepts 3–5 V on Vin.\n- Current: 0.9 mA typical, 1.5 mA max.\n- SCK up to 5 MHz. DO swings 0–3.3 V, safe for ESP32 / Pico / Pi GPIOs.\n- K-type thermocouples only (the MAX31855K is trimmed for K).\n\n## Interface details\n- SPI mode 0 (CPOL 0, CPHA 0), MSB first, read only (no MOSI). Pull CS low and clock out 32 bits:\n  - D31–D18: signed 14-bit thermocouple temperature, **0.25 °C/LSB**\n  - D17: reserved (0); D16: fault (1 if any of the three fault bits is set)\n  - D15–D4: signed 12-bit internal (cold-junction) temperature, **0.0625 °C/LSB**\n  - D3: reserved (0); D2: SCV (short to VCC); D1: SCG (short to GND); D0: OC (open circuit)\n- Conversions run continuously (70 ms typical, 100 ms max) and only update while CS is high, so don't read faster than every 100 ms.\n- Allow 200 ms after power-up before the first valid thermocouple reading.\n\n## Wiring\n- ESP32: Vin → 3V3, GND → GND, CLK → GPIO18, DO → GPIO19, CS → GPIO5.\n- Pico: Vin → 3V3(OUT), GND → GND, CLK → GP18 (SPI0 SCK), DO → GP16 (SPI0 RX), CS → GP17.\n- Raspberry Pi 4: Vin → pin 1 (3.3 V), GND → pin 6, CLK → pin 23 (SCLK), DO → pin 21 (MISO), CS → pin 29 (GPIO5).\n\n## Using the driver\n```python\nfrom machine import Pin, SPI\nfrom max31855 import MAX31855\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin(18), mosi=None, miso=Pin(19))\ntc = MAX31855(spi, 5)\nt, cj = tc.read()\nprint('TC=%.2fC CJ=%.4fC' % (t, cj))\n```\n`read()` raises `OSError` naming the fault (open circuit, short to GND, short to VCC).\n\n## Gotchas\n- An \"open circuit\" fault almost always means the thermocouple isn't screwed in tightly.\n- Readings that fall as the probe heats mean the thermocouple wires are swapped: yellow to +, red to −.\n- Grounded-tip probes touching grounded metal cause SCG faults and noisy readings; use an insulated (ungrounded) probe.\n- Keep the board away from heat sources: it measures the cold junction on the chip itself.\n- Several MAX31855s can share CLK and DO; give each its own CS pin.\n\n## Datasheet\nhttps://www.analog.com/media/en/technical-documentation/data-sheets/MAX31855.pdf\n",
+  "example": {
+    "code": "from machine import Pin, SPI\nfrom max31855 import MAX31855\nimport time\n\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=None, miso=Pin({DO}))\ntc = MAX31855(spi, {CS})\nwhile True:\n    t, cj = tc.read()\n    print('TC=%.2fC CJ=%.4fC' % (t, cj))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the thermocouple and cold-junction temperatures set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 312.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "internal",
+          "value": -5.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TC=312.75C CJ=-5.5000C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:51:03.246Z",
+    "verifiedSources": [
+      "https://datasheets.maximintegrated.com/en/ds/MAX31855.pdf",
+      "https://www.adafruit.com/product/269",
+      "https://learn.adafruit.com/thermocouple/overview"
+    ]
+  }
+}

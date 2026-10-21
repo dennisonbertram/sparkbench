@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max31865",
+  "board": "Adafruit PT100 RTD Temperature Sensor Amplifier - MAX31865 (#3328)",
+  "reason": "Part check PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator R=138.51 T=100.01C, 1x08 footprint, DRC-clean board, LCSC). Sim answers register 01h with the datasheet format (15-bit code = RRTD/RREF x 32768, RREF 430 ohm, D0 fault bit) and 07h fault status; driver does VBIAS + 1-shot in SPI mode 1 and Callendar-Van Dusen conversion.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31865.pdf",
+  "breakoutPinoutSource": "Adafruit-MAX31865-PCB Eagle board file (JP1 pads 1-8: VIN, GND, 3V3, CLK, SDO, SDI, CS, RDY) https://github.com/adafruit/Adafruit-MAX31865-PCB and https://learn.adafruit.com/adafruit-max31865-rtd-pt100-amplifier/pinouts",
+  "checkRuns": 1
+}

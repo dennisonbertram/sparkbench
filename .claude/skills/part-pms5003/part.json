@@ -1,0 +1,256 @@
+{
+  "type": "custom-pms5003",
+  "name": "PMS5003 particulate matter (PM2.5) sensor",
+  "mpn": "PMS5003",
+  "category": "sensor",
+  "description": "Plantower laser-scattering dust sensor reporting PM1.0, PM2.5 and PM10 mass concentration (µg/m³, 0-500 effective, >=1000 max) and particle counts per 0.1 L over a 9600-baud UART (3.3 V logic). Needs 4.5-5.5 V for its fan, draws up to 100 mA. Sold as: Adafruit PM2.5 Air Quality Sensor and Breadboard Adapter Kit - PMS5003 (#3686), 8-pin 2.54 mm adapter: VCC, GND, SET, RXD, TXD, RST, NC, NC.",
+  "eli5": "A little fan pulls air past a laser and counts the dust and smoke specks, then tells your board how dirty the air is.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 5 V (4.5-5.5 V): the fan needs 5 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (the metal case is also ground)",
+      "required": true
+    },
+    {
+      "name": "SET",
+      "role": "io",
+      "description": "Sleep control, 3.3 V logic, pulled up inside: high/open = run, low = sleep",
+      "required": false
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Sensor serial input (3.3 V logic): wire to the board's UART TX; only needed to send commands",
+      "required": false
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Sensor serial output (3.3 V logic, 9600 baud): wire to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Reset, active low, pulled up inside; leave open if unused",
+      "required": false
+    },
+    {
+      "name": "NC1",
+      "role": "nc",
+      "description": "Not connected (datasheet: do not connect)",
+      "required": false
+    },
+    {
+      "name": "NC2",
+      "role": "nc",
+      "description": "Not connected (datasheet: do not connect)",
+      "required": false
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 100,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/3686/plantower-pms5003-manual_v2-3.pdf",
+  "priceUsd": 40,
+  "supplierQuery": "PMS5003 PM2.5 sensor with breadboard adapter",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (the fan needs 4.5-5.5 V, up to 100 mA), but the data pins are 3.3 V logic: safe straight into an ESP32 or Pico; a 5 V Arduino needs a level shifter on RXD.",
+    "Cross the serial wires: sensor TXD -> board RX, sensor RXD -> board TX (RXD is only needed to send commands).",
+    "9600 baud 8N1. In active mode (power-up default) the sensor sends a 32-byte frame on its own: 0x42 0x4D, length 28, 13 big-endian words, then a 16-bit sum of the first 30 bytes. Resync on 0x42 0x4D and drop frames whose sum does not match.",
+    "Data 4-6 are PM1.0/PM2.5/PM10 'under atmospheric environment' (use these indoors/outdoors); data 1-3 are the CF=1 values meant for factory calibration.",
+    "Leave SET, RST and both NC pins unconnected unless you use them; SET low puts the fan to sleep. Readings need about 30 s after waking to settle.",
+    "Mount it at least 20 cm above the floor, keep the air inlet and outlet unobstructed, and keep the metal case away from other conductors (it is grounded)."
+  ],
+  "keywords": [
+    "pms5003",
+    "pm2.5",
+    "pm10",
+    "particulate",
+    "dust",
+    "air quality",
+    "plantower",
+    "g5"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "PM2.5 (atmospheric)",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0 (atmospheric)",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10 (atmospheric)",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      },
+      {
+        "key": "n03",
+        "quantity": "Particles over 0.3 µm per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 1500
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "bytes": [
+        {
+          "const": 66,
+          "bits": 8
+        },
+        {
+          "const": 77,
+          "bits": 8
+        },
+        {
+          "const": 28,
+          "bits": 16
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "n03",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "crc": "sum16",
+          "over": 30
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "pms5003.py",
+    "code": "# Plantower PMS5003 particulate matter sensor, MicroPython driver.\n# Written from the Plantower PMS5003 data manual V2.3 (Appendix I and II):\n# 9600 baud, 8N1. In active mode (the power-up default) the sensor sends 32-byte frames by itself:\n#   0x42 0x4D, frame length (2 bytes, = 28), 13 big-endian 16-bit data words, 16-bit checksum,\n#   checksum = sum of the 30 bytes from start character 1 up to data 13 low byte.\n# Host commands are 7 bytes: 0x42 0x4D CMD DATAH DATAL, then the 16-bit sum of those 5 bytes.\nimport time\n\n_START = b'\\x42\\x4d'\n_FRAME_LEN = 32\n\n\ndef _command(cmd, datah, datal):\n    body = bytes((0x42, 0x4D, cmd, datah, datal))\n    s = sum(body) & 0xFFFF\n    return body + bytes((s >> 8, s & 0xFF))\n\n\nclass PMS5003:\n    def __init__(self, uart, set_pin=None, reset_pin=None):\n        \"\"\"uart: a machine.UART at 9600 baud whose RX is wired to the sensor's TXD.\n        set_pin / reset_pin: optional machine.Pin outputs wired to SET / RST (both are pulled up inside).\"\"\"\n        self.uart = uart\n        self.set_pin = set_pin\n        self.reset_pin = reset_pin\n        self._buf = b''\n\n    # ---- reading -------------------------------------------------------------------------\n    def _frame(self, timeout_ms):\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while time.ticks_diff(deadline, time.ticks_ms()) > 0:\n            n = self.uart.any()\n            if n:\n                got = self.uart.read(n)\n                if got:\n                    self._buf += got\n            else:\n                time.sleep_ms(10)\n            while True:\n                i = self._buf.find(_START)\n                if i < 0:\n                    self._buf = self._buf[-1:]  # keep a trailing 0x42\n                    break\n                self._buf = self._buf[i:]\n                if len(self._buf) < _FRAME_LEN:\n                    break\n                f = self._buf[:_FRAME_LEN]\n                length = (f[2] << 8) | f[3]\n                check = (f[30] << 8) | f[31]\n                if length == 2 * 13 + 2 and (sum(f[:30]) & 0xFFFF) == check:\n                    self._buf = self._buf[_FRAME_LEN:]\n                    return f\n                self._buf = self._buf[2:]  # false start or corrupted frame: resync\n        raise OSError('PMS5003: no valid frame (check the TXD wire, 5 V on VCC, and that SET is not low)')\n\n    def read(self, timeout_ms=3000):\n        \"\"\"Wait for the next valid frame and return a dict of its 12 readings.\n        pm1_0 / pm2_5 / pm10 are the 'under atmospheric environment' values (data 4-6, ug/m3);\n        *_cf1 are the CF=1 'standard particle' values (data 1-3, ug/m3, for factory use);\n        n0_3 ... n10 are particles beyond that diameter (um) in 0.1 L of air (data 7-12).\"\"\"\n        f = self._frame(timeout_ms)\n        w = [(f[4 + 2 * k] << 8) | f[5 + 2 * k] for k in range(13)]\n        return {\n            'pm1_0_cf1': w[0], 'pm2_5_cf1': w[1], 'pm10_cf1': w[2],\n            'pm1_0': w[3], 'pm2_5': w[4], 'pm10': w[5],\n            'n0_3': w[6], 'n0_5': w[7], 'n1_0': w[8], 'n2_5': w[9], 'n5_0': w[10], 'n10': w[11],\n        }\n\n    def flush(self):\n        \"\"\"Throw away buffered (possibly stale) bytes.\"\"\"\n        while self.uart.any():\n            self.uart.read(self.uart.any())\n        self._buf = b''\n\n    # ---- commands (Appendix II); need the sensor's RXD wired to the UART TX ------------\n    def passive_mode(self):\n        self.uart.write(_command(0xE1, 0x00, 0x00))\n\n    def active_mode(self):\n        self.uart.write(_command(0xE1, 0x00, 0x01))\n\n    def request(self, timeout_ms=3000):\n        \"\"\"Passive mode: ask for one frame (command 0xE2) and return its readings.\"\"\"\n        self.flush()\n        self.uart.write(_command(0xE2, 0x00, 0x00))\n        return self.read(timeout_ms)\n\n    def sleep(self):\n        \"\"\"Stop the fan and laser (standby <= 200 uA). Uses the SET pin if given, else command 0xE4 00.\"\"\"\n        if self.set_pin is not None:\n            self.set_pin.value(0)\n        else:\n            self.uart.write(_command(0xE4, 0x00, 0x00))\n\n    def wake(self):\n        \"\"\"Restart the fan. Readings are only stable about 30 s after waking.\"\"\"\n        if self.set_pin is not None:\n            self.set_pin.value(1)\n        else:\n            self.uart.write(_command(0xE4, 0x00, 0x01))\n\n    def reset(self):\n        \"\"\"Pulse RST low (needs reset_pin).\"\"\"\n        if self.reset_pin is not None:\n            self.reset_pin.value(0)\n            time.sleep_ms(100)\n            self.reset_pin.value(1)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nfrom pms5003 import PMS5003\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\npms = PMS5003(uart)\nwhile True:\n    r = pms.read()\n    print('PM1=%d PM2.5=%d PM10=%d' % (r['pm1_0'], r['pm2_5'], r['pm10']))\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM1.0, PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1",
+          "value": 21
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 48
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1=21 PM2.5=35 PM10=48",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/3686/plantower-pms5003-manual_v2-3.pdf",
+    "https://www.adafruit.com/product/3686",
+    "https://cdn-shop.adafruit.com/970x728/3686-05.jpg",
+    "https://learn.adafruit.com/pm25-air-quality-sensor/arduino-code"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:53:07.996Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/3686/plantower-pms5003-manual_v2-3.pdf",
+      "https://www.adafruit.com/product/3686",
+      "https://cdn-shop.adafruit.com/1024x768/3686-11.jpg"
+    ]
+  }
+}

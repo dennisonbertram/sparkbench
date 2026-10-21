@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-pms7003",
+  "board": "Soldered PMS7003 sensor adapter (333058) with a Plantower PMS7003 plugged in",
+  "reason": "Modelled from the Plantower PMS7003 data manual V2.5: active-mode 32-byte frame (0x42 0x4D, length 28, 13 big-endian words, 16-bit sum of the first 30 bytes) streamed every 2.3 s at 9600 baud; the driver resyncs, checks length and check code, and implements the Appendix II passive/sleep commands. Header order VCC, GND, RX, TX, RESET, SET and the 3.3 V-to-5 V TPS613222A boost come from Soldered's open-hardware pinout image and schematic. The part check printed PASS on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://download.kamami.pl/p564008-PMS7003%20series%20data%20manua_English_V2.5.pdf",
+  "breakoutPinoutSource": "https://raw.githubusercontent.com/SolderedElectronics/PMS7003-sensor-adapter-hardware-design/HEAD/OUTPUTS/V1.1.1/PMS7003%20sensor%20adapter%20Pinout.jpg (plus the schematic PDF and KiCad sch in https://github.com/SolderedElectronics/PMS7003-sensor-adapter-hardware-design)",
+  "checkRuns": 1
+}

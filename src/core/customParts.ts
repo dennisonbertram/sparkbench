@@ -31,6 +31,11 @@ export interface CustomSim {
   protocol?: 'tm1637' | 'max7219';
   digits?: number;
   matrix?: boolean;
+  /** segment-display: which RAM position drives each digit, left to right (e.g. [2,1,0,5,4,3] on common 6-digit TM1637 modules). */
+  digitMap?: number[];
+  /** i2c-device answering at more addresses too: a read there returns the byte at `reg` (e.g. VEML6070's MSB at 0x39,
+   * its alert-response address 0x0C). */
+  i2cAliases?: { addr: number; reg: string }[];
   /** keypad-matrix: row and column pins and the key labels (keys[row][col]); the "value" slider holds
    * key number n (1 = keys[0][0], counting along each row; 0 = nothing pressed). Each key joins its row and column. */
   rowPins?: string[];

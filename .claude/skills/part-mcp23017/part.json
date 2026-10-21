@@ -1,0 +1,422 @@
+{
+  "type": "custom-mcp23017",
+  "name": "MCP23017 16-bit I/O expander",
+  "mpn": "MCP23017",
+  "category": "ic",
+  "description": "Microchip 16-bit I/O expander with an I2C interface: two 8-bit ports (GPA0-7, GPB0-7), each pin an input (optional 100 kOhm pull-up) or an output sinking/sourcing up to 25 mA, with two interrupt outputs. Runs on 1.8-5.5 V. Sold as: CJMCU-2317 MCP23017 module (three 10-pin headers: GND, VCC, SCL(/SCK), SDA(/SI), NC/CS, NC/SO, RESET, A0, A1, A2 | GND, ITA, GPA0-GPA7 | VCC, ITB, GPB0-GPB7; 10k pull-ups on SDA, SCL and RESET, A0-A2 pulled low), I2C address 0x20 (0x20-0x27 via A0-A2).",
+  "eli5": "Gives your board 16 extra pins to switch LEDs or read buttons, using only the two I2C wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (JP1 pin 1)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 1.8-5.5 V (JP1 pin 2); also feeds the board's 10k SDA/SCL/RESET pull-ups, so I2C logic level = VCC",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, silkscreened SCL/SCK (10k pull-up to VCC on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, silkscreened SDA/SI (10k pull-up to VCC on board)",
+      "required": true
+    },
+    {
+      "name": "NC/CS",
+      "role": "nc",
+      "description": "Not connected on the MCP23017 (SPI chip select only on an MCP23S17)",
+      "required": false
+    },
+    {
+      "name": "NC/SO",
+      "role": "nc",
+      "description": "Not connected on the MCP23017 (SPI data out only on an MCP23S17)",
+      "required": false
+    },
+    {
+      "name": "RESET",
+      "role": "io",
+      "description": "Active-low hardware reset, pulled up to VCC by 10k on board; leave open for normal use",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address bit 0, pulled down by 10k (tie to VCC to add 1 to the address)",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Address bit 1, pulled down by 10k (tie to VCC to add 2)",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Address bit 2, pulled down by 10k (tie to VCC to add 4)",
+      "required": false
+    },
+    {
+      "name": "GND_2",
+      "role": "gnd",
+      "description": "Ground (JP2 pin 1, same net as GND)",
+      "required": false
+    },
+    {
+      "name": "ITA",
+      "role": "io",
+      "description": "INTA interrupt output for port A (active-low push-pull by default)",
+      "required": false
+    },
+    {
+      "name": "GPA0",
+      "role": "io",
+      "description": "Port A pin 0, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPA1",
+      "role": "io",
+      "description": "Port A pin 1, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPA2",
+      "role": "io",
+      "description": "Port A pin 2, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPA3",
+      "role": "io",
+      "description": "Port A pin 3, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPA4",
+      "role": "io",
+      "description": "Port A pin 4, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPA5",
+      "role": "io",
+      "description": "Port A pin 5, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPA6",
+      "role": "io",
+      "description": "Port A pin 6, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPA7",
+      "role": "io",
+      "description": "Port A pin 7 (output only on the MCP23017)",
+      "required": false
+    },
+    {
+      "name": "VCC_2",
+      "role": "power",
+      "description": "Supply (JP3 pin 1, same net as VCC)",
+      "required": false
+    },
+    {
+      "name": "ITB",
+      "role": "io",
+      "description": "INTB interrupt output for port B",
+      "required": false
+    },
+    {
+      "name": "GPB0",
+      "role": "io",
+      "description": "Port B pin 0, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPB1",
+      "role": "io",
+      "description": "Port B pin 1, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPB2",
+      "role": "io",
+      "description": "Port B pin 2, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPB3",
+      "role": "io",
+      "description": "Port B pin 3, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPB4",
+      "role": "io",
+      "description": "Port B pin 4, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPB5",
+      "role": "io",
+      "description": "Port B pin 5, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPB6",
+      "role": "io",
+      "description": "Port B pin 6, input or output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GPB7",
+      "role": "io",
+      "description": "Port B pin 7 (output only on the MCP23017)",
+      "required": false
+    }
+  ],
+  "vmin": 1.8,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "i2cAddress": 32,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP23017-Data-Sheet-DS20001952.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "CJMCU-2317 MCP23017 I2C 16-bit IO expander module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x30_P2.54mm_Vertical",
+  "buildNotes": [
+    "I2C address is 0x20 + (A2 A1 A0): the CJMCU-2317 pulls A0-A2 low through 10k, so it answers at 0x20 until you tie address pins to VCC.",
+    "All pins start as inputs (IODIR = 0xFF). Clear a bit in IODIRA (0x00) / IODIRB (0x01) to make that pin an output, then set it in OLATA (0x14) / OLATB (0x15).",
+    "Read pin levels from GPIOA (0x12) / GPIOB (0x13). Set GPPUA (0x0C) / GPPUB (0x0D) bits for the internal 100 kOhm pull-ups, e.g. for a button to GND.",
+    "GPA7 and GPB7 are output only on the MCP23017 (datasheet rev D): don't use them for buttons.",
+    "Each pin sources or sinks at most 25 mA and the whole chip 125 mA in / 150 mA out: always put a resistor in series with an LED.",
+    "The board's SDA/SCL pull-ups go to VCC: power it from 3.3 V when using an ESP32 or Pico so the bus never sees 5 V.",
+    "NC/CS and NC/SO are unused on the I2C chip; RESET is already pulled high, leave it unconnected."
+  ],
+  "keywords": [
+    "mcp23017",
+    "cjmcu-2317",
+    "io expander",
+    "gpio expander",
+    "port expander",
+    "i2c",
+    "16-bit"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/aemDocuments/documents/APID/ProductDocuments/DataSheets/MCP23017-Data-Sheet-DS20001952.pdf",
+    "https://ww1.microchip.com/downloads/en/devicedoc/20001952c.pdf",
+    "https://forum.arduino.cc/t/problem-using-cjmcu-2317-mcp23017/898839",
+    "https://europe1.discourse-cdn.com/arduino/original/4X/8/d/4/8d47a4741da3cf73c59090a5ab8f011b2f06e68d.jpeg",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/mcp23017-i2c-16bit-io-port-expander-presoldered-manual"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 255,
+      "0x01": 255
+    },
+    "outputBits": [
+      {
+        "reg": "0x14",
+        "bit": 0,
+        "name": "GPA0"
+      },
+      {
+        "reg": "0x14",
+        "bit": 1,
+        "name": "GPA1"
+      },
+      {
+        "reg": "0x14",
+        "bit": 2,
+        "name": "GPA2"
+      },
+      {
+        "reg": "0x14",
+        "bit": 3,
+        "name": "GPA3"
+      },
+      {
+        "reg": "0x14",
+        "bit": 4,
+        "name": "GPA4"
+      },
+      {
+        "reg": "0x14",
+        "bit": 5,
+        "name": "GPA5"
+      },
+      {
+        "reg": "0x14",
+        "bit": 6,
+        "name": "GPA6"
+      },
+      {
+        "reg": "0x14",
+        "bit": 7,
+        "name": "GPA7"
+      },
+      {
+        "reg": "0x15",
+        "bit": 0,
+        "name": "GPB0"
+      },
+      {
+        "reg": "0x15",
+        "bit": 1,
+        "name": "GPB1"
+      },
+      {
+        "reg": "0x15",
+        "bit": 2,
+        "name": "GPB2"
+      },
+      {
+        "reg": "0x15",
+        "bit": 3,
+        "name": "GPB3"
+      },
+      {
+        "reg": "0x15",
+        "bit": 4,
+        "name": "GPB4"
+      },
+      {
+        "reg": "0x15",
+        "bit": 5,
+        "name": "GPB5"
+      },
+      {
+        "reg": "0x15",
+        "bit": 6,
+        "name": "GPB6"
+      },
+      {
+        "reg": "0x15",
+        "bit": 7,
+        "name": "GPB7"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x13",
+        "bit": 0,
+        "control": "gpb0",
+        "label": "Button GPB0 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x13",
+        "bit": 1,
+        "control": "gpb1",
+        "label": "Button GPB1 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x13",
+        "bit": 2,
+        "control": "gpb2",
+        "label": "Button GPB2 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x13",
+        "bit": 3,
+        "control": "gpb3",
+        "label": "Button GPB3 to GND",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp23017.py",
+    "code": "# MCP23017 16-bit I2C I/O expander (Microchip DS20001952), MicroPython driver.\n# Uses the power-on register map (IOCON.BANK = 0, sequential addressing):\n#   IODIRA 0x00 / IODIRB 0x01  1 = input (reset value 0xFF), 0 = output\n#   GPPUA  0x0C / GPPUB  0x0D  1 = 100 kOhm pull-up on an input\n#   GPIOA  0x12 / GPIOB  0x13  read = the level on the pins\n#   OLATA  0x14 / OLATB  0x15  output latches (what output pins drive)\n# Pins are numbered 0-15: 0-7 = GPA0-GPA7, 8-15 = GPB0-GPB7.\n# Note: on the MCP23017 (not the SPI MCP23S17) GPA7 and GPB7 are output only (datasheet rev D).\n\n_IODIRA = 0x00\n_IOCON = 0x0A\n_GPPUA = 0x0C\n_GPIOA = 0x12\n_OLATA = 0x14\n\nINPUT = 1\nOUTPUT = 0\n\n\nclass MCP23017:\n    def __init__(self, i2c, addr=0x20):\n        \"\"\"addr = 0x20 + A2A1A0 (0x20 with all address pins low, as on the CJMCU-2317).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        # IOCON = 0: BANK = 0 (A/B registers paired), sequential addressing, INT pins active-low push-pull.\n        self._w(_IOCON, 0x00)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _bit(self, base, pin, on):\n        if not 0 <= pin <= 15:\n            raise ValueError('pin must be 0-15')\n        reg = base + (pin >> 3)  # A register, or the B register right after it\n        v = self._r(reg)\n        v = v | (1 << (pin & 7)) if on else v & ~(1 << (pin & 7))\n        self._w(reg, v)\n\n    def pin_mode(self, pin, mode, pullup=False):\n        \"\"\"mode INPUT or OUTPUT; pullup enables the internal 100 kOhm pull-up (inputs only).\"\"\"\n        if mode == INPUT and (pin & 7) == 7:\n            raise ValueError('GPA7/GPB7 are output only on the MCP23017')\n        self._bit(_IODIRA, pin, mode == INPUT)\n        self._bit(_GPPUA, pin, pullup)\n\n    def value(self, pin, val=None):\n        \"\"\"Read a pin's level (GPIO register), or set an output pin (OLAT register).\"\"\"\n        if val is None:\n            reg = _GPIOA + (pin >> 3)\n            return (self._r(reg) >> (pin & 7)) & 1\n        self._bit(_OLATA, pin, val)\n\n    def read_port(self):\n        \"\"\"All 16 pin levels: bits 0-7 = GPA, bits 8-15 = GPB.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _GPIOA, 2)  # GPIOA then GPIOB (auto-increment)\n        return d[0] | (d[1] << 8)\n\n    def write_port(self, val):\n        \"\"\"Set all 16 output latches: bits 0-7 = GPA, bits 8-15 = GPB.\"\"\"\n        self.i2c.writeto_mem(self.addr, _OLATA, bytes([val & 0xFF, (val >> 8) & 0xFF]))\n\n    def config_port(self, iodir, pullups=0):\n        \"\"\"16-bit direction (1 = input) and pull-up masks in one go.\"\"\"\n        self.i2c.writeto_mem(self.addr, _IODIRA, bytes([iodir & 0xFF, (iodir >> 8) & 0xFF]))\n        self.i2c.writeto_mem(self.addr, _GPPUA, bytes([pullups & 0xFF, (pullups >> 8) & 0xFF]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mcp23017 import MCP23017, INPUT, OUTPUT\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nio = MCP23017(i2c)                   # address 0x20 (A0-A2 low)\nio.pin_mode(0, OUTPUT)               # GPA0 drives an LED (through a resistor)\nio.pin_mode(8, INPUT, pullup=True)   # GPB0 reads a button wired to GND\nwhile True:\n    pressed = 1 if io.value(8) == 0 else 0\n    io.value(0, pressed)             # LED on while the button is held\n    print('BTN=%d LED=%d' % (pressed, pressed))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "button-led",
+      "title": "GPB0 button switches the GPA0 output",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "GPA0",
+          "on": false,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gpb0",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=1 LED=1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "GPA0",
+          "on": true,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gpb0",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "GPA0",
+          "on": false,
+          "within": 1000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:02:14.059Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/20001952C.pdf"
+    ]
+  }
+}

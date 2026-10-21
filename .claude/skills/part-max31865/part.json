@@ -1,0 +1,165 @@
+{
+  "type": "custom-max31865",
+  "name": "MAX31865 PT100 RTD amplifier",
+  "mpn": "MAX31865",
+  "category": "sensor",
+  "description": "Analog Devices (Maxim) MAX31865 resistance-to-digital converter for platinum RTDs (PT100/PT1000): 15-bit ratiometric ADC reading RTD resistance against a precision reference resistor, with fault detection, over SPI (modes 1 and 3). Chip runs on 3.0-3.6 V; the breakout has a regulator and level shifting for 3-5 V. Sold as: Adafruit PT100 RTD Temperature Sensor Amplifier - MAX31865 (product 3328), 8-pin header VIN, GND, 3V3, CLK, SDO, SDI, CS, RDY, 430 ohm 0.1% reference resistor, 2/3/4-wire RTD terminal blocks (4-wire by default).",
+  "eli5": "Reads a platinum temperature probe very precisely by measuring its resistance, which rises as it gets hotter.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V into the on-board 3.3 V regulator; use the same voltage as your logic (3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground for power and logic",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock into the MAX31865 (up to 5 MHz, SPI mode 1 or 3)",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "SPI data out of the MAX31865 (to the board's MISO)",
+      "required": true
+    },
+    {
+      "name": "SDI",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data into the MAX31865 (from the board's MOSI); needed to write the configuration register",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low; a 1-shot conversion starts when CS goes high",
+      "required": true
+    },
+    {
+      "name": "RDY",
+      "role": "io",
+      "description": "DRDY data-ready output, active low; optional (the driver waits the conversion time instead)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31865.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "MAX31865 PT100 RTD amplifier breakout SPI",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "SPI mode 1 (polarity=0, phase=1) or mode 3; registers are read at 0Xh and written at 8Xh.",
+    "1-shot reading: write 0x80 to config (VBIAS on), wait ~10 ms, write 0xA0 (VBIAS + 1-shot), wait 52 ms (60 Hz filter) or 62.5 ms (50 Hz), then read registers 01h-02h.",
+    "RTD data is a 15-bit code in bits 15..1; bit 0 is the fault flag. RRTD = code x RREF / 32768, with RREF = 430 ohm on the Adafruit PT100 board (4300 ohm on the PT1000 version).",
+    "Convert resistance to temperature with the Callendar-Van Dusen equation (A = 3.9083e-3, B = -5.775e-7, C = -4.183e-12 below 0 C).",
+    "The board ships set for 4-wire RTDs. For 2- or 3-wire probes, bridge/cut the solder jumpers as Adafruit describes and pass wires=3 to the driver for a 3-wire probe.",
+    "Leave 3V3 unconnected: it is the regulator's output, not an input."
+  ],
+  "keywords": [
+    "max31865",
+    "pt100",
+    "pt1000",
+    "rtd",
+    "platinum",
+    "temperature",
+    "adafruit 3328",
+    "spi"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "RTD resistance",
+    "unit": "Ω",
+    "min": 18,
+    "max": 390,
+    "default": 100,
+    "spiReplies": [
+      {
+        "match": "01",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 15,
+            "scale": 0.01312255859375
+          },
+          {
+            "const": 0,
+            "bits": 1
+          }
+        ]
+      },
+      {
+        "match": "07",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "max31865.py",
+    "code": "# MAX31865 RTD-to-digital converter (Analog Devices / Maxim), MicroPython driver.\n# Written from datasheet 19-6478 Rev 3: SPI mode 1 or 3 (CPHA = 1), read address 0Xh, write 8Xh,\n# 1-shot conversion with VBIAS switched on beforehand, RRTD = ADC code x RREF / 2^15,\n# temperature from the IEC 751 Callendar-Van Dusen equation.\nfrom machine import Pin\nimport math\nimport time\n\n_CONFIG = 0x00\n_RTD_MSB = 0x01\n_FAULT = 0x07\n\n_BIAS = 0x80\n_ONE_SHOT = 0x20\n_THREE_WIRE = 0x10\n_FAULT_CLEAR = 0x02\n_FILTER_50HZ = 0x01\n\n# IEC 751 Callendar-Van Dusen coefficients (datasheet)\n_A = 3.90830e-3\n_B = -5.77500e-7\n_C = -4.18301e-12\n\n\nclass MAX31865:\n    def __init__(self, spi, cs, rref=430.0, r0=100.0, wires=4, filter_hz=60):\n        \"\"\"spi: machine.SPI in mode 1 (polarity=0, phase=1), up to 5 MHz.\n        cs: GPIO number of CS. rref: reference resistor (430 ohm on the Adafruit PT100 board,\n        4300 ohm on the PT1000 version). r0: RTD resistance at 0 C (100 for PT100).\n        wires: 2, 3 or 4 (3 needs the board's 3-wire jumpers too). filter_hz: 50 or 60 (mains notch).\"\"\"\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rref = rref\n        self.r0 = r0\n        self._cfg = (_THREE_WIRE if wires == 3 else 0) | (_FILTER_50HZ if filter_hz == 50 else 0)\n        self._conv_ms = 63 if filter_hz == 50 else 52  # 62.5 ms / 52 ms single conversion\n        self._write(_CONFIG, self._cfg)  # normally-off, VBIAS off\n\n    def _write(self, reg, val):\n        self.cs.value(0)\n        self.spi.write(bytes([0x80 | reg, val & 0xFF]))\n        self.cs.value(1)\n\n    def _read(self, reg, n):\n        buf = bytearray(n + 1)\n        self.cs.value(0)\n        self.spi.write_readinto(bytes([reg & 0x7F]) + bytes(n), buf)\n        self.cs.value(1)\n        return buf[1:]\n\n    def fault(self):\n        \"\"\"Fault Status register (07h): D7 RTD high, D6 RTD low, D5..D3 REFIN/RTDIN, D2 over/undervoltage.\"\"\"\n        return self._read(_FAULT, 1)[0]\n\n    def clear_fault(self):\n        # Fault Status Clear with D5, D3 and D2 written as 0 (datasheet).\n        self._write(_CONFIG, self._cfg | _FAULT_CLEAR)\n\n    def read_raw(self):\n        \"\"\"Run one 1-shot conversion and return the 15-bit ADC code (RRTD / RREF x 32768).\"\"\"\n        self.clear_fault()\n        self._write(_CONFIG, self._cfg | _BIAS)\n        time.sleep_ms(10)  # input RC filter settling: >= 10.5 time constants + 1 ms\n        self._write(_CONFIG, self._cfg | _BIAS | _ONE_SHOT)  # conversion starts when CS goes high\n        time.sleep_ms(self._conv_ms + 3)\n        d = self._read(_RTD_MSB, 2)\n        self._write(_CONFIG, self._cfg)  # VBIAS off between readings\n        raw = (d[0] << 8) | d[1]\n        if raw & 1:\n            f = self.fault()\n            self.clear_fault()\n            raise OSError('MAX31865 fault 0x%02X: check the RTD wiring' % f)\n        return raw >> 1\n\n    def resistance(self):\n        \"\"\"RTD resistance in ohms: ADC code x RREF / 2^15.\"\"\"\n        return self.read_raw() * self.rref / 32768\n\n    def temperature(self, r=None):\n        \"\"\"Temperature in C from the Callendar-Van Dusen equation (exact inverse for T >= 0 C,\n        Newton iteration including the C term below 0 C).\"\"\"\n        if r is None:\n            r = self.resistance()\n        t = (-_A + math.sqrt(_A * _A - 4 * _B * (1 - r / self.r0))) / (2 * _B)\n        if t >= 0:\n            return t\n        for _ in range(8):\n            f = self.r0 * (1 + _A * t + _B * t * t + _C * (t - 100) * t ** 3) - r\n            df = self.r0 * (_A + 2 * _B * t + _C * (4 * t ** 3 - 300 * t * t))\n            t -= f / df\n        return t\n\n    def read(self):\n        \"\"\"Measure once and return (resistance in ohms, temperature in C).\"\"\"\n        r = self.resistance()\n        return r, self.temperature(r)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SoftSPI\nimport time\nfrom max31865 import MAX31865\n\n# SoftSPI works on any pins of an ESP32 or Pico; the MAX31865 needs SPI mode 1 (phase=1)\nspi = SoftSPI(baudrate=1000000, polarity=0, phase=1, sck=Pin({CLK}), mosi=Pin({SDI}), miso=Pin({SDO}))\nrtd = MAX31865(spi, {CS}, rref=430.0, r0=100.0, wires=4)  # Adafruit PT100 board: RREF = 430 ohm\nwhile True:\n    r, t = rtd.read()\n    print('R=%.2f T=%.2fC' % (r, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the RTD resistance and temperature for the resistance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 138.51
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=138.51 T=100.01C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31865.pdf",
+    "https://www.makerguides.com/wp-content/uploads/2024/06/max31865-datasheet.pdf",
+    "https://www.adafruit.com/product/3328",
+    "https://learn.adafruit.com/adafruit-max31865-rtd-pt100-amplifier/pinouts",
+    "https://github.com/adafruit/Adafruit-MAX31865-PCB"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:56:40.504Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/037/309/original/MAX31865.pdf",
+      "https://learn.adafruit.com/adafruit-max31865-rtd-pt100-amplifier/pinouts",
+      "https://www.adafruit.com/product/3328"
+    ]
+  }
+}

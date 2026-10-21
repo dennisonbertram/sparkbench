@@ -1,0 +1,182 @@
+{
+  "type": "custom-3x4-membrane-keypad",
+  "name": "3x4 membrane keypad",
+  "mpn": "3x4 membrane keypad (Adafruit 419)",
+  "category": "input",
+  "description": "Phone-style 12-key matrix membrane keypad (1 2 3 / 4 5 6 / 7 8 9 / * 0 #): 12 passive switches wired as 4 rows x 3 columns, read by scanning with 7 GPIO pins. No chip and no power pin; contacts rated 30 V DC / 30 mA max (generic membrane keypad datasheet), used at the microcontroller's 3.3 V logic level. Sold as: Adafruit Membrane 3x4 Matrix Keypad (#419) and its many clones, 7-pin 0.1\" ribbon in order R1, R2, R3, R4, C1, C2, C3.",
+  "eli5": "A flat telephone-style keypad: pressing a key connects one row wire to one column wire, and your board works out which key it was.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "R1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 1 (keys 1 2 3); header pin 1",
+      "required": true
+    },
+    {
+      "name": "R2",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 2 (keys 4 5 6); header pin 2",
+      "required": true
+    },
+    {
+      "name": "R3",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 3 (keys 7 8 9); header pin 3",
+      "required": true
+    },
+    {
+      "name": "R4",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 4 (keys * 0 #); header pin 4",
+      "required": true
+    },
+    {
+      "name": "C1",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Column 1 (keys 1 4 7 *); header pin 5; use the GPIO's internal pull-up",
+      "required": true
+    },
+    {
+      "name": "C2",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Column 2 (keys 2 5 8 0); header pin 6; use the GPIO's internal pull-up",
+      "required": true
+    },
+    {
+      "name": "C3",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Column 3 (keys 3 6 9 #); header pin 7; use the GPIO's internal pull-up",
+      "required": true
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://asset.conrad.com/media10/add/160267/c1/-/en/001341282DS01/tehnicni-podatki-1341282-tipkovnica-s-folijo-matrika-3-x-4-su709930-1-kos.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "3x4 matrix membrane keypad 12 key 7 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Pin 1 of the ribbon is the left end with the keys facing you: R1, R2, R3, R4, C1, C2, C3 (Adafruit #419 pinout). Some clones differ, so if keys come out wrong, check with a multimeter: the 1 key joins R1 and C1.",
+    "No power wire: columns use the GPIO internal pull-ups, rows are driven low one at a time.",
+    "Leave rows that are not being scanned as inputs (high-impedance) so pressing two keys in one column cannot short two outputs together.",
+    "Debounce: confirm a key is still down about 20 ms after it is first seen.",
+    "Plug the ribbon into a 7-pin male header; avoid bending the flat tail sharply where it leaves the keypad, as the printed traces crack."
+  ],
+  "keywords": [
+    "keypad",
+    "membrane",
+    "matrix",
+    "3x4",
+    "12 key",
+    "phone keypad",
+    "numeric keypad"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "R1",
+      "R2",
+      "R3",
+      "R4"
+    ],
+    "colPins": [
+      "C1",
+      "C2",
+      "C3"
+    ],
+    "keys": [
+      [
+        "1",
+        "2",
+        "3"
+      ],
+      [
+        "4",
+        "5",
+        "6"
+      ],
+      [
+        "7",
+        "8",
+        "9"
+      ],
+      [
+        "*",
+        "0",
+        "#"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "keypad.py",
+    "code": "# 3x4 matrix membrane keypad (Adafruit #419 and its clones), MicroPython driver.\n# The keypad is just 12 switches: each key joins one row wire (R1-R4) to one column wire (C1-C3).\n# Scan: columns are inputs with pull-ups; one row at a time is driven low and any column that\n# reads low has its key pressed. Rows that are not being scanned are left as inputs (high-impedance)\n# so that two keys held in the same column can never short a high output to a low one.\nimport time\n\nKEYS_3X4 = ('123', '456', '789', '*0#')\n\n\nclass Keypad:\n    def __init__(self, row_pins, col_pins, keys=KEYS_3X4, debounce_ms=20):\n        from machine import Pin\n        self._Pin = Pin\n        self.rows = [Pin(p, Pin.IN) for p in row_pins]\n        self.cols = [Pin(p, Pin.IN, Pin.PULL_UP) for p in col_pins]\n        self.keys = keys\n        self.debounce_ms = debounce_ms\n        self._last = None\n\n    def scan(self):\n        \"\"\"Return the label of the key held right now, or None.\"\"\"\n        Pin = self._Pin\n        found = None\n        for r, row in enumerate(self.rows):\n            row.init(Pin.OUT, value=0)\n            time.sleep_us(10)  # let the membrane trace and pull-ups settle\n            for c, col in enumerate(self.cols):\n                if col.value() == 0 and found is None:\n                    found = self.keys[r][c]\n            row.init(Pin.IN)\n        return found\n\n    def get_key(self):\n        \"\"\"Return a key's label once, when it is newly pressed (debounced); otherwise None.\"\"\"\n        k = self.scan()\n        if k is not None and k != self._last:\n            time.sleep_ms(self.debounce_ms)\n            if self.scan() != k:\n                return None  # contact bounce or released: ignore\n            self._last = k\n            return k\n        self._last = k\n        return None\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom keypad import Keypad\n\nkp = Keypad(({R1}, {R2}, {R3}, {R4}), ({C1}, {C2}, {C3}))\nwhile True:\n    key = kp.get_key()\n    if key:\n        print('KEY=' + key)\n    time.sleep_ms(10)\n",
+    "test": {
+      "id": "keys",
+      "title": "Prints the key held on the keypad",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 9
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=9",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=#",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.adafruit.com/product/419",
+    "https://learn.adafruit.com/matrix-keypad/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/089/977/medium800/raspberry_pi_PID419_Pinout.jpg",
+    "https://asset.conrad.com/media10/add/160267/c1/-/en/001341282DS01/tehnicni-podatki-1341282-tipkovnica-s-folijo-matrika-3-x-4-su709930-1-kos.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:55:23.176Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/419",
+      "https://learn.adafruit.com/matrix-keypad/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/089/977/large1024/raspberry_pi_PID419_Pinout.jpg"
+    ]
+  }
+}

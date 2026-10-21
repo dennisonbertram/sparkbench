@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-neo-m8n",
+  "board": "GY-GPSV3-NEO-M8N GPS module (HW-448, 4-pin VCC RX TX GND, U.FL ceramic antenna)",
+  "reason": "Modelled as a 9600-baud NMEA uart-device (GGA/RMC with checksums) per the NEO-M8 datasheet defaults; the talker-agnostic driver decodes the real $GN sentences and the simulator's, and the check passed on ESP32 and Pico in 1 run.",
+  "datasheetUrl": "https://content.u-blox.com/sites/default/files/NEO-M8-FW3_DataSheet_UBX-15031086.pdf",
+  "breakoutPinoutSource": "https://shillehtek.com/blogs/shillehtek-product-manuals/gps-module-neo-m8n-antenna-battery-arduino-esp32-manual (board photo silkscreen J1: VCC RX TX GND)",
+  "checkRuns": 1
+}

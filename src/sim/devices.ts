@@ -455,7 +455,7 @@ export class EPaperDevice {
 export class GenericI2CDevice implements I2CDevice {
   ptr = 0;
   /** Bytes queued by a command (see responses); reads drain these before falling back to registers. */
-  private reply: number[] = [];
+  reply: number[] = [];
   constructor(
     public partId: string,
     public addr: number,
@@ -539,17 +539,7 @@ export class GenericI2CDevice implements I2CDevice {
   }
   read(n: number) {
     if (this.reply.length) return Array.from({ length: n }, (_, i) => this.reply[i] ?? 0);
-    this.rtcMaterialize();
-    for (const m of this.measures) {
-      const reg = Number(m.reg);
-      let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1)) * 2 ** (m.shift ?? 0);
-      const bits = m.bytes * 8;
-      if (m.signed && raw < 0) raw += 2 ** bits;
-      raw = Math.max(0, Math.min(2 ** bits - 1, raw));
-      const b = Array.from({ length: m.bytes }, (_, i) => Math.floor(raw / 2 ** (8 * (m.littleEndian ? i : m.bytes - 1 - i))) & 0xff);
-      if (this.wide) for (let i = 0; i < b.length; i += 2) this.store.set(reg + i / 2, [b[i], b[i + 1] ?? 0]);
-      else b.forEach((x, i) => this.store.set(reg + i, [x]));
-    }
+    this.refresh();
     // Input pins: a quasi-bidirectional pin written high reads the outside level (PCF8574); register inputs read it directly.
     // (computed for this read only, so a PCF8574's output latch is never overwritten)
     const view = new Map<number, number>();
@@ -575,6 +565,25 @@ export class GenericI2CDevice implements I2CDevice {
     if (r(3) & 0x10) return 0;
     if (r(1) & 0x10) return 1;
     return (((off - on) % 4096) + 4096) % 4096 / 4096;
+  }
+  /** Bring the clock and measured values into the registers. */
+  private refresh() {
+    this.rtcMaterialize();
+    for (const m of this.measures) {
+      const reg = Number(m.reg);
+      let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1)) * 2 ** (m.shift ?? 0);
+      const bits = m.bytes * 8;
+      if (m.signed && raw < 0) raw += 2 ** bits;
+      raw = Math.max(0, Math.min(2 ** bits - 1, raw));
+      const b = Array.from({ length: m.bytes }, (_, i) => Math.floor(raw / 2 ** (8 * (m.littleEndian ? i : m.bytes - 1 - i))) & 0xff);
+      if (this.wide) for (let i = 0; i < b.length; i += 2) this.store.set(reg + i / 2, [b[i], b[i + 1] ?? 0]);
+      else b.forEach((x, i) => this.store.set(reg + i, [x]));
+    }
+  }
+  /** The current value of a byte register, measurements included (for alias addresses). */
+  peek(reg: number): number {
+    this.refresh();
+    return this.byteAt(reg, 0);
   }
   /** One bit of a byte register (for output pins shown on the part). */
   bit(reg: number, bit: number): boolean {

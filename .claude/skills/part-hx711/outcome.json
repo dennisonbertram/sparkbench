@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hx711",
+  "board": "Green HX711 load cell amplifier module (J2: GND, DT, SCK, VCC; J1: E+, E-, A-, A+, B-, B+) with 5 kg bar load cell",
+  "reason": "Modelled from the Avia HX711 datasheet: DOUT-low ready, 24-bit two's-complement MSB-first readout with 25/26/27 PD_SCK pulses selecting A128/B32/A64, 60 us power-down, 400 ms settling; load slider in grams at 2^31*1mV/V/5000 g = 429.5 counts/g (ratiometric). Header order GND, DT, SCK, VCC from the vendor pinout diagram and product photo silkscreen. Part check printed PASS on ESP32 and Pico (tare then W=1250g, W=3700g; PCB DRC clean).",
+  "datasheetUrl": "https://cdn.sparkfun.com/datasheets/Sensors/ForceFlex/hx711_english.pdf",
+  "breakoutPinoutSource": "https://shillehtek.com/blogs/shillehtek-product-manuals/hx711-weighing-pressure-sensor-module-large-presoldered-manual (pinout image https://cdn.shopify.com/s/files/1/0837/4340/8415/files/hx711-pinout.png?v=1776722625 and product photo silkscreen: J2 = GND, DT, SCK, VCC)",
+  "checkRuns": 2
+}

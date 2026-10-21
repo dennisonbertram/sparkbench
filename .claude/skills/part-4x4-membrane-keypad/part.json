@@ -1,0 +1,217 @@
+{
+  "type": "custom-4x4-membrane-keypad",
+  "name": "4x4 membrane keypad",
+  "mpn": "4x4 matrix membrane keypad",
+  "category": "input",
+  "description": "Thin sticky-backed 16-key membrane keypad (keys 1 2 3 A / 4 5 6 B / 7 8 9 C / * 0 # D) wired as a passive 4-row by 4-column switch matrix: pressing a key connects its row line to its column line. No chip and no power pin; scan it with 8 GPIOs. Sold as: Adafruit Membrane 4x4 Matrix Keypad (#3844) and the identical generic 8-pin ribbon clones, 8-pin 2.54 mm female connector, pin order R1 R2 R3 R4 C1 C2 C3 C4 from the left.",
+  "eli5": "Sixteen buttons in a grid. Your board finds which one you pressed by checking each row and column in turn.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "R1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 1 line (keys 123A); ribbon pin 1, counted from the left with the keys facing you",
+      "required": true
+    },
+    {
+      "name": "R2",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 2 line (keys 456B); ribbon pin 2, counted from the left with the keys facing you",
+      "required": true
+    },
+    {
+      "name": "R3",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 3 line (keys 789C); ribbon pin 3, counted from the left with the keys facing you",
+      "required": true
+    },
+    {
+      "name": "R4",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Row 4 line (keys *0#D); ribbon pin 4, counted from the left with the keys facing you",
+      "required": true
+    },
+    {
+      "name": "C1",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Column 1 line (keys 147*); ribbon pin 5; read with a pull-up",
+      "required": true
+    },
+    {
+      "name": "C2",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Column 2 line (keys 2580); ribbon pin 6; read with a pull-up",
+      "required": true
+    },
+    {
+      "name": "C3",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Column 3 line (keys 369#); ribbon pin 7; read with a pull-up",
+      "required": true
+    },
+    {
+      "name": "C4",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Column 4 line (keys ABCD); ribbon pin 8; read with a pull-up",
+      "required": true
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://www.adafruit.com/product/3844",
+  "sources": [
+    "https://www.adafruit.com/product/3844",
+    "https://cdn-shop.adafruit.com/product-files/3844/3844_diagram.jpg",
+    "https://learn.adafruit.com/matrix-keypad/pinouts",
+    "https://github.com/adafruit/Adafruit_Keypad/blob/master/examples/keypad_test/keypad_config.h",
+    "https://www.parallax.com/?p=1984"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "4x4 matrix membrane keypad 8 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Ribbon pin order, keys facing you, from the left: R1 R2 R3 R4 C1 C2 C3 C4 (Adafruit: 'starting from the left there are four row pins, and then to the right are the four column pins').",
+    "No power pin: the keypad is just switches. Use the board's own 3.3 V logic; never connect 5 V to a pin of a 3.3 V board.",
+    "Scan by enabling the column pull-ups, driving one row LOW at a time and leaving the other rows as inputs; a LOW column means that key is pressed. Leaving idle rows floating stops two pressed keys in one column shorting an output HIGH against an output LOW.",
+    "Contact resistance is under 100 ohms and the domes bounce: debounce about 20 ms.",
+    "If keys come out transposed (e.g. 4 reads as 2) on a clone, your ribbon is numbered the other way: swap the row and column pin lists in code rather than rewiring.",
+    "Avoid ESP32 input-only pins (34-39) for rows, and strapping pins (0, 2, 12, 15) for columns with pull-ups if possible."
+  ],
+  "keywords": [
+    "keypad",
+    "membrane",
+    "4x4",
+    "matrix",
+    "keyboard",
+    "16 key",
+    "adafruit 3844"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "R1",
+      "R2",
+      "R3",
+      "R4"
+    ],
+    "colPins": [
+      "C1",
+      "C2",
+      "C3",
+      "C4"
+    ],
+    "keys": [
+      [
+        "1",
+        "2",
+        "3",
+        "A"
+      ],
+      [
+        "4",
+        "5",
+        "6",
+        "B"
+      ],
+      [
+        "7",
+        "8",
+        "9",
+        "C"
+      ],
+      [
+        "*",
+        "0",
+        "#",
+        "D"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "keypad4x4.py",
+    "code": "# 4x4 matrix membrane keypad (Adafruit #3844 and the common 8-pin clones), MicroPython driver.\n# Passive switch matrix: pressing a key joins its row line to its column line.\n# Scan: columns are inputs with pull-ups; one row at a time is driven LOW while the other\n# rows float (input, high impedance), so two keys pressed in one column can never short a\n# HIGH output against a LOW one. A LOW column then means the key at (row, column) is down.\nfrom machine import Pin\nimport time\n\nKEYS_4X4 = ('123A', '456B', '789C', '*0#D')\n\n\nclass Keypad:\n    def __init__(self, row_pins, col_pins, keys=KEYS_4X4, debounce_ms=20):\n        self._rows = [Pin(p, Pin.IN) for p in row_pins]\n        self._cols = [Pin(p, Pin.IN, Pin.PULL_UP) for p in col_pins]\n        self._keys = keys\n        self._debounce = debounce_ms\n        self._last = None\n\n    def scan(self):\n        \"\"\"Return a list of every key held down right now.\"\"\"\n        down = []\n        for r, row in enumerate(self._rows):\n            row.init(Pin.OUT, value=0)\n            time.sleep_us(10)  # let the line settle through the membrane's resistance\n            for c, col in enumerate(self._cols):\n                if col.value() == 0:\n                    down.append(self._keys[r][c])\n            row.init(Pin.IN)\n        return down\n\n    def key(self):\n        \"\"\"Return the key held now (first one found), or None.\"\"\"\n        k = self.scan()\n        return k[0] if k else None\n\n    def get_key(self):\n        \"\"\"Return a key once, when it is newly pressed (debounced); otherwise None.\"\"\"\n        k = self.key()\n        if k is not None and k != self._last:\n            time.sleep_ms(self._debounce)\n            if self.key() != k:\n                return None  # contact bounce: try again on the next call\n            self._last = k\n            return k\n        self._last = k\n        return None\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom keypad4x4 import Keypad\n\nkp = Keypad(({R1}, {R2}, {R3}, {R4}), ({C1}, {C2}, {C3}, {C4}))\nwhile True:\n    k = kp.get_key()\n    if k:\n        print('KEY=' + k)\n    time.sleep_ms(10)\n",
+    "test": {
+      "id": "keys",
+      "title": "Prints each key as it is pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 7
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=6",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 13
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=*",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 16
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=D",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:55:44.225Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/3844",
+      "https://learn.adafruit.com/matrix-keypad/pinouts"
+    ]
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "type": "custom-ssd1309",
+  "name": "SSD1309 2.42\" OLED display 128x64 (I2C)",
+  "mpn": "SSD1309",
+  "category": "display",
+  "description": "2.42-inch monochrome 128x64 OLED driven by a Solomon Systech SSD1309 controller (SSD1306-style command set, no internal charge pump: the module's boost converter makes the panel supply). I2C address 0x3C (0x3D with the address jumper moved). Runs on 3.3-5 V. Sold as: DIYables 2.4-inch OLED Display Module SSD1309 128x64 (board marked \"2.42OLED-IIC VER:1.1\", 4-pin: GND, VDD, SCL, SDA), I2C address 0x3C.",
+  "eli5": "A big, bright little screen that shows text and pictures as glowing dots.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.3-5 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "i2cAddress": 60,
+  "datasheetUrl": "https://files.waveshare.com/wiki/2.42inch-OLED-Module/SSD1309Datasheet.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "2.42 inch OLED SSD1309 128x64 I2C 4 pin module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order is GND, VDD, SCL, SDA. GND comes first, not VCC as on most 0.96\" OLEDs, so check before you power it.",
+    "The back of the board says (in Chinese) 'if you need the ACK reply, short D2'. The SSD1309's SDA output (the line that acknowledges) is only joined to SDA when the D2 pads are bridged. MicroPython raises OSError ENODEV on a missing ACK, so bridge D2 with solder if a scan finds nothing.",
+    "Address jumper: 0X78 position = 7-bit 0x3C (default), 0X7A = 0x3D.",
+    "About 20 mA showing text; an all-white screen draws much more (around 200 mA on the similar Waveshare 2.42\" module), so power it from a supply that can deliver that.",
+    "The SSD1309 has no charge pump. Code ported from the SSD1306 that sends 8Dh is harmless but unneeded; this driver leaves it out."
+  ],
+  "keywords": [
+    "ssd1309",
+    "oled",
+    "2.42",
+    "2.4",
+    "128x64",
+    "display",
+    "i2c"
+  ],
+  "sources": [
+    "https://diyables.io/products/2.4-inch-oled-display-module-ssd1309-128x64",
+    "https://diyables.io/images/products/2.4-inch-oled-display-module-ssd1309-128x64-pinout.jpg",
+    "https://diyables.io/images/products/2.4-inch-oled-display-module-ssd1309-128x64-4.jpg",
+    "https://arduinogetstarted.com/tutorials/arduino-ssd1309-oled-display",
+    "https://files.waveshare.com/wiki/2.42inch-OLED-Module/SSD1309Datasheet.pdf",
+    "https://www.waveshare.com/wiki/2.42inch_OLED_Module"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "controller": "ssd1306",
+    "rows": 64
+  },
+  "driver": {
+    "filename": "ssd1309.py",
+    "code": "# SSD1309 128x64 OLED (e.g. DIYables 2.4\" SSD1309 I2C module, \"2.42OLED-IIC\"), MicroPython driver.\n# Written from the Solomon Systech SSD1309 datasheet Rev 1.1. The SSD1309 has no internal\n# charge pump (there is no 8Dh command): the module's own boost converter makes the panel VCC.\n# I2C control byte: 0x00 = command stream, 0x40 = GDDRAM data stream (datasheet 8.1.5).\nimport framebuf\nimport time\n\n\nclass SSD1309_I2C(framebuf.FrameBuffer):\n    def __init__(self, width, height, i2c, addr=0x3C, res=None):\n        self.width = width\n        self.height = height\n        self.i2c = i2c\n        self.addr = addr  # 0x3C (SA0 low, \"0X78\" 8-bit) or 0x3D (SA0 high, \"0X7A\")\n        self.pages = height // 8\n        self.buffer = bytearray(self.pages * width)\n        super().__init__(self.buffer, width, height, framebuf.MONO_VLSB)\n        if res is not None:\n            # Power ON sequence (datasheet 8.8): RES# low for at least 3 us, then high.\n            res.value(1)\n            time.sleep_ms(1)\n            res.value(0)\n            time.sleep_ms(1)\n            res.value(1)\n            time.sleep_ms(1)\n        self.init_display()\n\n    def cmd(self, *b):\n        self.i2c.writeto(self.addr, bytes((0x00,) + b))\n\n    def init_display(self):\n        self.cmd(0xAE)                    # display off\n        self.cmd(0xD5, 0x70)              # clock divide 1, oscillator 0111b (reset value)\n        self.cmd(0xA8, self.height - 1)   # multiplex ratio\n        self.cmd(0xD3, 0x00)              # display offset 0\n        self.cmd(0x40)                    # start line 0\n        self.cmd(0x20, 0x00)              # horizontal addressing mode\n        self.cmd(0xA1)                    # column 127 -> SEG0 (panel mounted mirrored)\n        self.cmd(0xC8)                    # COM scan COM[N-1] -> COM0\n        self.cmd(0xDA, 0x12)              # alternative COM pin configuration\n        self.cmd(0x81, 0x7F)              # contrast (reset value)\n        self.cmd(0xD9, 0x22)              # pre-charge phase 1 = 2, phase 2 = 2 DCLK (reset value)\n        self.cmd(0xDB, 0x34)              # VCOMH ~0.78 x VCC (reset value)\n        self.cmd(0xA4)                    # display follows RAM\n        self.cmd(0xA6)                    # normal (not inverted)\n        self.fill(0)\n        self.show()\n        self.cmd(0xAF)                    # display on (SEG/COM on after 100 ms)\n\n    def poweroff(self):\n        self.cmd(0xAE)\n\n    def poweron(self):\n        self.cmd(0xAF)\n\n    def contrast(self, c):\n        self.cmd(0x81, c & 0xFF)\n\n    def invert(self, on):\n        self.cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        self.cmd(0x21, 0, self.width - 1)   # column range\n        self.cmd(0x22, 0, self.pages - 1)   # page range\n        self.i2c.writeto(self.addr, b'\\x40' + self.buffer)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ssd1309 import SSD1309_I2C\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\noled = SSD1309_I2C(128, 64, i2c, addr=0x3C)\noled.fill(0)\noled.text('Hello 2.42', 0, 0)\noled.text('SSD1309 ok', 0, 16)\noled.show()\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Shows the text written by the program",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SSD1309 ok",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:50:00.023Z",
+    "verifiedSources": [
+      "https://www.hpinfotech.ro/SSD1309.pdf",
+      "https://arduinogetstarted.com/tutorials/arduino-ssd1309-oled-display"
+    ]
+  }
+}

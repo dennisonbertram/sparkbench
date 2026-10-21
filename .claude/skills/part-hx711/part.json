@@ -1,0 +1,137 @@
+{
+  "type": "custom-hx711",
+  "name": "HX711 load cell amplifier with 5 kg load cell",
+  "mpn": "HX711",
+  "category": "sensor",
+  "description": "Avia Semiconductor 24-bit sigma-delta ADC for bridge sensors (load cells), with a gain-128/64 channel A, a gain-32 channel B, an on-chip excitation regulator and a two-wire clock/data interface at 10 or 80 samples/s. Runs on 2.7–5.5 V. Sold as: green HX711 load cell amplifier module (J2 header GND, DT, SCK, VCC; load-cell header E+, E-, A-, A+, B-, B+; RATE tied low = 10 SPS) with a 5 kg aluminium bar load cell (1 mV/V; red E+, black E-, white A-, green A+).",
+  "eli5": "Turns the tiny squeeze signal from a metal load-cell bar into a number your board can read, so you can build a kitchen scale.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (also E- for the load cell)",
+      "required": true
+    },
+    {
+      "name": "DT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Data out (HX711 DOUT): low = reading ready, then clocks out 24 bits MSB first",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Clock in (HX711 PD_SCK): keep low; high for more than 60 µs powers the chip down",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 2.7–5.5 V (use 3.3 V with ESP32/Pico so DT stays at 3.3 V logic)",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 6,
+  "datasheetUrl": "https://cdn.sparkfun.com/datasheets/Sensors/ForceFlex/hx711_english.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "HX711 load cell amplifier module with 5kg load cell",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V on an ESP32 or Pico: the module ties VCC to the HX711's digital supply, so at 5 V the DT pin would drive 5 V into a 3.3 V GPIO.",
+    "Wire the 5 kg bar cell to the other header: red to E+, black to E-, white to A-, green to A+ (colours vary by maker; if the weight reads negative, swap A- and A+).",
+    "Mount the bar so the arrow points the way the force is applied, with one end bolted to the base and the other to the platform; only the middle should flex.",
+    "Keep SCK low between reads: if it stays high for more than 60 µs the HX711 powers down (the driver disables interrupts while clocking).",
+    "Tare with the scale empty, then calibrate: put a known weight on, and set_scale((reading - offset) / grams). 429.5 counts/g is only the nominal value for a 1 mV/V, 5 kg cell at gain 128.",
+    "This module's RATE pin is tied low, so it gives 10 readings per second and needs about 400 ms to settle after power-up or a gain change."
+  ],
+  "keywords": [
+    "hx711",
+    "load cell",
+    "weight",
+    "scale",
+    "strain gauge",
+    "bridge",
+    "adc",
+    "weighing"
+  ],
+  "sources": [
+    "https://cdn.sparkfun.com/datasheets/Sensors/ForceFlex/hx711_english.pdf",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/hx711-weighing-pressure-sensor-module-large-presoldered-manual",
+    "https://cdn.shopify.com/s/files/1/0837/4340/8415/files/hx711-pinout.png?v=1776722625"
+  ],
+  "sim": {
+    "kind": "hx711",
+    "outputPin": "DT",
+    "clockPin": "SCK",
+    "countsPerUnit": 429.4967296,
+    "offsetCounts": 12000,
+    "quantity": "Load on the 5 kg cell",
+    "unit": "g",
+    "min": 0,
+    "max": 5000,
+    "default": 0
+  },
+  "driver": {
+    "filename": "hx711.py",
+    "code": "# HX711 24-bit load-cell ADC (Avia Semiconductor), MicroPython driver.\n# Written from the Avia HX711 datasheet:\n# - DOUT high = conversion not ready; DOUT low = data ready.\n# - 25..27 positive pulses on PD_SCK shift out 24 bits, MSB first, two's complement\n#   (saturates at 0x800000 / 0x7FFFFF). Pulses 25/26/27 select the NEXT conversion:\n#   25 = channel A gain 128, 26 = channel B gain 32, 27 = channel A gain 64.\n# - PD_SCK high time 0.2..50 us; high for more than 60 us powers the chip down,\n#   so interrupts are disabled while clocking.\n# - After reset/power-up the chip uses channel A, gain 128.\nfrom machine import Pin, disable_irq, enable_irq\nimport time\n\n_PULSES = {128: 1, 32: 2, 64: 3}  # extra pulses after the 24 data bits\n\n\nclass HX711:\n    def __init__(self, dout, pd_sck, gain=128, timeout_ms=1000):\n        self.sck = Pin(pd_sck, Pin.OUT, value=0)  # low = normal operation\n        self.dout = Pin(dout, Pin.IN)\n        self.timeout_ms = timeout_ms\n        self.offset = 0\n        self.scale = 1.0\n        self._extra = 1\n        self.set_gain(gain)\n\n    def set_gain(self, gain):\n        \"\"\"128 or 64 = channel A, 32 = channel B. Takes effect from the next conversion.\"\"\"\n        if gain not in _PULSES:\n            raise ValueError('gain must be 128, 64 or 32')\n        self.gain = gain\n        changed = _PULSES[gain] != self._extra\n        self._extra = _PULSES[gain]\n        if changed:\n            # This pulse train programs the new channel/gain; its data is from the old setting.\n            # Then discard conversions for the datasheet's settling time (400 ms at 10 SPS).\n            t0 = time.ticks_ms()\n            self.read_raw()\n            while time.ticks_diff(time.ticks_ms(), t0) < 400:\n                self.read_raw()\n\n    def is_ready(self):\n        return self.dout.value() == 0\n\n    def read_raw(self):\n        \"\"\"One conversion as a signed 24-bit count.\"\"\"\n        t0 = time.ticks_ms()\n        while self.dout.value():\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('HX711 not ready: check VCC, GND and the DT wire')\n        sck = self.sck\n        dout = self.dout\n        v = 0\n        irq = disable_irq()  # keep each PD_SCK high pulse well under 50 us\n        try:\n            for _ in range(24):\n                sck.value(1)\n                sck.value(0)\n                v = (v << 1) | dout.value()\n            for _ in range(self._extra):\n                sck.value(1)\n                sck.value(0)\n        finally:\n            enable_irq(irq)\n        if v & 0x800000:\n            v -= 0x1000000\n        return v\n\n    def read_average(self, n=5):\n        return sum(self.read_raw() for _ in range(n)) / n\n\n    def tare(self, n=10):\n        \"\"\"Remember the empty-scale reading as zero.\"\"\"\n        self.offset = self.read_average(n)\n\n    def set_scale(self, counts_per_unit):\n        \"\"\"Counts per gram (or per whatever unit you calibrate in).\"\"\"\n        self.scale = counts_per_unit\n\n    def weight(self, n=3):\n        return (self.read_average(n) - self.offset) / self.scale\n\n    def power_down(self):\n        self.sck.value(0)\n        self.sck.value(1)\n        time.sleep_us(80)  # > 60 us high = power down\n\n    def power_up(self):\n        self.sck.value(0)  # the chip resets to channel A, gain 128 and needs 400 ms to settle (10 SPS)\n        self._extra = 1\n        if self.gain == 128:\n            time.sleep_ms(400)\n            return\n        self.set_gain(self.gain)\n"
+  },
+  "example": {
+    "code": "from hx711 import HX711\nimport time\n\nhx = HX711({DT}, {SCK})   # DT = data out, SCK = clock\ntime.sleep_ms(500)        # let the HX711 settle after power-up (400 ms at 10 SPS)\nhx.tare()                 # scale must be empty now\nhx.set_scale(429.5)       # counts per gram for a 5 kg, 1 mV/V bar cell; calibrate with a known weight\nprint('tared')\nwhile True:\n    print('W=%dg' % round(hx.weight()))\n    time.sleep_ms(300)\n",
+    "test": {
+      "id": "weighs",
+      "title": "Tares at start, then reports the load set on the slider in grams",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "tared",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1250
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "W=1250g",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3700
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "W=3700g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:48:58.490Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/datasheets/Sensors/ForceFlex/hx711_english.pdf",
+      "https://learn.sparkfun.com/tutorials/load-cell-amplifier-hx711-breakout-hookup-guide"
+    ]
+  }
+}

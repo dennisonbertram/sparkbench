@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max31855",
+  "board": "Adafruit MAX31855 Thermocouple Amplifier breakout (#269, v2)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB DRC, footprint, LCSC). The sim packs the datasheet's 32-bit frame: a signed 14-bit thermocouple value at 0.25 °C/LSB, D17/D16 reserved and fault bits at 0, a signed 12-bit cold-junction value at 0.0625 °C/LSB, then D3-D0 at 0. The driver decodes that frame and checks the fault bits.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31855.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-MAX31855-breakout-board (Adafruit_MAX31855 v2.brd: JP1 pads 1-6 = +5V/Vin, +3V3/3Vo, GND, DO, CS, CLK, matching the silkscreen labels Vin 3Vo GND DO CS CLK)",
+  "checkRuns": 1
+}

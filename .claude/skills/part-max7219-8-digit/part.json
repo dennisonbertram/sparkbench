@@ -1,0 +1,124 @@
+{
+  "type": "custom-max7219-8-digit",
+  "name": "MAX7219 8-digit 7-segment display",
+  "mpn": "MAX7219",
+  "category": "display",
+  "description": "Eight-digit red 7-segment LED display driven by a Maxim (Analog Devices) MAX7219 serial LED driver. Three-wire SPI-style input (DIN, CLK, LOAD/CS), 16-bit register writes, built-in Code B digit font, 16-step digital brightness. Runs on 4.0–5.5 V. Sold as: generic MAX7219 8-digit 7-segment LED display module (red PCB, two 0.36\" 4-digit displays, 5-pin input header VCC, GND, DIN, CS, CLK; matching VCC, GND, DOUT, CS, CLK output header for chaining).",
+  "eli5": "A row of eight number displays like a digital clock. Your board sends it numbers over three wires and it lights them up and keeps them lit by itself.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 4.0–5.5 V (use 5 V); the module has no regulator",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Serial data in (SPI MOSI), shifted in on CLK rising edges, MSB first",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "LOAD: the 16 bits shifted in are latched on its rising edge",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Serial clock (SPI SCK), up to 10 MHz",
+      "required": true
+    }
+  ],
+  "vmin": 4,
+  "vmax": 5.5,
+  "currentMa": 150,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX7219-MAX7221.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "MAX7219 8 digit 7 segment LED display module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (VBUS/VIN), not 3.3 V: the MAX7219 needs 4.0–5.5 V and all eight digits lit can draw a few hundred mA.",
+    "The MAX7219's logic-high threshold is 3.5 V at 5 V supply, so 3.3 V signals from an ESP32 or Pico are below spec. They usually work on these modules; if digits glitch, add a 74HCT125 or similar level shifter on DIN, CS and CLK.",
+    "Each write is 16 bits: address byte (0x01–0x08 digits, 0x09 decode, 0x0A intensity, 0x0B scan limit, 0x0C shutdown, 0x0F display test) then data byte, with CS low; CS rising latches it.",
+    "At power-up the chip is in shutdown and scans one digit with no decode: set scan limit 7, decode 0xFF, intensity, display test 0, then shutdown register 1.",
+    "Digit 0 (register 0x01) is the rightmost digit on this module.",
+    "Chain more modules from the output header (DOUT to the next DIN); send no-op frames (0x00 0x00) to the chips you are not addressing."
+  ],
+  "keywords": [
+    "max7219",
+    "max7221",
+    "7-segment",
+    "seven segment",
+    "8 digit",
+    "led display",
+    "spi"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX7219-MAX7221.pdf",
+    "https://www.sparkfun.com/datasheets/Components/General/COM-09622-MAX7219-MAX7221.pdf",
+    "https://shop.controllerstech.com/products/max7219-8-digit-7-segment-display-module",
+    "https://openkits-wiki.easyeda.com/en/coloreasyduino/module/screen/8-bit-led-tube.html"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "max7219",
+    "digits": 8
+  },
+  "driver": {
+    "filename": "max7219_8digit.py",
+    "code": "# MAX7219 8-digit 7-segment LED display module, MicroPython driver.\n# Written from the Maxim/Analog Devices MAX7219/MAX7221 datasheet (19-4452 Rev 4):\n# 16-bit frames, MSB first, D11-D8 = register address, D7-D0 = data, shifted in on CLK\n# rising edges (SPI mode 0, up to 10 MHz) and latched on the rising edge of LOAD (CS).\n# Digits use the chip's Code B font (0-9, -, E, H, L, P, blank; D7 = decimal point).\n# Digit 0 (register 0x01) is the RIGHTMOST digit on the common 8-digit module.\nfrom machine import Pin\n\n_NOOP = 0x00\n_DECODE_MODE = 0x09\n_INTENSITY = 0x0A\n_SCAN_LIMIT = 0x0B\n_SHUTDOWN = 0x0C\n_DISPLAY_TEST = 0x0F\n\n# Code B font register values (datasheet Table 5).\n_CODE_B = {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,\n           '-': 0x0A, 'E': 0x0B, 'H': 0x0C, 'L': 0x0D, 'P': 0x0E, ' ': 0x0F}\n\n\nclass MAX7219:\n    def __init__(self, spi, cs, digits=8, brightness=7):\n        \"\"\"spi: a machine.SPI in mode 0 (polarity=0, phase=0), <= 10 MHz. cs: GPIO number of the CS/LOAD pin.\"\"\"\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.digits = digits\n        self._buf = bytearray(2)\n        # The chip powers up in shutdown with all control registers reset; some modules\n        # power up with display test on, so clear it explicitly.\n        self._reg(_DISPLAY_TEST, 0)\n        self._reg(_SHUTDOWN, 0)                 # stay blank while configuring\n        self._reg(_SCAN_LIMIT, digits - 1)      # scan digits 0..digits-1\n        self._reg(_DECODE_MODE, 0xFF)           # Code B decode on every digit\n        self.brightness(brightness)\n        self.clear()\n        self._reg(_SHUTDOWN, 1)                 # normal operation\n\n    def _reg(self, reg, val):\n        self._buf[0] = reg & 0x0F\n        self._buf[1] = val & 0xFF\n        self.cs(0)\n        self.spi.write(self._buf)\n        self.cs(1)                              # LOAD rising edge latches the 16 bits\n\n    def brightness(self, level):\n        \"\"\"0 (1/32 duty) .. 15 (31/32 duty).\"\"\"\n        self._reg(_INTENSITY, max(0, min(15, level)))\n\n    def on(self):\n        self._reg(_SHUTDOWN, 1)\n\n    def off(self):\n        self._reg(_SHUTDOWN, 0)\n\n    def clear(self):\n        for d in range(self.digits):\n            self._reg(d + 1, 0x0F)              # Code B blank\n\n    def text(self, s):\n        \"\"\"Show a string of 0-9, '-', 'E', 'H', 'L', 'P', ' ' and '.', right-aligned.\"\"\"\n        cells = []\n        for c in str(s).upper():\n            if c == '.' and cells and not cells[-1] & 0x80:\n                cells[-1] |= 0x80               # D7 lights the previous digit's decimal point\n            elif c == '.':\n                cells.append(0x0F | 0x80)\n            else:\n                if c not in _CODE_B:\n                    raise ValueError('MAX7219 Code B cannot show %r' % c)\n                cells.append(_CODE_B[c])\n        if len(cells) > self.digits:\n            raise ValueError('too long for %d digits' % self.digits)\n        cells = [0x0F] * (self.digits - len(cells)) + cells\n        for i, v in enumerate(reversed(cells)):\n            self._reg(i + 1, v)                 # register 1 = digit 0 = rightmost\n\n    def number(self, n, decimals=None):\n        \"\"\"Show an int, or a float with the given number of decimals.\"\"\"\n        self.text(str(n) if decimals is None else '%.*f' % (decimals, n))\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport sys\nimport time\nfrom max7219_8digit import MAX7219\n\n# MAX7219 samples DIN on CLK rising edges: SPI mode 0, MSB first, up to 10 MHz.\nspi = SPI(0 if sys.platform == 'rp2' else 1, baudrate=1000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}))\ndisplay = MAX7219(spi, {CS})\nwhile True:\n    for n in (12345678, -42):\n        display.number(n)\n        print('showing', n)\n        time.sleep(1)\n",
+    "test": {
+      "id": "shows",
+      "title": "Shows 12345678, then -42",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "12345678",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "showing -42",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "-42",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:00:45.618Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/MAX7219.pdf",
+      "https://lastminuteengineers.com/max7219-8-digit-7-segment-display-arduino-tutorial/",
+      "https://protosupplies.com/product/max7219-8-digit-7-segment-socketed-red-display-module/"
+    ]
+  }
+}

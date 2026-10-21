@@ -1,0 +1,378 @@
+{
+  "type": "custom-mcp3208",
+  "name": "MCP3208 8-channel 12-bit ADC (SPI)",
+  "mpn": "MCP3208",
+  "category": "sensor",
+  "description": "Microchip 12-bit successive-approximation analog-to-digital converter with 8 single-ended (or 4 pseudo-differential) inputs and an SPI interface, up to 100 ksps at 5 V. Code = 4096 x VIN / VREF. Runs on 2.7-5.5 V. Sold as: MCP3208-CI/P bare chip in a DIP-16 package (pins 1-8 CH0-CH7, 9 DGND, 10 CS/SHDN, 11 DIN, 12 DOUT, 13 CLK, 14 AGND, 15 VREF, 16 VDD), plugged straight into a breadboard.",
+  "eli5": "Gives your board eight extra, more precise analog inputs: it measures voltages and sends the numbers over SPI.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "CH0",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 0 (pin 1), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH1",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 1 (pin 2), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH2",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 2 (pin 3), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH3",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 3 (pin 4), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH4",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 4 (pin 5), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH5",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 5 (pin 6), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH6",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 6 (pin 7), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH7",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 7 (pin 8), 0 V to VREF; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "DGND",
+      "role": "gnd",
+      "description": "Digital ground (pin 9)",
+      "required": true
+    },
+    {
+      "name": "CS/SHDN",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select / shutdown, active low (pin 10). Must go high between conversions",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Serial data in: start bit, SGL/DIFF and channel bits (pin 11)",
+      "required": true
+    },
+    {
+      "name": "DOUT",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "Serial data out: null bit then the 12-bit result (pin 12)",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Serial clock, 10 kHz to 1 MHz at 2.7 V, 2 MHz at 5 V (pin 13)",
+      "required": true
+    },
+    {
+      "name": "AGND",
+      "role": "gnd",
+      "description": "Analog ground (pin 14)",
+      "required": true
+    },
+    {
+      "name": "VREF",
+      "role": "power",
+      "description": "Reference voltage input (pin 15): sets full scale. Tie to VDD (3.3 V) for 0-3.3 V inputs",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V (pin 16). Use 3.3 V with an ESP32/Pico so DOUT stays at 3.3 V logic",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.4,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/21298e.pdf",
+  "priceUsd": 4.5,
+  "supplierQuery": "MCP3208-CI/P DIP-16",
+  "footprint": "Package_DIP:DIP-16_W7.62mm",
+  "buildNotes": [
+    "Send 3 bytes in SPI mode 0: 0x06 | (ch >> 2), (ch & 3) << 6, 0x00 (single-ended). The result is (reply[1] & 0x0F) << 8 | reply[2]; the top bits of reply[1] are undefined (high-Z, then the null bit).",
+    "Pull CS/SHDN high after every conversion: each conversion starts with a new CS falling edge.",
+    "Volts = code x VREF / 4096. Tie VREF to VDD (3.3 V) for a 0-3.3 V range, or to a precision reference for better accuracy.",
+    "Power it from 3.3 V with an ESP32 or Pico; at 5 V DOUT would drive 5 V into a 3.3 V GPIO.",
+    "Keep SPI clock between 10 kHz and 1 MHz at 2.7-3.3 V (2 MHz max at 5 V); too slow and the sample capacitor droops.",
+    "Put a 1 uF ceramic capacitor from VDD to AGND close to the chip and join AGND and DGND at one point.",
+    "Analog sources above about 1 kohm need a slower clock (datasheet Figure 4-2) or a buffer."
+  ],
+  "keywords": [
+    "mcp3208",
+    "mcp3204",
+    "adc",
+    "12-bit",
+    "analog to digital",
+    "spi adc",
+    "microchip"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/21298e.pdf",
+    "https://www.microchip.com/en-us/product/MCP3208"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "CH0 voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 0,
+    "controls": [
+      {
+        "key": "ch1",
+        "quantity": "CH1 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "ch2",
+        "quantity": "CH2 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "ch3",
+        "quantity": "CH3 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "ch4",
+        "quantity": "CH4 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "ch5",
+        "quantity": "CH5 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "ch6",
+        "quantity": "CH6 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "ch7",
+        "quantity": "CH7 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      }
+    ],
+    "spiReplies": [
+      {
+        "match": "06 00",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "value",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      },
+      {
+        "match": "06 40",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "ch1",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      },
+      {
+        "match": "06 80",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "ch2",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      },
+      {
+        "match": "06 C0",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "ch3",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      },
+      {
+        "match": "07 00",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "ch4",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      },
+      {
+        "match": "07 40",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "ch5",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      },
+      {
+        "match": "07 80",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "ch6",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      },
+      {
+        "match": "07 C0",
+        "at": 1,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 4
+          },
+          {
+            "control": "ch7",
+            "bits": 12,
+            "scale": 0.0008056640625
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp3208.py",
+    "code": "# MCP3208 8-channel 12-bit SPI ADC (Microchip MCP3204/3208, DS21298E), MicroPython driver.\n# Uses the datasheet's 3-byte, 8-bit-aligned transfer (Section 6.1, Figure 6-1, SPI mode 0,0):\n#   byte 0: 0 0 0 0 0 START SGL/DIFF D2\n#   byte 1: D1 D0 x x x x x x\n#   byte 2: x x x x x x x x\n# Reply: byte 1 = ? ? ? NULL B11 B10 B9 B8, byte 2 = B7..B0.\n# Code = 4096 * VIN / VREF (Equation 4-1).\nfrom machine import Pin\n\n\nclass MCP3208:\n    def __init__(self, spi, cs, vref=3.3):\n        \"\"\"spi: machine.SPI in mode 0 (polarity=0, phase=0), 10 kHz to 1 MHz at 2.7 V\n        (2 MHz max at 5 V). cs: GPIO number of CS/SHDN. vref: voltage on the VREF pin.\"\"\"\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.vref = vref\n        self._tx = bytearray(3)\n        self._rx = bytearray(3)\n\n    def read_raw(self, channel, single_ended=True):\n        \"\"\"Convert one channel and return the 12-bit code (0-4095).\n        single_ended=False selects the pseudo-differential pair (Table 5-2).\"\"\"\n        if not 0 <= channel <= 7:\n            raise ValueError('MCP3208 channel must be 0-7')\n        self._tx[0] = 0x04 | (0x02 if single_ended else 0x00) | ((channel >> 2) & 0x01)\n        self._tx[1] = (channel & 0x03) << 6\n        self._tx[2] = 0x00\n        self.cs.value(0)\n        self.spi.write_readinto(self._tx, self._rx)\n        self.cs.value(1)  # CS high ends the conversion (tCSH >= 500 ns)\n        return ((self._rx[1] & 0x0F) << 8) | self._rx[2]\n\n    def raw_to_volts(self, raw):\n        return raw * self.vref / 4096\n\n    def read_volts(self, channel, single_ended=True):\n        return self.raw_to_volts(self.read_raw(channel, single_ended))\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom mcp3208 import MCP3208\n\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}), miso=Pin({DOUT}))\nadc = MCP3208(spi, {CS_SHDN}, vref=3.3)  # VREF tied to 3.3 V\nwhile True:\n    r0 = adc.read_raw(0)\n    r3 = adc.read_raw(3)\n    print('CH0=%d %.3fV CH3=%d %.3fV' % (r0, adc.raw_to_volts(r0), r3, adc.raw_to_volts(r3)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CH0 and CH3 voltages set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.65
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ch3",
+          "value": 2.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=2048 1.650V CH3=3103 2.500V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-mcp3208\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MCP3208 8-channel 12-bit SPI analog-to-digital converter (Microchip MCP3208, DIP-16). Use when designing, wiring, simulating or writing code for an MCP3208 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MCP3208 8-channel 12-bit SPI ADC (MCP3208)\n\n## Overview\nThe **MCP3208** from Microchip is a 12-bit SAR analog-to-digital converter with 8 single-ended inputs (or 4 pseudo-differential pairs) and an SPI interface, up to 100 ksps at 5 V (50 ksps at 2.7 V). Hobbyists buy the bare **MCP3208-CI/P in a DIP-16 package** and plug it straight into a breadboard. It is the 12-bit big brother of the MCP3008; the command is the same but the reply has 12 bits instead of 10.\n\n## Pinout (DIP-16, pin 1 next to the notch)\n| Pin | Name | Function |\n|---|---|---|\n| 1-8 | CH0-CH7 | Analog inputs, 0 V to VREF |\n| 9 | DGND | Digital ground |\n| 10 | CS/SHDN | Chip select / shutdown, active low |\n| 11 | DIN | SPI data in (MOSI) |\n| 12 | DOUT | SPI data out (MISO) |\n| 13 | CLK | SPI clock |\n| 14 | AGND | Analog ground |\n| 15 | VREF | Reference voltage input (full scale) |\n| 16 | VDD | Supply, 2.7-5.5 V |\n\n## Electrical limits\n- Supply: 2.7-5.5 V; about 320 uA running at 5 V, 0.5 uA standby.\n- Inputs: VSS to VREF for valid codes; never more than VDD + 0.6 V or below -0.6 V.\n- SPI clock: 1 MHz max at VDD 2.7 V, 2 MHz at 5 V; keep it above about 10 kHz so the sample doesn't droop.\n- Source impedance: above about 1 kohm, lower the clock (datasheet Figure 4-2) or buffer the signal.\n\n## Interface details\n- SPI mode 0,0 (or 1,1), MSB first. Each conversion starts on a CS falling edge; take CS high after it.\n- Datasheet 8-bit-aligned transfer (Figure 6-1), 3 bytes:\n  - send `0x06 | (ch >> 2)`, `(ch & 3) << 6`, `0x00` for single-ended channel ch (0x04 | (ch >> 2) for pseudo-differential, Table 5-2);\n  - receive: byte 1 = `? ? ? 0 B11 B10 B9 B8`, byte 2 = `B7..B0`, so code = `(rx[1] & 0x0F) << 8 | rx[2]`.\n- Code = 4096 x VIN / VREF (Equation 4-1); volts = code x VREF / 4096.\n\n## Wiring\n- ESP32: VDD and VREF -> 3V3, AGND and DGND -> GND, CLK -> D18, DOUT -> D19, DIN -> D23, CS/SHDN -> D5.\n- Pico: VDD and VREF -> 3V3(OUT), AGND and DGND -> GND, CLK -> GP18, DOUT -> GP16, DIN -> GP19, CS/SHDN -> GP17.\n- Raspberry Pi 4: VDD and VREF -> pin 1 (3.3 V), grounds -> pin 6, CLK -> pin 23, DOUT -> pin 21, DIN -> pin 19, CS/SHDN -> pin 24 (CE0).\n- 1 uF ceramic from VDD to AGND right at the chip.\n\n## Using the driver\n```python\nfrom machine import Pin, SPI\nfrom mcp3208 import MCP3208\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin(18), mosi=Pin(23), miso=Pin(19))\nadc = MCP3208(spi, 5, vref=3.3)\nraw = adc.read_raw(0)\nprint('CH0=%d %.3fV' % (raw, adc.raw_to_volts(raw)))\n```\n\n## Gotchas\n- Powered at 5 V, DOUT swings to 5 V: run it from 3.3 V with an ESP32 or Pico.\n- Mask the reply: the top three bits of the second byte are undefined (high-Z), only the low nibble is data.\n- VREF sets the scale; if it isn't tied to anything, readings are garbage.\n- If it was powered up with CS low, CS must go high and low again before the first conversion.\n\n## Datasheet\nhttps://ww1.microchip.com/downloads/en/DeviceDoc/21298e.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:52:44.800Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/21298e.pdf"
+    ]
+  }
+}

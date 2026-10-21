@@ -1,0 +1,169 @@
+{
+  "type": "custom-neo-m8n",
+  "name": "NEO-M8N GPS module",
+  "mpn": "NEO-M8N",
+  "category": "sensor",
+  "description": "u-blox NEO-M8N concurrent GNSS receiver (GPS + GLONASS by default, also BeiDou/Galileo) that streams NMEA sentences (position, altitude, speed, UTC time) over a UART at 9600 baud, once per second. The chip runs on 2.7–3.6 V; the module's on-board regulator lets it run from 3.3–5 V. Sold as: GY-GPSV3-NEO-M8N GPS module (HW-448, 4-pin header VCC, RX, TX, GND) with ceramic patch antenna on a U.FL lead, backup battery and EEPROM.",
+  "eli5": "Listens to GPS and GLONASS satellites and tells your board where on Earth it is, once a second.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (on-board regulator feeds the 2.7–3.6 V NEO-M8N)",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module serial input (3.3 V logic, max 3.6 V): connect to the board's UART TX. Only needed to send configuration commands",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module serial output, NMEA at 9600 baud 8N1: connect to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 32,
+  "datasheetUrl": "https://content.u-blox.com/sites/default/files/NEO-M8-FW3_DataSheet_UBX-15031086.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "GY-GPSV3-NEO-M8N GPS module with antenna",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Cross the serial lines: module TX goes to the board's UART RX pin, module RX (optional) to the board's UART TX pin.",
+    "Default is 9600 baud, 8 data bits, no parity, 1 stop bit; open the UART at 9600 or the sentences come out as garbage.",
+    "With GPS + GLONASS (the default) the position sentences start $GNGGA / $GNRMC, not $GPGGA; code that only looks for $GP... never sees a fix.",
+    "Keep the module's RX at 3.3 V logic (the chip's absolute maximum input is 3.6 V). ESP32 and Pico are 3.3 V, so wire them directly.",
+    "Plug the ceramic antenna into the U.FL socket and give it a view of the sky, ceramic side up. A cold start outdoors takes about 26 s or more; indoors it may never get a fix.",
+    "Peak supply current is up to 67 mA; power it from the board's 3V3 or 5V/VBUS pin, not a GPIO."
+  ],
+  "keywords": [
+    "neo-m8n",
+    "neom8n",
+    "m8n",
+    "gy-gpsv3-neo-m8n",
+    "gy-gpsv3",
+    "hw-448",
+    "gps",
+    "gnss",
+    "glonass",
+    "nmea",
+    "u-blox",
+    "ublox",
+    "location"
+  ],
+  "sources": [
+    "https://content.u-blox.com/sites/default/files/NEO-M8-FW3_DataSheet_UBX-15031086.pdf",
+    "https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/gps-module-neo-m8n-antenna-battery-arduino-esp32-manual",
+    "https://shillehtek.com/cdn/shop/files/neo-m8n-gps-module-with-antenna-01.jpg",
+    "https://openelab.io/products/u-blox-neo-m8n-0"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Latitude",
+    "unit": "°",
+    "min": -90,
+    "max": 90,
+    "default": 51.5,
+    "controls": [
+      {
+        "key": "lat",
+        "quantity": "Latitude",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 51.5
+      },
+      {
+        "key": "lon",
+        "quantity": "Longitude",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": -0.12
+      },
+      {
+        "key": "alt",
+        "quantity": "Altitude above sea level",
+        "unit": "m",
+        "min": -100,
+        "max": 5000,
+        "default": 35
+      },
+      {
+        "key": "speed",
+        "quantity": "Speed over ground",
+        "unit": "knots",
+        "min": 0,
+        "max": 100,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "nmea": true
+    }
+  },
+  "driver": {
+    "filename": "neom8n.py",
+    "code": "# u-blox NEO-M8N GNSS receiver (GY-GPSV3-NEO-M8N module), MicroPython NMEA driver.\n# NEO-M8 datasheet, \"Default messages\": UART 9600 baud 8N1, NMEA GGA, GLL, GSA, GSV, RMC, VTG\n# and TXT enabled, 1 Hz navigation. By default the receiver tracks GPS + GLONASS concurrently,\n# so position sentences use the talker ID \"GN\" ($GNGGA, $GNRMC); with GPS only it is \"GP\".\n# This driver accepts any talker ID. Every sentence is checked with its NMEA checksum (XOR of\n# all characters between '$' and '*'). Latitude is ddmm.mmmmm, longitude dddmm.mmmmm\n# (u-blox 8 / M8 Receiver Description, NMEA GGA and RMC).\n\n\ndef _checksum_ok(line):\n    # line: str without CR/LF, starting with '$'\n    star = line.rfind('*')\n    if line[:1] != '$' or star < 0 or len(line) < star + 3:\n        return False\n    cs = 0\n    for c in line[1:star]:\n        cs ^= ord(c)\n    try:\n        return cs == int(line[star + 1:star + 3], 16)\n    except ValueError:\n        return False\n\n\ndef _deg(field, hemi, dlen):\n    # 'ddmm.mmmmm' (dlen=2) or 'dddmm.mmmmm' (dlen=3) -> signed decimal degrees, None if empty\n    if not field or not hemi:\n        return None\n    d = int(field[:dlen]) + float(field[dlen:]) / 60\n    return -d if hemi in ('S', 'W') else d\n\n\ndef _num(field):\n    return float(field) if field else None\n\n\nclass NEOM8N:\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 9600 baud, rx= the pin wired to the module's TX.\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.fix = False          # True when GGA quality > 0 or RMC status 'A'\n        self.fix_quality = 0      # GGA: 0 none, 1 GNSS fix, 2 DGNSS, 6 dead reckoning\n        self.latitude = None      # decimal degrees, + north\n        self.longitude = None     # decimal degrees, + east\n        self.altitude = None      # metres above mean sea level (GGA)\n        self.satellites = 0       # satellites used (GGA)\n        self.hdop = None\n        self.speed_knots = None   # speed over ground (RMC)\n        self.course = None        # course over ground, degrees (RMC)\n        self.utc_time = None      # (hh, mm, ss)\n        self.date = None          # (day, month, 2-digit year)\n        self.bad_checksums = 0\n\n    def update(self):\n        \"\"\"Read what has arrived and decode complete sentences. Returns True if a GGA or RMC was decoded.\"\"\"\n        n = self.uart.any()\n        if n:\n            data = self.uart.read(n)\n            if data:\n                self._buf += data\n        got = False\n        while True:\n            nl = self._buf.find(b'\\n')\n            if nl < 0:\n                break\n            line = self._buf[:nl].strip()\n            self._buf = self._buf[nl + 1:]\n            try:\n                line = line.decode()\n            except UnicodeError:  # noise or a binary UBX frame\n                continue\n            try:\n                if line and self._parse(line):\n                    got = True\n            except (ValueError, IndexError):  # malformed field\n                pass\n        if len(self._buf) > 512:  # garbage without newlines (wrong baud rate?)\n            self._buf = b''\n        return got\n\n    def _parse(self, line):\n        if line[:1] != '$':\n            return False\n        if not _checksum_ok(line):\n            self.bad_checksums += 1\n            return False\n        f = line[1:line.rfind('*')].split(',')\n        kind = f[0][2:]  # skip the talker ID (GN, GP, GL, GA, GB)\n        if kind == 'GGA' and len(f) >= 10:\n            self._time(f[1])\n            self.fix_quality = int(f[6]) if f[6] else 0\n            self.fix = self.fix_quality > 0\n            self.satellites = int(f[7]) if f[7] else 0\n            self.hdop = _num(f[8])\n            if self.fix:\n                self.latitude = _deg(f[2], f[3], 2)\n                self.longitude = _deg(f[4], f[5], 3)\n                self.altitude = _num(f[9])\n            return True\n        if kind == 'RMC' and len(f) >= 10:\n            self._time(f[1])\n            self.fix = f[2] == 'A'\n            if self.fix:\n                self.latitude = _deg(f[3], f[4], 2)\n                self.longitude = _deg(f[5], f[6], 3)\n                self.speed_knots = _num(f[7])\n                self.course = _num(f[8])\n            if len(f[9]) == 6:\n                self.date = (int(f[9][0:2]), int(f[9][2:4]), int(f[9][4:6]))\n            return True\n        return False\n\n    def _time(self, t):\n        if len(t) >= 6:\n            self.utc_time = (int(t[0:2]), int(t[2:4]), int(float(t[4:])))\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom neom8n import NEOM8N\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\ngps = NEOM8N(uart)\nwhile True:\n    if gps.update():\n        if gps.fix and gps.latitude is not None:\n            print('LAT=%.4f LON=%.4f ALT=%.1fm' % (gps.latitude, gps.longitude, gps.altitude or 0))\n        else:\n            print('Waiting for fix...')\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "fix",
+      "title": "Reports the position and altitude set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lat",
+          "value": 48.8584
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lon",
+          "value": 2.2945
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "alt",
+          "value": 330
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LAT=48.8584 LON=2.2945 ALT=330.0m",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:54:42.791Z",
+    "verifiedSources": [
+      "https://content.u-blox.com/sites/default/files/NEO-M8-FW3_DataSheet_UBX-15031086.pdf",
+      "https://shillehtek.com/blogs/shillehtek-product-manuals/gps-module-neo-m8n-antenna-battery-arduino-esp32-manual"
+    ]
+  }
+}

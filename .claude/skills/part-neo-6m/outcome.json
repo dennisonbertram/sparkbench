@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-neo-6m",
+  "board": "GY-NEO6MV2 GPS module (u-blox NEO-6M, 4-pin VCC RX TX GND, ceramic antenna)",
+  "reason": "Modelled as a uart-device NMEA stream (GGA+RMC at 9600 baud, ddmm.mmmmm per the u-blox 6 protocol spec); the checksum-verifying NMEA driver decodes it and the check passed on ESP32 and Pico (simulator, breadboard, circuit board, footprint).",
+  "datasheetUrl": "https://content.u-blox.com/sites/default/files/products/documents/NEO-6_DataSheet_%28GPS.G6-HW-09005%29.pdf",
+  "breakoutPinoutSource": "https://components101.com/modules/neo-6mv2-gps-module",
+  "checkRuns": 1
+}
