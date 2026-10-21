@@ -201,7 +201,7 @@ function applyLibraryParts(project: Project, mpns: string[], lib: CustomPartSpec
     if (project.parts.some((p) => p.type === spec.type)) continue;
     const r = withCustomPart(project, spec);
     project = r.project;
-    log.push(`Added the ${spec.name} from the parts library${r.notes.length ? `: ${r.notes.join(' ')}` : ''}.`);
+    log.push(`Added the ${spec.name} from the parts library${r.notes.length ? `: ${r.notes.join(' ').replace(/\.$/, '')}` : ''}.`);
   }
   return project;
 }
