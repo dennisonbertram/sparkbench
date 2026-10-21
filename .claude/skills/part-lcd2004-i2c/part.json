@@ -1,0 +1,128 @@
+{
+  "type": "custom-lcd2004-i2c",
+  "name": "LCD2004 I2C 20x4 character LCD",
+  "mpn": "LCD2004 I2C",
+  "category": "display",
+  "description": "20-character by 4-line HD44780-compatible character LCD with an LED backlight, driven over I2C through a PCF8574 8-bit I/O expander backpack in 4-bit mode (P0 RS, P1 RW, P2 E, P3 backlight, P4-P7 D4-D7). Runs on 5 V. Sold as: LCD2004 20x4 blue character LCD with PCF8574T I2C backpack (FC-113 / HW-061 clone module), 4-pin header GND, VCC, SDA, SCL, I2C address 0x27 (0x3F on boards with a PCF8574AT), contrast trimmer and backlight jumper on the backpack.",
+  "eli5": "A screen that shows four lines of twenty letters or numbers, wired with just four wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 5 V (LCD logic and backlight; 4.5-5.5 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kOhm pull-up to VCC fitted on the backpack)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kOhm pull-up to VCC fitted on the backpack)",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 60,
+  "i2cAddress": 39,
+  "datasheetUrl": "https://www.sparkfun.com/datasheets/LCD/HD44780.pdf",
+  "sources": [
+    "https://www.sparkfun.com/datasheets/LCD/HD44780.pdf",
+    "https://www.ti.com/lit/ds/symlink/pcf8574.pdf",
+    "https://www.handsontec.com/dataspecs/I2C_2004_LCD.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/TC2004A-01.pdf"
+  ],
+  "priceUsd": 7,
+  "supplierQuery": "LCD2004 20x4 I2C PCF8574 backpack blue",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V: the HD44780 and the backlight are made for 5 V, and at 3.3 V the text is faint or invisible.",
+    "The backpack pulls SDA and SCL up to VCC (5 V) with 4.7 kOhm resistors. On a 3.3 V board (ESP32, Pico) remove those two resistors and use 3.3 V pull-ups, or put a bidirectional level shifter between them.",
+    "Turn the blue contrast trimmer on the backpack until the characters appear; with it wrong the screen shows nothing or a row of solid blocks.",
+    "Address 0x27 with a PCF8574T and the A0-A2 pads open; 0x3F if the chip is a PCF8574AT. Run i2c.scan() if nothing shows.",
+    "Keep the backlight jumper fitted, or the backlight cannot turn on.",
+    "Line starts in display RAM are 0x00, 0x40, 0x14 and 0x54, so row 3 continues row 1 and row 4 continues row 2 if you write past 20 characters."
+  ],
+  "keywords": [
+    "lcd2004",
+    "2004",
+    "20x4",
+    "lcd",
+    "hd44780",
+    "pcf8574",
+    "i2c lcd",
+    "character lcd",
+    "display"
+  ],
+  "sim": {
+    "kind": "char-lcd",
+    "lcd": {
+      "cols": 20,
+      "rows": 4,
+      "pins": {
+        "rs": 0,
+        "rw": 1,
+        "e": 2,
+        "backlight": 3,
+        "d4": 4
+      }
+    }
+  },
+  "driver": {
+    "filename": "lcd2004_i2c.py",
+    "code": "# LCD2004 (HD44780-compatible 20x4 character LCD) on a PCF8574 I2C backpack.\n# Backpack wiring: P0 = RS, P1 = RW, P2 = E, P3 = backlight, P4-P7 = D4-D7 (4-bit mode).\n# Init sequence and timings from the Hitachi HD44780U datasheet (Figure 24, 4-bit interface).\nimport time\n\n_RS = 0x01\n_RW = 0x02\n_EN = 0x04\n_BL = 0x08\n\n\nclass LCD2004:\n    def __init__(self, i2c, addr=0x27, cols=20, rows=4):\n        self.i2c = i2c\n        self.addr = addr\n        self.cols = cols\n        self.rows = rows\n        self.bl = _BL\n        self.i2c.writeto(self.addr, bytes([0]))  # all port lines low, E low\n        time.sleep_ms(50)  # > 40 ms after VCC rises to 2.7 V\n        self._nib(0x03, 0)\n        time.sleep_ms(5)  # > 4.1 ms\n        self._nib(0x03, 0)\n        time.sleep_ms(1)  # > 100 us\n        self._nib(0x03, 0)\n        time.sleep_ms(1)\n        self._nib(0x02, 0)  # switch to 4-bit\n        time.sleep_ms(1)\n        self.cmd(0x28)  # function set: 4-bit, 2 lines (4-row panels use N=1), 5x8 dots\n        self.cmd(0x08)  # display off\n        self.clear()\n        self.cmd(0x06)  # entry mode: increment, no shift\n        self.cmd(0x0C)  # display on, cursor off, blink off\n\n    def _w(self, b):\n        self.i2c.writeto(self.addr, bytes([b | self.bl]))\n\n    def _nib(self, n, rs):\n        b = ((n & 0x0F) << 4) | rs\n        self._w(b | _EN)  # E high (each I2C byte takes ~90 us at 100 kHz, > 450 ns PWEH)\n        self._w(b)  # E falling edge latches the nibble\n\n    def _byte(self, v, rs):\n        self._nib(v >> 4, rs)\n        self._nib(v & 0x0F, rs)\n\n    def cmd(self, c):\n        self._byte(c, 0)\n        if c <= 0x03:\n            time.sleep_ms(2)  # clear / return home take 1.52 ms\n        else:\n            time.sleep_us(50)  # other instructions take 37 us\n\n    def clear(self):\n        self.cmd(0x01)\n\n    def home(self):\n        self.cmd(0x02)\n\n    def move_to(self, col, row):\n        # DDRAM start of each line on a 20x4 panel: 0x00, 0x40, 0x14, 0x54\n        base = (0x00, 0x40, self.cols, 0x40 + self.cols)[row]\n        self.cmd(0x80 | (base + col))\n\n    def putchar(self, ch):\n        self._byte(ord(ch), _RS)\n        time.sleep_us(50)\n\n    def putstr(self, s):\n        for ch in s:\n            self.putchar(ch)\n\n    def backlight(self, on=True):\n        self.bl = _BL if on else 0\n        self._w(0)\n\n    def display(self, on=True):\n        self.cmd(0x0C if on else 0x08)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lcd2004_i2c import LCD2004\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nlcd = LCD2004(i2c, 0x27, 20, 4)\nlcd.move_to(0, 0)\nlcd.putstr('Hello, Sparkbench!')\nlcd.move_to(3, 3)\nlcd.putstr('Count: 42')\nprint('LCD ready')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Shows text on the first and fourth rows",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "Hello, Sparkbench!",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "Count: 42",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LCD ready",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:15:19.598Z",
+    "verifiedSources": [
+      "https://nxp.com/docs/en/data-sheet/PCF8574_PCF8574A.pdf",
+      "https://probots.co.in/i2c-lcd-backpack-interface-module-pcf8574t.html"
+    ]
+  }
+}

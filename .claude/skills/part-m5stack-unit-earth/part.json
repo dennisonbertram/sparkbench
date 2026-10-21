@@ -1,0 +1,134 @@
+{
+  "type": "custom-m5stack-unit-earth",
+  "name": "M5Stack Unit Earth soil moisture sensor",
+  "mpn": "U019",
+  "category": "sensor",
+  "description": "Resistive soil-moisture sensor: two bare probes between Ain and GND with a 10 kΩ pull-up to the unit's own 3.3 V rail (HT7533 regulator from the 5 V port pin), plus an LM393 comparator against a 10 kΩ trimmer. Ain is about 3.3 V dry and falls as the soil gets wetter; Din (open collector, 10 kΩ pull-up to 3.3 V) goes LOW when Ain drops below the trimmer threshold. Both outputs stay within 3.3 V. About 2 mA. Sold as: M5Stack Unit Earth (SKU U019), HY2.0-4P Grove socket with GND, 5V, digital output (yellow), analog output (white).",
+  "eli5": "Two metal legs you push into a plant pot. Wet soil lets electricity flow between them, so the white wire's voltage goes down the wetter the soil is, and the yellow wire flips low when the soil is wetter than the level you set with the tiny screw.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (black wire, J1 pin 4)."
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "required": true,
+      "description": "Supply, 5 V nominal (red wire, J1 pin 3) into the on-board HT7533 3.3 V regulator; 3.3 V in also works (the regulator then passes about 3.2 V)."
+    },
+    {
+      "name": "Din",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "description": "Digital output (yellow wire, J1 pin 2): LM393 open collector with 10 kΩ pull-up to the unit's 3.3 V. HIGH when dry, LOW when Ain is below the trimmer threshold (wet)."
+    },
+    {
+      "name": "Ain",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "description": "Analog output (white wire, J1 pin 1): probe voltage with 10 kΩ pull-up to the unit's 3.3 V. About 3.3 V in dry soil or air, lower as the soil gets wetter."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 2,
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/728/U019_UNIT_EARTH_SCHE.pdf",
+  "sources": [
+    "https://docs.m5stack.com/en/unit/earth",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/728/U019_UNIT_EARTH_SCHE.pdf",
+    "https://github.com/m5stack/M5Stack/tree/master/examples/Unit/EARTH",
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf"
+  ],
+  "priceUsd": 3.95,
+  "supplierQuery": "M5Stack Unit Earth U019 soil moisture sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "HY2.0-4P cable colours (M5Stack PinMap): black GND, red 5V, yellow Din (digital), white Ain (analog). The unit has a Grove-style socket, not header pins: use a Grove-to-jumper cable for a breadboard.",
+    "Feed 5 V: the HT7533 makes 3.3 V on the unit, and Ain/Din only ever reach that 3.3 V, so they are safe for an ESP32 or Pico.",
+    "Ain goes DOWN as the soil gets wet (probes pull it towards GND against a 10 kΩ pull-up), and Din is active LOW.",
+    "On the ESP32 wire Ain to an ADC1 pin (GPIO32–39) with 11 dB attenuation; on an M5Stack Core PORT.B it is G36 (Ain) and G26 (Din).",
+    "Set the threshold: put the probes in soil at your 'needs water' level and turn the trimmer until Din just changes.",
+    "M5Stack: the electrodes are not corrosion-resistant or waterproof. Do not leave them in damp soil for long periods."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit earth",
+    "u019",
+    "soil moisture",
+    "moisture",
+    "soil",
+    "resistive",
+    "lm393",
+    "plant",
+    "garden",
+    "grove",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "Ain",
+    "quantity": "Ain voltage (falls as the soil gets wetter)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 3.3,
+    "vAtMin": 0,
+    "vAtMax": 3.3,
+    "digitalOutputs": [
+      {
+        "pin": "Din",
+        "control": "wet",
+        "label": "Soil wetter than threshold (Din low)",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "m5_earth.py",
+    "code": "# M5Stack Unit Earth (SKU U019) soil moisture sensor, MicroPython driver.\n# Circuit (M5Stack U019 schematic V1.0): an HT7533 regulator makes 3.3 V from the 5 V port pin.\n# The two probes (EARTH_PIN) sit between Ain and GND, with R1 10 kOhm from Ain to 3.3 V, so Ain is\n# about 3.3 V in air / dry soil and FALLS as wet soil conducts between the probes.\n# An LM393 comparator (U1A) has Ain on its + input and the 10 kOhm trimmer wiper on its - input.\n# Its open-collector output Din has R2 10 kOhm to 3.3 V: Din is HIGH while Ain is above the\n# trimmer threshold (dry) and LOW when Ain drops below it (wet). Both signals stay within 3.3 V.\n# M5Stack gives no volts-to-moisture formula: calibrate dry and wet readings in your own soil.\nfrom machine import ADC, Pin\n\n\nclass UnitEarth:\n    def __init__(self, ain, din=None, samples=16, vref=3.3, vcc=3.3):\n        \"\"\"ain/din: GPIO numbers (or Pin objects) the Ain (white) and Din (yellow) wires go to.\n        din may be None. vcc: the unit's internal rail (3.3 V from its HT7533).\"\"\"\n        self.adc = None\n        if ain is not None:\n            self.adc = ADC(Pin(ain) if isinstance(ain, int) else ain)\n            try:\n                self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n            except AttributeError:\n                pass\n        self.din = None if din is None else (Pin(din, Pin.IN) if isinstance(din, int) else din)\n        self.samples = samples\n        self.vref = vref  # ADC full scale used when read_uv() is not available (e.g. Pico)\n        self.vcc = vcc\n\n    def raw(self):\n        \"\"\"One 16-bit ADC reading (0-65535): lower = wetter.\"\"\"\n        return self.adc.read_u16()\n\n    def voltage(self):\n        \"\"\"Ain voltage in volts, averaged: about 3.3 V dry, lower = wetter.\"\"\"\n        if self.adc is None:\n            raise ValueError('Ain pin not given')\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def moisture(self):\n        \"\"\"Rough wetness 0-100 %: 0 = Ain at the 3.3 V rail (open probes), 100 = Ain at 0 V (shorted).\"\"\"\n        m = (1 - self.voltage() / self.vcc) * 100\n        return min(100.0, max(0.0, m))\n\n    def wet(self):\n        \"\"\"True when Din is LOW: Ain is below the trimmer threshold (soil wetter than the set point).\"\"\"\n        if self.din is None:\n            raise ValueError('Din pin not given')\n        return self.din.value() == 0\n"
+  },
+  "example": {
+    "code": "from m5_earth import UnitEarth\nimport time\n\nearth = UnitEarth({AIN}, {DIN})\nwhile True:\n    print('Ain=%.2fV %s' % (earth.voltage(), 'wet' if earth.wet() else 'dry'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the Ain voltage and the Din wet alarm set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.4
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "wet",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Ain=1.40V wet",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-m5stack-unit-earth\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the M5Stack Unit Earth soil moisture sensor (SKU U019: resistive two-probe sensor with LM393 comparator, analog Ain + digital Din on an HY2.0-4P Grove port). Use when designing, wiring, simulating or writing code for a Unit Earth in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit Earth soil moisture sensor (U019)\n\n## Overview\nThe **M5Stack Unit Earth (SKU U019)** is a resistive soil-moisture sensor. It has two bare probes that go into the soil and a 4-pin HY2.0 (Grove-style) socket. From the M5Stack V1.0 schematic:\n- An **HT7533** regulator makes **3.3 V** from the 5 V port pin. Everything else runs on that 3.3 V.\n- The probes sit between **Ain** and GND, with **R1 10 kΩ** from Ain to 3.3 V. In air or dry soil Ain is about **3.3 V**. Wetter soil conducts better, so **Ain falls**.\n- An **LM393** comparator compares Ain (+ input) with the wiper of a **10 kΩ trimmer** (− input). Its open-collector output **Din** has **R2 10 kΩ** to 3.3 V. **Din is HIGH when dry and LOW when wet** (Ain below the threshold).\n- There are no LEDs on the board.\n\n## Pinout (HY2.0-4P cable, colour order)\n| Wire | Pin | Function |\n|---|---|---|\n| Black | GND | Ground |\n| Red | 5V | Supply, 5 V nominal (into the HT7533) |\n| Yellow | Din | Digital output, 3.3 V logic, LOW = wet (J1 pin 2) |\n| White | Ain | Analog output, 0–3.3 V, lower = wetter (J1 pin 1) |\n\nSources: M5Stack docs PinMap (Black GND, Red 5V, Yellow Digital Output, White Analog Output; PORT.B) and the U019 schematic (J1: 1 Ain, 2 Din, 3 VCC, 4 GND).\n\n## Electrical limits\n- Supply: 5 V from the port (3.3 V in also works; the regulator then passes about 3.2 V). About 2 mA.\n- Ain and Din both come from the unit's own 3.3 V rail, so they are **safe for 3.3 V GPIOs** even with 5 V supply.\n- Ain has a 10 kΩ source impedance: fine for the ESP32 / Pico ADC.\n\n## Interface details\n```\nAin = 3.3 V × R_soil / (R_soil + 10 kΩ)     (dry soil: R_soil large -> ~3.3 V)\nDin = HIGH if Ain > trimmer voltage, LOW if Ain < trimmer voltage\n```\nM5Stack publishes no volts-to-moisture formula. Record your own dry and wet readings.\n\n## Wiring\n| Unit Earth | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| 5V (red) | 5V / VIN | VBUS (pin 40) | 5 V (pin 2) |\n| GND (black) | GND | GND | GND |\n| Din (yellow) | any GPIO, e.g. GPIO26 | any GP, e.g. GP2 | any GPIO, e.g. GPIO17 |\n| Ain (white) | GPIO32–39 (ADC1), e.g. GPIO36 | GP26/27/28 (ADC) | External ADC (ADS1115 / MCP3008) |\n\nOn an M5Stack Core it plugs straight into PORT.B (G26 = Din, G36 = Ain). On the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on).\n\n## Using the driver\n```python\nfrom m5_earth import UnitEarth\nimport time\nearth = UnitEarth(36, 26)       # Ain GPIO, Din GPIO\nwhile True:\n    print('Ain=%.2fV moisture=%d%% wet=%s' % (earth.voltage(), earth.moisture(), earth.wet()))\n    time.sleep(1)\n```\n`voltage()` averages 16 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V). `moisture()` is a rough 0–100 % (0 % = Ain at 3.3 V). `wet()` is True when Din is LOW.\n\n## Gotchas\n- **Backwards from what you expect**: Ain goes **down** with water and Din is **active LOW**.\n- **Not corrosion-proof**: M5Stack says the electrodes are for proof of concept only; do not leave them in damp soil for long. DC through the soil corrodes them.\n- **Set the threshold**: put the probes in soil at your \"needs water\" level and turn the trimmer until Din just changes.\n- Keep the board and connector out of the soil and water.\n\n## Datasheet\nhttps://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/728/U019_UNIT_EARTH_SCHE.pdf (schematic). Product page: https://docs.m5stack.com/en/unit/earth. Comparator: https://www.ti.com/lit/ds/symlink/lm393.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:03:51.108Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/earth"
+    ]
+  }
+}

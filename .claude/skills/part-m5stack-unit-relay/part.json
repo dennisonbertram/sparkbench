@@ -1,0 +1,125 @@
+{
+  "type": "custom-m5stack-unit-relay",
+  "name": "M5Stack Unit Relay (3 A SPDT, Grove)",
+  "mpn": "U023",
+  "category": "actuator",
+  "description": "M5Stack single-channel relay unit. A Huike HK4100F-DC5V-SHG relay (5 V coil, 125 ohm, 40 mA, SPDT / form C) is switched by an SS8050 NPN transistor: DIN drives the base through 1 kohm, with a 10 kohm pull-down and a flyback diode. DIN high = relay on (active high, off while floating); 3.3 V or 5 V logic. There is no optocoupler. Contacts are rated 3 A at 250 VAC and 3 A at 30 VDC (resistive). Operate time 6 ms, release time 4 ms. Supply 5 V on the Grove port. Sold as: M5Stack Unit Relay (SKU U023, HK4100F-DC5V-SHG), Grove HY2.0-4P port GND, 5V, DIN, NC (black, red, yellow, white), with a 3.96 mm COM/NO/NC terminal and a 20 cm Grove cable.",
+  "eli5": "A little block with a clicky switch inside: when your board sets DIN high, it connects your lamp, fan or pump to its own power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black Grove wire), shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V (red wire). Feeds the 5 V relay coil (40 mA when on) and the status LED. 3.3 V is too low: the coil needs at least 3.75 V to pull in.",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay control (yellow wire): high = relay on (NO connected to COM). Drives an SS8050 base through 1 kohm, with a 10 kohm pull-down, so the relay is off while DIN floats. 3.3 V or 5 V logic.",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (white wire, the Grove port's unused second signal line).",
+      "required": false
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 45,
+  "datasheetUrl": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/unit/4relay/Datasheet-Realy-HK4100F-DC5V-SHG(1).pdf",
+  "priceUsd": 4,
+  "supplierQuery": "M5Stack Unit Relay U023",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the unit from 5 V (red wire) and share GND (black). The HK4100F 5 V coil draws 40 mA, pulls in at 3.75 V or more and allows up to 6.5 V, so a 3.3 V rail will not switch it reliably.",
+    "DIN (yellow) is active high: high = relay on. A 10 kohm pull-down keeps it off while the board boots. The white wire (NC) is unused.",
+    "On an M5Stack Core, Port B's yellow wire is GPIO26; drive that pin, not GPIO36.",
+    "Contacts are form C on a 3.96 mm terminal (COM, NO, NC), rated 3 A at 250 VAC and 3 A at 30 VDC. Use NO for a load that should be off by default.",
+    "The relay operates in up to 6 ms and releases in up to 4 ms, and the datasheet allows only about 30 operations per minute under load: never PWM a relay.",
+    "Mains wiring is dangerous: keep it in a closed insulated box and leave mains to an adult/qualified person. For a first project switch a low-voltage DC load.",
+    "Set the GPIO low at start-up (Pin(..., Pin.OUT, value=0)) so the relay does not click on while the program starts."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit relay",
+    "u023",
+    "relay",
+    "grove relay",
+    "hk4100f",
+    "3a relay",
+    "spdt",
+    "switch load",
+    "lamp",
+    "fan",
+    "pump"
+  ],
+  "sources": [
+    "https://docs.m5stack.com/en/unit/relay",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/577/UNIT-RELAY.pdf",
+    "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/unit/4relay/Datasheet-Realy-HK4100F-DC5V-SHG(1).pdf",
+    "https://uk.rs-online.com/web/p/development-tool-accessories/2305132"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "DIN"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# M5Stack Unit Relay: DIN high = relay on.\nrelay = Pin({DIN}, Pin.OUT, value=0)\nwhile True:\n    relay.value(1)\n    print('relay ON')\n    time.sleep(2)\n    relay.value(0)\n    print('relay OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The relay switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-m5stack-unit-relay\ndescription: Pinout, electrical limits, wiring and MicroPython code for the M5Stack Unit Relay (SKU U023, HK4100F-DC5V-SHG 3 A SPDT relay, Grove HY2.0-4P GND/5V/DIN/NC). Use when designing, wiring, simulating or writing code for an M5Stack relay unit in a Sparkbench project or any ESP32 / M5Stack / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit Relay (U023, HK4100F-DC5V-SHG)\n\n## Overview\nA single-channel relay unit from M5Stack. One **Huike HK4100F-DC5V-SHG** relay (5 V coil, 0.2 W, sealed, SPDT / form C) is switched by an **SS8050** NPN transistor: DIN → 1 kΩ → base, with a 10 kΩ pull-down from base to GND and a 1N4148WS flyback diode across the coil. A status LED shows when the relay is on. There is **no optocoupler**: the coil runs from the Grove 5 V and the input is a plain active-high logic input. Hobbyists buy it as the **M5Stack Unit Relay (SKU U023)**: a Grove HY2.0-4P socket (comes with a 20 cm Grove cable) on one end and a 3-way 3.96 mm terminal (COM / NO / NC) on the other.\n\n## Pinout (Grove HY2.0-4P, order and names from the M5Stack PinMap)\n| Pin | Wire | Function |\n|---|---|---|\n| GND | black | Ground (share with the microcontroller) |\n| 5V | red | Coil + LED supply, 5 V (about 40 mA with the relay on) |\n| DIN | yellow | Control: high = relay on, low or unconnected = off |\n| NC | white | Not connected (Port B's analog line, unused) |\n\nOutput terminal (3.96 mm): **COM**, **NO** (connected to COM while the relay is on) and **NC** (connected to COM while it is off). The Grove port and the terminal are on opposite ends, so the unit is wired with the Grove cable or jumper leads, not plugged into the breadboard.\n\n## Electrical limits\n- Supply 5 V. Coil (HK4100F 5 VDC, H = 0.2 W): 125 Ω ±10 %, 40 mA, pull-in ≤ 3.75 V (75 %), drop-out ≥ 0.5 V (10 %), max 6.5 V (130 %). **3.3 V is not enough to pull the relay in reliably.**\n- DIN: drives the transistor base through 1 kΩ, so it takes about 2.5 mA at 3.3 V. Both 3.3 V and 5 V logic work.\n- Contacts (resistive): 3 A at 250 VAC, 3 A at 30 VDC (M5Stack quotes AC 220 V @ 3 A / DC 30 V @ 3 A). Life is at least 100 000 operations at full load.\n- Operate time 6 ms max, release time 4 ms max. Electrically, no more than 30 operations per minute.\n\n## Interface details\n- Plain digital input: no driver, just `machine.Pin`.\n- Active high. The on-board 10 kΩ pull-down keeps the relay off while DIN floats (e.g. while the board boots).\n\n## Wiring\n- ESP32: GND → GND, 5V → 5V/VIN, DIN → GPIO26.\n- M5Stack Core (Port B): plug in the Grove cable; DIN = GPIO26.\n- Pico: GND → GND, 5V → VBUS, DIN → GP15.\n- Raspberry Pi 4: GND → pin 6, 5V → pin 2, DIN → pin 11 (GPIO17).\n- Load: supply + → COM, NO → load → supply −. Mains only by an adult or qualified person, in a closed insulated enclosure.\n\n## Using it\n```python\nfrom machine import Pin\nimport time\nrelay = Pin(26, Pin.OUT, value=0)  # DIN, high = on\nrelay.value(1)   # load on (NO-COM closed)\ntime.sleep(2)\nrelay.value(0)   # load off\n```\n\n## Gotchas\n- Feed **5 V**, not 3.3 V: the coil needs at least 3.75 V to pull in.\n- The white Grove wire is not connected. On an M5Stack Core's Port B, the relay follows the yellow wire (GPIO26), not GPIO36.\n- Contacts are rated **3 A**, much lower than the usual 10 A blue relay modules. Keep motors and pumps well below that.\n- There is no optocoupler: the coil circuit shares ground with your board.\n- Relays are slow and wear out: never PWM them.\n\n## Datasheet\nhttps://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/products/unit/4relay/Datasheet-Realy-HK4100F-DC5V-SHG(1).pdf (Huike HK4100F). Product page: https://docs.m5stack.com/en/unit/relay. Schematic: https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/577/UNIT-RELAY.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:50:08.275Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/Unit_Relay",
+      "https://github.com/m5stack/m5-docs/blob/master/docs/en/unit/relay.md",
+      "https://datasheet4u.com/datasheets/HUI-KE/HK4100F-DC5V-SHG/1493116"
+    ]
+  }
+}

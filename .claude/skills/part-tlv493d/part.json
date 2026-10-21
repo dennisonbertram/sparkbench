@@ -1,0 +1,267 @@
+{
+  "type": "custom-tlv493d",
+  "name": "TLV493D 3D magnetic sensor",
+  "mpn": "TLV493D-A1B6",
+  "category": "sensor",
+  "description": "Infineon 3-axis Hall-effect magnetic sensor: Bx, By and Bz up to ±130 mT with 12-bit resolution (0.098 mT/LSB) plus an on-chip temperature sensor, over I2C. The chip runs on 2.8–3.5 V; the breakout adds a 3.3 V regulator and level shifters so it works from 3.3 V or 5 V. Too insensitive for a compass: it tracks nearby magnets (joysticks, knobs, lid sensors). Sold as: Adafruit TLV493D Triple-Axis Magnetometer - STEMMA QT / Qwiic (product 4366; 5-pin header VIN, 3Vo, GND, SCL, SDA), I2C address 0x5E.",
+  "eli5": "Feels where a nearby magnet is in three directions, so you can make magnetic joysticks, knobs and lid sensors.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply in, 3.3–5 V (on-board AP2112K 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V OUTPUT of the on-board regulator, not a supply input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 94,
+  "datasheetUrl": "https://www.infineon.com/assets/row/public/documents/24/49/infineon-tlv493d-a1b6-datasheet-en.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Adafruit TLV493D triple-axis magnetometer STEMMA QT 4366",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "The chip powers up in power-down mode and measures nothing until configured: read all 10 read registers, copy the factory bits (read reg 7 bits 4:3, reg 8, reg 9 bits 4:0) into write registers 1–3, set the mode and the odd-parity bit, then write all 4 write registers as a raw byte stream (no register address).",
+    "Reads always start at register 0: read 7 bytes. Bx = reg0<<4 | reg4>>4, By = reg1<<4 | reg4 & 0x0F, Bz = reg2<<4 | reg5 & 0x0F, 12-bit two's complement, 0.098 mT/LSB.",
+    "Temperature = (raw − 340) × 1.1 + 25 °C, raw = (reg3 & 0xF0)<<4 | reg6 (accuracy only ±10 °C).",
+    "There are no shadow registers: discard a frame whose channel bits (reg3 bits 1:0) are not 0.",
+    "The address is latched from the SDA level at power-up/reset: 0x5E with SDA high (normal on this board), 0x1F with SDA low.",
+    "Power VIN from 3.3 V or 5 V; never feed 3Vo, it is the regulator's output.",
+    "It cannot see the Earth's field usefully; test it with a small neodymium magnet a few cm away (strong magnets up close saturate at ±130 mT)."
+  ],
+  "keywords": [
+    "tlv493d",
+    "tlv493d-a1b6",
+    "magnetometer",
+    "3d magnetic",
+    "hall",
+    "infineon",
+    "magnet",
+    "joystick"
+  ],
+  "sources": [
+    "https://www.infineon.com/assets/row/public/documents/24/49/infineon-tlv493d-a1b6-datasheet-en.pdf",
+    "https://www.adafruit.com/product/4366",
+    "https://github.com/adafruit/Adafruit-TLV493D-PCB/blob/master/Adafruit_TLV493D.brd",
+    "https://github.com/Infineon/TLV493D-A1B6-3DMagnetic-Sensor/blob/master/src/util/Tlv493d_conf.h",
+    "https://github.com/Infineon/TLV493D-A1B6-3DMagnetic-Sensor/blob/master/src/Tlv493d.cpp",
+    "https://lkml.iu.edu/hypermail/linux/kernel/2507.3/03595.html",
+    "https://www.mouser.com/pdfDocs/Infineon-TLV493D-A1B6_3DMagnetic-UserManual-v01_03-EN.pdf"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "readFromZero": true,
+    "quantity": "Magnetic field X (Bx)",
+    "unit": "mT",
+    "min": -130,
+    "max": 130,
+    "default": 0,
+    "controls": [
+      {
+        "key": "by",
+        "quantity": "Magnetic field Y (By)",
+        "unit": "mT",
+        "min": -130,
+        "max": 130,
+        "default": 0
+      },
+      {
+        "key": "bz",
+        "quantity": "Magnetic field Z (Bz)",
+        "unit": "mT",
+        "min": -130,
+        "max": 130,
+        "default": 0
+      },
+      {
+        "key": "temperature",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x05": 16,
+      "0x07": 0,
+      "0x08": 0,
+      "0x09": 0
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "bits": 12,
+        "signed": true,
+        "scale": 0.098,
+        "control": "value",
+        "fields": [
+          {
+            "reg": "0x00",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x04",
+            "from": 0,
+            "width": 4,
+            "at": 4
+          }
+        ]
+      },
+      {
+        "reg": "0x01",
+        "bytes": 2,
+        "bits": 12,
+        "signed": true,
+        "scale": 0.098,
+        "control": "by",
+        "fields": [
+          {
+            "reg": "0x01",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x04",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ]
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "bits": 12,
+        "signed": true,
+        "scale": 0.098,
+        "control": "bz",
+        "fields": [
+          {
+            "reg": "0x02",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x05",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ]
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "bits": 12,
+        "signed": true,
+        "scale": 1.1,
+        "offset": -349,
+        "control": "temperature",
+        "fields": [
+          {
+            "reg": "0x06",
+            "from": 0,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x03",
+            "from": 8,
+            "width": 4,
+            "at": 4
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tlv493d.py",
+    "code": "# TLV493D-A1B6 3D magnetic sensor (Infineon), MicroPython driver.\n# The chip has no register pointer: every read starts at read register 0 and every write is a raw\n# byte stream into write registers 0..3. Start-up follows the Infineon user manual / reference library:\n# power up (starts in power-down mode), read all 10 read registers, copy the factory bits into the\n# write registers, choose a mode, set the odd-parity bit and write all 4 write registers.\nimport time\n\nADDR_HIGH = 0x5E  # ADDR/SDA high at power-up (Adafruit breakout default)\nADDR_LOW = 0x1F   # ADDR/SDA low at power-up\n\nMT_PER_LSB = 0.098   # 12-bit two's complement, 0.098 mT/LSB (datasheet table 10)\nT25_LSB = 340        # temperature raw value at 25 degC (datasheet table 8)\nDEG_PER_LSB = 1.1    # degC per LSB\n\n\ndef _s12(v):\n    return v - 4096 if v & 0x800 else v\n\n\nclass TLV493D:\n    def __init__(self, i2c, addr=ADDR_HIGH, reset=True):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            # I2C reset: general-call address 0x00; the data byte sets the SDA level the chip samples\n            # for its address (0xFF -> 0x5E, 0x00 -> 0x1F), as in Infineon's library.\n            try:\n                i2c.writeto(0x00, b'\\xff' if addr == ADDR_HIGH else b'\\x00')\n            except OSError:\n                pass  # the chip need not acknowledge the reset frame\n        time.sleep_ms(40)\n        r = i2c.readfrom(addr, 10)\n        w = bytearray(4)\n        w[0] = 0x00                 # reserved\n        w[1] = r[7] & 0x18          # MOD1: factory bits 4:3, IICAddr 00 (keep address), INT off\n        w[2] = r[8]                 # reserved factory byte\n        w[3] = r[9] & 0x1F          # MOD2: factory bits 4:0\n        w[1] |= 0x01                # LOW = 1, FAST = 0 -> low-power mode\n        w[3] |= 0x40 | 0x20         # LP period 12 ms (~100 Hz), parity test enabled, temperature on (bit 7 = 0)\n        w[1] |= 0x80                # parity bit: all bits of the 4 bytes must have odd parity\n        y = w[0] ^ w[1] ^ w[2] ^ w[3]\n        y ^= y >> 4\n        y ^= y >> 2\n        y ^= y >> 1\n        if not (y & 1):\n            w[1] &= 0x7F\n        i2c.writeto(addr, w)\n        time.sleep_ms(15)           # first conversion\n\n    def read_raw(self):\n        # No shadow registers: only accept a frame whose channel bits are 0 (conversion finished).\n        for _ in range(5):\n            d = self.i2c.readfrom(self.addr, 7)\n            if d[3] & 0x03 == 0:\n                break\n            time.sleep_ms(2)\n        else:\n            raise OSError('TLV493D: conversion never finished')\n        bx = _s12((d[0] << 4) | (d[4] >> 4))\n        by = _s12((d[1] << 4) | (d[4] & 0x0F))\n        bz = _s12((d[2] << 4) | (d[5] & 0x0F))\n        t = _s12(((d[3] & 0xF0) << 4) | d[6])\n        return bx, by, bz, t\n\n    def read(self):\n        \"\"\"Return (Bx, By, Bz) in mT and the chip temperature in degC.\"\"\"\n        bx, by, bz, t = self.read_raw()\n        return (bx * MT_PER_LSB, by * MT_PER_LSB, bz * MT_PER_LSB,\n                (t - T25_LSB) * DEG_PER_LSB + 25)\n\n    def magnetic(self):\n        return self.read()[:3]\n\n    def temperature(self):\n        return self.read()[3]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tlv493d import TLV493D\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TLV493D(i2c)\nwhile True:\n    bx, by, bz, t = sensor.read()\n    print('X=%.1f Y=%.1f Z=%.1f T=%.1f' % (bx, by, bz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the three field components and the chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "by",
+          "value": -9.8
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "bz",
+          "value": 58.8
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 36
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=24.5 Y=-9.8 Z=58.8 T=36.0",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:54:48.513Z",
+    "verifiedSources": [
+      "https://www.infineon.com/dgdl/Infineon-TLV493D-A1B6-DataSheet-v01_10-EN.pdf",
+      "https://www.adafruit.com/product/4366",
+      "https://cdn-shop.adafruit.com/970x728/4366-05.jpg",
+      "https://learn.adafruit.com/adafruit-tlv493-triple-axis-magnetometer/pinouts"
+    ]
+  }
+}

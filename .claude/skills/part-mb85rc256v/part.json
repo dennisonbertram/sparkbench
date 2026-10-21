@@ -1,0 +1,134 @@
+{
+  "type": "custom-mb85rc256v",
+  "name": "MB85RC256V 32 KB I2C FRAM",
+  "mpn": "MB85RC256V",
+  "category": "memory",
+  "description": "Fujitsu 256 Kbit (32 KB) ferroelectric RAM with an I2C interface (up to 1 MHz): non-volatile like EEPROM but every byte writes instantly with no wait and 10^12 write cycles. Runs on 2.7-5.5 V. Sold as: Adafruit I2C Non-Volatile FRAM Breakout - 256Kbit / 32KByte (product 1895, 8-pin: VCC, GND, WP, SCL, SDA, A2, A1, A0), I2C address 0x50 (0x50-0x57 with A2-A0), 10 kΩ pull-ups on SDA/SCL.",
+  "eli5": "A tiny memory chip that remembers numbers and text even when the power is off, and you can rewrite it as often as you like.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V. Use 3.3 V with an ESP32/Pico: the board's SDA/SCL pull-ups go to VCC.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "WP",
+      "role": "io",
+      "description": "Write protect: high blocks all writes; internal pull-down, leave open to allow writing",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Address bit 2 (internal pull-down; high adds 4 to 0x50)",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Address bit 1 (internal pull-down; high adds 2 to 0x50)",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address bit 0 (internal pull-down; high adds 1 to 0x50)",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.2,
+  "i2cAddress": 80,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/1895/MB85RC256V-DS501-00017-3v0-E.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Adafruit MB85RC256V I2C FRAM breakout 32KB",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every transfer starts with two memory-address bytes, high byte first (top bit 0, range 0x0000-0x7FFF); data bytes follow for a write.",
+    "To read: write the two address bytes without a STOP, then a repeated START and read; the address auto-increments and wraps from 0x7FFF to 0x0000.",
+    "No write delay and no page size: data is stored as each byte is acknowledged.",
+    "Leave WP unconnected (internal pull-down) or tie it to GND; if WP is high, writes are silently ignored but reads still work.",
+    "A2/A1/A0 are read at power-up: change them only with the power off. Up to 8 boards share one bus at 0x50-0x57.",
+    "Power the board from 3.3 V when using an ESP32 or Pico: its 10 kΩ SDA/SCL pull-ups go to VCC, and 5 V on those lines can damage 3.3 V GPIOs.",
+    "Fresh chips contain unknown data: write a marker/checksum before trusting stored values."
+  ],
+  "keywords": [
+    "mb85rc256v",
+    "fram",
+    "fe-ram",
+    "memory",
+    "eeprom",
+    "non-volatile",
+    "storage",
+    "32kb",
+    "256kbit",
+    "fujitsu",
+    "adafruit 1895"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/1895/MB85RC256V-DS501-00017-3v0-E.pdf",
+    "https://www.adafruit.com/product/1895",
+    "https://learn.adafruit.com/adafruit-i2c-fram-breakout/pinouts",
+    "https://learn.adafruit.com/adafruit-i2c-fram-breakout/downloads",
+    "https://github.com/adafruit/Adafruit-FRAM-Breakout-PCB",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20I2C%20Non-Volatile%20FRAM%2032KB.fzpz"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16
+  },
+  "driver": {
+    "filename": "mb85rc256v.py",
+    "code": "# MB85RC256V 256 Kbit (32 KB) I2C FRAM (Fujitsu MB85RC256V), MicroPython driver.\n# Memory map 0x0000-0x7FFF, two address bytes (high first, top bit 0) after the device address 0b1010 A2 A1 A0.\n# FRAM writes complete as the ACK is sent: no write-cycle delay and no page boundaries (the address wraps at 0x7FFF).\n\nSIZE = 0x8000\n\n\nclass MB85RC256V:\n    def __init__(self, i2c, addr=0x50):\n        self.i2c = i2c\n        self.addr = addr\n\n    @staticmethod\n    def _a(mem):\n        mem &= 0x7FFF  # 15-bit address: the top bit of the high byte must be 0\n        return bytes([mem >> 8, mem & 0xFF])\n\n    def write(self, mem, data):\n        \"\"\"Write bytes starting at memory address mem (byte write / page write).\"\"\"\n        self.i2c.writeto(self.addr, self._a(mem) + bytes(data))\n\n    def read(self, mem, n):\n        \"\"\"Random/sequential read: set the address, repeated START, read n bytes.\"\"\"\n        self.i2c.writeto(self.addr, self._a(mem), False)\n        return self.i2c.readfrom(self.addr, n)\n\n    def write_byte(self, mem, value):\n        self.write(mem, bytes([value & 0xFF]))\n\n    def read_byte(self, mem):\n        return self.read(mem, 1)[0]\n\n    def write_u16(self, mem, value):\n        \"\"\"Store a 16-bit value, high byte first.\"\"\"\n        self.write(mem, bytes([(value >> 8) & 0xFF, value & 0xFF]))\n\n    def read_u16(self, mem):\n        d = self.read(mem, 2)\n        return (d[0] << 8) | d[1]\n\n    def device_id(self):\n        \"\"\"Read the 3-byte Device ID through the reserved slave ID 0xF8/0xF9 (7-bit 0x7C).\n        Returns (manufacturer, product); a genuine MB85RC256V gives (0x00A, 0x510).\"\"\"\n        self.i2c.writeto(0x7C, bytes([self.addr << 1]), False)\n        d = self.i2c.readfrom(0x7C, 3)\n        return (d[0] << 4) | (d[1] >> 4), ((d[1] & 0x0F) << 8) | d[2]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mb85rc256v import MB85RC256V\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nfram = MB85RC256V(i2c)\nfram.write(0x7F00, b'Sparkbench')\nfram.write_u16(0x0100, 12345)\nwhile True:\n    text = fram.read(0x7F00, 10).decode()\n    num = fram.read_u16(0x0100)\n    print('FRAM read: %s %d' % (text, num))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads-back",
+      "title": "Reads back the text and number it wrote to the FRAM",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "FRAM read: Sparkbench 12345",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:53:02.709Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/043/904/original/MB85RC256V-DS501-00017-3v0-E.pdf?1500009796",
+      "https://learn.adafruit.com/adafruit-i2c-fram-breakout/pinouts",
+      "https://www.adafruit.com/product/1895"
+    ]
+  }
+}

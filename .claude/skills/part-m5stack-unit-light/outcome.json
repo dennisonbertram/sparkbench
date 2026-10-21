@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-light",
+  "board": "M5Stack Unit Light (SKU U021), Grove HY2.0-4P: GND, 5V, DO (yellow), AO (white)",
+  "reason": "Check PASSED on ESP32 and Pico (run 2). Modelled from M5Stack's schematic (10k pull-up over LDR to the HT7533 3.3 V rail on AO; LM393 output with 10k pull-up on DO, HIGH when dark) and the PinMap on the docs page. Run 1 failed only because DO was marked optional and left unwired.",
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/709/U201-UNIT_LIGHT_SCHE.pdf",
+  "breakoutPinoutSource": "https://docs.m5stack.com/en/unit/light (PinMap: Black GND, Red 5V, Yellow Digital Output, White Analog Output; confirmed by M5Stack LIGHT.ino using G26 digital / G36 analog on Port B)",
+  "checkRuns": 2
+}

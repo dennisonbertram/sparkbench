@@ -1,0 +1,157 @@
+{
+  "type": "custom-dht12",
+  "name": "DHT12 temperature & humidity sensor",
+  "mpn": "DHT12",
+  "category": "sensor",
+  "description": "Aosong digital temperature (-20 to 60 °C, ±0.5 °C) and relative humidity (20–95 %, ±5 %) sensor, the I2C upgrade of the DHT11, with 0.1 unit resolution and an 8-bit sum checksum. Runs on 2.7–5.5 V; I2C up to 400 kHz; no pull-ups inside. Sold as: Aosong DHT12 bare 4-lead 2.54 mm sensor (VDD, SDA, GND, SCL), fixed I2C address 0x5C (0xB8 in 8-bit notation).",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 2.7–5.5 V; use 3.3 V with ESP32/Pico so the I2C pull-ups go to 3.3 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; needs an external pull-up (1–10 kΩ, e.g. 4.7 kΩ) to VDD",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock; needs an external pull-up (1–10 kΩ, e.g. 4.7 kΩ) to VDD. Held low at power-up, it selects the single-wire (DHT11-style) mode instead",
+      "required": true,
+      "pullUp": 4700
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.8,
+  "i2cAddress": 92,
+  "datasheetUrl": "https://raw.githubusercontent.com/d2r2/go-aosong/master/docs/DHT12.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "DHT12 temperature humidity sensor I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Pins, looking at the slotted front, left to right: 1 VDD, 2 SDA, 3 GND, 4 SCL. The sensor has no pull-ups: fit 1–10 kΩ (e.g. 4.7 kΩ) from SDA and from SCL to VDD.",
+    "SCL must be high when the sensor powers up, otherwise it chooses single-wire mode until the next power cycle.",
+    "Read: write register address 0x00, repeated start, read 5 bytes: humidity integer, humidity tenths, temperature integer, temperature tenths (bit 7 = negative), checksum = low 8 bits of the sum of the first four.",
+    "Wait 2 s after power-up and read at most once every 2 s; each read returns the measurement taken at the previous read.",
+    "The address is fixed at 0x5C, so only one DHT12 can share a bus. Bus speed 400 kHz or less."
+  ],
+  "keywords": [
+    "dht12",
+    "aosong",
+    "temperature",
+    "humidity",
+    "i2c"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -20,
+    "max": 60,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 20,
+        "max": 95,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "00",
+        "bytes": [
+          {
+            "control": "humidity",
+            "split": "int",
+            "bits": 8
+          },
+          {
+            "control": "humidity",
+            "split": "tenths",
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "split": "int",
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "split": "tenths",
+            "bits": 8,
+            "signBit": 7
+          },
+          {
+            "crc": "sum8",
+            "over": 4
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "dht12.py",
+    "code": "# DHT12 temperature & humidity sensor (Aosong DHT12), MicroPython driver for its I2C mode.\n# Datasheet (section 8.1): I2C address 0xB8 in 8-bit notation = 0x5C (7-bit). Read sequence:\n# START, DEV SEL + W, BYTE ADDR 0x00, repeated START, DEV SEL + R, 5 data bytes, NACK, STOP.\n#   0x00 humidity integer, 0x01 humidity tenths, 0x02 temperature integer,\n#   0x03 temperature tenths (bit 7 = 1 means the temperature is negative), 0x04 checksum.\n# Checksum = (byte0 + byte1 + byte2 + byte3) & 0xFF.\n# Bus speed 400 kHz max; SDA and SCL each need a 1-10 kOhm pull-up (the bare sensor has none).\n# SCL must be high at power-up or the sensor chooses its single-wire (DHT11-style) mode.\n# Wait 2 s after power-up; read at most once every 2 s. Each read returns the previous measurement.\nimport time\n\nADDR = 0x5C  # 0xB8 in the datasheet's 8-bit (address + R/W) notation\n\n\nclass DHT12:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def read(self):\n        \"\"\"Return (temperature in °C, relative humidity in %).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, 0x00, 5)\n        if (d[0] + d[1] + d[2] + d[3]) & 0xFF != d[4]:\n            raise OSError('DHT12 checksum mismatch: check the wiring and pull-ups')\n        h = d[0] + d[1] / 10\n        t = d[2] + (d[3] & 0x7F) / 10\n        if d[3] & 0x80:\n            t = -t\n        return t, h\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom dht12 import DHT12\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = DHT12(i2c)\ntime.sleep(2)  # datasheet: let the sensor settle for 2 s after power-up\nwhile True:\n    try:\n        t, h = sensor.read()\n        print('T=%.1fC H=%.1f%%' % (t, h))\n    except OSError as e:\n        print('DHT12 error:', e)\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders, including a negative temperature",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -5.6
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65.3
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-5.6C H=65.3%",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://raw.githubusercontent.com/d2r2/go-aosong/master/docs/DHT12.pdf",
+    "https://www.mischianti.org/2019/01/01/dht12-library-en/",
+    "https://github.com/RobTillaart/DHT12"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:15:18.194Z",
+    "verifiedSources": [
+      "https://raw.github.com/d2r2/go-aosong/master/docs/DHT12.pdf"
+    ]
+  }
+}

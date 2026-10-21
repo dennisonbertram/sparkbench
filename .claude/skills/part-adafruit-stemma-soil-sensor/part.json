@@ -1,0 +1,164 @@
+{
+  "type": "custom-adafruit-stemma-soil-sensor",
+  "name": "Adafruit STEMMA Soil Sensor (capacitive moisture, I2C)",
+  "mpn": "Adafruit 4026",
+  "category": "sensor",
+  "description": "Capacitive soil moisture probe with an ATSAMD10 running Adafruit seesaw firmware: reports a moisture count (about 200 very dry to 2000 very wet) and the chip temperature (about ±2 °C) over I2C, address 0x36 (0x36-0x39 with the AD0/AD1 jumpers). Runs on 3-5 V. Sold as: Adafruit STEMMA Soil Sensor - I2C Capacitive Moisture Sensor (product #4026), 4-pin JST PH STEMMA connector GND, VIN, SDA, SCL.",
+  "eli5": "Push it into a plant pot and it tells your board how wet the soil is (and roughly how warm).",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Power and logic ground (black wire)",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V DC; use the same voltage as your I2C logic (3.3 V on ESP32/Pico) because SDA/SCL are pulled up to VIN (red wire)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 10 kΩ pull-up to VIN on the board (blue wire)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 10 kΩ pull-up to VIN on the board (yellow wire)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 5,
+  "i2cAddress": 54,
+  "datasheetUrl": "https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/reading-and-writing-data",
+  "sources": [
+    "https://learn.adafruit.com/adafruit-stemma-soil-sensor-i2c-capacitive-moisture-sensor/pinouts",
+    "https://www.adafruit.com/product/4026",
+    "https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/reading-and-writing-data",
+    "https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/status",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/seesaw.py",
+    "https://github.com/adafruit/Adafruit_Seesaw/blob/master/Adafruit_seesaw.cpp"
+  ],
+  "priceUsd": 7.5,
+  "supplierQuery": "Adafruit STEMMA Soil Sensor I2C capacitive moisture 4026",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "The board has a 4-pin JST PH (2 mm) STEMMA socket, not header pins: use a JST PH 4-pin to male/female jumper cable (black GND, red VIN, blue SDA, yellow SCL).",
+    "Power VIN from 3.3 V on an ESP32 or Pico: the on-board 10 kΩ SDA/SCL pull-ups go to VIN, so 5 V on VIN would put 5 V on 3.3 V-only GPIOs.",
+    "seesaw protocol: write [base, function], wait about 5 ms, then read in a separate transaction (no repeated start). Moisture = touch base 0x0F function 0x10, 2 bytes big-endian; temperature = status 0x00/0x04, signed 32-bit /65536 °C.",
+    "Readings above 4095 are invalid; read again. Moisture is a relative count (~200 dry to ~2000 wet): calibrate dry and wet values in your own soil.",
+    "Only push the probe in up to the white line; keep the electronics at the top dry. Default address 0x36; short AD0 (+1) and/or AD1 (+2) for up to four sensors."
+  ],
+  "keywords": [
+    "soil",
+    "moisture",
+    "capacitive",
+    "seesaw",
+    "stemma",
+    "adafruit 4026",
+    "plant",
+    "samd10"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Soil moisture (capacitance count)",
+    "unit": "",
+    "min": 0,
+    "max": 2000,
+    "default": 400,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 21
+      }
+    ],
+    "responses": [
+      {
+        "match": "00 01",
+        "bytes": [
+          {
+            "const": 85,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "00 04",
+        "bytes": [
+          {
+            "control": "temperature",
+            "bits": 32,
+            "scale": 0.0000152587890625,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "0f 10",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "stemma_soil.py",
+    "code": "# Adafruit STEMMA Soil Sensor (#4026), MicroPython driver.\n# The board's ATSAMD10 runs Adafruit's seesaw firmware: every access is an I2C write of\n# [module base, function] (plus data for writes), a short pause, then a separate I2C read.\n#   Status base 0x00: HW_ID 0x01 (1 byte, 0x55 on SAMD09/10 seesaw), TEMP 0x04 (4 bytes,\n#   signed 32-bit, 16.16 fixed point degrees C), SWRST 0x7F (write 0xFF to reset).\n#   Touch base 0x0F: channel 0 at function 0x10 (2 bytes, big-endian capacitance count;\n#   about 200 = very dry to 2000 = very wet; values above 4095 are invalid reads).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_TEMP = 0x04\n_STATUS_SWRST = 0x7F\n_TOUCH_BASE = 0x0F\n_TOUCH_CHANNEL_OFFSET = 0x10\n_HW_ID_SAMD09 = 0x55\n\n\nclass StemmaSoil:\n    def __init__(self, i2c, addr=0x36, reset=True):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self.i2c.writeto(self.addr, bytes([_STATUS_BASE, _STATUS_SWRST, 0xFF]))\n            time.sleep_ms(500)  # seesaw needs time to reboot after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw != _HW_ID_SAMD09:\n            raise OSError('seesaw HW_ID 0x%02x, expected 0x55: check the wiring' % hw)\n\n    def _read(self, base, func, n, delay_ms=5):\n        # Separate write and read transactions (no repeated start), with the pause seesaw needs.\n        self.i2c.writeto(self.addr, bytes([base, func]))\n        time.sleep_ms(delay_ms)\n        return self.i2c.readfrom(self.addr, n)\n\n    def moisture(self):\n        \"\"\"Capacitive moisture count, ~200 (dry) to ~2000 (wet).\"\"\"\n        for _ in range(5):\n            b = self._read(_TOUCH_BASE, _TOUCH_CHANNEL_OFFSET, 2)\n            v = (b[0] << 8) | b[1]\n            if v <= 4095:\n                return v\n            time.sleep_ms(1)\n        raise OSError('no valid moisture reading')\n\n    def temperature(self):\n        \"\"\"Chip temperature in degrees C (about +/-2 C).\"\"\"\n        b = self._read(_STATUS_BASE, _STATUS_TEMP, 4)\n        raw = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        if raw & 0x80000000:\n            raw -= 1 << 32\n        return raw / 65536\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom stemma_soil import StemmaSoil\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsoil = StemmaSoil(i2c)\nwhile True:\n    print('moisture=%d temp=%.1fC' % (soil.moisture(), soil.temperature()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the moisture count and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 850
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moisture=850 temp=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:49:02.459Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/4026",
+      "https://learn.adafruit.com/adafruit-stemma-soil-sensor-i2c-capacitive-moisture-sensor/pinouts",
+      "https://github.com/adafruit/Adafruit_Seesaw"
+    ]
+  }
+}

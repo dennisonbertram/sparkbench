@@ -1,0 +1,124 @@
+{
+  "type": "custom-grove-sound-sensor",
+  "name": "Grove Sound Sensor",
+  "mpn": "Grove - Sound Sensor v1.6 (LM358)",
+  "category": "sensor",
+  "description": "Electret microphone and LM358 dual op-amp (two non-inverting stages of x11, referenced to GND, so only the positive half of the sound is amplified, 0 to about VCC - 1.5 V). The output reaches SIG through a 220 nF series capacitor, so SIG is AC coupled with no DC level from the board: loudness is the peak-to-peak swing. Runs on 5 V. Sold as: Seeed Studio Grove - Sound Sensor v1.6 (SKU 101020023, Grove 4-pin connector SIG, NC, VCC, GND), sold by Seeed and its distributors.",
+  "eli5": "A little ear. Its SIG pin wiggles when there is sound; the louder the sound, the bigger the wiggle.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Sound output (Grove pin 1, yellow wire), AC coupled through 220 nF: no DC level from the board, so bias the ADC pin at 1.65 V with 2 x 100 kOhm (3V3 and GND). Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (Grove pin 2, white wire)",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 5 V (Grove pin 3, red wire).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black wire)",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5,
+  "currentMa": 5,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove_Sound_Sensor/res/LM358.pdf",
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove_Sound_Sensor/res/LM358.pdf",
+    "https://wiki.seeedstudio.com/Grove-Sound_Sensor/",
+    "https://files.seeedstudio.com/wiki/Grove_Sound_Sensor/res/Grove%20-%20Sound%20Sensor%20v1.6%20Schematic.pdf",
+    "https://www.seeedstudio.com/Grove-Sound-Sensor-Based-on-LM358-amplifier-Arduino-Compatible.html"
+  ],
+  "priceUsd": 5.4,
+  "supplierQuery": "Seeed Grove Sound Sensor LM358",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order from Seeed's v1.6 schematic (J1 pins 1-4): SIG (yellow), NC (white), VCC (red), GND (black). Use a Grove-to-female-jumper cable.",
+    "Power VCC from 5 V (Seeed spec); on 3.3 V the LM358 output range is too small.",
+    "SIG is AC coupled through 220 nF and has no DC level of its own: add two 100 kOhm resistors at the ADC pin (one to 3V3, one to GND) so it idles at 1.65 V.",
+    "Measure loudness as the peak-to-peak spread of fast samples over about 50 ms, not a single reading or an average.",
+    "On the ESP32 use an ADC1 pin (GPIO32-39); the Raspberry Pi has no ADC, so add one."
+  ],
+  "keywords": [
+    "grove",
+    "sound",
+    "microphone",
+    "mic",
+    "lm358",
+    "noise",
+    "clap",
+    "loudness",
+    "seeed",
+    "101020023",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "Sound level (SIG swing, V peak-to-peak)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 0.1,
+    "vAtMin": 1.65,
+    "vAtMax": 1.65,
+    "wave": {
+      "ampControl": "value",
+      "voltsPerUnit": 1,
+      "centerV": 1.65,
+      "freqHz": 440
+    }
+  },
+  "driver": {
+    "filename": "grove_sound.py",
+    "code": "# Seeed Grove - Sound Sensor v1.6 (SKU 101020023, Grove pins SIG, NC, VCC, GND), MicroPython driver.\n# No bus, no registers. From Seeed's v1.6 schematic: an electret microphone (biased by R3 10k from VCC)\n# is AC coupled (C3 1 uF, R6 100k to GND) into two LM358 non-inverting stages, each with gain\n# 1 + 10k/1k = 11, both referenced to GND on a single supply. The LM358 output swings 0 V to VCC - 1.5 V\n# (ST LM358 datasheet), so only the positive half of the sound is amplified. The result then goes through\n# C2 220 nF IN SERIES to SIG: SIG is AC coupled and the board gives it no DC level of its own.\n# A single reading therefore means nothing; loudness is the peak-to-peak spread of fast samples over a\n# short window (50 ms covers frequencies down to 20 Hz), which does not depend on the DC level.\nfrom machine import ADC, Pin\nimport time\n\n\nclass GroveSound:\n    def __init__(self, sig, vref=3.3):\n        \"\"\"sig: GPIO number (or Pin) wired to SIG. vref: ADC full scale in volts, used when\n        read_uv() is not available (e.g. Pico, where full scale is the 3.3 V supply).\"\"\"\n        self.adc = ADC(Pin(sig) if isinstance(sig, int) else sig)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"One SIG reading in volts.\"\"\"\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def average(self, n=32):\n        \"\"\"Mean of n readings in volts (Seeed's Arduino example averages 32 analogRead() values).\n        Because SIG is AC coupled this is only the DC level (the bias divider, if fitted), not loudness.\"\"\"\n        total = 0.0\n        for _ in range(n):\n            total += self.voltage()\n        return total / n\n\n    def peak_to_peak(self, window_ms=50):\n        \"\"\"Spread (max - min) of SIG over window_ms, in volts: the loudness figure.\n        About 0 in silence; at most about VCC - 1.5 V (3.5 V on 5 V), limited by the ADC range.\"\"\"\n        lo = hi = self.voltage()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < window_ms:\n            v = self.voltage()\n            if v < lo:\n                lo = v\n            elif v > hi:\n                hi = v\n        return hi - lo\n"
+  },
+  "example": {
+    "code": "from grove_sound import GroveSound\nimport time\n\nmic = GroveSound({SIG})\nwhile True:\n    print('PP=%.1fV' % mic.peak_to_peak())\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "sound",
+      "title": "Reports the peak-to-peak swing set on the sound slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PP=2.0V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-sound-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Sound Sensor v1.6 (LM358 microphone amplifier, AC-coupled analog sound on SIG, Grove pins SIG/NC/VCC/GND). Use when designing, wiring, simulating or writing code for a Grove Sound Sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Sound Sensor (LM358)\n\n## Overview\nThe **Seeed Grove - Sound Sensor v1.6** (SKU 101020023) is an electret microphone followed by an **LM358** dual op-amp. From Seeed's v1.6 schematic:\n- The mic is biased by 10 kΩ from VCC and AC coupled (1 µF, 100 kΩ to GND) into two **non-inverting stages, each 1 + 10k/1k = 11** (about ×121 in total). There is no gain trimmer.\n- Both stages are referenced to GND on a single supply, so only the **positive half** of the sound is amplified (LM358 output 0 V to VCC − 1.5 V).\n- The amplifier output reaches **SIG through a 220 nF capacitor in series**: SIG is **AC coupled** and the board gives it **no DC level**. A single reading means nothing.\n- Measure loudness as the **peak-to-peak** spread of fast samples over ~50 ms. It is a relative level, not a calibrated dB meter.\n- Not the same board as the Grove *Loudness* Sensor (LM2904, which outputs a smoothed envelope).\n\n## Pinout (Grove connector, pin 1 to 4, from Seeed's v1.6 schematic J1)\n| Pin | Name | Wire | Function |\n|-----|------|------|----------|\n| 1 | SIG | yellow | Sound output (AC coupled through 220 nF) |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Supply, 5 V |\n| 4 | GND | black | Ground |\n\n## Electrical limits\n- Supply: **5 V** (Seeed spec; the LM358 itself needs 3–30 V, and on 3.3 V its output range shrinks to ~1.8 V).\n- Current: 4–5 mA at 5 V (Seeed spec; LM358 0.7 mA typ / 1.2 mA max).\n- Amplifier swing at 5 V: 0 to ~3.5 V peak-to-peak. Through the series 220 nF only the swing reaches SIG, so a 3.3 V ADC pin is not driven by a DC level from the board.\n\n## Interface details\n- Analog only: SIG to an ADC pin.\n- **Recommended:** give SIG a DC level with two 100 kΩ resistors (one from the ADC pin to 3V3, one to GND). SIG then idles at 1.65 V and the sound swings around it. Without them the level drifts, and the negative half is clipped by the ADC pin.\n- Loudness = max − min over ~50 ms. Seeed's Arduino example averages 32 `analogRead()` values; with an AC-coupled output that average only shows the DC level, so use peak-to-peak.\n\n## Wiring\n| Board | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 5V / VIN | VBUS (pin 40) | 5 V (pin 2) |\n| GND | GND | GND | GND (pin 6) |\n| SIG | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (e.g. ADS1115) |\n| NC | – | – | – |\n\nUse a Grove-to-female-jumper cable (the board has a 2 mm Grove socket). On the ESP32 use ADC1 pins (ADC2 stops working while Wi-Fi is on). Add the 2 × 100 kΩ bias divider at the ADC pin.\n\n## Using the driver\n```python\nfrom grove_sound import GroveSound\nimport time\nmic = GroveSound(34)          # GPIO wired to SIG\nwhile True:\n    print('p-p=%.2fV' % mic.peak_to_peak())\n    time.sleep(0.2)\n```\n`peak_to_peak(window_ms=50)` returns the swing in volts; `average(n=32)` is the DC level (1.65 V with the bias divider); `voltage()` is one reading.\n\n## Gotchas\n- **One reading or an average is not loudness**: SIG is AC coupled. Use peak-to-peak.\n- **No DC bias on the board**: add the 100 kΩ / 100 kΩ divider, or readings wander and the bottom half is clipped.\n- **3.3 V supply**: below Seeed's 5 V spec the LM358 output range is tiny. Use 5 V.\n- **Fixed gain**: no trimmer; very loud sound clips at ~3.5 V p-p.\n\n## Datasheet\nLM358: https://files.seeedstudio.com/wiki/Grove_Sound_Sensor/res/LM358.pdf. Board: https://wiki.seeedstudio.com/Grove-Sound_Sensor/ (schematic https://files.seeedstudio.com/wiki/Grove_Sound_Sensor/res/Grove%20-%20Sound%20Sensor%20v1.6%20Schematic.pdf)\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:54:26.226Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm358.pdf",
+      "https://wiki.seeedstudio.com/Grove-Sound_Sensor/"
+    ]
+  }
+}

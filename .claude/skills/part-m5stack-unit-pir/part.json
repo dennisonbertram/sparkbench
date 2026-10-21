@@ -1,0 +1,110 @@
+{
+  "type": "custom-m5stack-unit-pir",
+  "name": "M5Stack Unit PIR motion sensor",
+  "mpn": "U004",
+  "category": "sensor",
+  "description": "Grove-connector passive-infrared motion sensor from M5Stack: a Nanyang Senba AS312 digital PIR detector with an HT7533 3.3 V regulator, so OUT goes high (about 3.3 V, through 1 kOhm) for about 2 s whenever a warm body moves within about 5 m in a cone under 100 degrees, re-triggering while motion continues. Sensitivity and hold time are fixed. Draws under 60 uA from the 5 V Grove supply. Sold as: M5Stack Unit PIR (SKU U004), white 32 x 24 mm unit with HY2.0-4P Grove socket OUT, NC, 5V, GND.",
+  "eli5": "A heat-motion detector on a Grove cable: when a person or animal moves in front of it, it sets its output pin high for about two seconds.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "required": true,
+      "description": "Motion output (Grove pin 1, white wire): AS312 REL through a 1 kOhm resistor, about 3.3 V for ~2 s per trigger, 0 V otherwise. Safe for 3.3 V GPIOs."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, yellow wire)."
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 5 V into the HT7533 3.3 V regulator."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 0.06,
+  "datasheetUrl": "https://www.makerguides.com/wp-content/uploads/2024/03/AS312-datasheet.pdf",
+  "sources": [
+    "https://www.makerguides.com/wp-content/uploads/2024/03/AS312-datasheet.pdf",
+    "https://docs.m5stack.com/en/unit/pir",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/701/UNIT_PIR.pdf",
+    "https://www.lcsc.com/product-detail/C90465.html"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "M5Stack Unit PIR U004",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order (M5Stack schematic J1): pin 1 OUT (white), pin 2 NC (yellow), pin 3 5V (red), pin 4 GND (black). The unit has a HY2.0-4P Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Power it from 5 V (ESP32 5V/VIN, Pico VBUS). The on-board HT7533 makes 3.3 V for the AS312, so OUT is about 3.3 V and connects straight to a GPIO.",
+    "OUT is active high: 1 for about 2 s (AS312 TOH 2.3 s) after motion, re-triggered while motion continues, then 0 with a ~2.3 s lock time. Timing and sensitivity cannot be adjusted.",
+    "On an M5Stack Core use Port B (white wire = GPIO36); Port A is the I2C port and also works as plain GPIO.",
+    "Give it up to a minute after power-up to settle. It senses moving warm bodies, not still ones, and cannot see through glass."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit pir",
+    "u004",
+    "as312",
+    "pir",
+    "passive infrared",
+    "motion",
+    "presence",
+    "grove",
+    "senba"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Motion detected",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "m5_pir.py",
+    "code": "# M5Stack Unit PIR (U004), MicroPython driver.\n# The unit carries a Nanyang Senba AS312 digital PIR detector (amplifier, filter and\n# decision logic inside the can) powered from an HT7533 3.3 V LDO fed by the Grove 5 V.\n# The AS312 REL output is push-pull from its 3.3 V rail (VOH > VDD - 1 V, VOL < 1 V at\n# 10 mA) and reaches the Grove OUT pin (white wire) through a 1 kOhm series resistor:\n#   HIGH (about 3.3 V) for ~2.3 s (TOH) after motion, re-triggering while motion continues\n#   LOW  (0 V) otherwise; after falling it ignores motion for ~2.3 s (lock time TOL).\n# Safe for 3.3 V GPIOs even though the unit is powered from 5 V. No pull-up/down needed.\n# Allow up to a minute after power-up for the detector to settle.\nfrom machine import Pin\n\n\nclass M5PIR:\n    def __init__(self, out_pin):\n        self.pin = Pin(out_pin, Pin.IN) if isinstance(out_pin, int) else out_pin\n\n    def motion(self):\n        \"\"\"True while the unit reports motion (OUT high).\"\"\"\n        return self.pin.value() == 1\n\n    def on_change(self, handler):\n        \"\"\"Call handler(motion: bool) on every edge of OUT. Pass None to stop.\"\"\"\n        if handler is None:\n            self.pin.irq(handler=None)\n            return\n        self.pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING,\n                     handler=lambda p: handler(p.value() == 1))\n"
+  },
+  "example": {
+    "code": "from m5_pir import M5PIR\nimport time\n\npir = M5PIR({OUT})\nwhile True:\n    print('MOTION=%d' % pir.motion())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports motion when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:49:44.514Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/PIR",
+      "https://docs.m5stack.com/en/products/sku/U004",
+      "https://www.makerguides.com/wp-content/uploads/2024/03/AS312-datasheet.pdf"
+    ]
+  }
+}

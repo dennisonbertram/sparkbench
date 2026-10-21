@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-at24c256",
+  "board": "YL-90 AT24C256 I2C EEPROM module (red, 4-pin header VCC/GND/SCL/SDA, 10k pull-ups, address 0x50)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB DRC clean, footprint, LCSC). Modelled as an i2c-device with 16-bit word addresses; the driver splits writes at 64-byte page boundaries and waits out tWR with ACK polling per the datasheet. The EEPROM has no sliders, so the test checks a write/read round trip, not set controls. The simulator does not model in-page write wrap or the busy NACK, and the correct driver never relies on either.",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-8568-SEEPROM-AT24C256C-Datasheet.pdf",
+  "breakoutPinoutSource": "https://www.optimusdigital.ro/en/memories/632-modul-eeprom-at24c256.html (product photos https://static.optimusdigital.ro/6376-large_default/modul-eeprom-at24c256.jpg show YL-90 silkscreen VCC, GND, SCL, SDA)",
+  "checkRuns": 1
+}

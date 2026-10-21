@@ -1,0 +1,119 @@
+{
+  "type": "custom-grove-water-sensor",
+  "name": "Grove Water Sensor",
+  "mpn": "101020018",
+  "category": "sensor",
+  "description": "Seeed Grove water / leak sensor: a comb of bare interleaved traces, one set on GND and the other on SIG with a 1 MOhm pull-up to VCC (no chip). SIG reads HIGH while dry and is pulled LOW when water bridges the traces (active low). Wet/dry only, not a level gauge. 5 V supply. Sold as: Seeed Grove - Water Sensor (SKU 101020018), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A little board with stripes of bare metal. When a drop of water lands across the stripes, it connects them and the yellow SIG wire drops to 0, so your board knows something got wet.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "description": "Digital output (Grove pin 1, yellow wire): HIGH while dry (1 MOhm pull-up to VCC), LOW when water bridges the traces. Read it as a plain input with no internal pull-up/pull-down."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 5 V (4.75-5.25 V per Seeed). Only feeds the 1 MOhm pull-up, about 5 uA."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire); also the grounded set of sensing traces."
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 20,
+  "datasheetUrl": "https://wiki.seeedstudio.com/Grove-Water_Sensor/",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Water_Sensor/",
+    "https://files.seeedstudio.com/wiki/Grove-Water_Sensor/res/Water_sensor.zip",
+    "https://www.seeedstudio.com/Grove-Water-Sensor.html",
+    "https://github.com/Seeed-Studio/Grove_Water_Sensor"
+  ],
+  "priceUsd": 3.2,
+  "supplierQuery": "Seeed Grove Water Sensor 101020018",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J2, TWIG_2.0): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Circuit: R1 1 MOhm from VCC to the SIG traces; the other traces are GND. Dry = HIGH, wet = LOW (active low).",
+    "Power VCC from 5 V (Seeed spec 4.75-5.25 V). On a 3.3 V board SIG idles near 5 V through 1 MOhm; the GPIO clamp diode limits that to about 1.5 uA, which is harmless, and it reads HIGH.",
+    "Configure SIG as a plain input with no internal pull-up or pull-down: a ~50 kOhm internal pull is far stronger than the board's 1 MOhm and can stop a wet board reading LOW.",
+    "Distilled water barely conducts and may not trigger it; tap, rain and salt water do. Wet copper corrodes over time, so dry the board after use."
+  ],
+  "keywords": [
+    "grove water sensor",
+    "grove",
+    "seeed",
+    "101020018",
+    "water sensor",
+    "leak",
+    "leak detector",
+    "water detection",
+    "rain",
+    "flood",
+    "moisture",
+    "digital"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "SIG",
+    "quantity": "Water on the traces",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "grove_water_sensor.py",
+    "code": "# Seeed Grove - Water Sensor (SKU 101020018), MicroPython driver.\n# Circuit (Seeed schematic WaterDetection.sch, board v0.9b): the comb of bare traces is\n# two interleaved nets. One is GND, the other is SIG, pulled up to VCC by a 1 MOhm\n# resistor (R1). There is no comparator or transistor. So SIG is:\n#   HIGH (1) while the traces are dry (only the 1 MOhm pull-up)\n#   LOW  (0) when water bridges the traces and shorts SIG towards GND -> \"wet\"\n# The pull-up is very weak, so do NOT enable the GPIO's internal pull-up or pull-down\n# (about 50 kOhm): it would swamp the 1 MOhm resistor and wet traces might not read low.\nfrom machine import Pin\nimport time\n\n\nclass GroveWaterSensor:\n    def __init__(self, pin, samples=5, gap_ms=2):\n        # Plain input, no internal pull resistor (see above).\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.samples = samples\n        self.gap_ms = gap_ms\n\n    def raw(self):\n        \"\"\"Logic level on SIG right now: 0 = water on the traces, 1 = dry.\"\"\"\n        return self.pin.value()\n\n    def wet(self):\n        \"\"\"Majority vote over a few readings (a drop that is just touching can flicker).\n        True when water bridges the traces (SIG LOW).\"\"\"\n        low = 0\n        for i in range(self.samples):\n            if self.pin.value() == 0:\n                low += 1\n            if i < self.samples - 1:\n                time.sleep_ms(self.gap_ms)\n        return low * 2 > self.samples\n\n    def irq(self, handler, on_wet=True):\n        \"\"\"Call handler(pin) when water arrives (falling edge) or dries off (rising edge).\n        Expect several calls while a drop settles.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_wet else Pin.IRQ_RISING)\n"
+  },
+  "skill": "---\nname: part-grove-water-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Water Sensor (SKU 101020018, bare-trace water/leak detector with a 1 MOhm pull-up, digital SIG output). Use when designing, wiring, simulating or writing code for a Grove Water Sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Water Sensor (SKU 101020018)\n\n## Overview\nThe **Seeed Grove - Water Sensor (SKU 101020018)** detects water drops or a leak. It is passive: there is no chip on it.\n- The board is a comb of bare interleaved copper traces. One set of traces is **GND**. The other set is **SIG**, pulled up to VCC by a **1 MΩ resistor (R1)** (Seeed schematic WaterDetection, v0.9b).\n- Dry: SIG sits at VCC through the 1 MΩ pull-up, so it reads **HIGH (1)**.\n- Wet: water bridges the traces and pulls SIG down towards GND, so it reads **LOW (0)**. The output is **active LOW**.\n- It only says wet or dry (Seeed: \"LOW when water bridges the traces, HIGH otherwise\"). It is not a level gauge.\n\n## Pinout (Grove connector, pin 1 to 4)\n| Pin | Name | Wire colour | Function |\n|-----|------|-------------|----------|\n| 1 | SIG | yellow | Digital output: HIGH dry, LOW wet (1 MΩ pull-up to VCC) |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Supply, 5 V (4.75–5.25 V) |\n| 4 | GND | black | Ground, also the grounded trace set |\n\nSource: Seeed schematic (connector J2, TWIG_2.0 Grove footprint: SIG, NC, VCC, GND) and the Seeed wiki wire table (yellow = D2, white = not connected, red = 5V, black = GND).\n\n## Electrical limits\n- Supply 4.75–5.0–5.25 V, current under 20 mA (Seeed wiki). In practice the board only draws VCC / 1 MΩ = 5 µA.\n- Operating temperature 10–30 °C, 10–90 %RH non-condensing (Seeed wiki).\n- Dry, SIG is pulled to 5 V through 1 MΩ. On a 3.3 V board the GPIO's protection diode clamps it, and the 1 MΩ resistor limits that current to about 1.5 µA, so it is harmless and reads HIGH.\n\n## Interface details\n```\nSIG = 1  -> dry (only the 1 MΩ pull-up)\nSIG = 0  -> water bridges the traces (wet)\n```\nDo not turn on the GPIO's internal pull-up or pull-down: at about 50 kΩ it is 20 times stronger than the board's 1 MΩ resistor, and a wet board might no longer read LOW. Configure SIG as a plain input.\n\n## Wiring\nUse a Grove-to-female-jumper cable, or a Grove base shield digital port (Seeed's example uses D2).\n\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG (yellow) | GPIO27 | GP15 (pin 20) | GPIO17 (pin 11) |\n| NC (white) | not connected | not connected | not connected |\n| VCC (red) | 5V / VIN | VBUS (pin 40) | 5 V (pin 2) |\n| GND (black) | GND | GND | GND |\n\n## Using the driver\n```python\nfrom grove_water_sensor import GroveWaterSensor\nimport time\nleak = GroveWaterSensor(27)          # GPIO that SIG is wired to\nwhile True:\n    print('Water: %s' % ('WET' if leak.wet() else 'dry'))\n    time.sleep(0.5)\n```\n`raw()` gives the level on SIG (0 = wet). `wet()` takes a majority vote over 5 readings, because a drop that is just touching can flicker. `irq(handler)` calls you when water arrives (falling edge).\n\n## Gotchas\n- **Active LOW:** wet reads 0, dry reads 1.\n- **No internal pulls:** use `Pin.IN` with no pull, as the driver does.\n- **Corrosion:** DC across wet copper slowly corrodes the traces. For long-term leak monitoring, dry it after each use or power VCC from a GPIO-switched supply only while reading.\n- **Pure water:** distilled water hardly conducts and may not trigger it. Tap, rain and salt water do.\n- **Not a level sensor:** it reads wet or dry. For a depth reading use an analog water level sensor.\n- **Analog:** you can wire SIG to an ADC to see roughly how wet it is (lower voltage = more water), but the reading depends on water conductivity and is not calibrated.\n\n## Datasheet\nhttps://wiki.seeedstudio.com/Grove-Water_Sensor/ (schematic: https://files.seeedstudio.com/wiki/Grove-Water_Sensor/res/Water_sensor.zip)\n\n---\n*Generated by Sparkbench from the datasheet: https://wiki.seeedstudio.com/Grove-Water_Sensor/. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from grove_water_sensor import GroveWaterSensor\nimport time\n\nleak = GroveWaterSensor({SIG})\nwhile True:\n    print('Water: %s' % ('WET' if leak.wet() else 'dry'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports water when the traces are bridged",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Water: dry",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Water: WET",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:27:11.330Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Water_Sensor/"
+    ]
+  }
+}

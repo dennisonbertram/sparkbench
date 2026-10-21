@@ -1,0 +1,179 @@
+{
+  "type": "custom-adafruit-i2c-qt-rotary-encoder",
+  "name": "Adafruit I2C QT Rotary Encoder",
+  "mpn": "Adafruit 4991",
+  "category": "input",
+  "description": "Rotary encoder with push switch read over I2C: an ATSAMD09 running Adafruit seesaw firmware counts the detents (signed 32-bit position) and reads the knob's switch, so the encoder needs only SDA/SCL. Runs on 3-5 V (3.3 V regulator on board, level-shifted I2C with 10 k pull-ups). Sold as: Adafruit I2C Stemma QT Rotary Encoder Breakout with NeoPixel (product 4991, 6-pin header VIN, 3Vo, GND, SCL, SDA, INT plus two STEMMA QT sockets), I2C address 0x36 (0x36-0x3D with jumpers A0-A2).",
+  "eli5": "A turning knob that you can also press; a tiny chip on the board counts the clicks and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low (only when enabled in seesaw); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 10,
+  "i2cAddress": 54,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42414-SAM-D09_Datasheet.pdf",
+  "priceUsd": 5.95,
+  "supplierQuery": "Adafruit 4991 I2C STEMMA QT rotary encoder breakout seesaw",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every seesaw access is a write of two bytes, module base then function register; for a read wait a few ms, then read the bytes back, big-endian.",
+    "Encoder position: base 0x11, register 0x30, 4 bytes, signed 32-bit, one count per detent. Register 0x40 is the delta since the last read.",
+    "The knob's switch is seesaw GPIO pin 24: set it input with pull-up (DIRCLR_BULK 0x01 0x03, PULLENSET 0x01 0x0B, BULK_SET 0x01 0x05, mask 1<<24), then read GPIO_BULK (0x01 0x04, 4 bytes); bit 24 reads 0 while pressed.",
+    "Default address 0x36; close A0/A1/A2 on the back to add 1/2/4 (up to 0x3D) for several encoders on one bus.",
+    "The encoder itself is soldered by you on product 4991 (any PEC11-style encoder with switch); product 5880 comes with it fitted.",
+    "On-board NeoPixel is on seesaw pin 6 (not used by this driver)."
+  ],
+  "keywords": [
+    "rotary encoder",
+    "seesaw",
+    "adafruit 4991",
+    "stemma qt",
+    "qwiic",
+    "i2c encoder",
+    "knob"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16,
+    "quantity": "Encoder position",
+    "unit": "detents",
+    "min": -100,
+    "max": 100,
+    "default": 0,
+    "registers": {
+      "0x0001": 85
+    },
+    "responses": [
+      {
+        "match": "11 30",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 32,
+            "scale": 1,
+            "signed": true
+          }
+        ]
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x0104",
+        "bit": 0,
+        "control": "button",
+        "label": "Knob pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "seesaw_encoder.py",
+    "code": "# Adafruit I2C QT Rotary Encoder (product 4991, seesaw firmware), MicroPython driver.\n# seesaw protocol: every access starts with a write of [module base, function register];\n# for a read, wait briefly, then read the bytes back (all values big-endian).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_SWRST = 0x7F\n_GPIO_BASE = 0x01\n_GPIO_DIRCLR_BULK = 0x03\n_GPIO_BULK = 0x04\n_GPIO_BULK_SET = 0x05\n_GPIO_PULLENSET = 0x0B\n_ENCODER_BASE = 0x11\n_ENCODER_POSITION = 0x30\n_ENCODER_DELTA = 0x40\n\n_HW_IDS = (0x55, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89)  # SAMD09 (this board) and ATtiny8xx/16xx seesaw chips\n_BUTTON_PIN = 24  # seesaw pin of the encoder's push switch on this board\n\n\nclass SeesawEncoder:\n    def __init__(self, i2c, addr=0x36, reset=True):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self._write(_STATUS_BASE, _STATUS_SWRST, b'\\xff')\n            time.sleep_ms(500)  # seesaw restarts after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw not in _HW_IDS:\n            raise OSError('seesaw not found at 0x%02x (HW_ID 0x%02x): check the wiring' % (addr, hw))\n        # Encoder switch: input with pull-up (pressed pulls it to GND).\n        mask = (1 << _BUTTON_PIN).to_bytes(4, 'big')\n        self._write(_GPIO_BASE, _GPIO_DIRCLR_BULK, mask)\n        self._write(_GPIO_BASE, _GPIO_PULLENSET, mask)\n        self._write(_GPIO_BASE, _GPIO_BULK_SET, mask)\n\n    def _write(self, base, reg, data=b''):\n        self.i2c.writeto(self.addr, bytes([base, reg]) + bytes(data))\n\n    def _read(self, base, reg, n, delay_us=8000):\n        self.i2c.writeto(self.addr, bytes([base, reg]))\n        time.sleep_us(delay_us)  # seesaw needs time to fetch the value before the read\n        return self.i2c.readfrom(self.addr, n)\n\n    @staticmethod\n    def _int32(b):\n        v = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return v - (1 << 32) if v & 0x80000000 else v\n\n    def position(self):\n        \"\"\"Encoder position in detents (signed 32-bit counter kept by seesaw).\"\"\"\n        return self._int32(self._read(_ENCODER_BASE, _ENCODER_POSITION, 4))\n\n    def set_position(self, pos):\n        self._write(_ENCODER_BASE, _ENCODER_POSITION, (pos & 0xFFFFFFFF).to_bytes(4, 'big'))\n\n    def delta(self):\n        \"\"\"Detents turned since the last delta() call (reading clears it).\"\"\"\n        return self._int32(self._read(_ENCODER_BASE, _ENCODER_DELTA, 4))\n\n    def pressed(self):\n        \"\"\"True while the encoder knob is pushed in.\"\"\"\n        b = self._read(_GPIO_BASE, _GPIO_BULK, 4)\n        bits = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return not (bits >> _BUTTON_PIN) & 1\n"
+  },
+  "skill": "---\nname: part-adafruit-i2c-qt-rotary-encoder\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit I2C Stemma QT Rotary Encoder breakout (product 4991, ATSAMD09 running seesaw firmware). Use when designing, wiring, simulating or writing code for this I2C rotary encoder in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit I2C QT Rotary Encoder (Adafruit 4991)\n\n## Overview\nA rotary encoder with a push switch, read over I2C. An **ATSAMD09** running Adafruit's **seesaw** firmware counts the detents in a signed 32-bit position and reads the knob's switch, so you only need SDA and SCL. It has two STEMMA QT / Qwiic sockets, an on-board NeoPixel on seesaw pin 6, and a 3.3 V regulator with level-shifted I2C. On product 4991 you solder the encoder yourself (any PEC11-style encoder with a switch). Product 5880 is the same board with the encoder already fitted.\n\n## Pinout (header order, as printed on the board)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3-5 V (use the same voltage as your board's logic) |\n| 3Vo | 3.3 V regulator output, up to 100 mA (leave unconnected) |\n| GND | Ground |\n| SCL | I2C clock (10 k pull-up on board) |\n| SDA | I2C data (10 k pull-up on board) |\n| INT | Interrupt output, active low (optional; it must be enabled in seesaw) |\n\n## Electrical limits\n- Supply: 3-5 V on VIN. The AP2112K regulator feeds the SAMD09 with 3.3 V.\n- The I2C lines are level-shifted (BSS138), so 3.3 V and 5 V logic are both fine.\n- Current: a few mA, plus up to about 20 mA more when the NeoPixel is lit.\n\n## Interface details\n- **I2C address 0x36** by default. Closing the A0/A1/A2 jumpers on the back adds 1/2/4, giving up to 0x3D.\n- The seesaw protocol: write `[module base, function register]` with any data after it. To read, write the two bytes, wait (the driver waits 8 ms, as Adafruit's CircuitPython library does), then read. Values are big-endian.\n- STATUS base 0x00: HW_ID 0x01 reads **0x55** on this SAMD09 board. SWRST 0x7F: write 0xFF, then wait about 500 ms.\n- ENCODER base 0x11: POSITION 0x30 is a signed 32-bit count of detents (you can also write it to set the count). DELTA 0x40 is the change since its last read, and reading it clears it.\n- Switch: seesaw GPIO pin 24. Set it up with DIRCLR_BULK (0x01 0x03), PULLENSET (0x01 0x0B) and BULK_SET (0x01 0x05), each with the mask 1<<24. Then read GPIO_BULK (0x01 0x04, 4 bytes). Bit 24 reads 0 while the knob is pressed.\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VIN → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n- You can also use a STEMMA QT / Qwiic cable instead of the header.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom seesaw_encoder import SeesawEncoder\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nenc = SeesawEncoder(i2c)          # address 0x36\nprint(enc.position(), enc.pressed())\n```\n\n## Gotchas\n- Always leave a short delay between the register write and the read. Reading too quickly returns stale or garbage bytes.\n- Direction: Adafruit's CircuitPython example negates the position so that clockwise counts up. Flip the sign in your code if it turns the wrong way.\n- In the Sparkbench simulator, the slider sets the POSITION register. DELTA is not modelled, so use `position()` there.\n- Several encoders on one bus: give each board its own address with the A0-A2 jumpers.\n\n## Datasheet\n- SAMD09 (the chip): https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42414-SAM-D09_Datasheet.pdf\n- Board guide: https://learn.adafruit.com/adafruit-i2c-qt-rotary-encoder\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom seesaw_encoder import SeesawEncoder\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nenc = SeesawEncoder(i2c)\nwhile True:\n    print('pos=%d btn=%s' % (enc.position(), 'down' if enc.pressed() else 'up'))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the encoder position and the knob switch",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=37 btn=down",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=-12 btn=up",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://learn.adafruit.com/adafruit-i2c-qt-rotary-encoder/pinouts",
+    "https://www.adafruit.com/product/4991",
+    "https://github.com/adafruit/Adafruit-I2C-QT-Rotary-Encoder-PCB",
+    "https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout/reading-and-writing-data",
+    "https://github.com/adafruit/Adafruit_Seesaw/blob/master/Adafruit_seesaw.h",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42414-SAM-D09_Datasheet.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:55:39.793Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/adafruit-i2c-qt-rotary-encoder/pinouts",
+      "https://www.adafruit.com/product/4991",
+      "https://cdn-learn.adafruit.com/assets/assets/000/102/091/large1024/adafruit_products_REI2C_pinouts.jpg",
+      "https://learn.adafruit.com/adafruit-seesaw-atsamd09-breakout"
+    ]
+  }
+}

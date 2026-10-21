@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-earth",
+  "board": "M5Stack Unit Earth (SKU U019)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test 'Ain=1.40V wet', PCB DRC). Modelled from M5Stack's U019 schematic V1.0: probes between Ain and GND with a 10k pull-up to the HT7533 3.3 V rail (Ain falls when wet), LM393 vs 10k trimmer driving Din with a 10k pull-up (LOW when wet). The lookup's 'already in Sparkbench' hit was part-m5stack-env-iv, a different product.",
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/728/U019_UNIT_EARTH_SCHE.pdf",
+  "breakoutPinoutSource": "M5Stack docs PinMap (https://docs.m5stack.com/en/unit/earth): HY2.0-4P Black GND, Red 5V, Yellow Digital Output, White Analog Output; U019 schematic J1: 1 Ain, 2 Din, 3 VCC, 4 GND",
+  "checkRuns": 2
+}

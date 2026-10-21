@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-pir",
+  "board": "M5Stack Unit PIR (SKU U004), AS312 + HT7533, HY2.0-4P Grove socket OUT, NC, 5V, GND",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring from 5 V, design checks, breadboard, simulator test 'MOTION=1' with the motion toggle on, PCB DRC clean, footprint). Modelled as an active-high digital-sensor: the AS312 REL output is push-pull at 3.3 V from the HT7533 rail through 1 kOhm, with a fixed ~2.3 s hold per the Senba datasheet.",
+  "datasheetUrl": "https://www.makerguides.com/wp-content/uploads/2024/03/AS312-datasheet.pdf",
+  "breakoutPinoutSource": "M5Stack Unit PIR schematic J1 (pin 1 out, pin 2 NC, pin 3 VCC, pin 4 GND) https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/701/UNIT_PIR.pdf; wire colours (white = output, yellow = NC) from https://docs.m5stack.com/en/unit/pir",
+  "checkRuns": 1
+}

@@ -1,0 +1,103 @@
+{
+  "type": "custom-at24c256",
+  "name": "AT24C256 I2C EEPROM module (256 Kbit)",
+  "mpn": "AT24C256",
+  "category": "ic",
+  "description": "Microchip/Atmel AT24C256C 256-Kbit (32,768 x 8 bytes) serial EEPROM with an I2C interface: 64-byte page writes, 5 ms self-timed write cycle, 1,000,000 write cycles, 40-year data retention. Runs on 1.7-5.5 V. Sold as: YL-90 AT24C256 I2C EEPROM module (red board, 4-pin header VCC, GND, SCL, SDA, 10 kOhm pull-ups on SDA/SCL), I2C address 0x50.",
+  "eli5": "A tiny memory chip that keeps what you write to it even when the power is off, like a 32 KB notebook for your board.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 1.7-5.5 V (3.3 V recommended with an ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kOhm pull-up on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kOhm pull-up on the module)",
+      "required": true
+    }
+  ],
+  "vmin": 1.7,
+  "vmax": 5.5,
+  "currentMa": 3,
+  "i2cAddress": 80,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-8568-SEEPROM-AT24C256C-Datasheet.pdf",
+  "priceUsd": 1.5,
+  "supplierQuery": "AT24C256 I2C EEPROM module YL-90",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Address 0x50: the YL-90 module ties A0-A2 low (the chip also pulls floating address pins low). Other modules with A0/A1/A2 jumpers give 0x50-0x57.",
+    "Each write uses two address bytes (high byte first) and may hold at most one 64-byte page: bytes past the page end wrap to the START of the same page and overwrite it. The driver splits writes at page boundaries.",
+    "After every write the chip is busy for up to 5 ms (tWR) and does not acknowledge its address; the driver waits and then polls for the ACK.",
+    "WP must be low (it is on the YL-90) for writes to work; with WP at VCC the whole array is read-only.",
+    "Endurance is about 1,000,000 writes per byte: never write in a fast loop, only when a value actually changes."
+  ],
+  "keywords": [
+    "at24c256",
+    "24c256",
+    "eeprom",
+    "memory",
+    "storage",
+    "i2c",
+    "yl-90",
+    "nonvolatile"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-8568-SEEPROM-AT24C256C-Datasheet.pdf",
+    "https://www.optimusdigital.ro/en/memories/632-modul-eeprom-at24c256.html",
+    "https://static.optimusdigital.ro/6376-large_default/modul-eeprom-at24c256.jpg",
+    "https://static.optimusdigital.ro/6377-large_default/modul-eeprom-at24c256.jpg"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16
+  },
+  "driver": {
+    "filename": "at24c256.py",
+    "code": "# AT24C256 256-Kbit (32,768 x 8) I2C serial EEPROM, MicroPython driver.\n# Written from the Microchip/Atmel AT24C256C datasheet (Atmel-8568F):\n# - device address 1010 A2 A1 A0 (0x50-0x57; 0x50 with A2..A0 at GND)\n# - two word-address bytes (high byte first; bit 15 is don't-care, 15 bits used)\n# - 64-byte pages: during a write the low 6 address bits wrap inside the page,\n#   so writes are split at page boundaries here\n# - self-timed write cycle tWR = 5 ms max; the chip NACKs its address until done\n#   (acknowledge polling)\n# - random read = dummy write of the address, repeated start, then sequential read\nimport time\n\nSIZE = 32768\nPAGE = 64\nT_WR_MS = 5\n\n\nclass AT24C256:\n    def __init__(self, i2c, addr=0x50):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _check(self, mem, n):\n        if mem < 0 or n < 0 or mem + n > SIZE:\n            raise ValueError(\"address out of range\")\n\n    def _wait_ready(self, timeout_ms=20):\n        # Acknowledge polling: the EEPROM only ACKs its address once the\n        # internal write cycle has finished.\n        time.sleep_ms(T_WR_MS)\n        t0 = time.ticks_ms()\n        while True:\n            try:\n                self.i2c.writeto(self.addr, b\"\")\n                return\n            except OSError:\n                if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                    raise OSError(\"AT24C256 busy (no ACK after write)\")\n                time.sleep_ms(1)\n\n    def read(self, mem, n):\n        \"\"\"Read n bytes starting at address mem (sequential read).\"\"\"\n        self._check(mem, n)\n        self.i2c.writeto(self.addr, bytes([(mem >> 8) & 0x7F, mem & 0xFF]), False)\n        return self.i2c.readfrom(self.addr, n)\n\n    def write(self, mem, data):\n        \"\"\"Write bytes at address mem, split into page writes of at most 64 bytes.\"\"\"\n        data = bytes(data)\n        self._check(mem, len(data))\n        i = 0\n        while i < len(data):\n            room = PAGE - (mem % PAGE)  # bytes left in this page\n            chunk = data[i:i + room]\n            self.i2c.writeto(self.addr, bytes([(mem >> 8) & 0x7F, mem & 0xFF]) + chunk)\n            self._wait_ready()\n            mem += len(chunk)\n            i += len(chunk)\n\n    def read_byte(self, mem):\n        return self.read(mem, 1)[0]\n\n    def write_byte(self, mem, value):\n        self.write(mem, bytes([value & 0xFF]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom at24c256 import AT24C256\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nee = AT24C256(i2c)\nmsg = b'Hello EEPROM'\nee.write(0x003A, msg)  # crosses the 64-byte page boundary at 0x0040; the driver splits it\nwhile True:\n    print('EEPROM: ' + ee.read(0x003A, len(msg)).decode())\n    time.sleep(1)\n",
+    "test": {
+      "id": "roundtrip",
+      "title": "Reads back a string written across a page boundary",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "EEPROM: Hello EEPROM",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-at24c256\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the AT24C256 256-Kbit I2C EEPROM (Microchip/Atmel AT24C256C, YL-90 module). Use when designing, wiring, simulating or writing code for an AT24C256 / 24C256 EEPROM in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build, e.g. to keep settings or logs through power cycles.\n---\n\n# AT24C256 I2C EEPROM module (AT24C256)\n\n## Overview\nThe **AT24C256C** (Microchip, formerly Atmel) is a 256-Kbit serial EEPROM: 32,768 bytes, organised as 512 pages of 64 bytes, that keep their contents with the power off (40-year retention, 1,000,000 write cycles). It talks I2C. Hobbyists buy it on the red **YL-90 AT24C256 module**: the chip, two 10 kΩ pull-ups on SDA/SCL, A0–A2 and WP tied low, and a 4-pin header.\n\n## Pinout (YL-90 module, header order)\n| Pin | Function |\n|---|---|\n| VCC | Supply, 1.7–5.5 V (3.3 V with an ESP32/Pico) |\n| GND | Ground |\n| SCL | I2C clock (10 kΩ pull-up on board) |\n| SDA | I2C data (10 kΩ pull-up on board) |\n\n## Electrical limits\n- Supply: 1.7–5.5 V; no regulator on the module, so VCC is the I2C logic level too.\n- Current: about 1 mA reading, 2–3 mA during a write, a few µA standby.\n- I2C up to 400 kHz at 1.7 V, 1 MHz at 2.5 V and above.\n\n## Interface details\n- **I2C address 0x50** (1010 A2 A1 A0; 0x50–0x57 on boards with address jumpers).\n- Every access starts with **two word-address bytes**, high byte first (bit 15 is don't-care).\n- **Write**: address bytes + 1…64 data bytes, then STOP. Only the low 6 address bits count up during a write: bytes past the end of a 64-byte page **wrap to the start of the same page** and overwrite it. Split writes at page boundaries.\n- **Write cycle**: after STOP the chip is busy for up to **5 ms** (tWR) and NACKs its address; poll for the ACK before the next access.\n- **Read**: write the two address bytes (no STOP), repeated START, read as many bytes as you like; the address rolls over from 0x7FFF to 0x0000.\n- WP high = whole array read-only; WP low (YL-90) = writes allowed.\n\n## Wiring\n- ESP32: VCC → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VCC → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VCC → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom at24c256 import AT24C256\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nee = AT24C256(i2c)            # addr=0x50\nee.write(0x0000, b'hello')    # split into page writes, waits out tWR\nprint(ee.read(0x0000, 5))     # b'hello'\n```\n\n## Gotchas\n- The datasheet does not promise what a new chip contains (usually 0xFF): store a marker or checksum with your settings and fall back to defaults when it is missing.\n- Writing more than one page in a single transfer silently overwrites the start of the page: always use the driver's `write`, which splits at 64-byte boundaries.\n- Endurance is about 1,000,000 writes per byte: write only when a value changes, never every loop.\n- `OSError` right after a write means the write cycle was not over yet; wait 5 ms or poll for the ACK.\n- Do not power it from 5 V when SDA/SCL go to a 3.3 V board: the module's pull-ups go to VCC.\n\n## Datasheet\nhttps://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-8568-SEEPROM-AT24C256C-Datasheet.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:54:09.755Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-8568-SEEPROM-AT24C256C-Datasheet.pdf",
+      "https://probots.co.in/at24c256-eeprom-storage-module-i2c-interface.html"
+    ]
+  }
+}

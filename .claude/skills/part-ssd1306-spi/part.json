@@ -1,0 +1,125 @@
+{
+  "type": "custom-ssd1306-spi",
+  "name": "OLED 128×64 0.96\" (SSD1306, SPI)",
+  "mpn": "SSD1306 SPI",
+  "category": "display",
+  "description": "0.96\" monochrome OLED, 128×64 pixels, Solomon Systech SSD1306 controller on 4-wire SPI (D0 = clock, D1 = MOSI, DC = data/command, CS = chip select, RES = reset), internal charge pump, on-board 3.3 V regulator so it runs from 3.3–5 V. Sold as: generic 0.96\" 7-pin SPI SSD1306 128x64 OLED module (blue PCB, header GND VCC D0 D1 RES DC CS; HiLetgo, DIYmall, AZ-Delivery and others).",
+  "eli5": "A small, sharp screen that shows text and pictures with glowing dots. It uses a fast 5-wire connection instead of 2.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (on-board regulator)",
+      "required": true
+    },
+    {
+      "name": "D0",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (SCLK), up to 10 MHz",
+      "required": true
+    },
+    {
+      "name": "D1",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (MOSI / SDIN)",
+      "required": true
+    },
+    {
+      "name": "RES",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (pulse low at least 3 us at start-up)",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command: low = command, high = display data",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "0.96 inch OLED SSD1306 128x64 SPI 7 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order is GND, VCC, D0, D1, RES, DC, CS. D0 is the SPI clock and D1 is MOSI; they are not GPIO numbers.",
+    "Drive the signal pins with 3.3 V logic: the SSD1306 logic supply on the module is 3.3 V.",
+    "Pulse RES low (at least 3 us) before sending commands, and enable the charge pump (8Dh 14h) before display on (AFh).",
+    "Keep the SPI clock at or below 10 MHz (datasheet tcycle min 100 ns). The display is write-only, so no MISO wire.",
+    "Some 0.96\" SPI modules ship with an SH1106 instead; an image shifted by 2 columns means SH1106."
+  ],
+  "keywords": [
+    "ssd1306 spi",
+    "oled spi",
+    "0.96 oled",
+    "128x64",
+    "7 pin oled",
+    "oled",
+    "display"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf",
+    "https://components101.com/displays/oled-display-ssd1306",
+    "https://components101.com/sites/default/files/component_pin/Monochrome-OLED-display-Pinout.jpg",
+    "https://docs.cirkitdesigner.com/component/35b11d3f-efed-4278-9bb0-16d704d499b8/ssd1306-128x64-spi-oled",
+    "https://www.universal-solder.ca/product/0-96-inch-oled-spi-interface-128x64-3-to-5v/"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "bus": "spi",
+    "controller": "ssd1306",
+    "rows": 64
+  },
+  "driver": {
+    "filename": "ssd1306_spi.py",
+    "code": "# SSD1306 0.96\" 128x64 OLED on 4-wire SPI (7-pin module: GND VCC D0 D1 RES DC CS), MicroPython driver.\n# Written from the Solomon Systech SSD1306 datasheet Rev 1.1:\n#   8.1.3  4-wire SPI: SDIN (D1) is shifted in MSB first on each rising SCLK (D0) edge while CS# is low;\n#          D/C# is sampled with the 8th bit: LOW = command byte, HIGH = GDDRAM data byte.\n#   13-4   tcycle >= 100 ns, so SCLK must stay at or below 10 MHz (this driver uses 8 MHz).\n#   8.9    power-on: RES# low for at least 3 us, then high, before sending commands; SEG/COM come on\n#          about 100 ms after AFh.\n#   App note: the internal charge pump must be enabled (8Dh 14h) before AFh (modules have no external VCC).\nimport framebuf\nimport time\n\n\nclass SSD1306_SPI(framebuf.FrameBuffer):\n    def __init__(self, width, height, spi, dc, res, cs, baudrate=8000000):\n        self.width = width\n        self.height = height\n        self.spi = spi\n        self.dc = dc\n        self.res = res\n        self.cs = cs\n        self.rate = min(baudrate, 10000000)   # datasheet tcycle min 100 ns\n        self.pages = height // 8\n        self.buffer = bytearray(self.pages * width)\n        super().__init__(self.buffer, width, height, framebuf.MONO_VLSB)\n        cs.init(cs.OUT, value=1)\n        dc.init(dc.OUT, value=0)\n        res.init(res.OUT, value=1)\n        time.sleep_ms(1)\n        res(0)                                # RES# low >= 3 us\n        time.sleep_ms(10)\n        res(1)\n        time.sleep_ms(1)\n        self.init_display()\n\n    def _write(self, dc, buf):\n        # Mode 0: SCLK idles low, data is latched on the rising edge.\n        self.spi.init(baudrate=self.rate, polarity=0, phase=0)\n        self.cs(1)\n        self.dc(dc)\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)\n\n    def cmd(self, *b):\n        self._write(0, bytes(b))\n\n    def init_display(self):\n        self.cmd(0xAE)                         # display off\n        self.cmd(0xD5, 0x80)                   # clock divide ratio / oscillator (reset value)\n        self.cmd(0xA8, self.height - 1)        # multiplex ratio (63 for 64 rows)\n        self.cmd(0xD3, 0x00)                   # display offset 0\n        self.cmd(0x40)                         # display start line 0\n        self.cmd(0x8D, 0x14)                   # enable internal charge pump\n        self.cmd(0x20, 0x00)                   # horizontal addressing mode\n        self.cmd(0xA1)                         # segment remap: column 127 -> SEG0\n        self.cmd(0xC8)                         # COM scan COM[N-1] -> COM0\n        self.cmd(0xDA, 0x02 if self.width > 2 * self.height else 0x12)  # COM pins (0x12 for 128x64)\n        self.cmd(0x81, 0xCF)                   # contrast\n        self.cmd(0xD9, 0xF1)                   # pre-charge 1/15 DCLK (charge pump)\n        self.cmd(0xDB, 0x40)                   # VCOMH deselect level\n        self.cmd(0xA4)                         # display follows RAM\n        self.cmd(0xA6)                         # normal, not inverted\n        self.fill(0)\n        self.show()\n        self.cmd(0xAF)                         # display on\n        time.sleep_ms(100)                     # tAF: SEG/COM on after 100 ms\n\n    def poweroff(self):\n        self.cmd(0xAE)\n\n    def poweron(self):\n        self.cmd(0xAF)\n\n    def contrast(self, value):\n        self.cmd(0x81, value & 0xFF)\n\n    def invert(self, on):\n        self.cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        self.cmd(0x21, 0, self.width - 1)      # column address range\n        self.cmd(0x22, 0, self.pages - 1)      # page address range\n        self._write(1, self.buffer)            # DC high: GDDRAM data\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom ssd1306_spi import SSD1306_SPI\n\nspi = SPI(1, baudrate=8000000, polarity=0, phase=0, sck=Pin({D0}), mosi=Pin({D1}))\noled = SSD1306_SPI(128, 64, spi, dc=Pin({DC}), res=Pin({RES}), cs=Pin({CS}))\noled.fill(0)\noled.text('SPI OLED', 0, 0)\noled.text('128x64 ok', 0, 56)\noled.show()\nprint('OLED ready')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Shows text on the bottom line of the 64-row screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "128x64 ok",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:16:49.374Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf",
+      "https://lastminuteengineers.com/oled-display-arduino-tutorial/"
+    ]
+  }
+}

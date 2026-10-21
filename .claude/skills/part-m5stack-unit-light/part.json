@@ -1,0 +1,133 @@
+{
+  "type": "custom-m5stack-unit-light",
+  "name": "M5Stack Unit Light (photoresistor, AO + DO)",
+  "mpn": "U021",
+  "category": "sensor",
+  "description": "M5Stack light sensor unit: a photoresistor under a 10 kΩ resistor to the unit's 3.3 V gives the analog output AO (falls as the light gets brighter: AO = 3.3 V × R_ldr / (10 kΩ + R_ldr)), and an LM393 comparator with a 10 kΩ sensitivity trimmer gives the digital output DO (HIGH when darker than the threshold, LOW when brighter, 10 kΩ pull-up to 3.3 V). An HT7533 regulator makes 3.3 V from the 5 V Grove pin, so both outputs are safe for 3.3 V boards. Relative level only, not calibrated in lux. Sold as: M5Stack Unit Light (SKU U021), 4-pin HY2.0-4P Grove connector GND, 5V, DO (yellow), AO (white), supplied with a 20 cm Grove cable.",
+  "eli5": "A little block with a light-sensitive eye. One wire gives a voltage that drops as it gets brighter, the other wire flips to on when it gets darker than the level you set with the tiny knob.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1, black wire)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V nominal (pin 2, red wire; 4.5-5.5 V). An on-board HT7533 makes 3.3 V for the sensor; it only regulates from 4.5 V in, so do not feed 3.3 V here.",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 3, yellow wire): LM393 comparator with a 10 kΩ pull-up to the unit's 3.3 V. HIGH when darker than the trimmer threshold, LOW when brighter.",
+      "required": true
+    },
+    {
+      "name": "AO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 4, white wire): 0-3.3 V from the 10 kΩ / photoresistor divider. Lower voltage = brighter light. Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/709/U201-UNIT_LIGHT_SCHE.pdf",
+  "sources": [
+    "https://docs.m5stack.com/en/unit/light",
+    "https://shop.m5stack.com/products/light-sensor-unit",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/709/U201-UNIT_LIGHT_SCHE.pdf",
+    "https://raw.githubusercontent.com/m5stack/M5Stack/master/examples/Unit/LIGHT/LIGHT.ino",
+    "https://www.onsemi.com/pdf/datasheet/lm393-d.pdf"
+  ],
+  "priceUsd": 3.95,
+  "supplierQuery": "M5Stack Unit Light U021 photoresistor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove wire colours on M5Stack cables: black GND, red 5V, yellow DO, white AO. Use a Grove-to-jumper cable on a breadboard.",
+    "Feed 5 V: the unit's HT7533 regulator keeps AO and DO within 3.3 V, safe for an ESP32 or Pico.",
+    "AO is inverted: lower voltage = brighter. LDR resistance R = 10 kΩ × V / (3.3 − V).",
+    "DO is HIGH when darker than the trimmer threshold, LOW when brighter. Turn the trimmer at the light level you want to switch at.",
+    "On an ESP32 put AO on an ADC1 pin (GPIO32-39); ADC2 does not work while Wi-Fi is on."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit light",
+    "u021",
+    "photoresistor",
+    "ldr",
+    "light",
+    "dark",
+    "lm393",
+    "grove",
+    "light sensor"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "AO",
+    "quantity": "AO voltage (falls as it gets brighter)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.6,
+    "vAtMin": 0,
+    "vAtMax": 3.3,
+    "digitalOutputs": [
+      {
+        "pin": "DO",
+        "control": "dark",
+        "label": "Darker than threshold (DO high)",
+        "activeHigh": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "m5_unit_light.py",
+    "code": "# M5Stack Unit Light (SKU U021), MicroPython driver.\n# Circuit (M5Stack schematic UNIT_LIGHTNESS V1.0):\n#   - an HT7533 regulator makes 3.3 V from the 5V Grove pin;\n#   - AO (\"Ain\") is a divider: R1 = 10 kOhm from 3.3 V to AO, photoresistor from AO to GND,\n#     so AO = 3.3 V * R_ldr / (10k + R_ldr). Brighter light -> lower LDR resistance -> LOWER AO.\n#   - DO (\"Din\") is an LM393 comparator (IN+ = AO, IN- = 10 kOhm trimmer wiper) with a 10 kOhm\n#     pull-up to the unit's 3.3 V: HIGH when AO is above the trimmer (darker than the threshold),\n#     LOW when brighter. Both outputs stay within 3.3 V, safe for an ESP32 or Pico.\n# AO is not calibrated in lux: it is a relative light level.\nfrom machine import ADC, Pin\n\nR_TOP = 10000      # R1, ohms (schematic)\nV_UNIT = 3.3       # unit's regulated rail (HT7533)\n\n\nclass UnitLight:\n    def __init__(self, ao=None, do=None, samples=16, vref=3.3):\n        \"\"\"ao: GPIO wired to AO (white wire), do: GPIO wired to DO (yellow wire); either may be None.\n        vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico).\"\"\"\n        self.adc = None\n        if ao is not None:\n            self.adc = ADC(Pin(ao) if isinstance(ao, int) else ao)\n            try:\n                self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n            except AttributeError:\n                pass\n        # DO has a 10 kOhm pull-up on the unit; no internal pull needed.\n        self.do = None if do is None else (Pin(do, Pin.IN) if isinstance(do, int) else do)\n        self.samples = samples\n        self.vref = vref\n\n    def _read_v(self):\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def voltage(self):\n        \"\"\"AO voltage in volts (averaged). Lower = brighter.\"\"\"\n        if self.adc is None:\n            raise ValueError('AO pin not given')\n        total = 0\n        for _ in range(self.samples):\n            total += self._read_v()\n        return total / self.samples\n\n    def resistance(self):\n        \"\"\"Photoresistor resistance in ohms from the divider: R = 10k * V / (3.3 - V).\n        Returns None when AO is at the rail (LDR open / complete darkness).\"\"\"\n        v = self.voltage()\n        if v >= V_UNIT - 0.01:\n            return None\n        return R_TOP * v / (V_UNIT - v)\n\n    def brightness(self):\n        \"\"\"Relative light level 0-100 % (100 = AO at 0 V, brightest).\"\"\"\n        v = self.voltage()\n        p = (V_UNIT - v) * 100 / V_UNIT\n        return 0.0 if p < 0 else (100.0 if p > 100 else p)\n\n    def dark(self):\n        \"\"\"True while DO is HIGH: darker than the trimmer threshold.\"\"\"\n        if self.do is None:\n            raise ValueError('DO pin not given')\n        return self.do.value() == 1\n\n    def bright(self):\n        \"\"\"True while DO is LOW: brighter than the trimmer threshold.\"\"\"\n        return not self.dark()\n"
+  },
+  "example": {
+    "code": "from m5_unit_light import UnitLight\nimport time\n\nlight = UnitLight({AO}, {DO})\nwhile True:\n    print('AO=%.1fV DO=%s' % (light.voltage(), 'dark' if light.dark() else 'bright'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the AO voltage and the DO dark flag set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.4
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "dark",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "AO=2.4V DO=dark",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-m5stack-unit-light\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the M5Stack Unit Light (SKU U021, photoresistor + LM393 comparator, analog AO and digital DO on a Grove HY2.0-4P port). Use when designing, wiring, simulating or writing code for an M5Stack Unit Light in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit Light (U021)\n\n## Overview\nThe **M5Stack Unit Light** is a small LEGO-compatible block with a Grove (HY2.0-4P) socket. Inside (M5Stack schematic UNIT_LIGHTNESS V1.0):\n- an **HT7533** regulator that makes 3.3 V from the 5V pin\n- a **photoresistor** under a **10 kΩ** resistor to 3.3 V, giving the analog output **AO**\n- an **LM393** comparator (onsemi LM393DR2G) that compares AO with a **10 kΩ trimmer**, giving the digital output **DO** (10 kΩ pull-up to 3.3 V)\n\nAO is a relative light level, not lux:\n- **AO = 3.3 V × R_ldr / (10 kΩ + R_ldr)**, so AO **falls as the light gets brighter** (near 0 V in bright light, towards 3.3 V in the dark).\n\nDO:\n- **HIGH** when AO is above the trimmer voltage (**darker** than the threshold)\n- **LOW** when **brighter** than the threshold\n\n## Pinout (Grove HY2.0-4P, as printed in M5Stack's PinMap)\n| Pin | Wire | Name | Function |\n|-----|------|------|----------|\n| 1 | Black | GND | Ground |\n| 2 | Red | 5V | Supply, 5 V (regulated to 3.3 V on the unit) |\n| 3 | Yellow | DO | Digital output: HIGH = dark, LOW = bright |\n| 4 | White | AO | Analog output 0–3.3 V: lower = brighter |\n\nOn an M5Stack Core this is Port B (DO = G26, AO = G36).\n\n## Electrical limits\n- Supply: **5 V** on the red wire (4.5–5.5 V). The HT7533 is only specified to regulate from 4.5 V in (Holtek datasheet), so do not power the unit from 3.3 V: the rail would sag below 3.3 V and the AO formula below would be off. Draws about 1–2 mA (LM393 plus two 10 kΩ dividers; no LEDs).\n- AO and DO never exceed the unit's own 3.3 V rail, so they are **safe for 3.3 V GPIOs** even with a 5 V supply.\n- DO is the LM393 open-collector output with a 10 kΩ pull-up; it sinks at least 6 mA (onsemi datasheet).\n\n## Interface details\n- AO has a 100 nF capacitor to GND; with 10 kΩ that is a 1 ms filter, so it settles almost instantly.\n- LDR resistance from AO: **R = 10 kΩ × V / (3.3 − V)**.\n- The LM393's input common-mode range only reaches VCC − 1.5 V (about 1.8 V here), so DO switches most reliably with the trimmer set in the lower half of AO's range (bright to medium light).\n\n## Wiring\n| Unit | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| GND (black) | GND | GND | GND (pin 6) |\n| 5V (red) | 5V / VIN | VBUS | 5 V (pin 2) |\n| DO (yellow) | any GPIO, e.g. GPIO26 | any GP, e.g. GP2 | any GPIO, e.g. GPIO24 (pin 18) |\n| AO (white) | ADC1 pin, e.g. GPIO36 / GPIO34 | GP26–GP28 (ADC) | needs an external ADC (e.g. ADS1115) |\n\n## Using the driver\n```python\nfrom m5_unit_light import UnitLight\nimport time\nlight = UnitLight(36, 26)          # AO GPIO, DO GPIO\nwhile True:\n    print('AO=%.1fV DO=%s' % (light.voltage(), 'dark' if light.dark() else 'bright'))\n    time.sleep(1)\n```\n`light.resistance()` gives the photoresistor in ohms, `light.brightness()` a 0–100 % relative level.\n\n## Gotchas\n- **AO is inverted**: a lower voltage means more light.\n- **DO is HIGH in the dark**: handy for a night light (switch on while `dark()` is True).\n- On an ESP32, use an **ADC1** pin for AO (ADC2 stops working while Wi-Fi is on).\n- The trimmer only moves the DO threshold; it does not scale AO (so two units will not read the same).\n- Not calibrated in lux. For lux use a BH1750, VEML7700 or M5Stack's DLight unit.\n- The unit has a Grove socket, not header pins: use a Grove-to-jumper cable on a breadboard.\n\n## Datasheet\n- Schematic: https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/709/U201-UNIT_LIGHT_SCHE.pdf\n- LM393: https://www.onsemi.com/pdf/datasheet/lm393-d.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:58:30.530Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/light",
+      "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/709/U201-UNIT_LIGHT_SCHE.pdf"
+    ]
+  }
+}

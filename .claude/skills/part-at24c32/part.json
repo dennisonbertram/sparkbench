@@ -1,0 +1,134 @@
+{
+  "type": "custom-at24c32",
+  "name": "AT24C32 32 Kbit I2C EEPROM",
+  "mpn": "AT24C32",
+  "category": "ic",
+  "description": "Atmel/Microchip 32 Kbit (4096 x 8 byte) non-volatile serial EEPROM with an I2C interface: keeps settings, counters or logs with the power off (1,000,000 write cycles, 100 years retention). 32-byte page writes with a 10 ms self-timed write cycle, 12-bit word address sent as two bytes, I2C address 0x50-0x57 set by A0-A2. Runs on 2.7-5.5 V (-2.7 version). Sold as: AT24C32 bare chip in a DIP-8 package (AT24C32-10PU-2.7 / AT24C32N; pin 1 A0, 2 A1, 3 A2, 4 GND, 5 SDA, 6 SCL, 7 WP, 8 VCC), plugged straight into a breadboard, with A0-A2 and WP tied to GND (address 0x50, writes enabled) and 4.7 kohm pull-ups on SDA and SCL.",
+  "eli5": "A tiny memory chip that remembers a few thousand letters or numbers even when the power is switched off.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address input A0 (pin 1). Leave open or tie to GND for address bit 0 = 0 (the chip biases a floating pin low); tie to VCC to add 1 to the address",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Address input A1 (pin 2). Leave open or tie to GND for address bit 1 = 0 (biased low internally); tie to VCC to add 2",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Address input A2 (pin 3). Leave open or tie to GND for address bit 2 = 0 (biased low internally); tie to VCC to add 4. All three low = 0x50",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 4)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "pullUp": 4700,
+      "description": "I2C data, open-drain (pin 5). Needs a pull-up to VCC of 10 kohm or less (4.7 kohm for 400 kHz)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "pullUp": 4700,
+      "description": "I2C clock (pin 6). Needs a pull-up to VCC (4.7 kohm)",
+      "required": true
+    },
+    {
+      "name": "WP",
+      "role": "io",
+      "description": "Write protect input (pin 7). Tie to GND (or leave open: internal pull-down) for normal writes; at VCC writes to the upper quarter (0xC00-0xFFF) are blocked",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V (pin 8). Use 3.3 V with an ESP32/Pico so SDA/SCL are pulled up to 3.3 V",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 3,
+  "i2cAddress": 80,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/doc0336.pdf",
+  "priceUsd": 0.5,
+  "supplierQuery": "AT24C32 DIP-8 EEPROM",
+  "footprint": "Package_DIP:DIP-8_W7.62mm",
+  "buildNotes": [
+    "A0, A1, A2 and WP are inputs: tie them to GND (or leave them open, the chip biases them low) for address 0x50 and writes enabled. Tie an address pin to VCC to change the address.",
+    "SDA and SCL need pull-ups to VCC (4.7 kohm; never above 10 kohm). The chip has none of its own.",
+    "Memory address is 12 bits (0x000-0xFFF), sent as two bytes after the device address: high byte (A11-A8) first.",
+    "Write at most 32 bytes at a time and never across a 32-byte page boundary (addresses 0x00, 0x20, 0x40...): extra bytes wrap to the start of the same page and overwrite it.",
+    "After each write the chip is busy for up to 10 ms and does not acknowledge its address: wait or poll for the ACK before the next access.",
+    "Each byte survives about 1,000,000 writes: do not rewrite the same address in a fast loop.",
+    "A new chip reads 0xFF everywhere."
+  ],
+  "keywords": [
+    "at24c32",
+    "24c32",
+    "24lc32",
+    "eeprom",
+    "memory",
+    "storage",
+    "nonvolatile",
+    "i2c"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/doc0336.pdf",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/AT24C32D-I2C-Compatible-Serial-EEPROM-Data-Sheet-20006047A.pdf",
+    "https://components101.com/ics/at24c32-serial-eeprom-ic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16
+  },
+  "driver": {
+    "filename": "at24c32.py",
+    "code": "# AT24C32 32 Kbit (4096 x 8) I2C serial EEPROM (Atmel/Microchip AT24C32), MicroPython driver.\n# Two word-address bytes (A11..A8, then A7..A0) follow the device address 0b1010 A2 A1 A0 (0x50-0x57).\n# Writes go in 32-byte pages: a write never crosses a page boundary (the chip would wrap to the start\n# of the same page and overwrite it), and after each page the chip is busy for tWR (10 ms max, 20 ms on\n# 1.8 V parts) and NACKs its address until the write is done, so we poll for the ACK.\nimport time\n\nSIZE = 4096\nPAGE = 32\n\n\nclass AT24C32:\n    def __init__(self, i2c, addr=0x50, size=SIZE, page=PAGE):\n        self.i2c = i2c\n        self.addr = addr\n        self.size = size\n        self.page = page\n\n    def _check(self, memaddr, n):\n        if memaddr < 0 or n < 0 or memaddr + n > self.size:\n            raise ValueError('AT24C32: address range 0x%03X+%d is outside 0..0x%03X' % (memaddr, n, self.size - 1))\n\n    def wait_ready(self, timeout_ms=25):\n        \"\"\"Acknowledge polling: the chip NACKs its address until the internal write cycle ends.\"\"\"\n        t0 = time.ticks_ms()\n        while True:\n            try:\n                self.i2c.writeto(self.addr, b'')\n                return\n            except OSError:\n                if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                    raise OSError('AT24C32 did not answer: check wiring and the A0-A2 address pins')\n                time.sleep_ms(1)\n\n    def read(self, memaddr, n):\n        \"\"\"Random/sequential read: set the 12-bit word address, then read n bytes.\"\"\"\n        self._check(memaddr, n)\n        self.i2c.writeto(self.addr, bytes([(memaddr >> 8) & 0x0F, memaddr & 0xFF]), False)\n        return self.i2c.readfrom(self.addr, n)\n\n    def write(self, memaddr, data):\n        \"\"\"Write bytes, split at 32-byte page boundaries, waiting out each write cycle.\"\"\"\n        data = bytes(data)\n        self._check(memaddr, len(data))\n        i = 0\n        while i < len(data):\n            a = memaddr + i\n            n = min(len(data) - i, self.page - (a % self.page))\n            self.i2c.writeto(self.addr, bytes([(a >> 8) & 0x0F, a & 0xFF]) + data[i:i + n])\n            self.wait_ready()\n            i += n\n\n    def read_byte(self, memaddr):\n        return self.read(memaddr, 1)[0]\n\n    def write_byte(self, memaddr, value):\n        self.write(memaddr, bytes([value & 0xFF]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom at24c32 import AT24C32\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nee = AT24C32(i2c)  # A0-A2 tied to GND: address 0x50\nmsg = b'Saved in EEPROM, across a 32-byte page edge'\nee.write(0x00F0, msg)  # starts 16 bytes before the page at 0x0100\nwhile True:\n    back = ee.read(0x00F0, len(msg))\n    print('READ: %s' % back.decode())\n    print('VERIFY OK' if back == msg else 'VERIFY FAILED')\n    time.sleep(1)\n",
+    "test": {
+      "id": "roundtrip",
+      "title": "Writes a message across a page boundary and reads it back",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "READ: Saved in EEPROM, across a 32-byte page edge",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VERIFY OK",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:56:11.375Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/doc0336.pdf"
+    ]
+  }
+}

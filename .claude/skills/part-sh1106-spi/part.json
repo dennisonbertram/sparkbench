@@ -1,0 +1,128 @@
+{
+  "type": "custom-sh1106-spi",
+  "name": "SH1106 1.3\" 128x64 OLED display (SPI)",
+  "mpn": "SH1106",
+  "category": "display",
+  "description": "1.3 inch monochrome 128x64 OLED driven by a Sino Wealth SH1106 controller (132x64 RAM, the panel shows columns 2-129) in 4-wire SPI mode (SPI mode 0, up to 4 MHz, DC low = command, high = display data). On-board regulator: VCC 3.1-5.5 V, but the signal pins are 3.3 V logic only (not 5 V tolerant). Sold as: Pololu Graphical OLED Display 128x64, 1.3\", White Pixels, SPI, Black PCB (#3761, same as the blue-PCB #3760; 7-pin header GND, VCC, CLK, MOS, RES, DC, CS), and the similar 7-pin 1.3\" SH1106 SPI clones (pins often printed GND, VCC, D0/SCK, D1/SDA, RES, DC, CS).",
+  "eli5": "A small, sharp black-and-white screen your board draws text and pictures on over a fast SPI connection.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.1-5.5 V (on-board regulator)",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (SH1106 D0/SCL), 3.3 V logic only, max 4 MHz",
+      "required": true
+    },
+    {
+      "name": "MOS",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in, MOSI (SH1106 D1/SI), 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "RES",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (hold low >= 10 ms at power-up), 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select (SH1106 A0): low = command, high = display data, 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low, 3.3 V logic only",
+      "required": true
+    }
+  ],
+  "vmin": 3.1,
+  "vmax": 5.5,
+  "currentMa": 40,
+  "datasheetUrl": "https://www.pololu.com/file/0J1813/SH1106.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "1.3 inch OLED SH1106 128x64 SPI 7 pin module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order on the Pololu board: GND, VCC, CLK, MOS, RES, DC, CS. Clones may start with VCC or print D0/D1 or SCK/SDA instead of CLK/MOS; SDA there is the SPI data input (MOSI), not I2C.",
+    "VCC may be 3.1-5.5 V, but CLK, MOS, RES, DC and CS are 3.3 V logic only. ESP32 and Pico are fine; a 5 V board needs level shifters.",
+    "The SH1106 is not an SSD1306: it has 132 RAM columns and no horizontal addressing mode. An SSD1306 driver shows a shifted picture with a garbage stripe; use sh1106_spi.py, which writes each page from column 2.",
+    "SPI mode 0, at most 4 MHz (datasheet tSCYC >= 250 ns). The driver caps the rate even if a faster SPI bus is passed in.",
+    "Wire RES to a GPIO: the driver holds it low for 10 ms at start-up, as the datasheet requires.",
+    "Fully lit the panel draws about 40 mA; OLEDs burn in, so blank the screen or call poweroff() when nothing needs showing."
+  ],
+  "keywords": [
+    "sh1106",
+    "oled",
+    "1.3 inch",
+    "1.3\"",
+    "128x64",
+    "display",
+    "spi display",
+    "screen",
+    "spi oled"
+  ],
+  "sources": [
+    "https://www.pololu.com/product/3761",
+    "https://www.pololu.com/product/3760",
+    "https://www.pololu.com/file/0J1813/SH1106.pdf",
+    "https://shop.controllerstech.com/products/1-3-inch-spi-oled-display-module-7pin-blue-sh1106",
+    "https://github.com/olikraus/u8g2"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "bus": "spi",
+    "controller": "sh1106",
+    "rows": 64
+  },
+  "driver": {
+    "filename": "sh1106_spi.py",
+    "code": "# SH1106 132x64 OLED controller (Sino Wealth), MicroPython 4-wire SPI driver for 1.3\" 128x64 modules\n# (e.g. Pololu #3761 / #3760: GND, VCC, CLK, MOS, RES, DC, CS).\n# From the SH1106 datasheet V2.3:\n#   4-wire SPI: SI is shifted in on every RISING edge of SCL, MSB (D7) first -> SPI mode 0 (polarity 0, phase 0).\n#   A0 (the module's DC pin) is sampled on every 8th clock: low = command byte, high = display RAM data.\n#   A falling edge on CS starts a transfer; CS high resets the serial interface.\n#   Serial clock cycle tSCYC >= 250 ns at VDD1 2.4-3.5 V -> at most 4 MHz.\n#   Reset: RES low pulse tRW >= 10 ms (worst case, VDD1 1.65 V), reset time tR <= 2 ms.\n#   Power on: reset, initial setup, clear RAM, display on (AFh), wait 100 ms, then send display data.\n#   132 RAM columns; 1.3\" 128-pixel panels show columns 2..129, so each page is written from column 2.\n#   Page addressing only (B0h-B7h page, 00h-0Fh / 10h-1Fh column): no 20h/21h/22h commands.\nimport time\nimport framebuf\n\n\nclass SH1106_SPI(framebuf.FrameBuffer):\n    def __init__(self, width, height, spi, dc, res, cs, col_offset=2, baudrate=4000000):\n        self.width = width\n        self.height = height\n        self.spi = spi\n        self.dc = dc\n        self.res = res\n        self.cs = cs\n        self.col_offset = col_offset\n        self.rate = min(baudrate, 4000000)   # tSCYC >= 250 ns\n        self.pages = height // 8\n        self.buffer = bytearray(self.pages * width)\n        super().__init__(self.buffer, width, height, framebuf.MONO_VLSB)\n        dc.init(dc.OUT, value=0)\n        cs.init(cs.OUT, value=1)\n        if res is not None:\n            res.init(res.OUT, value=1)\n            time.sleep_ms(1)\n            res(0)\n            time.sleep_ms(10)   # tRW >= 10 ms\n            res(1)\n            time.sleep_ms(2)    # tR <= 2 ms before the chip accepts commands\n        self.init_display()\n\n    def _write(self, dc, buf):\n        self.spi.init(baudrate=self.rate, polarity=0, phase=0)\n        self.cs(1)\n        self.dc(dc)\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)\n\n    def write_cmd(self, *cmds):\n        self._write(0, bytes(cmds))\n\n    def write_data(self, buf):\n        self._write(1, buf)\n\n    def init_display(self):\n        self.write_cmd(\n            0xAE,              # display off (sleep)\n            0xD5, 0x80,        # clock divide ratio 1, oscillator +15 % (POR)\n            0xA8, self.height - 1,  # multiplex ratio\n            0xD3, 0x00,        # display offset 0\n            0x40,              # display start line 0\n            0xAD, 0x8B,        # DC-DC control: built-in DC-DC on when display on (POR)\n            0x32,              # charge pump output 8.0 V (POR)\n            0xA1,              # segment re-map: column 131 -> SEG0 (module orientation)\n            0xC8,              # COM scan COM[N-1] -> COM0\n            0xDA, 0x12,        # common pads: alternative (POR)\n            0x81, 0x80,        # contrast 128 (POR)\n            0xD9, 0x22,        # discharge/precharge 2/2 DCLKs (POR)\n            0xDB, 0x35,        # VCOM deselect level (POR)\n            0xA4,              # display follows RAM\n            0xA6,              # normal (not inverted)\n        )\n        # Clear all 132 RAM columns of every page before display on (power-on flow chart)\n        blank = bytes(132)\n        for page in range(8):\n            self.write_cmd(0xB0 | page, 0x00, 0x10)\n            self.write_data(blank)\n        self.write_cmd(0xAF)   # display on\n        time.sleep_ms(100)     # wait 100 ms after display on before sending data\n        self.fill(0)\n        self.show()\n\n    def poweroff(self):\n        self.write_cmd(0xAE)\n\n    def poweron(self):\n        self.write_cmd(0xAF)\n\n    def contrast(self, value):\n        self.write_cmd(0x81, value & 0xFF)\n\n    def invert(self, on):\n        self.write_cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        col = self.col_offset\n        for page in range(self.pages):\n            self.write_cmd(0xB0 | page, col & 0x0F, 0x10 | (col >> 4))\n            start = page * self.width\n            self.write_data(self.buffer[start:start + self.width])\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom sh1106_spi import SH1106_SPI\n\nspi = SPI(1, baudrate=4000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({MOS}))\noled = SH1106_SPI(128, 64, spi, dc=Pin({DC}), res=Pin({RES}), cs=Pin({CS}))\noled.fill(0)\noled.text('Hello SH1106', 0, 0)\noled.text('SPI 1.3in ok', 0, 16)\noled.show()\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Shows the text written by the program",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SPI 1.3in ok",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:16:05.281Z",
+    "verifiedSources": [
+      "https://www.pololu.com/product/3761",
+      "https://www.pololu.com/file/0J1813/SH1106.pdf"
+    ]
+  }
+}

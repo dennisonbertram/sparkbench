@@ -1,0 +1,119 @@
+{
+  "type": "custom-grove-vibration-motor",
+  "name": "Grove Vibration Motor (v1.2)",
+  "mpn": "105020003",
+  "category": "actuator",
+  "description": "10 mm coin vibration motor (ANDA-B1020, 3 V rated, about 60 mA) on a Grove board with its own transistor driver: SIG goes through 1 kΩ to an S9013 NPN transistor (100 kΩ base pull-down), which switches the motor from VCC through a 12 Ω series resistor. SIG high = vibrate, low or unconnected = off; PWM on SIG sets the strength. Works from 3.0–5.5 V, so a 3.3 V GPIO can drive it directly. Sold as: Seeed Studio Grove - Vibration Motor v1.2 (SKU 105020003), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A tiny buzzing motor like the one in a phone: set the pin high and it shakes, set it low and it stops.",
+  "refPrefix": "M",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Control input (Grove pin 1, yellow wire): high = vibrate, low = off; PWM sets the strength. Drives the S9013 base through 1 kΩ (about 2.6 mA from a 3.3 V GPIO); a 100 kΩ pull-down keeps the motor off when unconnected."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Motor supply (Grove pin 3, red wire): 3.0–5.5 V. The motor current (about 50–80 mA, up to ~110 mA at start) comes from this pin, not from SIG."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire), shared with the microcontroller."
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 110,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Vibration_Motor/res/ANDA-B1020_datasheet.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "Seeed Grove Vibration Motor 105020003",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J1): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Circuit (Seeed v1.2 Eagle schematic): SIG → 1 kΩ → S9013 NPN base, 100 kΩ base-to-GND pull-down; motor + to VCC, motor − through 12 Ω to the collector. High = vibrate, low or floating = off.",
+    "VCC 3.3 V or 5 V both work (Seeed spec 3.0–5.5 V). On 5 V it buzzes harder; on 3.3 V the motor draws about 50 mA, on 5 V about 80 mA, with up to about 110 mA for a moment at start-up (ANDA-B1020 datasheet).",
+    "The flyback diode footprint D1 is marked DNP (not fitted) on the v1.2 schematic. The coin motor's small inductance makes this tolerable, but avoid very fast PWM; about 1 kHz or lower is fine.",
+    "For gentler buzzing use PWM on SIG (machine.PWM at about 1 kHz with lower duty); the motor needs about 2.3 V across it to start, so very low duty may not spin it up.",
+    "Older v1.0 boards (2011) drive the motor straight from the I/O pin without a transistor; this part models v1.2 and later."
+  ],
+  "keywords": [
+    "vibration",
+    "vibration motor",
+    "coin motor",
+    "haptic",
+    "buzz",
+    "grove",
+    "seeed",
+    "105020003",
+    "anda-b1020"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "SIG"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nmotor = Pin({SIG}, Pin.OUT, value=0)  # SIG high = vibrate\nwhile True:\n    motor.value(1)\n    print('VIBRATE ON')\n    time.sleep(1)\n    motor.value(0)\n    print('VIBRATE OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "vibrates",
+      "title": "The motor switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VIBRATE ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VIBRATE OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Vibration_Motor/",
+    "https://www.seeedstudio.com/Grove-Vibration-Motor-p-839.html",
+    "https://files.seeedstudio.com/wiki/Grove-Vibration_Motor/res/Grove-Vibration_Motor_Eagle_Files.zip",
+    "https://files.seeedstudio.com/wiki/Grove-Vibration_Motor/res/ANDA-B1020_datasheet.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-Vibration_Motor/res/S9013.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:27:11.332Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Vibration_Motor/",
+      "https://files.seeedstudio.com/wiki/Grove-Vibration_Motor/res/ANDA-B1020_datasheet.pdf"
+    ]
+  }
+}

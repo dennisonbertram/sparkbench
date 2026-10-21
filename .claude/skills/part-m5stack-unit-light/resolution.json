@@ -1,0 +1,16 @@
+{
+  "diffs": [
+    {
+      "diff": "minimum supply: part 4.5 V, datasheet reading 5 V",
+      "verdict": "part-fixed",
+      "evidence": "Model previously said vmin 3.3 V ('3.3 V in also works'), which is wrong: the unit's only supply path is the HT7533 regulator (M5Stack schematic UNIT_LIGHTNESS V1.0: VCC -> U2 HT7533 VIN, VOUT -> +3.3V). Holtek HT75XX-1 datasheet Rev 1.80, 'HT7533-1, +3.3V Output Type' table: Line Regulation test condition '4.5V<=VIN<=24V', VOUT 3.201-3.399 V specified at VIN=5.5V, dropout 100 mV typ at 1 mA. So the regulator is only specified to regulate from 4.5 V. vmin set to 4.5 V and pin/SKILL text changed to 'do not feed 3.3 V'. 4.5 V vs the second reading's 5 V is not an error: M5Stack's PinMap labels the red pin '5V' (nominal), and 4.5 V is the datasheet lower bound of the regulator's specified input range, which covers USB 5 V sag.",
+      "source": "https://media.elv.com/file/56535_spannungsregler_ht7533_1_data.pdf"
+    },
+    {
+      "diff": "maximum supply: part 5.5 V, datasheet reading 5 V",
+      "verdict": "part-correct",
+      "evidence": "M5Stack PinMap (docs.m5stack.com/en/unit/light): 'HY2.0-4P Black Red Yellow White / PORT.B GND 5V Digital Output Analog Output' gives 5 V nominal only, no maximum. The 5V pin feeds only the HT7533 VIN (schematic), whose datasheet allows 'Input Voltage ... Max 24 V' (absolute max 'Supply Voltage -0.3V to 26V'); the LM393, LDR divider and outputs sit on the regulated 3.3 V rail. 5.5 V (5 V +10%) is therefore a safe, conservative ceiling well inside the chip limit; the second reading's 5 V is the nominal value, not a maximum.",
+      "source": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/709/U201-UNIT_LIGHT_SCHE.pdf ; https://media.elv.com/file/56535_spannungsregler_ht7533_1_data.pdf ; https://docs.m5stack.com/en/unit/light"
+    }
+  ]
+}

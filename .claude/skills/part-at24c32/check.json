@@ -1,0 +1,79 @@
+{
+  "type": "custom-at24c32",
+  "mpn": "AT24C32",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. It shares the I2C bus (SDA D21, SCL D22) at address 0x50. Added the at24c32.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "17 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Writes a message across a page boundary and reads it back: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x50. Added the at24c32.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "17 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Writes a message across a page boundary and reads it back: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-8_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C434601 AT24C32N (5799 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T13:56:11.375Z"
+}

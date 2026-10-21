@@ -1,0 +1,132 @@
+{
+  "type": "custom-ssd1309-spi",
+  "name": "SSD1309 2.42\" OLED display 128x64 (SPI)",
+  "mpn": "SSD1309",
+  "category": "display",
+  "description": "2.42-inch monochrome 128x64 OLED driven by a Solomon Systech SSD1309 controller on 4-wire SPI (write only: SCL = clock, SDA = data in, DC = command/data, CS active low, RES active-low reset). SSD1306-style command set but no internal charge pump: the module's boost converter makes the panel supply and an XC6206 regulator makes the 3.3 V logic supply. Runs on 3.3-5 V. Sold as: LCDwiki / QDtech MSP242X 2.42inch SPI OLED Module (MSP242W white / MSP242B blue / MSP242Y yellow, 7-pin header GND, VCC, SCL, SDA, RES, DC, CS), the common 7-pin SPI version of the 2.42\" SSD1309 module (also sold under HiLetgo, Teyleten Robot, DWEII and similar names).",
+  "eli5": "A big, bright little screen that shows text and pictures as glowing dots, talking over a fast 4-wire link.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (SSD1309 D0/SCLK)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (SSD1309 D1/SDIN); connect to MOSI",
+      "required": true
+    },
+    {
+      "name": "RES",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select: low = command, high = data",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 52,
+  "datasheetUrl": "https://www.lcdwiki.com/res/MSP242X/SSD1309.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "2.42 inch OLED SSD1309 128x64 SPI 7 pin module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order is GND, VCC, SCL, SDA, RES, DC, CS. GND is pin 1, so check the silkscreen before you power it.",
+    "SCL and SDA are the SPI clock and SPI data (MOSI) on this board, not I2C. There is no MISO: the SSD1309 serial interface is write only.",
+    "The board ships in 4-wire SPI mode (only R5 fitted). Fitting R4 and R9 instead switches it to I2C; leave them alone for this part.",
+    "CS must be driven (R8, which would tie CS to GND, is not fitted by default).",
+    "The SSD1309 logic runs at 3.3 V from the module's XC6206 regulator and the signal pins go straight to the chip, so 3.3 V logic (ESP32, Pico, Raspberry Pi) is the safe choice.",
+    "Keep SCLK at or below 10 MHz (datasheet clock cycle time 100 ns minimum); the driver uses 8 MHz, SPI mode 0.",
+    "About 52 mA maximum per the module specification; mostly dark screens draw much less.",
+    "The SSD1309 has no charge pump. Code ported from the SSD1306 that sends 8Dh is unneeded; this driver leaves it out."
+  ],
+  "keywords": [
+    "ssd1309",
+    "oled",
+    "2.42",
+    "2.4",
+    "128x64",
+    "display",
+    "spi",
+    "msp242x"
+  ],
+  "sources": [
+    "https://www.lcdwiki.com/2.42inch_SPI_OLED_Module_SKU:MSP242X",
+    "https://www.lcdwiki.com/res/MSP242X/2.42inch_SPI_IIC_Module_MSP242X_Schematic.pdf",
+    "https://www.lcdwiki.com/res/MSP242X/MSP242X_Specification_EN_V1.0.pdf",
+    "https://www.lcdwiki.com/res/MSP242X/2.42inch_SSD1309_Init.txt",
+    "https://www.lcdwiki.com/res/MSP242X/SSD1309.pdf",
+    "https://forum.arduino.cc/t/oleddisplay-2-42-how-to-connect-to-arduino-nano-uno/1177380",
+    "https://dev.to/ibrahimgunduz34/interfacing-24-ssd1309-spi-oled-display-with-esp8266-42bm"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "bus": "spi",
+    "controller": "ssd1306",
+    "rows": 64
+  },
+  "driver": {
+    "filename": "ssd1309_spi.py",
+    "code": "# SSD1309 128x64 OLED on 4-wire SPI (e.g. LCDwiki / QDtech MSP242X 2.42\" SPI&IIC module), MicroPython driver.\n# Written from the Solomon Systech SSD1309 datasheet Rev 1.1 and the module maker's init sequence.\n# 4-wire SPI (datasheet 8.1.3): write only, MSB first, data sampled on SCLK rising edge,\n# D/C# low = command byte, high = GDDRAM data; CS# active low. SCLK cycle >= 100 ns (<= 10 MHz).\n# The SSD1309 has no internal charge pump (no 8Dh command): the module's boost converter makes VCC.\nimport framebuf\nimport time\n\n\nclass SSD1309_SPI(framebuf.FrameBuffer):\n    def __init__(self, width, height, spi, dc, res, cs, baudrate=8_000_000):\n        self.width = width\n        self.height = height\n        self.spi = spi\n        self.dc = dc\n        self.res = res\n        self.cs = cs\n        self.rate = baudrate\n        self.pages = height // 8\n        self.buffer = bytearray(self.pages * width)\n        super().__init__(self.buffer, width, height, framebuf.MONO_VLSB)\n        dc.init(dc.OUT, value=0)\n        cs.init(cs.OUT, value=1)\n        res.init(res.OUT, value=1)\n        # Power ON sequence (datasheet 8.8): after VDD is stable hold RES# low >= 3 us, then high.\n        time.sleep_ms(1)\n        res(0)\n        time.sleep_ms(1)\n        res(1)\n        time.sleep_ms(1)\n        self.init_display()\n\n    def _write(self, dc, buf):\n        self.spi.init(baudrate=self.rate, polarity=0, phase=0)\n        self.cs(1)\n        self.dc(dc)\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)\n\n    def cmd(self, *b):\n        self._write(0, bytes(b))\n\n    def init_display(self):\n        self.cmd(0xAE)                    # display off\n        self.cmd(0xFD, 0x12)              # command lock off (unlocked; reset state)\n        self.cmd(0xD5, 0xA0)              # clock divide 1, oscillator setting 1010b (module maker's value)\n        self.cmd(0xA8, self.height - 1)   # multiplex ratio\n        self.cmd(0xD3, 0x00)              # display offset 0\n        self.cmd(0x40)                    # start line 0\n        self.cmd(0x20, 0x00)              # horizontal addressing mode\n        self.cmd(0xA1)                    # column 127 -> SEG0 (panel mounted mirrored)\n        self.cmd(0xC8)                    # COM scan COM[N-1] -> COM0\n        self.cmd(0xDA, 0x12)              # alternative COM pin configuration\n        self.cmd(0x81, 0xBF)              # contrast\n        self.cmd(0xD9, 0xF1)              # pre-charge phase 1 = 1 DCLK, phase 2 = 15 DCLK\n        self.cmd(0xDB, 0x34)              # VCOMH ~0.78 x VCC (reset value)\n        self.cmd(0xA4)                    # display follows RAM\n        self.cmd(0xA6)                    # normal (not inverted)\n        self.fill(0)\n        self.show()\n        self.cmd(0xAF)                    # display on (SEG/COM on after 100 ms)\n\n    def poweroff(self):\n        self.cmd(0xAE)\n\n    def poweron(self):\n        self.cmd(0xAF)\n\n    def contrast(self, c):\n        self.cmd(0x81, c & 0xFF)\n\n    def invert(self, on):\n        self.cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        self.cmd(0x21, 0, self.width - 1)   # column range\n        self.cmd(0x22, 0, self.pages - 1)   # page range\n        self._write(1, self.buffer)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom ssd1309_spi import SSD1309_SPI\n\nspi = SPI(1, baudrate=8000000, polarity=0, phase=0, sck=Pin({SCL}), mosi=Pin({SDA}))\noled = SSD1309_SPI(128, 64, spi, dc=Pin({DC}), res=Pin({RES}), cs=Pin({CS}))\noled.fill(0)\noled.text('Hello 2.42 SPI', 0, 0)\noled.text('SSD1309 SPI ok', 0, 16)\noled.show()\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Shows the text written by the program",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SSD1309 SPI ok",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:27:12.116Z",
+    "verifiedSources": [
+      "https://www.lcdwiki.com/2.42inch_SPI_OLED_Module_SKU:MSP242X",
+      "https://www.lcdwiki.com/res/MSP242X/2.42inch_OLED_SPI_IIC_Module_MSP242X_User_Manual_EN.pdf",
+      "https://www.hpinfotech.ro/SSD1309.pdf"
+    ]
+  }
+}

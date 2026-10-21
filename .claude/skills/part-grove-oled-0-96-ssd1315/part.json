@@ -1,0 +1,107 @@
+{
+  "type": "custom-grove-oled-0-96-ssd1315",
+  "name": "Grove OLED Display 0.96\" (SSD1315)",
+  "mpn": "SSD1315",
+  "category": "display",
+  "description": "0.96-inch monochrome 128x64 OLED driven by a Solomon Systech SSD1315 controller (SSD1306 command set, internal charge pump enabled with 8Dh 14h). The Grove board has a 3.3 V regulator, an I2C level shifter with 4.7 kΩ pull-ups and a power-on reset circuit, so it runs on 3.3-5 V. I2C address 0x3C (0x3D with the address jumper on 0x7A). Sold as: Seeed Grove - OLED Display 0.96\" (SSD1315), 4-pin Grove connector SCL, SDA, VCC, GND, I2C address 0x3C.",
+  "eli5": "A small screen on a Grove plug that shows text and pictures as glowing white dots.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "required": true,
+      "description": "I2C clock (Grove pin 1, yellow wire); level shifted, 4.7 kΩ pull-up on the board."
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "required": true,
+      "description": "I2C data (Grove pin 2, white wire); level shifted, 4.7 kΩ pull-up on the board."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire), 3.3-5 V."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 30,
+  "i2cAddress": 60,
+  "datasheetUrl": "https://store.comet.bg/download-file.php?id=25847",
+  "sources": [
+    "https://store.comet.bg/download-file.php?id=25847",
+    "https://wiki.seeedstudio.com/Grove-OLED-Display-0.96-SSD1315/",
+    "https://files.seeedstudio.com/wiki/Grove-OLED-Display-0.96-SSD1315-/img/Grove-OLED-Displey-0.96-SSD1315-pin.jpg",
+    "https://files.seeedstudio.com/wiki/Grove-OLED-Display-0.96-SSD1315-/res/Grove%20-%20OLED%20Display%200.96%20(SSD1315)_v1.0.zip",
+    "https://files.seeedstudio.com/wiki/Grove-OLED-Display-0.96-SSD1315-/res/OEL%20Display%20Module.pdf"
+  ],
+  "priceUsd": 7,
+  "supplierQuery": "Seeed Grove OLED Display 0.96 SSD1315 I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J1, and printed on the board): pin 1 SCL (yellow), pin 2 SDA (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Address jumper on the back: 0x78 position = 7-bit 0x3C (default), 0x7A = 0x3D.",
+    "SDA/SCL go through an on-board MOSFET level shifter with 4.7 kΩ pull-ups on both sides, so no external pull-ups are needed and it is safe on 3.3 V or 5 V boards.",
+    "The SSD1315 makes its panel voltage with an internal charge pump: send 8Dh 14h before AFh (display on), and allow 100 ms for the panel to come on.",
+    "About 25-32 mA with the whole screen white (datasheet IBAT), much less showing text."
+  ],
+  "keywords": [
+    "ssd1315",
+    "grove",
+    "seeed",
+    "oled",
+    "0.96",
+    "128x64",
+    "display",
+    "i2c"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "controller": "ssd1306",
+    "rows": 64
+  },
+  "driver": {
+    "filename": "grove_oled_ssd1315.py",
+    "code": "# Seeed Grove - OLED Display 0.96\" (SSD1315, 128x64, I2C), MicroPython driver.\n# Written from the Solomon Systech SSD1315 datasheet (sections 6.2 I2C interface, 6.9.2 power-on\n# sequence with charge pump, 6.10 charge pump regulator) and the panel maker's init code for the\n# 0.96\" SSD1315 module Seeed uses (internal charge pump, 8Dh 14h). The SSD1315 keeps the SSD1306\n# command set. I2C: control byte 0x00 = command stream (Co=0, D/C#=0), 0x40 = GDDRAM data stream.\n# The Grove board has its own power-on reset circuit (R5/C5/D1), so no RES# pin is needed.\nimport framebuf\nimport time\n\n\nclass SSD1315_I2C(framebuf.FrameBuffer):\n    def __init__(self, i2c, addr=0x3C, width=128, height=64):\n        self.i2c = i2c\n        self.addr = addr  # 0x3C (jumper \"0x78\", default) or 0x3D (jumper \"0x7A\")\n        self.width = width\n        self.height = height\n        self.pages = height // 8\n        self.buffer = bytearray(self.pages * width)\n        super().__init__(self.buffer, width, height, framebuf.MONO_VLSB)\n        time.sleep_ms(20)   # datasheet 6.9.2: wait >= 20 ms after VDD is stable (board RC reset)\n        self.init_display()\n\n    def cmd(self, *b):\n        self.i2c.writeto(self.addr, bytes((0x00,) + b))\n\n    def init_display(self):\n        self.cmd(0xAE)                   # display off\n        self.cmd(0xD5, 0x80)             # clock divide ratio / oscillator frequency\n        self.cmd(0xA8, self.height - 1)  # multiplex ratio: 63 for 64 rows\n        self.cmd(0xD3, 0x00)             # display offset 0\n        self.cmd(0x40)                   # display start line 0\n        self.cmd(0x20, 0x00)             # horizontal addressing mode\n        self.cmd(0xA1)                   # segment remap: column 127 -> SEG0\n        self.cmd(0xC8)                   # COM scan COM[N-1] -> COM0\n        self.cmd(0xDA, 0x12)             # alternative COM pin configuration (128x64)\n        self.cmd(0x81, 0x7F)             # contrast\n        self.cmd(0xD9, 0x22)             # pre-charge period (module maker's value)\n        self.cmd(0xDB, 0x30)             # VCOMH deselect level (module maker's value)\n        self.cmd(0xA4)                   # display follows RAM\n        self.cmd(0xA6)                   # normal (not inverted)\n        self.cmd(0x8D, 0x14)             # enable internal charge pump (VBAT = 3.3 V on the board)\n        self.fill(0)\n        self.show()\n        self.cmd(0xAF)                   # display on\n        time.sleep_ms(100)               # SEG/COM turn on 100 ms after AFh (tAF)\n\n    def poweroff(self):\n        self.cmd(0xAE)                   # display off, then charge pump off (power-off sequence)\n        self.cmd(0x8D, 0x10)\n\n    def poweron(self):\n        self.cmd(0x8D, 0x14)\n        self.cmd(0xAF)\n        time.sleep_ms(100)\n\n    def contrast(self, c):\n        self.cmd(0x81, c & 0xFF)\n\n    def invert(self, on):\n        self.cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        self.cmd(0x21, 0, self.width - 1)   # column range\n        self.cmd(0x22, 0, self.pages - 1)   # page range\n        self.i2c.writeto(self.addr, b'\\x40' + self.buffer)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom grove_oled_ssd1315 import SSD1315_I2C\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\noled = SSD1315_I2C(i2c, addr=0x3C)\noled.fill(0)\noled.text('Grove OLED', 0, 0)\noled.text('SSD1315 ok', 0, 56)\noled.show()\nprint('OLED ready')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Shows the text written by the program on the bottom line",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SSD1315 ok",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:48:29.184Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-OLED-Display-0.96-SSD1315/",
+      "https://files.seeedstudio.com/wiki/Grove-OLED-Display-0.96-SSD1315-/img/Grove-OLED-Displey-0.96-SSD1315-pin.jpg",
+      "https://files.seeedstudio.com/wiki/Grove-OLED-Display-0.96-SSD1315-/res/OEL%20Display%20Module.pdf"
+    ]
+  }
+}

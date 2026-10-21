@@ -1,0 +1,126 @@
+{
+  "type": "custom-grove-4-digit-display",
+  "name": "Grove - 4-Digit Display (TM1637)",
+  "mpn": "TM1637",
+  "category": "display",
+  "description": "Seeed Grove 4-digit red 7-segment display with a centre clock colon, driven by a Titan Micro TM1637 over a two-wire CLK/DIO bus (not I2C, no address) with 8 brightness steps. Seeed rates the module for 3.3-5.5 V, 0.2-80 mA; it has 10k pull-ups on CLK and DIO to VCC and a 2 mm Grove socket. Sold as: Seeed Studio Grove - 4-Digit Display v1.0 (SKU 104030003), Grove connector CLK, DIO, VCC, GND.",
+  "eli5": "Four bright red digits with a clock colon that you plug in with one Grove cable and drive with just two wires, great for clocks, timers and counters.",
+  "refPrefix": "DS",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Clock input from the microcontroller (Grove pin 1, yellow wire; 10k pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "DIO",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Data in/out, LSB first; the chip pulls it low for each ACK clock (Grove pin 2, white wire; 10k pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3-5.5 V (Grove pin 3, red wire): use the microcontroller's logic voltage, 3V3 on ESP32/Pico",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black wire)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 80,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-4-Digit_Display/res/TM1637_datasheet.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Seeed Grove 4-Digit Display TM1637 104030003",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J1): pin 1 CLK (yellow), pin 2 DIO (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "It is NOT I2C even though it has two wires: there is no address, bytes go LSB first, start = DIO falls while CLK is high, stop = DIO rises while CLK is high. You can use any two GPIO pins.",
+    "To show digits send data command 0x40 (auto-increment), then 0xC0 followed by one segment byte per digit (leftmost first), then display control 0x88 | brightness 0-7.",
+    "The clock colon is bit 7 (0x80) of the second digit's segment byte; this board has no decimal points.",
+    "Power VCC from the same voltage as your microcontroller (3V3 on ESP32/Pico): the board's 10k pull-ups tie CLK and DIO to VCC, so 5 V on VCC would put 5 V on 3.3 V GPIO pins, and at 5 V the TM1637 needs 0.7 x VCC (3.5 V) for a logic high.",
+    "Seeed rates the board for 3.3-5.5 V; the TM1637 datasheet itself only characterises the chip at 4.5-5.5 V, so the digits are a little dimmer at 3.3 V.",
+    "Current is up to about 80 mA with every segment lit at full brightness (27 mA typical), so lower the brightness on a weak supply."
+  ],
+  "keywords": [
+    "grove",
+    "4-digit display",
+    "tm1637",
+    "7-segment",
+    "seven segment",
+    "clock display",
+    "seeed",
+    "colon",
+    "led display"
+  ],
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-4-Digit_Display/",
+    "https://files.seeedstudio.com/wiki/Grove_4_Digit_Display/resource/Grove%20-%204-Digit%20Display%20V1.0%20eagle%20files.zip",
+    "https://files.seeedstudio.com/wiki/Grove-4-Digit_Display/res/TM1637_datasheet.pdf",
+    "https://github.com/avishorp/TM1637/raw/master/docs/TM1637_V2.4_EN.pdf"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "tm1637",
+    "digits": 4
+  },
+  "driver": {
+    "filename": "tm1637.py",
+    "code": "# TM1637 4-digit 7-segment LED display (Titan Micro TM1637, e.g. Seeed Grove - 4-Digit Display), MicroPython driver.\n# Two-wire bus from the datasheet (not I2C, no address): start = DIO falls while CLK is high,\n# stop = DIO rises while CLK is high, DIO only changes while CLK is low, bytes go LSB first,\n# and the chip pulls DIO low for the 9th (ACK) clock of every byte.\n# Writes use auto-increment mode: data command 0x40, address command 0xC0 + digits,\n# then display control 0x88 | brightness (0-7 = 1/16 ... 14/16 pulse width).\nfrom machine import Pin\nimport time\n\n_DATA_CMD = 0x40   # write display registers, auto-increment address, normal mode\n_ADDR_CMD = 0xC0   # display register C0H = leftmost digit (GRID1)\n_DISP_CTRL = 0x80  # display control; 0x08 = display on, low 3 bits = brightness\n_DELAY_US = 5      # half clock period: ~100 kHz, well under the 250-500 kHz limit\n\n# Segment bits: bit0 = a, bit1 = b ... bit6 = g, bit7 = DP (the colon on digit 2 of clock modules).\n_DIGITS = (0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F)\n_CHARS = {\n    ' ': 0x00, '-': 0x40, '_': 0x08, '*': 0x63,  # '*' = degree sign\n    'A': 0x77, 'B': 0x7C, 'C': 0x39, 'D': 0x5E, 'E': 0x79, 'F': 0x71, 'G': 0x3D, 'H': 0x76,\n    'I': 0x30, 'J': 0x1E, 'L': 0x38, 'N': 0x54, 'O': 0x5C, 'P': 0x73, 'Q': 0x67, 'R': 0x50,\n    'T': 0x78, 'U': 0x3E, 'Y': 0x6E,\n}\n\n\ndef encode(ch):\n    \"\"\"Segment byte for one character (digits, a few letters, space, '-', '_', '*' = degree).\"\"\"\n    if '0' <= ch <= '9':\n        return _DIGITS[ord(ch) - 48]\n    return _CHARS.get(ch.upper(), 0x00)\n\n\nclass TM1637:\n    def __init__(self, clk, dio, brightness=7, digits=4):\n        # Push-pull outputs, idle high. DIO is driven low during each ACK clock (the chip also\n        # pulls it low then), so the pins never fight the chip and never see the module's VCC.\n        self.clk = Pin(clk, Pin.OUT, value=1)\n        self.dio = Pin(dio, Pin.OUT, value=1)\n        self.digits = digits\n        self._bright = brightness & 0x07\n        self._on = True\n        time.sleep_us(_DELAY_US)\n        self.clear()\n\n    # --- bus primitives (datasheet \"Interface interpretation\") ---\n    def _start(self):\n        # bus idle: CLK high, DIO high\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(0)\n        time.sleep_us(_DELAY_US)\n\n    def _stop(self):\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(1)\n        time.sleep_us(_DELAY_US)\n        self.dio(1)\n        time.sleep_us(_DELAY_US)\n\n    def _write_byte(self, b):\n        for i in range(8):  # LSB first, DIO changes only while CLK is low\n            self.dio((b >> i) & 1)\n            time.sleep_us(_DELAY_US)\n            self.clk(1)\n            time.sleep_us(_DELAY_US)\n            self.clk(0)\n        # 9th clock: the TM1637 holds DIO low as its ACK; drive low too so nothing contends\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(1)\n        time.sleep_us(_DELAY_US)\n        self.clk(0)\n        time.sleep_us(_DELAY_US)\n\n    def _command(self, c):\n        self._start()\n        self._write_byte(c)\n        self._stop()\n\n    # --- display ---\n    def write(self, segments, pos=0):\n        \"\"\"Write raw segment bytes starting at digit pos (0 = leftmost).\"\"\"\n        if not 0 <= pos < 6:\n            raise ValueError('position 0-5')\n        self._command(_DATA_CMD)\n        self._start()\n        self._write_byte(_ADDR_CMD | pos)\n        for s in segments:\n            self._write_byte(s & 0xFF)\n        self._stop()\n        self._command(_DISP_CTRL | (0x08 if self._on else 0) | self._bright)\n\n    def brightness(self, value=None):\n        \"\"\"Get or set brightness 0-7 (1/16 to 14/16 pulse width).\"\"\"\n        if value is None:\n            return self._bright\n        if not 0 <= value <= 7:\n            raise ValueError('brightness 0-7')\n        self._bright = value\n        self._command(_DISP_CTRL | (0x08 if self._on else 0) | self._bright)\n\n    def power(self, on):\n        self._on = bool(on)\n        self._command(_DISP_CTRL | (0x08 if self._on else 0) | self._bright)\n\n    def clear(self):\n        self.write([0] * self.digits)\n\n    def show(self, text, colon=False):\n        \"\"\"Show up to `digits` characters, left aligned. colon=True lights the clock colon.\"\"\"\n        text = (text + ' ' * self.digits)[:self.digits]\n        segs = [encode(c) for c in text]\n        if colon and self.digits > 1:\n            segs[1] |= 0x80\n        self.write(segs)\n\n    def number(self, n):\n        \"\"\"Show an integer right aligned (-999 to 9999).\"\"\"\n        n = int(n)\n        if not -999 <= n <= 9999:\n            raise ValueError('number out of range')\n        self.show('%4d' % n)\n\n    def numbers(self, left, right, colon=True):\n        \"\"\"Show two 2-digit numbers, e.g. hours and minutes as 12:34.\"\"\"\n        if not (0 <= left <= 99 and 0 <= right <= 99):\n            raise ValueError('numbers 0-99')\n        self.show('%02d%02d' % (left, right), colon)\n"
+  },
+  "example": {
+    "code": "from tm1637 import TM1637\nimport time\n\ndisplay = TM1637({CLK}, {DIO}, brightness=3)\ncount = 0\nwhile True:\n    display.numbers(9, 45)  # 09:45 with the colon lit\n    print('showing 09:45')\n    time.sleep(1)\n    count -= 25\n    display.number(count)\n    print('showing', count)\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows",
+      "title": "Shows a clock time, then a negative count",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "0945",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "showing 09:45",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "-25",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "showing -25",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:29:20.588Z",
+    "verifiedSources": [
+      "https://files.seeedstudio.com/wiki/Grove-4-Digit_Display/res/TM1637_datasheet.pdf",
+      "https://wiki.seeedstudio.com/Grove-4-Digit_Display/"
+    ]
+  }
+}

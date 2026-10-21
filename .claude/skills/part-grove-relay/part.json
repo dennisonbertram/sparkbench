@@ -1,0 +1,125 @@
+{
+  "type": "custom-grove-relay",
+  "name": "Grove Relay v1.2",
+  "mpn": "103020005",
+  "category": "actuator",
+  "description": "Seeed Grove relay module v1.2: an HLS8L-DC3V-S-C 3 V relay (HLS8-T73 series, 25 ohm coil) fed by an on-board XC6206 3.0 V regulator and switched by an S8050 transistor from SIG (4.7 k base resistor, 47 k pull-down), with flyback diode and LED. SIG high = relay on. Works from 3.3-5 V; about 100-130 mA while on. The screw terminal brings out only NO (ON) and COM: a normally-open switch rated 5 A at 250 VAC / 30 VDC. Sold as: Seeed Grove - Relay v1.2 (SKU 103020005), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "An electrically controlled switch on a Grove plug: when your board sets the yellow SIG wire high, the relay clicks and connects your lamp, pump or fan to its own power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Control input (Grove pin 1, yellow wire): high = relay on (ON/NO connected to COM), low = off. 4.7 k into an S8050 base with a 47 k pull-down, so it stays off when floating. 3.3 V or 5 V logic."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 3.3-5 V. An on-board XC6206 makes 3.0 V for the relay coil; about 120 mA while the relay is on."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire), shared with the microcontroller."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 130,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Relay/res/Relay_Datasheet.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Relay/",
+    "https://files.seeedstudio.com/wiki/Grove-Relay/res/Grove%20-%20Relay%20Schematic.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-Relay/res/Relay_Datasheet.pdf",
+    "https://core-electronics.com.au/grove-relay-seeed-studio.html",
+    "https://www.rapidonline.com/seeed-103020005-grove-relay-add-on-board-250v-10a-75-0436"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "Seeed Grove Relay 103020005",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J2): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "SIG high = relay on. A 47 k pull-down on the board keeps the relay off while the microcontroller boots; still create the pin with value=0.",
+    "Power VCC from 3.3 V or 5 V (v1.2 has an XC6206 3.0 V regulator for the 3 V coil). The relay draws about 120 mA while on: fine from an ESP32 DevKit or Pico 3V3 pin.",
+    "The screw terminal has only ON (normally open) and COM. Rated 5 A at 250 VAC / 30 VDC; derate for motors and pumps.",
+    "The relay operates in up to 10 ms and releases in up to 5 ms, with 100,000 operations electrical life: never PWM it.",
+    "Mains wiring on the screw terminal is dangerous: keep it in a closed insulated box and leave mains to an adult/qualified person. For a first project switch a low-voltage DC load."
+  ],
+  "keywords": [
+    "grove relay",
+    "grove",
+    "seeed",
+    "103020005",
+    "relay",
+    "relay module",
+    "hls8l",
+    "hls8l-dc3v-s-c",
+    "normally open",
+    "pump",
+    "fan",
+    "lamp",
+    "switch load"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "SIG"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Grove Relay: SIG high = relay on.\nrelay = Pin({SIG}, Pin.OUT, value=0)\nwhile True:\n    relay.value(1)\n    print('relay ON')\n    time.sleep(2)\n    relay.value(0)\n    print('relay OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The relay switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-relay\ndescription: Pinout, electrical limits, wiring and MicroPython code for the Seeed Grove - Relay v1.2 (SKU 103020005; HLS8L-DC3V-S-C 3 V relay on an XC6206 3.0 V regulator, S8050 driver, Grove SIG/NC/VCC/GND, active-high). Use when designing, wiring, simulating or writing code for a Grove Relay in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Seeed Grove - Relay (v1.2)\n\n## Overview\nA single **HLS8L-DC3V-S-C** relay (HLS8-T73 series, 3 V coil, 25 Ω) on a Grove board. An **XC6206P302MR** LDO makes a 3.0 V coil supply from VCC, so the module works from 3.3 V or 5 V. SIG drives an **S8050** NPN transistor through 4.7 kΩ (47 kΩ pull-down to GND, so a floating SIG keeps the relay off); a 1N4148 flyback diode and a red LED (470 Ω) sit across the coil. **SIG high = relay on.** The relay itself is SPDT, but the board's 2-way screw terminal only brings out **NO (\"ON\") and COM**: it is a normally-open switch. Hobbyists buy it as **Seeed Grove - Relay, SKU 103020005**.\n\n## Pinout (Grove connector J2, schematic order)\n| Pin | Wire | Function |\n|---|---|---|\n| SIG | yellow | Control input, high = relay on |\n| NC | white | Not connected |\n| VCC | red | Supply 3.3–5 V |\n| GND | black | Ground |\n\nLoad side: 2-way screw terminal **ON (NO)** and **COM** on the opposite edge, so the module is wired with a Grove-to-jumper cable, not plugged into the breadboard.\n\n## Electrical limits\n- VCC 3.3–5 V (Seeed wiki, v1.2). About 100–130 mA while the relay is on (coil 120 mA at 3 V plus LED), a few µA when off.\n- Relay coil (HLS8-T73 3 VDC, 0.36 W): 25 Ω ±10 %, pull-in 2.25 V max, drop-out 0.3 V min, max 3.9 V. The on-board 3.0 V LDO feeds it.\n- Load: Seeed rates the board 5 A at 250 VAC / 30 VDC (the bare relay is rated higher; use the board figure). Electrical life 100,000 operations.\n- Operate 10 ms max, release 5 ms max.\n- SIG: 3.3 V or 5 V logic, about 0.5 mA into the 4.7 kΩ base resistor.\n\n## Interface details\n- Plain digital input: no driver, just `machine.Pin`.\n- Active high, with an on-board pull-down: the relay stays off while the microcontroller boots.\n\n## Wiring\n- ESP32: SIG → GPIO26, VCC → 3V3, GND → GND.\n- Pico: SIG → GP16, VCC → 3V3(OUT), GND → GND.\n- Raspberry Pi 4: SIG → pin 11 (GPIO17), VCC → pin 1 (3.3 V), GND → pin 6.\n- Load: supply + → COM, ON (NO) → load → supply −. Mains only by an adult or qualified person, in a closed insulated enclosure.\n\n## Using it\n```python\nfrom machine import Pin\nimport time\nrelay = Pin(26, Pin.OUT, value=0)  # SIG\nrelay.value(1)   # load on (ON-COM closed)\ntime.sleep(2)\nrelay.value(0)   # load off\n```\n\n## Gotchas\n- Only NO is brought out: the load is off whenever the relay is unpowered. There is no NC terminal on this board.\n- The coil draws about 120 mA: power VCC from the board's 3V3/5V pin, not from a GPIO.\n- Relays are slow and wear out: never PWM them.\n- Older v1.1 boards are 5 V only; v1.2 (with the XC6206 regulator) works at 3.3 V.\n- Motors and pumps are inductive: stay well below the 5 A rating.\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Relay/res/Relay_Datasheet.pdf (HLS8-T73 series relay); schematic https://files.seeedstudio.com/wiki/Grove-Relay/res/Grove%20-%20Relay%20Schematic.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:27:10.719Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Relay/",
+      "https://files.seeedstudio.com/wiki/Grove-Relay/res/Relay_Datasheet.pdf"
+    ]
+  }
+}
