@@ -1,0 +1,184 @@
+{
+  "type": "custom-ina228",
+  "name": "INA228 85 V 20-bit power monitor",
+  "mpn": "INA228",
+  "category": "sensor",
+  "description": "Texas Instruments 20-bit current, voltage and power monitor with an I2C interface: measures a 0–85 V bus (195.3125 µV per count) and the voltage across a shunt resistor (±163.84 mV, 312.5 nV per count), and reports current in amperes once its SHUNT_CAL register is set. Runs on 2.7–5.5 V. Sold as: Adafruit INA228 I2C 85V, 20-bit High or Low Side Power Monitor (#5832), 8-pin header VIN, GND, SCL, SDA, VBUS, VIN-, VIN+, ALRT plus a 3-pin screw terminal (V-, VBus, V+), 15 mΩ shunt (up to 10 A), I2C address 0x40 (0x41/0x44/0x45 with the A0/A1 jumpers).",
+  "eli5": "Sits in the wire to a motor, battery or solar panel (up to 85 V) and tells your board very precisely how many volts and amps are flowing.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Logic supply 3–5 V (chip 2.7–5.5 V); use the same voltage as your microcontroller (3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the measured circuit's ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "VBUS",
+      "role": "io",
+      "description": "Bus-voltage sense input, 0–85 V; bridge the back VBUS jumper (high side) or wire it to the supply rail. Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "VIN-",
+      "role": "io",
+      "description": "Shunt low side: to the load's + lead (high side). Up to 85 V; never to a GPIO. Same net as the terminal's V-.",
+      "required": false
+    },
+    {
+      "name": "VIN+",
+      "role": "io",
+      "description": "Shunt high side: from the supply being measured. Up to 85 V; never to a GPIO. Same net as the terminal's V+.",
+      "required": false
+    },
+    {
+      "name": "ALRT",
+      "role": "io",
+      "description": "Alert output (open-drain, active low); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 0.75,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina228.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ina228.pdf",
+    "https://www.adafruit.com/product/5832",
+    "https://learn.adafruit.com/adafruit-ina228-i2c-power-monitor/pinouts",
+    "https://github.com/adafruit/Adafruit-INA228-PCB",
+    "https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/svg/contrib/pcb/Adafruit-_078bc6bf0bc8881ea189f952a916165e_1_pcb_A3.svg"
+  ],
+  "priceUsd": 15,
+  "supplierQuery": "Adafruit INA228 85V 20-bit power monitor 5832",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Put the shunt in series with the load: supply + to VIN+ (terminal V+), VIN- (terminal V-) to the load's +, and the measured supply's ground to the same GND as the microcontroller.",
+    "VBUS is open by default (low-side use): bridge the VBUS jumper on the back for high-side sensing, or wire VBUS to the supply rail, otherwise the bus voltage reads 0 V.",
+    "VIN+, VIN- and VBUS may carry up to 85 V: never connect them to a GPIO. The 15 mΩ shunt reads up to about ±10 A (±163.84 mV); carry the load current through the screw terminal with thick wire, never through breadboard rows or the header pins.",
+    "Write SHUNT_CAL (02h) = 13107.2e6 × CURRENT_LSB × 0.015 before reading CURRENT (07h); with CURRENT_LSB = 20 µA that is 3932. Current = CURRENT_LSB × CURRENT.",
+    "VBUS (05h) and CURRENT (07h) are 24-bit registers: read 3 bytes, the 20-bit result is in bits 23-4. Bus voltage = VBUS × 195.3125 µV.",
+    "MANUFACTURER_ID (3Eh) reads 5449h and DEVICE_ID (3Fh) 228xh: a quick wiring check. Default address 0x40; bridge A0 for 0x41, A1 for 0x44, both for 0x45."
+  ],
+  "keywords": [
+    "ina228",
+    "adafruit 5832",
+    "current",
+    "voltage",
+    "power",
+    "energy",
+    "shunt",
+    "ammeter",
+    "wattmeter",
+    "85v",
+    "texas instruments"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Bus voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 85,
+    "default": 12,
+    "regWidth": 16,
+    "registers": {
+      "0x00": 0,
+      "0x01": 64360,
+      "0x02": 4096,
+      "0x3E": 21577,
+      "0x3F": 8833
+    },
+    "controls": [
+      {
+        "key": "current",
+        "quantity": "Current through the shunt",
+        "unit": "mA",
+        "min": -10000,
+        "max": 10000,
+        "default": 0
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x05",
+        "bytes": 3,
+        "scale": 0.0001953125,
+        "shift": 4,
+        "control": "value"
+      },
+      {
+        "reg": "0x07",
+        "bytes": 3,
+        "scale": 0.02,
+        "shift": 4,
+        "signed": true,
+        "control": "current"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ina228.py",
+    "code": "# INA228 85 V, 20-bit current / voltage / power monitor (TI INA228, SLYS021A), MicroPython driver.\n# Register pointer byte, then data MSB first. CONFIG, ADC_CONFIG, SHUNT_CAL and the ID registers\n# are 16-bit; VSHUNT, VBUS and CURRENT are 24-bit (read 3 bytes) with the 20-bit result in bits 23-4.\n#   05h VBUS:    bits 23-4, LSB 195.3125 uV (always positive).\n#   07h CURRENT: bits 23-4, two's complement, Current [A] = CURRENT_LSB x CURRENT (datasheet eq. 4),\n#                valid once SHUNT_CAL (02h) = 13107.2e6 x CURRENT_LSB x R_SHUNT (eq. 2, ADCRANGE = 0).\n#   3Eh MANUFACTURER_ID = 5449h (\"TI\"), 3Fh DEVICE_ID = 228xh (DIEID 228h + revision).\n# Defaults suit the Adafruit INA228 breakout (#5832): 15 milliohm shunt, up to 10 A.\nimport time\n\n_CONFIG = 0x00\n_ADC_CONFIG = 0x01\n_SHUNT_CAL = 0x02\n_VBUS = 0x05\n_CURRENT = 0x07\n_MANUFACTURER_ID = 0x3E\n_DEVICE_ID = 0x3F\n\n# MODE = Fh (continuous bus, shunt and temperature), VBUSCT = VSHCT = VTCT = 5h (1052 us),\n# AVG = 2h (16 samples): a fresh result about every 16 x 3 x 1.05 ms = 50 ms.\n_ADC_SETTINGS = 0xFB6A\n\n\nclass INA228:\n    def __init__(self, i2c, addr=0x40, shunt_ohms=0.015, max_amps=10.0):\n        self.i2c = i2c\n        self.addr = addr\n        if self._read16(_MANUFACTURER_ID) != 0x5449 or (self._read16(_DEVICE_ID) >> 4) != 0x228:\n            raise OSError('INA228 not found at 0x%02x: check the wiring' % addr)\n        # ADCRANGE = 0 (+-163.84 mV across the shunt). CURRENT_LSB must be at least\n        # max_amps / 2^19 (eq. 3); use a round 20 uA for the 10 A default.\n        lsb = max_amps / 524288\n        self.current_lsb = 20e-6 if lsb <= 20e-6 else lsb\n        cal = int(13107.2e6 * self.current_lsb * shunt_ohms + 0.5)\n        if not 0 < cal < 0x8000:\n            raise ValueError('shunt_ohms / max_amps give SHUNT_CAL out of range')\n        self._write16(_CONFIG, 0x8000)  # RST: back to power-on defaults (self-clearing)\n        time.sleep_ms(2)\n        self._write16(_CONFIG, 0x0000)  # ADCRANGE = 0, no conversion delay\n        self._write16(_SHUNT_CAL, cal)\n        self._write16(_ADC_CONFIG, _ADC_SETTINGS)\n        time.sleep_ms(60)  # wait for the first averaged result\n\n    def _write16(self, reg, v):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(v >> 8) & 0xFF, v & 0xFF]))\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _read20(self, reg):\n        \"\"\"A 24-bit result register: the 20-bit value in bits 23-4.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, reg, 3)\n        return ((d[0] << 16) | (d[1] << 8) | d[2]) >> 4\n\n    def bus_voltage(self):\n        \"\"\"Voltage on VBUS relative to GND, in volts (195.3125 uV per count).\"\"\"\n        raw = self._read20(_VBUS)\n        if raw & 0x80000:  # two's complement field, always positive in practice\n            raw -= 0x100000\n        return raw * 195.3125e-6\n\n    def current_ma(self):\n        \"\"\"Current from VIN+ to VIN- in mA (negative when it flows the other way).\"\"\"\n        raw = self._read20(_CURRENT)\n        if raw & 0x80000:\n            raw -= 0x100000\n        return raw * self.current_lsb * 1000\n\n    def power_mw(self):\n        \"\"\"Power delivered to the load in mW (bus voltage x current).\"\"\"\n        return self.bus_voltage() * self.current_ma()\n\n    def read(self):\n        \"\"\"Return (bus voltage in V, current in mA).\"\"\"\n        return self.bus_voltage(), self.current_ma()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ina228 import INA228\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = INA228(i2c)  # address 0x40, 15 milliohm shunt, 20 uA per count\nwhile True:\n    v, i = sensor.read()\n    print('V=%.3fV I=%.1fmA' % (v, i))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the bus voltage and current set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "current",
+          "value": -2500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=24.000V I=-2500.0mA",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:10:56.643Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ina228.pdf",
+      "https://learn.adafruit.com/adafruit-ina228-i2c-power-monitor/pinouts",
+      "https://www.adafruit.com/product/5832"
+    ]
+  }
+}

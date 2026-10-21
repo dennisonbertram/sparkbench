@@ -1,0 +1,79 @@
+{
+  "type": "custom-ze08-ch2o",
+  "mpn": "ZE08-CH2O",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, uart"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; ZE08-CH2O formaldehyde sensor needs at least 3.7 V, so it is powered from 5 V. U2.TXD → RX2 (the board's RX), RXD → TX2 (the board's TX). Added the ze08.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the formaldehyde level set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, uart"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; ZE08-CH2O formaldehyde sensor needs at least 3.7 V, so it is powered from 5 V. U2.TXD → GP1 (the board's RX), RXD → GP0 (the board's TX). Added the ze08.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the formaldehyde level set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:48:28.194Z"
+}

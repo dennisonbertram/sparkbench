@@ -1,0 +1,193 @@
+{
+  "type": "custom-at42qt1070",
+  "name": "AT42QT1070 5-pad capacitive touch sensor",
+  "mpn": "AT42QT1070",
+  "category": "sensor",
+  "description": "Microchip/Atmel QTouch capacitive touch controller used in standalone mode: five touch pads (key 0 is a guard key), each with an open-drain output that goes low while its pad is touched; only one key is reported at a time. Runs on 1.8–5.5 V. Sold as: Adafruit Standalone 5-Pad Capacitive Touch Sensor Breakout - AT42QT1070 (product #1362), two 6-pin headers (Gnd, Input 0-4 / VDD, Output 0-4), standalone only, no I2C.",
+  "eli5": "Turns five pieces of copper foil into touch buttons: touch one and its output wire goes low, just like pressing a button to ground.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (left 'Input' header, top)",
+      "required": true
+    },
+    {
+      "name": "IN0",
+      "role": "io",
+      "description": "Touch pad 0 electrode input (printed '0' under 'Input'), 10 kOhm series resistor on board; connect a copper pad, not the microcontroller — key 0 is the guard key",
+      "required": false
+    },
+    {
+      "name": "IN1",
+      "role": "io",
+      "description": "Touch pad 1 electrode input (printed '1' under 'Input'), 10 kOhm series resistor on board; connect a copper pad, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "IN2",
+      "role": "io",
+      "description": "Touch pad 2 electrode input (printed '2' under 'Input'), 10 kOhm series resistor on board; connect a copper pad, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "IN3",
+      "role": "io",
+      "description": "Touch pad 3 electrode input (printed '3' under 'Input'), 10 kOhm series resistor on board; connect a copper pad, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "IN4",
+      "role": "io",
+      "description": "Touch pad 4 electrode input (printed '4' under 'Input'), 10 kOhm series resistor on board; connect a copper pad, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply 1.8–5.5 V (right 'Output' header, top); use 3.3 V with an ESP32 or Pico",
+      "required": true
+    },
+    {
+      "name": "OUT0",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Open-drain output, LOW while pad 0 is touched (printed '0' under 'Output'); LED + 470 Ohm to VDD on board but no pull-up",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "OUT1",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Open-drain output, LOW while pad 1 is touched (printed '1' under 'Output'); LED + 470 Ohm to VDD on board but no pull-up",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "OUT2",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Open-drain output, LOW while pad 2 is touched (printed '2' under 'Output'); LED + 470 Ohm to VDD on board but no pull-up",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "OUT3",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Open-drain output, LOW while pad 3 is touched (printed '3' under 'Output'); LED + 470 Ohm to VDD on board but no pull-up",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "OUT4",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Open-drain output, LOW while pad 4 is touched (printed '4' under 'Output'); LED + 470 Ohm to VDD on board but no pull-up",
+      "required": true,
+      "pullUp": 10000
+    }
+  ],
+  "vmin": 1.8,
+  "vmax": 5.5,
+  "currentMa": 4,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-9596-AT42-QTouch-BSW-AT42QT1070_Datasheet.pdf",
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-9596-AT42-QTouch-BSW-AT42QT1070_Datasheet.pdf",
+    "https://www.adafruit.com/product/1362",
+    "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd",
+    "https://learn.adafruit.com/adafruit-capacitive-touch-sensor-breakouts"
+  ],
+  "priceUsd": 7.5,
+  "supplierQuery": "Adafruit 1362 AT42QT1070 standalone 5-pad capacitive touch breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two 6-pin headers: left 'Input' = Gnd, 0, 1, 2, 3, 4 (touch pads); right 'Output' = VDD, 0, 1, 2, 3, 4 (open-drain outputs). Wire it with jumper leads.",
+    "Each output goes LOW while its pad is touched. The board only has an LED + 470 Ohm to VDD on each output, no pull-up: fit 10 kOhm to 3.3 V or enable the GPIO's internal pull-up (ESP32 GPIO34-39 have none).",
+    "Power VDD from 3.3 V on an ESP32 or Pico; the chip runs on 1.8-5.5 V, but keep the pull-ups' voltage no higher than VDD + 0.5 V.",
+    "Pad 0 is the guard key: it has priority and suppresses the other keys, and only one key is reported at a time.",
+    "Pads: copper foil or plates at least 6 x 6 mm, short wires. The chip calibrates at power-up, so don't touch the pads while powering on; a touch held for about 30 s is recalibrated away.",
+    "This board is standalone only (MODE tied to VDD): it cannot be read over I2C."
+  ],
+  "keywords": [
+    "at42qt1070",
+    "qt1070",
+    "capacitive touch",
+    "touch sensor",
+    "touch pad",
+    "qtouch",
+    "adafruit 1362",
+    "5-pad"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT0",
+    "quantity": "Pad 0 (guard) touched",
+    "activeHigh": false,
+    "digitalOutputs": [
+      {
+        "pin": "OUT1",
+        "control": "key1",
+        "label": "Pad 1 touched",
+        "activeHigh": false
+      },
+      {
+        "pin": "OUT2",
+        "control": "key2",
+        "label": "Pad 2 touched",
+        "activeHigh": false
+      },
+      {
+        "pin": "OUT3",
+        "control": "key3",
+        "label": "Pad 3 touched",
+        "activeHigh": false
+      },
+      {
+        "pin": "OUT4",
+        "control": "key4",
+        "label": "Pad 4 touched",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qt1070.py",
+    "code": "# AT42QT1070 in standalone mode (Adafruit #1362 \"Standalone 5-Pad Capacitive Touch Sensor\n# Breakout\"), MicroPython driver.\n# In standalone mode (MODE tied to VDD, as on this board) the chip has no I2C: each key drives\n# an open-drain output OUTn LOW while the key is in detect and releases it otherwise.\n# The chip already debounces (detect integrator), calibrates and drift-compensates, so the\n# host only reads the pins. Key 0 is the fixed guard channel: it has priority and its touch\n# overrides the other keys. Only one key is reported at a time.\n# The outputs need a pull-up: the board only has an LED + 470 ohm to VDD on each output, which\n# does not give a valid logic high. Use 10 kOhm resistors to the MCU's 3.3 V (or the internal\n# pull-up, which ESP32 GPIO34-39 do not have).\nfrom machine import Pin\n\n\nclass QT1070:\n    def __init__(self, outs, pull_up=True):\n        \"\"\"outs: GPIO numbers wired to OUT0..OUT4 (use None for an output that is not wired).\"\"\"\n        self.pins = [None if g is None else self._input(g, pull_up) for g in outs]\n\n    @staticmethod\n    def _input(gpio, pull_up):\n        if pull_up:\n            try:\n                return Pin(gpio, Pin.IN, Pin.PULL_UP)\n            except (ValueError, OSError):\n                pass  # input-only pin without internal pull-up: rely on the external resistor\n        return Pin(gpio, Pin.IN)\n\n    def is_touched(self, key):\n        p = self.pins[key]\n        return p is not None and p.value() == 0  # open-drain output pulled LOW = key in detect\n\n    def touched(self):\n        \"\"\"List of key numbers currently in detect (normally zero or one entry).\"\"\"\n        return [k for k in range(len(self.pins)) if self.is_touched(k)]\n\n    def key(self):\n        \"\"\"The key in detect (0 = guard key), or None when nothing is touched.\"\"\"\n        t = self.touched()\n        return t[0] if t else None\n"
+  },
+  "example": {
+    "code": "from qt1070 import QT1070\nimport time\n\npad = QT1070([{OUT0}, {OUT1}, {OUT2}, {OUT3}, {OUT4}])\nwhile True:\n    print('touched=%s' % pad.touched())\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports pad 2 while it is touched",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key2",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "touched=[2]",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (12 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:52:26.075Z",
+    "verifiedSources": [
+      "http://www.adafruit.com/datasheets/AT42QT1070.pdf",
+      "https://www.adafruit.com/product/1362",
+      "https://cdn-shop.adafruit.com/970x728/1362-10.jpg"
+    ]
+  }
+}

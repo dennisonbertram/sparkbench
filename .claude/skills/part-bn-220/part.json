@@ -1,0 +1,164 @@
+{
+  "type": "custom-bn-220",
+  "name": "BN-220 GPS module",
+  "mpn": "BN-220",
+  "category": "sensor",
+  "description": "Beitian GNSS receiver (u-blox M8030-KT: GPS, GLONASS, Galileo, BeiDou, QZSS, SBAS) with a built-in ceramic patch antenna. Streams NMEA-0183 sentences (GGA, GLL, GSA, GSV, RMC, VTG) over a 3.3 V TTL serial line at 9600 baud, 1 Hz by default; 2.0 m CEP horizontal accuracy, 26 s cold start. Runs on 3.0–5.5 V (typ. 5 V), about 50 mA. Sold as: Beitian BN-220 GPS module (22 × 20 × 6 mm, 4-pin 1.0 mm JST-SH cable: GND, TX, RX, VCC), also as the BN-220T.",
+  "eli5": "Listens to satellites and tells your board where on Earth it is, how high it is and what time it is.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Serial data out of the module (NMEA, 9600 baud, 3.3 V TTL) -> board RX (pin 2)",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Serial data into the module (UBX configuration commands) <- board TX; not needed just to read positions (pin 3)",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.0–5.5 V, typical 5.0 V (pin 4)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 50,
+  "datasheetUrl": "https://old.unmannedtechshop.co.uk/wp-content/uploads/2022/02/BN-220-GPSAntenna-datasheet.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "Beitian BN-220 GPS module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "The module comes with a 4-wire 1.0 mm JST-SH cable: GND, TX, RX, VCC (pin 1 to 4). Check the colours against the pin order on your cable, as they vary between batches; swapping VCC and GND can destroy the module.",
+    "Cross the serial lines: module TX -> board RX, module RX -> board TX. Only TX is needed to read positions.",
+    "Default 9600 baud, 8N1, NMEA once per second. Sentences start with $GN (multi-GNSS) or $GP; match on the sentence type (GGA, RMC), not the talker ID.",
+    "Mount it with the ceramic antenna facing the sky, away from the ESP32's Wi-Fi antenna. Indoors it may never get a fix; the first fix outdoors can take 30 s or more (red PPS LED flashes once fixed, blue LED flashes with data)."
+  ],
+  "keywords": [
+    "bn-220",
+    "bn220",
+    "bn-220t",
+    "beitian",
+    "gps",
+    "gnss",
+    "glonass",
+    "nmea",
+    "m8030",
+    "ublox",
+    "location"
+  ],
+  "sources": [
+    "https://old.unmannedtechshop.co.uk/wp-content/uploads/2022/02/BN-220-GPSAntenna-datasheet.pdf",
+    "https://www.unmannedtechshop.co.uk/products/beitian-bn-220-gps-module",
+    "https://ardupilot.org/copter/docs/common-beitian-gps.html"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Latitude",
+    "unit": "°",
+    "min": -90,
+    "max": 90,
+    "default": 51.5,
+    "controls": [
+      {
+        "key": "lat",
+        "quantity": "Latitude",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 51.5
+      },
+      {
+        "key": "lon",
+        "quantity": "Longitude",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": -0.12
+      },
+      {
+        "key": "alt",
+        "quantity": "Altitude above sea level",
+        "unit": "m",
+        "min": -500,
+        "max": 50000,
+        "default": 35
+      },
+      {
+        "key": "speed",
+        "quantity": "Speed over ground",
+        "unit": "knots",
+        "min": 0,
+        "max": 1000,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "nmea": true
+    }
+  },
+  "driver": {
+    "filename": "bn220.py",
+    "code": "# Beitian BN-220 GPS module (u-blox M8030-KT), MicroPython driver.\n# The module streams NMEA-0183 sentences at 9600 baud, 8N1, once per second by default\n# (GGA, GLL, GSA, GSV, RMC, VTG). This driver reads GGA (position, altitude, fix, satellites)\n# and RMC (time, date, validity, speed, course). The talker ID may be GP, GN, GL, GA or GB\n# (\"xxGGA\" in the datasheet), so only the sentence type is matched. Every sentence's\n# checksum (XOR of the characters between '$' and '*') is verified before it is used.\n\n\ndef _checksum_ok(line):\n    star = line.rfind(b'*')\n    if not line.startswith(b'$') or star < 0 or len(line) < star + 3:\n        return False\n    cs = 0\n    for c in line[1:star]:\n        cs ^= c\n    try:\n        return cs == int(line[star + 1:star + 3], 16)\n    except ValueError:\n        return False\n\n\ndef _coord(value, hemi):\n    \"\"\"ddmm.mmmmm / dddmm.mmmmm + N/S/E/W -> signed decimal degrees (None if empty).\n    Degrees and whole minutes are parsed as integers to keep precision on single-precision floats.\"\"\"\n    if not value or not hemi:\n        return None\n    whole, _, frac = value.partition('.')\n    deg = int(whole[:-2])\n    minutes = int(whole[-2:]) + (float('0.' + frac) if frac else 0.0)\n    d = deg + minutes / 60\n    return -d if hemi in ('S', 'W') else d\n\n\ndef _num(s, conv=float):\n    return conv(s) if s else None\n\n\nclass BN220:\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 9600 baud (the module's default), RX wired to the module's TX.\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.latitude = None      # decimal degrees, + north\n        self.longitude = None     # decimal degrees, + east\n        self.altitude = None      # metres above mean sea level (GGA)\n        self.fix_quality = 0      # GGA: 0 no fix, 1 GPS, 2 DGPS, 6 dead reckoning\n        self.satellites = 0       # satellites used (GGA)\n        self.hdop = None\n        self.valid = False        # RMC status A = data valid\n        self.speed_knots = None   # RMC speed over ground\n        self.course = None        # RMC course over ground, degrees true\n        self.time = None          # (h, m, s) UTC\n        self.date = None          # (day, month, year)\n\n    def update(self):\n        \"\"\"Read whatever has arrived and parse complete sentences.\n        Returns True when a new GGA position with a fix was decoded.\"\"\"\n        new_fix = False\n        while self.uart.any():\n            chunk = self.uart.read()\n            if not chunk:\n                break\n            self._buf += chunk\n        while b'\\n' in self._buf:\n            line, self._buf = self._buf.split(b'\\n', 1)\n            if self._parse(line.strip()):\n                new_fix = True\n        if len(self._buf) > 512:  # garbage without line ends (wrong baud rate?)\n            self._buf = b''\n        return new_fix\n\n    @property\n    def has_fix(self):\n        return self.fix_quality > 0\n\n    def _parse(self, line):\n        if not _checksum_ok(line):\n            return False\n        f = line[1:line.rfind(b'*')].decode().split(',')\n        kind = f[0][2:]\n        if kind == 'GGA' and len(f) >= 10:\n            self._time(f[1])\n            self.fix_quality = _num(f[6], int) or 0\n            self.satellites = _num(f[7], int) or 0\n            self.hdop = _num(f[8])\n            if self.fix_quality > 0:\n                self.latitude = _coord(f[2], f[3])\n                self.longitude = _coord(f[4], f[5])\n                self.altitude = _num(f[9])\n                return True\n        elif kind == 'RMC' and len(f) >= 10:\n            self._time(f[1])\n            self.valid = f[2] == 'A'\n            if self.valid:\n                self.latitude = _coord(f[3], f[4])\n                self.longitude = _coord(f[5], f[6])\n                self.speed_knots = _num(f[7])\n                self.course = _num(f[8])\n            if len(f[9]) == 6:\n                self.date = (int(f[9][0:2]), int(f[9][2:4]), 2000 + int(f[9][4:6]))\n        return False\n\n    def _time(self, s):\n        if len(s) >= 6:\n            self.time = (int(s[0:2]), int(s[2:4]), float(s[4:]))\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom bn220 import BN220\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\ngps = BN220(uart)\nwhile True:\n    if gps.update():\n        print('LAT=%.4f LON=%.4f ALT=%.1fm' % (gps.latitude, gps.longitude, gps.altitude))\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "fix",
+      "title": "Reports the position and altitude set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lat",
+          "value": -33.8688
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lon",
+          "value": 151.2093
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "alt",
+          "value": 58
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LAT=-33.8688 LON=151.2093 ALT=58.0m",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:48:38.112Z",
+    "verifiedSources": [
+      "https://old.unmannedtechshop.co.uk/wp-content/uploads/2022/02/BN-220-GPSAntenna-datasheet.pdf",
+      "https://content.u-blox.com/sites/default/files/NEO-M8-FW3_DataSheet_UBX-15031086.pdf"
+    ]
+  }
+}

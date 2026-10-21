@@ -1,0 +1,217 @@
+{
+  "type": "custom-lis3mdl",
+  "name": "LIS3MDL 3-axis magnetometer",
+  "mpn": "LIS3MDL",
+  "category": "sensor",
+  "description": "STMicroelectronics 3-axis magnetometer (compass sensor) with selectable ±4/±8/±12/±16 gauss full scale, 16-bit output, I2C or SPI. Chip runs on 1.9–3.6 V; the breakout has a 3.3 V regulator and level shifting for 3–5 V. Sold as: Adafruit Triple-axis Magnetometer - LIS3MDL (#4479, STEMMA QT; 6-pin header VIN, 3Vo, GND, SCL, SDA, INT and 4-pin header GND, DRDY, DO, CS), I2C address 0x1C (0x1E with DO/AD1 high).",
+  "eli5": "Feels magnetic fields in three directions, so your project can tell which way is north or notice a nearby magnet.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board AP2112K 3.3 V regulator; use your board's logic voltage)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI clock in SPI mode); level-shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI data in in SPI mode); level-shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (threshold events), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Second ground pin, on the other header (printed GND)",
+      "required": false
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Data-ready output, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "description": "I2C address select SDO/SA1 (AD1): 10 kΩ to GND on the board = 0x1C, tie to 3Vo = 0x1E; SPI data out in SPI mode",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select; pulled up on the board so I2C is used, leave unconnected for I2C",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.3,
+  "i2cAddress": 28,
+  "datasheetUrl": "https://www.pololu.com/file/0J1089/LIS3MDL.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Adafruit LIS3MDL triple-axis magnetometer breakout 4479",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "The board has two headers on opposite edges (VIN, 3Vo, GND, SCL, SDA, INT and GND, DRDY, DO, CS); for I2C you only need VIN, GND, SCL and SDA.",
+    "Reset default is power-down (CTRL_REG3 = 0x03): write CTRL_REG3 = 0x00 for continuous conversion or every reading stays 0.",
+    "Read the six output bytes in one burst from register 0x28 | 0x80 (the top bit asks for auto-increment); values are 16-bit two's complement, low byte first.",
+    "At the default ±4 gauss full scale the sensitivity is 6842 LSB/gauss (±8: 3421, ±12: 2281, ±16: 1711). Earth's field is about 0.25–0.65 gauss.",
+    "Address 0x1C as shipped; tie DO (AD1) to 3Vo or bridge the jumper on the back for 0x1E. Adafruit notes a few boards read the address erratically with only the 10 kΩ pull-down: tie DO firmly to GND if so.",
+    "Keep it away from motors, speakers, steel screws and current-carrying wires, which swamp the Earth's field."
+  ],
+  "keywords": [
+    "lis3mdl",
+    "magnetometer",
+    "compass",
+    "magnetic",
+    "gauss",
+    "heading",
+    "st",
+    "adafruit 4479"
+  ],
+  "sources": [
+    "https://www.pololu.com/file/0J1089/LIS3MDL.pdf",
+    "https://www.st.com/resource/en/datasheet/lis3mdl.pdf",
+    "https://learn.adafruit.com/lis3mdl-triple-axis-magnetometer/pinouts",
+    "https://github.com/adafruit/Adafruit-LIS3MDL-PCB/blob/master/Adafruit%20LIS3MDL.brd"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "autoIncrementBit7": true,
+    "quantity": "Magnetic field X",
+    "unit": "gauss",
+    "min": -4,
+    "max": 4,
+    "default": 0.2,
+    "controls": [
+      {
+        "key": "magY",
+        "quantity": "Magnetic field Y",
+        "unit": "gauss",
+        "min": -4,
+        "max": 4,
+        "default": 0
+      },
+      {
+        "key": "magZ",
+        "quantity": "Magnetic field Z",
+        "unit": "gauss",
+        "min": -4,
+        "max": 4,
+        "default": -0.4
+      }
+    ],
+    "registers": {
+      "0x0F": 61,
+      "0x20": 16,
+      "0x21": 0,
+      "0x22": 3,
+      "0x23": 0,
+      "0x24": 0,
+      "0x27": 8
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.00014615609470914936,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.00014615609470914936,
+        "signed": true,
+        "littleEndian": true,
+        "control": "magY"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.00014615609470914936,
+        "signed": true,
+        "littleEndian": true,
+        "control": "magZ"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lis3mdl.py",
+    "code": "# LIS3MDL 3-axis magnetometer (STMicroelectronics), MicroPython driver.\n# Written from the ST datasheet DocID024204 Rev 4: WHO_AM_I 0x0F = 0x3D, CTRL_REG1..5 at 0x20..0x24,\n# STATUS_REG 0x27, OUT_X_L..OUT_Z_H at 0x28..0x2D (two's complement, LSB at the lower address).\n# In I2C the MSb of the register address asks for auto-increment, so a 6-byte burst starts at 0x28 | 0x80.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x20\n_CTRL_REG2 = 0x21\n_CTRL_REG3 = 0x22\n_CTRL_REG4 = 0x23\n_CTRL_REG5 = 0x24\n_STATUS_REG = 0x27\n_OUT_X_L = 0x28\n\n# Full scale (gauss) -> (FS[1:0] bits for CTRL_REG2, sensitivity in LSB/gauss), datasheet Tables 3 and 25.\n_RANGES = {4: (0x00, 6842), 8: (0x20, 3421), 12: (0x40, 2281), 16: (0x60, 1711)}\n\n\nclass LIS3MDL:\n    def __init__(self, i2c, addr=0x1C, range_gauss=4):\n        \"\"\"addr 0x1C with SDO/SA1 (the board's DO pin) low, 0x1E with it high.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        who = self._r(_WHO_AM_I, 1)[0]\n        if who != 0x3D:\n            raise OSError('LIS3MDL not found (WHO_AM_I=0x%02X): check wiring and address' % who)\n        if range_gauss not in _RANGES:\n            raise ValueError('range_gauss must be 4, 8, 12 or 16')\n        fs_bits, self._sens = _RANGES[range_gauss]\n        # CTRL_REG1: TEMP_EN=0, OM=11 (X/Y ultra-high-performance), DO=100 (10 Hz), FAST_ODR=0, ST=0\n        self._w(_CTRL_REG1, 0x70)\n        # CTRL_REG2: full scale (other bits must be 0)\n        self._w(_CTRL_REG2, fs_bits)\n        # CTRL_REG4: OMZ=11 (Z ultra-high-performance), BLE=0 (LSB at lower address)\n        self._w(_CTRL_REG4, 0x0C)\n        # CTRL_REG5: BDU=1 so a reading's low and high bytes always belong together\n        self._w(_CTRL_REG5, 0x40)\n        # CTRL_REG3: MD=00 continuous conversion (leaves power-down, the reset default)\n        self._w(_CTRL_REG3, 0x00)\n        time.sleep_ms(110)  # first sample at 10 Hz\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def read_raw(self):\n        \"\"\"Raw signed counts (x, y, z).\"\"\"\n        for _ in range(50):  # wait for ZYXDA, at most about 0.5 s\n            if self._r(_STATUS_REG, 1)[0] & 0x08:\n                break\n            time.sleep_ms(10)\n        d = self._r(_OUT_X_L | 0x80, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)\n            out.append(v - 65536 if v & 0x8000 else v)\n        return tuple(out)\n\n    def read(self):\n        \"\"\"Magnetic field (x, y, z) in gauss (1 gauss = 100 uT).\"\"\"\n        x, y, z = self.read_raw()\n        s = self._sens\n        return x / s, y / s, z / s\n\n    def read_ut(self):\n        \"\"\"Magnetic field (x, y, z) in microtesla.\"\"\"\n        return tuple(v * 100 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lis3mdl import LIS3MDL\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = LIS3MDL(i2c)\nwhile True:\n    x, y, z = mag.read()\n    print('X=%.3f Y=%.3f Z=%.3f gauss' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the magnetic field set on the three sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.6
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "magY",
+          "value": -1.2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "magZ",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.600 Y=-1.200 Z=2.000 gauss",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:37:26.936Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J1089/LIS3MDL.pdf",
+      "https://raw.githubusercontent.com/adafruit/Adafruit-LIS3MDL-PCB/master/Adafruit%20LIS3MDL.brd",
+      "https://www.adafruit.com/product/4479"
+    ]
+  }
+}

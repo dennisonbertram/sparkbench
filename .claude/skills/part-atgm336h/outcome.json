@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-atgm336h",
+  "board": "GOOUUU ATGM336H-5N-31 GPS+BD module (5-pin VCC, GND, TX, RX, PPS, IPEX ceramic antenna)",
+  "reason": "Modelled as a uart-device NMEA stream (GGA+RMC at 9600 baud 8N1, ddmm.mmmm per the CASIC protocol spec); the checksum-verifying driver accepts any talker (GN/GP/BD) and decodes it, and the check passed on ESP32 and Pico (simulator, breadboard, circuit board, footprint).",
+  "datasheetUrl": "https://www.tinytronics.nl/product_files/002176_ATGM336H.pdf",
+  "breakoutPinoutSource": "https://www.tinytronics.nl/image/cache/data/product-2176/ATGM336H-5N-31%20GPS%20module%201-600x600w.jpg",
+  "checkRuns": 1
+}

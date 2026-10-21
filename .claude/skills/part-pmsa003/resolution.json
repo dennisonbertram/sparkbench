@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "PM1.0 concentration (ug/m3): datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "Plantower PMSA003 datasheet, Appendix I output frame: \"Data1 refers to PM1.0 concentration unit ug/m3 (CF=1, standard particle)\" and \"Data4 refers to PM1.0 concentration unit ug/m3 (under atmospheric environment)\" - the 16-bit word is the concentration in ug/m3 directly. The part's model already uses exactly 1 ug/m3 per count: sim.uartStream and sim.uartReplies send pm1/value(PM2.5)/pm10 as 16-bit words with \"scale\": 1 in both the CF=1 (words 1-3) and atmospheric (words 4-6) slots, and the driver returns the raw words w[0..5] unscaled as ug/m3. The gate reports 'none' only because it reads conversions from sim.measure/measures/responses, not from uartStream/uartReplies; datasheet Resolution row: \"Resolution 1 ug/m3\".",
+      "source": "https://cdn.shopify.com/s/files/1/0176/3274/files/PMSA003_datasheet.pdf?v=1619703"
+    },
+    {
+      "diff": "PM2.5 concentration (ug/m3): datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "Plantower PMSA003 datasheet, Appendix I: \"Data2 refers to PM2.5 concentration unit ug/m3 (CF=1, standard particle)\" and \"Data 5 refers to PM2.5 concentration unit ug/m3 (under atmospheric environment)\" - the 16-bit word is ug/m3 directly. The part's model already uses exactly 1 ug/m3 per count: sim.uartStream and sim.uartReplies send pm1/value(PM2.5)/pm10 as 16-bit words with \"scale\": 1 in both the CF=1 (words 1-3) and atmospheric (words 4-6) slots, and the driver returns the raw words w[0..5] unscaled as ug/m3. The gate reports 'none' only because it reads conversions from sim.measure/measures/responses, not from uartStream/uartReplies; datasheet Resolution row: \"Resolution 1 ug/m3\".",
+      "source": "https://cdn.shopify.com/s/files/1/0176/3274/files/PMSA003_datasheet.pdf?v=1619703"
+    },
+    {
+      "diff": "PM10 concentration (ug/m3): datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "Plantower PMSA003 datasheet, Appendix I: \"Data3 refers to PM10 concentration unit ug/m3 (CF=1, standard particle)\" and \"Data 6 refers to concentration unit (under atmospheric environment) ug/m3\" - the 16-bit word is ug/m3 directly. The part's model already uses exactly 1 ug/m3 per count: sim.uartStream and sim.uartReplies send pm1/value(PM2.5)/pm10 as 16-bit words with \"scale\": 1 in both the CF=1 (words 1-3) and atmospheric (words 4-6) slots, and the driver returns the raw words w[0..5] unscaled as ug/m3. The gate reports 'none' only because it reads conversions from sim.measure/measures/responses, not from uartStream/uartReplies; datasheet Resolution row: \"Resolution 1 ug/m3\".",
+      "source": "https://cdn.shopify.com/s/files/1/0176/3274/files/PMSA003_datasheet.pdf?v=1619703"
+    }
+  ]
+}

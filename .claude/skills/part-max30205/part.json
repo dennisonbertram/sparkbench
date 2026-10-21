@@ -1,0 +1,138 @@
+{
+  "type": "custom-max30205",
+  "name": "MAX30205 body temperature sensor",
+  "mpn": "MAX30205",
+  "category": "sensor",
+  "description": "Maxim (Analog Devices) clinical-grade digital temperature sensor: 16-bit, 0.00390625 °C resolution, ±0.1 °C from 37 to 39 °C, specified for 0 to 50 °C, with an open-drain overtemperature (OS) output and an I2C interface. The chip runs on 2.7–3.3 V; the breakout adds a 3.3 V regulator and BSS138 level shifters. Sold as: ProtoCentral MAX30205 Body Temperature Sensor Breakout Board (6-pin header: SDA, SCL, OS, 3V3, GND, VIN), I2C address 0x48 (A0–A2 jumpers on the back, all to GND by default).",
+  "eli5": "A very precise thermometer chip meant to touch your skin and read body temperature.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (level-shifted, 10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (level-shifted, 10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "OS",
+      "role": "io",
+      "description": "Overtemperature output (open-drain, active low by default, pulled up on the board); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "3V3",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3.0–5.5 V into the 3.3 V regulator. The I2C pull-ups go to VIN, so use 3.3 V with an ESP32 or Pico",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 0.6,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30205.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "MAX30205 body temperature sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from 3.3 V on an ESP32 or Pico: the board's SDA/SCL pull-ups (and the OS pull-up) go to VIN, so 5 V on VIN would put 5 V on your GPIO pins.",
+    "Default address 0x48 (A0, A1, A2 jumpers to GND). With A0 to VDD it answers at 0x49; each of A0–A2 moved to VDD adds 1, 2 or 4.",
+    "Temperature register 0x00: 16-bit two's complement, MSB first, 1 LSB = 0.00390625 °C. A new value every 44–50 ms in continuous mode.",
+    "The chip measures its own die temperature: for body temperature press the sensor side firmly against the skin and wait a few minutes for it to settle.",
+    "Accuracy is specified only from 0 to 50 °C (±0.1 °C between 37 and 39 °C)."
+  ],
+  "keywords": [
+    "max30205",
+    "body temperature",
+    "temperature",
+    "clinical",
+    "thermometer",
+    "fever",
+    "protocentral",
+    "wearable"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": 0,
+    "max": 50,
+    "default": 25,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 0,
+      "0x02": 19200,
+      "0x03": 20480
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 0.00390625,
+      "signed": true
+    }
+  },
+  "driver": {
+    "filename": "max30205.py",
+    "code": "# MAX30205 human body temperature sensor (Maxim/Analog Devices), MicroPython driver.\n# Written from the MAX30205 datasheet (Rev 0): four 16-bit registers behind a pointer byte,\n# temperature = 16-bit two's complement, MSB first, 1 LSB = 0.00390625 degC (normal format).\nimport time\n\nREG_TEMP = 0x00   # read-only temperature\nREG_CONFIG = 0x01  # 8-bit configuration\nREG_THYST = 0x02  # hysteresis set point (POR 75 degC)\nREG_TOS = 0x03    # overtemperature set point (POR 80 degC)\n\n_SHUTDOWN = 0x01\n_ONE_SHOT = 0x80\n_LSB = 0.00390625\n\n\ndef _to_c(raw):\n    if raw & 0x8000:\n        raw -= 0x10000\n    return raw * _LSB\n\n\ndef _from_c(c):\n    return int(round(c / _LSB)) & 0xFFFF\n\n\nclass MAX30205:\n    def __init__(self, i2c, addr=0x48):\n        \"\"\"addr 0x48 = A0, A1, A2 all tied to GND (datasheet Table 1, 90h).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        # Continuous conversion, comparator mode, OS active low, 1 fault,\n        # normal data format, bus timeout enabled (the power-on defaults).\n        self.i2c.writeto_mem(self.addr, REG_CONFIG, b'\\x00')\n        time.sleep_ms(50)  # one conversion takes up to 50 ms\n\n    def temperature(self):\n        \"\"\"Latest temperature in degC (continuous mode, a new value every ~50 ms).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, REG_TEMP, 2)\n        return _to_c((d[0] << 8) | d[1])\n\n    def shutdown(self, off=True):\n        \"\"\"Shutdown mode draws <= 3.5 uA; leaving it starts a new conversion.\"\"\"\n        self.i2c.writeto_mem(self.addr, REG_CONFIG, bytes([_SHUTDOWN if off else 0x00]))\n\n    def one_shot(self):\n        \"\"\"Low-power reading: in shutdown, set ONE-SHOT, wait one conversion, read.\"\"\"\n        self.i2c.writeto_mem(self.addr, REG_CONFIG, bytes([_SHUTDOWN]))\n        self.i2c.writeto_mem(self.addr, REG_CONFIG, bytes([_ONE_SHOT | _SHUTDOWN]))\n        time.sleep_ms(50)\n        return self.temperature()\n\n    def set_alarm(self, t_os, t_hyst):\n        \"\"\"OS pin asserts above t_os and releases below t_hyst (comparator mode).\"\"\"\n        self.i2c.writeto_mem(self.addr, REG_TOS, _from_c(t_os).to_bytes(2, 'big'))\n        self.i2c.writeto_mem(self.addr, REG_THYST, _from_c(t_hyst).to_bytes(2, 'big'))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom max30205 import MAX30205\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MAX30205(i2c)  # 0x48 with A0-A2 jumpers at their default (GND)\nwhile True:\n    print('T=%.2fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=37.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://raw.githubusercontent.com/libdriver/max30205/main/datasheet/max30205_datasheet.pdf",
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30205.pdf",
+    "https://github.com/Protocentral/protocentral_max30205/blob/master/hardware/pc_max30205_brk.brd",
+    "https://github.com/Protocentral/protocentral_max30205/blob/master/hardware/pc_max30205_brk.sch",
+    "https://github.com/Protocentral/protocentral_max30205/blob/master/docs/images/max30205_brk_0.jpg",
+    "https://github.com/Protocentral/protocentral-micropython-max30205"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:27:29.449Z",
+    "verifiedSources": [
+      "https://github.com/Protocentral/Protocentral_MAX30205",
+      "https://protocentral.com/product/protocentral-max30205-body-temperature-sensor-breakout-board/"
+    ]
+  }
+}

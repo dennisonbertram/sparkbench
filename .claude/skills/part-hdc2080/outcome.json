@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hdc2080",
+  "board": "TinkeringTech HDC2080 TI Humidity & Temperature Sensor Breakout (5-pin: 3.3V, INT, SCL, SDA, GND)",
+  "reason": "Check passed on ESP32 and Pico on the first run. The model uses 8-bit auto-incrementing registers with LSB-first 14-bit T/RH words (low 2 bits zero), TI's T = raw/2^16*165-40.5 and RH = raw/2^16*100, plus the ID registers; the driver checks the IDs, triggers an on-demand measurement via 0x0F = 0x01, waits 10 ms and reads 4 bytes from 0x00.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/hdc2080.pdf",
+  "breakoutPinoutSource": "https://github.com/tinkeringtech/HDC2080_breakout/blob/master/HDC2080_breakout_sch.brd",
+  "checkRuns": 1
+}

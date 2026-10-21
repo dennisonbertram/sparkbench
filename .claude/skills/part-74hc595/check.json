@@ -1,0 +1,79 @@
+{
+  "type": "custom-74hc595",
+  "mpn": "SN74HC595N",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.SRCLK → D25 (GPIO25). U2.RCLK → D26 (GPIO26). U2.SER → D27 (GPIO27). Added the sr595.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shifts in a pattern, latches it to QA-QH, then changes it: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "52.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.SRCLK → GP2 (GPIO2). U2.RCLK → GP3 (GPIO3). U2.SER → GP6 (GPIO6). Added the sr595.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shifts in a pattern, latches it to QA-QH, then changes it: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-16_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C78711 SN74HC595N (635 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:46:17.496Z"
+}

@@ -1,0 +1,144 @@
+{
+  "type": "custom-max31850k",
+  "name": "MAX31850K 1-Wire thermocouple amplifier",
+  "mpn": "MAX31850K",
+  "category": "sensor",
+  "description": "Maxim/Analog Devices cold-junction-compensated K-type thermocouple-to-digital converter on a 1-Wire bus (family code 3Bh): thermocouple range -270 to +1372 °C in 0.25 °C steps (14-bit), cold-junction temperature in 0.0625 °C steps, open/short-circuit fault flags, AD0-AD3 location pins. Chip runs on 3.0-3.7 V; the board regulates VIN 3.3-5 V down to 3.3 V, and DATA is 3.3 V logic only. Sold as: Adafruit 1-Wire Thermocouple Amplifier MAX31850K breakout (product 1727), 8-pin header GND, VIN, 3V3, A0, A1, A2, A3, DATA plus a 2-way screw terminal (YELLOW+, RED-) for the thermocouple; no pull-up on DATA (add 4.7 kΩ to 3.3 V).",
+  "eli5": "Plug a thermocouple wire into it and it tells your board how hot the tip is, even inside an oven or a flame, over a single data wire.",
+  "refPrefix": "U",
+  "interface": "onewire",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (also needed in parasite-power mode)",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply in, 3.3-5 V, to the on-board 3.3 V regulator",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Location address bit AD0 (read back in scratchpad byte 4); tied to GND by a solder jumper, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Location address bit AD1; tied to GND by a solder jumper, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Location address bit AD2; tied to GND by a solder jumper, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "A3",
+      "role": "io",
+      "description": "Location address bit AD3; tied to GND by a solder jumper, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "DATA",
+      "role": "io",
+      "fn": "onewire",
+      "description": "1-Wire data (DQ), open-drain, 3.3 V logic only; needs a 4.7 kΩ pull-up to 3.3 V (not on the board)",
+      "required": true,
+      "pullUp": 4700
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1.75,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/MAX31850-MAX31851.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "Adafruit MAX31850K 1-Wire thermocouple amplifier breakout 1727",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "K-type thermocouples only. Yellow (+, chromel) lead to YELLOW+, red (-, alumel) lead to RED- on the screw terminal; thermocouple wire cannot be soldered.",
+    "Fit a 4.7 kΩ pull-up from DATA to 3.3 V; the board has none. DATA must never see 5 V.",
+    "Send Convert T (44h), wait at least 100 ms (tCONV max), then Read Scratchpad (BEh) and check the CRC (MicroPython's ds18x20 module does the commands and CRC).",
+    "Thermocouple temperature = bits 15..2 of bytes 0-1 as a signed 14-bit number x 0.25 °C. Bit 0 of byte 0 set = fault; bits 0/1/2 of byte 2 say open circuit / short to GND / short to VDD.",
+    "MicroPython's ds18x20.scan() skips family 3Bh: find the chips with onewire.OneWire.scan() and keep ROMs starting with 0x3B.",
+    "Do not ground either thermocouple lead or let the probe touch grounded metal: that is reported as a short-circuit fault.",
+    "Power it from VIN; parasite power from DATA would need a strong pull-up during each conversion."
+  ],
+  "keywords": [
+    "max31850",
+    "max31850k",
+    "thermocouple",
+    "k-type",
+    "1-wire",
+    "onewire",
+    "temperature",
+    "adafruit 1727",
+    "high temperature"
+  ],
+  "sim": {
+    "kind": "onewire-temp",
+    "family": 59,
+    "outputPin": "DATA",
+    "quantity": "Thermocouple temperature",
+    "unit": "°C",
+    "min": -270,
+    "max": 1372,
+    "default": 25
+  },
+  "driver": {
+    "filename": "max31850.py",
+    "code": "# MAX31850K 1-Wire K-type thermocouple amplifier, MicroPython driver.\n# Written from the Maxim MAX31850/MAX31851 datasheet (19-6648):\n#   family code 0x3B; Convert T (44h) takes up to 100 ms (tCONV max);\n#   Read Scratchpad (BEh) returns 9 bytes, byte 8 = Maxim CRC-8 of bytes 0-7;\n#   bytes 0-1 = cold-junction-compensated thermocouple temperature:\n#     bits 15..2 = signed 14-bit value, 0.25 degC per LSB; bit 1 reserved; bit 0 = 1 on a fault;\n#   bytes 2-3 = internal (cold-junction) temperature: bits 15..4 = signed 12-bit, 0.0625 degC per LSB;\n#     bit 2 = short to VDD, bit 1 = short to GND, bit 0 = open circuit;\n#   byte 4 = configuration: bits 3..0 = AD3..AD0 pin levels (bits 7..4 read as 1).\n# MicroPython's ds18x20 module sends the commands and checks the scratchpad CRC; for any\n# family other than 0x10 its read_temp() returns the signed 16-bit word of bytes 0-1 divided\n# by 16, which this driver turns back into the raw word and decodes as above.\nimport time\nimport ds18x20\n\nFAMILY = 0x3B\nCONV_MS = 100  # tCONV max\n\n\nclass MAX31850Fault(OSError):\n    pass\n\n\nclass MAX31850:\n    def __init__(self, ow):\n        self.ow = ow\n        self.ds = ds18x20.DS18X20(ow)\n\n    def scan(self):\n        \"\"\"ROM codes of every MAX31850/MAX31851 on the bus.\"\"\"\n        return [rom for rom in self.ow.scan() if rom[0] == FAMILY]\n\n    def convert(self):\n        \"\"\"Start a conversion on every chip (Skip ROM + 44h) and wait tCONV (100 ms).\n        Externally powered boards only: parasite power needs a strong pull-up during tCONV.\"\"\"\n        self.ds.convert_temp()\n        time.sleep_ms(CONV_MS)\n\n    def read_raw(self, rom):\n        \"\"\"Signed 16-bit word from scratchpad bytes 0-1 (CRC checked by ds18x20).\"\"\"\n        return int(round(self.ds.read_temp(rom) * 16))\n\n    def read_temp(self, rom):\n        \"\"\"Thermocouple temperature in degC (0.25 degC steps). Raises MAX31850Fault if the\n        chip flags an open or shorted thermocouple (bit 0 of byte 0).\"\"\"\n        raw = self.read_raw(rom)\n        if raw & 0x01:\n            raise MAX31850Fault('thermocouple fault: open circuit or shorted to GND/VDD')\n        return (raw >> 2) * 0.25\n\n    def read_detail(self, rom):\n        \"\"\"Whole scratchpad decoded: (thermocouple degC or None on fault, cold-junction degC,\n        fault flags dict, AD3..AD0 address value).\"\"\"\n        buf = self.ds.read_scratch(rom)  # raises on CRC error\n        tc = buf[1] << 8 | buf[0]\n        if tc & 0x8000:\n            tc -= 0x10000\n        cj = buf[3] << 8 | buf[2]\n        if cj & 0x8000:\n            cj -= 0x10000\n        faults = {'open': bool(buf[2] & 0x01), 'short_gnd': bool(buf[2] & 0x02), 'short_vdd': bool(buf[2] & 0x04)}\n        tc_c = None if tc & 0x01 else (tc >> 2) * 0.25\n        return tc_c, (cj >> 4) * 0.0625, faults, buf[4] & 0x0F\n"
+  },
+  "example": {
+    "code": "import machine, onewire, time\nfrom max31850 import MAX31850\n\ntc = MAX31850(onewire.OneWire(machine.Pin({DATA})))\nroms = tc.scan()\nprint('found', len(roms))\nwhile True:\n    tc.convert()  # Convert T, waits 100 ms\n    for rom in roms:\n        print('TC=%.2fC' % tc.read_temp(rom))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the thermocouple temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 850
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TC=850.00C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/MAX31850-MAX31851.pdf",
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31850-MAX31851.pdf",
+    "https://learn.adafruit.com/adafruit-1-wire-thermocouple-amplifier-max31850k/pinouts",
+    "https://github.com/adafruit/Adafruit-MAX31850-thermocouple-breakout-board",
+    "https://www.adafruit.com/product/1727",
+    "https://github.com/micropython/micropython-lib/blob/master/micropython/drivers/sensor/ds18x20/ds18x20.py"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:54:56.096Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31850-MAX31851.pdf",
+      "https://learn.adafruit.com/adafruit-1-wire-thermocouple-amplifier-max31850k/pinouts",
+      "https://cdn-shop.adafruit.com/970x728/1727-06.jpg"
+    ]
+  }
+}

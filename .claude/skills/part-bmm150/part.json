@@ -1,0 +1,202 @@
+{
+  "type": "custom-bmm150",
+  "name": "BMM150 geomagnetic sensor",
+  "mpn": "BMM150",
+  "category": "sensor",
+  "description": "Bosch Sensortec 3-axis geomagnetic sensor (magnetometer / electronic compass): ±1300 µT on X and Y, ±2500 µT on Z, about 0.3 µT resolution, I2C interface. Raw readings must be compensated with the chip's factory trim registers. Sold as: Waveshare BMM150 3-Axis Magnetometer Sensor (5-pin PH2.0 connector: INT, SCL, SDA, GND, VCC), with a 3.3 V regulator, level shifters and I2C pull-ups, 3.3–5 V supply, I2C address 0x13 (the same signals also come out on a 7-pin 2.54 mm header and a 4-pin header).",
+  "eli5": "A tiny compass chip: it measures the Earth's magnetic field in three directions so your board can tell which way it is pointing.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output from the BMM150 (3.3 V logic, high-Z unless enabled in register 0x4E); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (level-shifted, 4.7 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (level-shifted, 4.7 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (RT9193 3.3 V regulator on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "i2cAddress": 19,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmm150-ds001.pdf",
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmm150-ds001.pdf",
+    "https://github.com/boschsensortec/BMM150_SensorAPI/blob/master/bmm150.c",
+    "https://github.com/boschsensortec/BMM150_SensorAPI/blob/master/bmm150_defs.h",
+    "https://www.waveshare.com/wiki/BMM150_3-Axis_Magnetometer_Sensor",
+    "https://www.waveshare.com/bmm150-3-axis-magnetometer-sensor.htm",
+    "https://files.waveshare.com/upload/6/60/BMM150_3-Axis_Magnetometer_Sensor.pdf",
+    "https://www.waveshare.com/img/devkit/accBoard/BMM150-3-Axis-Magnetometer-Sensor/BMM150-3-Axis-Magnetometer-Sensor-details-3.jpg"
+  ],
+  "priceUsd": 9,
+  "supplierQuery": "Waveshare BMM150 3-axis magnetometer sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Set the power control bit (0x4B = 0x01) and wait 3 ms before anything else: in suspend mode the chip ID (0x40, reads 0x32) and data registers are not accessible.",
+    "Read the factory trim registers (0x5D-0x5E, 0x62-0x65, 0x68-0x71) once and compensate every reading with Bosch's formula; raw X/Y/Z counts alone are not microtesla.",
+    "Forced mode: write 0x02 to 0x4C, wait for the measurement (about 10 ms with the regular preset, REPXY 0x04 / REPZ 0x0E) and poll the data-ready bit (0x48 bit 0) before reading 0x42-0x49.",
+    "This board pulls CSB and SDO high, so its address is 0x13; on the 7-pin header A0/SDO and A1/CS can be pulled low for 0x12, 0x11 or 0x10.",
+    "Keep it away from motors, speakers, magnets, steel screws and current-carrying wires, and calibrate hard-iron offsets (min/max while rotating) before using it as a compass.",
+    "The onboard I2C/SPI resistor must stay in the I2C position (default)."
+  ],
+  "keywords": [
+    "bmm150",
+    "magnetometer",
+    "compass",
+    "geomagnetic",
+    "bosch",
+    "waveshare",
+    "heading"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "µT",
+    "min": -1300,
+    "max": 1300,
+    "default": 20,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Magnetic field Y",
+        "unit": "µT",
+        "min": -1300,
+        "max": 1300,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Magnetic field Z",
+        "unit": "µT",
+        "min": -2500,
+        "max": 2500,
+        "default": -40
+      }
+    ],
+    "registers": {
+      "0x40": 50,
+      "0x48": 233,
+      "0x49": 108,
+      "0x5D": 0,
+      "0x5E": 0,
+      "0x62": 0,
+      "0x63": 0,
+      "0x64": 26,
+      "0x65": 26,
+      "0x68": 251,
+      "0x69": 2,
+      "0x6A": 171,
+      "0x6B": 96,
+      "0x6C": 141,
+      "0x6D": 27,
+      "0x6E": 0,
+      "0x6F": 0,
+      "0x70": 253,
+      "0x71": 29
+    },
+    "measures": [
+      {
+        "reg": "0x42",
+        "bytes": 2,
+        "scale": 0.36377070300749254,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 3,
+        "control": "value"
+      },
+      {
+        "reg": "0x44",
+        "bytes": 2,
+        "scale": 0.36377070300749254,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 3,
+        "control": "y"
+      },
+      {
+        "reg": "0x46",
+        "bytes": 2,
+        "scale": 0.3398113756191282,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 1,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmm150.py",
+    "code": "# BMM150 geomagnetic sensor (Bosch Sensortec), MicroPython driver.\n# Register map and timings from the BMM150 datasheet (BST-BMM150-DS001); trim registers and the\n# floating-point compensation are those of Bosch's BMM150 SensorAPI (bmm150.c), which the datasheet\n# requires (\"trimming data ... required for sensor data compensation, read out by the API\").\nimport time\n\n_CHIP_ID = 0x40      # reads 0x32 once the power control bit is set\n_DATA_X_LSB = 0x42   # 0x42..0x49: X, Y, Z, RHALL (+ data-ready bit in 0x48)\n_POWER = 0x4B        # bit0 = power control (suspend -> sleep)\n_OPMODE = 0x4C       # [2:1] opmode: 00 normal, 01 forced, 11 sleep; [5:3] data rate\n_REP_XY = 0x51       # nXY = 1 + 2 * REPXY\n_REP_Z = 0x52        # nZ = 1 + REPZ\n\n# Presets from datasheet table 3: (REPXY register, REPZ register, max forced-mode time in ms)\nPRESETS = {\n    'low_power': (0x01, 0x02, 4),       # nXY 3,  nZ 3\n    'regular': (0x04, 0x0E, 11),        # nXY 9,  nZ 15\n    'enhanced': (0x07, 0x1A, 17),       # nXY 15, nZ 27\n    'high_accuracy': (0x17, 0x52, 50),  # nXY 47, nZ 83\n}\n\n\ndef _s8(b):\n    return b - 256 if b & 0x80 else b\n\n\ndef _s16(lo, hi):\n    v = (hi << 8) | lo\n    return v - 65536 if v & 0x8000 else v\n\n\nclass BMM150:\n    def __init__(self, i2c, addr=0x13, preset='regular'):\n        self.i2c = i2c\n        self.addr = addr\n        self._w(_POWER, 0x01)          # suspend -> sleep\n        time.sleep_ms(3)               # start-up time from suspend: 3 ms\n        cid = self._r(_CHIP_ID, 1)[0]\n        if cid != 0x32:\n            raise OSError('BMM150 not found (chip id 0x%02x)' % cid)\n        self._read_trim()\n        self.set_preset(preset)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _read_trim(self):\n        a = self._r(0x5D, 2)    # dig_x1, dig_y1\n        b = self._r(0x62, 4)    # dig_z4 (LSB, MSB), dig_x2, dig_y2\n        c = self._r(0x68, 10)   # dig_z2, dig_z1, dig_xyz1, dig_z3 (LSB, MSB each), dig_xy2, dig_xy1\n        self.x1 = _s8(a[0])\n        self.y1 = _s8(a[1])\n        self.z4 = _s16(b[0], b[1])\n        self.x2 = _s8(b[2])\n        self.y2 = _s8(b[3])\n        self.z2 = _s16(c[0], c[1])\n        self.z1 = (c[3] << 8) | c[2]\n        self.xyz1 = ((c[5] & 0x7F) << 8) | c[4]\n        self.z3 = _s16(c[6], c[7])\n        self.xy2 = _s8(c[8])\n        self.xy1 = c[9]\n\n    def set_preset(self, preset):\n        rxy, rz, self._t_ms = PRESETS[preset]\n        self._w(_REP_XY, rxy)\n        self._w(_REP_Z, rz)\n\n    def _measure(self):\n        # Forced mode: one measurement, then the chip returns to sleep by itself.\n        self._w(_OPMODE, 0x02)\n        time.sleep_ms(self._t_ms)\n        for _ in range(20):\n            if self._r(0x48, 1)[0] & 0x01:   # data-ready status\n                break\n            time.sleep_ms(2)\n        else:\n            raise OSError('BMM150 measurement timed out')\n        return self._r(_DATA_X_LSB, 8)\n\n    def _comp_xy(self, raw, rhall, d1, d2):\n        if raw == -4096 or rhall == 0 or self.xyz1 == 0:\n            return None   # overflow\n        r = self.xyz1 * 16384.0 / rhall - 16384.0\n        p2 = self.xy2 * (r * r / 268435456.0) + r * self.xy1 / 16384.0\n        p4 = raw * ((p2 + 256.0) * (d2 + 160.0))\n        return (p4 / 8192.0 + d1 * 8.0) / 16.0\n\n    def _comp_z(self, raw, rhall):\n        if raw == -16384 or self.z2 == 0 or self.z1 == 0 or self.xyz1 == 0 or rhall == 0:\n            return None   # overflow\n        p0 = raw - self.z4\n        p2 = self.z3 * (rhall - self.xyz1)\n        p4 = self.z2 + self.z1 * rhall / 32768.0\n        return ((p0 * 131072.0 - p2) / (p4 * 4.0)) / 16.0\n\n    def read_raw(self):\n        \"\"\"Return raw (x, y, z, rhall) ADC values from one forced measurement.\"\"\"\n        d = self._measure()\n        x = _s16(d[0], d[1]) >> 3        # 13-bit two's complement\n        y = _s16(d[2], d[3]) >> 3\n        z = _s16(d[4], d[5]) >> 1        # 15-bit two's complement\n        rhall = (d[7] << 6) | (d[6] >> 2)  # 14-bit hall resistance\n        return x, y, z, rhall\n\n    def read(self):\n        \"\"\"Measure once; return compensated (x, y, z) in microtesla (None for an axis that overflowed).\"\"\"\n        x, y, z, rh = self.read_raw()\n        return (self._comp_xy(x, rh, self.x1, self.x2),\n                self._comp_xy(y, rh, self.y1, self.y2),\n                self._comp_z(z, rh))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmm150 import BMM150\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = BMM150(i2c)  # address 0x13 on this board (CSB and SDO pulled high)\nwhile True:\n    x, y, z = mag.read()\n    if None in (x, y, z):\n        print('overflow')\n    else:\n        print('X=%.1f Y=%.1f Z=%.1f uT' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z field set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 26
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -13
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": -100
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=25.8 Y=-13.1 Z=-99.9 uT",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:38:11.843Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmm150-ds001.pdf",
+      "https://www.waveshare.com/wiki/BMM150_3-Axis_Magnetometer_Sensor"
+    ]
+  }
+}

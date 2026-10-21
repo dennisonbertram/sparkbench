@@ -1,0 +1,201 @@
+{
+  "type": "custom-mmc5603",
+  "name": "MMC5603 3-axis magnetometer",
+  "mpn": "MMC5603NJ",
+  "category": "sensor",
+  "description": "MEMSIC MMC5603NJ three-axis AMR magnetic sensor: ±30 gauss on X, Y and Z with 20-bit resolution (16384 counts per gauss, 0.0625 mG), built-in SET/RESET degaussing and a die temperature sensor, I2C address 0x30. Used as an electronic compass. Sold as: Adafruit Triple-axis Magnetometer - MMC5603 [STEMMA QT / Qwiic] (#5579), 5-pin header VIN, 3Vo, GND, SCL, SDA, 3–5 V supply via its onboard 3.3 V regulator, I2C address 0x30.",
+  "eli5": "A very sensitive compass chip: it feels the magnetic field in three directions so your board can find north or notice a nearby magnet.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V (onboard regulator feeds the 3.6 V-max chip with 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "power",
+      "description": "3.3 V output of the onboard regulator (up to 100 mA); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up fitted on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up fitted on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 48,
+  "datasheetUrl": "https://www.memsic.com/Public/Uploads/uploadfile/files/20220119/MMC5603NJDatasheetRev.B.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "Adafruit MMC5603 triple-axis magnetometer STEMMA QT 5579",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Address 0x30 is fixed in the chip (no address pin); check that the Product ID register 0x39 reads 0x10.",
+    "One-shot reading per the datasheet: write 0x21 (Take_meas_M + Auto_SR_en) to 0x1B, wait until bit 6 (Meas_m_done) of status 0x18 is set (6.6 ms at the default bandwidth), then read 9 bytes from 0x00.",
+    "Each axis is 20-bit UNSIGNED: bytes 0x00/0x01 hold bits 19..4, the top nibble of 0x06/0x07/0x08 holds bits 3..0. Subtract 524288 (null field) and divide by 16384 to get gauss.",
+    "After exposure to a strong magnet (over about 32 G) do a SET (0x08 to 0x1B) and RESET (0x10 to 0x1B), at least 1 ms apart, to restore the sensor.",
+    "Keep it away from motors, speakers, magnets and steel screws, and calibrate hard/soft-iron offsets (record min/max while rotating) before trusting a heading.",
+    "Power VIN from the same voltage as your board's logic (3.3 V on ESP32/Pico); the board pulls SDA/SCL up to its 3.3 V regulator output."
+  ],
+  "keywords": [
+    "mmc5603",
+    "mmc5603nj",
+    "memsic",
+    "magnetometer",
+    "compass",
+    "magnetic field",
+    "heading",
+    "adafruit 5579"
+  ],
+  "sources": [
+    "https://www.memsic.com/Public/Uploads/uploadfile/files/20220119/MMC5603NJDatasheetRev.B.pdf",
+    "https://learn.adafruit.com/adafruit-mmc5603-triple-axis-magnetometer/pinouts",
+    "https://www.adafruit.com/product/5579",
+    "Fritzing: contrib/Adafruit-_4dfd14f82b6af3cab826504383ee4e41_1_36.fzp (header connectors VCC, 3.3V, GND, SCL, SDA)"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "G",
+    "min": -30,
+    "max": 30,
+    "default": 0.2,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Magnetic field Y",
+        "unit": "G",
+        "min": -30,
+        "max": 30,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Magnetic field Z",
+        "unit": "G",
+        "min": -30,
+        "max": 30,
+        "default": -0.4
+      },
+      {
+        "key": "temp",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x06": 0,
+      "0x07": 0,
+      "0x08": 0,
+      "0x18": 192,
+      "0x39": 16
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "offset": -32,
+        "control": "value"
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "offset": -32,
+        "control": "y"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "offset": -32,
+        "control": "z"
+      },
+      {
+        "reg": "0x09",
+        "bytes": 1,
+        "scale": 0.8,
+        "offset": -75,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mmc5603.py",
+    "code": "# MMC5603NJ 3-axis AMR magnetometer (MEMSIC datasheet Rev. B, 1/17/2022), MicroPython driver.\n# One-shot measurement as in the datasheet's \"Example of measurement\": write 0x21 (Take_meas_M +\n# Auto_SR_en) to Internal Control 0 (0x1B), poll Status1 (0x18) bit 6 Meas_m_done, then read\n# 0x00..0x08. Each axis is a 20-bit UNSIGNED value: out[19:12] in 0x00/02/04, out[11:4] in\n# 0x01/03/05, out[3:0] in bits 7..4 of 0x06/07/08. Null field = 524288 counts, 16384 counts/G.\n# Temperature: Take_meas_T (0x02), poll bit 7 Meas_t_done, T = -75 + 0.8 * Tout (0x09) degrees C.\nimport time\n\n_REG_XOUT0 = 0x00\n_REG_TOUT = 0x09\n_REG_STATUS1 = 0x18\n_REG_ODR = 0x1A\n_REG_CTRL0 = 0x1B\n_REG_CTRL1 = 0x1C\n_REG_CTRL2 = 0x1D\n_REG_PRODUCT_ID = 0x39\n\n_PRODUCT_ID = 0x10\n\n_TM_M = 0x01\n_TM_T = 0x02\n_DO_SET = 0x08\n_DO_RESET = 0x10\n_AUTO_SR_EN = 0x20\n_SW_RESET = 0x80\n\n_MEAS_M_DONE = 0x40\n_MEAS_T_DONE = 0x80\n\n_NULL_FIELD = 524288  # 20-bit null-field output\n_COUNTS_PER_GAUSS = 16384.0  # 20-bit operation\n\n# Bandwidth (Internal Control 1 bits 1..0): measurement time 6.6 / 3.5 / 2.0 / 1.2 ms.\nBW_6_6MS = 0\nBW_3_5MS = 1\nBW_2_0MS = 2\nBW_1_2MS = 3\n\n\nclass MMC5603:\n    def __init__(self, i2c, addr=0x30, bw=BW_6_6MS):\n        self.i2c = i2c\n        self.addr = addr\n        pid = self._read(_REG_PRODUCT_ID, 1)[0]\n        if pid != _PRODUCT_ID:\n            raise OSError('MMC5603: product ID 0x%02X, expected 0x10 (check wiring / address 0x30)' % pid)\n        self._write(_REG_CTRL1, _SW_RESET)\n        time.sleep_ms(20)  # power-on time after a software reset is 20 ms\n        self._write(_REG_CTRL1, bw & 0x03)\n        self.set_reset()\n\n    def _write(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def set_reset(self):\n        \"\"\"SET then RESET pulse to clear any magnetisation left by a strong field (>32 G).\"\"\"\n        self._write(_REG_CTRL0, _DO_SET)\n        time.sleep_ms(1)  # tSR >= 1 ms\n        self._write(_REG_CTRL0, _DO_RESET)\n        time.sleep_ms(1)\n\n    def _wait(self, mask, timeout_ms):\n        t0 = time.ticks_ms()\n        while not (self._read(_REG_STATUS1, 1)[0] & mask):\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('MMC5603: measurement timed out')\n            time.sleep_ms(1)\n\n    def read_raw(self):\n        \"\"\"Take one measurement and return the signed 20-bit counts (x, y, z), null field removed.\"\"\"\n        self._write(_REG_CTRL0, _TM_M | _AUTO_SR_EN)\n        self._wait(_MEAS_M_DONE, 50)\n        d = self._read(_REG_XOUT0, 9)\n        x = (d[0] << 12) | (d[1] << 4) | (d[6] >> 4)\n        y = (d[2] << 12) | (d[3] << 4) | (d[7] >> 4)\n        z = (d[4] << 12) | (d[5] << 4) | (d[8] >> 4)\n        return x - _NULL_FIELD, y - _NULL_FIELD, z - _NULL_FIELD\n\n    def read(self):\n        \"\"\"Return the magnetic field (x, y, z) in gauss (1 G = 100 uT).\"\"\"\n        x, y, z = self.read_raw()\n        k = _COUNTS_PER_GAUSS\n        return x / k, y / k, z / k\n\n    def temperature(self):\n        \"\"\"Die temperature in degrees C (about 0.8 C per count, -75 to 125 C).\"\"\"\n        self._write(_REG_CTRL0, _TM_T)\n        self._wait(_MEAS_T_DONE, 50)\n        return -75 + 0.8 * self._read(_REG_TOUT, 1)[0]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mmc5603 import MMC5603\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = MMC5603(i2c)  # address 0x30\nwhile True:\n    x, y, z = mag.read()\n    t = mag.temperature()\n    print('X=%.4fG Y=%.4fG Z=%.4fG T=%.1fC' % (x, y, z, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y, Z field and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.125
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 33
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.2500G Y=-0.1250G Z=0.5000G T=33.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:26:22.373Z",
+    "verifiedSources": [
+      "https://www.memsic.com/Public/Uploads/uploadfile/files/20220119/MMC5603NJDatasheetRev.B.pdf",
+      "https://learn.adafruit.com/adafruit-mmc5603-triple-axis-magnetometer/pinouts",
+      "https://www.adafruit.com/product/5579"
+    ]
+  }
+}

@@ -1,0 +1,278 @@
+{
+  "type": "custom-74hc595",
+  "name": "74HC595 8-bit shift register",
+  "mpn": "SN74HC595N",
+  "category": "ic",
+  "description": "8-bit serial-in, parallel-out shift register with a latched (storage) output register and 3-state outputs: clock 8 bits in on SER/SRCLK, pulse RCLK, and QA-QH switch together. Turns 3 GPIOs into 8 outputs (more by chaining through QH'), e.g. for 8 LEDs. Runs on 2-6 V, about 6 mA per output (70 mA total through VCC/GND). Sold as: Texas Instruments SN74HC595N bare chip in a DIP-16 package (pins 1-7 QB-QH, 8 GND, 9 QH', 10 SRCLR, 11 SRCLK, 12 RCLK, 13 OE, 14 SER, 15 QA, 16 VCC), plugged straight into a breadboard.",
+  "eli5": "Lets your board switch 8 LEDs using only 3 wires: it sends the on/off pattern one bit at a time, then the chip shows all 8 at once.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "QB",
+      "role": "io",
+      "description": "Output QB (pin 1). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "QC",
+      "role": "io",
+      "description": "Output QC (pin 2). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "QD",
+      "role": "io",
+      "description": "Output QD (pin 3). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "QE",
+      "role": "io",
+      "description": "Output QE (pin 4). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "QF",
+      "role": "io",
+      "description": "Output QF (pin 5). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "QG",
+      "role": "io",
+      "description": "Output QG (pin 6). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "QH",
+      "role": "io",
+      "description": "Output QH (pin 7). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 8)",
+      "required": true
+    },
+    {
+      "name": "QH'",
+      "role": "io",
+      "description": "Serial out (pin 9): connect to SER of a second 74HC595 to chain them; leave open otherwise",
+      "required": false
+    },
+    {
+      "name": "SRCLR",
+      "role": "power",
+      "description": "Shift-register clear, active low (pin 10). Tie to VCC for normal use (low clears the shift register)",
+      "required": true
+    },
+    {
+      "name": "SRCLK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Shift clock (pin 11): SER is shifted in on each rising edge",
+      "required": true
+    },
+    {
+      "name": "RCLK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Latch / storage clock (pin 12): a rising edge copies the shift register to QA-QH",
+      "required": true
+    },
+    {
+      "name": "OE",
+      "role": "gnd",
+      "description": "Output enable, active low (pin 13). Tie to GND so the outputs are on (high = outputs off, high-impedance)",
+      "required": true
+    },
+    {
+      "name": "SER",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Serial data in (pin 14)",
+      "required": true
+    },
+    {
+      "name": "QA",
+      "role": "io",
+      "description": "Output QA (pin 15). Drive an LED through a 330 ohm-1 kohm resistor; keep each output under 6 mA at 3.3 V",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2-6 V (pin 16). Use 3.3 V with an ESP32/Pico: at 5 V the inputs need 3.5 V for a high",
+      "required": true
+    }
+  ],
+  "vmin": 2,
+  "vmax": 6,
+  "currentMa": 1,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/sn74hc595.pdf",
+  "priceUsd": 0.6,
+  "supplierQuery": "SN74HC595N DIP-16 shift register",
+  "footprint": "Package_DIP:DIP-16_W7.62mm",
+  "buildNotes": [
+    "Tie OE (pin 13) to GND and SRCLR (pin 10) to VCC. If either floats, the outputs flicker or stay off (TI: unused inputs must be held at VCC or GND).",
+    "Power it from 3.3 V with an ESP32 or Pico. At VCC = 4.5-5 V a logic high must be at least 3.15-3.5 V, so 3.3 V GPIOs are not reliably seen as high.",
+    "Each LED needs its own series resistor (330 ohm - 1 kohm). Keep each output under about 6 mA and the whole chip under 70 mA through VCC/GND.",
+    "Send 8 bits MSB first on SER, one SRCLK rising edge each, then one RCLK rising edge: bit 7 ends in QH, bit 0 in QA.",
+    "Put a 100 nF ceramic capacitor between VCC (pin 16) and GND (pin 8), close to the chip.",
+    "Chain chips by wiring QH' (pin 9) to the next chip's SER and sharing SRCLK and RCLK; send the last chip's byte first."
+  ],
+  "keywords": [
+    "74hc595",
+    "sn74hc595",
+    "595",
+    "shift register",
+    "sipo",
+    "led driver",
+    "output expander",
+    "serial to parallel"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/sn74hc595.pdf",
+    "https://www.ti.com/product/SN74HC595"
+  ],
+  "sim": {
+    "kind": "shift-register",
+    "shift": {
+      "type": "595",
+      "data": "SER",
+      "clock": "SRCLK",
+      "latch": "RCLK",
+      "outputs": [
+        "QA",
+        "QB",
+        "QC",
+        "QD",
+        "QE",
+        "QF",
+        "QG",
+        "QH"
+      ]
+    }
+  },
+  "driver": {
+    "filename": "sr595.py",
+    "code": "# 74HC595 8-bit serial-in / parallel-out shift register (TI SN74HC595), MicroPython driver.\n# Per the datasheet function table: SER is sampled on each SRCLK rising edge (first stage takes SER,\n# every other stage takes the previous one), and an RCLK rising edge copies the shift register to the\n# output (storage) register. Bits are sent MSB first, so after 8 clocks bit 7 sits in QH and bit 0 in QA.\n# Several chips can be chained (QH' of one to SER of the next); the last chip's byte is sent first.\nfrom machine import Pin\n\n\nclass SR595:\n    def __init__(self, ser, srclk, rclk, chain=1, srclr=None, oe=None):\n        \"\"\"ser/srclk/rclk/srclr/oe are GPIO numbers. srclr and oe are optional: leave them None when\n        SRCLR is tied to VCC and OE is tied to GND on the breadboard.\"\"\"\n        self.ser = Pin(ser, Pin.OUT, value=0)\n        self.srclk = Pin(srclk, Pin.OUT, value=0)\n        self.rclk = Pin(rclk, Pin.OUT, value=0)\n        self.chain = chain\n        self.srclr = Pin(srclr, Pin.OUT, value=1) if srclr is not None else None\n        self.oe = Pin(oe, Pin.OUT, value=0) if oe is not None else None\n        self._state = bytearray(chain)\n\n    def _shift_byte(self, b):\n        for i in range(7, -1, -1):\n            self.ser.value((b >> i) & 1)\n            self.srclk.value(1)  # SER is clocked in on the rising edge\n            self.srclk.value(0)\n\n    def latch(self):\n        \"\"\"Copy the shift register to the outputs QA-QH (RCLK rising edge).\"\"\"\n        self.rclk.value(1)\n        self.rclk.value(0)\n\n    def write(self, value):\n        \"\"\"Set all outputs at once. With chain=1 value is 0-255 (bit 0 = QA ... bit 7 = QH);\n        with chained chips, bits 8-15 go to the second chip, and so on.\"\"\"\n        for n in range(self.chain - 1, -1, -1):\n            b = (value >> (8 * n)) & 0xFF\n            self._state[n] = b\n            self._shift_byte(b)\n        self.latch()\n\n    def value(self):\n        v = 0\n        for n in range(self.chain):\n            v |= self._state[n] << (8 * n)\n        return v\n\n    def pin(self, index, on):\n        \"\"\"Switch one output (0 = QA of the first chip) on or off, leaving the others as they are.\"\"\"\n        v = self.value()\n        v = v | (1 << index) if on else v & ~(1 << index)\n        self.write(v)\n\n    def clear(self):\n        \"\"\"All outputs off. Uses SRCLR (active low) if it is wired, then latches.\"\"\"\n        if self.srclr is not None:\n            self.srclr.value(0)\n            self.srclr.value(1)\n            for n in range(self.chain):\n                self._state[n] = 0\n            self.latch()\n        else:\n            self.write(0)\n\n    def enable(self, on=True):\n        \"\"\"Drive OE (active low) if it is wired: outputs on, or high-impedance (all LEDs dark).\"\"\"\n        if self.oe is not None:\n            self.oe.value(0 if on else 1)\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom sr595 import SR595\n\nsr = SR595(ser={SER}, srclk={SRCLK}, rclk={RCLK})\nsr.write(0b00100101)  # QA, QC and QF on\nprint('OUT=%s' % '{:08b}'.format(sr.value()))\ntime.sleep(4)\nsr.write(0b10000010)  # QB and QH on\nprint('OUT=%s' % '{:08b}'.format(sr.value()))\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "outputs",
+      "title": "Shifts in a pattern, latches it to QA-QH, then changes it",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QA",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QC",
+          "on": true,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QF",
+          "on": true,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QB",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QH",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "OUT=00100101",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QH",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QB",
+          "on": true,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QA",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QC",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "QF",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "OUT=10000010",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-74hc595\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the 74HC595 8-bit serial-in / parallel-out shift register (TI SN74HC595N, DIP-16). Use when designing, wiring, simulating or writing code for a 74HC595 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# 74HC595 8-bit shift register (SN74HC595N)\n\n## Overview\nThe **74HC595** turns 3 GPIOs into 8 outputs. You clock 8 bits in on SER/SRCLK into a shift register, then pulse RCLK and the storage register copies them to QA-QH all at once (no flicker while shifting). The outputs are 3-state (OE high = off). Hobbyists buy the bare **Texas Instruments SN74HC595N in a DIP-16 package** and plug it straight into a breadboard, typically to drive 8 LEDs. Chain more chips through QH'.\n\n## Pinout (DIP-16, pin 1 next to the notch)\n| Pin | Name | Function |\n|---|---|---|\n| 1-7 | QB-QH | Parallel outputs B to H |\n| 8 | GND | Ground |\n| 9 | QH' | Serial out, to SER of the next chip when chaining |\n| 10 | SRCLR | Shift-register clear, active low: tie to VCC |\n| 11 | SRCLK | Shift clock (rising edge) |\n| 12 | RCLK | Latch / storage clock (rising edge) |\n| 13 | OE | Output enable, active low: tie to GND |\n| 14 | SER | Serial data in |\n| 15 | QA | Parallel output A |\n| 16 | VCC | Supply, 2-6 V |\n\n## Electrical limits\n- Supply: 2-6 V (absolute max 7 V); about 80 uA max idle.\n- Inputs: high needs >= 0.7 x VCC (3.15 V at 4.5 V), low <= 0.3 x VCC; never above VCC.\n- Outputs: specified for 6 mA at 4.5 V (less at 3.3 V); absolute max 35 mA per pin and **70 mA total** through VCC/GND.\n- Clock: 5 MHz at 2 V, 25 MHz at 4.5 V (MicroPython bit-banging is far slower, which is fine).\n\n## Interface details\n- Function table (datasheet Table 8-1): on each SRCLK rising edge the first stage takes SER and every stage takes the previous one; an RCLK rising edge copies the shift register to the outputs; SRCLR low clears the shift register; OE high puts QA-QH in high impedance.\n- Send MSB first: after 8 clocks bit 7 is in QH and bit 0 in QA. Then one RCLK pulse.\n- Chained chips: send the far chip's byte first, then the near one, then a single RCLK pulse.\n\n## Wiring\n- ESP32: VCC and SRCLR -> 3V3, GND and OE -> GND, SER -> D23, SRCLK -> D18, RCLK -> D5.\n- Pico: VCC and SRCLR -> 3V3(OUT), GND and OE -> GND, SER -> GP19, SRCLK -> GP18, RCLK -> GP17.\n- Raspberry Pi 4: VCC and SRCLR -> pin 1 (3.3 V), GND and OE -> pin 6, SER -> pin 19, SRCLK -> pin 23, RCLK -> pin 24.\n- Each QA-QH output -> 330 ohm-1 kohm resistor -> LED anode, LED cathode -> GND.\n- 100 nF ceramic capacitor between pin 16 and pin 8.\n\n## Using the driver\n```python\nfrom sr595 import SR595\nsr = SR595(ser=23, srclk=18, rclk=5)   # chain=2 for two chips\nsr.write(0b00100101)                    # QA, QC, QF on\nsr.pin(7, True)                         # QH on as well\n```\n\n## Gotchas\n- OE and SRCLR must not float: tie OE to GND and SRCLR to VCC (or drive them from GPIOs). Floating inputs give random flicker.\n- At 5 V supply a 3.3 V GPIO high is below the 3.5 V threshold: run the chip from 3.3 V with an ESP32 or Pico.\n- Without a resistor per LED the outputs and the 70 mA package limit are overloaded.\n- Nothing changes on the LEDs until RCLK is pulsed.\n- On some datasheets the pins are named DS, SH_CP, ST_CP, MR, Q0-Q7, Q7' (same pins: SER, SRCLK, RCLK, SRCLR, QA-QH, QH').\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/sn74hc595.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:46:17.496Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/sn74hc595.pdf"
+    ]
+  }
+}

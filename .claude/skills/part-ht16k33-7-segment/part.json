@@ -1,0 +1,120 @@
+{
+  "type": "custom-ht16k33-7-segment",
+  "name": "HT16K33 4-digit 7-segment display (I2C backpack)",
+  "mpn": "HT16K33",
+  "category": "display",
+  "description": "Four-digit 0.56\" 7-segment LED display with centre colon, driven by a Holtek HT16K33 RAM-mapped LED controller over I2C (up to 400 kHz). 16-step dimming, hardware blink, address 0x70-0x77 set by solder jumpers A0-A2. HT16K33 supply 4.5-5.5 V. Sold as: Adafruit 0.56\" 4-Digit 7-Segment Display w/ I2C Backpack (product 878 red; 879-881, 1002 other colours; STEMMA QT revision), 4-pin header +, -, D, C.",
+  "eli5": "Four big glowing digits that show numbers your board sends over just two wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "+",
+      "role": "power",
+      "description": "VCC / VDD supply for the HT16K33 and LEDs, 5 V (chip spec 4.5-5.5 V); the 10 kOhm SDA/SCL pull-ups go to this pin",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SDA), 10 kOhm pull-up to + on the backpack",
+      "required": true
+    },
+    {
+      "name": "C",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SCL), 10 kOhm pull-up to + on the backpack",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 100,
+  "i2cAddress": 112,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Adafruit 0.56 4-digit 7-segment display I2C backpack HT16K33",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Init sequence from the datasheet: 0x21 (oscillator on), 0xE0|brightness (0-15), then 0x81 (display on, no blink). At power-up the oscillator is stopped and the display is off, so nothing lights until these are sent.",
+    "Write display RAM with one I2C write: 0x00 followed by the data bytes. On this backpack the digits are RAM bytes 0, 2, 6 and 8 (left to right) and byte 4 bit 1 (0x02) is the centre colon. Segment bits: bit0 = a ... bit6 = g, bit7 = decimal point.",
+    "The board's 10 kOhm SDA/SCL pull-ups go to the + pin. With + on 5 V the bus idles at 5 V, which is above an ESP32's or Pico's 3.6 V pin limit: use a bidirectional I2C level shifter (e.g. BSS138 type) between a 3.3 V board and the backpack. Adafruit reports + on 3.3 V also works (dimmer, below the HT16K33's 4.5 V spec).",
+    "Default address 0x70; solder A0/A1/A2 jumpers closed to add 1/2/4 (0x71-0x77) for up to eight displays on one bus.",
+    "All segments lit at full brightness draws on the order of 100 mA from +: power it from the 5 V (VBUS/VIN) pin, not a GPIO."
+  ],
+  "keywords": [
+    "ht16k33",
+    "7-segment",
+    "seven segment",
+    "led backpack",
+    "adafruit 878",
+    "4-digit",
+    "i2c display",
+    "clock display"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+    "https://www.adafruit.com/product/878",
+    "https://learn.adafruit.com/adafruit-led-backpack/0-dot-56-seven-segment-backpack-assembly",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-led-backpack.pdf",
+    "https://github.com/adafruit/Adafruit-LED-Backpacks/blob/master/Adafruit%200.56%207-Segment%20QT.sch",
+    "https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/svg/contrib/breadboard/adafruit_f69cfc477b5825ded2469711f0fe6484_4_breadboard_FB.svg",
+    "https://github.com/adafruit/Adafruit_CircuitPython_HT16K33/blob/main/adafruit_ht16k33/segments.py"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "ht16k33",
+    "digits": 4,
+    "digitMap": [
+      0,
+      2,
+      6,
+      8
+    ]
+  },
+  "driver": {
+    "filename": "ht16k33seg.py",
+    "code": "# HT16K33 4-digit 7-segment backpack (Adafruit 0.56\" display), MicroPython driver.\n# Written from the Holtek HT16K33 datasheet (Rev 1.10) and the Adafruit backpack schematic:\n#   0x21        system setup: oscillator on (normal operation)\n#   0x80|B<<1|D display setup: D = display on, B = blink (0 off, 1 = 2 Hz, 2 = 1 Hz, 3 = 0.5 Hz)\n#   0xE0|P      dimming: P = 0..15 -> 1/16 .. 16/16 duty\n#   0x00 + data display RAM write from address 0 (address pointer auto-increments)\n# On the backpack each digit is wired to one COM line, segment a..g,DP to ROW0..ROW7,\n# so digit n is the low byte of RAM row n: bytes 0, 2, 6, 8 (left to right).\n# Byte 4 is the colon: bit 1 (0x02) lights the centre colon.\nfrom micropython import const\n\n_OSC_ON = const(0x21)\n_DISPLAY = const(0x80)\n_DIMMING = const(0xE0)\n\nDIGIT_POS = (0, 2, 6, 8)\nCOLON_POS = 4\n\n# bit0 = a, bit1 = b, ... bit6 = g, bit7 = decimal point\nFONT = {\n    '0': 0x3F, '1': 0x06, '2': 0x5B, '3': 0x4F, '4': 0x66,\n    '5': 0x6D, '6': 0x7D, '7': 0x07, '8': 0x7F, '9': 0x6F,\n    'A': 0x77, 'B': 0x7C, 'C': 0x39, 'D': 0x5E, 'E': 0x79, 'F': 0x71,\n    'G': 0x3D, 'H': 0x76, 'I': 0x30, 'J': 0x1E, 'L': 0x38, 'N': 0x54,\n    'O': 0x5C, 'P': 0x73, 'Q': 0x67, 'R': 0x50, 'T': 0x78, 'U': 0x3E,\n    'Y': 0x6E, '-': 0x40, '_': 0x08, ' ': 0x00,\n}\n\n\nclass HT16K33Seg:\n    def __init__(self, i2c, address=0x70, brightness=15):\n        self.i2c = i2c\n        self.address = address\n        self.buf = bytearray(16)\n        self._cmd(_OSC_ON)            # leave standby: start the internal oscillator\n        self.brightness(brightness)\n        self.show()                   # clear RAM before switching the display on\n        self.blink(0)                 # display on, no blinking\n\n    def _cmd(self, c):\n        self.i2c.writeto(self.address, bytes((c,)))\n\n    def brightness(self, level):\n        \"\"\"0 (dimmest, 1/16 duty) .. 15 (brightest, 16/16 duty).\"\"\"\n        self._cmd(_DIMMING | (max(0, min(15, int(level)))))\n\n    def blink(self, rate):\n        \"\"\"0 = steady, 1 = 2 Hz, 2 = 1 Hz, 3 = 0.5 Hz. Also switches the display on.\"\"\"\n        self._cmd(_DISPLAY | ((rate & 3) << 1) | 1)\n\n    def off(self):\n        self._cmd(_DISPLAY)\n\n    def clear(self):\n        for i in range(16):\n            self.buf[i] = 0\n\n    def raw(self, digit, mask):\n        \"\"\"Set digit 0..3 (left to right) to a raw segment mask (bit0 = a .. bit7 = DP).\"\"\"\n        self.buf[DIGIT_POS[digit]] = mask & 0xFF\n\n    def colon(self, on=True):\n        self.buf[COLON_POS] = 0x02 if on else 0x00\n\n    def text(self, s):\n        \"\"\"Show up to 4 characters, right-aligned. '.' lights the previous digit's\n        decimal point, ':' lights the colon. Unknown characters are blank.\"\"\"\n        masks = []\n        colon = False\n        for ch in str(s):\n            if ch == '.':\n                if masks and not masks[-1] & 0x80:\n                    masks[-1] |= 0x80\n                else:\n                    masks.append(0x80)\n            elif ch == ':':\n                colon = True\n            else:\n                masks.append(FONT.get(ch.upper(), 0x00))\n        masks = masks[-4:]\n        masks = [0] * (4 - len(masks)) + masks\n        for i in range(4):\n            self.buf[DIGIT_POS[i]] = masks[i]\n        self.colon(colon)\n        self.show()\n\n    def number(self, value, decimals=0):\n        \"\"\"Show a number right-aligned; shows '----' if it does not fit.\"\"\"\n        if decimals:\n            s = ('%.' + str(int(decimals)) + 'f') % value\n        else:\n            s = '%d' % round(value)\n        if len(s.replace('.', '')) > 4:\n            s = '----'\n        self.text(s)\n\n    def show(self):\n        self.i2c.writeto(self.address, b'\\x00' + self.buf)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ht16k33seg import HT16K33Seg\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\ndisp = HT16K33Seg(i2c, 0x70)\nvalue = -8.75\ndisp.number(value, 2)\nprint('shown %.2f' % value)\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-number",
+      "title": "Shows -8.75 on the four digits",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "shown -8.75",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "-875",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:48:19.577Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+      "https://learn.adafruit.com/adafruit-led-backpack/pinouts",
+      "https://www.adafruit.com/product/878"
+    ]
+  }
+}

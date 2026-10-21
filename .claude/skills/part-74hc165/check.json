@@ -1,0 +1,79 @@
+{
+  "type": "custom-74hc165",
+  "mpn": "SN74HC165N",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.SH/LD → D25 (GPIO25). U2.CLK → D26 (GPIO26). U2.QH → D27 (GPIO27). Added the hc165.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Inputs H, C and A high are read as 10000101: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "52.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.SH/LD → GP2 (GPIO2). U2.CLK → GP3 (GPIO3). U2.QH → GP6 (GPIO6). Added the hc165.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Inputs H, C and A high are read as 10000101: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-16_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C2909 SN74HC165N (853 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:45:42.509Z"
+}

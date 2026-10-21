@@ -1,0 +1,76 @@
+{
+ "diffs": [
+  {
+   "diff": "header pin 1: part says GND, datasheet reading says 4",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 1 of the model (GND) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 2: part says IN0, datasheet reading says 3",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 2 of the model (IN0) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 3: part says IN1, datasheet reading says 2",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 3 of the model (IN1) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 4: part says IN2, datasheet reading says 1",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 4 of the model (IN2) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 5: part says IN3, datasheet reading says 0",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 5 of the model (IN3) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 6: part says IN4, datasheet reading says Gnd",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 6 of the model (IN4) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 7: part says VDD, datasheet reading says 4",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 7 of the model (VDD) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 8: part says OUT0, datasheet reading says 3",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 8 of the model (OUT0) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 9: part says OUT1, datasheet reading says 2",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 9 of the model (OUT1) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 10: part says OUT2, datasheet reading says 1",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 10 of the model (OUT2) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 11: part says OUT3, datasheet reading says 0",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 11 of the model (OUT3) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  },
+  {
+   "diff": "header pin 12: part says OUT4, datasheet reading says VDD",
+   "verdict": "part-correct",
+   "evidence": "Adafruit #1362 Eagle board file: 'Input' header JP3 silkscreen from the label end reads Gnd (y=1.778), 0 (5.207), 1 (7.747), 2 (10.287), 3 (12.827), 4 (15.24); 'Output' header JP1 reads VDD (1.778), 0 (4.318), 1 (6.858), 2 (9.398), 3 (12.065), 4 (14.478). Nets confirm: GND->JP3 pad 6 (bottom, beside 'Gnd'), VDD->JP1 pad 1 (beside 'VDD'), GO/OUT1..OUT4 (IC1 pins 3,8,7,6,5)->JP1 pads 2..6, touch inputs via 10k R1-R5 ->JP3 pads 5..1. The model lists both headers in the same physical direction (Gnd/VDD end first), matching the silkscreen rows; the second reading reversed the order (and inconsistently, since VDD is JP1 pad 1, not pad 6). Same pins and functions, only list order differs. Position 12 of the model (OUT4) is the correct function at that physical position.",
+   "source": "https://github.com/adafruit/Adafruit-Standalone-Capacitive-Sensor-PCB/blob/master/Adafruit%20AT42QT1070%20Breakout.brd"
+  }
+ ]
+}

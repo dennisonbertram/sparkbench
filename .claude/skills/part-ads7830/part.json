@@ -1,0 +1,410 @@
+{
+  "type": "custom-ads7830",
+  "name": "ADS7830 8-channel 8-bit I2C ADC",
+  "mpn": "ADS7830",
+  "category": "ic",
+  "description": "Texas Instruments 8-bit, 8-channel analog-to-digital converter with an I2C interface: one command byte starts a conversion and one byte comes back (code = Vin × 256 / VREF). Up to 70 kSPS; 4 addresses (0x48–0x4B). Sold as: Adafruit ADS7830 8-Channel 8-Bit ADC with I2C (#5836), 16 pins on two headers (VIN, GND, SCL, SDA, REF, COM, AD0, AD1 / A7–A0), REF tied to VIN, I2C address 0x48.",
+  "eli5": "Gives your board eight extra analog inputs, so it can read lots of knobs and sensors that output a voltage.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3–5 V; also the ADC reference (REF is tied to VIN on the board). Use the same voltage as your microcontroller's logic.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "REF",
+      "role": "io",
+      "description": "ADC reference (REFIN/REFOUT); tied to VIN through the Ext Ref jumper. Leave unconnected.",
+      "required": false
+    },
+    {
+      "name": "COM",
+      "role": "io",
+      "description": "Common (negative) input for single-ended channels; tied to GND through the Ext Com jumper. Leave unconnected.",
+      "required": false
+    },
+    {
+      "name": "AD0",
+      "role": "io",
+      "description": "Address bit 0 (10 kΩ pull-down): low = 0x48, high (to VIN) adds 1",
+      "required": false
+    },
+    {
+      "name": "AD1",
+      "role": "io",
+      "description": "Address bit 1 (10 kΩ pull-down): high (to VIN) adds 2",
+      "required": false
+    },
+    {
+      "name": "A7",
+      "role": "io",
+      "description": "Analog input channel 7, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    },
+    {
+      "name": "A6",
+      "role": "io",
+      "description": "Analog input channel 6, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    },
+    {
+      "name": "A5",
+      "role": "io",
+      "description": "Analog input channel 5, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    },
+    {
+      "name": "A4",
+      "role": "io",
+      "description": "Analog input channel 4, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    },
+    {
+      "name": "A3",
+      "role": "io",
+      "description": "Analog input channel 3, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Analog input channel 2, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Analog input channel 1, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Analog input channel 0, 0 V to VREF (= VIN); never above VIN + 0.2 V",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.25,
+  "currentMa": 1,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ads7830.pdf",
+  "priceUsd": 5.95,
+  "supplierQuery": "Adafruit ADS7830 8-channel 8-bit ADC I2C breakout 5836",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ads7830.pdf",
+    "https://learn.adafruit.com/adafruit-ads7830-8-channel-8-bit-adc/pinouts",
+    "https://www.adafruit.com/product/5836",
+    "https://github.com/adafruit/Adafruit-ADS7830-PCB"
+  ],
+  "buildNotes": [
+    "Each reading: write one command byte (SD C2 C1 C0 PD1 PD0 x x), then read one byte. Single-ended channel order in C2..C0 is not binary: CH0=000, CH1=100, CH2=001, CH3=101, CH4=010, CH5=110, CH6=011, CH7=111 (e.g. 0x84 = CH0, 0xC4 = CH1).",
+    "On this board REF is tied to VIN, so keep PD1 = 0 (internal 2.5 V reference off; PD bits 01 = ADC on). Volts = code × VIN / 256: about 12.9 mV per step at 3.3 V.",
+    "Power VIN from the same voltage as your microcontroller (3.3 V for ESP32 / Pico): the board's 10 kΩ SDA/SCL pull-ups go to VIN.",
+    "Inputs read 0 V to VIN; never drive an input above VIN + 0.2 V or below −0.2 V.",
+    "AD0/AD1 are pulled low (0x48); tie AD0 to VIN for 0x49, AD1 for 0x4A, both for 0x4B. This board has more than 8 pins, so wire it with jumper leads."
+  ],
+  "keywords": [
+    "ads7830",
+    "adc",
+    "analog to digital",
+    "8-bit",
+    "8 channel",
+    "i2c adc",
+    "analog input expander"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "A0 input voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.65,
+    "controls": [
+      {
+        "key": "a1",
+        "quantity": "A1 input voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a2",
+        "quantity": "A2 input voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a3",
+        "quantity": "A3 input voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a4",
+        "quantity": "A4 input voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a5",
+        "quantity": "A5 input voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a6",
+        "quantity": "A6 input voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a7",
+        "quantity": "A7 input voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      }
+    ],
+    "responses": [
+      {
+        "match": "84",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "C4",
+        "bytes": [
+          {
+            "control": "a1",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "94",
+        "bytes": [
+          {
+            "control": "a2",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "D4",
+        "bytes": [
+          {
+            "control": "a3",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "A4",
+        "bytes": [
+          {
+            "control": "a4",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "E4",
+        "bytes": [
+          {
+            "control": "a5",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "B4",
+        "bytes": [
+          {
+            "control": "a6",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "F4",
+        "bytes": [
+          {
+            "control": "a7",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "80",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "C0",
+        "bytes": [
+          {
+            "control": "a1",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "90",
+        "bytes": [
+          {
+            "control": "a2",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "D0",
+        "bytes": [
+          {
+            "control": "a3",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "A0",
+        "bytes": [
+          {
+            "control": "a4",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "E0",
+        "bytes": [
+          {
+            "control": "a5",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "B0",
+        "bytes": [
+          {
+            "control": "a6",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "F0",
+        "bytes": [
+          {
+            "control": "a7",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ads7830.py",
+    "code": "# ADS7830 8-channel 8-bit I2C ADC (Texas Instruments), MicroPython driver.\n# From the TI datasheet SBAS302C: write one command byte\n#   SD C2 C1 C0 PD1 PD0 X X\n# which starts a conversion, then read one byte (straight binary, D7 = MSB).\n# Code = Vin * 256 / VREF, so Vin = code * VREF / 256 (1 LSB = VREF / 256).\n#\n# On the Adafruit breakout (#5836) the REF pin is tied to VIN, so VREF = the supply\n# voltage and the internal 2.5 V reference must stay OFF (PD1 = 0, datasheet:\n# \"If using an external reference, PD1 must be set to '0'\"). Pass internal_ref=True\n# only if you cut the board's Ext Ref jumper and want the internal 2.5 V reference.\nimport time\n\n# Single-ended channel select bits C2 C1 C0 for CH0..CH7 (datasheet Table 2, SD = 1)\n_SINGLE = (0b000, 0b100, 0b001, 0b101, 0b010, 0b110, 0b011, 0b111)\n# Differential pairs (SD = 0): index = (positive, negative) pair, Table 2\n_DIFF = {(0, 1): 0b000, (2, 3): 0b001, (4, 5): 0b010, (6, 7): 0b011,\n         (1, 0): 0b100, (3, 2): 0b101, (5, 4): 0b110, (7, 6): 0b111}\n\n\nclass ADS7830:\n    def __init__(self, i2c, addr=0x48, vref=3.3, internal_ref=False):\n        \"\"\"vref: the voltage on the REF pin (the board's VIN by default).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.internal_ref = internal_ref\n        self.vref = 2.5 if internal_ref else vref\n        # PD1 PD0: 01 = internal reference OFF, A/D converter ON (external REF)\n        #          11 = internal reference ON,  A/D converter ON\n        self._pd = 0b11 if internal_ref else 0b01\n        if internal_ref:\n            # The internal reference turns on after the first command with PD1 = 1\n            # and a STOP; it needs settling time before 8-bit accurate results\n            # (datasheet Figure 12: tens of ms without a REF capacitor, longer with one).\n            self._convert(0x80 | (self._pd << 2))\n            time.sleep_ms(50)\n\n    def _convert(self, cmd):\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def read_raw(self, channel):\n        \"\"\"Single-ended conversion of channel 0-7 against COM; returns 0-255.\"\"\"\n        if not 0 <= channel <= 7:\n            raise ValueError('channel must be 0-7')\n        cmd = 0x80 | (_SINGLE[channel] << 4) | (self._pd << 2)\n        return self._convert(cmd)\n\n    def read_diff_raw(self, pos, neg):\n        \"\"\"Differential conversion (pos - neg) of an adjacent pair, e.g. (0, 1); 0-255.\"\"\"\n        c = _DIFF.get((pos, neg))\n        if c is None:\n            raise ValueError('pair must be CH0/CH1, CH2/CH3, CH4/CH5 or CH6/CH7')\n        return self._convert((c << 4) | (self._pd << 2))\n\n    def read_voltage(self, channel):\n        \"\"\"Channel voltage in volts: code * VREF / 256.\"\"\"\n        return self.read_raw(channel) * self.vref / 256\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ads7830 import ADS7830\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nadc = ADS7830(i2c, vref=3.3)  # board powered from 3.3 V: REF = VIN = 3.3 V\nwhile True:\n    r0 = adc.read_raw(0)\n    r3 = adc.read_raw(3)\n    print('A0=%d %.2fV A3=%d %.2fV' % (r0, r0 * 3.3 / 256, r3, r3 * 3.3 / 256))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the voltages set on A0 and A3",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "a3",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A0=155 2.00V A3=93 1.20V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:56:24.870Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ads7830.pdf",
+      "https://learn.adafruit.com/adafruit-ads7830-8-channel-8-bit-adc/pinouts",
+      "https://www.adafruit.com/product/5836"
+    ]
+  }
+}

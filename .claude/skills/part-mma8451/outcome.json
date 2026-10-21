@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mma8451",
+  "board": "Adafruit Triple-Axis Accelerometer - ±2/4/8g @ 14-bit - MMA8451 (product #2019, 8-pin: VIN, GND, 3Vo, I2, I1, SCL, SDA, A)",
+  "reason": "Part check PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test X=0.750 Y=-0.400 Z=1.250 g, circuit board, footprint). Sim encodes OUT_X/Y/Z_MSB..LSB (0x01-0x06) as big-endian, left-justified 14-bit two's complement at 4096 counts/g (+-2 g) with WHO_AM_I 0x1A; driver follows the datasheet standby-configure-ACTIVE sequence.",
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/MMA8451Q.pdf",
+  "breakoutPinoutSource": "Adafruit Eagle board file https://github.com/adafruit/Adafruit-MMA8451-Breakout-PCB (JP1 pads 8..1 = VIN, GND, 3Vo, INT2, INT1, SCL, SDA, SA0, matching silkscreen VIN GND 3Vo I2 I1 SCL SDA A) and pin descriptions at https://learn.adafruit.com/adafruit-mma8451-accelerometer-breakout/pinouts",
+  "checkRuns": 1
+}

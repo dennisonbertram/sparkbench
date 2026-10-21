@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-74hc595",
+  "board": "Texas Instruments SN74HC595N bare chip, DIP-16 (PDIP) package",
+  "reason": "Modelled as a 595 shift-register (SER/SRCLK/RCLK, outputs QA-QH) in DIP-16 pin order from the TI datasheet, with OE tied to GND and SRCLR tied to VCC as the datasheet requires for unused inputs; sr595.py driver and the two-pattern LED test passed the part check on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC).",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/sn74hc595.pdf",
+  "breakoutPinoutSource": "https://www.ti.com/lit/ds/symlink/sn74hc595.pdf",
+  "checkRuns": 1
+}

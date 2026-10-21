@@ -1,0 +1,79 @@
+{
+  "type": "custom-max31850k",
+  "mpn": "MAX31850K",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, onewire"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.DATA → D25 (GPIO25). Added a 4.7 kΩ pull-up resistor from DATA to 3V3, as the datasheet requires. Added the max31850.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the thermocouple temperature set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, onewire"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.DATA → GP2 (GPIO2). Added a 4.7 kΩ pull-up resistor from DATA to 3V3, as the datasheet requires. Added the max31850.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the thermocouple temperature set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C2653160 MAX31850KATB+T (1 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:54:56.096Z"
+}

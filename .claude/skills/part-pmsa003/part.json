@@ -1,0 +1,324 @@
+{
+  "type": "custom-pmsa003",
+  "name": "PMSA003 particulate matter sensor",
+  "mpn": "PMSA003",
+  "category": "sensor",
+  "description": "Plantower laser-scattering dust sensor: reports PM1.0, PM2.5 and PM10 mass concentration (ug/m3, 0-500 effective range, 1 ug/m3 resolution) and particle counts per 0.1 L over a 3.3 V-logic UART at 9600 baud. Needs 4.5-5.5 V for its fan; draws up to 100 mA. Sold as: Plantower PMSA003 with its 10-pin-to-4-pin adapter board (as sold by The Pi Hut, 4-pin 2.54 mm header GND, VCC, RX, TX), with the SET and RESET pins left unbroken-out (pulled up inside the sensor).",
+  "eli5": "A tiny fan pulls air past a laser and counts the dust and smoke specks, telling your board how dirty the air is.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1, marked with an arrow on the adapter)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 5 V (4.5-5.5 V): drives the fan. Do NOT use 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Sensor serial input, 3.3 V logic: connect to the microcontroller's TX. Only needed for passive mode / sleep commands.",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Sensor serial output, 3.3 V logic, 9600 baud: connect to the microcontroller's RX",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 100,
+  "datasheetUrl": "https://download.kamami.pl/p566824-pmsa003f.pdf",
+  "priceUsd": 20,
+  "supplierQuery": "Plantower PMSA003 particulate sensor with adapter board",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (VIN/VBUS), not 3.3 V: the fan needs 5 V. The data pins are 3.3 V logic, so they connect straight to an ESP32 or Pico; a 5 V Arduino needs a level shifter.",
+    "Cross the serial lines: sensor TX to the microcontroller's RX, sensor RX to the microcontroller's TX. Use 9600 baud, 8N1.",
+    "After power-up the sensor is in active mode and sends a 32-byte frame by itself: about every 2.3 s when the air is steady, every 0.2-0.8 s when it changes fast.",
+    "Each frame starts 0x42 0x4D, frame length 28, then 13 big-endian 16-bit words; the last 2 bytes are the sum of the first 30. Drop frames whose sum does not match.",
+    "Use the 'atmospheric environment' values (words 4-6) for room or outdoor air; the CF=1 values (words 1-3) are meant for factory calibration.",
+    "Give it about 30 s after power-up or wake-up before trusting the numbers, and mount it with the inlet and outlet unobstructed and at least 20 cm above the floor.",
+    "The metal case is tied to GND: keep it from touching other parts of the circuit."
+  ],
+  "keywords": [
+    "pmsa003",
+    "plantower",
+    "pm2.5",
+    "pm10",
+    "particulate",
+    "dust",
+    "air quality",
+    "pms"
+  ],
+  "sources": [
+    "https://download.kamami.pl/p566824-pmsa003f.pdf",
+    "https://thepihut.com/products/pmsa003-particulate-matter-sensor-with-adapter-board",
+    "https://cdn.shopify.com/s/files/1/0176/3274/files/pmsa003-particulate-matter-sensor-with-adapter-board-plantower-105771-42582033268931.jpg?v=1724807993"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "PM2.5",
+    "unit": "ug/m3",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0",
+        "unit": "ug/m3",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10",
+        "unit": "ug/m3",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      },
+      {
+        "key": "n03",
+        "quantity": "Particles over 0.3 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 1500
+      },
+      {
+        "key": "n05",
+        "quantity": "Particles over 0.5 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 450
+      }
+    ],
+    "uartStream": {
+      "everyMs": 2300,
+      "bytes": [
+        {
+          "const": 66,
+          "bits": 8
+        },
+        {
+          "const": 77,
+          "bits": 8
+        },
+        {
+          "const": 28,
+          "bits": 16
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "n03",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "n05",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "crc": "sum16",
+          "over": 30
+        }
+      ]
+    },
+    "uartReplies": [
+      {
+        "match": "42 4d e2 00 00 01 71",
+        "bytes": [
+          {
+            "const": 66,
+            "bits": 8
+          },
+          {
+            "const": 77,
+            "bits": 8
+          },
+          {
+            "const": 28,
+            "bits": 16
+          },
+          {
+            "control": "pm1",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm1",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n03",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n05",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "crc": "sum16",
+            "over": 30
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "pmsa003.py",
+    "code": "# Plantower PMSA003 laser particulate sensor, MicroPython driver.\n# Frame format from the Plantower PMSA003 data manual (Appendix I / II):\n# 9600 baud 8N1; 32-byte frame 0x42 0x4D, frame length (2x13+2 = 28), 13 big-endian 16-bit data words,\n# then a 16-bit check code = sum of all previous 30 bytes.\n# Power the sensor from 5 V (the fan needs it); TX/RX/SET/RESET are 3.3 V logic.\nimport time\n\n_CMD_READ = 0xE2     # read in passive mode\n_CMD_MODE = 0xE1     # DATAL 0x00 = passive, 0x01 = active\n_CMD_SLEEP = 0xE4    # DATAL 0x00 = sleep, 0x01 = wake up\n\n\nclass PMSA003:\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 9600 baud (8N1), its RX wired to the sensor's TX.\"\"\"\n        self.uart = uart\n\n    def _command(self, cmd, datah=0, datal=0):\n        frame = bytearray([0x42, 0x4D, cmd, datah, datal])\n        s = sum(frame)\n        frame.append((s >> 8) & 0xFF)\n        frame.append(s & 0xFF)\n        self.uart.write(frame)\n\n    def set_passive(self):\n        \"\"\"Stop the automatic frames; then call read_passive() to ask for one.\"\"\"\n        self._command(_CMD_MODE, 0, 0x00)\n\n    def set_active(self):\n        \"\"\"Default after power-up: the sensor sends a frame every 0.2-2.3 s by itself.\"\"\"\n        self._command(_CMD_MODE, 0, 0x01)\n\n    def sleep(self):\n        self._command(_CMD_SLEEP, 0, 0x00)\n\n    def wake(self):\n        \"\"\"After waking, wait at least 30 s before trusting the readings (fan spin-up).\"\"\"\n        self._command(_CMD_SLEEP, 0, 0x01)\n\n    def _read_byte(self, deadline):\n        while time.ticks_diff(deadline, time.ticks_ms()) > 0:\n            if self.uart.any():\n                b = self.uart.read(1)\n                if b:\n                    return b[0]\n            else:\n                time.sleep_ms(5)\n        return None\n\n    def read(self, timeout_ms=3000):\n        \"\"\"Wait for the next valid frame and return a dict of readings, or None on timeout.\n        Keys: pm1_0_cf1, pm2_5_cf1, pm10_cf1 (ug/m3, CF=1 'factory' values),\n        pm1_0, pm2_5, pm10 (ug/m3, atmospheric environment: use these indoors/outdoors),\n        n0_3, n0_5, n1_0, n2_5, n5_0, n10 (particles larger than that many um per 0.1 L of air).\"\"\"\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while True:\n            b = self._read_byte(deadline)\n            if b is None:\n                return None\n            if b != 0x42:\n                continue\n            b = self._read_byte(deadline)\n            if b is None:\n                return None\n            if b != 0x4D:\n                continue\n            rest = bytearray()\n            while len(rest) < 30:\n                b = self._read_byte(deadline)\n                if b is None:\n                    return None\n                rest.append(b)\n            length = (rest[0] << 8) | rest[1]\n            if length != 28:\n                continue\n            check = (rest[28] << 8) | rest[29]\n            if (0x42 + 0x4D + sum(rest[0:28])) & 0xFFFF != check:\n                continue  # corrupted frame: wait for the next one\n            w = [(rest[2 + 2 * i] << 8) | rest[3 + 2 * i] for i in range(13)]\n            return {\n                'pm1_0_cf1': w[0], 'pm2_5_cf1': w[1], 'pm10_cf1': w[2],\n                'pm1_0': w[3], 'pm2_5': w[4], 'pm10': w[5],\n                'n0_3': w[6], 'n0_5': w[7], 'n1_0': w[8],\n                'n2_5': w[9], 'n5_0': w[10], 'n10': w[11],\n            }\n\n    def read_passive(self, timeout_ms=1000):\n        \"\"\"In passive mode: request one frame and return it (see read()).\"\"\"\n        while self.uart.any():\n            self.uart.read()\n        self._command(_CMD_READ)\n        return self.read(timeout_ms)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom pmsa003 import PMSA003\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\nsensor = PMSA003(uart)\nwhile True:\n    r = sensor.read()\n    if r:\n        print('PM1=%d PM2.5=%d PM10=%d ug/m3' % (r['pm1_0'], r['pm2_5'], r['pm10']))\n    else:\n        print('no data: check TX wiring and 5 V supply')\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM1.0, PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1",
+          "value": 21
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 48
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1=21 PM2.5=35 PM10=48 ug/m3",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:51:12.727Z",
+    "verifiedSources": [
+      "https://cdn.shopify.com/s/files/1/0176/3274/files/PMSA003_datasheet.pdf?v=1619703",
+      "https://thepihut.com/products/pmsa003-particulate-matter-sensor-with-adapter-board"
+    ]
+  }
+}

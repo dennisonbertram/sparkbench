@@ -1,0 +1,454 @@
+{
+  "type": "custom-pcf8591",
+  "name": "PCF8591 8-bit ADC/DAC module",
+  "mpn": "PCF8591",
+  "category": "ic",
+  "description": "NXP 8-bit converter with four analog inputs (successive approximation, single-ended or differential) and one analog output, controlled over I2C at address 0x48. Runs on 2.5–6 V; readings are ratiometric to VREF, which the module ties to VCC (1 LSB = VCC/256; the simulator assumes a 3.3 V supply). Sold as: PCF8591 AD/DA converter module YL-40 (header 1: SCL, SDA, GND, VCC; header 2: AOUT, AIN0, AIN1, AIN2, AIN3; on-board LDR on AIN0 via jumper P5, thermistor on AIN1 via P4, 10 kΩ pot on AIN3 via P6, 10 kΩ I2C pull-ups, A0–A2 grounded).",
+  "eli5": "Gives your board four extra 'how much voltage?' inputs and one adjustable voltage output, all over two I2C wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up on the module)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (also AGND)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 2.5–6 V, also the ADC/DAC reference (use 3.3 V with a 3.3 V board)",
+      "required": true
+    },
+    {
+      "name": "AOUT",
+      "role": "io",
+      "description": "DAC output 0 V to VREF×255/256 (drives the module's on-board LED)",
+      "required": false
+    },
+    {
+      "name": "AIN0",
+      "role": "io",
+      "description": "Analog input 0 (LDR when jumper P5 is fitted); keep within 0 V…VCC",
+      "required": false
+    },
+    {
+      "name": "AIN1",
+      "role": "io",
+      "description": "Analog input 1 (thermistor when jumper P4 is fitted); keep within 0 V…VCC",
+      "required": false
+    },
+    {
+      "name": "AIN2",
+      "role": "io",
+      "description": "Analog input 2 (free); keep within 0 V…VCC",
+      "required": false
+    },
+    {
+      "name": "AIN3",
+      "role": "io",
+      "description": "Analog input 3 (potentiometer when jumper P6 is fitted); keep within 0 V…VCC",
+      "required": false
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 6,
+  "currentMa": 1,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/PCF8591.pdf",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/PCF8591.pdf",
+    "https://protosupplies.com/product/pcf8591-a-d-and-d-a-converter-module/",
+    "https://wiki.kewl.org/interfaces:adda",
+    "https://sigmanortec.ro/en/ad-da-converter-module-photoresistor-thermistor-pcf8591-i2c"
+  ],
+  "priceUsd": 2,
+  "supplierQuery": "PCF8591 AD DA converter module YL-40",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "buildNotes": [
+    "Write the control byte (0x40 | channel keeps the oscillator and AOUT on; 0x00 | channel with AOUT off), then read 2 bytes and keep the SECOND: the first byte is the previous read cycle's result (0x80 after power-on).",
+    "Single-ended code = Vin × 256 / VREF; VREF is VCC on the YL-40, so power it from 3.3 V when used with a 3.3 V board and never put more than VCC on an AIN pin.",
+    "Pull jumpers P4/P5/P6 to free AIN1/AIN0/AIN3 from the on-board thermistor, LDR and potentiometer before wiring your own signals to them.",
+    "DAC: write control byte with bit 6 set followed by the data byte; AOUT = data/256 × VREF."
+  ],
+  "keywords": [
+    "pcf8591",
+    "yl-40",
+    "adc",
+    "dac",
+    "analog",
+    "i2c",
+    "ad/da"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "AIN0 voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1,
+    "controls": [
+      {
+        "key": "ain1",
+        "quantity": "AIN1 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 1.5
+      },
+      {
+        "key": "ain2",
+        "quantity": "AIN2 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "ain3",
+        "quantity": "AIN3 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 2
+      }
+    ],
+    "responses": [
+      {
+        "match": "40",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "41",
+        "bytes": [
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "42",
+        "bytes": [
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "43",
+        "bytes": [
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "44",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "00",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "01",
+        "bytes": [
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "02",
+        "bytes": [
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "03",
+        "bytes": [
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      },
+      {
+        "match": "04",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain1",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain2",
+            "bits": 8,
+            "scale": 0.012890625
+          },
+          {
+            "control": "ain3",
+            "bits": 8,
+            "scale": 0.012890625
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "pcf8591.py",
+    "code": "# PCF8591 8-bit 4-channel ADC + 1-channel DAC (NXP PCF8591 datasheet Rev. 7)\n# I2C address 0x48 (1001 A2 A1 A0, all tied low on the YL-40 module).\n#\n# Control byte (datasheet Fig. 4):\n#   bit 6    analog output (AOUT/DAC) enable\n#   bits 5-4 input programming (00 = four single-ended inputs)\n#   bit 2    auto-increment\n#   bits 1-0 A/D channel number\n# A conversion starts after each read-address acknowledge, so the FIRST byte of every\n# read is the result of the PREVIOUS read cycle (0x80 after power-on). We read two bytes\n# and keep the second, which is a fresh conversion of the channel just selected.\n# Single-ended code = (Vin - VAGND) / Vlsb, Vlsb = (VREF - VAGND) / 256.\n\nADDR = 0x48\n_AOUT_EN = 0x40\n\n\nclass PCF8591:\n    def __init__(self, i2c, addr=ADDR, vref=3.3):\n        # On the YL-40, VREF is wired to VCC and AGND to GND: pass the module's supply voltage.\n        self.i2c = i2c\n        self.addr = addr\n        self.vref = vref\n        self._ctrl = 0x00  # single-ended, AOUT off (power-on state)\n        self._dac = 0\n\n    def read(self, channel):\n        \"\"\"Raw 8-bit code (0-255) of AIN<channel>, single-ended.\"\"\"\n        if not 0 <= channel <= 3:\n            raise ValueError('channel must be 0-3')\n        self.i2c.writeto(self.addr, bytes([self._ctrl | channel]))\n        b = self.i2c.readfrom(self.addr, 2)\n        return b[1]\n\n    def read_voltage(self, channel):\n        \"\"\"AIN<channel> in volts (0 V to vref - 1 LSB).\"\"\"\n        return self.read(channel) * self.vref / 256\n\n    def write_dac(self, value):\n        \"\"\"Set AOUT to value/256 x VREF (0-255) and enable the output buffer.\"\"\"\n        self._dac = max(0, min(255, int(value)))\n        self._ctrl |= _AOUT_EN\n        self.i2c.writeto(self.addr, bytes([self._ctrl, self._dac]))\n\n    def dac_off(self):\n        \"\"\"Switch AOUT to high impedance (lowest supply current).\"\"\"\n        self._ctrl &= ~_AOUT_EN\n        self.i2c.writeto(self.addr, bytes([self._ctrl]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pcf8591 import PCF8591\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nadc = PCF8591(i2c, vref=3.3)  # YL-40: VREF = VCC\nwhile True:\n    c = [adc.read(ch) for ch in range(4)]\n    print('AIN0=%d AIN1=%d AIN2=%d AIN3=%d' % tuple(c))\n    print('V0=%.2f' % adc.read_voltage(0))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the four input codes and AIN0 voltage set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.65
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ain1",
+          "value": 0.825
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ain2",
+          "value": 0.4125
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ain3",
+          "value": 2.475
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "AIN0=128 AIN1=64 AIN2=32 AIN3=192",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V0=1.65",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:36:46.926Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCF8591.pdf",
+      "https://wiki.kewl.org/interfaces:adda",
+      "https://www.tinytronics.nl/shop/nl/sensoren/optisch/licht-en-kleur/pcf8591-ad-da-converter-module-met-ingebouwde-sensoren"
+    ]
+  }
+}

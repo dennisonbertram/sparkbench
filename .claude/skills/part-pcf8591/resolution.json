@@ -1,0 +1,10 @@
+{
+  "diffs": [
+    {
+      "diff": "voltage: datasheet reading gives 0.01953125 per count, the part's model has 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289, 0.01289",
+      "verdict": "part-correct",
+      "evidence": "NXP PCF8591 datasheet (A/D conversion, Fig. 'A/D conversion characteristics of single-ended inputs'): 'Vlsb = (VREF - VAGND) / 256'. The scale is ratiometric to VREF, not fixed. On the YL-40 module VREF is tied to VCC and AGND to GND, so 1 LSB = VCC/256. The second reading's 0.01953125 = 5.0/256 assumes a 5 V supply; the model's 0.012890625 = 3.3/256 assumes the 3.3 V supply it documents (description: 'the simulator assumes a 3.3 V supply'; driver default vref=3.3), which is the correct and safe choice for ESP32/Pico boards whose GPIO are not 5 V tolerant. Both apply the same datasheet formula with different reference voltages.",
+      "source": "https://www.nxp.com/docs/en/data-sheet/PCF8591.pdf"
+    }
+  ]
+}

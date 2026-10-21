@@ -1,0 +1,258 @@
+{
+  "type": "custom-mpu6886",
+  "name": "MPU-6886 6-axis IMU (accelerometer + gyroscope)",
+  "mpn": "MPU-6886",
+  "category": "sensor",
+  "description": "TDK InvenSense 6-axis motion sensor: 3-axis accelerometer (±2/4/8/16 g, 16384 LSB/g at ±2 g), 3-axis gyroscope (±250/500/1000/2000 °/s, 131 LSB/(°/s) at ±250 °/s) and a die temperature sensor (326.8 LSB/°C, 0 = 25 °C), I2C at 0x68. The chip runs on 1.71–3.45 V. Sold as: M5Stack Unit Mini IMU (U095, MPU6886) with a 4-pin HY2.0/Grove socket (GND, 5V, SDA, SCL), an HT7533 3.3 V regulator, BSS138 level shifters with 4.7 kΩ pull-ups on SDA/SCL to the supply pin, I2C address 0x68.",
+  "eli5": "Feels tilt, shaking and turning on three axes, like the motion sensor in a phone.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (red wire); an HT7533 regulator feeds the chip 3.3 V. With a 3.3 V microcontroller, power it from 3.3 V so the SDA/SCL pull-ups go to 3.3 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (yellow wire); level-shifted, 4.7 kΩ pull-up to the supply pin on the module",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (white wire); level-shifted, 4.7 kΩ pull-up to the supply pin on the module",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 3,
+  "i2cAddress": 104,
+  "cabled": true,
+  "datasheetUrl": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/core/MPU-6886-000193%2Bv1.1_GHIC_en.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "M5Stack Unit Mini IMU MPU6886 U095",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "sources": [
+    "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/core/MPU-6886-000193%2Bv1.1_GHIC_en.pdf",
+    "https://docs.m5stack.com/en/unit/imu",
+    "https://static-cdn.m5stack.com/resource/docs/products/unit/imu/imu_sch_01.webp"
+  ],
+  "buildNotes": [
+    "The module has a Grove/HY2.0 socket, not pins: use a Grove-to-Dupont cable (black GND, red 5V, yellow SDA, white SCL).",
+    "The SDA/SCL pull-ups (4.7 kΩ) go to whatever you feed the 5V pin. With an ESP32 or Pico (3.3 V logic) feed it 3.3 V; the regulator then passes about 3.2 V to the chip, inside its 1.71–3.45 V range.",
+    "WHO_AM_I (0x75) must read 0x19 (an MPU-6050 reads 0x68, an MPU-6500 0x70).",
+    "The chip powers up asleep (PWR_MGMT_1 = 0x41): write 0x80 to reset, wait 100 ms, then write 0x01 to wake it with the PLL clock; gyro data are valid about 35 ms later.",
+    "Read ACCEL_XOUT_H..GYRO_ZOUT_L (0x3B–0x48) in one 14-byte burst: seven big-endian signed words (accel X/Y/Z, temperature, gyro X/Y/Z). At ±2 g and ±250 °/s: 16384 LSB/g and 131 LSB/(°/s); temperature = raw / 326.8 + 25 °C.",
+    "Mount it flat and firmly: at rest Z reads about +1 g. Average a few hundred gyro readings at rest and subtract them as the offset."
+  ],
+  "keywords": [
+    "mpu6886",
+    "mpu-6886",
+    "m5stack",
+    "unit mini imu",
+    "u095",
+    "imu",
+    "6-axis",
+    "6dof",
+    "accelerometer",
+    "gyroscope",
+    "invensense"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 1.99,
+    "default": 0,
+    "controls": [
+      {
+        "key": "ay",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 1.99,
+        "default": 0
+      },
+      {
+        "key": "az",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 1.99,
+        "default": 1
+      },
+      {
+        "key": "gx",
+        "quantity": "X rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Y rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Z rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x6B": 65,
+      "0x75": 25
+    },
+    "measures": [
+      {
+        "reg": "0x3B",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x3D",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x3F",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "az"
+      },
+      {
+        "reg": "0x41",
+        "bytes": 2,
+        "scale": 0.003059975520195838,
+        "offset": 25,
+        "signed": true,
+        "control": "temp"
+      },
+      {
+        "reg": "0x43",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x45",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x47",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gz"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mpu6886.py",
+    "code": "# MPU-6886 6-axis IMU (TDK InvenSense), MicroPython driver for I2C.\n# From the MPU-6886 datasheet (DS-000193 v1.1):\n#   WHO_AM_I 0x75 = 0x19\n#   PWR_MGMT_1 0x6B (bit 7 DEVICE_RESET, bit 6 SLEEP, CLKSEL[2:0]); reset value 0x41 (asleep)\n#   CONFIG 0x1A (DLPF_CFG); SMPLRT_DIV 0x19; GYRO_CONFIG 0x1B (FS_SEL[4:3]);\n#   ACCEL_CONFIG 0x1C (ACCEL_FS_SEL[4:3]); ACCEL_CONFIG2 0x1D (A_DLPF_CFG[2:0]); PWR_MGMT_2 0x6C\n#   ACCEL_XOUT_H 0x3B .. GYRO_ZOUT_L 0x48: 7 big-endian two's-complement words\n#   (accel X, Y, Z, temperature, gyro X, Y, Z)\n#   Accel: 16384 / 8192 / 4096 / 2048 LSB/g for +-2/4/8/16 g\n#   Gyro: 131 / 65.5 / 32.8 / 16.4 LSB/(deg/s) for +-250/500/1000/2000 dps\n#   Temperature: TEMP_degC = TEMP_OUT / 326.8 + 25\nimport time\n\n_SMPLRT_DIV = 0x19\n_CONFIG = 0x1A\n_GYRO_CONFIG = 0x1B\n_ACCEL_CONFIG = 0x1C\n_ACCEL_CONFIG2 = 0x1D\n_ACCEL_XOUT_H = 0x3B\n_PWR_MGMT_1 = 0x6B\n_PWR_MGMT_2 = 0x6C\n_WHO_AM_I = 0x75\n\n_ACCEL_RANGES = {2: (0, 16384.0), 4: (1, 8192.0), 8: (2, 4096.0), 16: (3, 2048.0)}\n_GYRO_RANGES = {250: (0, 131.0), 500: (1, 65.5), 1000: (2, 32.8), 2000: (3, 16.4)}\n\n\ndef _s16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 65536 if v & 0x8000 else v\n\n\nclass MPU6886:\n    def __init__(self, i2c, addr=0x68, accel_range=2, gyro_range=250):\n        \"\"\"addr: 0x68 with AD0 low (M5Stack Unit Mini IMU), 0x69 with AD0 high.\n        accel_range: 2, 4, 8 or 16 g. gyro_range: 250, 500, 1000 or 2000 deg/s.\"\"\"\n        if accel_range not in _ACCEL_RANGES or gyro_range not in _GYRO_RANGES:\n            raise ValueError('bad accel_range or gyro_range')\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(100)  # allow the chip to finish power-up before register access\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x19:\n            raise OSError('MPU-6886 not found (WHO_AM_I 0x%02X, expected 0x19): check wiring' % who)\n        self._w(_PWR_MGMT_1, 0x80)   # DEVICE_RESET: restore default register values\n        time.sleep_ms(100)\n        self._w(_PWR_MGMT_1, 0x01)   # wake (SLEEP = 0), CLKSEL = 1: PLL if ready, else internal oscillator\n        time.sleep_ms(10)\n        self._w(_PWR_MGMT_2, 0x00)   # all accel and gyro axes on\n        self._w(_CONFIG, 0x03)       # DLPF_CFG = 3: gyro 41 Hz bandwidth, 1 kHz internal rate\n        self._w(_SMPLRT_DIV, 0x04)   # 1 kHz / (1 + 4) = 200 Hz output rate\n        a_sel, self._a_lsb = _ACCEL_RANGES[accel_range]\n        g_sel, self._g_lsb = _GYRO_RANGES[gyro_range]\n        self._w(_GYRO_CONFIG, g_sel << 3)    # FS_SEL, FCHOICE_B = 00 (DLPF in use)\n        self._w(_ACCEL_CONFIG, a_sel << 3)   # ACCEL_FS_SEL\n        self._w(_ACCEL_CONFIG2, 0x03)        # ACCEL_FCHOICE_B = 0, A_DLPF_CFG = 3: 44.8 Hz bandwidth\n        time.sleep_ms(50)  # gyro start-up time 35 ms typical\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def raw(self):\n        \"\"\"(ax, ay, az, temp, gx, gy, gz) raw counts from one 14-byte burst (same sample).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _ACCEL_XOUT_H, 14)\n        return tuple(_s16(d[i], d[i + 1]) for i in range(0, 14, 2))\n\n    def read(self):\n        \"\"\"((ax, ay, az) in g, (gx, gy, gz) in deg/s, chip temperature in deg C).\"\"\"\n        r = self.raw()\n        a = (r[0] / self._a_lsb, r[1] / self._a_lsb, r[2] / self._a_lsb)\n        g = (r[4] / self._g_lsb, r[5] / self._g_lsb, r[6] / self._g_lsb)\n        return a, g, r[3] / 326.8 + 25.0\n\n    def acceleration(self):\n        return self.read()[0]\n\n    def gyro(self):\n        return self.read()[1]\n\n    def temperature(self):\n        return self.read()[2]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mpu6886 import MPU6886\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = MPU6886(i2c)\nwhile True:\n    (ax, ay, az), (gx, gy, gz), t = imu.read()\n    print('A=%.2f,%.2f,%.2f g G=%.1f,%.1f,%.1f dps T=%.1fC' % (ax, ay, az, gx, gy, gz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation rate and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -0.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "az",
+          "value": 0.8
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": 15
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gy",
+          "value": -40
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 60
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 32
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,-0.30,0.80 g G=15.0,-40.0,60.0 dps T=32.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:31:05.975Z",
+    "verifiedSources": [
+      "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/core/MPU-6886-000193%2Bv1.1_GHIC_en.pdf",
+      "https://docs.m5stack.com/en/products/sku/U095"
+    ]
+  }
+}

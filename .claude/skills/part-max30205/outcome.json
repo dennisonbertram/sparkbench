@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max30205",
+  "board": "ProtoCentral MAX30205 Body Temperature Sensor Breakout Board (6-pin header: SDA, SCL, OS, 3V3, GND, VIN)",
+  "reason": "Modelled as an i2c-device at 0x48 with 16-bit registers: temperature at 0x00 is 16-bit two's complement with 0.00390625 C per LSB, as the datasheet specifies, plus the config, THYST and TOS power-on values. The driver follows the datasheet. The 3V3 regulator output is marked nc. The check passed on ESP32 and Pico in all stages; LCSC has no stock of the chip.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30205.pdf",
+  "breakoutPinoutSource": "ProtoCentral Eagle board file silkscreen (github.com/Protocentral/protocentral_max30205/hardware/pc_max30205_brk.brd: SDA, SCL, OS, 3V3, GND, VIN = SV1 pins 1-6) confirmed by the product photo docs/images/max30205_brk_0.jpg",
+  "checkRuns": 3
+}

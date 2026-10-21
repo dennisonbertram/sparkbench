@@ -1,0 +1,125 @@
+{
+  "type": "custom-ht16k33-1-2in-7-segment",
+  "name": "HT16K33 1.2in 4-digit 7-segment display",
+  "mpn": "HT16K33 + 1.2in 4-digit 7-segment (Adafruit 1269/1270)",
+  "category": "display",
+  "description": "Big 4-digit 7-segment LED display (1.2 in / 30 mm tall digits) with a centre colon and three indicator dots, driven by a Holtek HT16K33 LED controller over I2C (address 0x70-0x77). Each segment is two LEDs in series, so the + pin needs 5 V; the IO pin sets the I2C pull-up level (3.3 V for ESP32/Pico). Sold as: Adafruit 1.2\" 4-Digit 7-Segment Display w/I2C Backpack (#1269 yellow, #1270 red, #1268 green), original 5-pin backpack with header C, D, -, +, IO, I2C address 0x70 (A0-A2 jumpers select 0x70-0x77).",
+  "eli5": "A big, bright four-digit number display, like an alarm clock's, that your board controls with just two data wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "C",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SCL); 10 k pull-up to IO on the backpack",
+      "required": true
+    },
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SDA); 10 k pull-up to IO on the backpack",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "LED/driver supply, 5 V (4.5-5.5 V). Will not run on 3.3 V: two LEDs in series per segment",
+      "required": true
+    },
+    {
+      "name": "IO",
+      "role": "io",
+      "description": "I2C logic level: powers the backpack's 10 k SDA/SCL pull-ups. Connect to 3.3 V on an ESP32 / Pico / Raspberry Pi (never 5 V there), or to 5 V on a 5 V board",
+      "required": false
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 200,
+  "i2cAddress": 112,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+  "priceUsd": 17.5,
+  "supplierQuery": "Adafruit 1.2 inch 4-digit 7-segment display I2C backpack HT16K33",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+    "https://github.com/adafruit/Adafruit-LED-Backpacks/blob/master/Adafruit%201.2in%207-segment.brd",
+    "https://learn.adafruit.com/adafruit-led-backpack/1-2-inch-7-segment-backpack-arduino-wiring-and-setup",
+    "https://www.adafruit.com/product/1270",
+    "https://github.com/adafruit/Adafruit_CircuitPython_HT16K33/blob/main/adafruit_ht16k33/segments.py"
+  ],
+  "buildNotes": [
+    "Wire + to 5 V (VBUS/VSYS/5V pin) and IO to 3.3 V on a 3.3 V board. IO feeds the 10 k I2C pull-ups; if it is left open the bus has no pull-ups, and if it goes to 5 V the ESP32/Pico pins see 5 V.",
+    "Start-up per the HT16K33 datasheet: 0x21 (oscillator on), 0x81 (display on, no blink), 0xE0-0xEF (brightness), then 0x00 followed by the 16 display-RAM bytes.",
+    "Digits are RAM bytes 0, 2, 6, 8 (bits 0-6 = segments a-g, bit 7 = decimal point); byte 4 holds the colon (bit 1), top-left dot (bit 2), bottom-left dot (bit 3) and right/AM-PM dot (bit 4).",
+    "Bridge A0/A1/A2 on the back for addresses 0x71-0x77 so up to eight displays share one bus.",
+    "At full brightness with every segment lit it can draw about 200 mA from 5 V; lower the brightness (0xE0 | level) if powering from USB alongside other loads.",
+    "Adafruit revised this backpack in 2023 (boost converter, STEMMA QT, level shifters). This entry models the original 5-pin C/D/-/+/IO header: check the silkscreen on your board before wiring."
+  ],
+  "keywords": [
+    "ht16k33",
+    "7-segment",
+    "seven segment",
+    "1.2 inch",
+    "4-digit",
+    "clock display",
+    "led backpack",
+    "adafruit 1270",
+    "adafruit 1269"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "ht16k33",
+    "digits": 4,
+    "digitMap": [
+      0,
+      2,
+      6,
+      8
+    ]
+  },
+  "driver": {
+    "filename": "ht16k33_big7seg.py",
+    "code": "# Adafruit 1.2\" 4-digit 7-segment display with HT16K33 I2C backpack, MicroPython driver.\n# Commands from the Holtek HT16K33 datasheet (v1.10):\n#   0x21          system setup, S=1: internal oscillator on (leave standby)\n#   0x80|B1B0|D   display setup: D=1 display on, B1B0 = blink (00 off, 01 2 Hz, 10 1 Hz, 11 0.5 Hz)\n#   0xE0|P        dimming, P = 0..15 -> 1/16 .. 16/16 duty\n#   0x00, d0..d15 write display RAM from address 0 (address pointer auto-increments)\n# Backpack wiring (Adafruit): digits are RAM bytes 0, 2, 6, 8 (bit 0..6 = segments a..g,\n# bit 7 = decimal point); byte 4 holds the indicators: bit 1 centre colon, bit 2 top-left dot,\n# bit 3 bottom-left dot, bit 4 right (AM/PM) dot.\n\n_DIGIT_POS = (0, 2, 6, 8)\n_FONT = {\n    '0': 0x3F, '1': 0x06, '2': 0x5B, '3': 0x4F, '4': 0x66,\n    '5': 0x6D, '6': 0x7D, '7': 0x07, '8': 0x7F, '9': 0x6F,\n    'A': 0x77, 'B': 0x7C, 'C': 0x39, 'D': 0x5E, 'E': 0x79, 'F': 0x71,\n    '-': 0x40, ' ': 0x00, '_': 0x08,\n}\nCOLON = 0x02\nTOP_LEFT_DOT = 0x04\nBOTTOM_LEFT_DOT = 0x08\nRIGHT_DOT = 0x10\n\n\nclass BigSeg7x4:\n    def __init__(self, i2c, addr=0x70, brightness=15):\n        self.i2c = i2c\n        self.addr = addr\n        self.buf = bytearray(16)\n        self.i2c.writeto(addr, b'\\x21')  # oscillator on\n        self.brightness(brightness)\n        self.blink(0)                    # display on, no blinking\n        self.show()\n\n    def brightness(self, level):\n        \"\"\"0 (dimmest, 1/16 duty) .. 15 (brightest, 16/16 duty).\"\"\"\n        self.i2c.writeto(self.addr, bytes([0xE0 | (max(0, min(15, level)))]))\n\n    def blink(self, rate=0, on=True):\n        \"\"\"rate 0 = steady, 1 = 2 Hz, 2 = 1 Hz, 3 = 0.5 Hz; on=False blanks the display.\"\"\"\n        self.i2c.writeto(self.addr, bytes([0x80 | ((rate & 3) << 1) | (1 if on else 0)]))\n\n    def show(self):\n        self.i2c.writeto(self.addr, b'\\x00' + self.buf)\n\n    def fill(self, on=False):\n        for i in range(16):\n            self.buf[i] = 0xFF if on else 0\n        self.show()\n\n    def set_digit(self, n, raw):\n        \"\"\"Raw segment byte for digit n (0 = leftmost).\"\"\"\n        self.buf[_DIGIT_POS[n]] = raw & 0xFF\n\n    def set_indicators(self, mask):\n        \"\"\"OR of COLON, TOP_LEFT_DOT, BOTTOM_LEFT_DOT, RIGHT_DOT.\"\"\"\n        self.buf[4] = mask & 0x1E\n\n    def text(self, s):\n        \"\"\"Show up to 4 characters, right-aligned; a '.' lights the previous digit's point,\n        a ':' lights the centre colon.\"\"\"\n        segs = []\n        ind = 0\n        for ch in str(s).upper():\n            if ch == '.' and segs:\n                segs[-1] |= 0x80\n            elif ch == ':':\n                ind |= COLON\n            else:\n                segs.append(_FONT.get(ch, 0x00))\n        segs = segs[-4:]\n        segs = [0] * (4 - len(segs)) + segs\n        for n in range(4):\n            self.set_digit(n, segs[n])\n        self.set_indicators(ind)\n        self.show()\n\n    def number(self, value, decimals=0):\n        if decimals:\n            self.text(('%.' + str(decimals) + 'f') % value)\n        else:\n            self.text('%d' % value)\n\n    def time(self, hours, minutes):\n        self.text('%02d:%02d' % (hours, minutes))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ht16k33_big7seg import BigSeg7x4\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ndisplay = BigSeg7x4(i2c, 0x70)\ndisplay.time(12, 34)\nprint('showing 12:34')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-time",
+      "title": "Shows 12:34 on the display",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "showing 12:34",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "1234",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:48:11.035Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+      "https://www.adafruit.com/product/1270"
+    ]
+  }
+}

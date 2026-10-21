@@ -1,0 +1,79 @@
+{
+  "type": "custom-si7006",
+  "mpn": "SI7006-A20",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; It shares the I2C bus (SDA D21, SCL D22) at address 0x40. Added the si7006.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the temperature and humidity set on the sliders: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "52×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; It shares the I2C bus (SDA GP4, SCL GP5) at address 0x40. Added the si7006.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the temperature and humidity set on the sliders: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-6_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C3664441 SI7006-A20-IM1R (2496 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T10:25:53.357Z"
+}

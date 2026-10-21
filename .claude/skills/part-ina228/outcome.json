@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ina228",
+  "board": "Adafruit INA228 I2C 85V 20-bit High or Low Side Power Monitor (#5832), 8-pin header VIN, GND, SCL, SDA, VBUS, VIN-, VIN+, ALRT, 15 mOhm shunt",
+  "reason": "Check passed on ESP32 and Pico: the sim encodes the 24-bit VBUS (05h, 195.3125 uV/LSB in bits 23-4) and signed CURRENT (07h, 20 uA/LSB with SHUNT_CAL 3932 for the 15 mOhm shunt) registers as the datasheet does, and the driver verifies the IDs (5449h/228xh), writes SHUNT_CAL and decodes 3-byte reads. VSHUNT/DIETEMP/POWER are not modelled because 24-bit registers at adjacent addresses overlap in the 16-bit register store.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina228.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-INA228-PCB (silkscreen order VIN GND SCL SDA VBUS VIN- VIN+ ALRT, matching the Fritzing PCB pads)",
+  "checkRuns": 1
+}

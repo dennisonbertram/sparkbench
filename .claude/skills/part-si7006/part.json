@@ -1,0 +1,232 @@
+{
+  "type": "custom-si7006",
+  "name": "Si7006 temperature & humidity sensor",
+  "mpn": "SI7006-A20",
+  "category": "sensor",
+  "description": "Silicon Labs Si7006-A20 digital relative humidity (0–100 %, ±5 % max from 0–80 %) and temperature (-40 to 125 °C, ±1 °C max from -10 to 85 °C) sensor with an I2C interface at fixed address 0x40; runs on 1.9–3.6 V only (not 5 V tolerant). Sold as: Sensor Maestros smSENSR-Si7006 breakout (6 pins on two 3-pin 0.1\" rows 0.3\" apart like a DIP-6: 1 VDD, 2 GND, 3 N/C, 4 N/C, 5 SCL, 6 SDA; 10 kΩ I2C pull-ups to VDD on board, no regulator).",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 1.95–3.6 V (no regulator: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "NC3",
+      "role": "nc",
+      "description": "No connect (board pin 3)",
+      "required": false
+    },
+    {
+      "name": "NC4",
+      "role": "nc",
+      "description": "No connect (board pin 4)",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VDD on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 1.95,
+  "vmax": 3.6,
+  "currentMa": 0.15,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.silabs.com/documents/public/data-sheets/Si7006-A20.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "smSENSR-Si7006 Si7006-A20 temperature humidity breakout",
+  "footprint": "Package_DIP:DIP-6_W7.62mm",
+  "buildNotes": [
+    "Power VDD from 3.3 V only: the board has no regulator or level shifter and the Si7006 is rated 1.9–3.6 V. Do not use it with a 5 V board's I2C lines.",
+    "The two 3-pin rows are 0.3\" apart, so the board straddles the breadboard's centre gap like a DIP-6 chip. Pins 3 and 4 are not connected.",
+    "No-hold measurement: write 0xF5 (humidity, wait about 25 ms because it also measures temperature) or 0xF3 (temperature, wait 11 ms), then read 3 bytes: MSB, LSB, CRC. The chip NACKs its address until the conversion is done.",
+    "After a humidity measurement, command 0xE0 returns the temperature taken during it (2 bytes, no CRC), saving a second conversion.",
+    "Check the CRC (poly 0x31, init 0x00). Convert the 16-bit word as returned: T = 175.72*code/65536 - 46.85, RH = 125*code/65536 - 6 (clamp RH to 0–100).",
+    "The address is fixed at 0x40 (shared with Si7021/HTU21D/SHT21/INA219 defaults), so only one per I2C bus without a multiplexer."
+  ],
+  "keywords": [
+    "si7006",
+    "si7006-a20",
+    "smsensr",
+    "temperature",
+    "humidity",
+    "silicon labs"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "f3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "f5",
+        "bytes": [
+          {
+            "control": "humidity",
+            "bits": 12,
+            "scale": 0.030517578125,
+            "offset": -6
+          },
+          {
+            "const": 2,
+            "bits": 4
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e5",
+        "bytes": [
+          {
+            "control": "humidity",
+            "bits": 12,
+            "scale": 0.030517578125,
+            "offset": -6
+          },
+          {
+            "const": 2,
+            "bits": 4
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e0",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "si7006.py",
+    "code": "# Si7006-A20 temperature & humidity sensor (Silicon Labs), MicroPython driver.\n# Uses the \"No Hold Master\" commands (0xF5 humidity, 0xF3 temperature) at the default\n# 12-bit RH / 14-bit T resolution, reads the temperature measured during the RH\n# conversion with 0xE0, and checks the CRC-8 (x^8+x^5+x^4+1 = 0x31, init 0x00).\nimport time\n\n_ADDR = 0x40\n_MEAS_RH_NOHOLD = 0xF5\n_MEAS_T_NOHOLD = 0xF3\n_READ_PREV_T = 0xE0\n_RESET = 0xFE\n\n\ndef _crc8(data):\n    crc = 0x00\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\ndef _t_from_code(code):\n    return 175.72 * code / 65536 - 46.85\n\n\nclass SI7006:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(80)  # power-up: up to 80 ms over the full temperature range\n        self.i2c.writeto(self.addr, bytes([_RESET]))\n        time.sleep_ms(15)  # software reset takes up to 15 ms\n\n    def _measure(self, cmd, wait_ms):\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        time.sleep_ms(wait_ms)  # datasheet maximum conversion time\n        d = None\n        for _ in range(10):  # the chip NACKs its address until the conversion is done\n            try:\n                d = self.i2c.readfrom(self.addr, 3)\n                break\n            except OSError:\n                time.sleep_ms(5)\n        if d is None:\n            raise OSError('Si7006 not responding: check the wiring')\n        if _crc8(d[0:2]) != d[2]:\n            raise OSError('Si7006 CRC mismatch: check the wiring')\n        return (d[0] << 8) | d[1]\n\n    def humidity(self):\n        \"\"\"Relative humidity in %: 125 * RH_Code / 65536 - 6, limited to 0..100.\"\"\"\n        # 12-bit RH (12 ms) plus the 14-bit temperature it also measures (10.8 ms)\n        rh = 125 * self._measure(_MEAS_RH_NOHOLD, 25) / 65536 - 6\n        return min(100.0, max(0.0, rh))\n\n    def temperature(self):\n        \"\"\"Temperature in °C: 175.72 * Temp_Code / 65536 - 46.85.\"\"\"\n        return _t_from_code(self._measure(_MEAS_T_NOHOLD, 11))\n\n    def read(self):\n        \"\"\"Measure humidity, then fetch the temperature taken during that measurement (0xE0).\n        Returns (temperature in °C, relative humidity in %).\"\"\"\n        h = self.humidity()\n        self.i2c.writeto(self.addr, bytes([_READ_PREV_T]))\n        d = self.i2c.readfrom(self.addr, 2)  # 0xE0 returns no checksum\n        return _t_from_code((d[0] << 8) | d[1]), h\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom si7006 import SI7006\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SI7006(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.1f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65.0%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.silabs.com/documents/public/data-sheets/Si7006-A20.pdf",
+    "https://www.farnell.com/datasheets/2245062.pdf",
+    "https://sensormaestros.com/wp-content/uploads/smSENSR-Si7006-DS.pdf",
+    "https://tindie.com/products/sensormaestros/smsensr-si7006-temp-humidity-combination-sensor"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:25:53.357Z",
+    "verifiedSources": [
+      "https://www.silabs.com/documents/public/data-sheets/Si7006-A20.pdf",
+      "https://www.tindie.com/products/sensormaestros/smsensr-si7006-temphumidity-free-shipping-usa/"
+    ]
+  }
+}

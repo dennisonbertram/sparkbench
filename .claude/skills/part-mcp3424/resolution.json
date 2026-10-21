@@ -1,0 +1,52 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says GND, datasheet reading says CH1+",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 1 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    },
+    {
+      "diff": "header pin 2: part says +5V, datasheet reading says CH1-",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 2 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    },
+    {
+      "diff": "header pin 5: part says C4+, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 5 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    },
+    {
+      "diff": "header pin 6: part says C4-, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 6 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    },
+    {
+      "diff": "header pin 7: part says SCL, datasheet reading says CH4-",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 7 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    },
+    {
+      "diff": "header pin 8: part says SDA, datasheet reading says CH4+",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 8 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    },
+    {
+      "diff": "header pin 11: part says C1-, datasheet reading says +5V",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 11 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    },
+    {
+      "diff": "header pin 12: part says C1+, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Same board, two different pin-numbering conventions; no signal is actually on a different physical pin. DFRobot DFR0316 silkscreen/pinout image (what the user sees) reads, top to bottom: left header GND, +5V, C3+, C3-, C4+, C4-; right header SCL, SDA, C2-, C2+, C1-, C1+ -- exactly the model's pins 1-12. The DFR0316 schematic numbers the headers the other way: P1 pin1..6 = CH1+, CH1-, CH2+, CH2-, SDAr, SCLr and P2 pin1..6 = CH4-, CH4+, CH3-, CH3+, +5V, GND, which is the second reading's order. Reversing each schematic header gives P2 6..1 = GND, +5V, CH3+, CH3-, CH4+, CH4- and P1 6..1 = SCL, SDA, CH2-, CH2+, CH1-, CH1+, identical to the model (same neighbours: e.g. +5V sits between GND and CH3+ in both). The second reading simply lists the schematic's connector pin 1 first and P1 before P2. For this line: header pin 12 is the same physical pad in both readings once the header numbering direction is accounted for; the model follows the board silkscreen order.",
+      "source": "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png ; https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    }
+  ]
+}

@@ -1,0 +1,323 @@
+{
+  "type": "custom-mpr121",
+  "name": "MPR121 12-key capacitive touch sensor",
+  "mpn": "MPR121",
+  "category": "sensor",
+  "description": "NXP (Freescale) MPR121 capacitive touch controller: 12 electrode inputs with built-in filtering, per-electrode touch/release thresholds and auto-calibrating baselines, read over I2C (touch status bits in registers 0x00-0x01). Chip runs on 1.71-3.6 V; the breakout adds a 3.3 V regulator and I2C level shifting for 3-5 V boards. Sold as: Adafruit 12-Key Capacitive Touch Sensor Breakout - MPR121 - STEMMA QT (product 1982, 2021+ revision), power/I2C header VIN, 3Vo, GND, SCL, SDA, INT, ADDR plus electrode header 11 ... 0, GND and two STEMMA QT connectors, I2C address 0x5A (0x5B-0x5D via ADDR).",
+  "eli5": "Turns up to 12 bits of foil, wire or fruit into touch buttons and tells your board which ones your fingers are on.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V (silkscreen 'VLogic/Vcc: 3-5VDC'); feeds the AP2112K 3.3 V regulator and sets the I2C logic level (SDA/SCL are level-shifted and pulled up to VIN)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator; not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, BSS138 level-shifted, 10k pull-up to VIN on board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, BSS138 level-shifted, 10k pull-up to VIN on board",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low (open-drain, 10k pull-up to 3.3 V, red LED lights when low); goes low on a touch/release change until the status is read. Labelled IRQ on pre-2021 boards",
+      "required": false
+    },
+    {
+      "name": "ADDR",
+      "role": "io",
+      "description": "Address select, 10k pull-down: open/GND = 0x5A, 3Vo = 0x5B, SDA = 0x5C, SCL = 0x5D",
+      "required": false
+    },
+    {
+      "name": "ELE11",
+      "role": "io",
+      "description": "Electrode 11 (silkscreen '11'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE10",
+      "role": "io",
+      "description": "Electrode 10 (silkscreen '10'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE9",
+      "role": "io",
+      "description": "Electrode 9 (silkscreen '9'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE8",
+      "role": "io",
+      "description": "Electrode 8 (silkscreen '8'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE7",
+      "role": "io",
+      "description": "Electrode 7 (silkscreen '7'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE6",
+      "role": "io",
+      "description": "Electrode 6 (silkscreen '6'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE5",
+      "role": "io",
+      "description": "Electrode 5 (silkscreen '5'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE4",
+      "role": "io",
+      "description": "Electrode 4 (silkscreen '4'): wire to a touch pad, foil, fruit or any conductive object; can also be an LED/GPIO pin",
+      "required": false
+    },
+    {
+      "name": "ELE3",
+      "role": "io",
+      "description": "Electrode 3 (silkscreen '3'): wire to a touch pad, foil, fruit or any conductive object",
+      "required": false
+    },
+    {
+      "name": "ELE2",
+      "role": "io",
+      "description": "Electrode 2 (silkscreen '2'): wire to a touch pad, foil, fruit or any conductive object",
+      "required": false
+    },
+    {
+      "name": "ELE1",
+      "role": "io",
+      "description": "Electrode 1 (silkscreen '1'): wire to a touch pad, foil, fruit or any conductive object",
+      "required": false
+    },
+    {
+      "name": "ELE0",
+      "role": "io",
+      "description": "Electrode 0 (silkscreen '0'): wire to a touch pad, foil, fruit or any conductive object",
+      "required": false
+    },
+    {
+      "name": "GND_2",
+      "role": "gnd",
+      "description": "Ground at the end of the electrode header (same net as GND)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 90,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/MPR121.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "Adafruit MPR121 12-key capacitive touch sensor breakout STEMMA QT 1982",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical",
+  "buildNotes": [
+    "I2C address 0x5A with ADDR open (10k pull-down); wire ADDR to 3Vo for 0x5B, SDA for 0x5C, SCL for 0x5D, so up to four boards (48 pads) share one bus.",
+    "Init order matters: soft reset (0x63 to 0x80), ECR 0x5E = 0 (Stop Mode), then thresholds and filters, then ECR = 0x8C to start. Configuration registers ignore writes while the chip is in Run Mode.",
+    "After reset register 0x5D reads 0x24: the driver uses this to confirm the chip is there.",
+    "Read registers 0x00-0x01 together: bits 0-11 are electrodes 0-11, 1 = touched. Bit 15 (OVCF) means over-current on REXT and stops the chip.",
+    "Default thresholds touch 12 / release 6 counts; raise them if pads trigger by themselves, lower them for pads behind plastic or long wires.",
+    "Baselines are captured when Run Mode starts: don't touch the pads during the first second after power-up or reset.",
+    "Keep electrode wires short and apart; long parallel wires couple and can trigger each other.",
+    "INT goes low on any touch/release change until you read the status; the red LED on the board shows it."
+  ],
+  "keywords": [
+    "mpr121",
+    "capacitive touch",
+    "touch sensor",
+    "touch keypad",
+    "adafruit 1982",
+    "12-key",
+    "i2c",
+    "stemma qt"
+  ],
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/MPR121.pdf",
+    "https://github.com/adafruit/Adafruit-MPR121-PCB",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-MPR121-PCB/master/Adafruit%20MPR121Q%20QT.brd",
+    "https://learn.adafruit.com/adafruit-mpr121-12-key-capacitive-touch-sensor-breakout-tutorial/pinouts",
+    "https://www.adafruit.com/product/1982",
+    "https://github.com/adafruit/Adafruit_MPR121"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x5C": 16,
+      "0x5D": 36
+    },
+    "inputBits": [
+      {
+        "reg": "0x00",
+        "bit": 0,
+        "control": "ele0",
+        "label": "Electrode 0 touched"
+      },
+      {
+        "reg": "0x00",
+        "bit": 1,
+        "control": "ele1",
+        "label": "Electrode 1 touched"
+      },
+      {
+        "reg": "0x00",
+        "bit": 2,
+        "control": "ele2",
+        "label": "Electrode 2 touched"
+      },
+      {
+        "reg": "0x00",
+        "bit": 3,
+        "control": "ele3",
+        "label": "Electrode 3 touched"
+      },
+      {
+        "reg": "0x00",
+        "bit": 4,
+        "control": "ele4",
+        "label": "Electrode 4 touched"
+      },
+      {
+        "reg": "0x00",
+        "bit": 5,
+        "control": "ele5",
+        "label": "Electrode 5 touched"
+      },
+      {
+        "reg": "0x00",
+        "bit": 6,
+        "control": "ele6",
+        "label": "Electrode 6 touched"
+      },
+      {
+        "reg": "0x00",
+        "bit": 7,
+        "control": "ele7",
+        "label": "Electrode 7 touched"
+      },
+      {
+        "reg": "0x01",
+        "bit": 0,
+        "control": "ele8",
+        "label": "Electrode 8 touched"
+      },
+      {
+        "reg": "0x01",
+        "bit": 1,
+        "control": "ele9",
+        "label": "Electrode 9 touched"
+      },
+      {
+        "reg": "0x01",
+        "bit": 2,
+        "control": "ele10",
+        "label": "Electrode 10 touched"
+      },
+      {
+        "reg": "0x01",
+        "bit": 3,
+        "control": "ele11",
+        "label": "Electrode 11 touched"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mpr121.py",
+    "code": "# MPR121 12-channel capacitive touch controller (NXP/Freescale MPR121 datasheet rev 4), MicroPython driver.\n# Register map (datasheet Table 2):\n#   0x00/0x01  touch status, bits 0-11 = ELE0-ELE11 (bit 12 ELEPROX, bit 15 OVCF over-current flag)\n#   0x04-0x1D  10-bit filtered electrode data, LSB then MSB per channel\n#   0x1E-0x2A  baseline values (upper 8 of 10 bits: shift left 2 before comparing)\n#   0x2B-0x40  baseline filter (MHD/NHD/NCL/FDL), 0x41-0x5A touch/release thresholds\n#   0x5B debounce, 0x5C/0x5D global CDC / CDT + filters, 0x5E ECR (run/stop), 0x80 soft reset (write 0x63)\n# Configuration registers can only be written in Stop Mode (ECR = 0); this driver writes ECR last.\nimport time\n\n_TOUCH_STATUS = 0x00\n_FILTERED = 0x04\n_BASELINE = 0x1E\n_MHDR = 0x2B\n_TOUCH_TH = 0x41\n_DEBOUNCE = 0x5B\n_CONFIG1 = 0x5C\n_CONFIG2 = 0x5D\n_ECR = 0x5E\n_SOFT_RESET = 0x80\n\n\nclass MPR121:\n    def __init__(self, i2c, addr=0x5A, touch=12, release=6):\n        \"\"\"addr 0x5A (ADDR to GND, board default), 0x5B (VDD), 0x5C (SDA) or 0x5D (SCL).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self._w(_SOFT_RESET, 0x63)          # soft reset: all registers back to POR values\n        time.sleep_ms(1)\n        self._w(_ECR, 0x00)                 # Stop Mode so configuration registers accept writes\n        # After reset every register is 0 except 0x5C = 0x10 and 0x5D = 0x24: use 0x5D as an identity check.\n        if self._r(_CONFIG2) != 0x24:\n            raise OSError('MPR121 not found at 0x%02X (CONFIG2 != 0x24)' % addr)\n        self.set_thresholds(touch, release)\n        # Baseline filter: MHDR NHDR NCLR FDLR MHDF NHDF NCLF FDLF NHDT NCLT FDLT (0x2B-0x35),\n        # the values used by the Adafruit_MPR121 library (AN3891 baseline filtering).\n        self.i2c.writeto_mem(self.addr, _MHDR, bytes([0x01, 0x01, 0x0E, 0x00, 0x01, 0x05, 0x01, 0x00, 0x00, 0x00, 0x00]))\n        self._w(_DEBOUNCE, 0x00)            # no debounce\n        self._w(_CONFIG1, 0x10)             # FFI = 6 samples, CDC = 16 uA\n        self._w(_CONFIG2, 0x20)             # CDT = 0.5 us, SFI = 4 samples, ESI = 1 ms\n        # Run Mode: CL = 0b10 (baseline tracking, baseline loaded from first reading), ELE0-ELE11 enabled.\n        self._w(_ECR, 0x80 | 0x0C)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def set_thresholds(self, touch, release):\n        \"\"\"Touch when baseline - data > touch; release when baseline - data < release (0-255, typ. 4-16).\n        Only allowed in Stop Mode, so the ECR is saved, cleared and restored.\"\"\"\n        ecr = self._r(_ECR)\n        if ecr:\n            self._w(_ECR, 0x00)\n        buf = bytearray()\n        for _ in range(12):\n            buf.append(touch & 0xFF)\n            buf.append(release & 0xFF)\n        self.i2c.writeto_mem(self.addr, _TOUCH_TH, buf)\n        if ecr:\n            self._w(_ECR, ecr)\n\n    def touched(self):\n        \"\"\"12-bit mask, bit n set = electrode n touched.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _TOUCH_STATUS, 2)\n        return (d[0] | (d[1] << 8)) & 0x0FFF\n\n    def is_touched(self, n):\n        return bool(self.touched() & (1 << n))\n\n    def filtered_data(self, n):\n        \"\"\"10-bit filtered electrode data (0-1023, falls when touched).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _FILTERED + 2 * n, 2)\n        return d[0] | ((d[1] & 0x03) << 8)\n\n    def baseline_data(self, n):\n        \"\"\"10-bit baseline (register holds the upper 8 bits).\"\"\"\n        return self._r(_BASELINE + n) << 2\n\n    def over_current(self):\n        \"\"\"True if the OVCF flag is set (REXT over-current; chip stopped).\"\"\"\n        return bool(self._r(0x01) & 0x80)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mpr121 import MPR121\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmpr = MPR121(i2c)          # 0x5A, ADDR left open\nwhile True:\n    t = mpr.touched()\n    keys = [str(i) for i in range(12) if t & (1 << i)]\n    print('TOUCH ' + (' '.join(keys) if keys else 'none'))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "touch-pads",
+      "title": "Touched electrodes are reported from the status registers",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH none",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ele3",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ele11",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH 3 11",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ele3",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH 11",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ele0",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH 0 11",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:51:37.554Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/MPR121.pdf",
+      "https://learn.adafruit.com/adafruit-mpr121-12-key-capacitive-touch-sensor-breakout-tutorial/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/098/909/large1024/sensors_MPR121_STEMMA_pinouts.jpg"
+    ]
+  }
+}

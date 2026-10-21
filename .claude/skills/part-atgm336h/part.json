@@ -1,0 +1,175 @@
+{
+  "type": "custom-atgm336h",
+  "name": "ATGM336H GPS/BDS module",
+  "mpn": "ATGM336H-5N-31",
+  "category": "sensor",
+  "description": "Zhongke Microelectronics ATGM336H-5N-31 GPS + BeiDou receiver (AT6558 chip) that streams NMEA 0183 sentences (position, altitude, speed, UTC time) over a UART at 9600 baud 8N1, once per second; talker GN when GPS and BDS are combined, GP or BD for one system. The module itself runs on 2.7–3.6 V; the breakout's regulator lets it run from 3.3–5 V, but its TX/RX are 3.3 V logic. Sold as: GOOUUU ATGM336H-5N-31 GPS+BD module (5-pin: VCC, GND, TX, RX, PPS) with IPEX ceramic patch antenna, backup battery and fix LED.",
+  "eli5": "Listens to GPS and BeiDou satellites and tells your board where on Earth it is, once a second.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (on-board regulator feeds the 2.7–3.6 V ATGM336H)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module serial output, NMEA at 9600 baud 8N1, 3.3 V logic: connect to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module serial input (3.3 V logic, not 5 V tolerant): connect to the board's UART TX. Only needed to send $PCAS settings",
+      "required": false
+    },
+    {
+      "name": "PPS",
+      "role": "io",
+      "description": "One pulse per second output, rising edge aligned to UTC (only once there is a fix). Optional",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 25,
+  "datasheetUrl": "https://www.tinytronics.nl/product_files/002176_ATGM336H.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "ATGM336H-5N GPS BDS module with antenna",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Cross the serial lines: module TX goes to the board's UART RX pin; module RX (optional) to the board's UART TX pin.",
+    "Default is 9600 baud, 8 data bits, no parity, 1 stop bit; open the UART at 9600 or the sentences come out as garbage.",
+    "TX/RX are 3.3 V logic (the chip's inputs are rated to VCC + 0.2 V). ESP32 and Pico are 3.3 V, so wire them directly; use a level shifter with a 5 V Arduino.",
+    "Plug the ceramic antenna into the IPEX socket and give it a view of the sky. A cold start takes about 35 s outdoors; indoors it may never get a fix.",
+    "With GPS and BeiDou both used the sentences start $GNGGA / $GNRMC, not $GPGGA, so parse the sentence type after the 2-letter talker.",
+    "Settings are sent as $PCAS sentences ($PCAS02 update rate, $PCAS04 GPS/BDS mode, $PCAS00 to save to flash); they need the RX pin wired.",
+    "Peak supply current is up to 100 mA; power it from the board's 3V3 or 5V/VBUS pin, not a GPIO."
+  ],
+  "keywords": [
+    "atgm336h",
+    "atgm336h-5n",
+    "atgm336h-5n31",
+    "at6558",
+    "gps",
+    "bds",
+    "beidou",
+    "gnss",
+    "nmea",
+    "location"
+  ],
+  "sources": [
+    "https://www.tinytronics.nl/product_files/002176_ATGM336H.pdf",
+    "https://jlcpcb.com/partdetail/ZHONGKEWEI-ATGM336H5N31/C90770",
+    "https://espruino.com/files/CASIC_en.pdf",
+    "https://www.tinytronics.nl/en/communication-and-signals/wireless/gps/modules/atgm336h-gps-module",
+    "https://www.tinytronics.nl/image/cache/data/product-2176/ATGM336H-5N-31%20GPS%20module%201-600x600w.jpg",
+    "https://arduino-er.blogspot.com/2020/07/atgm336h-5nesp32-read-gps-position.html"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Latitude",
+    "unit": "°",
+    "min": -90,
+    "max": 90,
+    "default": 30.27,
+    "controls": [
+      {
+        "key": "lat",
+        "quantity": "Latitude",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 30.27
+      },
+      {
+        "key": "lon",
+        "quantity": "Longitude",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": 120.15
+      },
+      {
+        "key": "alt",
+        "quantity": "Altitude above sea level",
+        "unit": "m",
+        "min": -100,
+        "max": 18000,
+        "default": 20
+      },
+      {
+        "key": "speed",
+        "quantity": "Speed over ground",
+        "unit": "knots",
+        "min": 0,
+        "max": 1000,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "nmea": true
+    }
+  },
+  "driver": {
+    "filename": "atgm336h.py",
+    "code": "# ATGM336H-5N GPS/BDS receiver (Zhongke Microelectronics, AT6558 SoC), MicroPython NMEA driver.\n# The module sends NMEA 0183 sentences on its UART, default 9600 baud 8N1, once per second\n# (ATGM336H-5N user manual, section 2.6). Sentence format, talker IDs and the $PCASxx configuration\n# sentences follow the CASIC Multimode Satellite Navigation Receiver Protocol Specification:\n#   - talker is GP (GPS only), BD (BeiDou only), GL (GLONASS) or GN (several systems combined),\n#     so a GPS+BDS module usually sends $GNGGA / $GNRMC once it has a fix;\n#   - latitude ddmm.mmmm, longitude dddmm.mmmm (degrees then minutes);\n#   - checksum = XOR of every character between '$' and '*', two hex digits.\n\n\ndef _xor(body):\n    cs = 0\n    for c in body:\n        cs ^= ord(c)\n    return cs\n\n\ndef _checksum_ok(line):\n    # line: str without CR/LF, starting with '$'\n    star = line.rfind('*')\n    if line[:1] != '$' or star < 0 or len(line) < star + 3:\n        return False\n    try:\n        return _xor(line[1:star]) == int(line[star + 1:star + 3], 16)\n    except ValueError:\n        return False\n\n\ndef _deg(field, hemi, dlen):\n    # 'ddmm.mmmm' (dlen=2) or 'dddmm.mmmm' (dlen=3) -> signed decimal degrees, None if empty\n    if not field or not hemi:\n        return None\n    d = int(field[:dlen]) + float(field[dlen:]) / 60\n    return -d if hemi in ('S', 'W') else d\n\n\ndef _num(field):\n    return float(field) if field else None\n\n\nclass ATGM336H:\n    # $PCAS04 working-system modes (CASIC spec 1.6.5); the -5N-31 supports GPS, BDS and GPS+BDS.\n    GPS = 1\n    BDS = 2\n    GPS_BDS = 3\n\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 9600 baud, rx= the pin wired to the module's TX\n        (and tx= the pin wired to the module's RX if you want to send settings).\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.fix = False          # True when GGA quality > 0 or RMC status 'A'\n        self.fix_quality = 0      # GGA: 0 invalid, 1 SPS fix, 6 dead reckoning\n        self.latitude = None      # decimal degrees, + north\n        self.longitude = None     # decimal degrees, + east\n        self.altitude = None      # metres above the geoid (GGA Msl)\n        self.satellites = 0       # satellites used (GGA numSv)\n        self.hdop = None\n        self.speed_knots = None   # speed over ground (RMC)\n        self.course = None        # course over ground, degrees (RMC)\n        self.utc_time = None      # (hh, mm, ss)\n        self.date = None          # (day, month, 2-digit year)\n        self.talker = None        # 'GN', 'GP' or 'BD' of the last position sentence\n        self.antenna = None       # 'OK', 'OPEN' or 'SHORT' from $GPTXT antenna messages\n        self.bad_checksums = 0\n\n    # ---- receiving -------------------------------------------------------------------\n    def update(self):\n        \"\"\"Read what has arrived and decode complete sentences. Returns True if a GGA or RMC was decoded.\"\"\"\n        n = self.uart.any()\n        if n:\n            data = self.uart.read(n)\n            if data:\n                self._buf += data\n        got = False\n        while True:\n            nl = self._buf.find(b'\\n')\n            if nl < 0:\n                break\n            line = self._buf[:nl].strip()\n            self._buf = self._buf[nl + 1:]\n            try:\n                line = line.decode()\n            except UnicodeError:  # noise on the line\n                self.bad_checksums += 1\n                continue\n            try:\n                if line and self._parse(line):\n                    got = True\n            except (ValueError, IndexError):  # malformed field\n                pass\n        if len(self._buf) > 512:  # garbage without newlines (wrong baud rate?)\n            self._buf = b''\n        return got\n\n    def _parse(self, line):\n        if not _checksum_ok(line):\n            self.bad_checksums += 1\n            return False\n        f = line[1:line.rfind('*')].split(',')\n        talker, kind = f[0][:2], f[0][2:]\n        if kind == 'GGA' and len(f) >= 10:\n            self.talker = talker\n            self._time(f[1])\n            self.fix_quality = int(f[6]) if f[6] else 0\n            self.fix = self.fix_quality > 0\n            self.satellites = int(f[7]) if f[7] else 0\n            self.hdop = _num(f[8])\n            if self.fix:\n                self.latitude = _deg(f[2], f[3], 2)\n                self.longitude = _deg(f[4], f[5], 3)\n                self.altitude = _num(f[9])\n            return True\n        if kind == 'RMC' and len(f) >= 10:\n            self.talker = talker\n            self._time(f[1])\n            self.fix = f[2] == 'A'\n            if self.fix:\n                self.latitude = _deg(f[3], f[4], 2)\n                self.longitude = _deg(f[5], f[6], 3)\n                self.speed_knots = _num(f[7])\n                self.course = _num(f[8])\n            if len(f[9]) == 6:\n                self.date = (int(f[9][0:2]), int(f[9][2:4]), int(f[9][4:6]))\n            return True\n        if kind == 'TXT' and len(f) >= 5 and f[4].startswith('ANTENNA '):\n            self.antenna = f[4][8:]\n        return False\n\n    def _time(self, t):\n        if len(t) >= 6:\n            self.utc_time = (int(t[0:2]), int(t[2:4]), int(float(t[4:])))\n\n    # ---- configuration ($PCAS sentences; needs the module's RX pin wired) ---------------\n    def send(self, body):\n        \"\"\"Send a sentence; body is the text between '$' and '*', e.g. 'PCAS02,1000'.\"\"\"\n        self.uart.write('$%s*%02X\\r\\n' % (body, _xor(body)))\n\n    def set_update_ms(self, ms):\n        \"\"\"Fix interval in ms: 1000 (1 Hz, default), 500, 250, 200 or 100 (10 Hz).\"\"\"\n        if ms not in (1000, 500, 250, 200, 100):\n            raise ValueError('interval must be 1000, 500, 250, 200 or 100 ms')\n        self.send('PCAS02,%d' % ms)\n\n    def set_mode(self, mode):\n        \"\"\"Satellite systems: ATGM336H.GPS, .BDS or .GPS_BDS.\"\"\"\n        self.send('PCAS04,%d' % mode)\n\n    def restart(self, kind=0):\n        \"\"\"0 hot, 1 warm, 2 cold start, 3 factory reset (PCAS10).\"\"\"\n        self.send('PCAS10,%d' % kind)\n\n    def save(self):\n        \"\"\"Store the current settings in the module's flash (PCAS00).\"\"\"\n        self.send('PCAS00')\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom atgm336h import ATGM336H\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\ngps = ATGM336H(uart)\nwhile True:\n    if gps.update():\n        if gps.fix and gps.latitude is not None:\n            print('LAT=%.4f LON=%.4f ALT=%.1fm' % (gps.latitude, gps.longitude, gps.altitude or 0))\n        else:\n            print('Waiting for fix...')\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "fix",
+      "title": "Reports the position and altitude set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lat",
+          "value": 35.6586
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lon",
+          "value": -105.9378
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "alt",
+          "value": 2134
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LAT=35.6586 LON=-105.9378 ALT=2134.0m",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:52:38.482Z",
+    "verifiedSources": [
+      "https://jlcpcb.com/partdetail/C90770",
+      "https://www.tinytronics.nl/en/communication-and-signals/wireless/gps/modules/atgm336h-gps-module",
+      "https://www.flux.ai/vasy_skral/atgm336h-5n31~7zn.md"
+    ]
+  }
+}

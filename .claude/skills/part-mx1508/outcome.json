@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mx1508",
+  "board": "MX1508 2-channel DC motor driver module (red 24.7 x 21 mm board with two 100 uF capacitors, pads + - IN1 IN2 IN3 IN4 on one edge, MOTOR-A and MOTOR-B pads on the other)",
+  "reason": "The actuator model has inputs IN1-IN4. The truth table (standby/forward/reverse/brake), PWM mode B at 10-50 kHz and the limits come from the Mixic MX1508 datasheet. The supply is limited to 2.4-7.2 V because the module feeds the logic VCC (7 V max) from the same + rail, and the docs note VIH = 0.6 x VCC for 3.3 V logic. The board is cabled because its pads are on two edges. The check passed on esp32 and pico (2nd run, after limiting the example to the required motor A inputs).",
+  "datasheetUrl": "https://cdn.hackaday.io/files/1960798389043936/MX1508_Datasheet.pdf",
+  "breakoutPinoutSource": "https://github.com/kwleung-cityu/Motor_Driver_TC1508A/blob/main/assets/Connection_diagram.png (board photo: + - IN1 IN2 IN3 IN4 down one edge, MOTOR-A/MOTOR-B on the other) plus the module netlist at https://github.com/Dhanushtummala/MX1508-Eagle-Library",
+  "checkRuns": 2
+}

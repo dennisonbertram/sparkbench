@@ -1,0 +1,214 @@
+{
+  "type": "custom-74hc165",
+  "name": "74HC165 8-bit parallel-in shift register",
+  "mpn": "SN74HC165N",
+  "category": "ic",
+  "description": "8-bit parallel-in / serial-out shift register (high-speed CMOS): SH/LD low loads inputs A-H at once, then each rising CLK edge shifts one bit out on QH (H first). Reads 8 switches with 3 GPIOs; chips daisy-chain through SER. Runs on 2-6 V, inputs and outputs swing rail to rail, 80 uA max quiescent. Sold as: Texas Instruments SN74HC165N (bare 16-pin DIP chip that plugs straight into a breadboard; also sold as 74HC165 DIP-16 by Nexperia/onsemi clones), pins numbered 1-16 anticlockwise from the notch.",
+  "eli5": "Lets your board read eight buttons or switches using only three wires, by passing their on/off states along one at a time.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SH/LD",
+      "role": "io",
+      "description": "Pin 1: shift/load. Low = copy inputs A-H into the register; high = shift on CLK",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "description": "Pin 2: clock input, each rising edge shifts the next bit onto QH (while SH/LD is high and CLK INH low)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "E",
+      "role": "io",
+      "description": "Pin 3: parallel input E. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "F",
+      "role": "io",
+      "description": "Pin 4: parallel input F. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "G",
+      "role": "io",
+      "description": "Pin 5: parallel input G. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "H",
+      "role": "io",
+      "description": "Pin 6: parallel input H. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "/QH",
+      "role": "nc",
+      "description": "Pin 7: complementary (inverted) serial output. Not needed: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 8: ground",
+      "required": true
+    },
+    {
+      "name": "QH",
+      "role": "io",
+      "description": "Pin 9: serial output, the last bit of the register (H first after a load). Swings to VCC, so run the chip from 3.3 V for a 3.3 V board",
+      "required": true,
+      "fn": "digital-in"
+    },
+    {
+      "name": "SER",
+      "role": "gnd",
+      "description": "Pin 10: serial input shifted in behind the data. Tie to GND for one chip (or to QH of the next chip in a chain); never floating",
+      "required": true
+    },
+    {
+      "name": "A",
+      "role": "io",
+      "description": "Pin 11: parallel input A. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "B",
+      "role": "io",
+      "description": "Pin 12: parallel input B. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "C",
+      "role": "io",
+      "description": "Pin 13: parallel input C. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "D",
+      "role": "io",
+      "description": "Pin 14: parallel input D. Never leave it floating: a switch to VCC with a 10 kOhm pull-down to GND (pressed = 1)",
+      "required": false
+    },
+    {
+      "name": "CLK INH",
+      "role": "gnd",
+      "description": "Pin 15: clock inhibit, high = CLK ignored. Tie to GND (or drive it low from a GPIO)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Pin 16: supply 2-6 V (use 3.3 V with an ESP32 or Pico). 0.1 uF to GND close to the pin",
+      "required": true
+    }
+  ],
+  "vmin": 2,
+  "vmax": 6,
+  "currentMa": 0.1,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/sn74hc165.pdf",
+  "priceUsd": 0.6,
+  "supplierQuery": "SN74HC165N DIP-16 shift register",
+  "footprint": "Package_DIP:DIP-16_W7.62mm",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/sn74hc165.pdf",
+    "https://www.ti.com/product/SN74HC165",
+    "https://www.lcsc.com/product-detail/C2909.html"
+  ],
+  "buildNotes": [
+    "Pin 1 (SH/LD) is next to the notch/dot; pins count anticlockwise seen from the top, so VCC (pin 16) is opposite pin 1 and GND is pin 8.",
+    "Power it from 3.3 V when the board is an ESP32 or Pico: QH swings to VCC, and 5 V on a GPIO can damage it.",
+    "Tie CLK INH (pin 15) and SER (pin 10) to GND for a single chip. CMOS inputs must never float (datasheet note on recommended operating conditions).",
+    "Every input A-H needs a defined level: wire each switch from the input to VCC with a 10 kOhm pull-down to GND (pressed = 1), or switch to GND with a 10 kOhm pull-up (pressed = 0).",
+    "Read sequence: pulse SH/LD low then high, read QH (that is H), then for each of the remaining bits pulse CLK high and read QH again. 8 bits: H, G, F, E, D, C, B, A.",
+    "Chain more chips by wiring QH of the far chip into SER of the near one and sharing SH/LD and CLK; then clock 16, 24... bits.",
+    "Put a 0.1 uF capacitor between VCC (pin 16) and GND (pin 8), close to the chip."
+  ],
+  "keywords": [
+    "74hc165",
+    "sn74hc165",
+    "hc165",
+    "shift register",
+    "piso",
+    "parallel in serial out",
+    "input expander",
+    "switches",
+    "buttons"
+  ],
+  "sim": {
+    "kind": "shift-register",
+    "shift": {
+      "type": "165",
+      "load": "SH/LD",
+      "clock": "CLK",
+      "serialOut": "QH",
+      "inputs": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H"
+      ]
+    }
+  },
+  "driver": {
+    "filename": "hc165.py",
+    "code": "# MicroPython driver for the 74HC165 8-bit parallel-in / serial-out shift register\n# (TI SN74HC165, datasheet SCLS116H).\n#\n# How the chip works (datasheet section 8):\n#   - SH/LD low copies the eight parallel inputs A..H into the register at once\n#     (CLK, CLK INH and SER are ignored while SH/LD is low).\n#   - With SH/LD high and CLK INH low, every rising edge of CLK shifts the register\n#     one place toward QH; SER feeds the empty end (H is on QH first, A last).\n#   - QH (pin 9) shows the bit at the end of the register; /QH (pin 7) is its inverse.\n# Daisy-chain: QH of chip 2 -> SER of chip 1, so after 8 clocks chip 2's bits follow.\n# All datasheet timings are tens of ns; MicroPython pin toggles take microseconds,\n# so no extra delays are needed.\n\nfrom machine import Pin\n\n\nclass HC165:\n    def __init__(self, load, clock, data, clk_inh=None, chips=1):\n        \"\"\"load = SH/LD pin, clock = CLK pin, data = QH pin (all machine.Pin or GPIO numbers).\n        clk_inh: optional CLK INH pin; if None it must be tied to GND on the board.\n        chips: how many 74HC165s are daisy-chained (QH of the far chip into SER of the near one).\"\"\"\n        self.ld = load if isinstance(load, Pin) else Pin(load, Pin.OUT, value=1)\n        self.clk = clock if isinstance(clock, Pin) else Pin(clock, Pin.OUT, value=0)\n        self.q = data if isinstance(data, Pin) else Pin(data, Pin.IN)\n        self.ld.init(Pin.OUT, value=1)\n        self.clk.init(Pin.OUT, value=0)\n        self.inh = None\n        if clk_inh is not None:\n            self.inh = clk_inh if isinstance(clk_inh, Pin) else Pin(clk_inh, Pin.OUT, value=0)\n            self.inh.init(Pin.OUT, value=0)\n        self.chips = chips\n\n    def read(self):\n        \"\"\"Latch the inputs and shift them in. Returns an int with chips*8 bits:\n        for one chip bit 7 = H ... bit 0 = A (1 = that input is high).\"\"\"\n        self.clk.value(0)\n        # Parallel load: SH/LD low, then back high to enter shift mode.\n        self.ld.value(0)\n        self.ld.value(1)\n        if self.inh is not None:\n            self.inh.value(0)\n        value = 0\n        for _ in range(8 * self.chips):\n            value = (value << 1) | self.q.value()  # QH already shows the next bit\n            self.clk.value(1)  # rising edge shifts the next bit onto QH\n            self.clk.value(0)\n        return value\n\n    def pin(self, n):\n        \"\"\"Level of input n (0 = A ... 7 = H on the first chip; 8.. = next chip).\"\"\"\n        v = self.read()\n        # Bits of the chip nearest the MCU come out first, so they are the high byte.\n        chip = n // 8\n        shift = 8 * (self.chips - 1 - chip) + (n % 8)\n        return (v >> shift) & 1\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom hc165 import HC165\n\nsr = HC165(load={SH_LD}, clock={CLK}, data={QH})\nwhile True:\n    b = sr.read()          # bit 7 = H ... bit 0 = A, 1 = input high\n    print('IN={:08b}'.format(b))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "read-switches",
+      "title": "Inputs H, C and A high are read as 10000101",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "IN=00000000",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "H",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "C",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "A",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "IN=10000101",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:45:42.509Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/sn74hc165.pdf"
+    ]
+  }
+}

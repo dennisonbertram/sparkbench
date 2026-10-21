@@ -1,0 +1,218 @@
+{
+  "type": "custom-adxl343",
+  "name": "ADXL343 3-axis accelerometer",
+  "mpn": "ADXL343",
+  "category": "sensor",
+  "description": "Analog Devices 3-axis MEMS accelerometer with selectable ±2/±4/±8/±16 g range, up to 13-bit resolution (3.9 mg/LSB in full-resolution mode) and I2C/SPI interfaces; tap, activity and free-fall detection on two interrupt pins. The chip runs on 2.0–3.6 V. Sold as: Adafruit ADXL343 Triple-Axis Accelerometer breakout, STEMMA QT version (#4097; 6-pin header VIN, 3Vo, GND, SCL, SDA, INT plus 4-pin header GND, I2, SDO, CS; AP2112K 3.3 V regulator, 10 kΩ I2C pull-ups with BSS138 level shifting, 3.3–5 V), I2C address 0x53 (0x1D with SDO high).",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, along three directions (X, Y and Z).",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3–5 V into the onboard AP2112K 3.3 V regulator; also sets the SDA/SCL logic level",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the onboard regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and BSS138 level shifter on the board, 5 V safe)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and BSS138 level shifter on the board, 5 V safe)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "INT1 interrupt output (3.3 V logic, not level shifted), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (first pin of the second 4-pin header, printed GND)",
+      "required": false
+    },
+    {
+      "name": "I2",
+      "role": "io",
+      "description": "INT2 interrupt output (3.3 V logic, not level shifted), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "ALT ADDRESS / SPI MISO: pulled low on the board = 0x53; tie to 3.3 V (3Vo) for 0x1D. 3.3 V logic only",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Chip select: pulled high on the board = I2C mode; pulling it low selects SPI. Leave unconnected for I2C",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.14,
+  "i2cAddress": 83,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl343.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Adafruit 4097 ADXL343 triple-axis accelerometer breakout STEMMA QT",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl343.pdf",
+    "https://cdn-learn.adafruit.com/assets/assets/000/070/556/original/adxl343.pdf",
+    "https://learn.adafruit.com/adxl343-breakout-learning-guide/pinout",
+    "https://cdn-learn.adafruit.com/assets/assets/000/110/000/medium800/sensors_cropped_4097-05.png",
+    "https://github.com/adafruit/Adafruit_ADXL343_PCB/blob/master/Adafruit%20ADXL343%20STEMMA%20QT.sch",
+    "https://www.adafruit.com/product/4097"
+  ],
+  "buildNotes": [
+    "The chip powers up in standby with all outputs reading 0: set the Measure bit (0x08) in POWER_CTL (0x2D) before reading.",
+    "Check DEVID (register 0x00) reads 0xE5 first; a different value means a wrong address or a loose wire.",
+    "Set FULL_RES (bit 3 of DATA_FORMAT, 0x31) so every range reads 3.9 mg/LSB; in the default 10-bit mode the LSB doubles with each range step (3.9, 7.8, 15.6, 31.2 mg).",
+    "Read all six data bytes 0x32–0x37 in one burst so X, Y and Z come from the same sample (data sheet recommendation); each axis is little-endian twos complement.",
+    "Default address 0x53 (SDO pulled low on the board); tie SDO to 3Vo for 0x1D to use two on one bus. Leave CS unconnected (pulled high = I2C).",
+    "Only SDA/SCL are level shifted: INT, I2, SDO and CS are 3.3 V pins, never drive them from 5 V logic.",
+    "At rest the reading is about +1 g on the axis pointing up; sensitivity rises to about 265 LSB/g on X/Y at 3.3 V supply, so calibrate if you need better than a few %."
+  ],
+  "keywords": [
+    "adxl343",
+    "adxl345",
+    "accelerometer",
+    "tilt",
+    "motion",
+    "tap",
+    "free-fall",
+    "imu",
+    "g-force",
+    "analog devices",
+    "adafruit 4097"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Acceleration X",
+    "unit": "g",
+    "min": -16,
+    "max": 16,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -16,
+        "max": 16,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Acceleration Z",
+        "unit": "g",
+        "min": -16,
+        "max": 16,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x00": 229,
+      "0x2c": 10,
+      "0x2d": 0,
+      "0x31": 0
+    },
+    "measures": [
+      {
+        "reg": "0x32",
+        "bytes": 2,
+        "scale": 0.0039,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x34",
+        "bytes": 2,
+        "scale": 0.0039,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x36",
+        "bytes": 2,
+        "scale": 0.0039,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "adxl343.py",
+    "code": "# MicroPython driver for the Analog Devices ADXL343 3-axis accelerometer (I2C).\n# Written from the ADXL343 data sheet, Rev. 0:\n#   register map table 19, DEVID 0xE5, BW_RATE 0x2C, POWER_CTL 0x2D (Measure = bit 3),\n#   DATA_FORMAT 0x31 (FULL_RES = bit 3, Justify = bit 2, Range = bits 1:0),\n#   DATAX0..DATAZ1 0x32-0x37 (twos complement, DATAx0 = least significant byte),\n#   full-resolution scale factor 3.9 mg/LSB in every range (specifications table 1).\nimport time\n\nREG_DEVID = 0x00        # reads 0xE5\nREG_BW_RATE = 0x2C      # LOW_POWER bit 4, rate bits 3:0 (0x0A = 100 Hz, the reset value)\nREG_POWER_CTL = 0x2D    # Link 5, AUTO_SLEEP 4, Measure 3, Sleep 2, Wakeup 1:0\nREG_DATA_FORMAT = 0x31  # SELF_TEST 7, SPI 6, INT_INVERT 5, FULL_RES 3, Justify 2, Range 1:0\nREG_DATAX0 = 0x32       # 0x32..0x37: X0 X1 Y0 Y1 Z0 Z1\n\nDEVID = 0xE5\nFULL_RES = 0x08\nMEASURE = 0x08\nSCALE_G = 0.0039        # g per LSB in full-resolution mode (3.9 mg/LSB), all ranges\nSTANDARD_GRAVITY = 9.80665\n\n_RANGE_BITS = {2: 0, 4: 1, 8: 2, 16: 3}\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v > 32767 else v\n\n\nclass ADXL343:\n    def __init__(self, i2c, addr=0x53, g_range=16, rate=0x0A):\n        \"\"\"addr 0x53 with SDO/ALT ADDRESS low (Adafruit board default), 0x1D with it high.\n        g_range: 2, 4, 8 or 16 (full resolution keeps 3.9 mg/LSB in every range).\n        rate: BW_RATE code (0x0A = 100 Hz). Max ODR is 800 Hz (0x0D) on 400 kHz I2C, 200 Hz (0x0B) on 100 kHz.\"\"\"\n        if g_range not in _RANGE_BITS:\n            raise ValueError(\"g_range must be 2, 4, 8 or 16\")\n        self.i2c = i2c\n        self.addr = addr\n        dev = self._r(REG_DEVID, 1)[0]\n        if dev != DEVID:\n            raise OSError(\"ADXL343 not found at 0x%02X (DEVID 0x%02X, expected 0xE5)\" % (addr, dev))\n        self._w(REG_POWER_CTL, 0x00)  # standby while configuring\n        self._w(REG_BW_RATE, rate & 0x0F)  # normal power (LOW_POWER = 0)\n        # Full resolution, right-justified with sign extension, interrupts active high, 4-wire SPI bit 0.\n        self._w(REG_DATA_FORMAT, FULL_RES | _RANGE_BITS[g_range])\n        self._w(REG_POWER_CTL, MEASURE)\n        # Turn-on time is about 1.1 ms + 1/ODR (table 1 note 7): 11.1 ms at 100 Hz.\n        time.sleep_ms(20)\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def raw(self):\n        \"\"\"(x, y, z) in LSB. One 6-byte burst read so the three axes come from the same sample.\"\"\"\n        d = self._r(REG_DATAX0, 6)\n        return _s16(d[0], d[1]), _s16(d[2], d[3]), _s16(d[4], d[5])\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        x, y, z = self.raw()\n        return x * SCALE_G, y * SCALE_G, z * SCALE_G\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        x, y, z = self.read()\n        return x * STANDARD_GRAVITY, y * STANDARD_GRAVITY, z * STANDARD_GRAVITY\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom adxl343 import ADXL343\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = ADXL343(i2c, addr=0x53)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.2f Y=%.2f Z=%.2f g' % (x, y, z))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.6
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -1.2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.60 Y=-1.20 Z=2.00 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:38:21.773Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl343.pdf",
+      "https://learn.adafruit.com/adxl343-breakout-learning-guide/pinout",
+      "https://www.adafruit.com/product/4097"
+    ]
+  }
+}

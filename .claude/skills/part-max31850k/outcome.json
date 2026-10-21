@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max31850k",
+  "board": "Adafruit 1-Wire Thermocouple Amplifier MAX31850K breakout (product 1727)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring with 4.7k DATA pull-up, design checks, breadboard, simulator, PCB, footprint). Modelled as onewire-temp family 0x3B; the driver decodes the datasheet scratchpad word (bits 15..2 x 0.25 C, bit 0 fault) via MicroPython's CRC-checked ds18x20 read; the sim does not model fault or cold-junction bytes (read_detail uses read_scratch, which runs only on real hardware).",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31850-MAX31851.pdf",
+  "breakoutPinoutSource": "Adafruit EAGLE board file (github.com/adafruit/Adafruit-MAX31850-thermocouple-breakout-board) silkscreen GND, VIN, 3V3, A0, A1, A2, A3, DATA, plus learn.adafruit.com MAX31850K pinouts page",
+  "checkRuns": 1
+}

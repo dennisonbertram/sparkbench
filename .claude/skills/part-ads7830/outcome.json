@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ads7830",
+  "board": "Adafruit ADS7830 8-Channel 8-Bit ADC with I2C (#5836)",
+  "reason": "Check passed on ESP32 and Pico: the driver sends the datasheet command byte (single-ended, PD=01 because REF is tied to VIN on the board) and reads one byte; the sim answers each command with code = Vin*256/3.3, and the test reads A0=155 2.00V A3=93 1.20V.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ads7830.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-ADS7830-PCB (board file: JP3 VIN,GND,SCL,SDA,REF,COM,AD0,AD1; JP2 silk A7..A0) and https://learn.adafruit.com/adafruit-ads7830-8-channel-8-bit-adc/pinouts",
+  "checkRuns": 1
+}

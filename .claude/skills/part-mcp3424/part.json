@@ -1,0 +1,318 @@
+{
+  "type": "custom-mcp3424",
+  "name": "MCP3424 18-bit 4-channel ADC (I2C)",
+  "mpn": "MCP3424",
+  "category": "sensor",
+  "description": "Microchip 18-bit delta-sigma analog-to-digital converter with 4 differential inputs (±2.048 V full scale, PGA x1/x2/x4/x8), on-board 2.048 V reference and an I2C interface; 12/14/16/18-bit at 240/60/15/3.75 samples per second. Runs on 2.7-5.5 V. Sold as: DFRobot Fermion MCP3424 18-Bit ADC module (DFR0316), two 6-pin headers (GND, +5V, C3+, C3-, C4+, C4- and SCL, SDA, C2-, C2+, C1-, C1+), I2C address 0x68 with both DIP switches off (0x6A, 0x6C, 0x6E).",
+  "eli5": "Gives your board four very precise voltage inputs that can even measure tiny or negative voltages, and sends the numbers over I2C.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (power header)",
+      "required": true
+    },
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V. Use 3.3 V with an ESP32/Pico: the board's 1 kΩ I2C pull-ups go to this pin",
+      "required": true
+    },
+    {
+      "name": "C3+",
+      "role": "io",
+      "description": "Channel 3 positive input (CH3+); reads C3+ minus C3-, ±2.048 V at gain 1; keep it between GND and the supply",
+      "required": false
+    },
+    {
+      "name": "C3-",
+      "role": "io",
+      "description": "Channel 3 negative input (CH3-); keep it between GND and the supply. Tie C3- to GND for single-ended use",
+      "required": false
+    },
+    {
+      "name": "C4+",
+      "role": "io",
+      "description": "Channel 4 positive input (CH4+); reads C4+ minus C4-, ±2.048 V at gain 1; keep it between GND and the supply",
+      "required": false
+    },
+    {
+      "name": "C4-",
+      "role": "io",
+      "description": "Channel 4 negative input (CH4-); keep it between GND and the supply. Tie C4- to GND for single-ended use",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (1 kΩ pull-up to +5V on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (1 kΩ pull-up to +5V on the board)",
+      "required": true
+    },
+    {
+      "name": "C2-",
+      "role": "io",
+      "description": "Channel 2 negative input (CH2-); keep it between GND and the supply. Tie C2- to GND for single-ended use",
+      "required": false
+    },
+    {
+      "name": "C2+",
+      "role": "io",
+      "description": "Channel 2 positive input (CH2+); reads C2+ minus C2-, ±2.048 V at gain 1; keep it between GND and the supply",
+      "required": false
+    },
+    {
+      "name": "C1-",
+      "role": "io",
+      "description": "Channel 1 negative input (CH1-); keep it between GND and the supply. Tie C1- to GND for single-ended use",
+      "required": false
+    },
+    {
+      "name": "C1+",
+      "role": "io",
+      "description": "Channel 1 positive input (CH1+); reads C1+ minus C1-, ±2.048 V at gain 1; keep it between GND and the supply",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.2,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/22088c.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "DFRobot DFR0316 MCP3424 18-bit ADC module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the board from 3.3 V with an ESP32 or Pico: its 1 kΩ SDA/SCL pull-ups go to the +5V pin, so 5 V there would put 5 V on the GPIOs.",
+    "Each reading is C+ minus C-. For a single-ended voltage, tie that channel's C- to GND; you then get 0 to +2.048 V (gain 1). Every input pin must stay between GND - 0.3 V and the supply + 0.3 V.",
+    "One-shot conversion: write one configuration byte 0x80 | (channel-1) << 5 | rate << 2 | gain, wait (267 ms at 18 bits), read 3 data bytes + config byte (2 + 1 below 18 bits) and accept it when bit 7 (RDY) of the config byte is 0.",
+    "Volts = code x 2.048 V / 2^(N-1) / PGA: 15.625 µV per code at 18 bits, 62.5 µV at 16 bits, 250 µV at 14 bits, 1 mV at 12 bits (gain 1). Codes are two's complement.",
+    "Address: DIP switch A drives Adr0, B drives Adr1 (off = pulled low): A off B off 0x68, A off B on 0x6A, A on B off 0x6C, both on 0x6E.",
+    "Above about ±2.048 V / gain the code saturates at 131071 or -131072 (18 bits): lower the gain or divide the voltage down."
+  ],
+  "keywords": [
+    "mcp3424",
+    "mcp3422",
+    "mcp3423",
+    "adc",
+    "18-bit",
+    "delta-sigma",
+    "analog to digital",
+    "i2c adc",
+    "dfr0316",
+    "microchip"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/22088c.pdf",
+    "https://wiki.dfrobot.com/DFR0316",
+    "https://raw.githubusercontent.com/DFRobot/DFRobotMediaWikiImage/master/Image/DFR0316_pinout.png",
+    "https://www.dfrobot.com.cn/images/upload/File/20140925165102pkecgn.pdf"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Channel 1 input voltage (C1+ minus C1-)",
+    "unit": "V",
+    "min": -2.048,
+    "max": 2.0479,
+    "default": 0,
+    "controls": [
+      {
+        "key": "ch2",
+        "quantity": "Channel 2 input voltage (C2+ minus C2-)",
+        "unit": "V",
+        "min": -2.048,
+        "max": 2.0479,
+        "default": 0
+      },
+      {
+        "key": "ch3",
+        "quantity": "Channel 3 input voltage (C3+ minus C3-)",
+        "unit": "V",
+        "min": -2.048,
+        "max": 2.0479,
+        "default": 0
+      },
+      {
+        "key": "ch4",
+        "quantity": "Channel 4 input voltage (C4+ minus C4-)",
+        "unit": "V",
+        "min": -2.048,
+        "max": 2.0479,
+        "default": 0
+      }
+    ],
+    "responses": [
+      {
+        "match": "8C",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 24,
+            "signed": true,
+            "scale": 0.000015625
+          },
+          {
+            "const": 12,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "88",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "signed": true,
+            "scale": 0.0000625
+          },
+          {
+            "const": 8,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "AC",
+        "bytes": [
+          {
+            "control": "ch2",
+            "bits": 24,
+            "signed": true,
+            "scale": 0.000015625
+          },
+          {
+            "const": 44,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "A8",
+        "bytes": [
+          {
+            "control": "ch2",
+            "bits": 16,
+            "signed": true,
+            "scale": 0.0000625
+          },
+          {
+            "const": 40,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "CC",
+        "bytes": [
+          {
+            "control": "ch3",
+            "bits": 24,
+            "signed": true,
+            "scale": 0.000015625
+          },
+          {
+            "const": 76,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "C8",
+        "bytes": [
+          {
+            "control": "ch3",
+            "bits": 16,
+            "signed": true,
+            "scale": 0.0000625
+          },
+          {
+            "const": 72,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "EC",
+        "bytes": [
+          {
+            "control": "ch4",
+            "bits": 24,
+            "signed": true,
+            "scale": 0.000015625
+          },
+          {
+            "const": 108,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "E8",
+        "bytes": [
+          {
+            "control": "ch4",
+            "bits": 16,
+            "signed": true,
+            "scale": 0.0000625
+          },
+          {
+            "const": 104,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp3424.py",
+    "code": "# MCP3424 18-bit 4-channel delta-sigma ADC (Microchip MCP3422/3/4, DS22088C), MicroPython driver.\n# One-shot conversions: write the configuration byte with RDY=1, wait, then read the data bytes\n# followed by the configuration byte until its RDY bit reads 0 (Section 5.3.4).\nimport time\n\n# Resolution bits -> (S1S0 bits, conversion time in ms at that rate, data bytes)\n_RATES = {\n    12: (0b00, 5, 2),    # 240 SPS\n    14: (0b01, 17, 2),   # 60 SPS\n    16: (0b10, 67, 2),   # 15 SPS\n    18: (0b11, 267, 3),  # 3.75 SPS\n}\n_GAINS = {1: 0b00, 2: 0b01, 4: 0b10, 8: 0b11}\n\n\nclass MCP3424:\n    def __init__(self, i2c, addr=0x68, bits=18, gain=1):\n        if bits not in _RATES:\n            raise ValueError('bits must be 12, 14, 16 or 18')\n        if gain not in _GAINS:\n            raise ValueError('gain must be 1, 2, 4 or 8')\n        self.i2c = i2c\n        self.addr = addr\n        self.bits = bits\n        self.gain = gain\n\n    def _config(self, channel):\n        # RDY=1 (start a conversion), C1C0 = channel, O/C=0 (one-shot), S1S0 = rate, G1G0 = PGA gain\n        return 0x80 | ((channel & 0x03) << 5) | (_RATES[self.bits][0] << 2) | _GAINS[self.gain]\n\n    def read_raw(self, channel):\n        \"\"\"Convert channel 1-4 once and return the signed output code.\"\"\"\n        if not 1 <= channel <= 4:\n            raise ValueError('channel must be 1-4')\n        _, conv_ms, nbytes = _RATES[self.bits]\n        self.i2c.writeto(self.addr, bytes([self._config(channel - 1)]))\n        time.sleep_ms(conv_ms)\n        for _ in range(50):\n            d = self.i2c.readfrom(self.addr, nbytes + 1)\n            if not d[nbytes] & 0x80:  # RDY = 0: the result is new\n                break\n            time.sleep_ms(conv_ms // 10 + 1)\n        else:\n            raise OSError('MCP3424 conversion did not finish')\n        if nbytes == 3:\n            raw = ((d[0] & 0x03) << 16) | (d[1] << 8) | d[2]\n        else:\n            raw = (d[0] << 8) | d[1]\n            raw &= (1 << self.bits) - 1\n        if raw & (1 << (self.bits - 1)):\n            raw -= 1 << self.bits\n        return raw\n\n    def lsb(self):\n        \"\"\"Volts per code at the input pins: 2 x 2.048 V / 2^N, divided by the PGA gain.\"\"\"\n        return 4.096 / (1 << self.bits) / self.gain\n\n    def read_volts(self, channel):\n        \"\"\"Differential voltage CHn+ minus CHn- in volts.\"\"\"\n        return self.read_raw(channel) * self.lsb()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mcp3424 import MCP3424\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nadc = MCP3424(i2c, addr=0x68, bits=18, gain=1)  # DIP switches A and B off\nwhile True:\n    r1 = adc.read_raw(1)\n    r3 = adc.read_raw(3)\n    print('CH1=%d %.5fV CH3=%d %.5fV' % (r1, r1 * adc.lsb(), r3, r3 * adc.lsb()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the channel 1 and channel 3 voltages set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ch3",
+          "value": -0.75
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH1=96000 1.50000V CH3=-48000 -0.75000V",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (8 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:56:08.045Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/22088c.pdf",
+      "https://wiki.dfrobot.com/dfr0316/",
+      "https://dfimg.dfrobot.com/wiki/17595/DFR0316_mcp3424-18-bit-adc_schematics_1.0.pdf"
+    ]
+  }
+}

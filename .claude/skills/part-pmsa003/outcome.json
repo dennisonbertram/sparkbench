@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-pmsa003",
+  "board": "Plantower PMSA003 with its 10-pin-to-4-pin adapter board (as sold by The Pi Hut, 4-pin 2.54 mm header GND, VCC, RX, TX)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, breadboard, simulator, circuit board, footprint): the sim streams the datasheet's 32-byte 0x42 0x4D frame with a 16-bit sum check, and the driver syncs on the header and verifies length and checksum. The header order GND, VCC, RX, TX was read from the adapter's silkscreen in The Pi Hut product photo; it was not confirmed by a second source.",
+  "datasheetUrl": "https://download.kamami.pl/p566824-pmsa003f.pdf",
+  "breakoutPinoutSource": "https://cdn.shopify.com/s/files/1/0176/3274/files/pmsa003-particulate-matter-sensor-with-adapter-board-plantower-105771-42582033268931.jpg?v=1724807993",
+  "checkRuns": 1
+}

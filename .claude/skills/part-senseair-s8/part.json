@@ -1,0 +1,182 @@
+{
+  "type": "custom-senseair-s8",
+  "name": "Senseair S8 LP CO2 sensor",
+  "mpn": "Senseair S8 LP 004-0-0053",
+  "category": "sensor",
+  "description": "Senseair S8 LP NDIR carbon dioxide sensor, 400–10000 ppm (±40 ppm ±3 % from 400–2500 ppm), new reading every 4 s, read over a 3.3 V UART with Modbus RTU at 9600 baud. Needs a 4.5–5.25 V supply. Sold as: Senseair S8 LP module, article 004-0-0053 (bare module, 4-pin edge G+, G0, Alarm_OC, PWM 1kHz and 5-pin edge DVCC_out, UART_RxD, UART_TxD, UART_R/T, bCAL_in).",
+  "eli5": "Measures how much carbon dioxide is in the room, so you know when it is time to open a window.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "G+",
+      "role": "power",
+      "description": "Supply plus, 4.5–5.25 V (5 V). Not protected against reverse polarity!",
+      "required": true
+    },
+    {
+      "name": "G0",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "Alarm_OC",
+      "role": "io",
+      "description": "Open-collector alarm output, pulled up to G+ (5 V) inside: do not wire straight to a 3.3 V GPIO",
+      "required": false
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "description": "PWM 1kHz output, 3.3 V push-pull, 0–100 % duty = 0–2000 ppm",
+      "required": false
+    },
+    {
+      "name": "DVCC_out",
+      "role": "io",
+      "description": "3.3 V regulator output, max 6 mA (for a level shifter only; leave unconnected otherwise)",
+      "required": false
+    },
+    {
+      "name": "UART_RxD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "UART receive (3.3 V logic): connect to the board's TX",
+      "required": true
+    },
+    {
+      "name": "UART_TxD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "UART transmit (3.3 V logic): connect to the board's RX",
+      "required": true
+    },
+    {
+      "name": "UART_R/T",
+      "role": "io",
+      "description": "Direction output for an RS485 transceiver; not needed for direct UART",
+      "required": false
+    },
+    {
+      "name": "bCAL_in",
+      "role": "io",
+      "description": "Calibration input: pull to G0 for 4–8 s = background calibration at 400 ppm, 16 s+ = zero calibration",
+      "required": false
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.25,
+  "currentMa": 18,
+  "datasheetUrl": "https://rmtplusstoragesenseair.blob.core.windows.net/docs/publicerat/PSP126.pdf",
+  "priceUsd": 45,
+  "supplierQuery": "Senseair S8 LP 004-0-0053 CO2 sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power G+ from 5 V (4.5–5.25 V) and G0 from GND. Peak current is up to 300 mA during the lamp pulse, so use a solid 5 V supply and a 100 µF capacitor near the sensor.",
+    "The UART pins are 3.3 V logic: cross them (UART_TxD → board RX, UART_RxD → board TX). Settings 9600 baud, 8 data bits, no parity, 1 stop bit.",
+    "Read CO2: send FE 04 00 00 00 04 E5 C6; the reply is FE 04 08, then MeterStatus, AlarmStatus, OutputStatus and CO2 (16-bit, big-endian, ppm), then CRC-16/MODBUS low byte first.",
+    "Readings settle after about 60 s of warm-up and update every 4 s; there is no point polling faster.",
+    "Do not connect Alarm_OC directly to a 3.3 V GPIO: it is pulled up to G+ (5 V) inside the sensor.",
+    "ABC (automatic baseline correction) assumes the sensor sees fresh outdoor-level air (about 400 ppm) at least once every 8 days."
+  ],
+  "keywords": [
+    "senseair",
+    "s8",
+    "co2",
+    "carbon dioxide",
+    "ndir",
+    "modbus",
+    "air quality"
+  ],
+  "sources": [
+    "https://rmtplusstoragesenseair.blob.core.windows.net/docs/publicerat/PSP126.pdf",
+    "https://rmtplusstoragesenseair.blob.core.windows.net/docs/Dev/publicerat/TDE2067.pdf",
+    "https://senseair.com/product/s8-lp/"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "CO2",
+    "unit": "ppm",
+    "min": 0,
+    "max": 10000,
+    "default": 600,
+    "uartReplies": [
+      {
+        "match": "fe 04 00 00 00 04 e5 c6",
+        "bytes": [
+          {
+            "const": 254,
+            "bits": 8
+          },
+          {
+            "const": 4,
+            "bits": 8
+          },
+          {
+            "const": 8,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "modbus16",
+            "over": 11
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "senseair_s8.py",
+    "code": "# Senseair S8 LP NDIR CO2 sensor, MicroPython driver (Modbus RTU over UART).\n# From Senseair TDE2067 (Modbus on Senseair S8): 9600 baud, 8N1 (sensor sends 2 stop bits),\n# \"any address\" 0xFE, function 0x04 Read Input Registers, CRC-16/MODBUS sent low byte first.\n# Reads IR1..IR4 in one frame: MeterStatus, AlarmStatus, OutputStatus, Space CO2 (ppm).\nimport time\n\n\ndef _crc16(data):\n    crc = 0xFFFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1\n    return crc\n\n\nclass S8:\n    ADDR = 0xFE  # \"any address\" (sensor answers regardless of its own address)\n\n    def __init__(self, uart, addr=ADDR):\n        self.uart = uart\n        self.addr = addr\n\n    def _read_input(self, start, count):\n        req = bytes([self.addr, 0x04, start >> 8, start & 0xFF, count >> 8, count & 0xFF])\n        c = _crc16(req)\n        req += bytes([c & 0xFF, c >> 8])\n        while self.uart.any():  # drop stale bytes\n            self.uart.read()\n        self.uart.write(req)\n        n = 5 + 2 * count\n        buf = b''\n        t0 = time.ticks_ms()\n        while len(buf) < n and time.ticks_diff(time.ticks_ms(), t0) < 500:\n            d = self.uart.read(n - len(buf))\n            if d:\n                buf += d\n            else:\n                time.sleep_ms(10)\n        if len(buf) < 5:\n            raise OSError('S8: no reply (check TxD/RxD are crossed and G+ has 5 V)')\n        if buf[1] & 0x80:\n            raise OSError('S8: Modbus exception %d' % buf[2])\n        if len(buf) < n or buf[0] != self.addr or buf[1] != 0x04 or buf[2] != 2 * count:\n            raise OSError('S8: bad reply')\n        c = _crc16(buf[:n - 2])\n        if buf[n - 2] != (c & 0xFF) or buf[n - 1] != (c >> 8):\n            raise OSError('S8: CRC mismatch')\n        return [(buf[3 + 2 * i] << 8) | buf[4 + 2 * i] for i in range(count)]\n\n    def read(self):\n        \"\"\"Return (CO2 in ppm, MeterStatus bits). Status 0 means no error.\"\"\"\n        r = self._read_input(0x0000, 4)  # IR1..IR4\n        return r[3], r[0]\n\n    def co2(self):\n        return self.read()[0]\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom senseair_s8 import S8\n\nuart = UART({UART_ID}, baudrate=9600, bits=8, parity=None, stop=1, tx=Pin({UART_RXD}), rx=Pin({UART_TXD}))\nsensor = S8(uart)\nwhile True:\n    co2, status = sensor.read()\n    if status:\n        print('S8 status 0x%04x' % status)\n    print('CO2=%d ppm' % co2)\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2 level set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1234 ppm",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:46:38.553Z",
+    "verifiedSources": [
+      "https://rmtplusstoragesenseair.blob.core.windows.net/docs/publicerat/PSP126.pdf",
+      "https://senseair.com/products/size-counts/s8-lp/"
+    ]
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "type": "custom-ttp224",
+  "name": "TTP224 4-channel capacitive touch module",
+  "mpn": "TTP224",
+  "category": "sensor",
+  "description": "Tontek TTP224-BSB four-key capacitive touch detector with one direct output per pad: OUTn goes high while pad n is touched (default jumpers: direct mode, CMOS active-high outputs, multi-key, low-power). Option jumpers select active low, toggle, open drain, single-key, 16 s max on-time and fast mode. Runs on 2.4–5.5 V; outputs swing to VCC. Sold as: TTP224 4-way capacitive touch module (blue 35 x 29 mm clone board with TTP224-BSB, pads 1-4, LEDs D1-D4 and AHLB/TOG/LPMB + SM/OD/MOT0 option jumpers; header OUT1, OUT2, OUT3, OUT4, GND, VCC).",
+  "eli5": "Four buttons with no moving parts: touch one of the numbered pads and its wire to your board turns on.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "OUT1",
+      "role": "io",
+      "description": "Pad 1 output (chip TPQ0, CMOS push-pull). High while pad 1 is touched (default jumpers)",
+      "required": true
+    },
+    {
+      "name": "OUT2",
+      "role": "io",
+      "description": "Pad 2 output (chip TPQ1, CMOS push-pull). High while pad 2 is touched (default jumpers)",
+      "required": true
+    },
+    {
+      "name": "OUT3",
+      "role": "io",
+      "description": "Pad 3 output (chip TPQ2, CMOS push-pull). High while pad 3 is touched (default jumpers)",
+      "required": true
+    },
+    {
+      "name": "OUT4",
+      "role": "io",
+      "description": "Pad 4 output (chip TPQ3, CMOS push-pull). High while pad 4 is touched (default jumpers)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.4–5.5 V (use 3.3 V with an ESP32 or Pico: the outputs swing to VCC)",
+      "required": true
+    }
+  ],
+  "vmin": 2.4,
+  "vmax": 5.5,
+  "currentMa": 6,
+  "datasheetUrl": "https://atta.szlcsc.com/upload/public/pdf/source/20211108/06A33CD05429BA5721D38207E58672B7.pdf",
+  "sources": [
+    "https://atta.szlcsc.com/upload/public/pdf/source/20211108/06A33CD05429BA5721D38207E58672B7.pdf",
+    "https://www.eetree.cn/wiki/_media/ttp224_4.pdf",
+    "https://www.eetree.cn/wiki/_media/tontek-design-tech-ttp224n-bsb_c90399.pdf",
+    "https://openkits-wiki.easyeda.com/en/coloreasyduino/module/sensor/ttp224-touch-sensor.html"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "TTP224 4 channel capacitive touch module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: OUT1, OUT2, OUT3, OUT4, GND, VCC (VCC is the last pin, not the first).",
+    "Power from 3.3 V on an ESP32 or Pico: the outputs are CMOS push-pull and swing to VCC (a 5 V supply gives 5 V outputs).",
+    "No pull resistors needed with the default jumpers (CMOS outputs). If OD is jumpered to GND the outputs become open drain and need pull resistors.",
+    "Default (all option jumpers open): direct mode, active high, multi-key, no maximum on-time, low-power mode (~200 ms first-touch response).",
+    "Keep fingers off the pads for 0.5 s after power-on while the chip calibrates.",
+    "Each output also lights an on-board LED through 1 kΩ, so a touched output sources about 1.5 mA at 3.3 V."
+  ],
+  "keywords": [
+    "ttp224",
+    "ttp224-bsb",
+    "touch",
+    "capacitive",
+    "4 key",
+    "keypad",
+    "touch sensor",
+    "button"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT1",
+    "quantity": "Pad 1 touched",
+    "activeHigh": true,
+    "digitalOutputs": [
+      {
+        "pin": "OUT2",
+        "control": "pad2",
+        "label": "Pad 2 touched",
+        "activeHigh": true
+      },
+      {
+        "pin": "OUT3",
+        "control": "pad3",
+        "label": "Pad 3 touched",
+        "activeHigh": true
+      },
+      {
+        "pin": "OUT4",
+        "control": "pad4",
+        "label": "Pad 4 touched",
+        "activeHigh": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ttp224.py",
+    "code": "# TTP224 4-key capacitive touch module (Tontek TTP224-BSB), MicroPython driver.\n# Each OUTn pin is the chip's TPQn output (pad n). With the option jumpers open (module default)\n# the datasheet option table gives: direct mode, CMOS (push-pull) active-high outputs,\n# multi-key mode, no maximum on-time, low-power mode. No pull resistor is needed.\n# Option jumpers: AHLB->VDD = active low, TOG->VDD = toggle, OD->VSS = open drain\n# (then use pull=Pin.PULL_UP with active-low, or PULL_DOWN with active-high),\n# SM->VSS = single-key mode, MOT0->VSS = 16 s maximum on time, LPMB->VDD = fast mode.\n# Timing: ~0.5 s stable time after power-on (do not touch the pads); response up to ~200 ms\n# in low-power mode (first touch), ~100 ms in fast mode (TTP224-BSB at 3 V).\nfrom machine import Pin\n\n\nclass TTP224:\n    def __init__(self, out1, out2, out3, out4, active_high=True, pull=None):\n        self.pins = [p if not isinstance(p, int) else Pin(p, Pin.IN, pull)\n                     for p in (out1, out2, out3, out4)]\n        self.active_high = active_high  # False if AHLB is jumpered to VDD\n\n    def touched(self, key):\n        \"\"\"True while pad key (1-4) is touched (direct mode) or latched on (toggle mode).\"\"\"\n        return self.pins[key - 1].value() == (1 if self.active_high else 0)\n\n    def keys(self):\n        \"\"\"Tuple of four 0/1 flags for pads 1..4.\"\"\"\n        return tuple(1 if self.touched(k) else 0 for k in (1, 2, 3, 4))\n\n    def mask(self):\n        \"\"\"Bit mask: bit 0 = pad 1 ... bit 3 = pad 4.\"\"\"\n        m = 0\n        for i, v in enumerate(self.keys()):\n            m |= v << i\n        return m\n\n    def irq(self, key, handler, on_touch=True):\n        \"\"\"Call handler(pin) on the edge where a touch on pad key (1-4) starts (on_touch) or ends.\"\"\"\n        rising = self.active_high == on_touch\n        self.pins[key - 1].irq(handler=handler, trigger=Pin.IRQ_RISING if rising else Pin.IRQ_FALLING)\n"
+  },
+  "skill": "---\nname: part-ttp224\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the TTP224 4-channel capacitive touch module (Tontek TTP224-BSB). Use when designing, wiring, simulating or writing code for a TTP224 touch keypad in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# TTP224 4-channel capacitive touch module (TTP224)\n\n## Overview\nThe **TTP224-BSB** from Tontek is a 4-key capacitive touch detector with one direct output per pad. Hobbyists buy it on the **blue 35 × 29 mm \"TTP224 4-way capacitive touch\" module**: four numbered pads (1–4), four red indicator LEDs (D1–D4, 1 kΩ each), two 3×2 option-jumper blocks and a 6-pin header. Touch pad n and OUTn changes level.\n\n## Pinout (6-pin header, as printed: OUT1, OUT2, OUT3, OUT4, GND, VCC)\n| Pin | Function |\n|---|---|\n| OUT1 | Pad 1 output (chip TPQ0), CMOS, high while touched by default |\n| OUT2 | Pad 2 output (TPQ1) |\n| OUT3 | Pad 3 output (TPQ2) |\n| OUT4 | Pad 4 output (TPQ3) |\n| GND | Ground |\n| VCC | Supply, 2.4–5.5 V |\n\n## Electrical limits\n- Supply: 2.4–5.5 V (chip; absolute max 6.0 V). Outputs swing to VCC, so **power it from 3.3 V on an ESP32 or Pico**.\n- Chip current at 3 V: 2.5 µA (low-power mode), 9 µA (fast mode); each lit LED adds about 1–3 mA.\n- Output drive at 3 V: sinks 8 mA (VOL 0.6 V), sources 4 mA (VOH 2.4 V).\n- Operating temperature −40 to 85 °C.\n\n## Interface details\n- Four plain digital outputs, no protocol. Read them as GPIO inputs; no pull resistor needed in the default CMOS mode.\n- Option jumpers (all open = factory default: direct, CMOS, active high, multi-key, no max on-time, low-power):\n\n| Jumper | Fitted | Effect |\n|---|---|---|\n| AHLB | to VDD | Outputs active low |\n| TOG | to VDD | Toggle (latching) mode |\n| OD | to VSS | Open-drain outputs (add pull resistors) |\n| SM | to VSS | Single-key mode (only one pad at a time) |\n| MOT0 | to VSS | Output released after 16 s of continuous touch |\n| LPMB | to VDD | Fast mode (always ~100 ms response) |\n\n- Timing: ~0.5 s stable time after power-on (keep fingers off); response ~200 ms in low-power mode, ~100 ms in fast mode; once touched it stays in fast mode for ~8 s. Recalibrates every ~4 s when untouched.\n- Sensitivity: C1–C4 (0–50 pF, NPO) from each pad to GND; smaller = more sensitive.\n\n## Wiring\n- ESP32: VCC → 3V3, GND → GND, OUT1–OUT4 → GPIO13, 12, 14, 27.\n- Pico: VCC → 3V3(OUT), GND → GND, OUT1–OUT4 → GP2, GP3, GP4, GP5.\n- Raspberry Pi 4: VCC → pin 1 (3.3 V), GND → pin 6, OUT1–OUT4 → GPIO17, 27, 22, 23.\n\n## Using the driver\n```python\nfrom ttp224 import TTP224\nimport time\npads = TTP224(13, 12, 14, 27)    # GPIOs wired to OUT1..OUT4\nwhile True:\n    print('K1=%d K2=%d K3=%d K4=%d' % pads.keys())\n    time.sleep(0.2)\n```\nPass `active_high=False` if AHLB is jumpered. `irq(key, handler)` calls `handler` when a touch on that pad starts.\n\n## Gotchas\n- **Powered from 5 V the outputs are 5 V** – too much for an ESP32/Pico pin. Use 3.3 V.\n- Header order is OUT1…OUT4 then GND, VCC — not VCC first. Check the silkscreen before wiring.\n- Don't touch the pads during the first 0.5 s after power-up (baseline calibration).\n- Some cheap \"4-key touch\" boards use four TTP223 chips instead; check the chip marking.\n- Long or noisy supply wiring causes false touches; keep a 100 nF capacitor close (the board has C6).\n\n## Datasheet\nhttps://atta.szlcsc.com/upload/public/pdf/source/20211108/06A33CD05429BA5721D38207E58672B7.pdf\n",
+  "example": {
+    "code": "from ttp224 import TTP224\nimport time\n\npads = TTP224({OUT1}, {OUT2}, {OUT3}, {OUT4})\nwhile True:\n    print('K1=%d K2=%d K3=%d K4=%d' % pads.keys())\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports pads 1 and 3 touched",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pad3",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "K1=1 K2=0 K3=1 K4=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:52:12.535Z",
+    "verifiedSources": [
+      "https://www.haoyuelectronics.com/Attachment/TTP224/TTP224_V2.0.pdf",
+      "https://botland.store/touch-buttons/8235-ttp224-4-way-capacitive-touch-switch-module-5904422311322.html",
+      "https://components101.com/ics/ttp224-four-channel-touch-detector-ic"
+    ]
+  }
+}

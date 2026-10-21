@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-si7006",
+  "board": "Sensor Maestros smSENSR-Si7006 breakout (6 pins, DIP-6 style: 1 VDD, 2 GND, 3 N/C, 4 N/C, 5 SCL, 6 SDA)",
+  "reason": "Check passed on ESP32 and Pico. The no-hold commands 0xF5/0xF3 return 12-bit RH and 14-bit T with the datasheet's fixed low bits and a CRC-8 (poly 0x31, init 0x00); 0xE0 returns the last RH-cycle temperature with no CRC. No widely sold single-row Si7006 module was found, so the board is modelled with the DIP-6 footprint its two 0.3\"-spaced rows match.",
+  "datasheetUrl": "https://www.silabs.com/documents/public/data-sheets/Si7006-A20.pdf",
+  "breakoutPinoutSource": "https://sensormaestros.com/wp-content/uploads/smSENSR-Si7006-DS.pdf",
+  "checkRuns": 1
+}

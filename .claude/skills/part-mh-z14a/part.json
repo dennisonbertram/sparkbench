@@ -1,0 +1,159 @@
+{
+  "type": "custom-mh-z14a",
+  "name": "MH-Z14A NDIR CO2 sensor",
+  "mpn": "MH-Z14A",
+  "category": "sensor",
+  "description": "Winsen infrared (NDIR) CO2 module, 0-5000 ppm (2000/10000 ppm ranges settable), accuracy ±(50 ppm + 5 % of reading), temperature compensated. UART at 9600 baud with 3.3 V logic (5 V tolerant), plus PWM and 0.4-2 V analog outputs; needs a 4.5-5.5 V supply that can deliver 150 mA. Sold as: Winsen MH-Z14A with 7-wire terminal cable on its 7-pin connector (pads 20-26: HD, Vo, GND, Vin, RXD, TXD, PWM).",
+  "eli5": "Measures how much carbon dioxide is in the air, so you know when a room needs fresh air.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "HD",
+      "role": "io",
+      "description": "Pad 20, manual zero calibration: pull low for more than 7 s in 400 ppm air; leave unconnected otherwise",
+      "required": false
+    },
+    {
+      "name": "Vo",
+      "role": "io",
+      "fn": "analog",
+      "description": "Pad 21, analog output 0.4-2 V for 0 to full range",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pad 22, ground",
+      "required": true
+    },
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Pad 23, supply 4.5-5.5 V, at least 150 mA (use 5 V, not 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Pad 24, UART data into the sensor (3.3 V TTL, 5 V tolerant): wire to the microcontroller's TX",
+      "required": true
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Pad 25, UART data out of the sensor (3.3 V TTL): wire to the microcontroller's RX",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "description": "Pad 26, PWM output, 1004 ms cycle, high time proportional to CO2",
+      "required": false
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 60,
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/MH-Z14A.pdf",
+  "priceUsd": 25,
+  "supplierQuery": "MH-Z14A CO2 sensor NDIR UART with cable",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power Vin from 5 V (ESP32 VIN/5V, Pico VBUS); a 3.3 V supply makes it read low or not at all. The supply must deliver 150 mA peaks.",
+    "Cross the serial lines: microcontroller TX to sensor RXD, microcontroller RX to sensor TXD. 9600 baud, 8N1.",
+    "Read CO2 by sending FF 01 86 00 00 00 00 00 79; the reply is FF 86 HIGH LOW x x x x checksum, CO2 = HIGH*256 + LOW ppm.",
+    "Check the checksum: (0xFF - (byte1+...+byte7)) + 1. A mismatch usually means a loose wire or the wrong baud rate.",
+    "Allow 3 minutes of warm-up before trusting readings. Leave HD unconnected unless you are doing a manual zero calibration in fresh air."
+  ],
+  "keywords": [
+    "mh-z14a",
+    "mhz14a",
+    "mh-z14",
+    "mhz14",
+    "co2",
+    "carbon dioxide",
+    "ndir",
+    "air quality",
+    "winsen"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "CO2 concentration",
+    "unit": "ppm",
+    "min": 0,
+    "max": 5000,
+    "default": 400,
+    "uartReplies": [
+      {
+        "match": "ff 01 86 00 00 00 00 00 79",
+        "bytes": [
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 134,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "const": 0,
+            "bits": 32
+          },
+          {
+            "crc": "mhz19",
+            "over": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mhz14a.py",
+    "code": "# Winsen MH-Z14A NDIR CO2 sensor, MicroPython driver (UART, 9600 8N1).\n# Frames are 9 bytes: 0xFF, sensor number / command, 6 data bytes, checksum.\n# Checksum = (0xFF - (byte1 + ... + byte7)) + 1, as in the Winsen MH-Z14A manual.\nimport time\n\n\ndef _checksum(frame):\n    return (0xFF - (sum(frame[1:8]) & 0xFF) + 1) & 0xFF\n\n\nclass MHZ14A:\n    def __init__(self, uart, timeout_ms=200):\n        \"\"\"uart: machine.UART at 9600 baud, 8N1, wired MCU TX -> sensor RXD, MCU RX <- sensor TXD.\"\"\"\n        self.uart = uart\n        self.timeout_ms = timeout_ms\n\n    def _send(self, cmd, b3=0, b4=0, b5=0, b6=0, b7=0):\n        f = bytearray([0xFF, 0x01, cmd, b3, b4, b5, b6, b7, 0])\n        f[8] = _checksum(f)\n        self.uart.write(f)\n\n    def _drain(self):\n        while self.uart.any():\n            self.uart.read()\n\n    def read_co2(self):\n        \"\"\"Send command 0x86 and return the CO2 concentration in ppm (HIGH * 256 + LOW).\"\"\"\n        self._drain()\n        self._send(0x86)\n        buf = b''\n        t0 = time.ticks_ms()\n        while len(buf) < 9 and time.ticks_diff(time.ticks_ms(), t0) < self.timeout_ms:\n            if self.uart.any():\n                buf += self.uart.read(9 - len(buf))\n            else:\n                time.sleep_ms(5)\n        if len(buf) < 9:\n            raise OSError('MH-Z14A: no reply (check TX/RX are crossed and Vin is 5 V)')\n        if buf[0] != 0xFF or buf[1] != 0x86:\n            raise OSError('MH-Z14A: bad frame start')\n        if _checksum(buf) != buf[8]:\n            raise OSError('MH-Z14A: checksum mismatch')\n        return buf[2] * 256 + buf[3]\n\n    def zero_calibrate(self):\n        \"\"\"Command 0x87: set the current reading as 400 ppm. Only after >= 20 min in fresh (400 ppm) air. No reply.\"\"\"\n        self._send(0x87)\n\n    def span_calibrate(self, ppm=2000):\n        \"\"\"Command 0x88: span calibration at a known concentration (zero-calibrate first). No reply.\"\"\"\n        self._send(0x88, ppm // 256, ppm % 256)\n\n    def set_abc(self, on):\n        \"\"\"Command 0x79: automatic baseline correction on (0xA0) or off (0x00). Factory default: on. No reply.\"\"\"\n        self._send(0x79, 0xA0 if on else 0x00)\n\n    def set_range(self, ppm):\n        \"\"\"Command 0x99: detection range 2000, 5000 or 10000 ppm (bytes 4-7, big-endian). No reply.\"\"\"\n        if ppm not in (2000, 5000, 10000):\n            raise ValueError('range must be 2000, 5000 or 10000')\n        self._send(0x99, 0, (ppm >> 24) & 0xFF, (ppm >> 16) & 0xFF, (ppm >> 8) & 0xFF, ppm & 0xFF)\n"
+  },
+  "skill": "---\nname: part-mh-z14a\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MH-Z14A NDIR CO2 sensor (Winsen MH-Z14A). Use when designing, wiring, simulating or writing code for an MH-Z14A in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MH-Z14A NDIR CO2 sensor (MH-Z14A)\n\n## Overview\nThe **MH-Z14A** from Winsen is an infrared (NDIR) CO2 module with a gold-plated optical chamber on a 57.5 × 34.7 mm board. It measures 0–2000 / 0–5000 / 0–10000 ppm (range settable by command), accurate to ±(50 ppm + 5 % of reading) up to 5000 ppm, with built-in temperature compensation. It has three outputs: UART (9600 baud, 3.3 V logic, 5 V tolerant), PWM and an analog voltage (0.4–2 V). It **needs a 5 V supply** that can deliver 150 mA. Hobbyists buy the **Winsen MH-Z14A with the 7-wire terminal cable** plugged into its 7-pin connector (pads 20–26), which is the part modelled here; the same signals are also on a 2 × 10 pad field (pads 1–19).\n\n## Pinout (MH-Z14A 7-pin terminal connector, pads 20–26, Winsen manual V1.2)\n| Pin | Pad | Name | Function |\n|---|---|---|---|\n| 1 | 20 | HD | Manual zero calibration: pull low for > 7 s in 400 ppm air |\n| 2 | 21 | Vo | Analog output, 0.4–2 V = 0 to full range |\n| 3 | 22 | GND | Ground |\n| 4 | 23 | Vin | Supply, 4.5–5.5 V |\n| 5 | 24 | RXD | UART data input (wire to the microcontroller's TX) |\n| 6 | 25 | TXD | UART data output (wire to the microcontroller's RX) |\n| 7 | 26 | PWM | PWM output, 1004 ms cycle |\n\n## Electrical limits\n- Supply: 4.5–5.5 V DC, at least 150 mA (average < 60 mA, peak 150 mA at 5 V). Outside this range readings go low or the sensor stops.\n- UART levels: 3.3 V TTL, 5 V compatible, so RXD/TXD connect straight to an ESP32 or Pico.\n- Preheat 3 min; response T90 < 120 s; working −10 to 50 °C, 0–95 % RH (no condensation).\n\n## Interface details\n- UART 9600 baud, 8 data bits, 1 stop bit, no parity. Every frame is 9 bytes.\n- Read CO2: send `FF 01 86 00 00 00 00 00 79`; reply `FF 86 HIGH LOW - - - - CS`. CO2 (ppm) = HIGH × 256 + LOW. Datasheet example: `FF 86 02 20 00 00 00 00 58` = 544 ppm.\n- Checksum = (0xFF − (byte1 + … + byte7)) + 1, low 8 bits.\n- Zero calibration 0x87 (`FF 01 87 00 00 00 00 00 78`), span calibration 0x88 with span in bytes 3–4, ABC on/off 0x79 (byte3 0xA0 on / 0x00 off; on from the factory), range 0x99 with range in bytes 4–7. None of these reply.\n- Analog: C = (Vo − 0.4 V) × range / 1.6 V. PWM (0–2000 ppm range): C = 2000 × (TH − 2 ms) / (TH + TL − 4 ms).\n\n## Wiring\n- ESP32: Vin → 5V (VIN/USB), GND → GND, RXD → GPIO17 (UART2 TX), TXD → GPIO16 (UART2 RX).\n- Pico: Vin → VBUS (pin 40), GND → GND, RXD → GP4 (UART1 TX), TXD → GP5 (UART1 RX).\n- Raspberry Pi 4: Vin → pin 2 (5 V), GND → pin 6, RXD → pin 8 (TXD), TXD → pin 10 (RXD).\n- HD, Vo and PWM can stay unconnected for UART use.\n\n## Using the driver\n```python\nfrom machine import UART, Pin\nfrom mhz14a import MHZ14A\nu = UART(2, baudrate=9600, tx=Pin(17), rx=Pin(16))\nprint('CO2=%d ppm' % MHZ14A(u).read_co2())\n```\n\n## Gotchas\n- TX and RX cross over: microcontroller TX → sensor RXD, microcontroller RX ← sensor TXD.\n- Do not power it from 3.3 V: readings go low or stop.\n- Readings are meaningless for the first 3 minutes after power-up.\n- ABC recalibrates the lowest reading of each 24 h to 400 ppm; turn it off (`set_abc(False)`) in greenhouses or rooms that never get fresh air.\n- Only zero-calibrate (command or HD low for 7 s) after at least 20 minutes in outdoor-fresh (400 ppm) air; never tie HD to GND permanently.\n- Vo is 0.4–2 V, so a 3.3 V ADC reads it directly, but it is coarser than UART.\n- Do not press on the gold chamber.\n\n## Datasheet\nhttps://www.winsen-sensor.com/d/files/MH-Z14A.pdf\n",
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom mhz14a import MHZ14A\n\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\nsensor = MHZ14A(u)\nwhile True:\n    try:\n        print('CO2=%d ppm' % sensor.read_co2())\n    except OSError as e:\n        print(e)\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2 concentration set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1789
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1789 ppm",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.winsen-sensor.com/d/files/MH-Z14A.pdf",
+    "https://www.winsen-sensor.com/d/files/infrared-gas-sensor/mh-z14a_co2-manual-v1_01.pdf",
+    "https://www.winsen-sensor.com/d/files/PDF/Infrared%20Gas%20Sensor/NDIR%20CO2%20SENSOR/MH-Z14%20CO2%20V2.4.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:46:01.646Z",
+    "verifiedSources": [
+      "https://www.winsen-sensor.com/d/files/MH-Z14A.pdf"
+    ]
+  }
+}
