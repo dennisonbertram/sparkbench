@@ -4,6 +4,9 @@ import { execFile } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
+import { getContext, mode, type RequestContext } from './tenancy/context';
+import { requestScope } from './tenancy/als';
+import { assertAiBudget } from './tenancy/repo';
 
 const KICAD_CLI = [process.env.KICAD_CLI, join(homedir(), 'Applications/KiCad.app/Contents/MacOS/kicad-cli'), '/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli', '/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find((p) => p && existsSync(p));
 const NGSPICE = ['/opt/homebrew/bin/ngspice', '/usr/local/bin/ngspice', '/usr/bin/ngspice'].find((p) => existsSync(p));
@@ -14,10 +17,23 @@ function run(cmd: string, args: string[], cwd?: string): Promise<{ code: number;
   });
 }
 
+/** Largest request body accepted (projects with photos are the biggest). */
+const MAX_BODY = 40 * 1024 * 1024;
+
 async function body(req: Connect.IncomingMessage): Promise<any> {
   const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
-  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
+  let size = 0;
+  for await (const c of req) {
+    size += (c as Buffer).length;
+    if (size > MAX_BODY) throw Object.assign(new Error('That request is too large.'), { status: 413 });
+    chunks.push(c as Buffer);
+  }
+  if (!chunks.length) return {};
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw Object.assign(new Error('The request body is not valid JSON.'), { status: 400 });
+  }
 }
 
 function send(res: any, status: number, data: unknown) {
@@ -26,10 +42,54 @@ function send(res: any, status: number, data: unknown) {
   res.end(JSON.stringify(data));
 }
 
+/** The whole API as one request handler: the Vite dev/preview servers and the production server
+ * (server/index.ts) both mount it. Returns false for requests it doesn't handle. */
+export async function handleApi(req: Connect.IncomingMessage, res: any): Promise<boolean> {
+  if (!req.url?.startsWith('/api/')) return false;
+  await apiRoutes(req, res);
+  return true;
+}
+
 export function apiPlugin(): Plugin {
   const handler: Connect.NextHandleFunction = async (req, res, next) => {
-    if (!req.url?.startsWith('/api/')) return next();
+    if (!(await handleApi(req, res))) next();
+  };
+  return {
+    name: 'sparkbench-api',
+    configureServer(server) {
+      server.middlewares.use(handler);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(handler);
+    },
+  };
+}
+
+async function apiRoutes(req: Connect.IncomingMessage, res: any): Promise<void> {
+  // Open to everyone: health checks and what the browser needs to start (mode, Clerk's public key).
+  if (req.url === '/api/health') return send(res, 200, { ok: true });
+  if (req.url === '/api/config') return send(res, 200, { mode: mode(), clerkPublishableKey: mode() === 'hosted' ? (process.env.CLERK_PUBLISHABLE_KEY ?? null) : null });
+  let ctx: RequestContext;
+  try {
+    ctx = await getContext(req);
+  } catch (e: any) {
+    return send(res, e?.status === 401 ? 401 : 500, { error: String(e?.message ?? e) });
+  }
+  const route = (req.url ?? '').split('?')[0];
+  await requestScope.run({ ctx, route }, () => routes(req, res, ctx, route));
+}
+
+/** Routes that run Claude count against the workspace's monthly AI allowance. */
+const AI_ROUTES = /^\/api\/(ai\/|parts\/fetch$)/;
+
+async function routes(req: Connect.IncomingMessage, res: any, ctx: RequestContext, route: string): Promise<void> {
+  {
     try {
+      if (AI_ROUTES.test(route) && req.method === 'POST') await assertAiBudget(ctx);
+      if (route.startsWith('/api/projects') || route === '/api/me') {
+        const { projectRoutes } = await import('./tenancy/routes');
+        if (await projectRoutes(req, res, ctx, route, body, send)) return;
+      }
       if (req.url === '/api/status') {
         const { aiStatus } = await import('./ai');
         const { pcbToolsStatus } = await import('./pcbjobs');
@@ -151,6 +211,9 @@ export function apiPlugin(): Plugin {
         for (const o of json.options) if (o.mAh >= 1e12) o.mAh = null;
         return send(res, 200, json);
       }
+      if (req.url === '/api/ota' && req.method === 'POST' && mode() === 'hosted') {
+        return send(res, 400, { error: 'Over-the-air updates have to come from your own computer: the Sparkbench website can\'t reach a board on your Wi-Fi. Use the USB copy, or run Sparkbench locally.' });
+      }
       if (req.url === '/api/ota' && req.method === 'POST') {
         const { host, project } = await body(req);
         const { otaPush } = await import('./ota');
@@ -166,70 +229,69 @@ export function apiPlugin(): Plugin {
         const seg = u.pathname.split('/').filter(Boolean); // api, gallery|class|room, id?, action?
         const [, kind, key, action] = seg;
         if (kind === 'gallery') {
-          if (!key && req.method === 'GET') return send(res, 200, { entries: cm.listGallery() });
+          if (!key && req.method === 'GET') return send(res, 200, { entries: await cm.listGallery(ctx) });
           if (!key && req.method === 'POST') {
-            const { project, author, blurb, name, update } = await body(req);
-            const e = cm.publish(project, author, blurb, { name, update });
+            const { project, author, blurb, name, update, visibility } = await body(req);
+            const e = await cm.publish(ctx, project, author, blurb, { name, update, visibility });
             return e ? send(res, 200, e) : send(res, 403, { error: 'That gallery entry can only be updated from the computer that published it.' });
           }
           if (key && action === 'like' && req.method === 'POST') {
-            const e = cm.like(key);
+            const e = await cm.like(ctx, key);
             return e ? send(res, 200, e) : send(res, 404, { error: 'not found' });
           }
           if (key && action === 'delete' && req.method === 'POST') {
             const { editKey } = await body(req);
-            return cm.unpublish(key, editKey) ? send(res, 200, { ok: true }) : send(res, 403, { error: 'Only the person who published it can take it down.' });
+            return (await cm.unpublish(ctx, key, editKey)) ? send(res, 200, { ok: true }) : send(res, 403, { error: 'Only the person who published it can take it down.' });
           }
           if (key && req.method === 'GET') {
-            const g = cm.getGallery(key);
+            const g = await cm.getGallery(ctx, key);
             if (!g) return send(res, 404, { error: 'not found' });
-            const { editKey: _k, ...pub } = g;
-            return send(res, 200, pub);
+            return send(res, 200, g);
           }
         }
         if (kind === 'class') {
           if (!key && req.method === 'POST') {
             const { title, brief, requirements, teacher } = await body(req);
             if (!title || !Array.isArray(requirements) || !requirements.length) return send(res, 400, { error: 'Give the assignment a title and at least one requirement.' });
-            return send(res, 200, cm.createAssignment({ title, brief: brief ?? '', requirements, teacher: teacher ?? '' }));
+            return send(res, 200, await cm.createAssignment(ctx, { title, brief: brief ?? '', requirements, teacher: teacher ?? '' }));
           }
           if (key && !action && req.method === 'GET') {
-            const a = cm.getAssignment(key);
+            const a = await cm.getAssignment(ctx, key);
             return a ? send(res, 200, a) : send(res, 404, { error: 'No class with that code.' });
           }
           if (key && action === 'submit' && req.method === 'POST') {
-            const a = cm.getAssignment(key);
+            const a = await cm.getAssignment(ctx, key);
             if (!a) return send(res, 404, { error: 'No class with that code.' });
             const { student, project } = await body(req);
             const { gradeSubmission } = await import('./grading');
             const grade = await gradeSubmission(project, a.requirements);
-            return send(res, 200, cm.addSubmission(key, { student, project, grade }));
+            return send(res, 200, await cm.addSubmission(ctx, key, { student, project, grade }));
           }
           if (key && action === 'dashboard' && req.method === 'GET') {
-            const d = cm.dashboard(key, u.searchParams.get('key') ?? '');
+            const d = await cm.dashboard(ctx, key, u.searchParams.get('key') ?? '');
             return d ? send(res, 200, d) : send(res, 403, { error: 'Wrong teacher key.' });
           }
           if (key && action === 'submission' && req.method === 'GET') {
-            const pr = cm.submissionProject(key, u.searchParams.get('key') ?? '', u.searchParams.get('id') ?? '');
+            const pr = await cm.submissionProject(ctx, key, u.searchParams.get('key') ?? '', u.searchParams.get('id') ?? '');
             return pr ? send(res, 200, { project: pr }) : send(res, 404, { error: 'not found' });
           }
         }
         if (kind === 'room') {
           if (!key && req.method === 'POST') {
             const { project } = await body(req);
-            return send(res, 200, { room: cm.createRoom(project) });
+            return send(res, 200, { room: await cm.createRoom(ctx, project) });
           }
           if (key && action === 'events' && req.method === 'GET') {
-            if (!cm.joinRoom(key, u.searchParams.get('name') ?? '', res as any)) return send(res, 404, { error: 'This shared session has ended.' });
+            if (!(await cm.joinRoom(ctx, key, u.searchParams.get('name') ?? '', res as any))) return send(res, 404, { error: 'This shared session has ended.' });
             return;
           }
           if (key && action === 'update' && req.method === 'POST') {
             const { project, version, by } = await body(req);
-            return send(res, 200, cm.updateRoom(key, project, Number(version), by));
+            return send(res, 200, await cm.updateRoom(ctx, key, project, Number(version), by));
           }
           if (key && action === 'comment' && req.method === 'POST') {
             const { target, text, by } = await body(req);
-            const c = cm.commentRoom(key, target, text, by);
+            const c = await cm.commentRoom(ctx, key, target, text, by);
             return c ? send(res, 200, c) : send(res, 404, { error: 'not found' });
           }
         }
@@ -248,7 +310,8 @@ export function apiPlugin(): Plugin {
       }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
-        return send(res, 200, { parts: listParts() });
+        const { listWorkspaceParts } = await import('./tenancy/repo');
+        return send(res, 200, { parts: [...listParts(), ...(await listWorkspaceParts(ctx))] });
       }
       if (req.url === '/api/parts/fetch' && req.method === 'POST') {
         const { fetchPart } = await import('./parts');
@@ -256,7 +319,7 @@ export function apiPlugin(): Plugin {
         if (!aiStatus().enabled) return send(res, 400, { error: 'Fetching datasheets needs Claude: set ANTHROPIC_API_KEY or log in to Claude Code.' });
         const { query } = await body(req);
         try {
-          return send(res, 200, await fetchPart(String(query ?? '').slice(0, 300)));
+          return send(res, 200, await fetchPart(ctx, String(query ?? '').slice(0, 300)));
         } catch (e: any) {
           return send(res, 422, { error: String(e?.message ?? e) });
         }
@@ -284,12 +347,14 @@ export function apiPlugin(): Plugin {
         const { project, fab, qrUrl, fixed, variant, panel } = await body(req);
         const okUrl = typeof qrUrl === 'string' && /^https?:\/\/\S{3,300}$/.test(qrUrl.trim()) ? qrUrl.trim() : undefined;
         const okFixed = fixed && typeof fixed === 'object' ? Object.fromEntries(Object.entries(fixed).filter(([, v]: any) => [v?.x, v?.y, v?.rot].every((n) => typeof n === 'number' && isFinite(n)))) : undefined;
-        const job = startPcb(project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl, fixed: okFixed as any, variant: variant === 'product' ? 'product' : 'prototype', panel: panel && [1, 2, 3].includes(panel.rows) && [1, 2, 3, 4].includes(panel.cols) ? { rows: panel.rows, cols: panel.cols } : undefined });
+        const job = await startPcb(ctx, project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl, fixed: okFixed as any, variant: variant === 'product' ? 'product' : 'prototype', panel: panel && [1, 2, 3].includes(panel.rows) && [1, 2, 3, 4].includes(panel.cols) ? { rows: panel.rows, cols: panel.cols } : undefined });
         return send(res, 200, { id: job.id, routing: tools.freerouting });
       }
       if (req.url === '/api/pcb/enclosure' && req.method === 'POST') {
         const { buildEnclosure } = await import('./pcbjobs');
+        const { ownsPcbJob } = await import('./tenancy/repo');
         const { id, project, style } = await body(req);
+        if (!(await ownsPcbJob(ctx, String(id)))) return send(res, 404, { error: 'Design the circuit board first.' });
         const st = ['rounded', 'minimal', 'wall-mount', 'desk-stand'].includes(style) ? style : 'rounded';
         const r = await buildEnclosure(String(id), project, st);
         if (!r) return send(res, 404, { error: 'Design the circuit board first.' });
@@ -299,6 +364,8 @@ export function apiPlugin(): Plugin {
         const { pcbJob, pcbFile, pcbZip } = await import('./pcbjobs');
         const u = new URL(req.url, 'http://x');
         const id = u.searchParams.get('id') ?? '';
+        const { ownsPcbJob } = await import('./tenancy/repo');
+        if (!(await ownsPcbJob(ctx, id))) return send(res, 404, { error: 'unknown job' });
         if (u.pathname === '/api/pcb/status') {
           const job = pcbJob(id);
           if (!job) return send(res, 404, { error: 'unknown job' });
@@ -337,18 +404,9 @@ export function apiPlugin(): Plugin {
       }
       send(res, 404, { error: 'not found' });
     } catch (e: any) {
-      send(res, 500, { error: String(e?.message ?? e) });
+      send(res, typeof e?.status === 'number' ? e.status : 500, { error: String(e?.message ?? e) });
     }
-  };
-  return {
-    name: 'sparkbench-api',
-    configureServer(server) {
-      server.middlewares.use(handler);
-    },
-    configurePreviewServer(server) {
-      server.middlewares.use(handler);
-    },
-  };
+  }
 }
 
 /** A small, safe Markdown-to-HTML page for the generated documents (headings, lists, checkboxes, code, bold). */

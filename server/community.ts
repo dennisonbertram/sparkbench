@@ -1,20 +1,24 @@
-// Gallery, classroom and live sharing, stored on this Sparkbench server (a household, club or
-// classroom on one network). Plain JSON files in data/, no accounts: people type a display name.
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+// Gallery, classroom and live sharing, stored in the database and scoped to the workspace.
+// Gallery entries are visible inside their workspace (or to everyone when published as public);
+// classes are joined by code from any workspace, but only the class's workspace sees the dashboard;
+// live rooms are open to members of the room's workspace.
+// Local mode has one workspace and no accounts, so it keeps the old secret edit/teacher keys.
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { ServerResponse } from 'node:http';
 import type { Project } from '../src/core/types';
+import { db, dataDir } from './db';
+import { ensureWorkspace } from './tenancy/repo';
+import type { RequestContext } from './tenancy/context';
 
-const DATA = process.env.SPARKBENCH_DATA ?? join(process.cwd(), 'data');
-const dir = (k: string) => {
-  const d = join(DATA, k);
-  mkdirSync(d, { recursive: true });
-  return d;
-};
 const id = (n = 8) => randomBytes(n).toString('base64url').slice(0, n);
-const read = <T>(file: string): T | null => (existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as T) : null);
 const clean = (s: unknown, max = 200) => String(s ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
+
+async function q<T = any>(ctx: RequestContext, sql: string, params: unknown[] = []): Promise<T[]> {
+  await ensureWorkspace(ctx);
+  return (await db()).query<T>(sql, params);
+}
 
 // ------------------------------------------------------------------ gallery
 export interface GalleryEntry {
@@ -28,16 +32,49 @@ export interface GalleryEntry {
   remixOf?: { id: string; name: string; author: string };
   likes: number;
   remixes: number;
+  visibility?: 'workspace' | 'public';
+}
+interface GalleryRow {
+  id: string;
+  workspace_id: string;
+  author_id: string;
+  visibility: 'workspace' | 'public';
+  entry: GalleryEntry & { editKey?: string };
+  project: Project;
+  likes: string;
 }
 
-/** Publish (or, with the entry's edit key, update) a gallery entry. The edit key stays with the author. */
-export function publish(project: Project, author: string, blurb: string, opts: { name?: string; update?: { id: string; editKey: string } } = {}): (GalleryEntry & { editKey: string }) | null {
-  const prev = opts.update && getGallery(opts.update.id);
-  if (opts.update && (!prev || (prev as any).editKey !== opts.update.editKey)) return null;
-  const gid = prev ? prev.entry.id : id();
-  const editKey: string = prev ? (prev as any).editKey : id(12);
+const GALLERY_SELECT = `SELECT g.*, (SELECT count(*) FROM gallery_likes l WHERE l.entry_id = g.id) AS likes FROM gallery_entries g`;
+const visible = (ctx: RequestContext, r: { workspace_id: string; visibility: string }) => r.workspace_id === ctx.workspaceId || r.visibility === 'public';
+const toEntry = (r: GalleryRow): GalleryEntry => {
+  const { editKey: _k, ...e } = r.entry;
+  return { ...e, likes: Number(r.likes), visibility: r.visibility };
+};
+
+async function galleryRow(ctx: RequestContext, gid: string): Promise<GalleryRow | null> {
+  if (!/^[\w-]{4,20}$/.test(gid)) return null;
+  const [r] = await q<GalleryRow>(ctx, `${GALLERY_SELECT} WHERE g.id = $1`, [gid]);
+  return r && visible(ctx, r) ? r : null;
+}
+
+/** May this person change or remove the entry? The author always may; locally (no accounts) the edit key is the proof. */
+const canEdit = (ctx: RequestContext, r: GalleryRow, editKey?: string) => r.workspace_id === ctx.workspaceId && r.author_id === ctx.userId && (ctx.kind !== 'local' || r.entry.editKey === editKey);
+
+/** Publish (or update your own) gallery entry. */
+export async function publish(
+  ctx: RequestContext,
+  project: Project,
+  author: string,
+  blurb: string,
+  opts: { name?: string; update?: { id: string; editKey?: string }; visibility?: 'workspace' | 'public' } = {},
+): Promise<(GalleryEntry & { editKey: string }) | null> {
+  const prev = opts.update ? await galleryRow(ctx, opts.update.id) : null;
+  if (opts.update && (!prev || !canEdit(ctx, prev, opts.update.editKey))) return null;
+  const gid = prev ? prev.id : id();
+  const editKey = prev?.entry.editKey ?? id(12);
   const remixOf = (project as any).remixOf;
-  const entry: GalleryEntry = {
+  const visibility = opts.visibility === 'public' ? 'public' : (prev?.visibility ?? 'workspace');
+  const entry: GalleryEntry & { editKey: string } = {
     id: gid,
     name: clean(opts.name || project.name, 80),
     author: clean(author, 40) || 'Anonymous',
@@ -45,35 +82,36 @@ export function publish(project: Project, author: string, blurb: string, opts: {
     board: project.board,
     parts: project.parts.length,
     createdAt: prev ? prev.entry.createdAt : Date.now(),
-    likes: prev ? prev.entry.likes : 0,
+    likes: 0,
     remixes: prev ? prev.entry.remixes : 0,
     ...(remixOf ? { remixOf } : {}),
+    editKey,
   };
-  writeFileSync(join(dir('gallery'), `${gid}.json`), JSON.stringify({ entry, project, editKey }));
+  await q(
+    ctx,
+    `INSERT INTO gallery_entries (id, workspace_id, author_id, visibility, entry, project) VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (id) DO UPDATE SET visibility = EXCLUDED.visibility, entry = EXCLUDED.entry, project = EXCLUDED.project`,
+    [gid, ctx.workspaceId, ctx.userId, visibility, JSON.stringify(entry), JSON.stringify(project)],
+  );
   if (!prev && remixOf?.id) {
-    const f = join(dir('gallery'), `${remixOf.id}.json`);
-    const orig = read<{ entry: GalleryEntry; project: Project }>(f);
-    if (orig) {
-      orig.entry.remixes++;
-      writeFileSync(f, JSON.stringify(orig));
-    }
+    const orig = await galleryRow(ctx, remixOf.id);
+    if (orig) await q(ctx, `UPDATE gallery_entries SET entry = jsonb_set(entry, '{remixes}', to_jsonb(coalesce((entry->>'remixes')::int, 0) + 1)) WHERE id = $1`, [orig.id]);
   }
-  return { ...entry, editKey };
+  const saved = (await galleryRow(ctx, gid))!;
+  return { ...toEntry(saved), editKey };
 }
 
-/** Take an entry down (the author's edit key is needed). */
-export function unpublish(gid: string, editKey: string): boolean {
-  const g = getGallery(gid);
-  if (!g || (g as any).editKey !== editKey) return false;
-  unlinkSync(join(dir('gallery'), `${gid}.json`));
+/** Take your own entry down. */
+export async function unpublish(ctx: RequestContext, gid: string, editKey?: string): Promise<boolean> {
+  const r = await galleryRow(ctx, gid);
+  if (!r || !canEdit(ctx, r, editKey)) return false;
+  await q(ctx, 'DELETE FROM gallery_entries WHERE id = $1 AND workspace_id = $2', [gid, ctx.workspaceId]);
   return true;
 }
 
-export function listGallery(): GalleryEntry[] {
-  const all = readdirSync(dir('gallery'))
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => read<{ entry: GalleryEntry }>(join(dir('gallery'), f))!.entry)
-    .sort((a, b) => b.likes - a.likes || b.createdAt - a.createdAt);
+export async function listGallery(ctx: RequestContext): Promise<GalleryEntry[]> {
+  const rows = await q<GalleryRow>(ctx, `${GALLERY_SELECT} WHERE g.workspace_id = $1 OR g.visibility = 'public'`, [ctx.workspaceId]);
+  const all = rows.map(toEntry).sort((a, b) => b.likes - a.likes || b.createdAt - a.createdAt);
   // The same project published twice (same title, author and description) shows once.
   const seen = new Set<string>();
   return all.filter((e) => {
@@ -84,17 +122,18 @@ export function listGallery(): GalleryEntry[] {
   });
 }
 
-export function getGallery(gid: string): { entry: GalleryEntry; project: Project; editKey?: string } | null {
-  if (!/^[\w-]{4,20}$/.test(gid)) return null;
-  return read(join(dir('gallery'), `${gid}.json`));
+export async function getGallery(ctx: RequestContext, gid: string): Promise<{ entry: GalleryEntry; project: Project } | null> {
+  const r = await galleryRow(ctx, gid);
+  return r ? { entry: toEntry(r), project: r.project } : null;
 }
 
-export function like(gid: string): GalleryEntry | null {
-  const g = getGallery(gid);
-  if (!g) return null;
-  g.entry.likes++;
-  writeFileSync(join(dir('gallery'), `${gid}.json`), JSON.stringify(g));
-  return g.entry;
+/** One like per person (locally, with no accounts, every click counts). */
+export async function like(ctx: RequestContext, gid: string): Promise<GalleryEntry | null> {
+  const r = await galleryRow(ctx, gid);
+  if (!r) return null;
+  const who = ctx.kind === 'local' ? `local:${id(10)}` : ctx.userId;
+  await q(ctx, 'INSERT INTO gallery_likes (entry_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [gid, who]);
+  return toEntry((await galleryRow(ctx, gid))!);
 }
 
 // ------------------------------------------------------------------ classroom
@@ -107,7 +146,7 @@ export interface Assignment {
   /** Acceptance tests generated from the requirements (by Claude), run against every submission. */
   tests?: import('../src/core/acceptance').AcceptanceTest[];
   teacher: string;
-  /** Secret the teacher needs to see the dashboard. */
+  /** Local mode only: the secret the teacher needs to see the dashboard. */
   teacherKey: string;
   createdAt: number;
 }
@@ -120,126 +159,174 @@ export interface Submission {
   grade: { score: number; max: number; items: { label: string; pass: boolean; detail: string }[] };
 }
 
-export function createAssignment(a: Pick<Assignment, 'title' | 'brief' | 'requirements' | 'teacher' | 'tests'>): Assignment {
+interface ClassRow {
+  code: string;
+  workspace_id: string;
+  teacher_id: string;
+  assignment: Assignment;
+}
+
+export async function createAssignment(ctx: RequestContext, a: Pick<Assignment, 'title' | 'brief' | 'requirements' | 'teacher' | 'tests'>): Promise<Assignment> {
   const code = id(6).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
   const full: Assignment = { ...a, title: clean(a.title, 100), brief: clean(a.brief, 1000), teacher: clean(a.teacher, 40), requirements: a.requirements.map((r) => clean(r, 200)).filter(Boolean).slice(0, 10), code, teacherKey: id(12), createdAt: Date.now() };
-  writeFileSync(join(dir('classes'), `${code}.json`), JSON.stringify({ assignment: full, submissions: [] }));
+  await q(ctx, 'INSERT INTO classes (code, workspace_id, teacher_id, assignment) VALUES ($1, $2, $3, $4)', [code, ctx.workspaceId, ctx.userId, JSON.stringify(full)]);
   return full;
 }
 
-function classFile(code: string) {
-  return /^[A-Z0-9]{4,10}$/.test(code) ? join(dir('classes'), `${code}.json`) : '';
+async function classRow(ctx: RequestContext, code: string): Promise<ClassRow | null> {
+  if (!/^[A-Z0-9]{4,10}$/.test(code)) return null;
+  const [r] = await q<ClassRow>(ctx, 'SELECT * FROM classes WHERE code = $1', [code]);
+  return r ?? null;
 }
 
-export function getAssignment(code: string): Omit<Assignment, 'teacherKey'> | null {
-  const f = classFile(code);
-  const c = f && read<{ assignment: Assignment }>(f);
+/** The teacher who made the class, or an admin of its workspace; locally, whoever has the teacher key. */
+const isTeacher = (ctx: RequestContext, c: ClassRow, key: string) =>
+  ctx.kind === 'local' ? c.assignment.teacherKey === key : c.workspace_id === ctx.workspaceId && (c.teacher_id === ctx.userId || ctx.role === 'admin');
+
+/** Anyone with the code may see the assignment (students can be in any workspace). */
+export async function getAssignment(ctx: RequestContext, code: string): Promise<Omit<Assignment, 'teacherKey'> | null> {
+  const c = await classRow(ctx, code);
   if (!c) return null;
   const { teacherKey: _k, ...pub } = c.assignment;
   return pub;
 }
 
-export function addSubmission(code: string, s: Omit<Submission, 'id' | 'submittedAt'>): Submission | null {
-  const f = classFile(code);
-  const c = f && read<{ assignment: Assignment; submissions: Submission[] }>(f);
+export async function addSubmission(ctx: RequestContext, code: string, s: Omit<Submission, 'id' | 'submittedAt'>): Promise<Submission | null> {
+  const c = await classRow(ctx, code);
   if (!c) return null;
   const sub: Submission = { ...s, student: clean(s.student, 40) || 'Student', id: id(), submittedAt: Date.now() };
-  c.submissions = [...c.submissions.filter((x) => x.student !== sub.student), sub];
-  writeFileSync(f, JSON.stringify(c));
+  // One submission per student: locally students are told apart by name, when hosted by account.
+  if (ctx.kind === 'local') await q(ctx, 'DELETE FROM class_submissions WHERE class_code = $1 AND student_name = $2', [code, sub.student]);
+  else await q(ctx, 'DELETE FROM class_submissions WHERE class_code = $1 AND student_id = $2', [code, ctx.userId]);
+  await q(ctx, 'INSERT INTO class_submissions (id, class_code, student_id, student_name, project, grade) VALUES ($1, $2, $3, $4, $5, $6)', [sub.id, code, ctx.userId, sub.student, JSON.stringify(sub.project), JSON.stringify(sub.grade)]);
   return sub;
 }
 
-export function dashboard(code: string, key: string): { assignment: Assignment; submissions: Omit<Submission, 'project'>[] } | null {
-  const f = classFile(code);
-  const c = f && read<{ assignment: Assignment; submissions: Submission[] }>(f);
-  if (!c || c.assignment.teacherKey !== key) return null;
-  return { assignment: c.assignment, submissions: c.submissions.map(({ project: _p, ...rest }) => rest) };
+interface SubRow {
+  id: string;
+  student_name: string;
+  project: Project;
+  grade: Submission['grade'];
+  submitted_at: Date | string;
 }
 
-export function submissionProject(code: string, key: string, sid: string): Project | null {
-  const f = classFile(code);
-  const c = f && read<{ assignment: Assignment; submissions: Submission[] }>(f);
-  if (!c || c.assignment.teacherKey !== key) return null;
-  return c.submissions.find((s) => s.id === sid)?.project ?? null;
+export async function dashboard(ctx: RequestContext, code: string, key: string): Promise<{ assignment: Assignment; submissions: Omit<Submission, 'project'>[] } | null> {
+  const c = await classRow(ctx, code);
+  if (!c || !isTeacher(ctx, c, key)) return null;
+  const subs = await q<SubRow>(ctx, 'SELECT id, student_name, grade, submitted_at FROM class_submissions WHERE class_code = $1 ORDER BY submitted_at', [code]);
+  return { assignment: c.assignment, submissions: subs.map((s) => ({ id: s.id, student: s.student_name, grade: s.grade, submittedAt: new Date(s.submitted_at).getTime() })) };
+}
+
+export async function submissionProject(ctx: RequestContext, code: string, key: string, sid: string): Promise<Project | null> {
+  const c = await classRow(ctx, code);
+  if (!c || !isTeacher(ctx, c, key)) return null;
+  const [s] = await q<SubRow>(ctx, 'SELECT project FROM class_submissions WHERE class_code = $1 AND id = $2', [code, sid]);
+  return s?.project ?? null;
 }
 
 // ------------------------------------------------------------------ live sharing (rooms)
-interface Room {
-  project: Project;
-  version: number;
-  comments: { id: string; target: string; text: string; by: string; at: number }[];
+type Comment = { id: string; target: string; text: string; by: string; at: number };
+interface Live {
   clients: Set<ServerResponse>;
   people: Map<ServerResponse, string>;
 }
-const rooms = new Map<string, Room>();
+/** Open connections per room (this process only: the service runs as one instance). */
+const live = new Map<string, Live>();
+const liveOf = (rid: string) => live.get(rid) ?? live.set(rid, { clients: new Set(), people: new Map() }).get(rid)!;
 
-function roomFile(rid: string) {
-  return /^[\w-]{6,20}$/.test(rid) ? join(dir('rooms'), `${rid}.json`) : '';
+interface RoomRow {
+  id: string;
+  workspace_id: string;
+  project: Project;
+  version: number;
+  comments: Comment[];
 }
 
-function loadRoom(rid: string): Room | null {
-  if (rooms.has(rid)) return rooms.get(rid)!;
-  const f = roomFile(rid);
-  const saved = f && read<{ project: Project; version: number; comments: Room['comments'] }>(f);
-  if (!saved) return null;
-  const r: Room = { ...saved, clients: new Set(), people: new Map() };
-  rooms.set(rid, r);
-  return r;
+async function roomRow(ctx: RequestContext, rid: string): Promise<RoomRow | null> {
+  if (!/^[\w-]{6,20}$/.test(rid)) return null;
+  const [r] = await q<RoomRow>(ctx, 'SELECT * FROM rooms WHERE id = $1 AND workspace_id = $2', [rid, ctx.workspaceId]);
+  return r ?? null;
 }
 
-function save(rid: string, r: Room) {
-  writeFileSync(roomFile(rid), JSON.stringify({ project: r.project, version: r.version, comments: r.comments }));
-}
-
-function broadcast(r: Room, event: string, data: unknown, except?: ServerResponse) {
+function broadcast(rid: string, event: string, data: unknown, except?: ServerResponse) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  for (const c of r.clients) if (c !== except) c.write(msg);
+  for (const c of liveOf(rid).clients) if (c !== except) c.write(msg);
 }
 
-export function createRoom(project: Project): string {
+export async function createRoom(ctx: RequestContext, project: Project): Promise<string> {
   const rid = id(10);
-  const r: Room = { project, version: 1, comments: [], clients: new Set(), people: new Map() };
-  rooms.set(rid, r);
-  save(rid, r);
+  await q(ctx, 'INSERT INTO rooms (id, workspace_id, project, version) VALUES ($1, $2, $3, 1)', [rid, ctx.workspaceId, JSON.stringify(project)]);
   return rid;
 }
 
-export function joinRoom(rid: string, name: string, res: ServerResponse): boolean {
-  const r = loadRoom(rid);
+export async function joinRoom(ctx: RequestContext, rid: string, name: string, res: ServerResponse): Promise<boolean> {
+  const r = await roomRow(ctx, rid);
   if (!r) return false;
+  const l = liveOf(rid);
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-  r.clients.add(res);
-  r.people.set(res, clean(name, 40) || 'Someone');
+  l.clients.add(res);
+  l.people.set(res, clean(name, 40) || 'Someone');
   res.write(`event: state\ndata: ${JSON.stringify({ project: r.project, version: r.version, comments: r.comments })}\n\n`);
-  broadcast(r, 'people', [...r.people.values()]);
+  broadcast(rid, 'people', [...l.people.values()]);
   const ping = setInterval(() => res.write(': ping\n\n'), 20000);
   res.on('close', () => {
     clearInterval(ping);
-    r.clients.delete(res);
-    r.people.delete(res);
-    broadcast(r, 'people', [...r.people.values()]);
+    l.clients.delete(res);
+    l.people.delete(res);
+    broadcast(rid, 'people', [...l.people.values()]);
   });
   return true;
 }
 
 /** Last writer wins, but only from the latest version (stale edits are rejected so nobody silently loses work). */
-export function updateRoom(rid: string, project: Project, baseVersion: number, by: string): { ok: boolean; version: number; project?: Project } {
-  const r = loadRoom(rid);
+export async function updateRoom(ctx: RequestContext, rid: string, project: Project, baseVersion: number, by: string): Promise<{ ok: boolean; version: number; project?: Project }> {
+  const r = await roomRow(ctx, rid);
   if (!r) return { ok: false, version: 0 };
-  if (baseVersion !== r.version) return { ok: false, version: r.version, project: r.project };
-  r.project = project;
-  r.version++;
-  save(rid, r);
-  broadcast(r, 'update', { project, version: r.version, by: clean(by, 40) });
-  return { ok: true, version: r.version };
+  const [u] = await q<{ version: number }>(ctx, 'UPDATE rooms SET project = $1, version = version + 1, updated_at = now() WHERE id = $2 AND workspace_id = $3 AND version = $4 RETURNING version', [JSON.stringify(project), rid, ctx.workspaceId, baseVersion]);
+  if (!u) {
+    const now = (await roomRow(ctx, rid))!;
+    return { ok: false, version: now.version, project: now.project };
+  }
+  broadcast(rid, 'update', { project, version: u.version, by: clean(by, 40) });
+  return { ok: true, version: u.version };
 }
 
-export function commentRoom(rid: string, target: string, text: string, by: string) {
-  const r = loadRoom(rid);
+export async function commentRoom(ctx: RequestContext, rid: string, target: string, text: string, by: string): Promise<Comment | null> {
+  const r = await roomRow(ctx, rid);
   if (!r) return null;
-  const c = { id: id(), target: clean(target, 60), text: clean(text, 500), by: clean(by, 40) || 'Someone', at: Date.now() };
-  r.comments.push(c);
-  save(rid, r);
-  broadcast(r, 'comment', c);
+  const c: Comment = { id: id(), target: clean(target, 60), text: clean(text, 500), by: clean(by, 40) || 'Someone', at: Date.now() };
+  await q(ctx, `UPDATE rooms SET comments = comments || $1::jsonb WHERE id = $2 AND workspace_id = $3`, [JSON.stringify([c]), rid, ctx.workspaceId]);
+  broadcast(rid, 'comment', c);
   return c;
+}
+
+// ------------------------------------------------------------------ one-time import of the old JSON files
+/** Local mode: bring gallery entries, classes and rooms from the old data/ JSON files into the database once. */
+export async function importLegacyFiles(ctx: RequestContext): Promise<number> {
+  const root = process.env.SPARKBENCH_DATA ?? dataDir();
+  const read = (f: string) => JSON.parse(readFileSync(f, 'utf8'));
+  const files = (k: string) => (existsSync(join(root, k)) ? readdirSync(join(root, k)).filter((f) => f.endsWith('.json')).map((f) => join(root, k, f)) : []);
+  let n = 0;
+  const [done] = await q(ctx, "SELECT 1 FROM schema_migrations WHERE name = 'legacy-files'");
+  if (done) return 0;
+  for (const f of files('gallery')) {
+    const g = read(f);
+    await q(ctx, 'INSERT INTO gallery_entries (id, workspace_id, author_id, entry, project) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING', [g.entry.id, ctx.workspaceId, ctx.userId, JSON.stringify({ ...g.entry, editKey: g.editKey }), JSON.stringify(g.project)]);
+    for (let i = 0; i < (g.entry.likes ?? 0); i++) await q(ctx, 'INSERT INTO gallery_likes (entry_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [g.entry.id, `legacy:${i}`]);
+    n++;
+  }
+  for (const f of files('classes')) {
+    const c = read(f);
+    await q(ctx, 'INSERT INTO classes (code, workspace_id, teacher_id, assignment) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [c.assignment.code, ctx.workspaceId, ctx.userId, JSON.stringify(c.assignment)]);
+    for (const s of c.submissions ?? []) await q(ctx, 'INSERT INTO class_submissions (id, class_code, student_id, student_name, project, grade) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING', [s.id, c.assignment.code, ctx.userId, s.student, JSON.stringify(s.project), JSON.stringify(s.grade)]);
+    n++;
+  }
+  for (const f of files('rooms')) {
+    const r = read(f);
+    const rid = f.split('/').pop()!.replace(/\.json$/, '');
+    await q(ctx, 'INSERT INTO rooms (id, workspace_id, project, version, comments) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING', [rid, ctx.workspaceId, JSON.stringify(r.project), r.version ?? 1, JSON.stringify(r.comments ?? [])]);
+    n++;
+  }
+  await q(ctx, "INSERT INTO schema_migrations (name) VALUES ('legacy-files') ON CONFLICT DO NOTHING");
+  return n;
 }

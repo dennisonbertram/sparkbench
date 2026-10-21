@@ -676,7 +676,7 @@ function AddAnyComponent({ initial, onDone }: { initial: string; onDone(): void 
   const [q, setQ] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [found, setFound] = useState<{ spec: CustomPartSpec; skillDir: string; reused: boolean } | null>(null);
+  const [found, setFound] = useState<{ spec: CustomPartSpec; skillDir: string | null; reused: boolean } | null>(null);
   useEffect(() => setQ((x) => x || initial), [initial]);
   const go = async () => {
     if (!q.trim()) return;
@@ -742,7 +742,15 @@ function AddAnyComponent({ initial, onDone }: { initial: string; onDone(): void 
                 Datasheet
               </a>
             )}{' '}
-            · {found.reused ? 'Already in your library' : 'Saved as a Claude Code skill'}: <code>{found.skillDir.replace(/^.*\/(\.claude\/)/, '$1')}</code>
+            · {found.skillDir ? (
+              <>
+                {found.reused ? 'Already in your library' : 'Saved as a Claude Code skill'}: <code>{found.skillDir.replace(/^.*\/(\.claude\/)/, '$1')}</code>
+              </>
+            ) : found.reused ? (
+              'Already in your library'
+            ) : (
+              "Saved to your workspace's parts"
+            )}
             {found.spec.driver && <> · includes a MicroPython driver ({found.spec.driver.filename})</>}
           </p>
           <div className="part-card-actions">

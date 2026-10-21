@@ -8,6 +8,8 @@ import JSZip from 'jszip';
 import type { Project } from '../src/core/types';
 import { pcbSpec } from '../src/core/pcb';
 import { buildPcb, pcbToolsStatus, type PcbResult, type PcbOptions } from './pcb';
+import { recordPcbJob } from './tenancy/repo';
+import type { RequestContext } from './tenancy/context';
 
 interface Job {
   id: string;
@@ -18,10 +20,13 @@ interface Job {
   result?: PcbResult;
 }
 const jobs = new Map<string, Job>();
-const ROOT = join(tmpdir(), 'sparkbench-pcb');
+// Hosted: on the persistent volume (DATA_DIR); locally: the temp folder, as before.
+const ROOT = process.env.DATA_DIR ? join(process.env.DATA_DIR, 'pcb') : join(tmpdir(), 'sparkbench-pcb');
 
-export function startPcb(project: Project, opts: PcbOptions = {}): Job {
-  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null, opts.variant ?? 'prototype', opts.panel ?? null])).digest('hex').slice(0, 16);
+/** Identical designs in the same workspace reuse a build; the workspace is part of the id, so ids never cross workspaces. */
+export async function startPcb(ctx: RequestContext, project: Project, opts: PcbOptions = {}): Promise<Job> {
+  const id = createHash('sha1').update(JSON.stringify([ctx.workspaceId, pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null, opts.variant ?? 'prototype', opts.panel ?? null])).digest('hex').slice(0, 16);
+  await recordPcbJob(ctx, id);
   const existing = jobs.get(id);
   // Reuse a finished or running build, unless it failed or stalled (e.g. the server reloaded mid-build).
   if (existing && !existing.error && (existing.done || Date.now() - existing.started < 10 * 60_000)) return existing;

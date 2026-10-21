@@ -8,6 +8,8 @@ import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { currentRequest } from './tenancy/als';
+import { recordAiUsage } from './tenancy/repo';
 
 export const MODEL = 'claude-opus-5-5';
 
@@ -27,6 +29,8 @@ export type Backend = 'api' | 'claude-cli' | 'none';
 export function backend(): Backend {
   if (process.env.SPARKBENCH_AI === 'off') return 'none';
   if (process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) return 'api';
+  // A hosted server serves many people: it must not run on someone's personal Claude Code login.
+  if (process.env.SPARKBENCH_MODE === 'hosted') return 'none';
   if (process.env.SPARKBENCH_AI !== 'api' && findCli()) return 'claude-cli';
   return 'none';
 }
@@ -62,6 +66,8 @@ export async function askJson<T extends z.ZodType>(system: string, turns: Turn[]
       ),
       ...(opts.web ? { tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }, { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 5 }] as any } : {}),
     });
+    const scope = currentRequest();
+    if (scope && res.usage) await recordAiUsage(scope.ctx, scope.route, (res.usage.input_tokens ?? 0) + (res.usage.cache_creation_input_tokens ?? 0) + (res.usage.cache_read_input_tokens ?? 0), res.usage.output_tokens ?? 0).catch(() => {});
     if (res.stop_reason === 'refusal') throw new Error('Claude declined this request.');
     if (!res.parsed_output) throw new Error('Claude returned an unreadable answer.');
     return res.parsed_output as z.infer<T>;
