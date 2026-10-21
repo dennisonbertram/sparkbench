@@ -1,0 +1,102 @@
+{
+  "type": "custom-mc-38",
+  "name": "MC-38 magnetic door/window switch",
+  "mpn": "MC-38",
+  "category": "sensor",
+  "description": "MC-38 wired alarm contact: a reed switch plus a separate magnet. The contacts are closed while the magnet is within about 15 mm (door shut, 'N.C.' in alarm terms) and open beyond about 25 mm (door open). Passive, not polarised, no supply: wire one lead to GND and the other to a GPIO with the internal pull-up, so it reads 0 when shut and 1 when open. Contacts rated 100 mA, 200 V DC, 3 W max. Sold as: generic MC-38 wired door/window magnetic reed switch, white ABS switch and magnet cases with about 30 cm two-wire lead, bare ends (GND, SIG).",
+  "eli5": "A door alarm sensor: a magnet on the door and a switch on the frame. When the door is shut the magnet closes the switch; open the door and the switch opens, and your board notices.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "One lead of the reed switch (either lead; the switch is not polarised): connect to ground",
+      "required": true
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Other lead: connect to a GPIO with the internal pull-up on (or 10 kOhm to 3.3 V). Reads 0 while the magnet is near (contacts closed), 1 when it is away",
+      "required": true
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://aws.robu.in/wp-content/uploads/2017/04/Datasheet-MC-38-final-1.pdf",
+  "sources": [
+    "https://aws.robu.in/wp-content/uploads/2017/04/Datasheet-MC-38-final-1.pdf",
+    "https://components101.com/sensors/mc38-magnetic-switch-sensor-pinout-features-datasheet-working-alternative-application",
+    "https://www.codrey.com/electronics/improved-door-security-monitor-switch/",
+    "https://randomnerdtutorials.com/esp32-door-status-monitor-email/",
+    "https://sigmanortec.ro/en/magnetic-switch-mc38-alarm-nc-100v"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "MC-38 wired door window magnetic reed switch",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two bare wires, not polarised: crimp or solder them to a 2-pin header (or use a screw terminal) and connect either one to GND, the other to the GPIO.",
+    "Turn on the GPIO's internal pull-up (Pin.PULL_UP); for long cable runs add 10 kOhm from SIG to 3.3 V (never 5 V on an ESP32/Pico).",
+    "Logic: 0 = magnet near / door shut (contacts closed), 1 = magnet away / door open.",
+    "Mount the magnet within 15 mm of the switch with their marked sides facing; it opens beyond about 25 mm.",
+    "Contacts are rated 100 mA, 200 V DC, 3 W: do not switch loads through it directly."
+  ],
+  "keywords": [
+    "mc-38",
+    "mc38",
+    "door sensor",
+    "window sensor",
+    "reed switch",
+    "magnetic switch",
+    "magnetic contact",
+    "alarm contact",
+    "door switch"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "GND"
+    ],
+    "colPins": [
+      "SIG"
+    ],
+    "keys": [
+      [
+        "MAGNET"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "mc38.py",
+    "code": "# MC-38 magnetic door/window switch (a reed switch in a plastic case, plus a separate magnet), MicroPython driver.\n# Datasheet (MC-38): N.C. contact in alarm terms = the contacts are CLOSED while the magnet is next to the switch\n# (door shut) and OPEN when the magnet moves away (door open). Operating gap 15-25 mm; contact rating\n# 100 mA, 200 V DC, 3 W max. Two wires, not polarised: no supply, no chip.\n# Wiring: one wire to GND, the other to a GPIO with the internal pull-up on.\n#   magnet near (closed) -> pin reads 0;  magnet away (open) -> pin reads 1.\n# Reed contacts bounce for about a millisecond when they change, so readings are debounced.\nfrom machine import Pin\nimport time\n\n\nclass MC38:\n    def __init__(self, pin, pull_up=True, debounce_ms=20):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.debounce_ms = debounce_ms\n\n    def value(self):\n        \"\"\"Raw level on the signal wire: 0 = contacts closed (magnet near), 1 = open (magnet away).\"\"\"\n        return self.pin.value()\n\n    def is_closed(self):\n        \"\"\"True while the magnet is next to the switch (door/window shut). Debounced.\"\"\"\n        v = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            if self.pin.value() != v:\n                v = self.pin.value()\n                t0 = time.ticks_ms()\n        return v == 0\n\n    def is_open(self):\n        \"\"\"True while the magnet is away from the switch (door/window open).\"\"\"\n        return not self.is_closed()\n\n    def irq(self, handler, on_open=True):\n        \"\"\"Call handler(pin) when the door opens (rising edge) or, with on_open=False, when it closes.\n        Contacts bounce: handlers may fire more than once per movement.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_RISING if on_open else Pin.IRQ_FALLING)\n"
+  },
+  "skill": "---\nname: part-mc-38\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MC-38 magnetic door/window switch (reed switch + magnet). Use when designing, wiring, simulating or writing code for an MC-38 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MC-38 magnetic door/window switch (MC-38)\n\n## Overview\nThe **MC-38** is a wired alarm contact: a **reed switch** in a white plastic case plus a matching **magnet** in a second case. Screw the switch to the frame and the magnet to the door or window. While the magnet is next to the switch (door shut) the contacts are **closed**; open the door and they **open**. Alarm makers call this an \"N.C.\" contact (closed in the normal, shut state). There is no chip and no supply: it is just two wires. Hobbyists buy it as the **generic MC-38 wired door/window sensor**, white ABS, about 30 cm of two-core lead with bare ends.\n\n## Pinout (two wires, not polarised)\n| Wire | Function |\n|---|---|\n| GND | Either wire: connect to ground |\n| SIG | The other wire: connect to a GPIO with the internal pull-up on |\n\n## Electrical limits\n- Contact rating (MC-38 datasheet): **100 mA, 200 V DC, 3 W** max. Some sellers quote 0.5 A / 100 V: stay under the lower figure.\n- Operating gap: closes with the magnet within about **15 mm**, opens beyond about **25 mm**.\n- At a 3.3 V GPIO with the internal pull-up only microamps flow, far inside the rating.\n\n## Interface details\n- Plain on/off switch. With SIG pulled up: **0 = magnet near (door shut), 1 = magnet away (door open)**.\n- The pin **needs a pull-up**: use `Pin.PULL_UP`, or a 10 kOhm resistor to **3.3 V** for long cable runs.\n- Reed contacts bounce for about a millisecond when they move: the driver debounces (20 ms).\n- Long leads pick up noise: twisted pair, a 100 nF capacitor from SIG to GND, or a stronger pull-up (4.7-10 kOhm) helps.\n\n## Wiring\n- ESP32: GND wire -> GND, SIG wire -> GPIO4 (internal pull-up on).\n- Pico: GND wire -> GND, SIG wire -> GP15 (internal pull-up on).\n- Raspberry Pi 4: GND wire -> pin 6, SIG wire -> GPIO17 (pin 11) with the internal pull-up.\n\n## Using the driver\n```python\nfrom mc38 import MC38\nimport time\ndoor = MC38(4)            # GPIO wired to SIG, internal pull-up on\nwhile True:\n    print('DOOR=%s' % ('CLOSED' if door.is_closed() else 'OPEN'))\n    time.sleep(0.5)\n```\n`door.irq(handler)` calls `handler(pin)` when the door opens (rising edge).\n\n## Gotchas\n- Readings reversed from what you expect? Remember the logic: shut door = contacts closed = pin reads **0**.\n- Random readings: the pull-up is missing (the switch only connects to ground, it never drives high).\n- Mount the magnet's side mark next to the switch's, parallel and within 15 mm; steel frames weaken the field.\n- The glass reed inside breaks if the case is dropped or over-tightened; a dead switch reads 1 forever.\n- Do not switch mains or motors through it directly: 100 mA / 3 W max.\n\n## Datasheet\nhttps://aws.robu.in/wp-content/uploads/2017/04/Datasheet-MC-38-final-1.pdf\n",
+  "example": {
+    "code": "from mc38 import MC38\nimport time\n\ndoor = MC38({SIG})  # internal pull-up on: 0 = magnet near (shut), 1 = away (open)\nwhile True:\n    print('DOOR=%s' % ('CLOSED' if door.is_closed() else 'OPEN'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the door shut when the magnet is next to the switch",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "DOOR=CLOSED",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:56:45.679Z",
+    "verifiedSources": []
+  }
+}

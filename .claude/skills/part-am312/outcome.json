@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-am312",
+  "board": "AM312 mini PIR motion sensor module (common 10 mm green board with white dome lens, 3 pins: VCC, OUT, GND)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test 'MOTION=1' with the motion toggle on, PCB DRC clean, footprint, LCSC C114881). Modelled as an active-high digital-sensor; the AM312 REL output is push-pull at the module's 3 V rail with a fixed ~2.3 s hold per the Senba datasheet.",
+  "datasheetUrl": "https://ocw.cs.pub.ro/courses/_media/pm/prj2023/ncaroi/pir_am312_datasheet.pdf",
+  "breakoutPinoutSource": "Vendor pinout VCC (pin 1), OUT (pin 2), GND (pin 3) from https://probots.co.in/am312-mini-pir-motion-sensor-module.html; OUT as the middle pin and the tiny +/- silkscreen confirmed at https://forum.mysensors.org/post/67494",
+  "checkRuns": 1
+}

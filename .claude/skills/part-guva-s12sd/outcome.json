@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-guva-s12sd",
+  "board": "Adafruit Analog UV Light Sensor Breakout - GUVA-S12SD (#1918)",
+  "reason": "The first check run passed every stage on ESP32 and Pico, including the simulator test (260 nA reads as 'I=260nA UVI=10.0'). Out is modelled as Vout = 4.3033 V/uA x photocurrent, which comes from the breakout's MCP6001 T-network (1M, 3.3k, 1k) in Adafruit's Eagle files. The UV index uses the datasheet's typical 26 nA per UVI. The header order -, Out, + comes from the Eagle board silkscreen and the JP2 pads.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/1918guva.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-GUVA-Analog-UV-Sensor-Breakout-PCB",
+  "checkRuns": 1
+}

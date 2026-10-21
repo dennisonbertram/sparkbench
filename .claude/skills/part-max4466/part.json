@@ -1,0 +1,120 @@
+{
+  "type": "custom-max4466",
+  "name": "MAX4466 electret microphone amplifier",
+  "mpn": "MAX4466",
+  "category": "sensor",
+  "description": "Electret microphone with a MAX4466 op-amp preamp and a gain trimmer (about 25x to 125x). OUT is the audio waveform, DC biased at VCC/2 and rail-to-rail, so silence reads a steady VCC/2 and loudness is the peak-to-peak swing. Runs on 2.4–5.5 V. Sold as: Adafruit Electret Microphone Amplifier - MAX4466 with Adjustable Gain (product #1063, 3-pin header OUT, GND, VCC), also the generic GY-MAX4466 clone modules.",
+  "eli5": "A tiny ear with its own amplifier. Its OUT pin sits at half the supply voltage when it's quiet and wiggles up and down with sound; the louder the sound, the bigger the wiggle.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Audio output (pin 1): the microphone waveform, DC biased at VCC/2, swinging up to both supply rails. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.4–5.5 V (pin 3). Use 3.3 V with an ESP32, Pico or Raspberry Pi so OUT stays below 3.3 V.",
+      "required": true
+    }
+  ],
+  "vmin": 2.4,
+  "vmax": 5.5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX4465-MAX4469.pdf",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX4465-MAX4469.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/MAX4465-MAX4469.pdf",
+    "https://www.adafruit.com/product/1063",
+    "https://learn.adafruit.com/adafruit-microphone-amplifier-breakout/assembly-and-wiring",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20MAX4466%20Electret%20Microphone%20Amplifier.fzpz"
+  ],
+  "priceUsd": 6.95,
+  "supplierQuery": "MAX4466 electret microphone amplifier module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: OUT, GND, VCC.",
+    "Power VCC from 3.3 V on an ESP32, Pico or Raspberry Pi: OUT is rail-to-rail, so a 5 V supply could put 5 V on the ADC pin.",
+    "OUT goes straight to an ADC pin: no capacitor or extra amplifier needed.",
+    "In silence OUT sits at VCC/2 (1.65 V on 3.3 V). Measure loudness as the peak-to-peak spread of fast samples over about 50 ms.",
+    "Set the gain with the small trimmer on the back: flat tops at 0 V or VCC mean the gain is too high.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39); the Raspberry Pi has no ADC, so add one."
+  ],
+  "keywords": [
+    "max4466",
+    "microphone",
+    "mic",
+    "electret",
+    "sound",
+    "audio",
+    "loudness",
+    "clap",
+    "amplifier",
+    "adafruit 1063",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Sound level (OUT swing, V peak-to-peak)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 0.1,
+    "vAtMin": 1.65,
+    "vAtMax": 1.65,
+    "wave": {
+      "ampControl": "value",
+      "voltsPerUnit": 1,
+      "centerV": 1.65,
+      "freqHz": 440
+    }
+  },
+  "driver": {
+    "filename": "max4466.py",
+    "code": "# MAX4466 electret microphone amplifier breakout (Adafruit #1063, header OUT, GND, VCC), MicroPython driver.\n# The MAX4466 is a plain analog op-amp (Analog Devices/Maxim MAX4465-MAX4469 datasheet): no bus, no\n# registers. The breakout biases its rail-to-rail output at VCC/2 and the audio rides on that level\n# (DC coupled). Silence = a steady VCC/2; louder sound = a bigger swing around it, up to the supply rails.\n# Gain is set by the trimmer on the back (about 25x to 125x).\n# Loudness is therefore measured as the peak-to-peak spread of fast ADC samples over a short window\n# (50 ms covers frequencies down to 20 Hz), exactly as Adafruit's own example does.\nfrom machine import ADC, Pin\nimport time\n\n\nclass MAX4466:\n    def __init__(self, out, vref=3.3):\n        \"\"\"out: GPIO number (or Pin) wired to OUT. vref: ADC full scale in volts, used when\n        read_uv() is not available (e.g. Pico, where full scale is the 3.3 V supply).\"\"\"\n        self.adc = ADC(Pin(out) if isinstance(out, int) else out)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"One OUT reading in volts.\"\"\"\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def bias(self, n=64):\n        \"\"\"Average OUT level in volts: the VCC/2 bias point (about 1.65 V on a 3.3 V supply).\"\"\"\n        total = 0\n        for _ in range(n):\n            total += self.voltage()\n        return total / n\n\n    def peak_to_peak(self, window_ms=50):\n        \"\"\"Spread (max - min) of OUT over window_ms, in volts: the loudness figure.\n        About 0 in silence; at most the supply voltage (the output is rail-to-rail).\"\"\"\n        lo = hi = self.voltage()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < window_ms:\n            v = self.voltage()\n            if v < lo:\n                lo = v\n            elif v > hi:\n                hi = v\n        return hi - lo\n"
+  },
+  "example": {
+    "code": "from max4466 import MAX4466\nimport time\n\nmic = MAX4466({OUT})\nwhile True:\n    print('PP=%.1fV' % mic.peak_to_peak())\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "loudness",
+      "title": "Reports the peak-to-peak swing set on the sound slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PP=2.0V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-max4466\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MAX4466 electret microphone amplifier breakout (Adafruit #1063, OUT/GND/VCC). Use when designing, wiring, simulating or writing code for a MAX4466 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MAX4466 electret microphone amplifier (MAX4466)\n\n## Overview\nThe **MAX4466** (Analog Devices / Maxim) is a low-power op-amp made for microphone preamps. Hobbyists buy it on the **Adafruit Electret Microphone Amplifier - MAX4466 with Adjustable Gain (product #1063)**: an electret mic, the MAX4466 and a gain trimmer (about **25x to 125x**) on a small 3-pin board. Generic purple/blue \"GY-MAX4466\" clones copy the same design.\n- **OUT** carries the audio waveform, **DC biased at VCC/2** (DC coupled). In silence it sits steady at VCC/2 (1.65 V on 3.3 V).\n- The output is **rail-to-rail**: loud sound swings it from near 0 V to near VCC.\n- It is an analog signal, not a sound-level (dB) meter. Measure loudness as the **peak-to-peak** swing over a short window.\n\n## Pinout (Adafruit #1063 header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | OUT | Audio out, biased at VCC/2 |\n| 2 | GND | Ground |\n| 3 | VCC | Supply, 2.4–5.5 V |\n\n## Electrical limits\n- Supply: **2.4–5.5 V** (datasheet supply range; printed on the board as \"VCC: 2.4-5.5V\").\n- Current: amplifier 24 µA typical (48 µA max), plus the electret mic bias (well under 1 mA).\n- OUT swings to both supply rails. **On an ESP32, Pico or Raspberry Pi, power it from 3.3 V** so OUT never goes above 3.3 V. 3.3 V is also the \"quietest\" supply.\n\n## Interface details\n- Analog only: connect OUT straight to an ADC pin (no capacitor or extra amplifier needed).\n- Silence = VCC/2. Loudness = max − min of fast samples over ~50 ms (covers down to 20 Hz).\n- Turn the trimmer on the back to set the gain: too high and loud sounds clip at the rails, too low and quiet sounds barely move the ADC.\n\n## Wiring\n| Board | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| GND | GND | GND | GND (pin 6) |\n| OUT | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (e.g. ADS1115/MCP3008) |\n\nOn the ESP32 use ADC1 pins (ADC2 stops working while Wi-Fi is on). The Raspberry Pi has no ADC.\n\n## Using the driver\n```python\nfrom max4466 import MAX4466\nimport time\nmic = MAX4466(34)          # GPIO wired to OUT\nwhile True:\n    print('bias=%.2fV p-p=%.2fV' % (mic.bias(), mic.peak_to_peak()))\n    time.sleep(0.2)\n```\n`peak_to_peak(window_ms=50)` returns the swing in volts; `bias()` averages the DC level; `voltage()` is one reading (`read_uv()` on ESP32, else `read_u16()` × 3.3 V).\n\n## Gotchas\n- **5 V supply + 3.3 V board**: OUT can swing to 5 V and damage the GPIO. Use 3.3 V.\n- **One reading means nothing**: the signal is a wave around VCC/2. Use peak-to-peak.\n- **Noisy supply = noisy audio**: USB 5 V and Wi-Fi bursts show up on OUT. Use 3.3 V and keep wires short.\n- **Clipping**: flat tops at 0 V / VCC mean the gain trimmer is too high.\n\n## Datasheet\nhttps://www.analog.com/media/en/technical-documentation/data-sheets/MAX4465-MAX4469.pdf. Board: https://www.adafruit.com/product/1063\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:45:22.072Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/MAX4465-MAX4469.pdf",
+      "https://www.adafruit.com/product/1063",
+      "https://cdn-shop.adafruit.com/970x728/1063-06.jpg"
+    ]
+  }
+}

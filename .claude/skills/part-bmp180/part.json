@@ -1,0 +1,180 @@
+{
+  "type": "custom-bmp180",
+  "name": "BMP180 barometric pressure sensor",
+  "mpn": "BMP180",
+  "category": "sensor",
+  "description": "Bosch digital barometric pressure (300–1100 hPa, ±0.12 hPa relative, about ±1 hPa absolute) and temperature (0.1 °C steps) sensor with an I2C interface at fixed address 0x77. Reads factory calibration from its E2PROM and needs the datasheet compensation formula. Sold as: GY-68 BMP180 module (4-pin: VIN, GND, SCL, SDA) with a 662K 3.3 V regulator and I2C pull-ups on board, I2C address 0x77.",
+  "eli5": "Feels how hard the air is pressing down, so your board can tell the weather is changing or how high up it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3.3–5 V into the on-board 3.3 V regulator (the chip itself runs at 1.8–3.6 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to the module's 3.3 V fitted)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to the module's 3.3 V fitted)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 119,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "GY-68 BMP180 barometric pressure sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the chip id: register 0xD0 reads 0x55 on a BMP180 (0x58 would be a BMP280, which needs a different driver).",
+    "Read the 11 calibration words (0xAA–0xBF, MSB first) once at start-up; every chip has its own.",
+    "Temperature: write 0x2E to 0xF4, wait 4.5 ms, read UT from 0xF6–0xF7. Pressure: write 0x34 + (oss << 6) to 0xF4, wait 4.5 / 7.5 / 13.5 / 25.5 ms for oss 0–3, read 0xF6–0xF8 and shift right by 8 − oss.",
+    "Always measure temperature before pressure: the pressure formula uses B5 from the temperature step.",
+    "The address is fixed at 0x77, so only one BMP180 fits on a bus (use a second I2C bus for two).",
+    "Keep it out of drafts and direct sunlight and away from the regulator; its tiny vent hole must stay uncovered."
+  ],
+  "keywords": [
+    "bmp180",
+    "bmp085",
+    "gy-68",
+    "barometer",
+    "pressure",
+    "altitude",
+    "temperature",
+    "bosch"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "hPa",
+        "min": 300,
+        "max": 1100,
+        "default": 1013.25
+      }
+    ],
+    "registers": {
+      "0xaa": 30,
+      "0xab": 231,
+      "0xac": 0,
+      "0xad": 0,
+      "0xae": 0,
+      "0xaf": 0,
+      "0xb0": 127,
+      "0xb1": 229,
+      "0xb2": 128,
+      "0xb3": 0,
+      "0xb4": 90,
+      "0xb5": 113,
+      "0xb6": 0,
+      "0xb7": 0,
+      "0xb8": 0,
+      "0xb9": 0,
+      "0xba": 128,
+      "0xbb": 0,
+      "0xbc": 0,
+      "0xbd": 0,
+      "0xbe": 31,
+      "0xbf": 64,
+      "0xd0": 85,
+      "0xf4": 0
+    },
+    "measures": [
+      {
+        "reg": "0xF6",
+        "bytes": 2,
+        "scale": 0.00625,
+        "offset": -144.70625,
+        "control": "value",
+        "when": {
+          "reg": "0xF4",
+          "equals": 46
+        }
+      },
+      {
+        "reg": "0xF6",
+        "bytes": 3,
+        "scale": 0.00011920858186182271,
+        "offset": -240.86366109655899,
+        "control": "pressure",
+        "when": {
+          "reg": "0xF4",
+          "equals": 52,
+          "mask": 63
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmp180.py",
+    "code": "# BMP180 barometric pressure & temperature sensor (Bosch BST-BMP180-DS000-09), MicroPython driver.\n# Follows the datasheet flow (section 3.3) and integer algorithm (section 3.5, figure 4):\n# read the 11 calibration words from E2PROM 0xAA-0xBF, write 0x2E to 0xF4 and wait 4.5 ms for UT,\n# write 0x34 + (oss << 6) to 0xF4 and wait 4.5/7.5/13.5/25.5 ms for UP, then compensate.\n# Divisions and shifts round down (floor), which reproduces the datasheet's worked example exactly.\nimport time\nfrom micropython import const\n\n_REG_CHIP_ID = const(0xD0)\n_REG_CTRL = const(0xF4)\n_REG_OUT = const(0xF6)\n_CHIP_ID = const(0x55)\n# Maximum pressure conversion times (datasheet table 3) for oss 0..3, in microseconds.\n_P_WAIT_US = (4500, 7500, 13500, 25500)\n\n\ndef _s16(v):\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass BMP180:\n    def __init__(self, i2c, addr=0x77, oss=3):\n        if oss not in (0, 1, 2, 3):\n            raise ValueError('oss must be 0-3')\n        self.i2c = i2c\n        self.addr = addr\n        self.oss = oss\n        chip = i2c.readfrom_mem(addr, _REG_CHIP_ID, 1)[0]\n        if chip != _CHIP_ID:\n            raise OSError('BMP180 not found (chip id 0x%02X, expected 0x55)' % chip)\n        c = i2c.readfrom_mem(addr, 0xAA, 22)\n        w = [(c[i] << 8) | c[i + 1] for i in range(0, 22, 2)]\n        self.AC1, self.AC2, self.AC3 = _s16(w[0]), _s16(w[1]), _s16(w[2])\n        self.AC4, self.AC5, self.AC6 = w[3], w[4], w[5]  # unsigned\n        self.B1, self.B2 = _s16(w[6]), _s16(w[7])\n        self.MB, self.MC, self.MD = _s16(w[8]), _s16(w[9]), _s16(w[10])\n\n    def _raw_temp(self):\n        self.i2c.writeto_mem(self.addr, _REG_CTRL, b'\\x2e')\n        time.sleep_us(4500)\n        d = self.i2c.readfrom_mem(self.addr, _REG_OUT, 2)\n        return (d[0] << 8) | d[1]\n\n    def _raw_press(self):\n        oss = self.oss\n        self.i2c.writeto_mem(self.addr, _REG_CTRL, bytes([0x34 + (oss << 6)]))\n        time.sleep_us(_P_WAIT_US[oss])\n        d = self.i2c.readfrom_mem(self.addr, _REG_OUT, 3)\n        return ((d[0] << 16) | (d[1] << 8) | d[2]) >> (8 - oss)\n\n    def _b5(self, ut):\n        x1 = ((ut - self.AC6) * self.AC5) >> 15\n        x2 = (self.MC << 11) // (x1 + self.MD)\n        return x1 + x2\n\n    def read(self):\n        \"\"\"Measure once; return (temperature in °C, pressure in Pa).\"\"\"\n        oss = self.oss\n        b5 = self._b5(self._raw_temp())\n        t = ((b5 + 8) >> 4) / 10  # datasheet gives T in 0.1 °C steps\n        up = self._raw_press()\n        b6 = b5 - 4000\n        x1 = (self.B2 * ((b6 * b6) >> 12)) >> 11\n        x2 = (self.AC2 * b6) >> 11\n        x3 = x1 + x2\n        b3 = (((self.AC1 * 4 + x3) << oss) + 2) >> 2\n        x1 = (self.AC3 * b6) >> 13\n        x2 = (self.B1 * ((b6 * b6) >> 12)) >> 16\n        x3 = ((x1 + x2) + 2) >> 2\n        b4 = (self.AC4 * ((x3 + 32768) & 0xFFFFFFFF)) >> 15\n        b7 = ((up - b3) & 0xFFFFFFFF) * (50000 >> oss)\n        if b7 < 0x80000000:\n            p = (b7 * 2) // b4\n        else:\n            p = (b7 // b4) * 2\n        x1 = (p >> 8) * (p >> 8)\n        x1 = (x1 * 3038) >> 16\n        x2 = (-7357 * p) >> 16\n        p = p + ((x1 + x2 + 3791) >> 4)\n        return t, p\n\n    def temperature(self):\n        return self.read()[0]\n\n    def pressure(self):\n        \"\"\"Pressure in Pa (1 hPa = 100 Pa).\"\"\"\n        return self.read()[1]\n\n    def altitude(self, p0=101325):\n        \"\"\"Altitude in metres from the datasheet's barometric formula (section 3.6); p0 = sea-level pressure in Pa.\"\"\"\n        return 44330 * (1 - (self.pressure() / p0) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmp180 import BMP180\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BMP180(i2c)\nwhile True:\n    t, p = sensor.read()\n    print('T=%.1fC P=%.2fhPa' % (t, p / 100))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 23.7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 995
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=23.7C P=995.00hPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf",
+    "https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/core/bmp180_breakout.fzp",
+    "https://components101.com/sensors/bmp180-atmospheric-pressure-sensor",
+    "https://forum.arduino.cc/t/barometric-sensor-bmp085-i2c-voltage-incompatibility/201758"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:49:28.023Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf",
+      "https://lastminuteengineers.com/bmp180-arduino-tutorial/"
+    ]
+  }
+}

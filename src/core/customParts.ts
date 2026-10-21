@@ -85,6 +85,9 @@ export interface CustomSim {
    * V(t) = centerV + (value of ampControl × voltsPerUnit / 2) × shape(2π·f·t), with f = freqHz, or the value of
    * freqControl × freqScale (e.g. BPM × 1/60). shape 'sine', or 'pulse' (a short peak once per period). */
   wave?: { ampControl: string; voltsPerUnit: number; centerV: number; freqHz?: number; freqControl?: string; freqScale?: number; shape?: 'sine' | 'pulse' };
+  /** analog-sensor with no supply pin whose output comes from outside (a passive divider fed by the measured voltage,
+   * a piezo disc): the output is referenced to GND and NOT clamped to any supply, so overvoltage on a pin shows up. */
+  selfPowered?: boolean;
   /** analog-sensor with more than one output (e.g. a joystick's X and Y). */
   analogOutputs?: { pin: string; control: string; vAtMin: number; vAtMax: number }[];
   /** On/off outputs driven by toggles (a joystick's button, an encoder's A/B, a gas module's DO). */
@@ -255,6 +258,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     names.add(p.name);
   }
   if (!spec.pins?.some((p) => p.role === 'gnd') && spec.interface !== 'passive') errs.push('no ground pin');
+  if (spec.sim?.selfPowered && (spec.sim.kind !== 'analog-sensor' || spec.sim.vAtMin === undefined || spec.sim.vAtMax === undefined)) errs.push('selfPowered is only for an analog-sensor with vAtMin and vAtMax');
   const s = spec.sim;
   const keys = new Set(['value', 'active', ...(s.controls ?? []).map((c) => c.key), ...(s.digitalOutputs ?? []).map((d) => d.control), ...(s.inputBits ?? []).map((d) => d.control)]);
   if (s.outputPin && !names.has(s.outputPin)) errs.push(`sim.outputPin ${s.outputPin} is not a pin`);

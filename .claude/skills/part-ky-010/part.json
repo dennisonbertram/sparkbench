@@ -1,0 +1,104 @@
+{
+  "type": "custom-ky-010",
+  "name": "KY-010 photo interrupter (light barrier) module",
+  "mpn": "KY-010",
+  "category": "sensor",
+  "description": "Slotted light barrier: an Everlight ITR9608 opto-interrupter (IR LED facing an NPN phototransistor across a 5 mm slot) with the LED's series resistor and a pull-up on the output. S goes HIGH while something blocks the slot and is LOW while the beam is clear. Runs on 3.3–5 V. Sold as: Joy-IT SensorKit KY-010 light barrier (black 3-pin module, header S, +V (middle), -), also the identical generic KY-010 from 37-in-1 / 45-in-1 sensor kits.",
+  "eli5": "A tiny gate with an invisible beam: it tells your board when something passes through the slot.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Signal (pin 1): phototransistor collector with the board's pull-up. HIGH while the slot is blocked, LOW while the beam is clear.",
+      "required": true
+    },
+    {
+      "name": "+V",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (pin 2, middle, unmarked on the board). Use 3.3 V with an ESP32, Pico or Raspberry Pi so S stays below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3, marked -)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 12,
+  "datasheetUrl": "https://www.everlighteurope.com/custom/files/datasheets/DRX-0000076.pdf",
+  "sources": [
+    "https://www.everlighteurope.com/custom/files/datasheets/DRX-0000076.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-010",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-010/KY-010.png",
+    "https://45-in-1-sensor-kit.readthedocs.io/en/latest/27.photo_interrupter_module.html"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "KY-010 photo interrupter light barrier module 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: S, +V (middle, unmarked), - (ground). Only S and - are printed on the board.",
+    "Power +V from 3.3 V on an ESP32, Pico or Raspberry Pi: S is pulled up to the supply, so 5 V would put 5 V on the GPIO.",
+    "S is HIGH while something is in the slot and LOW while the beam is clear. The board's pull-up is enough; no internal pull needed.",
+    "To measure speed, put a slotted disc through the gap and count rising edges with Pin.irq (ITR9608 rise/fall time about 15 µs).",
+    "The beam is infrared: paper or clear plastic may not block it fully, and strong sunlight into the slot can read as clear."
+  ],
+  "keywords": [
+    "ky-010",
+    "ky010",
+    "photo interrupter",
+    "light barrier",
+    "opto interrupter",
+    "slotted optical switch",
+    "itr9608",
+    "encoder",
+    "speed sensor",
+    "optical endstop"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Beam blocked",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "ky010.py",
+    "code": "# KY-010 photo interrupter (light barrier) module, MicroPython driver.\n# The module carries an Everlight ITR9608 slotted opto-interrupter: an IR LED (with its series\n# resistor on the board) shining across the slot onto an NPN phototransistor. The transistor's\n# collector is the S pin, pulled up to + on the board. With the slot clear the transistor\n# conducts and pulls S LOW; when something blocks the slot it turns off and S goes HIGH.\n# Power the module from 3.3 V on a 3.3 V board: S is pulled up to the supply.\n# ITR9608 rise/fall time is about 15 us, so slots/teeth can be counted with an interrupt.\nfrom machine import Pin\n\n\nclass KY010:\n    def __init__(self, s, pull=None):\n        \"\"\"s: GPIO number (or Pin) wired to S. The board already has a pull-up on S; pass\n        pull=Pin.PULL_UP only for a clone that lacks it.\"\"\"\n        if isinstance(s, int):\n            self.pin = Pin(s, Pin.IN, pull) if pull is not None else Pin(s, Pin.IN)\n        else:\n            self.pin = s\n        self.count = 0\n\n    def blocked(self):\n        \"\"\"True while something is in the slot (S HIGH).\"\"\"\n        return self.pin.value() == 1\n\n    def raw(self):\n        \"\"\"Logic level on S: 1 = beam blocked, 0 = beam clear.\"\"\"\n        return self.pin.value()\n\n    def start_counting(self):\n        \"\"\"Count every time the beam gets blocked (rising edge on S), e.g. slots of an encoder disc.\"\"\"\n        self.count = 0\n\n        def _edge(pin):\n            self.count += 1\n\n        self.pin.irq(trigger=Pin.IRQ_RISING, handler=_edge)\n\n    def stop_counting(self):\n        self.pin.irq(handler=None)\n"
+  },
+  "example": {
+    "code": "from ky010 import KY010\nimport time\n\ngate = KY010({S})\nwhile True:\n    print('Beam: %s' % ('BLOCKED' if gate.blocked() else 'clear'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a blocked beam when the slot is interrupted",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Beam: BLOCKED",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-ky-010\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-010 photo interrupter (light barrier) module (Everlight ITR9608 slotted opto-interrupter). Use when designing, wiring, simulating or writing code for a KY-010 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-010 photo interrupter module (KY-010)\n\n## Overview\nThe **KY-010** is a small black 3-pin module from the 37-in-1 / 45-in-1 sensor kits, for example the **Joy-IT SensorKit KY-010 light barrier**. It carries a U-shaped **slotted opto-interrupter** (Everlight **ITR9608**): an infrared LED on one side of the slot shines onto an NPN phototransistor on the other side. The board adds the LED's series resistor and a pull-up on the output.\n- **S goes HIGH while something is in the slot** (beam blocked) and is LOW while the slot is clear.\n- Typical uses: counting slots of an encoder disc (wheel speed), end-stops, counting objects passing through, coin/paper detection.\n\n## Pinout (module header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | S | Signal: HIGH = beam blocked, LOW = clear |\n| 2 | +V (middle, unmarked) | Supply, 3.3–5 V |\n| 3 | - | Ground |\n\n## Electrical limits\n- Supply: **3.3–5 V** (Joy-IT). Current: roughly 5–12 mA, mostly the IR LED.\n- ITR9608: LED IF max 50 mA, VF 1.2 V typ; phototransistor IC max 20 mA, VCE(sat) ≤ 0.4 V, IC(on) ≥ 0.5 mA at IF = 20 mA; rise/fall time about 15 µs.\n- S is pulled up to the supply. **On an ESP32, Pico or Raspberry Pi, power +V from 3.3 V** so S never exceeds 3.3 V.\n- The ITR9608 is an infrared device: strong sunlight or IR remote light into the slot can make it read \"clear\".\n\n## Interface details\nPlain digital input, no protocol:\n```\nS = 1  -> slot blocked (phototransistor dark, pull-up wins)\nS = 0  -> slot clear (phototransistor lit, pulls S low)\n```\nThe board's pull-up is enough; no internal pull is needed. Edges are clean (no bounce), and fast enough to count slots with `Pin.irq(trigger=Pin.IRQ_RISING)`.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| S | any GPIO, e.g. GPIO25 | any GP, e.g. GP18 | any GPIO, e.g. GPIO24 (pin 18) |\n| +V (middle) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| - | GND | GND | GND (pin 6) |\n\n## Using the driver\n```python\nfrom ky010 import KY010\nimport time\ngate = KY010(25)          # S GPIO\nwhile True:\n    print('Beam: %s' % ('BLOCKED' if gate.blocked() else 'clear'))\n    time.sleep(0.5)\n```\n`blocked()` is True while S is HIGH. `start_counting()` counts each blocking (rising edge) in `gate.count`.\n\n## Gotchas\n- **5 V supply + 3.3 V board** puts 5 V on the GPIO. Use 3.3 V.\n- The middle pin is the supply even though only S and - are printed; double-check before powering.\n- Thin or translucent objects (paper, clear plastic) may not block enough IR to switch the output.\n- For speed measurement, count rising edges with an interrupt rather than polling.\n\n## Datasheet\nhttps://www.everlighteurope.com/custom/files/datasheets/DRX-0000076.pdf (Everlight ITR9608-F). Module documentation and pin order: https://sensorkit.joy-it.net/en/sensors/ky-010\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:57:04.698Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-010"
+    ]
+  }
+}

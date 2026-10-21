@@ -1,0 +1,111 @@
+{
+  "type": "custom-temt6000",
+  "name": "TEMT6000 ambient light sensor",
+  "mpn": "TEMT6000X01",
+  "category": "sensor",
+  "description": "Vishay TEMT6000X01 NPN phototransistor with a human-eye spectral response (peak 570 nm). On the breakout a 10 kΩ emitter resistor turns its light current (typ 50 µA at 100 lx, 0.5 µA/lx) into an analog voltage of about 5 mV per lux, saturating near the supply (≈ 640 lx at 3.3 V). Sold as: SparkFun Ambient Light Sensor Breakout - TEMT6000 (SEN-08688, formerly BOB-08688) and its clones, 3-pin header VCC, GND, SIG.",
+  "eli5": "A tiny light sensor that sees brightness like your eye does. The brighter the room, the higher the voltage on its SIG pin, about 1 volt for every 200 lux, so your board can read it with an analog input.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Collector supply (header pin 1): 3.3 V or 5 V, never above 6 V. Use 3.3 V with a 3.3 V microcontroller so SIG cannot exceed its ADC range.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (header pin 2); bottom of the on-board 10 kΩ load resistor.",
+      "required": true
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (header pin 3): V = I_PCE × 10 kΩ ≈ 5 mV per lux (lux ≈ 200 × V). Rises to near VCC in bright light.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.33,
+  "datasheetUrl": "https://www.vishay.com/docs/81579/temt6000.pdf",
+  "sources": [
+    "https://www.vishay.com/docs/81579/temt6000.pdf",
+    "https://www.sparkfun.com/products/8688",
+    "https://github.com/sparkfun/Ambient_Light_Sensor_Breakout-TEMT6000/blob/master/Hardware/SparkFun_TEMT6000_Breakout-v12.sch",
+    "https://github.com/fritzing/fritzing-parts/blob/develop/core/TEMT6000_Breakout-v12.fzp",
+    "https://github.com/fritzing/fritzing-parts/blob/develop/svg/core/breadboard/TEMT6000_Breakout-v12_breadboard.svg"
+  ],
+  "priceUsd": 5,
+  "supplierQuery": "TEMT6000 ambient light sensor breakout module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (SparkFun schematic JP4): pin 1 VCC, pin 2 GND, pin 3 SIG. The silkscreen reads SIG, GND, VCC from top to bottom.",
+    "Power VCC from 3.3 V on an ESP32 or Pico: from 5 V the SIG pin can reach almost 5 V in bright light, more than a 3.3 V ADC pin can take.",
+    "Illuminance (lux) ≈ 200 × V(SIG): the board's 10 kΩ load gives 5 mV per lux at the datasheet's typical 0.5 µA/lx (50 µA at 100 lx).",
+    "The output saturates near VCC (≈ 640 lx at 3.3 V); daylight reads full scale. Sensitivity varies ±60 % between parts, so calibrate if you need real lux.",
+    "On the ESP32 wire SIG to an ADC1 pin (GPIO32–39) and use 11 dB attenuation; average a few samples to smooth lamp flicker."
+  ],
+  "keywords": [
+    "temt6000",
+    "temt6000x01",
+    "ambient light",
+    "light sensor",
+    "lux",
+    "phototransistor",
+    "analog",
+    "sparkfun",
+    "vishay"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "Illuminance",
+    "unit": "lx",
+    "min": 0,
+    "max": 600,
+    "default": 100,
+    "vAtMin": 0,
+    "vAtMax": 3,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "temt6000.py",
+    "code": "# TEMT6000X01 ambient light sensor (Vishay) on the SparkFun breakout (SEN-08688), MicroPython driver.\n# The TEMT6000 is an NPN phototransistor: collector on VCC, emitter to SIG, with a 10 kOhm\n# resistor (R1 on the SparkFun board) from SIG to GND. So V(SIG) = I_PCE x 10 kOhm.\n# Datasheet Rev. 1.9, \"Basic characteristics\" (VCE = 5 V, CIE illuminant A):\n#   I_PCE = 10 uA typ at 20 lx, 50 uA typ at 100 lx  ->  0.5 uA per lux (Fig. 3 is linear).\n# So V(SIG) = 5 mV per lux and  E(lx) = I_PCE(uA) / 0.5 = V(SIG) / 10 kOhm / 0.5 uA.\n# The output saturates near VCC - VCEsat (about 640 lx at 3.3 V). Part-to-part spread is\n# large (3.5-16 uA at 20 lx), so treat lux as an estimate unless you calibrate `ua_per_lux`.\nfrom machine import ADC, Pin\n\n\nclass TEMT6000:\n    LOAD_OHMS = 10000.0  # SparkFun breakout R1 (10K, emitter to GND)\n    UA_PER_LUX = 0.5     # datasheet typ: 50 uA at 100 lx (10 uA at 20 lx)\n\n    def __init__(self, pin, samples=16, vref=3.3, ua_per_lux=UA_PER_LUX, load_ohms=LOAD_OHMS):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n        self.ua_per_lux = ua_per_lux\n        self.load_ohms = load_ohms\n\n    def volts(self):\n        \"\"\"Average several ADC samples and return the SIG voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def microamps(self):\n        \"\"\"Phototransistor current I_PCE in uA (V across the 10 kOhm load).\"\"\"\n        return self.volts() / self.load_ohms * 1000000\n\n    def lux(self):\n        \"\"\"Illuminance estimate in lux: E = I_PCE / 0.5 uA per lx (= 200 lx per volt).\"\"\"\n        return self.microamps() / self.ua_per_lux\n"
+  },
+  "skill": "---\nname: part-temt6000\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the TEMT6000 ambient light sensor breakout (Vishay TEMT6000X01, SparkFun SEN-08688). Use when designing, wiring, simulating or writing code for a TEMT6000 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# TEMT6000 ambient light sensor (TEMT6000X01)\n\n## Overview\nThe **TEMT6000X01** (Vishay) is an NPN phototransistor in a 1206 package whose spectral response is matched to the human eye (peak 570 nm, 440–800 nm). It has no digital interface. Hobbyists buy it on the **SparkFun Ambient Light Sensor Breakout - TEMT6000 (SEN-08688, formerly BOB-08688)** and its many clones: the collector goes to VCC and a **10 kΩ resistor** from the emitter to GND turns the light current into a voltage on SIG.\n- Light current (VCE = 5 V, illuminant A): **10 µA typ at 20 lx, 50 µA typ at 100 lx** → 0.5 µA/lx\n- On the breakout: **V(SIG) = I_PCE × 10 kΩ ≈ 5 mV per lux**, so lux ≈ 200 × V(SIG)\n- Output saturates near VCC − VCEsat: about **640 lx at 3.3 V** (about 980 lx at 5 V). Daylight saturates it.\n- Dark current 3 nA typ (30 µV on the 10 kΩ, i.e. 0 lx reads ~0 V)\n\n## Pinout (SparkFun breakout, header pin 1 to 3)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | VCC | Collector supply, 3.3 V or 5 V (never above 6 V) |\n| 2 | GND | Ground |\n| 3 | SIG | Analog output, ≈ 5 mV per lux (emitter, 10 kΩ to GND) |\n\nSource: SparkFun hardware repo schematic (JP4: 1 = VCC, 2 = GND, 3 = S) and the Fritzing breakout (SIG, GND, VCC printed top to bottom).\n\n## Electrical limits\n- VCEO 6 V absolute max (datasheet), so keep VCC at 5.5 V or less. Collector current 20 mA max, 100 mW.\n- Current draw is just the photocurrent: at most VCC / 10 kΩ (0.33 mA at 3.3 V).\n- Operating temperature −40 to +100 °C; the photocurrent rises about 1.18 %/K.\n\n## Interface details\n```\nI_PCE(µA) = V(SIG) / 10 kΩ × 10^6\nE(lx)     = I_PCE(µA) / 0.5        (datasheet typ: 50 µA at 100 lx)\n          = 200 × V(SIG)\n```\nExamples: 0.1 V ≈ 20 lx, 0.5 V ≈ 100 lx, 1.5 V ≈ 300 lx, 3.0 V ≈ 600 lx.\nThe sensitivity spread is large (3.5–16 µA at 20 lx, ±60 % around typical), so the lux figure is an estimate. For accurate lux, calibrate `ua_per_lux` against a lux meter.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| GND | GND | GND | GND |\n| SIG | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC input (e.g. MCP3008 CH0 or ADS1115 A0) |\n\nPower it from **3.3 V** on 3.3 V boards: from 5 V the SIG pin can rise to nearly 5 V in bright light and damage a 3.3 V ADC pin. The Raspberry Pi 4 has no built-in ADC.\n\n## Using the driver\n```python\nfrom temt6000 import TEMT6000\nimport time\nsensor = TEMT6000(26)          # GPIO number of the ADC pin SIG is wired to\nwhile True:\n    print('L=%.0flx' % sensor.lux())\n    time.sleep(1)\n```\nThe driver averages 16 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535 (pass `vref=` if your rail differs). `volts()` and `microamps()` give the raw quantities.\n\n## Gotchas\n- **Saturation:** with the 10 kΩ load it tops out at a few hundred lux (≈ 640 lx at 3.3 V). Outdoors it reads full scale. For brighter light, replace R1 with a smaller resistor and pass `load_ohms=`.\n- **5 V supply on a 3.3 V MCU:** SIG follows the light up to almost VCC; power it from 3.3 V.\n- **Not calibrated:** units vary ±60 % from the typical figure, and the reading changes about 1 %/°C. Good for \"brighter/darker\" and thresholds; calibrate for real lux.\n- **Flicker:** mains lighting flickers at 100/120 Hz; averaging samples smooths it.\n- **ESP32:** use ADC1 pins (ADC2 does not work while Wi-Fi is on).\n\n## Datasheet\nhttps://www.vishay.com/docs/81579/temt6000.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://www.vishay.com/docs/81579/temt6000.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from temt6000 import TEMT6000\nimport time\n\nsensor = TEMT6000({SIG})\nwhile True:\n    print('L=%.0flx' % sensor.lux())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the illuminance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 300
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L=300lx",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:46:40.082Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/81579/temt6000.pdf",
+      "https://www.sparkfun.com/products/8688"
+    ]
+  }
+}

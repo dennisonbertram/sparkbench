@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bmp180",
+  "board": "GY-68 BMP180 module (4-pin: VIN, GND, SCL, SDA; 662K 3.3 V regulator, I2C address 0x77)",
+  "reason": "Check passed on ESP32 and Pico on the first run (spec, wiring, design checks, breadboard, simulator test T=23.7C P=995.00hPa, PCB). The driver implements the datasheet figure 4 integer algorithm and reproduces its worked example (15.0 C, 69964 Pa). The sim uses measure.when on 0xF4 (0x2E for UT, 0x34/oss mask 0x3F for UP) with simplified calibration words (AC2=AC3=B1=B2=MC=0) so the formula decodes the sliders; the fixed quadratic final pressure step can only be matched to within about 0.4 hPa by the linear encoding, which is documented in SKILL.md.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/BST-BMP180-DS000-09.pdf",
+  "breakoutPinoutSource": "https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/core/bmp180_breakout.fzp",
+  "checkRuns": 1
+}

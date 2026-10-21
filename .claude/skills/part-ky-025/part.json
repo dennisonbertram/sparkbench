@@ -1,0 +1,112 @@
+{
+  "type": "custom-ky-025",
+  "name": "KY-025 reed switch magnetic sensor module",
+  "mpn": "KY-025",
+  "category": "sensor",
+  "description": "Magnet detector: a glass reed contact with a pull-up, an LM393 comparator and a threshold trimmer. DO goes HIGH while a magnet holds the reed closed (LED2 lights); AO is the reed node voltage, near the supply with no magnet and near 0 V with one. Runs on 3.3–5 V. Sold as: Joy-IT SensorKit KY-025 reed magnetic sensor (black 4-pin module, header AO, G, +, DO), also the identical generic KY-025 from 37-in-1 sensor kits.",
+  "eli5": "Tells your board when a magnet is close, like the sensor that knows a door is shut.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "AO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 1): reed node voltage, near + with no magnet, near 0 V with a magnet. Optional.",
+      "required": false
+    },
+    {
+      "name": "G",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (pin 3). Use 3.3 V with an ESP32, Pico or Raspberry Pi so AO and DO stay below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output from the LM393 with the module's pull-up (pin 4): HIGH while a magnet is detected (LED2 lit), LOW otherwise.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 5,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-025",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-025/KY-025.png",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-025/025-Pico.svg"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "KY-025 reed switch magnetic sensor module LM393 4 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: AO, G, +, DO.",
+    "Power + from 3.3 V on an ESP32, Pico or Raspberry Pi: AO and DO swing up to the supply, so a 5 V supply would put 5 V on the GPIO pins.",
+    "DO is active HIGH: 1 while a magnet is near (LED2 lit), 0 otherwise. If LED2 never changes, turn the blue trimmer.",
+    "Hold the magnet along the glass tube; do not bend the reed's leads close to the glass, it cracks easily.",
+    "AO is optional: it only shows two levels (supply with no magnet, about 0 V with a magnet). On the ESP32 use an ADC1 pin (GPIO32–39)."
+  ],
+  "keywords": [
+    "ky-025",
+    "ky025",
+    "reed",
+    "reed switch",
+    "magnet",
+    "magnetic",
+    "door",
+    "window",
+    "lm393"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "DO",
+    "quantity": "Magnet near",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "ky025.py",
+    "code": "# KY-025 reed switch module (reed contact + LM393 comparator, 4-pin AO/G/+/DO), MicroPython driver.\n# The reed contact sits between the AO node and ground with a pull-up resistor to +, so AO is\n# near + with no magnet and drops towards 0 V when a magnet closes the contact (Joy-IT: \"the\n# signal is inverted\"). The LM393 compares AO with the trimmer voltage; its output DO has the\n# module's pull-up to + and goes HIGH while a magnet is detected (LED2 lit).\n# Power the module from 3.3 V on a 3.3 V board: AO and DO swing up to the supply.\nfrom machine import ADC, Pin\n\n\nclass KY025:\n    def __init__(self, do, ao=None, vref=3.3):\n        \"\"\"do: GPIO number (or Pin) wired to DO. ao: optional GPIO wired to AO (ADC pin).\n        vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico).\"\"\"\n        # DO is driven by the LM393 with the board's pull-up; no internal pull needed.\n        self.do = Pin(do, Pin.IN) if isinstance(do, int) else do\n        self.adc = None\n        self.vref = vref\n        if ao is not None:\n            self.adc = ADC(Pin(ao) if isinstance(ao, int) else ao)\n            try:\n                self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range\n            except AttributeError:\n                pass\n\n    def magnet(self):\n        \"\"\"True while DO is HIGH: a magnet holds the reed contact closed.\"\"\"\n        return self.do.value() == 1\n\n    def raw(self):\n        \"\"\"Logic level on DO: 1 = magnet present, 0 = no magnet.\"\"\"\n        return self.do.value()\n\n    def voltage(self):\n        \"\"\"AO voltage in volts: close to the supply with no magnet, near 0 V with a magnet.\"\"\"\n        if self.adc is None:\n            raise ValueError('AO pin not given')\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n"
+  },
+  "example": {
+    "code": "from ky025 import KY025\nimport time\n\nreed = KY025({DO})\nwhile True:\n    print('Magnet: %s' % ('YES' if reed.magnet() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a magnet when the reed switch is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Magnet: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-ky-025\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-025 reed switch magnetic sensor module (reed contact + LM393 comparator, AO + DO). Use when designing, wiring, simulating or writing code for a KY-025 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-025 reed switch module (KY-025)\n\n## Overview\nThe **KY-025** is a small black 4-pin module from the 37-in-1 / 40-in-1 sensor kits, for example the **Joy-IT SensorKit KY-025**. It carries a glass **reed contact** (two springy contacts that touch when a magnet comes near), an **LM393 comparator**, a blue trimmer (threshold), a power LED (LED1) and a \"magnet\" LED (LED2).\n- **DO** goes **HIGH while a magnet is near** (contact closed, LED2 lit) and is LOW otherwise.\n- **AO** is the voltage across the reed contact: close to the supply with no magnet, near 0 V with a magnet (Joy-IT: the signal is inverted). A reed switch is on/off, so AO is really only two levels.\n- Typical uses: door/window open sensors, counting turns of a wheel with a magnet, end-stops.\n\n## Pinout (module header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | AO | Analog output (reed node), optional |\n| 2 | G | Ground |\n| 3 | + | Supply, 3.3–5 V |\n| 4 | DO | Digital output, HIGH = magnet detected |\n\n## Electrical limits\n- Supply: **3.3–5 V** (Joy-IT wires it to 5 V on Arduino and 3.3 V on Raspberry Pi / Pico). The LM393 itself runs on 2–36 V.\n- Current: a few mA, mostly the LEDs.\n- AO and DO swing up to the supply. **On an ESP32, Pico or Raspberry Pi, power + from 3.3 V.**\n- Glass reed tube: do not bend its leads close to the glass, it cracks.\n\n## Interface details\nPlain digital input, no protocol:\n```\nDO = 1  -> magnet near (reed closed, LED2 on)\nDO = 0  -> no magnet\n```\nDO has the module's pull-up; no internal pull is needed. If DO does not change, turn the trimmer until LED2 follows the magnet.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| G | GND | GND | GND (pin 6) |\n| DO | any GPIO, e.g. GPIO25 | any GP, e.g. GP18 | any GPIO, e.g. GPIO24 (pin 18) |\n| AO (optional) | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | needs an external ADC (e.g. KY-053) |\n\n## Using the driver\n```python\nfrom ky025 import KY025\nimport time\nreed = KY025(25)          # DO GPIO; KY025(25, ao=32) also reads AO\nwhile True:\n    print('Magnet: %s' % ('YES' if reed.magnet() else 'no'))\n    time.sleep(0.5)\n```\n`magnet()` is True while DO is HIGH; `voltage()` returns the AO voltage when an AO pin was given.\n\n## Gotchas\n- **5 V supply + 3.3 V board** puts 5 V on the GPIO. Use 3.3 V.\n- The reed only reacts to a magnet held **along** the tube; a magnet side-on at the middle may not close it. Try a few centimetres away, then closer.\n- Reed contacts bounce for a millisecond or so when they close: debounce if you count pulses.\n- Not a field-strength sensor. For how strong the field is, use a Hall sensor (KY-035 / SS49E).\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/lm393.pdf (LM393 comparator). Module documentation and pin order: https://sensorkit.joy-it.net/en/sensors/ky-025\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:54:49.829Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+      "https://sensorkit.joy-it.net/en/sensors/ky-025",
+      "https://phippselectronics.com/using-the-reed-switch-module-ky-025-with-arduino"
+    ]
+  }
+}

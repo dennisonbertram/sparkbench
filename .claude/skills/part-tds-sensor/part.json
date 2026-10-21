@@ -1,0 +1,110 @@
+{
+  "type": "custom-tds-sensor",
+  "name": "TDS water quality sensor (Gravity analog TDS meter)",
+  "mpn": "SEN0244",
+  "category": "sensor",
+  "description": "Analog TDS (total dissolved solids) water quality meter: a signal board drives a 2-pin waterproof probe with AC excitation and outputs 0–2.3 V on A that rises with conductivity. Range 0–1000 ppm, ±10 % F.S. at 25 °C, supply 3.3–5.5 V at 3–6 mA. TDS = 0.5 × (133.42V³ − 255.86V² + 857.39V) / (1 + 0.02(T − 25)) ppm. Sold as: DFRobot Gravity Analog TDS Sensor/Meter for Arduino (SEN0244), 3-pin PH2.0 header printed -, +, A (same pinout on the common \"TDS Meter V1.0\" clone boards).",
+  "eli5": "Dip its probe in water and it tells you how much stuff (salts, minerals) is dissolved in it. Saltier water gives a higher voltage on its A pin.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 1, black wire)",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply (pin 2, red wire), 3.3–5.5 V, 3–6 mA",
+      "required": true
+    },
+    {
+      "name": "A",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 3, blue wire), 0–2.3 V, rises with conductivity / TDS. Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 6,
+  "datasheetUrl": "https://wiki.dfrobot.com/Gravity__Analog_TDS_Sensor___Meter_For_Arduino_SKU__SEN0244",
+  "sources": [
+    "https://wiki.dfrobot.com/Gravity__Analog_TDS_Sensor___Meter_For_Arduino_SKU__SEN0244",
+    "https://github.com/DFRobot/GravityTDS/blob/master/GravityTDS.cpp",
+    "https://github.com/DFRobot/GravityTDS/blob/master/GravityTDS.h"
+  ],
+  "priceUsd": 12,
+  "supplierQuery": "Gravity analog TDS sensor meter SEN0244 water quality",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Connector order printed on the board: - (GND), + (VCC), A (signal). The real board has a 3-pin PH2.0 Gravity socket; the cable is black -, red +, blue A.",
+    "Power + from 3.3 V or 5 V (3.3–5.5 V). A stays within 0–2.3 V, so it can go straight to an ESP32 (ADC1: GPIO32–39) or Pico (GP26–28) ADC pin.",
+    "TDS (ppm) = 0.5 × (133.42V³ − 255.86V² + 857.39V) × K / (1 + 0.02 × (T − 25)), V = voltage on A, T = water temperature in °C, K = calibration factor (1.0 until calibrated).",
+    "Calibrate K in a 1413 µS/cm (707 ppm) buffer solution; DFRobot accepts K between 0.25 and 4.0.",
+    "Only the probe goes in the water (max 55 °C); keep the signal board dry. Don't leave the probe powered in water for long periods.",
+    "Measure the water temperature (e.g. a waterproof DS18B20) for compensation: conductivity changes about 2 % per °C."
+  ],
+  "keywords": [
+    "tds",
+    "total dissolved solids",
+    "water quality",
+    "ec",
+    "conductivity",
+    "sen0244",
+    "gravity",
+    "dfrobot",
+    "ppm",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "A",
+    "quantity": "A output voltage (rises with TDS)",
+    "unit": "V",
+    "min": 0,
+    "max": 2.3,
+    "default": 0.5,
+    "vAtMin": 0,
+    "vAtMax": 2.3
+  },
+  "driver": {
+    "filename": "gravity_tds.py",
+    "code": "# DFRobot Gravity Analog TDS Sensor/Meter (SEN0244), MicroPython driver.\n# The signal board excites the 2-pin probe with AC and outputs a DC voltage on A (0-2.3 V) that rises\n# with the water's conductivity. Conversion is DFRobot's own (GravityTDS library / wiki sample code):\n#   EC   = (133.42*V^3 - 255.86*V^2 + 857.39*V) * K        (uS/cm, K = calibration factor, default 1.0)\n#   EC25 = EC / (1 + 0.02*(T - 25))                          (temperature compensation to 25 C)\n#   TDS  = EC25 * 0.5                                        (ppm, TDS factor 0.5)\n# Range 0-1000 ppm, +/-10 % F.S. at 25 C. Not for liquids above 55 C; the probe must not be left\n# powered in water for long periods (electrolysis) - power it only while measuring if you can.\nfrom machine import ADC, Pin\n\nTDS_FACTOR = 0.5\n\n\nclass GravityTDS:\n    def __init__(self, a, k=1.0, temperature=25.0, samples=30, vref=3.3, divider=1.0):\n        \"\"\"a: GPIO number (or Pin) wired to the board's A pin. k: calibration factor (see calibrate()).\n        temperature: water temperature in C for compensation (25 if you have no thermometer).\n        vref: ADC full scale used when read_uv() is unavailable (e.g. Pico: 3.3).\"\"\"\n        self.adc = ADC(Pin(a) if isinstance(a, int) else a)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.k = k\n        self.temperature = temperature\n        self.samples = samples\n        self.vref = vref\n        self.divider = divider\n\n    def voltage(self):\n        \"\"\"Voltage on A in volts, median of several ADC samples (as DFRobot's sample code does).\"\"\"\n        vals = []\n        for _ in range(self.samples):\n            if hasattr(self.adc, 'read_uv'):\n                vals.append(self.adc.read_uv() / 1e6)\n            else:\n                vals.append(self.adc.read_u16() * self.vref / 65535)\n        vals.sort()\n        n = len(vals)\n        mid = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2\n        return mid * self.divider\n\n    @staticmethod\n    def _ec_raw(v):\n        return 133.42 * v * v * v - 255.86 * v * v + 857.39 * v\n\n    def ec(self, v=None):\n        \"\"\"Electrical conductivity in uS/cm, compensated to 25 C.\"\"\"\n        if v is None:\n            v = self.voltage()\n        return self._ec_raw(v) * self.k / (1.0 + 0.02 * (self.temperature - 25.0))\n\n    def tds(self, v=None):\n        \"\"\"Total dissolved solids in ppm (mg/L).\"\"\"\n        return self.ec(v) * TDS_FACTOR\n\n    def calibrate(self, solution_ec=1413.0):\n        \"\"\"Dip the probe in a buffer of known EC (default 1413 uS/cm = 707 ppm at 25 C), set\n        self.temperature, then call this. Stores and returns K (DFRobot accepts 0.25-4.0).\"\"\"\n        v = self.voltage()\n        raw = self._ec_raw(v)\n        if raw <= 0:\n            raise ValueError('no signal on A: check wiring and that the probe is in the solution')\n        k = solution_ec * (1.0 + 0.02 * (self.temperature - 25.0)) / raw\n        if not 0.25 < k < 4.0:\n            raise ValueError('K=%.2f out of range: wrong solution or bad probe' % k)\n        self.k = k\n        return k\n"
+  },
+  "example": {
+    "code": "from gravity_tds import GravityTDS\nimport time\n\nsensor = GravityTDS({A}, temperature=25.0)\nwhile True:\n    v = sensor.voltage()\n    print('A=%.2fV TDS=%dppm' % (v, round(sensor.tds(v))))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the A voltage and the TDS it converts to",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.45
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=1.45V TDS=556ppm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-tds-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the TDS (total dissolved solids) water quality sensor, DFRobot Gravity Analog TDS Sensor/Meter SEN0244 and its clones (3-pin - + A board with a 2-pin probe). Use when designing, wiring, simulating or writing code for a TDS / EC / water quality meter in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# TDS water quality sensor (DFRobot Gravity SEN0244)\n\n## Overview\nThe **DFRobot Gravity Analog TDS Sensor/Meter (SEN0244)** measures how much is dissolved in water (TDS, in ppm = mg/L) from its electrical conductivity. A small signal board drives the waterproof 2-pin probe with **AC excitation** (so the probe does not polarise) and outputs a DC voltage on **A** that rises with conductivity. Many clones (\"TDS Meter V1.0\" boards) use the same circuit, pins and formula.\n- TDS range **0–1000 ppm**, accuracy **±10 % F.S. at 25 °C**\n- Output **0–2.3 V** on A, safe for 3.3 V ADCs\n- Probe: 2 needles, waterproof, max water temperature 55 °C; do not dip the signal board itself\n- No chip to talk to: it is an analog sensor, read with an ADC\n\n## Pinout (signal board, PH2.0 3-pin Gravity connector, order printed on the board)\n| Pin | Name | Function |\n|---|---|---|\n| 1 | - | Ground |\n| 2 | + | Supply, 3.3–5.5 V |\n| 3 | A | Analog output, 0–2.3 V |\n\nThe probe plugs into the separate 2-pin \"TDS\" XH connector. Gravity cable colours: black = -, red = +, blue = A.\n\n## Electrical limits\n- Supply: **3.3–5.5 V**, working current 3–6 mA.\n- Output: 0–2.3 V (does not exceed 3.3 V, so no divider is needed).\n- Probe in water no hotter than 55 °C. The board is not waterproof.\n\n## Interface details\nDFRobot's conversion (GravityTDS library and wiki sample code), with V = voltage on A:\n```\nEC   = (133.42·V³ − 255.86·V² + 857.39·V) × K       µS/cm, K = calibration factor (default 1.0)\nEC25 = EC / (1 + 0.02 × (T − 25))                     temperature compensation to 25 °C\nTDS  = EC25 × 0.5                                     ppm\n```\nExample: V = 1.45 V at 25 °C → TDS ≈ 556 ppm.\n**Calibration**: put the probe in a 1413 µS/cm (707 ppm) buffer at known temperature T and solve K = 1413 × (1 + 0.02(T − 25)) / (133.42V³ − 255.86V² + 857.39V). DFRobot accepts K between 0.25 and 4.0.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| - | GND | GND | GND |\n| A | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (ADS1115 / MCP3008) |\n\nOn the ESP32 use ADC1 pins (ADC2 stops working while Wi-Fi is on). The Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom gravity_tds import GravityTDS\ntds = GravityTDS(34, temperature=25.0)   # A on GPIO34; set temperature from a DS18B20 for compensation\nprint('A=%.2fV TDS=%dppm EC=%duS/cm' % (tds.voltage(), round(tds.tds()), round(tds.ec())))\n```\n`voltage()` is the median of 30 ADC samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V). `calibrate(1413)` sets K from a buffer solution.\n\n## Gotchas\n- **Not a water-safety test**: TDS says nothing about bacteria or which substances are dissolved.\n- **Temperature matters** (~2 %/°C): feed the real water temperature (e.g. a waterproof DS18B20) or readings drift.\n- **Two probes in one tank interfere** (DFRobot FAQ): do not run a TDS and a pH/EC probe in the same water at the same time without isolation.\n- **Electrolysis**: do not leave the probe powered in water for long periods; switch + from a GPIO or MOSFET and measure occasionally.\n- The ESP32 ADC is non-linear near the ends; `read_uv()` uses its calibration.\n- Above about 1000 ppm the formula leaves its rated range.\n\n## Datasheet\nhttps://wiki.dfrobot.com/Gravity__Analog_TDS_Sensor___Meter_For_Arduino_SKU__SEN0244\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:49:28.595Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/sen0244",
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2309/SEN0244_Web.pdf"
+    ]
+  }
+}

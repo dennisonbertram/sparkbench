@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mc-38",
+  "board": "Generic MC-38 wired door/window magnetic reed switch (white ABS switch + magnet, ~30 cm two-wire lead; wires GND, SIG)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator DOOR=CLOSED, PCB DRC clean, footprint). The passive two-wire reed switch is modelled as a 1x1 keypad-matrix (a real switch between GND and SIG, closed while the magnet is near, per the MC-38 N.C. datasheet), since digital-sensor needs a supply pin; the LCSC hit (HMC384LP4E) is a spurious substring match.",
+  "datasheetUrl": "https://aws.robu.in/wp-content/uploads/2017/04/Datasheet-MC-38-final-1.pdf",
+  "breakoutPinoutSource": "Two unlabelled, non-polarised wires per components101 MC38 page (https://components101.com/sensors/mc38-magnetic-switch-sensor-pinout-features-datasheet-working-alternative-application: Ground and Signal, either order); closed-when-magnet-near confirmed by https://randomnerdtutorials.com/esp32-door-status-monitor-email/",
+  "checkRuns": 1
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-vl53l0x",
+  "board": "GY-530 / GY-VL53L0XV2 VL53L0X time-of-flight distance module (purple 6-pin: VIN GND SCL SDA GPIO1 XSHUT)",
+  "reason": "The check passed on ESP32 and Pico on the first run. The driver is a port of Pololu's library and follows the ST API init: model ID 0xEE at 0xC0, SPAD info, tuning table, timing budget, VHV and phase calibration, then continuous ranging, data-ready on 0x13 and mm at 0x1E. It reads the slider's 1234 mm exactly. The sim has no ranging timing, so the status registers 0x13 and 0x83 always read ready and SYSRANGE_START bit 0 always reads cleared.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vl53l0x.pdf",
+  "breakoutPinoutSource": "GY-VL53L0XV2 vendor listings and the ShillehTek module manual (header order VIN/VCC, GND, SCL, SDA, GPIO1, XSHUT); the board circuit (2.8 V LDO, MOSFET level shifters, 10k/47k pull-ups) is from the Eckstein GY-VL53L0X schematic https://ecksteinimg.de/Photo/SE01011/Schematic.pdf",
+  "checkRuns": 1
+}

@@ -1,0 +1,108 @@
+{
+  "type": "custom-slide-potentiometer-module",
+  "name": "Slide potentiometer module (10 kΩ)",
+  "mpn": "B103 slide pot module",
+  "category": "sensor",
+  "description": "60 mm-travel linear slide potentiometer (fader) on a breakout: a dual-gang 10 kΩ B103 carbon track wired as a voltage divider, so the wiper (OTA) gives 0 V to VCC in proportion to the slider position. No other components on the board; works from 3.3 V or 5 V. Sold as: red \"Slide Pot\" 10K slide potentiometer module (e.g. ShillehTek 10K Slide Potentiometer Module), two 3-pin headers OTA, VCC, GND (channel A, modelled here) and OTB, VCC, GND (channel B, same gang lever).",
+  "eli5": "A slider like on a mixing desk. Push it one way and the voltage on OTA goes up, push it back and it goes down, so your board can read how far along it is.",
+  "refPrefix": "RV",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "OTA",
+      "role": "io",
+      "fn": "adc",
+      "description": "Wiper output of channel A (header pin 1): 0 V at one end of travel to VCC at the other, linear.",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Top of the 10 kΩ track (header pin 2), 3.3 V or 5 V. Use 3.3 V with a 3.3 V board so OTA never exceeds the ADC range.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Bottom of the track, ground (header pin 3).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://www.bourns.com/docs/Product-Datasheets/pta.pdf",
+  "sources": [
+    "https://www.bourns.com/docs/Product-Datasheets/pta.pdf",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/slide-potentiometer-module-10k-arduino-esp32-manual",
+    "https://shillehtek.com/cdn/shop/articles/10k-slide-potentiometer-module-front-back-01.jpg"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "10K slide potentiometer module B103 Arduino",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order on the board: OTA, VCC, GND (channel A). A second group OTB, VCC, GND belongs to the other gang of the same lever and can be left unconnected.",
+    "Position (%) = 100 × V(OTA) / VCC; the taper is linear (B103 = 10 kΩ, linear).",
+    "Power VCC from 3.3 V on an ESP32 or Pico: at full travel OTA equals VCC, and 5 V would overdrive the ADC pin.",
+    "Keep the wiper, VCC and GND wires on the same labelled group.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) with 11 dB attenuation; average a few samples, as carbon tracks are slightly noisy."
+  ],
+  "keywords": [
+    "slide potentiometer",
+    "slide pot",
+    "fader",
+    "slider",
+    "linear potentiometer",
+    "b103",
+    "10k",
+    "potentiometer",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OTA",
+    "quantity": "Slider position",
+    "unit": "%",
+    "min": 0,
+    "max": 100,
+    "default": 50,
+    "vAtMin": 0,
+    "vAtMax": 3.3
+  },
+  "driver": {
+    "filename": "slidepot.py",
+    "code": "# Slide potentiometer module (10 kOhm linear B103, 60 mm travel), MicroPython driver.\n# The module is a passive voltage divider: the track's ends go to VCC and GND and the wiper\n# goes to OTA (and, on the second gang, OTB). There are no other parts on the board, so\n#   V(OTA) = position * VCC        (linear taper, position 0.0 at the GND end, 1.0 at the VCC end)\n#   position(%) = 100 * V(OTA) / VCC\n# Power the module from the same 3.3 V rail as the ADC, so the wiper never exceeds the ADC range.\n# The carbon track has a residual (end) resistance of up to 500 ohm or 1 % (Bourns PTA datasheet),\n# so the very ends of travel may read slightly above 0 % / below 100 %.\nfrom machine import ADC, Pin\n\n\nclass SlidePot:\n    def __init__(self, pin, vcc=3.3, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc  # voltage on the module's VCC pin\n        self.samples = samples\n\n    def volts(self):\n        \"\"\"Average several samples and return the wiper voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            # Pico etc.: the ADC reference is the 3.3 V rail.\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * 3.3 / 65535\n        return total / self.samples\n\n    def fraction(self):\n        \"\"\"Slider position as a fraction of travel, 0.0 (GND end) to 1.0 (VCC end).\"\"\"\n        f = self.volts() / self.vcc\n        return 0.0 if f < 0 else 1.0 if f > 1 else f\n\n    def percent(self):\n        \"\"\"Slider position in % of travel (0-100).\"\"\"\n        return 100 * self.fraction()\n\n    def scaled(self, lo, hi):\n        \"\"\"Map the position onto the range lo..hi (e.g. 0..255 for PWM, 0..180 for a servo).\"\"\"\n        return lo + (hi - lo) * self.fraction()\n"
+  },
+  "skill": "---\nname: part-slide-potentiometer-module\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the 10 kΩ slide potentiometer module (red \"Slide Pot\" board with a 60 mm dual-gang B103 fader, OTA/VCC/GND header). Use when designing, wiring, simulating or writing code for a slide potentiometer / fader module in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Slide potentiometer module (10 kΩ, B103)\n\n## Overview\nA **60 mm-travel linear slide potentiometer** (fader) on a small red PCB marked **\"Slide Pot\"**, sold as the \"10K slide potentiometer module\" for Arduino/ESP32 (e.g. ShillehTek \"10K Slide Potentiometer Module\"). The fader is dual-gang: two independent 10 kΩ linear (B103) carbon tracks moved by one lever. Each gang has its own 3-pin header: **OTA, VCC, GND** (channel A) and **OTB, VCC, GND** (channel B). There are no other components: it is a plain voltage divider.\n- Output: V(OTA) = position × VCC (linear taper), 0 V at one end of travel, VCC at the other.\n- Resistance tolerance ±20 %; residual (end) resistance up to 500 Ω or 1 %, so the ends may not read exactly 0 / 100 %.\n\nSparkbench models channel A's 3-pin header. Channel B's header (OTB, VCC, GND) is electrically identical and optional.\n\n## Pinout (channel A header, in order)\n| Pin | Name | Function |\n|---|---|---|\n| 1 | OTA | Wiper output, 0 V to VCC (analog) |\n| 2 | VCC | Top of the track, 3.3 V or 5 V |\n| 3 | GND | Bottom of the track |\n\nSource: board silkscreen (header groups \"OTA VCC GND\" and \"OTB VCC GND\") and the ShillehTek product manual.\n\n## Electrical limits\n- Supply: any voltage your ADC accepts, 3.3 V or 5 V. Use 3.3 V on an ESP32 or Pico: the wiper reaches VCC at full travel.\n- Current: VCC / 10 kΩ, 0.33 mA at 3.3 V (0.5 mA at 5 V) per gang.\n- Power rating (60 mm dual gang, linear): 0.125 W per element; maximum 200 V DC (Bourns PTA series). Far beyond any logic supply.\n- Operating temperature −10 to +50 °C (PTA series).\n\n## Interface details\n```\nV(OTA)      = position × VCC\nposition(%) = 100 × V(OTA) / VCC\n```\nOn a 3.3 V supply: 0.33 V = 10 %, 1.65 V = 50 %, 2.31 V = 70 %, 3.3 V = 100 %.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| OTA | GPIO34 (ADC1) | GP26 / ADC0 | ADS1115 A0 (the Pi has no ADC) |\n| VCC | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| GND | GND | GND | GND |\n\nKeep all three wires on the same labelled group (OTA with the VCC/GND next to it).\n\n## Using the driver\n```python\nfrom slidepot import SlidePot\nimport time\npot = SlidePot(34)            # GPIO number of the ADC pin OTA is wired to\nwhile True:\n    print('P=%d%%' % round(pot.percent()))\n    time.sleep(0.5)\n```\n`volts()`, `fraction()` and `scaled(lo, hi)` are also available. Pass `vcc=` if the module is powered from something other than 3.3 V (and only if your ADC can take it).\n\n## Gotchas\n- **5 V on a 3.3 V board:** the wiper reaches 5 V at the end of travel and can damage the ADC pin. Power it from 3V3.\n- **ESP32:** use ADC1 pins (GPIO32–39); ADC2 does not work while Wi-Fi is on. The ESP32 ADC is non-linear near 0 V and 3.3 V, so the ends read a few % off.\n- **Mixed groups:** taking VCC/GND from one header and the wiper from the other gives a reading from the other gang. It still works only because both gangs are powered.\n- **Jitter:** carbon tracks are noisy (sliding noise up to 100 mV); the driver averages 16 samples.\n\n## Datasheet\nhttps://www.bourns.com/docs/Product-Datasheets/pta.pdf (Bourns PTA series, the 60 mm dual-gang slide potentiometer type used on these modules)\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from slidepot import SlidePot\nimport time\n\npot = SlidePot({OTA})\nwhile True:\n    print('P=%d%%' % round(pot.percent()))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the slider position set on the control",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 70
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=70%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:50:22.016Z",
+    "verifiedSources": [
+      "https://shillehtek.com/blogs/shillehtek-product-manuals/slide-potentiometer-module-10k-arduino-esp32-manual",
+      "https://shillehtek.com/products/slide-potentiometer-module-10k-arduino-esp32"
+    ]
+  }
+}

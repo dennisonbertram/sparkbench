@@ -1,0 +1,104 @@
+{
+  "type": "custom-a3144",
+  "name": "KY-003 Hall magnetic sensor module (A3144)",
+  "mpn": "A3144",
+  "category": "sensor",
+  "description": "A3144 unipolar Hall-effect switch: its open-collector output pulls low while the south pole of a magnet is near the printed face (operate point 70-350 G, release 50-330 G, ~55 G hysteresis) and floats when it is removed, so it needs a pull-up (use the GPIO's internal pull-up to 3.3 V). Runs on 4.5-24 V; an on-board LED lights when a magnet is detected. Sold as: Joy-IT / Keyes KY-003 Hall magnetic sensor module (SEN-KY003HMS), black 3-pin board with A3144 in TO-92 and status LED, header -, VCC (middle), S.",
+  "eli5": "A magnet detector: bring the south pole of a magnet close and it tells your board 'magnet here!' by pulling its wire low.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Middle pin (unlabelled on the board, 'VCC +' in the Joy-IT manual): supply 4.5-24 V. Use 5 V; 3.3 V is below the A3144 minimum",
+      "required": true
+    },
+    {
+      "name": "S",
+      "role": "io",
+      "description": "Signal: open-collector output, LOW while a magnet (south pole) is detected, floating otherwise. Enable the GPIO's internal pull-up (to 3.3 V); never pull it up to 5 V on an ESP32/Pico",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 24,
+  "currentMa": 9,
+  "datasheetUrl": "https://www.allegromicro.com/~/media/Files/Datasheets/A3141-2-3-4-Datasheet.ashx",
+  "sources": [
+    "https://www.allegromicro.com/~/media/Files/Datasheets/A3141-2-3-4-Datasheet.ashx",
+    "https://joy-it.net/en/products/SEN-KY003HMS",
+    "https://joy-it.net/files/files/Produkte/SEN-KY003HMS/SEN-KY003HMS_Datasheet_2023-08-25.pdf",
+    "https://joy-it.net/files/files/Produkte/SEN-KY003HMS/SEN-KY003HMS_Manual_2024-04-24.pdf",
+    "https://arduinomodules.info/ky-003-hall-magnetic-sensor-module/"
+  ],
+  "priceUsd": 0.5,
+  "supplierQuery": "KY-003 Hall magnetic sensor module A3144",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: - (GND), middle (VCC), S (signal).",
+    "Power it from 5 V: the A3144 needs 4.5-24 V and does not work reliably at 3.3 V.",
+    "S is an open-collector output: turn on the GPIO's internal pull-up (Pin.PULL_UP). Do not add a pull-up from S to 5 V when S goes to a 3.3 V ESP32/Pico pin; if you add an external one, use 10 kOhm to 3.3 V.",
+    "Active low: S reads 0 while a magnet is detected, 1 otherwise.",
+    "Only the south pole facing the printed face of the TO-92 switches it (unipolar)."
+  ],
+  "keywords": [
+    "a3144",
+    "ky-003",
+    "ky003",
+    "hall",
+    "hall effect",
+    "magnet",
+    "magnetic switch",
+    "3144",
+    "ah3144"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Magnet present",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "a3144.py",
+    "code": "# A3144 unipolar Hall-effect switch on the KY-003 module, MicroPython driver.\n# Datasheet (Allegro A3141-A3144): the output is an OPEN-COLLECTOR NPN that sinks up to 25 mA.\n#   B > BOP (south pole facing the branded side, A3144: 70-350 G at 25 C) -> output ON  = pulled LOW.\n#   B < BRP (field removed, 50-330 G)                                      -> output OFF = floats.\n# Hysteresis about 55 G, so the output does not chatter. The north pole does not switch it (unipolar).\n# The output needs a pull-up. Use the GPIO's internal pull-up to 3.3 V: never pull S up to the\n# module's 5 V supply when S goes to an ESP32 / Pico pin (they are not 5 V tolerant).\nfrom machine import Pin\n\n\nclass A3144:\n    def __init__(self, pin, pull_up=True):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n\n    def value(self):\n        \"\"\"Raw level on S: 0 = magnet detected (output transistor on), 1 = no magnet.\"\"\"\n        return self.pin.value()\n\n    def detected(self):\n        \"\"\"True while a strong enough south pole is at the sensor (output is active low).\"\"\"\n        return self.pin.value() == 0\n\n    def irq(self, handler, on_detect=True):\n        \"\"\"Call handler(pin) when a magnet arrives (falling edge) or, with on_detect=False, leaves.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_detect else Pin.IRQ_RISING)\n"
+  },
+  "skill": "---\nname: part-a3144\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-003 Hall magnetic sensor module (Allegro-type A3144 unipolar Hall-effect switch). Use when designing, wiring, simulating or writing code for an A3144 / KY-003 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# A3144 Hall-effect switch module (A3144)\n\n## Overview\nThe **A3144** is a unipolar Hall-effect switch: when the **south pole** of a magnet comes close to its branded (printed) face, its open-collector output switches **low**; take the magnet away and it lets go. It has a built-in Schmitt trigger (about 55 G hysteresis), so the output is clean on/off. Hobbyists buy it as the **KY-003 Hall magnetic sensor module** (Joy-IT SEN-KY003HMS / Keyes 37-in-1 kit board, 30 x 15 mm, black PCB, A3144 in TO-92 plus a status LED that lights when a magnet is detected).\n\n## Pinout (KY-003 module, header order, labels as printed)\n| Pin | Function |\n|---|---|\n| - | Ground |\n| (middle, VCC) | Supply, 4.5-24 V (use 5 V) |\n| S | Signal: open-collector output, LOW when a magnet is detected |\n\n## Electrical limits\n- Supply: **4.5-24 V** (A3144 datasheet; absolute max 28 V). 3.3 V is below the minimum: power the module from **5 V**.\n- Supply current: 4.4 mA typical, 9 mA max (output off), plus the LED while a magnet is present.\n- Output: open-collector NPN, sinks up to 25 mA, saturation 175 mV typical at 20 mA. Output OFF voltage up to 28 V.\n- Magnetic switch points (A3144, 25 C): operate BOP 70-350 G, release BRP 50-330 G, hysteresis 20 G min / 55 G typ.\n- Operating temperature: -40 to +85 C (E suffix).\n\n## Interface details\n- Plain digital output, no protocol. Active low: `0` = magnet, `1` = no magnet.\n- The output **needs a pull-up**. Use the microcontroller's internal pull-up (`Pin.PULL_UP`, to 3.3 V). Joy-IT suggests an external 10 kOhm pull-up \"to 5 V\" for Arduino: **do not** do that on an ESP32 or Pico, it would put 5 V on the GPIO. If you want an external resistor, use 10 kOhm from S to **3.3 V**.\n- Only the south pole facing the printed face switches it (unipolar). The north pole does nothing.\n- Switching is fast (rise 0.04 us, fall 0.18 us typical), so it works for RPM counting with interrupts.\n\n## Wiring\n- ESP32: - -> GND, middle -> 5V (VIN), S -> GPIO4 (internal pull-up on).\n- Pico: - -> GND, middle -> VBUS (5 V), S -> GP15 (internal pull-up on).\n- Raspberry Pi 4: - -> pin 6, middle -> pin 2 (5 V), S -> GPIO17 (pin 11) with the internal pull-up to 3.3 V.\n\n## Using the driver\n```python\nfrom a3144 import A3144\nimport time\nhall = A3144(4)          # GPIO wired to S, internal pull-up enabled\nwhile True:\n    print('MAGNET=%d' % hall.detected())\n    time.sleep(0.2)\n```\n`hall.irq(handler)` calls `handler(pin)` each time a magnet arrives (falling edge), handy for counting wheel turns.\n\n## Gotchas\n- Nothing happens? Flip the magnet: only the south pole works, and only on the printed face.\n- Reads 0 all the time or floats randomly: the pull-up is missing (open-collector output).\n- Never connect a pull-up from S to 5 V when S goes to a 3.3 V board.\n- Running it at 3.3 V is outside the datasheet (min 4.5 V); some clones work, many are unreliable.\n- A3144 is discontinued at Allegro; modules use clone chips (marked 3144, A3144E, AH3144) with the same pinout and behaviour.\n\n## Datasheet\nhttps://www.allegromicro.com/~/media/Files/Datasheets/A3141-2-3-4-Datasheet.ashx\n",
+  "example": {
+    "code": "from a3144 import A3144\nimport time\n\nhall = A3144({S})  # internal pull-up on: S is open-collector, low = magnet\nwhile True:\n    print('MAGNET=%d' % hall.detected())\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports a magnet when one is brought close",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MAGNET=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:53:39.218Z",
+    "verifiedSources": [
+      "https://www.allegromicro.com/-/media/files/datasheets/a3141-2-3-4-datasheet.pdf",
+      "https://sensorkit.joy-it.net/en/sensors/ky-003"
+    ]
+  }
+}

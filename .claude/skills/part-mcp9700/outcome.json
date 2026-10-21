@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mcp9700",
+  "board": "Microchip MCP9700-E/TO bare TO-92 sensor (also MCP9700A-E/TO)",
+  "reason": "Modelled as an analog-sensor with VOUT = 500 mV + 10.0 mV/°C (0.1 V at -40 °C to 1.75 V at 125 °C, datasheet Equation 4-1 and DC characteristics); TO-92 pins VDD, VOUT, GND per datasheet Package Types and Table 3-1. Check passed on ESP32 and Pico (simulator reads T=40C), footprint OK; LCSC stock lookup found none in stock (non-fatal).",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP970X-Family-Data-Sheet-DS20001942.pdf",
+  "breakoutPinoutSource": "Microchip MCP970X datasheet DS20001942L page 2 Package Types (TO-92: pin 1 VDD, pin 2 VOUT, pin 3 GND, flat face front view) and Table 3-1",
+  "checkRuns": 1
+}

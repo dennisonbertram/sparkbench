@@ -1,0 +1,111 @@
+{
+  "type": "custom-ky-013",
+  "name": "KY-013 analog temperature module",
+  "mpn": "KY-013",
+  "category": "sensor",
+  "description": "Analog temperature module: a 10 kΩ NTC thermistor (B25/50 = 3950 K) in a voltage divider with a fixed 10 kΩ resistor (+V → 10 kΩ → S → NTC → GND). S sits at half the supply at 25 °C and falls as it gets warmer; convert with the divider and beta equations. Range −55 to +125 °C, runs on 3.3–5 V. Sold as: Joy-IT SensorKit KY-013 NTC temperature sensor (SEN-KY013, black 3-pin module, header S, + (middle), −), also the identical generic KY-013 from 37-in-1 sensor kits.",
+  "eli5": "A tiny bead whose resistance drops as it warms up. The module turns that into a voltage on its S pin, and a little maths turns the voltage into degrees.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "adc",
+      "description": "Signal (pin 1): divider output, Vcc × R_ntc / (R_ntc + 10 kΩ). Half the supply at 25 °C, lower when warmer. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (pin 2, middle, unmarked on the board). Use 3.3 V with an ESP32, Pico or Raspberry Pi so S stays below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3, marked −).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/103_3950_lookuptable.pdf",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-013",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-013/013-Pico.svg",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-013/KY-013.png",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-013/KY-013-VoltDivide-EN.svg",
+    "https://cdn-shop.adafruit.com/datasheets/103_3950_lookuptable.pdf",
+    "https://www.cantherm.com/wp-content/uploads/2017/05/cantherm_mf52_1.pdf"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-013 analog temperature sensor module NTC thermistor 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: S, + (middle, unmarked), −.",
+    "Power + from 3.3 V on an ESP32, Pico or Raspberry Pi: S can rise to the supply voltage when the sensor is cold.",
+    "Temperature: R_ntc = 10 kΩ × (V/Vcc) / (1 − V/Vcc), then 1/T(K) = 1/298.15 + ln(R_ntc/10 kΩ)/3950. At 25 °C S reads half the supply.",
+    "Check the direction: pinch the black bead and the temperature should rise. If it falls, your clone has the divider the other way round: swap the + and − wires.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) and average many samples; the Raspberry Pi has no ADC, so add one (e.g. KY-053 / ADS1115).",
+    "Keep the thermistor's bare legs apart and away from other metal."
+  ],
+  "keywords": [
+    "ky-013",
+    "ky013",
+    "ntc",
+    "thermistor",
+    "temperature",
+    "analog",
+    "3950",
+    "10k"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "S",
+    "quantity": "S voltage (thermistor divider)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.65,
+    "vAtMin": 0,
+    "vAtMax": 3.3
+  },
+  "driver": {
+    "filename": "ky013.py",
+    "code": "# KY-013 analog temperature module (10 kOhm NTC thermistor, B25/50 = 3950 K, in a divider with a\n# fixed 10 kOhm resistor), MicroPython driver.\n# Circuit (Joy-IT KY-013 documentation): +V -- 10 kOhm -- S -- NTC -- GND, so\n#   V_S = Vcc * R_ntc / (R_ntc + 10 kOhm)   ->   R_ntc = 10 kOhm * (V_S / Vcc) / (1 - V_S / Vcc)\n# Temperature from the thermistor's beta equation (R25 = 10 kOhm at 298.15 K, B = 3950 K):\n#   1 / T(K) = 1 / 298.15 + ln(R_ntc / R25) / B\n# Warmer = lower resistance = lower voltage on S.\nimport math\nfrom machine import ADC, Pin\n\n\nclass KY013:\n    R_FIXED = 10000.0  # ohms, fixed resistor from +V to S\n    R25 = 10000.0      # ohms, thermistor at 25 degC\n    BETA = 3950.0      # K, B25/50\n    T25 = 298.15       # K\n\n    def __init__(self, pin, vcc=3.3, samples=32, vref=3.3):\n        \"\"\"pin: GPIO number (or Pin) wired to S. vcc: the voltage on the module's + pin.\n        vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.samples = samples\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"Averaged voltage on S in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def resistance(self):\n        \"\"\"Thermistor resistance in ohms, from the divider equation.\"\"\"\n        ratio = self.voltage() / self.vcc\n        if ratio <= 0:\n            return 0.0  # S shorted to GND (or above ~200 degC)\n        if ratio >= 1:\n            return float('inf')  # thermistor open / not connected\n        return self.R_FIXED * ratio / (1 - ratio)\n\n    def temperature(self):\n        \"\"\"Temperature in degC from the beta equation.\"\"\"\n        r = self.resistance()\n        if r <= 0 or r == float('inf'):\n            raise ValueError('KY-013: S reads 0 V or full supply, check the wiring')\n        inv_t = 1 / self.T25 + math.log(r / self.R25) / self.BETA\n        return 1 / inv_t - 273.15\n"
+  },
+  "skill": "---\nname: part-ky-013\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-013 analog temperature module (10 kΩ NTC thermistor, B 3950 K, in a 10 kΩ divider). Use when designing, wiring, simulating or writing code for a KY-013 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-013 analog temperature module (KY-013)\n\n## Overview\nThe **KY-013** is a small black 3-pin module from the 37-in-1 / 40-in-1 sensor kits, for example the **Joy-IT SensorKit KY-013 (SEN-KY013)**. It carries a black bead **NTC thermistor** (10 kΩ at 25 °C, B25/50 = 3950 K) and a fixed **10 kΩ** resistor wired as a voltage divider. There is no chip and no LED: the S pin is just the divider's middle point.\n- Circuit (Joy-IT): **+V → 10 kΩ → S → NTC → GND**\n- Warmer = lower NTC resistance = **lower voltage on S**. At 25 °C, S sits at half the supply.\n- Range: −55 °C to +125 °C (Joy-IT), about ±0.5 °C after calculation; the response is **not linear**.\n\n## Pinout (module header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | S | Signal: divider output, connect to an ADC pin |\n| 2 | + (middle, unmarked) | Supply, 3.3–5 V |\n| 3 | − | Ground |\n\n## Electrical limits\n- Supply: **3.3–5 V** (Joy-IT). The divider draws Vcc / (10 kΩ + R_ntc): about 0.17 mA at 25 °C on 3.3 V, at most 0.5 mA even at 125 °C on 5 V.\n- S swings between 0 V and the supply. **On an ESP32, Pico or Raspberry Pi, power + from 3.3 V** so S can never go above 3.3 V.\n- The thermistor bead self-heats slightly (dissipation constant ≥ 2 mW/°C, MF52-type NTC); at these currents that is well below 0.1 °C.\n\n## Interface details\nTwo steps, both from the Joy-IT KY-013 documentation:\n```\nR_ntc = 10 kΩ × (V_S / Vcc) / (1 − V_S / Vcc)\n1 / T(K) = 1 / 298.15 + ln(R_ntc / 10 kΩ) / 3950\nT(°C) = T(K) − 273.15\n```\nExamples at Vcc = 3.3 V: 1.65 V = 25 °C, 1.00 V = 45 °C, 2.40 V ≈ 4.5 °C (R = 26.7 kΩ), 0.50 V ≈ 69.6 °C (R = 1.79 kΩ).\nThe result is ratiometric: use the actual voltage on the + pin as Vcc.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + (middle) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| − | GND | GND | GND (pin 6) |\n| S | GPIO32–39 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. KY-053 / ADS1115 A0) |\n\nOn the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi has no ADC.\n\n## Using the driver\n```python\nfrom ky013 import KY013\nimport time\nsensor = KY013(26)            # GPIO number of the ADC pin S is wired to; vcc=3.3 by default\nwhile True:\n    print('T=%.1fC' % sensor.temperature())\n    time.sleep(1)\n```\n`voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V / 65535), `resistance()` gives the NTC resistance in Ω, `temperature()` the temperature in °C. If the module runs from 5 V through an external ADC, pass `vcc=5.0`.\n\n## Gotchas\n- **Backwards reading**: some clone boards put the thermistor on the + side instead. If the reading goes *down* when you warm the bead with your fingers, swap the + and − wires (harmless on this purely resistive divider) or invert the formula.\n- **5 V supply + 3.3 V board** can put up to 5 V on the ADC pin when it is cold. Use 3.3 V.\n- **ESP32 ADC** is nonlinear near 0 V and near the top, so hot (S < 0.15 V) and very cold readings are poor without calibration.\n- The bead is on bare legs: do not let them touch each other or other metal, and do not dunk the module in water.\n\n## Datasheet\nhttps://cdn-shop.adafruit.com/datasheets/103_3950_lookuptable.pdf (10 kΩ B3950 NTC resistance table). Module documentation: https://sensorkit.joy-it.net/en/sensors/ky-013\n",
+  "example": {
+    "code": "from ky013 import KY013\nimport time\n\nsensor = KY013({S})\nwhile True:\n    print('T=%.0fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Converts the S voltage set on the slider to temperature (1.00 V on 3.3 V = 45 °C)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=45C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:49:49.748Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-013",
+      "https://sensorkit.joy-it.net/files/files/sensors/KY-013/KY-013.png"
+    ]
+  }
+}

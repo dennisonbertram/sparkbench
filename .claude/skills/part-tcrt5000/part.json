@@ -1,0 +1,115 @@
+{
+  "type": "custom-tcrt5000",
+  "name": "TCRT5000 IR line tracking sensor",
+  "mpn": "TCRT5000",
+  "category": "sensor",
+  "description": "Reflective infrared line / surface sensor: a Vishay TCRT5000 (950 nm IR LED plus phototransistor, best at about 2.5 mm, works 0.2-15 mm) on a small LM393 comparator board. AO is the phototransistor collector (10 kOhm pull-up to VCC): near VCC over black or nothing, falling towards 0 V over a white surface. DO (open collector, 10 kOhm pull-up to VCC) goes LOW when AO falls below the trimmer threshold, i.e. over a white/reflective surface, and HIGH over a black line. Runs on 3.3-5 V. Sold as: TCRT5000 IR line tracking sensor module (common blue 4-pin LM393 clone board: VCC, GND, DO, AO).",
+  "eli5": "Shines invisible light at the floor and tells your board whether it is looking at a white surface or a black line, so a robot can follow a track.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin 1). On an ESP32 or Pico use 3V3: DO and AO are pulled up to VCC.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 3), LM393 open collector with a 10 kOhm pull-up to VCC: LOW over a white/reflective surface (indicator LED on), HIGH over a black line or nothing.",
+      "required": true
+    },
+    {
+      "name": "AO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 4): phototransistor collector, about VCC with no reflection, lower the more IR is reflected. Optional.",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 28,
+  "datasheetUrl": "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+  "sources": [
+    "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+    "https://easyelecmodule.com/tcrt5000-infrared-reflective-sensor-how-it-works-and-example-circuit-and-code-based-on-arduino/",
+    "https://easyelecmodule.com/wp-content/uploads/TCRT5000-Sensor-Module-Circuit-Diagram-1.jpg",
+    "https://leobot.net/Tutorial/1084",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/tcrt5000-ir-reflective-line-follower-sensor-for-arduino-robot-manual",
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "TCRT5000 IR line tracking sensor module LM393 4 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: VCC, GND, DO, AO. Some newer boards print VCC, DO, AO, GND instead; check the silkscreen before wiring.",
+    "On an ESP32 or Pico power VCC from 3V3: DO and AO are pulled up to VCC through 10 kOhm, so a 5 V supply puts 5 V on the GPIO.",
+    "DO is LOW over white (the green switch LED lights) and HIGH over a black line or when nothing is within range.",
+    "Mount the sensor about 2-10 mm above the floor; the TCRT5000 peaks at 2.5 mm and fades beyond about 15 mm.",
+    "Turn the trimmer until the switch LED is on over the white surface and off over the black line.",
+    "AO is optional: read it with an ADC for a graded reflection value (lower = more reflection). Sunlight contains IR and can upset it."
+  ],
+  "keywords": [
+    "tcrt5000",
+    "tcrt5000l",
+    "line",
+    "tracking",
+    "follower",
+    "line follower",
+    "ir",
+    "infrared",
+    "reflective",
+    "lm393",
+    "robot"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "DO",
+    "quantity": "White / reflective surface under sensor (DO low)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "tcrt5000.py",
+    "code": "# TCRT5000 IR line tracking sensor module (blue 4-pin LM393 board: VCC, GND, DO, AO), MicroPython driver.\n# Board circuit: the TCRT5000's IR LED is lit all the time (180 ohm from VCC). Its phototransistor\n# collector is pulled up to VCC by 10 kOhm; that node is AO and goes to the LM393's + input.\n# The trimmer VR1 sets the - input. DO is the LM393 open-collector output with a 10 kOhm pull-up to VCC.\n#   Strong reflection (white / light surface close by): transistor conducts, AO falls, DO = LOW, LED on.\n#   Weak reflection (black line, or nothing within ~1-15 mm): AO near VCC, DO = HIGH, LED off.\n# Power the module from 3.3 V on a 3.3 V board: DO and AO swing up to VCC.\nfrom machine import Pin, ADC\n\n\nclass TCRT5000:\n    def __init__(self, do_pin, ao_pin=None):\n        # DO already has a 10 kOhm pull-up on the board.\n        self.do = Pin(do_pin, Pin.IN) if isinstance(do_pin, int) else do_pin\n        self.ao = None\n        if ao_pin is not None:\n            if isinstance(ao_pin, int):\n                try:\n                    # ESP32: full 0-3.3 V range (default attenuation tops out near 1 V)\n                    self.ao = ADC(Pin(ao_pin), atten=ADC.ATTN_11DB)\n                except (AttributeError, TypeError):\n                    self.ao = ADC(Pin(ao_pin))  # RP2040 and others: 0-3.3 V already\n            else:\n                self.ao = ao_pin\n\n    def raw(self):\n        \"\"\"Logic level on DO: 0 = reflective surface seen, 1 = dark surface / nothing.\"\"\"\n        return self.do.value()\n\n    def reflective(self):\n        \"\"\"True over a white / light surface (DO pulled low by the comparator).\"\"\"\n        return self.do.value() == 0\n\n    def on_line(self):\n        \"\"\"True over a black line (or with nothing in range): DO high.\"\"\"\n        return self.do.value() == 1\n\n    def analog(self):\n        \"\"\"AO as 0-65535 (needs ao_pin). Lower = more IR reflected.\"\"\"\n        if self.ao is None:\n            raise ValueError('TCRT5000: no AO pin given')\n        return self.ao.read_u16()\n\n    def irq(self, handler, on_reflect=True):\n        \"\"\"Call handler(pin) when a reflective surface appears (falling edge) or,\n        with on_reflect=False, when the sensor moves onto a dark line (rising edge).\"\"\"\n        trig = Pin.IRQ_FALLING if on_reflect else Pin.IRQ_RISING\n        return self.do.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from tcrt5000 import TCRT5000\nimport time\n\nsensor = TCRT5000({DO})\nwhile True:\n    print('Surface: %s' % ('white' if sensor.reflective() else 'black'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a white surface when the sensor sees reflection",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Surface: white",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:54:42.268Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+      "https://robu.in/?p=29805"
+    ]
+  }
+}

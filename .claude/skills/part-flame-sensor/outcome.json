@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-flame-sensor",
+  "board": "Joy-IT SensorKit KY-026 flame sensor module (4-pin header printed AO, G, +, DO)",
+  "reason": "The check passed on the first run for ESP32 and Pico: spec, wiring, design checks, breadboard, simulator and circuit board. AO is modelled as a voltage that falls as the flame gets stronger (Joy-IT: the signal is inverted), and DO as the LM393 output, HIGH on flame as Joy-IT documents. The driver has active_high=False for clones whose DO goes LOW on flame.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "breakoutPinoutSource": "https://sensorkit.joy-it.net/files/files/sensors/KY-026/KY-026.png (board photo, silkscreen AO, G, +, DO) and https://sensorkit.joy-it.net/en/sensors/ky-026",
+  "checkRuns": 1
+}

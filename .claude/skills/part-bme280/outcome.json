@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bme280",
+  "board": "GY-BME280-3.3 6-pin module (VCC, GND, SCL, SDA, CSB, SDO), I2C address 0x76",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test T=31.4C P=950.0hPa H=65.0%, PCB). The driver follows the datasheet section 8.1 double-precision compensation for T, P and H. The sim holds valid calibration constants at 0x88-0xA1 and 0xE1-0xE7 and encodes adc_T, adc_P (20-bit) and adc_H (16-bit) so that the datasheet formulas decode to the slider values.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf",
+  "breakoutPinoutSource": "https://protosupplies.com/product/gy-bme280-pressure-humidity-temperature-sensor-module/",
+  "checkRuns": 1
+}

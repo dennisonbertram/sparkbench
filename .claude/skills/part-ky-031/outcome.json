@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "digital-sensor",
+  "board": "Keyes / Joy-IT KY-031 knock sensor module (SEN-KY031KS)",
+  "reason": "Modelled as an active-low spring contact from S to GND with the on-board 10 kOhm pull-up to + (header S, +, -). The debounced falling-edge IRQ driver passes the part check on ESP32 and Pico: the example prints 'S=0 knocking=1 total=1' when the knock toggle is on.",
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-031",
+  "breakoutPinoutSource": "https://sensorkit.joy-it.net/en/sensors/ky-031 (Signal, +V, GND); https://www.circuitbasics.com/how-to-setup-vibration-sensors-on-the-arduino/ (S, middle 5V, -); https://www.codrey.com/?p=8168 (10k between S and V, H->L pulse on knock)",
+  "checkRuns": 1
+}

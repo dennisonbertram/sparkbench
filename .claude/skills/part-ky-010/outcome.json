@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-010",
+  "board": "Joy-IT SensorKit KY-010 light barrier module (black 3-pin: S, +V middle, -; identical generic 37-in-1/45-in-1 kit KY-010)",
+  "reason": "Modelled as a digital-sensor: S (ITR9608 phototransistor collector with board pull-up) goes HIGH while the slot is blocked, per Joy-IT and Hosyond kit documentation; driver reads S and can count rising edges. Part check passed on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://www.everlighteurope.com/custom/files/datasheets/DRX-0000076.pdf",
+  "breakoutPinoutSource": "https://sensorkit.joy-it.net/en/sensors/ky-010 (board photo KY-010.png shows header S, middle +V, -)",
+  "checkRuns": 1
+}

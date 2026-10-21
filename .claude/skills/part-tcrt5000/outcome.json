@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tcrt5000",
+  "board": "TCRT5000 IR line tracking sensor module (common blue 4-pin LM393 clone board: VCC, GND, DO, AO)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test \"Surface: white\" with the active toggle on, PCB DRC clean, footprint, LCSC). Modelled as a digital-sensor with active-low DO (phototransistor collector with 10k pull-up feeds LM393 + input, trimmer on - input, so reflection pulls DO low); AO is an optional pin not driven in the sim.",
+  "datasheetUrl": "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+  "breakoutPinoutSource": "Module schematic with CON4 header VCC, GND, DO, AO: https://easyelecmodule.com/wp-content/uploads/TCRT5000-Sensor-Module-Circuit-Diagram-1.jpg; same order in https://leobot.net/Tutorial/1084 and the Shillehtek manual",
+  "checkRuns": 1
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-temt6000",
+  "board": "SparkFun Ambient Light Sensor Breakout - TEMT6000 (SEN-08688, formerly BOB-08688)",
+  "reason": "Modelled as an analog-sensor: V(SIG) = I_PCE x 10 kOhm on-board load, with I_PCE = 0.5 uA/lx typ (datasheet: 10 uA at 20 lx, 50 uA at 100 lx), i.e. 0-600 lx -> 0-3.0 V; pins VCC, GND, SIG per SparkFun schematic JP4. The check passed on ESP32 and Pico (simulator reads L=300lx), and footprint, DRC and LCSC stages passed.",
+  "datasheetUrl": "https://www.vishay.com/docs/81579/temt6000.pdf",
+  "breakoutPinoutSource": "SparkFun hardware repo SparkFun_TEMT6000_Breakout-v12.sch (JP4 pin 1 VCC, pin 2 GND, pin 3 S; R1 10K emitter to GND), SparkFun product page 8688 pin list (SIG, GND, VCC), Fritzing core/TEMT6000_Breakout-v12.fzp + breadboard SVG",
+  "checkRuns": 1
+}

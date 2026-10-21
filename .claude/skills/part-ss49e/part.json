@@ -1,0 +1,115 @@
+{
+  "type": "custom-ss49e",
+  "name": "SS49E linear Hall sensor (KY-035)",
+  "mpn": "SS49E",
+  "category": "sensor",
+  "description": "Linear Hall-effect magnetic field sensor (Honeywell SS49E) on the KY-035 module. Its analog output sits at half the supply with no field and moves about 1.4 mV per gauss at 5 V (0.92 mV/G at 3.3 V), up for one pole and down for the other, over at least ±650 G. Sold as: KY-035 analog Hall magnetic sensor module (3-pin header -, +, S; as in 37-in-1 sensor kits and the Joy-IT SensorKit), with an SS49E / 49E sensor.",
+  "eli5": "It feels magnets. Its S pin sits at half the supply voltage with no magnet and goes up or down (depending on which pole) the closer and stronger the magnet is.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 1).",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (pin 2, middle). Use 3.3 V with an ESP32, Pico or Raspberry Pi so S stays inside the ADC range.",
+      "required": true
+    },
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 3): Vs/2 at 0 G, ±1.4 mV/G × Vs/5 V (0.73–2.57 V over ±1000 G at 3.3 V). Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 6,
+  "datasheetUrl": "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/magnetic-sensors/linear-and-angle-sensor-ics/common/documents/sps-siot-ss39et-ss49e-ss59et-product-sheet-005850-3-en-ciid-50359.pdf",
+  "sources": [
+    "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/magnetic-sensors/linear-and-angle-sensor-ics/common/documents/sps-siot-ss39et-ss49e-ss59et-product-sheet-005850-3-en-ciid-50359.pdf",
+    "https://automation.honeywell.com/us/en/products/sensing-solutions/sensors/magnetic-sensors/ss39et-ss49e-ss59et-linear-hall-effect-sensor-ic",
+    "https://sensorkit.joy-it.net/en/sensors/ky-035",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-035/KY-035.svg",
+    "https://components101.com/sensors/ky035-hall-magnetic-sensor-module-pinout-features-datasheet-working-applications-alternative"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "KY-035 analog hall magnetic sensor module 49E",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: -, + (middle, often unlabeled), S.",
+    "Power + from 3.3 V on an ESP32, Pico or Raspberry Pi: with 5 V the output reaches about 3.9 V at +1000 G, too high for the ADC pin.",
+    "B (gauss) = (Vout − Vs/2) / (0.0014 × Vs/5). At 3.3 V: 1.65 V = 0 G, 2.11 V = +500 G, 1.19 V = −500 G.",
+    "The 0 G output varies by up to ±10 % between parts: call calibrate_zero() once with no magnet nearby.",
+    "Sensitivity is typical (1.0–1.75 mV/G at 5 V); calibrate against a known magnet if you need real gauss values.",
+    "Point a magnet pole at the flat marked face of the chip; strong neodymium magnets saturate it when close."
+  ],
+  "keywords": [
+    "ss49e",
+    "49e",
+    "ky-035",
+    "ky035",
+    "hall",
+    "magnetic",
+    "magnet",
+    "gauss",
+    "linear",
+    "analog",
+    "sensor",
+    "ah49e"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "S",
+    "quantity": "Magnetic field",
+    "unit": "G",
+    "min": -1000,
+    "max": 1000,
+    "default": 0,
+    "vAtMin": 0.726,
+    "vAtMax": 2.574
+  },
+  "driver": {
+    "filename": "ss49e.py",
+    "code": "# SS49E linear Hall-effect sensor (Honeywell SS39ET/SS49E/SS59ET series), MicroPython driver.\n# Works for the KY-035 module (header -, +, S), which wires the sensor straight to the header.\n# Datasheet (005850, Issue 4): Vs = 2.7-6.5 V; output is set by the supply voltage:\n#   null (0 G) = Vs/2 (2.50 V at Vs = 5 V, 2.25-2.75 V),\n#   sensitivity = 1.4 mV/G typ (1.0-1.75) at Vs = 5 V, about 0.28 mV/G per volt of supply,\n# so B(G) = (Vout - Vs/2) / (0.0014 V/G x Vs/5 V). The sign shows the pole: one pole raises the\n# output above null, the other lowers it (flip the magnet to see which is which).\nfrom machine import ADC, Pin\n\n\nclass SS49E:\n    SENS_5V = 0.0014  # V/Gauss at Vs = 5 V (typical)\n\n    def __init__(self, pin, vcc=3.3, sensitivity=SENS_5V, samples=32, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to S. vcc: the voltage on + (3.3 V keeps S inside a 3.3 V ADC's range).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.sens = sensitivity * vcc / 5.0  # output scales with the supply\n        self.zero = vcc / 2.0  # null voltage, 0 G\n        self.samples = samples\n        self.vref = vref  # ADC full scale when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Averaged output voltage (V) on S.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def calibrate_zero(self):\n        \"\"\"Call with no magnet nearby: stores the measured null voltage (parts vary 2.25-2.75 V at 5 V).\"\"\"\n        self.zero = self.voltage()\n        return self.zero\n\n    def gauss(self):\n        \"\"\"Magnetic flux density in gauss (1 mT = 10 G); the sign gives the pole.\"\"\"\n        return (self.voltage() - self.zero) / self.sens\n\n    def millitesla(self):\n        return self.gauss() / 10.0\n"
+  },
+  "skill": "---\nname: part-ss49e\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the SS49E linear Hall-effect magnetic field sensor on the KY-035 module (SS49E / 49E). Use when designing, wiring, simulating or writing code for an SS49E or KY-035 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# SS49E linear Hall-effect sensor, KY-035 module (SS49E)\n\n## Overview\nThe **SS49E** (Honeywell SS39ET/SS49E/SS59ET series) is a linear Hall-effect sensor. It gives an **analog voltage proportional to the magnetic field** through its face, for either pole. Hobbyists buy it on the **KY-035 \"analog Hall magnetic sensor\" module** (37-in-1 kits, Joy-IT SensorKit). The module wires the 3-pin flat TO-92 sensor straight to a 3-pin header (−, +, S), with no other parts. Some KY-035 boards carry an equivalent \"49E\" chip (for example Diodes AH49E) instead of the Honeywell part.\n- Null output (0 G): **Vs/2** (2.50 V at 5 V, 2.25–2.75 V between parts)\n- Sensitivity: **1.4 mV/G typ** (1.0–1.75) at Vs = 5 V, about 0.28 mV/G per volt of supply\n- Range: **±650 G min, ±1000 G typ** (1 mT = 10 G)\n- Supply: 2.7–6.5 V (chip); the module is sold for 3.3–5 V. About 6 mA at 5 V\n- Response time 3 µs; linearity −0.7 % of span\n\n## Pinout (KY-035, header order)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | − | Ground |\n| 2 | + | Supply, 3.3–5 V (middle pin, often unlabeled) |\n| 3 | S | Analog output: Vs/2 with no field, ± about 0.92 mV/G at 3.3 V |\n\n## Electrical limits\n- Supply: 2.7–6.5 V operating, −5 V to 8 V absolute maximum.\n- Output: sources up to 1.0 mA min (Vs > 3 V); absolute maximum 10 mA. Output span about 0.95 V to Vs − 0.95 V.\n- Operating temperature −40 °C to 100 °C.\n\n## Interface details\nThe output is set by the supply voltage (ratiometric):\n```\nB (gauss) = (Vout − Vs/2) / (0.0014 V/G × Vs / 5 V)\n```\nAt Vs = 3.3 V: 1.65 V = 0 G, sensitivity 0.924 mV/G, so ±1000 G spans 0.73–2.57 V.\nAt Vs = 5 V: 2.5 V = 0 G, 1.4 mV/G, ±1000 G spans 1.1–3.9 V.\nThe sign tells you the pole: one pole raises the output, the other lowers it.\n\n## Wiring\n| KY-035 | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| − | GND | GND | GND (pin 6) |\n| + | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| S | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. ADS1115 A0) |\n\nPower it from **3.3 V** on a 3.3 V board: with 5 V the output reaches about 3.9 V at +1000 G, past the ADC pin's limit.\n\n## Using the driver\n```python\nfrom ss49e import SS49E\nimport time\nhall = SS49E(26)          # GPIO of the ADC pin S is wired to; vcc=3.3 by default\nhall.calibrate_zero()     # run with no magnet nearby\nwhile True:\n    print('B=%.0fG' % hall.gauss())\n    time.sleep(0.5)\n```\nPass `vcc=5.0` if you power it from 5 V (and add a divider on S). `millitesla()` returns mT.\n\n## Gotchas\n- **Calibrate the null:** the 0 G output varies by ±10 % between parts, worth ±180 G uncorrected. Call `calibrate_zero()` with no magnet nearby.\n- **Typical, not exact, sensitivity:** 1.0–1.75 mV/G across parts. For accurate gauss, calibrate against a known magnet; for \"how close is the magnet\" the typical value is fine.\n- **Neodymium magnets saturate it** when close: the output stops at about 0.95 V / Vs − 0.95 V.\n- **Only the field through the face counts:** turn the magnet's pole toward the flat marked face of the chip.\n- **ESP32 ADC:** use ADC1 pins (GPIO32–39); ADC2 stops working with Wi-Fi on. The Raspberry Pi has no ADC.\n- Not a switch: for on/off magnet detection use a latching or switching Hall module (KY-003, KY-024 DO).\n\n## Datasheet\nhttps://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/magnetic-sensors/linear-and-angle-sensor-ics/common/documents/sps-siot-ss39et-ss49e-ss59et-product-sheet-005850-3-en-ciid-50359.pdf\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from ss49e import SS49E\nimport time\n\nhall = SS49E({S})\nwhile True:\n    print('B=%dG' % (round(hall.gauss() / 10) * 10))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the magnetic field set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "B=500G",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:47:33.935Z",
+    "verifiedSources": [
+      "https://www.piekarz.pl/pdf.php?id=47985",
+      "https://automation.honeywell.com/us/en/products/sensing-solutions/sensors/magnetic-sensors/ss39et-ss49e-ss59et-linear-hall-effect-sensor-ic",
+      "https://www.espboards.dev/sensors/ky-035/"
+    ]
+  }
+}

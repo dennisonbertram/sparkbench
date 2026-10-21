@@ -1,0 +1,102 @@
+{
+  "type": "custom-ky-031",
+  "name": "KY-031 knock sensor module",
+  "mpn": "KY-031",
+  "category": "sensor",
+  "description": "Passive knock / tap / impact sensor: a coiled spring contact that shorts the signal pin to ground for a few milliseconds when the board is knocked, with an on-board 10 kΩ pull-up from S to the + pin, so S idles high and pulses low (active low) on a knock. Runs on 3.3–5 V; S idles at the supply voltage. Sold as: Keyes / Joy-IT KY-031 knock sensor module (SEN-KY031KS, 3-pin header S, + (middle), -).",
+  "eli5": "A tiny spring that wobbles when you tap or knock the table, and tells your board each time it is bumped.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "description": "Signal: high at rest (10 kΩ pull-up to +), low while the spring is touching during a knock",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply for the pull-up, middle pin, 3.3–5 V (use 3.3 V with an ESP32 or Pico: S idles at this voltage)",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (spring contact common)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-031",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-031",
+    "https://www.codrey.com/?p=8168",
+    "https://www.circuitbasics.com/how-to-setup-vibration-sensors-on-the-arduino/",
+    "https://arduinomodules.info/ky-031-knock-sensor-module/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-031 knock sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: S, + (middle), -. The middle pin is always the supply.",
+    "Power + from 3.3 V on an ESP32 or Pico: S is pulled up to + by the on-board 10 kΩ resistor.",
+    "Active low: S reads 1 at rest and 0 while the spring touches during a knock. No external pull-up needed.",
+    "The pulse lasts only milliseconds and bounces: use a falling-edge interrupt with ~100 ms debounce rather than slow polling.",
+    "Mount the module firmly on the surface whose knocks you want to detect."
+  ],
+  "keywords": [
+    "ky-031",
+    "ky031",
+    "knock",
+    "tap",
+    "impact",
+    "vibration",
+    "shock",
+    "spring switch"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Knock (spring contact closed)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "ky031.py",
+    "code": "# KY-031 knock sensor module (Keyes / Joy-IT SEN-KY031KS), MicroPython driver.\n# The module is a spring contact between S and GND with a 10 kOhm pull-up from S to the\n# middle (+) pin. At rest S reads 1; a knock closes the spring for a few milliseconds and\n# S pulses low (falling edge). The contact bounces, so knocks are debounced in software.\nfrom machine import Pin\nimport time\n\n\nclass KY031:\n    def __init__(self, pin, debounce_ms=100):\n        # The board already has a 10 k pull-up; the internal pull-up does no harm and keeps\n        # S defined if the + pin is left unconnected by mistake.\n        self.pin = Pin(pin, Pin.IN, Pin.PULL_UP) if isinstance(pin, int) else pin\n        self.debounce_ms = debounce_ms\n        self.count = 0\n        self._last = time.ticks_ms() - debounce_ms\n        self.pin.irq(handler=self._edge, trigger=Pin.IRQ_FALLING)\n\n    def _edge(self, pin):\n        now = time.ticks_ms()\n        if time.ticks_diff(now, self._last) >= self.debounce_ms:\n            self._last = now\n            self.count += 1\n\n    def value(self):\n        \"\"\"Raw level on S: 1 at rest, 0 while the spring touches the contact.\"\"\"\n        return self.pin.value()\n\n    def knocking(self):\n        \"\"\"True while the spring contact is closed (S low).\"\"\"\n        return self.pin.value() == 0\n\n    def knocks(self):\n        \"\"\"Debounced number of knocks (falling edges on S) since the last call.\"\"\"\n        n = self.count\n        self.count = 0\n        return n\n"
+  },
+  "skill": "---\nname: part-ky-031\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-031 knock sensor module (spring contact with 10 kΩ pull-up). Use when designing, wiring, simulating or writing code for a KY-031 knock / tap / impact sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-031 knock sensor module (KY-031)\n\n## Overview\nThe **KY-031** is a passive knock (tap, impact) sensor from the 37-in-1 sensor kits: a light coiled spring around a metal post, a 10 kΩ resistor and a 3-pin header. A knock makes the spring touch the post for a few milliseconds, which shorts the signal pin to ground. There is no chip, no LED and no sensitivity adjustment; it reports *that* a knock happened, not how hard. Modelled board: **Keyes / Joy-IT KY-031 knock sensor module (SEN-KY031KS)**.\n\n## Pinout (3-pin header: S, middle +, -)\n| Pin | Function |\n|---|---|\n| S | Signal. Pulled up to + by the on-board 10 kΩ; pulled to GND by the spring during a knock |\n| + | Supply for the pull-up (middle pin, unlabeled or \"+\" on most boards), 3.3–5 V |\n| - | Ground (spring contact's common) |\n\n## Electrical limits\n- Supply: 3.3–5 V. S idles at the supply voltage, so **use 3.3 V with an ESP32 or Pico**.\n- Current: about 0.33 mA at 3.3 V (0.5 mA at 5 V) only while the contact is closed; zero at rest.\n- Purely passive: a mechanical switch plus a resistor.\n\n## Interface details\n- Plain digital input, **active low**: S = 1 at rest, S = 0 while the spring touches (Joy-IT's examples test `== LOW` / trigger on the falling edge).\n- The pulse is short (milliseconds) and bounces: catch it with a falling-edge interrupt and debounce (about 100 ms), don't rely on slow polling.\n- No external pull-up needed (10 kΩ fitted); enabling the GPIO's internal pull-up as well is harmless.\n\n## Wiring\n- ESP32: + → 3V3, - → GND, S → GPIO4.\n- Pico: + → 3V3(OUT), - → GND, S → GP18.\n- Raspberry Pi 4: + → pin 1 (3.3 V), - → pin 6, S → GPIO24 (pin 18).\n\n## Using the driver\n```python\nfrom ky031 import KY031\nimport time\nk = KY031(4)               # GPIO wired to S\nwhile True:\n    n = k.knocks()          # debounced knocks since last call (IRQ on falling edge)\n    if n:\n        print('Knock x%d' % n)\n    time.sleep_ms(100)\n```\n`knocking()` gives the live contact state; `value()` the raw S level.\n\n## Gotchas\n- Powered from 5 V, S idles at 5 V: too much for an ESP32/Pico pin.\n- Some web tutorials describe the output as \"high on knock\"; on the Keyes/Joy-IT board the pull-up is to + and the spring goes to -, so it is **low on knock**. If a clone triggers constantly, check which outer pin is ground with a meter.\n- One knock gives several bounces; the driver's debounce merges them into one count.\n- It is very sensitive to how it is mounted: fix it firmly to the surface you want to sense.\n\n## Datasheet\nhttps://sensorkit.joy-it.net/en/sensors/ky-031\n",
+  "example": {
+    "code": "from ky031 import KY031\nimport time\n\nk = KY031({S})\ntotal = 0\nwhile True:\n    total += k.knocks()\n    print('S=%d knocking=%d total=%d' % (k.value(), k.knocking(), total))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports a knock when the spring contact closes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "S=0 knocking=1 total=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:56:42.566Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-031",
+      "https://sensorkit.joy-it.net/files/files/sensors/KY-031/KY-031.png"
+    ]
+  }
+}

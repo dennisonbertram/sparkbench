@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tmp36",
+  "board": "Analog Devices TMP36GT9Z bare TO-92 sensor (e.g. Adafruit product #165)",
+  "reason": "Modelled as an analog-sensor with Vout = 0.5 V + 10 mV/°C (0.1 V at -40 °C to 1.75 V at 125 °C, datasheet Tables 1 and 4); pins +VS, VOUT, GND per datasheet Figure 4 and Fritzing tmp36.fzp. The check passed on ESP32 and Pico (simulator reads T=40C), and the footprint and LCSC stages passed too.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/TMP35_36_37.pdf",
+  "breakoutPinoutSource": "ADI TMP35/36/37 datasheet Rev. E Figure 4 (T-3 TO-92: pin 1 +VS, pin 2 VOUT, pin 3 GND) and Fritzing core/tmp36.fzp (+Vs, Vout, GND)",
+  "checkRuns": 4
+}

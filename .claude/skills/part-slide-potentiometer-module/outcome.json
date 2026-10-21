@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-slide-potentiometer-module",
+  "board": "Red \"Slide Pot\" 10K slide potentiometer module (ShillehTek 10K Slide Potentiometer Module and identical clones), channel A header OTA, VCC, GND",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test P=70%, PCB DRC clean, footprint). Modelled as a ratiometric 10k linear wiper (V(OTA) = position x VCC, 3.3 V supply) on the channel A 3-pin header; the board's second OTB/VCC/GND header for the other gang is documented as optional.",
+  "datasheetUrl": "https://www.bourns.com/docs/Product-Datasheets/pta.pdf",
+  "breakoutPinoutSource": "https://shillehtek.com/blogs/shillehtek-product-manuals/slide-potentiometer-module-10k-arduino-esp32-manual (OTA/VCC/GND and OTB/VCC/GND groups), confirmed by the silkscreen in https://shillehtek.com/cdn/shop/articles/10k-slide-potentiometer-module-front-back-01.jpg",
+  "checkRuns": 1
+}

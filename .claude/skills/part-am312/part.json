@@ -1,0 +1,103 @@
+{
+  "type": "custom-am312",
+  "name": "AM312 mini PIR motion sensor",
+  "mpn": "AM312",
+  "category": "sensor",
+  "description": "Tiny digital passive-infrared motion sensor: the Nanyang Senba AM312 has its amplifier, filters and decision logic inside the can, so OUT goes high (about 3 V) for about 2.3 s whenever a warm body moves within about 3-5 m, re-triggering while motion continues. Sensitivity and timing are fixed. Draws only about 15 uA. The module's 3 V LDO lets it run from 2.7-12 V. Sold as: AM312 mini PIR motion sensor module (common 10 mm green board with white dome lens, 3 pins: VCC, OUT, GND).",
+  "eli5": "A tiny heat-motion detector: when a person or animal walks past, it sets its output pin high for a couple of seconds.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7-12 V (marked + on some boards) (pin 1)",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Motion output: about 3 V for ~2.3 s per trigger, 0 V otherwise. Push-pull, safe for 3.3 V GPIOs (middle pin 2).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (marked - on some boards) (pin 3)",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 12,
+  "currentMa": 0.02,
+  "datasheetUrl": "https://ocw.cs.pub.ro/courses/_media/pm/prj2023/ncaroi/pir_am312_datasheet.pdf",
+  "sources": [
+    "https://ocw.cs.pub.ro/courses/_media/pm/prj2023/ncaroi/pir_am312_datasheet.pdf",
+    "https://probots.co.in/am312-mini-pir-motion-sensor-module.html",
+    "https://forum.mysensors.org/post/67494",
+    "https://circuit.rocks/pir-micro-motion-detection-sensor-am312.html"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "AM312 mini PIR motion sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: VCC, OUT, GND. OUT is always the middle pin; the + and - marks are tiny or missing, so check polarity before powering.",
+    "VCC can come from 3V3 or 5V: the board's 3 V regulator keeps OUT at about 3 V, so it connects straight to a GPIO.",
+    "OUT is active high: 1 for about 2.3 s after motion, then a 2.3 s blockade in which it ignores motion. Timing and sensitivity cannot be adjusted.",
+    "Give it up to a minute after power-up to settle before trusting the output.",
+    "Point the dome where people move across its view; it senses moving warm bodies, not still ones, and cannot see through glass."
+  ],
+  "keywords": [
+    "am312",
+    "pir",
+    "passive infrared",
+    "motion",
+    "presence",
+    "occupancy",
+    "mini pir",
+    "senba",
+    "low power"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Motion detected",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "am312.py",
+    "code": "# AM312 mini PIR motion sensor module, MicroPython driver.\n# The Nanyang Senba AM312 is a digital PIR detector with its signal processing built in.\n# Its REL output is a push-pull logic output (VOH > VDD - 1 V, VOL < 1 V at 10 mA):\n#   HIGH (about 3 V) for ~2.3 s after motion is detected, re-triggering while motion continues\n#   LOW  (0 V) otherwise; after going low it ignores motion for a ~2.3 s blockade time.\n# The common mini module has a 3 V LDO, so OUT is about 3 V even when VCC is 5-12 V and\n# connects straight to a 3.3 V GPIO. No pull-up/down is needed.\n# Allow about a minute after power-up for the sensor to settle (datasheet steadying time).\nfrom machine import Pin\n\n\nclass AM312:\n    def __init__(self, out_pin):\n        self.pin = Pin(out_pin, Pin.IN) if isinstance(out_pin, int) else out_pin\n\n    def motion(self):\n        \"\"\"True while the sensor reports motion (OUT high).\"\"\"\n        return self.pin.value() == 1\n\n    def on_change(self, handler):\n        \"\"\"Call handler(motion: bool) on every edge of OUT. Pass None to stop.\"\"\"\n        if handler is None:\n            self.pin.irq(handler=None)\n            return\n        self.pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING,\n                     handler=lambda p: handler(p.value() == 1))\n"
+  },
+  "example": {
+    "code": "from am312 import AM312\nimport time\n\npir = AM312({OUT})\nwhile True:\n    print('MOTION=%d' % pir.motion())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports motion when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:53:32.259Z",
+    "verifiedSources": [
+      "https://ocw.cs.pub.ro/courses/_media/pm/prj2023/ncaroi/pir_am312_datasheet.pdf",
+      "https://probots.co.in/am312-mini-pir-motion-sensor-module.html",
+      "https://docs.cirkitdesigner.com/component/1858f009-b8d3-4ff0-8344-eac2228b12fb/sensor-am312"
+    ]
+  }
+}

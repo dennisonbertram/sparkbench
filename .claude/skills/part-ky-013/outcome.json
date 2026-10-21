@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-013",
+  "board": "Joy-IT SensorKit KY-013 NTC temperature sensor (SEN-KY013, 3-pin module: S, + (middle), -)",
+  "reason": "Check passed on ESP32 and Pico on the first run: the slider sets the S divider voltage and the driver converts it with the divider and beta (10 kOhm, B 3950 K) equations, so 1.00 V on 3.3 V prints T=45C. The slider is the S voltage, not the temperature, because the simulator's analog-sensor output is linear and the thermistor's response is not.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/103_3950_lookuptable.pdf",
+  "breakoutPinoutSource": "https://sensorkit.joy-it.net/en/sensors/ky-013 (013-Pico.svg wiring drawing and KY-013.png photo: S, middle +V, -; divider drawing KY-013-VoltDivide-EN.svg)",
+  "checkRuns": 1
+}

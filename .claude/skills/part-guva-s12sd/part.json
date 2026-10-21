@@ -1,0 +1,112 @@
+{
+  "type": "custom-guva-s12sd",
+  "name": "GUVA-S12SD UV light sensor",
+  "mpn": "GUVA-S12SD",
+  "category": "sensor",
+  "description": "Genicom GaN Schottky UV photodiode (240-370 nm, UVB and most of UVA; 26 nA typical at UV index 1, 113 nA under a UVA lamp at 1 mW/cm2) on an analog breakout whose MCP6001 transimpedance amplifier gives Vout = 4.3 V per uA of photocurrent (about 0.11 V per UV index). Runs on 2.7-5.5 V. Sold as: Adafruit Analog UV Light Sensor Breakout - GUVA-S12SD (#1918), 3-pin header: -, Out, +.",
+  "eli5": "Measures how strong the sun's invisible ultraviolet light is. The stronger the UV, the higher the voltage on its Out pin, so your board can work out the UV index.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 1, silkscreen '-').",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 2, silkscreen 'Out'): Vout = 4.3033 V/uA x photocurrent, about 0.112 V per UV index. Swings up to nearly the supply voltage.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V (pin 3, silkscreen '+'). Use 3.3 V with an ESP32 or Pico so Out stays within the ADC range.",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.1,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/1918guva.pdf",
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/1918guva.pdf",
+    "https://www.adafruit.com/product/1918",
+    "https://github.com/adafruit/Adafruit-GUVA-Analog-UV-Sensor-Breakout-PCB",
+    "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/6128/GUVA-S12SD%20%282%29.pdf"
+  ],
+  "priceUsd": 5,
+  "supplierQuery": "GUVA-S12SD analog UV light sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order with the sensor facing you and the header at the bottom: '-' (GND), 'Out', '+' (supply), as printed on the board.",
+    "Power '+' from 3.3 V when an ESP32 or Pico reads Out: the op-amp output can swing to the supply, and 3.3 V keeps it inside the ADC range.",
+    "Photocurrent (nA) = Vout (V) / 4.3033 x 1000; UV index = photocurrent / 26 nA (datasheet typical). The silkscreen's 'UVi ~ Vo/0.1V' is the same rule rounded.",
+    "Glass and most plastics block UVB: point the sensor at the sky with nothing in front of it.",
+    "Indoors the output is only a few millivolts. On the ESP32 use an ADC1 pin (GPIO32-39) and average many samples."
+  ],
+  "keywords": [
+    "guva-s12sd",
+    "guva",
+    "uv",
+    "ultraviolet",
+    "uv index",
+    "uva",
+    "uvb",
+    "photodiode",
+    "adafruit 1918",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "UV photocurrent",
+    "unit": "nA",
+    "min": 0,
+    "max": 700,
+    "default": 26,
+    "vAtMin": 0,
+    "vAtMax": 3.01231,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "guva_s12sd.py",
+    "code": "# GUVA-S12SD UV sensor (Genicom GaN Schottky photodiode) on the Adafruit #1918 analog breakout,\n# MicroPython driver.\n# The photodiode runs in photovoltaic mode (0 V bias) into an MCP6001 transimpedance amplifier with a\n# T-network: R1 = 1 MOhm, R2 = 3.3 kOhm, R3 = 1 kOhm, so\n#   Vout = Iph x (R1 + R2 + R1*R2/R3) = Iph x 4.3033 MOhm, i.e. about 4.3 V per uA (Adafruit: Vo = 4.3 x I[uA]).\n# Datasheet (25 C): photocurrent 26 nA typical at 1 UVI, 113 nA under a UVA lamp at 1 mW/cm2,\n# dark current under 1 nA, spectral range 240-370 nm.\n# So UV index = Iph[nA] / 26 (about Vout / 0.112 V; the board silkscreen rounds this to Vout / 0.1 V).\nfrom machine import ADC, Pin\n\nGAIN_V_PER_UA = 4.3033   # transimpedance of the breakout, volts per microamp\nNA_PER_UVI = 26.0        # datasheet typical photocurrent at UV index 1\nNA_PER_MW_CM2_UVA = 113.0  # datasheet typical photocurrent for a UVA lamp at 1 mW/cm2\n\n\nclass GUVAS12SD:\n    def __init__(self, pin, samples=32, vref=3.3):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref  # ADC full scale used when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"OUT voltage in volts, averaged over several ADC samples.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def photocurrent(self):\n        \"\"\"Photodiode current in nA: Iph = Vout / 4.3033 V per uA.\"\"\"\n        return self.voltage() / GAIN_V_PER_UA * 1000\n\n    def uv_index(self):\n        \"\"\"UV index from the datasheet's typical 26 nA per UVI (sunlight; +/- tolerance per sensor).\"\"\"\n        return self.photocurrent() / NA_PER_UVI\n\n    def uva_mw_cm2(self):\n        \"\"\"UVA irradiance in mW/cm2 for a UVA lamp source (datasheet: 113 nA at 1 mW/cm2).\"\"\"\n        return self.photocurrent() / NA_PER_MW_CM2_UVA\n"
+  },
+  "skill": "---\nname: part-guva-s12sd\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the GUVA-S12SD analog UV light sensor (Adafruit #1918 breakout). Use when designing, wiring, simulating or writing code for a GUVA-S12SD in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# GUVA-S12SD UV light sensor (GUVA-S12SD)\n\n## Overview\nThe **GUVA-S12SD** (Genicom) is a gallium-nitride Schottky UV photodiode. It sees 240–370 nm (UVB and most of UVA) and is nearly blind to visible light. The bare diode gives only nanoamps, so hobbyists buy it on an **analog breakout** with an op-amp. This skill models the **Adafruit Analog UV Light Sensor Breakout (#1918)**: an MCP6001 transimpedance amplifier that turns the photocurrent into a voltage on **OUT**.\n- Datasheet photocurrent (25 °C): **26 nA at UV index 1**, **113 nA** under a UVA lamp at 1 mW/cm², dark current < 1 nA\n- Breakout gain: **Vout ≈ 4.3 V per µA** of photocurrent (1 MΩ + 3.3 kΩ/1 kΩ T-network: 4.3033 MΩ)\n- About **0.112 V per UV index** (the board's silkscreen rounds it to UVI ≈ Vout / 0.1 V)\n\n## Pinout (Adafruit #1918, sensor facing you, header at the bottom, left to right)\n| Pin | Silkscreen | Function |\n|-----|------|----------|\n| 1 | - | Ground |\n| 2 | Out | Analog output, Vout = 4.3033 V/µA × Iph |\n| 3 | + | Supply, 2.7–5.5 V |\n\n(Source: Adafruit's Eagle board file, header JP2: pad 1 = 5.0V net \"+\", pad 2 = AOUT, pad 3 = GND \"-\".)\n\n## Electrical limits\n- Supply: **2.7–5.5 V** (Adafruit), the MCP6001 draws about 0.1 mA.\n- OUT swings from 0 V up to nearly the supply. **Power it from 3.3 V** when you read it with an ESP32 or Pico, so OUT can never exceed the ADC's 3.3 V limit.\n- Photodiode absolute max: 5 V reverse, 1 mA forward, −30 to +85 °C.\n\n## Interface details\n```\nIph (nA) = Vout (V) / 4.3033 × 1000\nUV index  = Iph (nA) / 26            (datasheet typical, sunlight)\nUVA (mW/cm²) = Iph (nA) / 113       (datasheet typical, UVA lamp)\n```\nExamples: 0.112 V = 26 nA = UVI 1; 1.119 V = 260 nA = UVI 10. With a 3.3 V supply the output saturates near 3.3 V (about 760 nA, UVI ~29), far above real sunlight.\n\n## Wiring\n| Breakout | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| - | GND | GND | GND |\n| Out | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (MCP3008 / ADS1115) |\n\nOn the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom guva_s12sd import GUVAS12SD\nimport time\nuv = GUVAS12SD(26)        # GPIO number of the ADC pin Out is wired to\nwhile True:\n    print('V=%.3f I=%.0fnA UVI=%.1f' % (uv.voltage(), uv.photocurrent(), uv.uv_index()))\n    time.sleep(1)\n```\n`voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V; pass `vref=` if your 3V3 rail differs).\n\n## Gotchas\n- **Glass blocks UV**: windows and most plastic covers stop UVB. Test outdoors or behind quartz/PTFE only.\n- **UV index is approximate**: the 26 nA/UVI figure is typical; sensors vary and the reading depends on the sun angle. Calibrate against a reference meter for real numbers.\n- **Low signal indoors**: indoor light gives only a few mV. ESP32 ADC readings below about 0.1 V are poor; average many samples.\n- **5 V supply**: OUT can then exceed 3.3 V under a strong UV lamp; use 3.3 V or add a divider.\n- **Never look at UV lamps** used for testing; UVC/UVB lamps burn eyes and skin.\n\n## Datasheet\nhttps://cdn-shop.adafruit.com/datasheets/1918guva.pdf\n",
+  "example": {
+    "code": "from guva_s12sd import GUVAS12SD\nimport time\n\nuv = GUVAS12SD({OUT})\nwhile True:\n    print('I=%.0fnA UVI=%.1f' % (uv.photocurrent(), uv.uv_index()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the photocurrent and UV index set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 260
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "I=260nA UVI=10.0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:44:52.686Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/1918guva.pdf",
+      "https://www.adafruit.com/product/1918",
+      "https://github.com/adafruit/Adafruit-GUVA-Analog-UV-Sensor-Breakout-PCB"
+    ]
+  }
+}

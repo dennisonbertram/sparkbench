@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-a3144",
+  "board": "Joy-IT / Keyes KY-003 Hall magnetic sensor module (SEN-KY003HMS), black 3-pin board with A3144 in TO-92 and status LED; header -, VCC (middle), S",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring at 5 V, design checks, breadboard, simulator test MAGNET=1, PCB DRC clean, footprint, LCSC). Modelled as an active-low digital-sensor on S per the Allegro A3144 datasheet (open-collector, ON/low above BOP); the driver uses the GPIO internal pull-up to 3.3 V rather than a pull-up to the 5 V supply, which would harm a 3.3 V GPIO.",
+  "datasheetUrl": "https://www.allegromicro.com/~/media/Files/Datasheets/A3141-2-3-4-Datasheet.ashx",
+  "breakoutPinoutSource": "Joy-IT SEN-KY003HMS manual (https://joy-it.net/files/files/Produkte/SEN-KY003HMS/SEN-KY003HMS_Manual_2024-04-24.pdf) wiring diagram showing header '-', middle (VCC +), 'S'; confirmed by https://arduinomodules.info/ky-003-hall-magnetic-sensor-module/ (left -, middle VCC, right S)",
+  "checkRuns": 1
+}

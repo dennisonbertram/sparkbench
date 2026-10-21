@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-force-sensitive-resistor-module",
+  "board": "Seeed Studio Grove - Round Force Sensor (FSR402), SKU 101020553",
+  "reason": "The check passed on the first run on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board). SIG is modelled as the buffered divider voltage V = 3.3 x 30k/(30k+RFSR) from Seeed's schematic and the Interlink datasheet formula, and the driver inverts it to get RFSR. The header order SIG, NC, VCC, GND comes from the Eagle schematic (connector J2).",
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Round_Force_Sensor_FSR402/res/FSR402.pdf",
+  "breakoutPinoutSource": "https://files.seeedstudio.com/wiki/Grove-Round_Force_Sensor_FSR402/res/Grove-Round_Force_Sensor_FSR402.zip (Eagle schematic: J2 pin1 OUT, pin2 NC, pin3 VCC, pin4 GND) and https://wiki.seeedstudio.com/Grove-Round_Force_Sensor_FSR402/",
+  "checkRuns": 1
+}

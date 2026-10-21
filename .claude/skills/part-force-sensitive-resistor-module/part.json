@@ -1,0 +1,118 @@
+{
+  "type": "custom-force-sensitive-resistor-module",
+  "name": "Force sensitive resistor module (FSR402)",
+  "mpn": "FSR402",
+  "category": "sensor",
+  "description": "Interlink FSR 402 force sensing resistor (13 mm round pad, 0.2-20 N) on a board that turns force into a voltage: an XC6206P332 LDO makes 3.3 V, the FSR feeds a 30 kOhm measuring resistor (V(SIG) = 3.3 V x 30k / (30k + RFSR)), and a TLV521 op-amp follower buffers it onto SIG. SIG rises from about 0 V (untouched, RFSR > 10 MOhm) towards 3.3 V when pressed hard, on 3.3 V or 5 V supplies. Sold as: Seeed Studio Grove - Round Force Sensor (FSR402), SKU 101020553, 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A thin round pad that notices how hard you press it. The harder you squeeze, the higher the voltage on SIG, so your board can tell a light tap from a firm push.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Buffered divider output (Grove pin 1, yellow): 0-3.3 V, rises with force. Never above the board's 3.3 V rail.",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (Grove pin 2, white).",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3 V or 5 V (Grove pin 3, red), feeds the on-board 3.3 V LDO.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.2,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Round_Force_Sensor_FSR402/res/FSR402.pdf",
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove-Round_Force_Sensor_FSR402/res/FSR402.pdf",
+    "https://wiki.seeedstudio.com/Grove-Round_Force_Sensor_FSR402/",
+    "https://files.seeedstudio.com/wiki/Grove-Round_Force_Sensor_FSR402/res/Grove-Round_Force_Sensor_FSR402.zip",
+    "https://www.seeedstudio.com/Grove-Round-Force-Sensor-%28FSR402%29-p-3110.html"
+  ],
+  "priceUsd": 8,
+  "supplierQuery": "Grove Round Force Sensor FSR402",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header (Grove) order: SIG, NC, VCC, GND. The Grove socket is 2.0 mm pitch; on a breadboard use a Grove-to-female-jumper cable (yellow SIG, white NC, red VCC, black GND).",
+    "RFSR = 30 kOhm x (3.3 V / V(SIG) - 1); the divider runs from the board's own 3.3 V LDO, so SIG stays within a 3.3 V ADC even with VCC = 5 V.",
+    "Untouched reads only a few mV (RFSR > 10 MOhm); treat < 10 mV as not pressed.",
+    "Force from resistance is only approximate (datasheet typical curve: ~10 kOhm at 150 g, ~2.5 kOhm at 1 kg; +/-6 % part to part, +10 % hysteresis). It is a touch/squeeze sensor, not a scale.",
+    "On the ESP32 use an ADC1 pin (GPIO32-39) with 11 dB attenuation."
+  ],
+  "keywords": [
+    "fsr",
+    "fsr402",
+    "force sensor",
+    "force sensitive resistor",
+    "force sensing resistor",
+    "pressure sensor",
+    "pressure pad",
+    "interlink",
+    "grove",
+    "touch",
+    "squeeze",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "SIG voltage (rises with force)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 0,
+    "vAtMin": 0,
+    "vAtMax": 3.3
+  },
+  "driver": {
+    "filename": "fsr402.py",
+    "code": "# Grove - Round Force Sensor (FSR402), MicroPython driver.\n# Board circuit (Seeed schematic): an XC6206P332 LDO makes 3.3 V from VCC; the Interlink FSR 402\n# runs from that 3.3 V rail to a 30 kOhm measuring resistor (RM) to GND, and a TLV521 op-amp\n# wired as a voltage follower buffers the divider onto SIG. Per the FSR 400 Series datasheet:\n#   V(SIG) = RM * V+ / (RM + RFSR)          RM = 30 kOhm, V+ = 3.3 V\n#   RFSR   = RM * (V+ / V(SIG) - 1)\n# SIG rises with force: about 0 V unpressed (RFSR > 10 MOhm), towards 3.3 V when pressed hard.\n# The force-to-resistance relation varies between parts (+/-6 % part to part, +10 % hysteresis, and\n# it depends on how the force is applied), so force_g() is only a rough estimate fitted to the\n# datasheet's typical curve (about 10 kOhm at 150 g, 2.5 kOhm at 1 kg). Calibrate for real weighing.\nfrom machine import ADC, Pin\n\nRM = 30000      # measuring resistor on the board (ohms)\nVPLUS = 3.3     # divider supply: the board's own 3.3 V LDO, whatever VCC is\n\n\nclass FSR402:\n    def __init__(self, pin, vref=3.3, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vref = vref  # ADC full scale when read_uv() is not available (Pico: 3.3 V)\n        self.samples = samples\n\n    def volts(self):\n        \"\"\"Average several samples and return V(SIG) in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def resistance(self, v=None):\n        \"\"\"FSR resistance in ohms from the divider formula, or None when not pressed (V(SIG) < 10 mV).\"\"\"\n        if v is None:\n            v = self.volts()\n        if v < 0.01:\n            return None\n        if v >= VPLUS:\n            return 0.0\n        return RM * (VPLUS / v - 1)\n\n    def pressed(self, threshold_v=0.2):\n        \"\"\"True when V(SIG) is above threshold_v (about 470 kOhm, i.e. a light touch).\"\"\"\n        return self.volts() > threshold_v\n\n    def force_g(self, r=None):\n        \"\"\"Rough force in grams from the datasheet's typical curve, or 0 when not pressed.\n        Only meaningful over about 20 g - 2 kg; individual sensors can differ a lot.\"\"\"\n        if r is None:\n            r = self.resistance()\n        if r is None:\n            return 0\n        if r <= 0:\n            return 2000\n        return 150 * (10000 / r) ** 1.37\n"
+  },
+  "skill": "---\nname: part-force-sensitive-resistor-module\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the FSR402 force sensitive resistor module (Seeed Grove - Round Force Sensor FSR402: Interlink FSR 402 in a 30 kΩ divider with a TLV521 buffer, SIG/NC/VCC/GND). Use when designing, wiring, simulating or writing code for an FSR / force / pressure pad sensor module in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Force sensitive resistor module (FSR402)\n\n## Overview\nAn **Interlink FSR 402** force sensing resistor (13 mm round pad, 56 mm tail) on Seeed's **Grove - Round Force Sensor (FSR402)** board (SKU 101020553). The FSR's resistance falls as you press it: above 10 MΩ untouched, about 10 kΩ at 150 g, about 2.5 kΩ at 1 kg (typical curve). The board turns that into a voltage:\n- An **XC6206P332** LDO makes 3.3 V from VCC.\n- The FSR runs from that 3.3 V to a **30 kΩ** measuring resistor to GND (datasheet divider, RM = 30 kΩ).\n- A **TLV521** op-amp as a voltage follower buffers the divider onto **SIG**.\n\nSo SIG rises with force from about 0 V to at most 3.3 V, on 3.3 V *and* 5 V supplies. Force sensitivity 0.2–20 N. It is a touch/squeeze sensor, not a scale: ±6 % part to part, +10 % hysteresis, and the reading depends on how the force is applied.\n\n## Pinout (Grove connector, header order)\n| Pin | Name | Wire | Function |\n|---|---|---|---|\n| 1 | SIG | yellow | Analog output, 0–3.3 V, rises with force |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Supply 3.3 V or 5 V |\n| 4 | GND | black | Ground |\n\nSource: Seeed's Eagle schematic (J2 pin 1 = OUT, 2 = NC, 3 = VCC, 4 = GND) and the Grove wiki wiring table. The Grove socket is 2.0 mm pitch; use a Grove-to-female-jumper cable on a breadboard.\n\n## Electrical limits\n- Supply: 3.3–5 V (Seeed spec; LDO max input 6 V). At 3.3 V the LDO's dropout leaves the divider slightly below 3.3 V.\n- Current: well under 0.2 mA (divider at most 3.3 V / 31 kΩ, TLV521 and LDO a few µA).\n- SIG never exceeds the board's 3.3 V rail, so it is safe on ESP32 / Pico ADC pins even with VCC = 5 V.\n- Do not fold the sensor tail sharply or solder on it; press only on the active round area.\n\n## Interface details\n```\nV(SIG) = 3.3 V × 30 kΩ / (30 kΩ + RFSR)\nRFSR   = 30 kΩ × (3.3 V / V(SIG) − 1)\nforce  ≈ 150 g × (10 kΩ / RFSR)^1.37     (rough fit to the datasheet's typical curve)\n```\nExamples: 0.83 V → 90 kΩ (just touched), 1.65 V → 30 kΩ (~35 g), 2.2 V → 15 kΩ (~85 g), 3.0 V → 3 kΩ (~780 g).\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG | GPIO34 (ADC1) | GP26 / ADC0 | ADS1115 A0 (the Pi has no ADC) |\n| NC | — | — | — |\n| VCC | 3V3 (or 5V) | 3V3(OUT) (or VBUS) | 3.3 V (pin 1) |\n| GND | GND | GND | GND |\n\n## Using the driver\n```python\nfrom fsr402 import FSR402\nimport time\nfsr = FSR402(34)              # GPIO number of the ADC pin SIG is wired to\nwhile True:\n    v = fsr.volts()\n    r = fsr.resistance(v)\n    print('SIG=%.1fV R=%s' % (v, 'open' if r is None else '%dk' % round(r / 1000)))\n    time.sleep(0.5)\n```\nAlso `pressed(threshold_v=0.2)` and `force_g()` (rough grams).\n\n## Gotchas\n- **Not a load cell:** for weighing use an HX711 + load cell. FSRs drift under a standing load and have hysteresis.\n- **ESP32:** use ADC1 pins (GPIO32–39); ADC2 does not work while Wi-Fi is on. The ESP32 ADC is non-linear near 0 V, so tiny forces read noisily.\n- **Untouched reads a few mV, not 0:** treat anything under ~10 mV as \"not pressed\".\n- **Force on the pad matters:** a small rubber puck or a firm backing makes readings far more repeatable.\n- Seeed's \"analog output 0–650\" is the Arduino Uno's 10-bit reading at 5 V reference (3.3 V ≈ 675).\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Round_Force_Sensor_FSR402/res/FSR402.pdf (Interlink FSR 400 Series)\nBoard schematic: https://files.seeedstudio.com/wiki/Grove-Round_Force_Sensor_FSR402/res/Grove-Round_Force_Sensor_FSR402.zip\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from fsr402 import FSR402\nimport time\n\nfsr = FSR402({SIG})\nwhile True:\n    v = fsr.volts()\n    r = fsr.resistance(v)\n    print('SIG=%.1fV R=%s' % (v, 'open' if r is None else '%dk' % round(r / 1000)))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the SIG voltage and FSR resistance for the voltage set on the control",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SIG=2.2V R=15k",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:52:45.702Z",
+    "verifiedSources": [
+      "https://www.interlinkelectronics.com/datasheets/Datasheet_FSR.pdf",
+      "https://wiki.seeedstudio.com/Grove-Round_Force_Sensor_FSR402/"
+    ]
+  }
+}

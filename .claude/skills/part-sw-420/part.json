@@ -1,0 +1,105 @@
+{
+  "type": "custom-sw-420",
+  "name": "SW-420 vibration sensor module",
+  "mpn": "SW-420",
+  "category": "sensor",
+  "description": "Vibration/shock detector: an SW-420 normally closed roller vibration switch and an LM393 comparator with a sensitivity potentiometer. The digital output DO is LOW while the module is still and goes HIGH while it vibrates (short pulses that follow the shaking); an indicator LED shows the output. Open-collector LM393 output with a 10 kOhm pull-up to VCC on the board. Runs on 3.3-5 V. Sold as: SW-420 vibration sensor module (common blue 3-pin clone board: VCC, GND, DO).",
+  "eli5": "Tells your board when it gets shaken or bumped, like a tiny earthquake detector.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin 1). With a 3.3 V board connect it to 3V3, because DO is pulled up to VCC.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 3): LOW while still, HIGH while vibrating (pulled up to VCC by 10 kOhm)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 15,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://components101.com/sites/default/files/component_datasheet/Vibration-Sensor-Datasheet.pdf",
+    "https://components101.com/sensors/sw-420-vibration-sensor-module",
+    "https://arduinogetstarted.com/tutorials/arduino-sw-420-vibration-sensor",
+    "https://microcontrollerslab.com/sw-420-vibration-sensor-module-pinout-interfacing-arduino-features/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "SW-420 vibration sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: VCC, GND, DO.",
+    "On an ESP32 or Pico power VCC from 3V3: the board's pull-up takes DO to VCC, so a 5 V supply puts 5 V on the GPIO.",
+    "DO is active HIGH: 0 while still, 1 while shaking. The pulses are short, so use an interrupt (the driver's vibrated() or count()) rather than only polling.",
+    "Turn the potentiometer to set the sensitivity; if DO chatters with nothing touching the board, turn it the other way.",
+    "Mount the board firmly to the thing you want to watch; a loose module rattles and triggers by itself."
+  ],
+  "keywords": [
+    "sw-420",
+    "sw420",
+    "vibration",
+    "shock",
+    "tilt",
+    "knock",
+    "earthquake",
+    "alarm",
+    "lm393"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "DO",
+    "quantity": "Vibration",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "sw420.py",
+    "code": "# SW-420 vibration sensor module, MicroPython driver.\n# The SW-420 is a normally closed roller vibration switch. On the module it forms a\n# divider with a 10 kOhm resistor; an LM393 comparator compares that node with the\n# threshold set on the potentiometer. The LM393 output is open-collector with a\n# pull-up to VCC on the board, so DO is:\n#   LOW  (0) while the module is still (switch closed)\n#   HIGH (1) while it vibrates (switch opens for a moment)\n# Vibration pulses are short, so this driver also latches rising edges with an IRQ\n# and vibrated() reports any shake since the last call.\n# Power the module from 3.3 V when using a 3.3 V board: DO swings to VCC.\nfrom machine import Pin\n\n\nclass SW420:\n    def __init__(self, pin):\n        # The board has its own pull-up on DO; no internal pull needed.\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self._hits = 0\n        self.pin.irq(handler=self._edge, trigger=Pin.IRQ_RISING)\n\n    def _edge(self, pin):\n        self._hits += 1\n\n    def raw(self):\n        \"\"\"Logic level on DO right now: 1 = vibrating, 0 = still.\"\"\"\n        return self.pin.value()\n\n    def vibrating(self):\n        \"\"\"True while DO is high (the switch is open because of vibration).\"\"\"\n        return self.pin.value() == 1\n\n    def vibrated(self):\n        \"\"\"True if DO is high now or rose at least once since the last call.\"\"\"\n        hit = self._hits > 0 or self.pin.value() == 1\n        self._hits = 0\n        return hit\n\n    def count(self, reset=True):\n        \"\"\"Number of rising edges (vibration pulses) since the last reset.\"\"\"\n        n = self._hits\n        if reset:\n            self._hits = 0\n        return n\n"
+  },
+  "example": {
+    "code": "from sw420 import SW420\nimport time\n\nsensor = SW420({DO})\nwhile True:\n    print('Vibration: %s' % ('YES' if sensor.vibrated() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports vibration when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Vibration: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:52:53.492Z",
+    "verifiedSources": [
+      "https://components101.com/sensors/sw-420-vibration-sensor-module",
+      "https://components101.com/sites/default/files/component_datasheet/Vibration-Sensor-Datasheet.pdf",
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf"
+    ]
+  }
+}

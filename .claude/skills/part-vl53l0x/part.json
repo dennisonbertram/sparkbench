@@ -1,0 +1,157 @@
+{
+  "type": "custom-vl53l0x",
+  "name": "VL53L0X time-of-flight distance sensor",
+  "mpn": "VL53L0X",
+  "category": "sensor",
+  "description": "ST FlightSense time-of-flight sensor that times 940 nm laser pulses to measure absolute distance up to 2 m, read in millimetres over I2C (up to 400 kHz) at address 0x29. The bare chip runs from 2.6-3.5 V. Sold as: GY-530 / GY-VL53L0XV2 VL53L0X time-of-flight distance module (purple 6-pin board: VIN, GND, SCL, SDA, GPIO1, XSHUT) with a 2.8 V regulator, MOSFET level shifters and 10 kΩ pull-ups on SDA/SCL, so VIN takes 3.3 V or 5 V.",
+  "eli5": "It flashes a tiny invisible laser and times how long the light takes to bounce back, which tells you how far away something is, up to about 2 metres.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply input, 3.3-5 V (on-board LDO makes the chip's 2.8 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, level shifted, 10 kΩ pull-up to VIN on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, level shifted, 10 kΩ pull-up to VIN on the board",
+      "required": true
+    },
+    {
+      "name": "GPIO1",
+      "role": "io",
+      "description": "Interrupt output (open drain, 47 kΩ pull-up to 2.8 V, not level shifted); goes low when a new range is ready. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "XSHUT",
+      "role": "io",
+      "description": "Shutdown input, active low, 47 kΩ pull-up to 2.8 V, not level shifted. Leave unconnected for normal use; to switch the sensor off pull it low (never drive it with 5 V)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 19,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vl53l0x.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "GY-530 VL53L0X time of flight laser distance sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Peel off the protective film over the sensor window before use, or readings will be wrong.",
+    "Registers are 8-bit indexes with MSB-first data. Model ID register 0xC0 reads 0xEE. ST publishes no register map: the driver replays ST API init (SPAD setup, tuning settings, VHV and phase calibration) as ported by Pololu.",
+    "Each range is a 16-bit value in mm at 0x1E (RESULT_RANGE_STATUS 0x14 + 10). Wait for RESULT_INTERRUPT_STATUS 0x13 bits 2:0 to be non-zero, read, then write 0x01 to SYSTEM_INTERRUPT_CLEAR 0x0B. 8190 or 8191 mm means no target in range.",
+    "Every VL53L0X starts at address 0x29. For several on one bus hold their XSHUT pins low, release them one at a time and set a new address (register 0x8A). XSHUT is not level shifted: pull it low, never drive it with 5 V.",
+    "Default timing budget is about 33 ms (range about 1.2 m). long_range() reaches about 2 m in the dark; set_timing_budget_us(200000) gives the most accurate readings.",
+    "Ranging peaks at about 40 mA; keep power wires short."
+  ],
+  "keywords": [
+    "vl53l0x",
+    "gy-530",
+    "gy-vl53l0xv2",
+    "time of flight",
+    "tof",
+    "laser",
+    "distance",
+    "lidar",
+    "range"
+  ],
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/vl53l0x.pdf",
+    "https://www.pololu.com/file/0J1187/VL53L0X.pdf",
+    "https://ecksteinimg.de/Photo/SE01011/Schematic.pdf",
+    "https://eckstein-shop.de/GY-VL53L0XTime-of-FlightDistanceSensorModuleEN",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/gy-vl53l0xv2-laser-ranging-tof-sensor-module-manual",
+    "https://github.com/pololu/vl53l0x-arduino/blob/master/VL53L0X.cpp"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 30,
+    "max": 2000,
+    "default": 500,
+    "registers": {
+      "0xC0": 238,
+      "0xC1": 170,
+      "0xC2": 16,
+      "0x13": 4,
+      "0x14": 88
+    },
+    "measures": [
+      {
+        "reg": "0x1E",
+        "bytes": 2,
+        "scale": 1,
+        "offset": 0,
+        "signed": false
+      },
+      {
+        "reg": "0x83",
+        "bytes": 1,
+        "scale": 1000000,
+        "offset": -500000
+      },
+      {
+        "reg": "0x00",
+        "bytes": 1,
+        "scale": 1000000000,
+        "offset": 0
+      }
+    ]
+  },
+  "driver": {
+    "filename": "vl53l0x.py",
+    "code": "# VL53L0X time-of-flight distance sensor (ST), MicroPython driver.\n# A port of Pololu's vl53l0x-arduino library, which reproduces the init, SPAD, tuning,\n# timing-budget and reference-calibration sequence of ST's VL53L0X API (STSW-IMG005).\n# ST's datasheet has no register map; register names below are the API's.\nimport time\n\n_SYSRANGE_START = 0x00\n_SYSTEM_SEQUENCE_CONFIG = 0x01\n_SYSTEM_INTERMEASUREMENT_PERIOD = 0x04\n_SYSTEM_INTERRUPT_CONFIG_GPIO = 0x0A\n_SYSTEM_INTERRUPT_CLEAR = 0x0B\n_RESULT_INTERRUPT_STATUS = 0x13\n_RESULT_RANGE_STATUS = 0x14     # range in mm is the 16-bit word at RESULT_RANGE_STATUS + 10\n_GLOBAL_CONFIG_VCSEL_WIDTH = 0x32\n_FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT = 0x44\n_MSRC_CONFIG_TIMEOUT_MACROP = 0x46\n_FINAL_RANGE_CONFIG_VALID_PHASE_LOW = 0x47\n_FINAL_RANGE_CONFIG_VALID_PHASE_HIGH = 0x48\n_DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD = 0x4E\n_DYNAMIC_SPAD_REF_EN_START_OFFSET = 0x4F\n_PRE_RANGE_CONFIG_VCSEL_PERIOD = 0x50\n_PRE_RANGE_CONFIG_TIMEOUT_MACROP_HI = 0x51\n_PRE_RANGE_CONFIG_VALID_PHASE_LOW = 0x56\n_PRE_RANGE_CONFIG_VALID_PHASE_HIGH = 0x57\n_MSRC_CONFIG_CONTROL = 0x60\n_FINAL_RANGE_CONFIG_VCSEL_PERIOD = 0x70\n_FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI = 0x71\n_GPIO_HV_MUX_ACTIVE_HIGH = 0x84\n_VHV_CONFIG_PAD_SCL_SDA__EXTSUP_HV = 0x89\n_I2C_SLAVE_DEVICE_ADDRESS = 0x8A\n_GLOBAL_CONFIG_SPAD_ENABLES_REF_0 = 0xB0\n_GLOBAL_CONFIG_REF_EN_START_SELECT = 0xB6\n_IDENTIFICATION_MODEL_ID = 0xC0   # reads 0xEE (datasheet table 4)\n_OSC_CALIBRATE_VAL = 0xF8\n_ALGO_PHASECAL_LIM = 0x30\n_ALGO_PHASECAL_CONFIG_TIMEOUT = 0x30\n\n# ST API default tuning settings (register, value); 0xFF selects the register page.\n_TUNING = (\n    (0xFF, 0x01), (0x00, 0x00), (0xFF, 0x00), (0x09, 0x00), (0x10, 0x00), (0x11, 0x00),\n    (0x24, 0x01), (0x25, 0xFF), (0x75, 0x00), (0xFF, 0x01), (0x4E, 0x2C), (0x48, 0x00),\n    (0x30, 0x20), (0xFF, 0x00), (0x30, 0x09), (0x54, 0x00), (0x31, 0x04), (0x32, 0x03),\n    (0x40, 0x83), (0x46, 0x25), (0x60, 0x00), (0x27, 0x00), (0x50, 0x06), (0x51, 0x00),\n    (0x52, 0x96), (0x56, 0x08), (0x57, 0x30), (0x61, 0x00), (0x62, 0x00), (0x64, 0x00),\n    (0x65, 0x00), (0x66, 0xA0), (0xFF, 0x01), (0x22, 0x32), (0x47, 0x14), (0x49, 0xFF),\n    (0x4A, 0x00), (0xFF, 0x00), (0x7A, 0x0A), (0x7B, 0x00), (0x78, 0x21), (0xFF, 0x01),\n    (0x23, 0x34), (0x42, 0x00), (0x44, 0xFF), (0x45, 0x26), (0x46, 0x05), (0x40, 0x40),\n    (0x0E, 0x06), (0x20, 0x1A), (0x43, 0x40), (0xFF, 0x00), (0x34, 0x03), (0x35, 0x44),\n    (0xFF, 0x01), (0x31, 0x04), (0x4B, 0x09), (0x4C, 0x05), (0x4D, 0x04), (0xFF, 0x00),\n    (0x44, 0x00), (0x45, 0x20), (0x47, 0x08), (0x48, 0x28), (0x67, 0x00), (0x70, 0x04),\n    (0x71, 0x01), (0x72, 0xFE), (0x76, 0x00), (0x77, 0x00), (0xFF, 0x01), (0x0D, 0x01),\n    (0xFF, 0x00), (0x80, 0x01), (0x01, 0xF8), (0xFF, 0x01), (0x8E, 0x01), (0x00, 0x01),\n    (0xFF, 0x00), (0x80, 0x00),\n)\n\n\ndef _decode_vcsel(v):\n    return (v + 1) << 1\n\n\ndef _macro_period_ns(vcsel_pclks):\n    return (2304 * vcsel_pclks * 1655 + 500) // 1000\n\n\ndef _decode_timeout(v):\n    return ((v & 0xFF) << ((v >> 8) & 0xFF)) + 1\n\n\ndef _encode_timeout(mclks):\n    if mclks <= 0:\n        return 0\n    ls = mclks - 1\n    ms = 0\n    while ls & 0xFFFFFF00:\n        ls >>= 1\n        ms += 1\n    return (ms << 8) | (ls & 0xFF)\n\n\ndef _mclks_to_us(mclks, vcsel_pclks):\n    m = _macro_period_ns(vcsel_pclks)\n    return (mclks * m + 500) // 1000\n\n\ndef _us_to_mclks(us, vcsel_pclks):\n    m = _macro_period_ns(vcsel_pclks)\n    return (us * 1000 + m // 2) // m\n\n\nclass VL53L0X:\n    def __init__(self, i2c, address=0x29, io_2v8=True, timeout_ms=500):\n        \"\"\"io_2v8=True suits modules whose SDA/SCL are pulled up to the 2.8 V supply\n        (GY-530, Pololu, Adafruit). Use False only with 1.8 V I/O on a bare chip.\"\"\"\n        self.i2c = i2c\n        self.addr = address\n        self.timeout_ms = timeout_ms\n        self.range_status = 0\n        self._buf1 = bytearray(1)\n        if self._r8(_IDENTIFICATION_MODEL_ID) != 0xEE:\n            raise OSError('VL53L0X not found (model id 0x%02X, expected 0xEE)' % self._r8(_IDENTIFICATION_MODEL_ID))\n        if io_2v8:\n            self._w8(_VHV_CONFIG_PAD_SCL_SDA__EXTSUP_HV, self._r8(_VHV_CONFIG_PAD_SCL_SDA__EXTSUP_HV) | 0x01)\n        # Set I2C standard mode and read the stop variable.\n        self._w8(0x88, 0x00)\n        self._w8(0x80, 0x01)\n        self._w8(0xFF, 0x01)\n        self._w8(0x00, 0x00)\n        self._stop = self._r8(0x91)\n        self._w8(0x00, 0x01)\n        self._w8(0xFF, 0x00)\n        self._w8(0x80, 0x00)\n        # Disable SIGNAL_RATE_MSRC and SIGNAL_RATE_PRE_RANGE limit checks.\n        self._w8(_MSRC_CONFIG_CONTROL, self._r8(_MSRC_CONFIG_CONTROL) | 0x12)\n        self.set_signal_rate_limit(0.25)\n        self._w8(_SYSTEM_SEQUENCE_CONFIG, 0xFF)\n        # Reference SPADs from the factory NVM.\n        count, aperture = self._spad_info()\n        spads = bytearray(self._rd(_GLOBAL_CONFIG_SPAD_ENABLES_REF_0, 6))\n        self._w8(0xFF, 0x01)\n        self._w8(_DYNAMIC_SPAD_REF_EN_START_OFFSET, 0x00)\n        self._w8(_DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD, 0x2C)\n        self._w8(0xFF, 0x00)\n        self._w8(_GLOBAL_CONFIG_REF_EN_START_SELECT, 0xB4)\n        first = 12 if aperture else 0\n        enabled = 0\n        for i in range(48):\n            if i < first or enabled == count:\n                spads[i // 8] &= ~(1 << (i % 8)) & 0xFF\n            elif (spads[i // 8] >> (i % 8)) & 1:\n                enabled += 1\n        self._wr(_GLOBAL_CONFIG_SPAD_ENABLES_REF_0, spads)\n        for reg, val in _TUNING:\n            self._w8(reg, val)\n        # New-sample-ready interrupt on GPIO1, active low.\n        self._w8(_SYSTEM_INTERRUPT_CONFIG_GPIO, 0x04)\n        self._w8(_GPIO_HV_MUX_ACTIVE_HIGH, self._r8(_GPIO_HV_MUX_ACTIVE_HIGH) & ~0x10 & 0xFF)\n        self._w8(_SYSTEM_INTERRUPT_CLEAR, 0x01)\n        self._budget_us = self.timing_budget_us()\n        # Disable MSRC and TCC by default, then recompute the timing budget.\n        self._w8(_SYSTEM_SEQUENCE_CONFIG, 0xE8)\n        self.set_timing_budget_us(self._budget_us)\n        # VHV and phase reference calibrations.\n        self._w8(_SYSTEM_SEQUENCE_CONFIG, 0x01)\n        self._ref_calibration(0x40)\n        self._w8(_SYSTEM_SEQUENCE_CONFIG, 0x02)\n        self._ref_calibration(0x00)\n        self._w8(_SYSTEM_SEQUENCE_CONFIG, 0xE8)\n\n    # ---- low level: 8-bit register index, multi-byte values MSB first ----\n    def _w8(self, reg, v):\n        self.i2c.writeto(self.addr, bytes((reg, v & 0xFF)))\n\n    def _w16(self, reg, v):\n        self.i2c.writeto(self.addr, bytes((reg, (v >> 8) & 0xFF, v & 0xFF)))\n\n    def _w32(self, reg, v):\n        self.i2c.writeto(self.addr, bytes((reg, (v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)))\n\n    def _wr(self, reg, data):\n        self.i2c.writeto(self.addr, bytes((reg,)) + bytes(data))\n\n    def _rd(self, reg, n):\n        self.i2c.writeto(self.addr, bytes((reg,)))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _r8(self, reg):\n        return self._rd(reg, 1)[0]\n\n    def _r16(self, reg):\n        d = self._rd(reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _wait(self, cond, what):\n        t0 = time.ticks_ms()\n        while not cond():\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('VL53L0X timeout waiting for ' + what)\n            time.sleep_ms(1)\n\n    def _spad_info(self):\n        self._w8(0x80, 0x01)\n        self._w8(0xFF, 0x01)\n        self._w8(0x00, 0x00)\n        self._w8(0xFF, 0x06)\n        self._w8(0x83, self._r8(0x83) | 0x04)\n        self._w8(0xFF, 0x07)\n        self._w8(0x81, 0x01)\n        self._w8(0x80, 0x01)\n        self._w8(0x94, 0x6B)\n        self._w8(0x83, 0x00)\n        self._wait(lambda: self._r8(0x83) != 0x00, 'SPAD info')\n        self._w8(0x83, 0x01)\n        tmp = self._r8(0x92)\n        self._w8(0x81, 0x00)\n        self._w8(0xFF, 0x06)\n        self._w8(0x83, self._r8(0x83) & ~0x04 & 0xFF)\n        self._w8(0xFF, 0x01)\n        self._w8(0x00, 0x01)\n        self._w8(0xFF, 0x00)\n        self._w8(0x80, 0x00)\n        return tmp & 0x7F, (tmp >> 7) & 0x01\n\n    def _ref_calibration(self, vhv_init_byte):\n        self._w8(_SYSRANGE_START, 0x01 | vhv_init_byte)\n        self._wait(lambda: self._r8(_RESULT_INTERRUPT_STATUS) & 0x07, 'reference calibration')\n        self._w8(_SYSTEM_INTERRUPT_CLEAR, 0x01)\n        self._w8(_SYSRANGE_START, 0x00)\n\n    # ---- settings ----\n    def set_signal_rate_limit(self, mcps):\n        \"\"\"Minimum return signal rate in MCPS (default 0.25); lower reaches further but\n        accepts less reliable readings. Stored as 9.7 fixed point.\"\"\"\n        if not 0 <= mcps <= 511.99:\n            raise ValueError('signal rate limit must be 0-511.99 MCPS')\n        self._w16(_FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT, int(mcps * 128))\n\n    def _steps(self):\n        c = self._r8(_SYSTEM_SEQUENCE_CONFIG)\n        return {'tcc': (c >> 4) & 1, 'dss': (c >> 3) & 1, 'msrc': (c >> 2) & 1,\n                'pre': (c >> 6) & 1, 'final': (c >> 7) & 1}\n\n    def _timeouts(self, en):\n        t = {}\n        t['pre_vcsel'] = _decode_vcsel(self._r8(_PRE_RANGE_CONFIG_VCSEL_PERIOD))\n        t['msrc_mclks'] = self._r8(_MSRC_CONFIG_TIMEOUT_MACROP) + 1\n        t['msrc_us'] = _mclks_to_us(t['msrc_mclks'], t['pre_vcsel'])\n        t['pre_mclks'] = _decode_timeout(self._r16(_PRE_RANGE_CONFIG_TIMEOUT_MACROP_HI))\n        t['pre_us'] = _mclks_to_us(t['pre_mclks'], t['pre_vcsel'])\n        t['final_vcsel'] = _decode_vcsel(self._r8(_FINAL_RANGE_CONFIG_VCSEL_PERIOD))\n        t['final_mclks'] = _decode_timeout(self._r16(_FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI))\n        if en['pre']:\n            t['final_mclks'] -= t['pre_mclks']\n        t['final_us'] = _mclks_to_us(t['final_mclks'], t['final_vcsel'])\n        return t\n\n    def _used_budget(self, en, t):\n        used = 1910 + 960  # start + end overhead\n        if en['tcc']:\n            used += t['msrc_us'] + 590\n        if en['dss']:\n            used += 2 * (t['msrc_us'] + 690)\n        elif en['msrc']:\n            used += t['msrc_us'] + 660\n        if en['pre']:\n            used += t['pre_us'] + 660\n        return used\n\n    def timing_budget_us(self):\n        en = self._steps()\n        t = self._timeouts(en)\n        b = self._used_budget(en, t)\n        if en['final']:\n            b += t['final_us'] + 550\n        return b\n\n    def set_timing_budget_us(self, budget_us):\n        \"\"\"Time allowed for one range (default about 33000 us; 20000 us minimum).\n        Longer budgets give more accurate readings: 200000 us for high accuracy.\"\"\"\n        en = self._steps()\n        t = self._timeouts(en)\n        used = self._used_budget(en, t)\n        if en['final']:\n            used += 550\n            if used > budget_us:\n                raise ValueError('timing budget too short')\n            mclks = _us_to_mclks(budget_us - used, t['final_vcsel'])\n            if en['pre']:\n                mclks += t['pre_mclks']\n            self._w16(_FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI, _encode_timeout(mclks))\n            self._budget_us = budget_us\n\n    def set_vcsel_pulse_period(self, final, pclks):\n        \"\"\"Laser pulse period in PCLKs: pre-range (final=False) 12/14/16/18, final range\n        (final=True) 8/10/12/14. Longer periods (18 and 14) extend the range.\"\"\"\n        reg = (pclks >> 1) - 1\n        en = self._steps()\n        t = self._timeouts(en)\n        if not final:\n            phase = {12: 0x18, 14: 0x30, 16: 0x40, 18: 0x50}\n            if pclks not in phase:\n                raise ValueError('pre-range period must be 12, 14, 16 or 18')\n            self._w8(_PRE_RANGE_CONFIG_VALID_PHASE_HIGH, phase[pclks])\n            self._w8(_PRE_RANGE_CONFIG_VALID_PHASE_LOW, 0x08)\n            self._w8(_PRE_RANGE_CONFIG_VCSEL_PERIOD, reg)\n            self._w16(_PRE_RANGE_CONFIG_TIMEOUT_MACROP_HI, _encode_timeout(_us_to_mclks(t['pre_us'], pclks)))\n            m = _us_to_mclks(t['msrc_us'], pclks)\n            self._w8(_MSRC_CONFIG_TIMEOUT_MACROP, 255 if m > 256 else m - 1)\n        else:\n            cfg = {8: (0x10, 0x02, 0x0C, 0x30), 10: (0x28, 0x03, 0x09, 0x20),\n                   12: (0x38, 0x03, 0x08, 0x20), 14: (0x48, 0x03, 0x07, 0x20)}\n            if pclks not in cfg:\n                raise ValueError('final-range period must be 8, 10, 12 or 14')\n            hi, width, tmo, lim = cfg[pclks]\n            self._w8(_FINAL_RANGE_CONFIG_VALID_PHASE_HIGH, hi)\n            self._w8(_FINAL_RANGE_CONFIG_VALID_PHASE_LOW, 0x08)\n            self._w8(_GLOBAL_CONFIG_VCSEL_WIDTH, width)\n            self._w8(_ALGO_PHASECAL_CONFIG_TIMEOUT, tmo)\n            self._w8(0xFF, 0x01)\n            self._w8(_ALGO_PHASECAL_LIM, lim)\n            self._w8(0xFF, 0x00)\n            self._w8(_FINAL_RANGE_CONFIG_VCSEL_PERIOD, reg)\n            m = _us_to_mclks(t['final_us'], pclks)\n            if en['pre']:\n                m += t['pre_mclks']\n            self._w16(_FINAL_RANGE_CONFIG_TIMEOUT_MACROP_HI, _encode_timeout(m))\n        self.set_timing_budget_us(self._budget_us)\n        seq = self._r8(_SYSTEM_SEQUENCE_CONFIG)\n        self._w8(_SYSTEM_SEQUENCE_CONFIG, 0x02)\n        self._ref_calibration(0x00)\n        self._w8(_SYSTEM_SEQUENCE_CONFIG, seq)\n\n    def long_range(self):\n        \"\"\"ST's long-range profile: up to about 2 m in the dark, noisier readings.\"\"\"\n        self.set_signal_rate_limit(0.1)\n        self.set_vcsel_pulse_period(False, 18)\n        self.set_vcsel_pulse_period(True, 14)\n\n    def set_address(self, new_addr):\n        self._w8(_I2C_SLAVE_DEVICE_ADDRESS, new_addr & 0x7F)\n        self.addr = new_addr\n\n    # ---- ranging ----\n    def _load_stop(self):\n        self._w8(0x80, 0x01)\n        self._w8(0xFF, 0x01)\n        self._w8(0x00, 0x00)\n        self._w8(0x91, self._stop)\n        self._w8(0x00, 0x01)\n        self._w8(0xFF, 0x00)\n        self._w8(0x80, 0x00)\n\n    def start_continuous(self, period_ms=0):\n        \"\"\"Range continuously: back-to-back (period_ms=0) or once every period_ms.\"\"\"\n        self._load_stop()\n        if period_ms:\n            osc = self._r16(_OSC_CALIBRATE_VAL)\n            if osc:\n                period_ms *= osc\n            self._w32(_SYSTEM_INTERMEASUREMENT_PERIOD, period_ms)\n            self._w8(_SYSRANGE_START, 0x04)  # timed\n        else:\n            self._w8(_SYSRANGE_START, 0x02)  # back-to-back\n\n    def stop_continuous(self):\n        self._w8(_SYSRANGE_START, 0x01)\n        self._w8(0xFF, 0x01)\n        self._w8(0x00, 0x00)\n        self._w8(0x91, 0x00)\n        self._w8(0x00, 0x01)\n        self._w8(0xFF, 0x00)\n\n    def read(self):\n        \"\"\"Next range in continuous mode, in mm, or None when nothing is in range\n        (the chip reports 8190/8191 mm then).\"\"\"\n        self._wait(lambda: self._r8(_RESULT_INTERRUPT_STATUS) & 0x07, 'range')\n        d = self._rd(_RESULT_RANGE_STATUS, 12)\n        self._w8(_SYSTEM_INTERRUPT_CLEAR, 0x01)\n        self.range_status = (d[0] & 0x78) >> 3  # 11 = range valid (ST API)\n        mm = (d[10] << 8) | d[11]\n        return None if mm >= 8190 else mm\n\n    def read_single(self):\n        \"\"\"Start one range, wait for it and return mm (or None if out of range).\"\"\"\n        self._load_stop()\n        self._w8(_SYSRANGE_START, 0x01)\n        self._wait(lambda: not (self._r8(_SYSRANGE_START) & 0x01), 'range start')\n        return self.read()\n"
+  },
+  "skill": "---\nname: part-vl53l0x\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the VL53L0X time-of-flight laser distance sensor (VL53L0X). Use when designing, wiring, simulating or writing code for a VL53L0X in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# VL53L0X time-of-flight distance sensor (VL53L0X)\n\n## Overview\nThe **VL53L0X** from STMicroelectronics is a FlightSense time-of-flight ranging sensor. It fires 940 nm infrared laser pulses (Class 1, eye-safe) and times the reflections. It gives an absolute distance in millimetres up to about 2 m, whatever the target's colour.\n- Default mode: about 33 ms per range, up to about 1.2 m. Long range: up to 2 m in the dark. High accuracy: 200 ms budget, within ±3 % at 1.2 m.\n- Field of view 25°.\n- Modelled board: **GY-530 / GY-VL53L0XV2 module** (purple, 6-pin header). It has a 2.8 V LDO, MOSFET level shifters on SDA/SCL with 10 kΩ pull-ups to VIN, and 47 kΩ pull-ups to 2.8 V on XSHUT and GPIO1. The circuit is a copy of Pololu's #2490 carrier.\n\n## Pinout (GY-530, header order as printed on the board)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3.3-5 V (regulated to 2.8 V on the board) |\n| GND | Ground |\n| SCL | I2C clock (level shifted, 10 kΩ pull-up) |\n| SDA | I2C data (level shifted, 10 kΩ pull-up) |\n| GPIO1 | Interrupt output, open drain, 2.8 V pull-up, goes low on new range (optional) |\n| XSHUT | Shutdown input, active low, 2.8 V pull-up, **not** level shifted (optional) |\n\n## Electrical limits\n- Bare chip AVDD: 2.6-3.5 V (typ. 2.8 V), absolute max 3.6 V on any pin. The module's LDO takes 3.3-5 V on VIN.\n- Current: 19 mA average while ranging, peaks up to 40 mA. HW standby (XSHUT low) about 5 µA.\n- I2C up to 400 kHz. Boot takes up to 1.2 ms after XSHUT goes high.\n\n## Interface details\n- **I2C address 0x29** (7-bit; the datasheet gives the 8-bit form 0x52). Change it in software through register 0x8A; it resets on power-up or XSHUT.\n- 8-bit register index; multi-byte values are MSB first.\n- Reference registers (datasheet table 4): 0xC0 = **0xEE**, 0xC1 = 0xAA, 0xC2 = 0x10.\n- ST publishes no register map. Init must replay ST's API: stop variable from 0x91, SPAD info from NVM (poll 0x83, count/type from 0x92), the reference SPAD map at 0xB0-0xB5, the default tuning table, GPIO interrupt config, timing budget, then VHV (0x41) and phase (0x01) reference calibrations. The driver is a port of Pololu's library, which does exactly this.\n- Continuous mode: write 0x02 to SYSRANGE_START (0x00); for timed mode write the period to 0x04 and 0x04 to 0x00.\n- Result: wait until RESULT_INTERRUPT_STATUS (0x13) bits 2:0 are non-zero, then read the 16-bit range in **mm** at 0x1E (RESULT_RANGE_STATUS 0x14 + 10). Write 0x01 to SYSTEM_INTERRUPT_CLEAR (0x0B) after each read.\n- 0x14 bits 6:3 = device range status; 11 means a valid range. 8190/8191 mm means nothing in range.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VIN | 3V3 | 3V3(OUT) pin 36 | 3.3 V pin 1 |\n| GND | GND | GND pin 38 | GND pin 6 |\n| SDA | GPIO21 | GP4 (pin 6) | GPIO2 SDA pin 3 |\n| SCL | GPIO22 | GP5 (pin 7) | GPIO3 SCL pin 5 |\n| XSHUT | leave open (or an open-drain GPIO) | leave open | leave open |\n| GPIO1 | optional GPIO (IRQ) | optional GPIO | optional GPIO |\n\nOn a Raspberry Pi 4 running Linux use `adafruit-circuitpython-vl53l0x` instead of this MicroPython driver.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nimport time\nfrom vl53l0x import VL53L0X\n\ni2c = I2C(0, sda=Pin(4), scl=Pin(5), freq=400000)   # Pico\ntof = VL53L0X(i2c)\ntof.start_continuous()\nwhile True:\n    mm = tof.read()          # None when nothing is in range\n    print('out of range' if mm is None else 'D=%d mm' % mm)\n    time.sleep_ms(200)\n```\n`tof.read_single()` takes one range without continuous mode. `tof.long_range()` reaches about 2 m. `tof.set_timing_budget_us(200000)` gives better accuracy, and `20000` gives faster readings. `tof.range_status` holds the last device range status (11 = valid).\n\n**Several sensors on one bus:** hold every XSHUT low, release one, create `VL53L0X(i2c)` and call `set_address(0x30)`, then release the next and give it another address.\n\n## Gotchas\n- **Peel off the protective film** over the sensor window first.\n- XSHUT and GPIO1 are 2.8 V signals and not level shifted. Pull XSHUT low with an open-drain output or leave it floating. Never drive it high from a 5 V board.\n- Sunlight and other IR shorten the range sharply. Shiny or dark targets also reduce it.\n- The address returns to 0x29 at every power cycle or XSHUT reset.\n- No offset or crosstalk calibration is done here; a cover glass needs ST's calibration flow.\n- The simulator has no ranging timing: in Sparkbench a new range is always ready.\n\n## Datasheet\nhttps://www.st.com/resource/en/datasheet/vl53l0x.pdf (mirror used: https://www.pololu.com/file/0J1187/VL53L0X.pdf)\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom vl53l0x import VL53L0X\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\ntof = VL53L0X(i2c)\ntof.start_continuous()\nwhile True:\n    mm = tof.read()\n    print('out of range' if mm is None else 'D=%d mm' % mm)\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider in millimetres",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=1234 mm",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:46:22.924Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J1187/vl53l0x.pdf",
+      "https://www.pololu.com/product/2490"
+    ]
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "type": "custom-ky-020",
+  "name": "KY-020 ball tilt switch module",
+  "mpn": "KY-020",
+  "category": "sensor",
+  "description": "Tilt detector: a metal-ball tilt switch between S and GND with a 10 kOhm pull-up resistor from S to the + pin. S is HIGH while the contacts are open and goes LOW when the board tilts and the ball bridges them (active low; on the common board the contacts close when the header end is raised). It only reports on/off, not the angle. Runs on 3.3-5 V. Sold as: Keyes / Joy-IT KY-020 tilt switch module (black 3-pin sensor-kit board with blue ball switch; header S, + (middle), -).",
+  "eli5": "A tiny ball inside rolls when you tip the board over, and your board can tell it has been tipped.",
+  "refPrefix": "SW",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Signal (pin 1): HIGH while the contacts are open, LOW while the ball closes them (tilted). Pulled up to + by the on-board 10 kOhm resistor.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Middle pin: supply for the pull-up, 3.3-5 V. Use 3V3 with an ESP32 or Pico, because S is pulled up to this voltage.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-020",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-020",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-020/KY-020.png",
+    "https://arduinomodules.info/ky-020-tilt-switch-module/",
+    "https://protosupplies.com/product/tilt-ball-switch-module/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-020 tilt switch module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: S, + (middle), -.",
+    "On an ESP32 or Pico connect + to 3V3: the on-board 10 kOhm pull-up takes S to the + voltage, so 5 V on + puts 5 V on the GPIO.",
+    "S is active LOW: 1 while the contacts are open, 0 while the ball closes them. Which tilt closes them depends on how you mount the board; invert in code if needed.",
+    "The ball bounces at each change; debounce for about 50 ms (the driver's tilted() does this).",
+    "If S never changes, check that S and - are not swapped."
+  ],
+  "keywords": [
+    "ky-020",
+    "ky020",
+    "tilt",
+    "tilt switch",
+    "ball switch",
+    "orientation",
+    "tip-over",
+    "alarm",
+    "inclination"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Tilted (contacts closed)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "ky020.py",
+    "code": "# KY-020 ball tilt switch module, MicroPython driver.\n# The module is a two-terminal metal-ball tilt switch between S and GND (-) plus a\n# 10 kOhm pull-up resistor (marked 103) from S to the middle + pin. So S is:\n#   HIGH (1) while the ball is away from the contacts (switch open)\n#   LOW  (0) while the ball bridges the contacts (switch closed) -> \"tilted\"\n# Which way counts as \"tilted\" depends on how the board is mounted: on the common\n# Keyes/Joy-IT board the switch closes when the header end is raised.\n# The ball bounces for a few milliseconds at each change, so readings are debounced.\n# Power + from 3.3 V on a 3.3 V board: the pull-up takes S up to the + supply.\nfrom machine import Pin\nimport time\n\n\nclass KY020:\n    def __init__(self, pin, debounce_ms=50):\n        # The board has its own 10k pull-up; an internal pull-up is harmless and\n        # keeps the input defined if + is left unconnected.\n        self.pin = Pin(pin, Pin.IN, Pin.PULL_UP) if isinstance(pin, int) else pin\n        self.debounce_ms = debounce_ms\n\n    def raw(self):\n        \"\"\"Logic level on S right now: 0 = contacts closed, 1 = open.\"\"\"\n        return self.pin.value()\n\n    def closed(self):\n        \"\"\"True while the ball bridges the contacts (S pulled LOW).\"\"\"\n        return self.pin.value() == 0\n\n    def tilted(self):\n        \"\"\"Debounced: True if S stays LOW (contacts closed) for debounce_ms.\"\"\"\n        state = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            v = self.pin.value()\n            if v != state:\n                state = v\n                t0 = time.ticks_ms()\n            time.sleep_ms(2)\n        return state == 0\n\n    def irq(self, handler, on_close=True):\n        \"\"\"Call handler(pin) when the contacts close (falling edge) or open (rising edge).\n        Expect several calls per change because the ball bounces.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_close else Pin.IRQ_RISING)\n"
+  },
+  "example": {
+    "code": "from ky020 import KY020\nimport time\n\ntilt = KY020({S})\nwhile True:\n    print('Tilt: %s' % ('YES' if tilt.tilted() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a tilt when the ball closes the contacts",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Tilt: no",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Tilt: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:55:27.216Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-020"
+    ]
+  }
+}

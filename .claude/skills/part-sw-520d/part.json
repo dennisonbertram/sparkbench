@@ -1,0 +1,103 @@
+{
+  "type": "custom-sw-520d",
+  "name": "SW-520D tilt sensor module",
+  "mpn": "SW-520D",
+  "category": "sensor",
+  "description": "Tilt detector: an SW-520D ball tilt switch and an LM393 comparator with a sensitivity potentiometer. The ball closes the switch while the module stands upright, so DO is LOW when upright and goes HIGH once the module is tilted past roughly 15-45 degrees; the DO LED lights while upright. Open-collector LM393 output with a 10 kOhm pull-up to VCC on the board. Runs on 3.3-5 V. Sold as: SW-520D tilt sensor module (common blue 3-pin LM393 clone board: VCC, GND, DO).",
+  "eli5": "Tells your board when it is tipped over, like a tiny spirit level that only says 'standing' or 'tipped'.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin 1). With a 3.3 V board connect it to 3V3, because DO is pulled up to VCC.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 3): LOW while upright, HIGH while tilted (pulled up to VCC by 10 kOhm)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 15,
+  "datasheetUrl": "https://components101.com/sites/default/files/component_datasheet/Tilt%20Sensor%20Datasheet.pdf",
+  "sources": [
+    "https://components101.com/sites/default/files/component_datasheet/Tilt%20Sensor%20Datasheet.pdf",
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://arduinogetstarted.com/tutorials/arduino-sw520d-tilt-sensor",
+    "https://arduinogetstarted.com/images/tutorial/sw520d-tilt-sensor-pinout.jpg",
+    "https://domoticx.net/webshop/kantel-tilt-sensor-module-3-pins-lm393-sw-520d",
+    "https://robu.in/?p=42862"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "SW-520D tilt sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: VCC, GND, DO.",
+    "On an ESP32 or Pico power VCC from 3V3: the board's pull-up takes DO to VCC, so a 5 V supply puts 5 V on the GPIO.",
+    "DO is LOW while the gold switch can points up (upright) and HIGH when tilted. Check the polarity on your board once: the DO LED is lit when DO is low.",
+    "Mount the module with the switch can vertical, leads down, for the 'upright' reference position.",
+    "The ball bounces as it rolls; the driver waits for the level to settle before reporting a change."
+  ],
+  "keywords": [
+    "sw-520d",
+    "sw520d",
+    "tilt",
+    "ball switch",
+    "angle",
+    "orientation",
+    "tip-over",
+    "lm393"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "DO",
+    "quantity": "Tilted",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "sw520d.py",
+    "code": "# SW-520D tilt sensor module (SW-520D ball tilt switch + LM393 comparator), MicroPython driver.\n# The SW-520D is a ball switch: its contacts are closed while the module stands\n# upright (ball resting on the two poles) and open once it is tilted past roughly\n# 15-45 degrees. On the module the switch pulls the LM393 input low; the LM393\n# output is open-collector with a 10 kOhm pull-up to VCC on the board, so DO is:\n#   LOW  (0) while upright (switch closed, DO-LED on)\n#   HIGH (1) while tilted  (switch open,  DO-LED off)\n# The ball bounces when it rolls, so tilted() requires the level to stay the same\n# for a short settle time before it reports a change.\n# Power the module from 3.3 V when using a 3.3 V board: DO swings to VCC.\nfrom machine import Pin\nimport time\n\n\nclass SW520D:\n    def __init__(self, pin, settle_ms=20):\n        # The board has its own pull-up on DO; no internal pull needed.\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.settle_ms = settle_ms\n        self._state = self.pin.value()\n\n    def raw(self):\n        \"\"\"Logic level on DO right now: 1 = tilted, 0 = upright.\"\"\"\n        return self.pin.value()\n\n    def tilted(self):\n        \"\"\"Debounced state: True when tilted, False when upright.\"\"\"\n        v = self.pin.value()\n        if v != self._state:\n            t0 = time.ticks_ms()\n            while time.ticks_diff(time.ticks_ms(), t0) < self.settle_ms:\n                if self.pin.value() != v:\n                    return self._state == 1\n            self._state = v\n        return self._state == 1\n\n    def upright(self):\n        return not self.tilted()\n"
+  },
+  "example": {
+    "code": "from sw520d import SW520D\nimport time\n\nsensor = SW520D({DO})\nwhile True:\n    print('Tilt: %s' % ('TILTED' if sensor.tilted() else 'upright'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects-tilt",
+      "title": "Reports a tilt when the sensor is tipped over",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Tilt: TILTED",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:56:22.983Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf"
+    ]
+  }
+}

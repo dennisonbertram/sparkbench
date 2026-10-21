@@ -191,6 +191,11 @@ export class ElectricalModel {
       default: {
         // Passive key matrices (no supply): each key joins its row and column.
         const kp = customSpec(part.type);
+        // Self-powered analog sources (passive dividers, piezo discs) drive their output with no supply pin.
+        if (kp?.sim.kind === 'analog-sensor' && kp.sim.selfPowered && kp.sim.outputPin) {
+          const gp = kp.pins.find((p) => p.role === 'gnd')?.name;
+          els.out = c.add(new VSource(`${id}.out`, n(kp.sim.outputPin), gp ? n(gp) : 0, 0, 1000));
+        }
         if (kp?.sim.kind === 'keypad-matrix')
           (kp.sim.rowPins ?? []).forEach((r, ri) => (kp.sim.colPins ?? []).forEach((col, ci) => (els[`key:${ri}:${ci}`] = c.add(new Switch(`${id}.k${ri}.${ci}`, n(r), n(col), false)))));
         // Modules: model their supply draw as a resistor, plus signal-pin behaviour.
@@ -300,9 +305,9 @@ export class ElectricalModel {
           for (const d of cs.sim.digitalOutputs) (els[`dout:${d.pin}`] as VSource).volts = on && (st[d.control] > 0) === (d.activeHigh ?? true) ? vcc0 : 0;
         }
         if (!els.out) break;
-        const vcc = this.moduleSupply(partId);
-        const powered = vcc >= (cs.vmin ?? 2.7) * 0.85;
         const s = cs.sim;
+        const vcc = s.selfPowered ? Infinity : this.moduleSupply(partId);
+        const powered = s.selfPowered || vcc >= (cs.vmin ?? 2.7) * 0.85;
         if (s.kind === 'analog-sensor' && !s.wave) {
           const lo = s.min ?? 0;
           const hi = s.max ?? 100;
