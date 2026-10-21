@@ -1,0 +1,89 @@
+{
+ "type": "custom-mcp4725-test",
+ "name": "MCP4725 test",
+ "mpn": "MCP4725",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "VOUT",
+   "role": "io",
+   "fn": "adc",
+   "required": true
+  }
+ ],
+ "vmin": 2.7,
+ "vmax": 3.6,
+ "currentMa": 1,
+ "i2cAddress": 98,
+ "priceUsd": 5,
+ "supplierQuery": "MCP4725",
+ "sim": {
+  "kind": "i2c-device",
+  "dac": {
+   "protocol": "mcp4725",
+   "pins": [
+    "VOUT"
+   ]
+  }
+ },
+ "example": {
+  "code": "from machine import I2C, Pin, ADC\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nadc = ADC(Pin({VOUT}))\ndef volts():\n    time.sleep_ms(20)\n    return adc.read_u16() * 3.3 / 65535\ni2c.writeto(0x62, bytes([1241 >> 8, 1241 & 0xFF]))\nprint('fast %.2f' % volts())\ncode = 2482\ni2c.writeto(0x62, bytes([0x40, code >> 4, (code & 15) << 4]))\nprint('reg %.2f' % volts())\ns = i2c.readfrom(0x62, 5)\nprint('readback %d' % (s[1] << 4 | s[2] >> 4))\ni2c.writeto(0x62, bytes([0x10 | (code >> 8), code & 0xFF]))\nprint('off %.2f' % volts())\n",
+  "test": {
+   "id": "t",
+   "title": "t",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "fast 1.00",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "reg 2.00",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "readback 2482",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "off 0.00",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

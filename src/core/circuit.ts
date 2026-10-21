@@ -235,6 +235,7 @@ export class ElectricalModel {
           if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
           if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), cs.sim.inputsActiveLow ? n(vccPin) : g, cs.sim.inputsActiveLow ? 1000 : 10000));
           for (const d of cs?.sim.digitalOutputs ?? []) els[`dout:${d.pin}`] = c.add(new VSource(`${id}.dout.${d.pin}`, n(d.pin), g, 0, 200));
+          for (const pin of cs?.sim.dac?.pins ?? []) els[`dac:${pin}`] = c.add(new VSource(`${id}.dac.${pin}`, n(pin), g, 0, 1));
           if (cs?.sim.kind === 'shift-register' && cs.sim.shift?.type === '165' && cs.sim.shift.serialOut) els.shout = c.add(new VSource(`${id}.shout`, n(cs.sim.shift.serialOut), g, 0, 200));
           if (cs?.sim.kind === 'hx711' && cs.sim.outputPin && cs.sim.clockPin) {
             els.hxout = c.add(new VSource(`${id}.hxout`, n(cs.sim.outputPin), g, 0, 200));
@@ -311,6 +312,17 @@ export class ElectricalModel {
           const vcc0 = this.moduleSupply(partId);
           const on = vcc0 >= (cs.vmin ?? 2.7) * 0.85;
           for (const d of cs.sim.digitalOutputs) (els[`dout:${d.pin}`] as VSource).volts = on && (st[d.control] > 0) === (d.activeHigh ?? true) ? vcc0 : 0;
+        }
+        if (cs.sim.dac) {
+          // DAC outputs: VDD × code/4096, or the internal 2.048 V reference × gain (never above VDD); off when powered down.
+          const vdd = this.moduleSupply(partId);
+          const on = vdd >= (cs.vmin ?? 2.7) * 0.85;
+          for (const pin of cs.sim.dac.pins) {
+            const k = (x: string) => Number(st[`dac:${pin}:${x}`] ?? 0);
+            const f = k('code') / 4096;
+            const v = k('vref') ? Math.min(vdd, 2.048 * (k('gain') || 1) * f) : vdd * f;
+            (els[`dac:${pin}`] as VSource).volts = on && !k('pd') ? v : 0;
+          }
         }
         if (!els.out) break;
         const s = cs.sim;

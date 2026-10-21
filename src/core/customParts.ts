@@ -2,6 +2,7 @@
 // A CustomPartSpec is plain JSON: it lives in the project file and in the part's skill folder
 // (.claude/skills/part-<slug>/part.json), and is turned into a PartDef at runtime.
 import type { PartDef, PinDef, Project, SimControl } from './types';
+import { checkSolve, withPromCrc } from './calibration';
 
 export type CustomInterface = 'i2c' | 'spi' | 'analog' | 'digital-in' | 'digital-out' | 'pwm' | 'uart' | 'onewire' | 'power' | 'passive';
 
@@ -147,7 +148,26 @@ export interface CustomSim {
   autoIncrementBit7?: boolean;
   /** i2c-device: more chips in the same package at their own addresses (e.g. LSM303AGR accelerometer 0x19 + magnetometer 0x1E),
    * each with its own registers, measures, regWidth and autoIncrementBit7. */
-  subDevices?: { i2cAddress: number; registers?: Record<string, number>; measures?: I2CMeasure[]; regWidth?: 8 | 16; autoIncrementBit7?: boolean }[];
+  subDevices?: { i2cAddress: number; registers?: Record<string, number>; measures?: I2CMeasure[]; regWidth?: 8 | 16; autoIncrementBit7?: boolean; responses?: { match: string; bytes: ResponseSegment[] }[]; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string } }[];
+  /** i2c-device: named calibration constants for measure.solve formulas, in order: a number, or a formula (src/core/expr.ts)
+   * that may read the chip's own registers with reg(addr) and earlier constants, e.g. "signed(reg(0xA0)*256 + reg(0xA1), 16)".
+   * Reading them from the registers keeps them identical to the PROM/OTP values the real driver reads. */
+  constants?: Record<string, number | string>;
+  /** i2c-device: a write of just one command byte in from…to is also stored in pseudo-register reg (e.g. "0x100"), so
+   * measure.when can pick what the next read returns (MS5611: 0x40–0x48 convert D1, 0x50–0x58 convert D2, then
+   * command 0x00 reads the 24-bit result from register 0x00). */
+  commandLatch?: { reg: string; from: number; to: number };
+  /** i2c-device: an MS56xx-style PROM of 8 big-endian 16-bit words in byte registers from reg, whose last word's low
+   * nibble is the AN520 CRC-4; the simulator fills that nibble in. */
+  promCrc4?: { reg: string };
+  /** i2c-device DAC: written codes drive output pins as voltages (pins in channel order, wired as analog outputs).
+   * 'mcp4725': fast-mode writes (00 PD1 PD0 D11–D8, D7–D0) and write-DAC(-and-EEPROM) commands (010/011…, D11–D4,
+   * D3–D0 xxxx); Vout = VDD × code / 4096; reads return the 5-byte status/DAC/EEPROM block.
+   * 'mcp4728': fast write (channels A–D in turn), multi-write (0x40 | ch<<1 | UDAC), sequential (0x50…) and single
+   * (0x58…) writes, VREF (0x8x), gain (0xCx) and power-down (0xAx) selects; Vout = VDD × code/4096 with VREF = 0,
+   * or 2.048 V × gain × code/4096 (at most VDD) with the internal reference. LDAC is taken as tied low, so UDAC = 1
+   * leaves the output unchanged until the next update of that channel. Power-down modes drive the output to 0 V. */
+  dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] };
   /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
   pointerless?: boolean;
   /** pointerless i2c-device with a 16-bit port (PCF8575): every transfer is byte pairs, port 0 (register 0x00, P00–P07)
@@ -187,6 +207,13 @@ export interface I2CMeasure {
   fields?: { reg: string; from: number; width: number; at?: number }[];
   /** Only while the last value written to this register matches (e.g. BMP180: 0xF4 = 0x2E → temperature in 0xF6). */
   when?: { reg: string; equals: number; mask?: number };
+  /** Calibrated sensors (MS5611, QMP6988…): instead of (value − offset) / scale, the raw counts are found by inverting
+   * the datasheet's forward formula. `formula` (src/core/expr.ts: + − * / ^, if(), floor(), signed(), name = …; steps)
+   * computes the physical value in the control's units from this measure's raw counts (named `raw`), sim.constants and
+   * the raws of earlier solve measures; the simulator picks the integer in min…max whose result is closest to the
+   * slider. The formula must rise or fall steadily over that range. The raw is then encoded as usual (bytes, signed…;
+   * scale is ignored). */
+  solve?: { raw: string; formula: string; min: number; max: number };
 }
 
 /** One field of a command response, packed MSB-first into the reply's bit stream. */
@@ -428,6 +455,33 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     } else if (m.bits !== undefined) errs.push(`measure at ${m.reg}: bits is only used with fields`);
   }
   for (const d of s.subDevices ?? []) for (const m of d.measures ?? []) if (m.control && !keys.has(m.control)) errs.push(`sub-device measure control ${m.control} is not a control`);
+  // Calibrated (solve) measures, on the main chip and each sub-device, read their constants from that chip's registers.
+  const range = (key: string) => {
+    if (key === 'value') return s.min !== undefined && s.max !== undefined ? { min: s.min, max: s.max, def: s.default ?? (s.min + s.max) / 2 } : undefined;
+    const c = s.controls?.find((x) => x.key === key);
+    return c ? { min: c.min, max: c.max, def: c.default ?? (c.min + c.max) / 2 } : undefined;
+  };
+  const chips = [
+    { name: 'sim', registers: s.registers, regWidth: s.regWidth, constants: s.constants, measures: [...(s.measure ? [s.measure] : []), ...(s.measures ?? [])], latch: s.commandLatch, prom: s.promCrc4 },
+    ...(s.subDevices ?? []).map((d) => ({ name: `sub-device 0x${d.i2cAddress.toString(16)}`, registers: d.registers, regWidth: d.regWidth, constants: d.constants, measures: d.measures ?? [], latch: d.commandLatch, prom: d.promCrc4 })),
+  ];
+  for (const c of chips) {
+    const usesSolve = c.measures.some((m) => m.solve);
+    if (c.constants && !usesSolve) errs.push(`${c.name}: constants are only used by measure.solve formulas`);
+    if (c.prom && (c.regWidth === 16 || !/^0x[0-9a-f]{1,2}$/i.test(c.prom.reg))) errs.push(`${c.name}: promCrc4 needs a byte-register address like 0xA0`);
+    if (c.latch && (!/^0x[0-9a-f]{1,3}$/i.test(c.latch.reg) || !(c.latch.from >= 0 && c.latch.to <= 0xff && c.latch.from <= c.latch.to))) errs.push(`${c.name}: commandLatch needs reg (hex) and 0 ≤ from ≤ to ≤ 0xFF`);
+    if (!usesSolve) continue;
+    if (c.regWidth === 16) errs.push(`${c.name}: solve measures need byte registers`);
+    const regs = withPromCrc(c.registers ?? {}, c.prom);
+    errs.push(...checkSolve(c.constants, c.measures, (a) => regs[a] ?? 0, range).map((e) => `${c.name}: ${e}`));
+  }
+  if (s.dac) {
+    if (s.kind !== 'i2c-device') errs.push('dac is for i2c-device');
+    if (!['mcp4725', 'mcp4728'].includes(s.dac.protocol)) errs.push("dac.protocol must be 'mcp4725' or 'mcp4728'");
+    const want = s.dac.protocol === 'mcp4728' ? 4 : 1;
+    if (s.dac.pins?.length !== want) errs.push(`dac ${s.dac.protocol} drives ${want} pin${want > 1 ? 's' : ''} (in channel order)`);
+    for (const p of s.dac.pins ?? []) if (!names.has(p)) errs.push(`dac pin ${p} is not a pin`);
+  }
   for (const r of s.responses ?? []) {
     if (!/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`response match "${r.match}" must be hex bytes like "24 00"`);
     const bits = segBits(r.bytes);
