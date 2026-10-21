@@ -228,6 +228,7 @@ export class ElectricalModel {
           if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
           if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), cs.sim.inputsActiveLow ? n(vccPin) : g, cs.sim.inputsActiveLow ? 1000 : 10000));
           for (const d of cs?.sim.digitalOutputs ?? []) els[`dout:${d.pin}`] = c.add(new VSource(`${id}.dout.${d.pin}`, n(d.pin), g, 0, 200));
+          if (cs?.sim.kind === 'shift-register' && cs.sim.shift?.type === '165' && cs.sim.shift.serialOut) els.shout = c.add(new VSource(`${id}.shout`, n(cs.sim.shift.serialOut), g, 0, 200));
           if (cs?.sim.kind === 'hx711' && cs.sim.outputPin && cs.sim.clockPin) {
             els.hxout = c.add(new VSource(`${id}.hxout`, n(cs.sim.outputPin), g, 0, 200));
             els.hxclk = c.add(new Resistor(`${id}.hxclk`, n(cs.sim.clockPin), g, 50000));

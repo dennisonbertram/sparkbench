@@ -349,6 +349,42 @@ export class SimEngine {
     }
   }
 
+  /** 74HC595 / 74HC165 shift registers, driven by the program's pin changes. */
+  private shiftRegs = new Map<string, { sr: number[]; out: number[]; prevClk: number; prevLatch: number }>();
+  private shiftPinChange(g: number, v: number) {
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      const sh = cs?.sim.kind === 'shift-register' ? cs.sim.shift : undefined;
+      if (!sh || !this.model.modulePowered(part.id)) continue;
+      const on = (pin?: string) => (pin ? this.model.gpiosOnNet(part.id, pin)[0] : undefined);
+      const level = (pin?: string) => {
+        const gg = on(pin);
+        return gg === undefined ? 0 : gg === g ? v : (this.outLevel.get(gg) ?? 0);
+      };
+      const n = (sh.outputs ?? sh.inputs ?? []).length;
+      const st = this.shiftRegs.get(part.id) ?? { sr: new Array(n).fill(0), out: new Array(n).fill(0), prevClk: 0, prevLatch: 0 };
+      this.shiftRegs.set(part.id, st);
+      const clk = level(sh.clock);
+      if (sh.type === '595') {
+        const latch = level(sh.latch);
+        // Rising SRCLK shifts the data bit in; rising RCLK copies the shift register to the outputs (Q0 = newest… QH oldest).
+        if (clk && !st.prevClk) st.sr = [level(sh.data), ...st.sr.slice(0, n - 1)];
+        if (latch && !st.prevLatch) st.out = [...st.sr];
+        st.prevLatch = latch;
+      } else {
+        const load = level(sh.load);
+        // inputs[] are A…H; H comes out first.
+        const vals = () => [...(sh.inputs ?? [])].reverse().map((p) => ((this.model.states.get(part.id) as any)?.[p] > 0 ? 1 : 0));
+        // SH/LD low loads the inputs (H first out); each rising CLK shifts the next one onto QH.
+        if (!load) st.sr = vals();
+        else if (clk && !st.prevClk) st.sr = [...st.sr.slice(1), 0];
+        const so = on(sh.serialOut);
+        if (so !== undefined) this.model.setModuleOutput(part.id, 'shout', st.sr[0] ? this.model.moduleSupply(part.id) : 0);
+      }
+      st.prevClk = clk;
+    }
+  }
+
   /** HX711-style bridge ADCs: clock edges on PD_SCK shift the 24-bit reading out on DOUT. */
   private hx = new Map<string, { bit: number; raw: number; readyAt: number }>();
   private hxParts() {
@@ -397,6 +433,7 @@ export class SimEngine {
     this.tick();
     if (v && !(this.outLevel.get(g) ?? 0)) this.hxClock(g);
     this.segPinChange(g, v);
+    this.shiftPinChange(g, v);
     if (v !== (this.outLevel.get(g) ?? 1)) this.spiDeselect(g);
     if (this.board?.id === 'pico' && g === 25) {
       this.outLevel.set(25, v);
@@ -1082,6 +1119,14 @@ export class SimEngine {
               ]);
               v.active = Object.values(v.inputs).some(Boolean);
             }
+          }
+          if (cs?.sim.kind === 'shift-register' && cs.sim.shift?.type === '595') {
+            v.powered = m.modulePowered(part.id);
+            const st = this.shiftRegs.get(part.id);
+            // outputs[] are QA…QH; the newest bit shifted in is QA.
+            const outs = cs.sim.shift.outputs ?? [];
+            v.inputs = Object.fromEntries(outs.map((p, i) => [p, !!v.powered && !!st?.out[i]]));
+            v.active = Object.values(v.inputs).some(Boolean);
           }
           if (cs?.sim.kind === 'servo') {
             v.powered = m.modulePowered(part.id);

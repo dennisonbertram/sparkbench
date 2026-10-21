@@ -21,7 +21,12 @@ export interface CustomSim {
    *   "value" = temperature, a "humidity" control); servo: an RC servo on a PWM pin (see servo)
    * segment-display: a 7-segment or 8×8 LED display driven by a TM1637 or MAX7219 (tests read the digits as text)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'none';
+  /** shift-register: '595' = serial-in/parallel-out (data, clock, latch pins; outputs testable as expect what:"active"
+   * text:<output pin name>), '165' = parallel-in/serial-out (inputs from toggles, load, clock, serial out). Pin names map
+   * the roles: { data, clock, latch, outputs[] } or { load, clock, serialOut, inputs[] }, parallel pins listed A…H
+   * (QA…QH on a 595; A…H on a 165, where H is shifted out first). Mark parallel pins required:false. */
+  shift?: { type: '595' | '165'; data?: string; clock: string; latch?: string; outputs?: string[]; load?: string; serialOut?: string; inputs?: string[] };
   /** servo: inputPin is the signal; a pulse of minUs…maxUs (at about 50 Hz) turns it to 0…degrees. */
   servo?: { minUs: number; maxUs: number; degrees: number };
   /** tft-display: an SPI colour TFT (ST7789/ST7735/ILI9341 command set: 0x2A/0x2B window, 0x2C RGB565 pixels).
@@ -214,6 +219,7 @@ export function specToDef(spec: CustomPartSpec): PartDef {
   if (s.kind === 'digital-sensor') controls.push({ key: 'active', label: s.quantity ?? 'Triggered', kind: 'toggle', default: 0 });
   if (s.kind === 'keypad-matrix') controls.push({ key: 'value', label: `Key held (1–${(s.keys ?? []).flat().length}: ${(s.keys ?? []).flat().join(' ')}; 0 = none)`, kind: 'slider', min: 0, max: (s.keys ?? []).flat().length, step: 1, default: 0 });
   for (const d of s.digitalOutputs ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.pin, kind: 'toggle', default: 0 });
+  if (s.kind === 'shift-register' && s.shift?.type === '165') for (const p of s.shift.inputs ?? []) controls.push({ key: p, label: `Input ${p}`, kind: 'toggle', default: 0 });
   for (const d of s.inputBits ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.control, kind: 'toggle', default: 0 });
   for (const c of s.controls ?? []) {
     if (c.key === 'value' || controls.some((x) => x.key === c.key)) continue;
@@ -287,6 +293,15 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.kind === 'addressable-led' && (!s.inputPin || !s.count || s.count < 1 || s.count > 1024)) errs.push('addressable-led needs inputPin (DIN) and a count of 1-1024');
   if (s.kind === 'dht-sensor' && (!s.outputPin || !keys.has('humidity'))) errs.push('dht-sensor needs outputPin (DATA) and a "humidity" control');
   if (s.kind === 'servo' && (!s.inputPin || !s.servo || s.servo.maxUs <= s.servo.minUs)) errs.push('servo needs inputPin and servo {minUs, maxUs, degrees}');
+  if (s.kind === 'shift-register') {
+    const sh = s.shift;
+    if (!sh) errs.push('shift-register needs shift');
+    else {
+      const need = sh.type === '595' ? [sh.data, sh.clock, sh.latch, ...(sh.outputs ?? [])] : [sh.load, sh.clock, sh.serialOut, ...(sh.inputs ?? [])];
+      for (const n of need) if (!n || !names.has(n)) errs.push(`shift-register pin ${n} is not a pin`);
+      if (!(sh.type === '595' ? sh.outputs : sh.inputs)?.length) errs.push('shift-register needs its parallel pins');
+    }
+  }
   if (s.kind === 'onewire-temp' && !s.outputPin) errs.push('onewire-temp needs outputPin (the DQ line)');
   for (const p of spec.pins) if (p.pullUp !== undefined && !(p.pullUp >= 100 && p.pullUp <= 100000)) errs.push(`pull-up on ${p.name} must be 100 Ω – 100 kΩ`);
   if (s.kind === 'oled-display' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress');
