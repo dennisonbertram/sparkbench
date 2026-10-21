@@ -1,0 +1,128 @@
+{
+  "type": "custom-sh1107-featherwing-128x64",
+  "name": "SH1107 FeatherWing OLED 128x64",
+  "mpn": "SH1107 FeatherWing 128x64",
+  "category": "display",
+  "description": "1.3\" monochrome 128x64 OLED driven by a Sino Wealth SH1107 controller over I2C (400 kHz), 3 V logic and power, built-in DC-DC for the panel. The glass shows a 128-SEG by 64-COM window of the SH1107's 128x128 RAM starting at COM 0x60 (display offset 0x60), so SSD1306/SH1106 drivers do not work. Sold as: Adafruit FeatherWing OLED 128x64 (SH1107, product 4650), plugs onto a Feather (uses its 3V, GND, SDA, SCL) or wires through its STEMMA QT socket (GND, 3V, SDA, SCL); 2.2 k I2C pull-ups to 3V on board; I2C address 0x3C (0x3D with the ADDR jumper); also has buttons A/B/C and a reset button.",
+  "eli5": "A small, very sharp black-and-white screen your board can write words and pictures on using just two wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Feather GND; STEMMA QT pin 1, black)",
+      "required": true
+    },
+    {
+      "name": "3V",
+      "role": "power",
+      "description": "Supply, 3.3 V only (Feather 3V; STEMMA QT pin 2, red). No regulator on the wing: never 5 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (Feather SDA; STEMMA QT pin 3, blue), 2.2 k pull-up to 3V on board",
+      "required": true,
+      "boardPullUp": 2200
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (Feather SCL; STEMMA QT pin 4, yellow), 2.2 k pull-up to 3V on board",
+      "required": true,
+      "boardPullUp": 2200
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.5,
+  "currentMa": 10,
+  "i2cAddress": 60,
+  "datasheetUrl": "https://www.displayfuture.com/Display/datasheet/controller/SH1107.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "Adafruit FeatherWing OLED 128x64 SH1107 4650",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Power from 3.3 V only: the wing has no regulator and the SH1107 logic/DC-DC supply is limited to 3.5 V.",
+    "The SH1107 is not an SSD1306: use the sh1107_featherwing driver (or Adafruit's SH1107 libraries). The board needs display offset 0x60 (D3h 60h), segment remap A0h, COM scan C0h and a 64-line multiplex (A8h 3Fh).",
+    "Page addressing: each of the 16 pages (B0h-BFh) holds 8 horizontal pixels; the column address picks the row, bottom row first, so the driver transposes its landscape framebuffer.",
+    "After display on (AFh) wait 100 ms before relying on the picture (datasheet power-on sequence).",
+    "Address 0x3C; close the ADDR jumper for 0x3D. The 2.2 k pull-ups are already on the wing.",
+    "Buttons A/B/C go to Feather pins (e.g. 9/6/5 on M0/M4, 15/32/14 on ESP32): only B has a pull-up, enable Pin.PULL_UP on the others.",
+    "RST (Feather header) is the Feather reset line, tied through closed jumper SJ1 to the OLED RES#; the wing already resets the OLED itself (APX803 supervisor plus 12 k pull-up), so it can stay unconnected with the 4-wire hookup. Adafruit's guide still suggests wiring RST to a non-Feather host's reset, which is harmless."
+  ],
+  "keywords": [
+    "sh1107",
+    "oled",
+    "featherwing",
+    "128x64",
+    "adafruit 4650",
+    "display",
+    "i2c",
+    "stemma qt"
+  ],
+  "sources": [
+    "https://www.adafruit.com/product/4650",
+    "https://learn.adafruit.com/adafruit-128x64-oled-featherwing/pinouts",
+    "https://www.displayfuture.com/Display/datasheet/controller/SH1107.pdf",
+    "https://github.com/adafruit/Adafruit_SH110x/blob/master/Adafruit_SH1107.cpp",
+    "https://github.com/adafruit/Adafruit_SH110x/blob/master/examples/OLED_featherwing/OLED_featherwing.ino",
+    "https://github.com/adafruit/Adafruit_CircuitPython_DisplayIO_SH1107/blob/main/adafruit_displayio_sh1107.py",
+    "https://learn.adafruit.com/introducing-adafruit-stemma-qt/technical-specs"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "controller": "sh1107",
+    "rows": 64,
+    "width": 128,
+    "com0": 96,
+    "flip": "y"
+  },
+  "driver": {
+    "filename": "sh1107_featherwing.py",
+    "code": "# MicroPython driver for the Adafruit FeatherWing OLED 128x64 (#4650), SH1107 over I2C.\n# Init sequence and the glass wiring (display offset 0x60, segment remap A0, COM scan C0, 64-line multiplex)\n# follow the Sino Wealth SH1107 datasheet v2.1 and Adafruit's own SH1107 drivers for this board.\n# The drawing surface is a landscape 128x64 framebuf (x right, y down, buttons on the right edge).\n#\n# SH1107 RAM: page p (B0h-BFh) bits 0-7 drive SEG 8p..8p+7 (= landscape x); the column address\n# (00h-0Fh / 10h-17h) is the line shown on a COM (= landscape row, the bottom row first on this board).\n# A MONO_HMSB buffer holds 8 horizontal pixels per byte with bit 0 leftmost, so RAM byte (page p,\n# column c) is simply buf[(63 - c) * 16 + p].\nimport framebuf\nimport time\n\n_ADDR = 0x3C  # 0x3D with the ADDR jumper closed\n\n\nclass SH1107_FeatherWing(framebuf.FrameBuffer):\n    def __init__(self, i2c, addr=_ADDR, contrast=0x4F):\n        self.i2c = i2c\n        self.addr = addr\n        self.width = 128\n        self.height = 64\n        self.buf = bytearray(self.width * self.height // 8)\n        super().__init__(self.buf, self.width, self.height, framebuf.MONO_HMSB)\n        self._line = bytearray(65)\n        self._line[0] = 0x40  # control byte: Co=0, D/C=1 -> display data follows\n        self.init_display(contrast)\n\n    def cmd(self, *bytes_):\n        # control byte 0x00: Co=0, D/C=0 -> every following byte is a command\n        self.i2c.writeto(self.addr, bytes((0x00,) + bytes_))\n\n    def init_display(self, contrast=0x4F):\n        self.cmd(0xAE)              # display off\n        self.cmd(0xD5, 0x51)        # clock divide ratio / oscillator frequency\n        self.cmd(0x20)              # page addressing mode (column auto-increments)\n        self.cmd(0x81, contrast)    # contrast\n        self.cmd(0xAD, 0x8A)        # built-in DC-DC on (turns on with the display)\n        self.cmd(0xA0)              # segment remap off: data bit -> SEG as is\n        self.cmd(0xC0)              # COM scan 0 -> N-1\n        self.cmd(0xDC, 0x00)        # display start line 0\n        self.cmd(0xD3, 0x60)        # display offset: the glass starts at COM 0x60 on this wing\n        self.cmd(0xD9, 0x22)        # pre-charge / discharge period\n        self.cmd(0xDB, 0x35)        # VCOM deselect level\n        self.cmd(0xA8, 0x3F)        # multiplex ratio: 64 lines\n        self.cmd(0xA4)              # show RAM contents\n        self.cmd(0xA6)              # normal (not inverted)\n        self.fill(0)\n        self.show()                 # datasheet: clear the RAM before display on\n        self.cmd(0xAF)              # display on\n        time.sleep_ms(100)          # datasheet power-on sequence: wait 100 ms after AFh\n\n    def poweroff(self):\n        self.cmd(0xAE)\n\n    def poweron(self):\n        self.cmd(0xAF)\n        time.sleep_ms(100)\n\n    def contrast(self, value):\n        self.cmd(0x81, value & 0xFF)\n\n    def invert(self, on):\n        self.cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        buf = self.buf\n        line = self._line\n        for p in range(16):\n            self.cmd(0xB0 | p, 0x10, 0x00)  # page p, column 0\n            i = 63 * 16 + p\n            for c in range(64):\n                line[c + 1] = buf[i]\n                i -= 16\n            self.i2c.writeto(self.addr, line)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nfrom sh1107_featherwing import SH1107_FeatherWing\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\noled = SH1107_FeatherWing(i2c)\noled.fill(0)\noled.text('Sparkbench', 0, 0, 1)\noled.text('SH1107 OK', 0, 56, 1)\noled.show()\nprint('drawn')\n",
+    "test": {
+      "id": "draws",
+      "title": "Shows text on the top and bottom lines, upright",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "Sparkbench",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SH1107 OK",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:39:58.549Z",
+    "verifiedSources": [
+      "https://www.displayfuture.com/Display/datasheet/controller/SH1107.pdf",
+      "https://learn.adafruit.com/adafruit-128x64-oled-featherwing/pinouts"
+    ]
+  }
+}

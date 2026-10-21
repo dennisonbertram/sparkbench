@@ -1,0 +1,156 @@
+{
+  "type": "custom-sh1107-128x128",
+  "name": "SH1107 1.12\" 128×128 OLED display (I2C)",
+  "mpn": "SH1107",
+  "category": "display",
+  "description": "1.12 inch monochrome 128×128 white OLED driven by a Sino Wealth SH1107 controller over I2C at address 0x3D (0x3C with the A0 jumper bridged or A0 tied to GND). The board has a 3.3 V regulator, a 12 V boost converter for the panel and level shifting, so it runs from 3–5 V. It also has SPI (close jumper J1); this part models the default I2C mode. Sold as: Adafruit Monochrome 1.12\" 128x128 OLED Graphic Display (SH1107, STEMMA QT, product #5297), 8-pin header numbered as in Adafruit's Eagle board file (JP2 pad 1 = SDA): 1 Data (SDA), 2 Clk (SCL), 3 DC (A0), 4 Rst, 5 CS, 6 3Vo, 7 VIN, 8 GND; the silkscreen reads GND ... Data left to right, i.e. pin 8 to pin 1.",
+  "eli5": "A small square black-and-white screen with 128 by 128 dots that your board can draw text and pictures on using just two wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "Data",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SDA), BSS138 level-shifted; 10 kOhm pull-up to VIN on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "Clk",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SCL), BSS138 level-shifted; 10 kOhm pull-up to VIN on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "DC",
+      "role": "nc",
+      "description": "Printed DC / A0. In I2C mode this is the address select SA0: open (pulled high) = 0x3D, tied to GND = 0x3C. In SPI mode it is data/command. Leave unconnected for 0x3D",
+      "required": false
+    },
+    {
+      "name": "Rst",
+      "role": "io",
+      "description": "Display reset, active low (diode-isolated, 10 kOhm pull-up and APX803 power-on reset on the board); optional, leave unconnected for basic use",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "SPI chip select (SPI mode only); diode-isolated with a 10 kOhm pull-up on the board, leave unconnected in I2C mode",
+      "required": false
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (about 100 mA spare); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (reverse-polarity protected, on-board AP2112K 3.3 V regulator and 12 V boost). SDA/SCL are pulled up to VIN, so use 3.3 V with an ESP32, Pico or Raspberry Pi",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 80,
+  "i2cAddress": 61,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/5297/SH1107V2.1.pdf",
+  "priceUsd": 17.5,
+  "supplierQuery": "Adafruit 5297 1.12 inch 128x128 OLED SH1107",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header pins 1-8 (Adafruit JP2 numbering): Data, Clk, DC/A0, Rst, CS, 3Vo, VIN, GND. On the silkscreen they read GND ... Data left to right, so pin 1 is the Data end. Always wire by the printed label. For I2C you only need GND, VIN, Clk (SCL) and Data (SDA), or just plug in a STEMMA QT / Qwiic cable.",
+    "I2C address is 0x3D out of the box (A0 open). Bridge the A0 jumper on the back or tie the DC/A0 pin to GND for 0x3C.",
+    "The board ships in I2C mode (J1 open). Do not bridge J1 unless you want SPI; the STEMMA QT ports only work in I2C mode.",
+    "SDA and SCL have 10 kOhm pull-ups to VIN: power the board from 3.3 V when it is wired to a 3.3 V board (ESP32, Pico, Raspberry Pi).",
+    "This is an SH1107, not an SSD1306 or SH1106: those drivers show garbage. Use sh1107.py, which sends each pixel row as one RAM column in vertical addressing mode.",
+    "The panel's 12 V comes from an on-board boost converter, so a fully lit screen can draw around 80 mA from VIN (typically about 35 mA). Power it from the 3V3 pin, not a GPIO.",
+    "The frame buffer is 2 KB; a full redraw over I2C at 400 kHz takes roughly 60-100 ms.",
+    "OLEDs burn in: blank the screen or call poweroff() when nothing needs to be shown for a long time."
+  ],
+  "keywords": [
+    "sh1107",
+    "oled",
+    "1.12 inch",
+    "1.12\"",
+    "128x128",
+    "adafruit 5297",
+    "stemma qt",
+    "qwiic",
+    "display",
+    "i2c display",
+    "screen"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/5297/SH1107V2.1.pdf",
+    "https://cdn-shop.adafruit.com/product-files/5297/ZJY-2828TSWIG01.pdf",
+    "https://www.adafruit.com/product/5297",
+    "https://learn.adafruit.com/adafruit-monochrome-1-12-in-128x128-oled/pinouts",
+    "https://github.com/adafruit/Adafruit-1.12in-128x128-OLED-PCB",
+    "https://github.com/adafruit/Adafruit_CircuitPython_DisplayIO_SH1107/blob/main/adafruit_displayio_sh1107.py",
+    "https://github.com/peter-l5/SH1107"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "controller": "sh1107",
+    "rows": 128,
+    "width": 128,
+    "com0": 0,
+    "flip": "x"
+  },
+  "driver": {
+    "filename": "sh1107.py",
+    "code": "# sh1107.py - MicroPython I2C driver for the 128x128 SH1107 OLED\n# (Adafruit Monochrome 1.12\" 128x128 OLED, product 5297).\n#\n# Follows the Sino Wealth SH1107 V2.1 datasheet and the panel maker's\n# (ZJY-2828TSWIG01) power-up example:\n#   control byte 0x00 = command bytes follow, 0x40 = display data follows;\n#   AD 8A turns the internal DC-DC off (the board has its own 12 V boost);\n#   display offset 0 for this board (Adafruit's driver value for #5297);\n#   clear RAM, then AF (display on) and wait 100 ms.\n#\n# Memory: the SH1107 RAM is 16 pages x 128 columns. Each page byte drives\n# 8 SEG lines; the column address drives a COM line. On this board the\n# SEG lines run across the glass and COM lines down it, so this driver\n# keeps a row-major MONO_HMSB frame buffer (16 bytes per pixel row, bit 0 =\n# leftmost pixel) and sends each row y to column y in vertical addressing\n# mode (21H), where the page address advances after every byte.\n# Segment remap A1 + COM scan C0 with offset 0 is the upright setting that\n# peter-l5's SH1107 driver (tested on this board) uses at rotate=0;\n# rotate180() switches to A0 + C8.\n\nfrom micropython import const\nimport framebuf\nimport time\n\n_DISPLAY_OFF = const(0xAE)\n_DISPLAY_ON = const(0xAF)\n_SET_CONTRAST = const(0x81)\n_SET_DCDC = const(0xAD)\n_VERTICAL_ADDR = const(0x21)\n_SEG_REMAP = const(0xA0)\n_COM_SCAN = const(0xC0)\n_START_LINE = const(0xDC)\n_DISPLAY_OFFSET = const(0xD3)\n_CLOCK_DIV = const(0xD5)\n_PRECHARGE = const(0xD9)\n_VCOM_DESELECT = const(0xDB)\n_MULTIPLEX = const(0xA8)\n_ENTIRE_ON_RESUME = const(0xA4)\n_NORMAL_DISPLAY = const(0xA6)\n_PAGE_ADDR = const(0xB0)\n\n\nclass SH1107_I2C(framebuf.FrameBuffer):\n    def __init__(self, width, height, i2c, addr=0x3D, res=None):\n        if width != 128 or height != 128:\n            raise ValueError('this driver is for the 128x128 panel')\n        self.width = width\n        self.height = height\n        self.i2c = i2c\n        self.addr = addr\n        self.res = res\n        self.stride = width // 8\n        self.buffer = bytearray(self.stride * height)\n        self._mv = memoryview(self.buffer)\n        self._row_cmd = bytearray(4)\n        self._row_cmd[0] = 0x00\n        self._flipped = False\n        super().__init__(self.buffer, width, height, framebuf.MONO_HMSB)\n        self.reset()\n        self.init_display()\n\n    def write_cmd(self, *cmds):\n        self.i2c.writeto(self.addr, bytes((0x00,) + cmds))\n\n    def reset(self):\n        # The board has an APX803 power-on reset; RST is only needed to\n        # recover a display that got noise on its bus. Low pulse >= 10 us.\n        if self.res is not None:\n            self.res.init(self.res.OUT, value=1)\n            time.sleep_ms(1)\n            self.res(0)\n            time.sleep_ms(1)\n            self.res(1)\n            time.sleep_ms(1)\n\n    def init_display(self):\n        self.write_cmd(_DISPLAY_OFF)\n        self.write_cmd(_CLOCK_DIV, 0x51)\n        self.write_cmd(_SET_CONTRAST, 0x4F)\n        self.write_cmd(_SET_DCDC, 0x8A)        # internal DC-DC off\n        self.write_cmd(_VERTICAL_ADDR)\n        self.write_cmd(_START_LINE, 0x00)\n        self.write_cmd(_DISPLAY_OFFSET, 0x00)\n        self.write_cmd(_PRECHARGE, 0x22)\n        self.write_cmd(_VCOM_DESELECT, 0x35)\n        self.write_cmd(_MULTIPLEX, 0x7F)       # 128 COM lines\n        self.write_cmd(_ENTIRE_ON_RESUME)\n        self.write_cmd(_NORMAL_DISPLAY)\n        self.rotate180(False, update=False)\n        self.fill(0)\n        self.show()                            # clear RAM before turning on\n        self.poweron()\n\n    def poweron(self):\n        self.write_cmd(_DISPLAY_ON)\n        time.sleep_ms(100)                     # datasheet: wait 100 ms\n\n    def poweroff(self):\n        self.write_cmd(_DISPLAY_OFF)\n\n    def contrast(self, value):\n        self.write_cmd(_SET_CONTRAST, value & 0xFF)\n\n    def invert(self, on):\n        self.write_cmd(_NORMAL_DISPLAY | (1 if on else 0))\n\n    def rotate180(self, on=True, update=True):\n        # A1/C0 = upright on this board, A0/C8 = turned 180 degrees.\n        self._flipped = bool(on)\n        self.write_cmd(_SEG_REMAP | (0 if on else 1))\n        self.write_cmd(_COM_SCAN | (0x08 if on else 0x00))\n        if update:\n            self.show()\n\n    def show(self):\n        cmd = self._row_cmd\n        mv = self._mv\n        stride = self.stride\n        for y in range(self.height):\n            cmd[1] = _PAGE_ADDR                # page 0\n            cmd[2] = y & 0x0F                  # column low nibble\n            cmd[3] = 0x10 | (y >> 4)           # column high bits\n            self.i2c.writeto(self.addr, cmd)\n            start = y * stride\n            self.i2c.writevto(self.addr, (b'\\x40', mv[start:start + stride]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sh1107 import SH1107_I2C\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\noled = SH1107_I2C(128, 128, i2c, addr=0x3D)\noled.fill(0)\noled.text('SH1107 OLED', 0, 0)\noled.text('128x128 I2C', 0, 60)\noled.text('Bottom row', 0, 120)\noled.show()\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Draws text on the 128x128 OLED",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SH1107 OLED",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "Bottom row",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:40:39.156Z",
+    "verifiedSources": [
+      "https://www.displayfuture.com/Display/datasheet/controller/SH1107.pdf",
+      "https://learn.adafruit.com/adafruit-monochrome-1-12-in-128x128-oled/pinouts",
+      "https://www.adafruit.com/product/5297"
+    ]
+  }
+}

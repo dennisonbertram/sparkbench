@@ -1,0 +1,148 @@
+{
+  "type": "custom-sh1107-1-3in-64x128",
+  "name": "SH1107 1.3\" 64×128 OLED module (Waveshare (C), SPI)",
+  "mpn": "SH1107 1.3in 64x128",
+  "category": "display",
+  "description": "1.3 inch monochrome OLED with a 64×128 glass (used as 128 wide × 64 tall) driven by a Sino Wealth SH1107 controller (128×128 RAM, the glass uses COM lines from 0x60). The module ships in 4-wire SPI mode (I2C after moving a resistor on the back), has a TPS61040 boost for the 9 V panel supply and NO regulator: VCC goes straight to the SH1107 logic supply, so run it from 3.3 V only. Sold as: Waveshare 1.3inch OLED Module (C), SKU 18179 (7-pin header VCC, GND, DIN, CLK, CS, DC, RST).",
+  "eli5": "A small, sharp black-and-white screen that your board draws text and pictures on over a few SPI wires.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3 V (3.0-3.5 V). Goes straight to the SH1107 VDD (max 3.5 V): never 5 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "boardPullUp": 4700,
+      "description": "SPI data in, MOSI (SH1107 SI/D1; SDA in I2C mode); 4.7 k pull-up to VCC on the module, 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "boardPullUp": 4700,
+      "description": "SPI clock (SH1107 SCL/D0), max 4 MHz; 4.7 k pull-up to VCC on the module, 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low, 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select (SH1107 A0): low = command, high = display data. In I2C mode it picks the address (low 0x3C, high 0x3D), 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (>= 10 us), 3.3 V logic only",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.5,
+  "currentMa": 25,
+  "datasheetUrl": "https://files.waveshare.com/upload/5/58/SH1107Datasheet.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "Waveshare 1.3inch OLED Module (C) SH1107 64x128",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (silkscreen and Waveshare schematic P1): VCC, GND, DIN, CLK, CS, DC, RST. The PH2.0 cable connector carries the same 7 signals.",
+    "Power it from 3.3 V only: there is no regulator, VCC feeds the SH1107 logic supply directly (1.65-3.5 V). 5 V destroys the controller.",
+    "Shipped in 4-wire SPI mode (IM resistor to GND). I2C needs the IM resistor on the back moved to the VCC side; DIN is then SDA, CLK is SCL, DC picks address 0x3C (low) or 0x3D (high). This part models the as-shipped SPI mode.",
+    "SPI at most 4 MHz (tSCYC >= 250 ns); data is latched on the rising clock edge, Waveshare uses mode 3.",
+    "The SH1107 is not an SSD1306/SH1106: it has a 128x128 RAM, its column address picks the COM line and pages pick SEG lines. Use sh1107_spi.py, which sets display offset 0x60 and writes row y of the picture at column 63 - y like Waveshare's driver.",
+    "OLEDs burn in: blank the screen or call poweroff() when nothing needs to be shown for a long time."
+  ],
+  "keywords": [
+    "sh1107",
+    "oled",
+    "1.3 inch",
+    "1.3\"",
+    "64x128",
+    "128x64",
+    "waveshare",
+    "oled module (c)",
+    "spi display",
+    "display",
+    "screen"
+  ],
+  "sources": [
+    "https://files.waveshare.com/upload/5/58/SH1107Datasheet.pdf",
+    "https://www.waveshare.com/wiki/1.3inch_OLED_Module_(C)",
+    "https://files.waveshare.com/upload/1/1e/1.3inch_OLED_Module%28C%29_Schematic.pdf",
+    "https://files.waveshare.com/upload/2/2c/OLED_Module_Code.7z",
+    "https://www.waveshare.com/1.3inch-oled-module-c.htm"
+  ],
+  "sim": {
+    "kind": "oled-display",
+    "bus": "spi",
+    "controller": "sh1107",
+    "rows": 64,
+    "width": 128,
+    "com0": 96,
+    "flip": "y"
+  },
+  "driver": {
+    "filename": "sh1107_spi.py",
+    "code": "# SH1107 OLED controller (Sino Wealth), MicroPython driver for the Waveshare 1.3inch OLED Module (C)\n# (64x128 glass shown as 128 wide x 64 tall; header VCC, GND, DIN, CLK, CS, DC, RST; 4-wire SPI as shipped).\n# From the SH1107 datasheet and Waveshare's own OLED_1in3_c driver:\n#   4-wire SPI: SI is shifted in on every RISING edge of SCL, MSB first; Waveshare uses mode 3 (polarity 1, phase 1).\n#   A0 (the module's DC pin): low = command byte, high = display RAM data. CS low enables the interface.\n#   tSCYC >= 250 ns at VDD 2.4-3.5 V -> at most 4 MHz.\n#   Reset: RES low >= 10 us (tRW), reset time tR <= 2 us.\n#   Power on: reset, initial setup, clear RAM, display on (AFh), wait 100 ms, then send display data.\n#   128x128 RAM: 16 pages (bit n of page p -> SEG 8p+n) x 128 columns (column address -> COM line).\n#   This glass uses 64 COM lines from COM 0x60 (display offset D3h 60h, multiplex A8h 3Fh) and all 128 SEG lines.\n#   Vertical addressing (21h): each data byte advances the page, so one image row = 16 bytes at one column.\n#   Waveshare writes image row y at column 63 - y with A0 (no segment remap) and C0 (normal COM scan): upright.\n#   The module has its own 9 V boost (TPS61040) for VPP, so the internal DC-DC is switched off (ADh 80h).\nimport time\nimport framebuf\n\n\nclass SH1107_SPI(framebuf.FrameBuffer):\n    def __init__(self, spi, dc, rst, cs, width=128, height=64, baudrate=4000000):\n        self.width = width\n        self.height = height\n        self.spi = spi\n        self.dc = dc\n        self.rst = rst\n        self.cs = cs\n        self.rate = min(baudrate, 4000000)   # tSCYC >= 250 ns\n        self.buffer = bytearray(width * height // 8)\n        # One bit per pixel, rows of 16 bytes, bit 0 = leftmost pixel (Waveshare getbuffer: bit x % 8 of byte y*16 + x//8)\n        super().__init__(self.buffer, width, height, framebuf.MONO_HMSB)\n        dc.init(dc.OUT, value=0)\n        cs.init(cs.OUT, value=1)\n        if rst is not None:\n            rst.init(rst.OUT, value=1)\n            time.sleep_ms(10)\n            rst(0)\n            time.sleep_ms(10)   # tRW >= 10 us\n            rst(1)\n            time.sleep_ms(10)   # tR <= 2 us\n        self.init_display()\n\n    def _write(self, dc, buf):\n        self.spi.init(baudrate=self.rate, polarity=1, phase=1)\n        self.cs(1)\n        self.dc(dc)\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)\n\n    def write_cmd(self, *cmds):\n        self._write(0, bytes(cmds))\n\n    def write_data(self, buf):\n        self._write(1, buf)\n\n    def init_display(self):\n        self.write_cmd(\n            0xAE,              # display off\n            0x00, 0x10,        # column address 0\n            0xB0,              # page address 0\n            0xDC, 0x00,        # display start line 0\n            0x81, 0x6F,        # contrast\n            0x21,              # vertical addressing mode\n            0xA0,              # segment remap off (SEG0 at the left)\n            0xC0,              # COM scan COM0 -> COM[N-1]\n            0xA4,              # display follows RAM\n            0xA6,              # normal (not inverted)\n            0xA8, 0x3F,        # multiplex ratio 64\n            0xD3, 0x60,        # display offset: the glass starts at COM 0x60\n            0xD5, 0x80,        # oscillator / clock divide\n            0xD9, 0x1D,        # pre-charge / discharge period\n            0xDB, 0x35,        # VCOM deselect level\n            0xAD, 0x80,        # internal DC-DC off (the module has its own VPP boost)\n        )\n        self.fill(0)\n        self.show()            # clear RAM before display on (power-on flow chart)\n        time.sleep_ms(200)\n        self.write_cmd(0xAF)   # display on\n        time.sleep_ms(100)     # wait 100 ms before sending display data\n\n    def poweroff(self):\n        self.write_cmd(0xAE)\n\n    def poweron(self):\n        self.write_cmd(0xAF)\n\n    def contrast(self, value):\n        self.write_cmd(0x81, value & 0xFF)\n\n    def invert(self, on):\n        self.write_cmd(0xA7 if on else 0xA6)\n\n    def show(self):\n        row_bytes = self.width // 8\n        self.write_cmd(0xB0)\n        for y in range(self.height):\n            col = 63 - y\n            self.write_cmd(col & 0x0F, 0x10 | (col >> 4))\n            start = y * row_bytes\n            self.write_data(self.buffer[start:start + row_bytes])\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom sh1107_spi import SH1107_SPI\n\nspi = SPI(1, baudrate=4000000, polarity=1, phase=1, sck=Pin({CLK}), mosi=Pin({DIN}))\noled = SH1107_SPI(spi, dc=Pin({DC}), rst=Pin({RST}), cs=Pin({CS}))\noled.fill(0)\noled.text('Waveshare 1.3C', 0, 0)\noled.text('SH1107 SPI', 0, 28)\noled.text('BOTTOM ROW', 0, 56)\noled.show()\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Draws text upright on the 1.3\" (C) OLED",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "Waveshare 1.3C",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "BOTTOM ROW",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:36:57.678Z",
+    "verifiedSources": [
+      "https://www.displayfuture.com/Display/datasheet/controller/SH1107.pdf",
+      "https://www.waveshare.com/wiki/1.3inch_OLED_Module_(C)"
+    ]
+  }
+}
