@@ -140,6 +140,15 @@ export function apiPlugin(): Plugin {
         for (const o of json.options) if (o.mAh >= 1e12) o.mAh = null;
         return send(res, 200, json);
       }
+      if (req.url === '/api/ota' && req.method === 'POST') {
+        const { host, project } = await body(req);
+        const { otaPush } = await import('./ota');
+        try {
+          return send(res, 200, { log: await otaPush(String(host ?? '').trim(), project.id, project.files) });
+        } catch (e: any) {
+          return send(res, 502, { error: String(e?.message ?? e) });
+        }
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });

@@ -9,6 +9,7 @@ import { installEsp32, installPico } from '../board/install';
 import { parseSelfTest, type SelfTestLine } from '../core/selftest';
 import { download, slug } from './exporters';
 import { MultimeterGuide } from './MultimeterGuide';
+import { otaPy, otaBootPy, otaToken } from '../core/ota';
 
 type Phase = 'idle' | 'connecting' | 'connected' | 'busy';
 
@@ -33,6 +34,11 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
   const [symptom, setSymptom] = useState('');
   const [answer, setAnswer] = useState<DebugAnswer | null>(null);
   const [asking, setAsking] = useState(false);
+  const [ota, setOta] = useState(false);
+  const [ssid, setSsid] = useState('');
+  const [wifiPass, setWifiPass] = useState('');
+  const [otaHost, setOtaHost] = useState('');
+  const [otaLog, setOtaLog] = useState('');
   const link = useRef<SerialLink | null>(null);
   const repl = useRef<RawRepl | null>(null);
   const logRef = useRef<HTMLPreElement>(null);
@@ -125,7 +131,13 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
     if (!r) return;
     await run('Copying the program', async () => {
       await r.enter();
-      const files = Object.entries(project.files);
+      const extra: Record<string, string> = {};
+      if (ota && kind === 'esp32') {
+        extra['ota.py'] = otaPy(otaToken(project.id));
+        extra['boot.py'] = otaBootPy();
+        if (!project.files['secrets.py'] && ssid) extra['secrets.py'] = `WIFI_SSID = ${JSON.stringify(ssid)}\nWIFI_PASSWORD = ${JSON.stringify(wifiPass)}\n`;
+      }
+      const files = Object.entries({ ...project.files, ...extra });
       for (const [i, [name, src]] of files.entries()) {
         append(`Copying ${name} (${i + 1}/${files.length})…\n`);
         await r.writeFile(name, src, (d, t) => setProgress(Math.round(((i + d / t) / files.length) * 100)));
@@ -246,6 +258,17 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
                 </li>
                 <li>
                   <strong>Copy your program</strong>
+                  {kind === 'esp32' && (
+                    <label className="bp-ota-opt">
+                      <input type="checkbox" checked={ota} onChange={(e) => setOta(e.target.checked)} data-testid="board-ota" /> Also set up updates over Wi-Fi (next time, no cable needed)
+                    </label>
+                  )}
+                  {ota && kind === 'esp32' && !project.files['secrets.py'] && (
+                    <span className="bp-row">
+                      <input value={ssid} onChange={(e) => setSsid(e.target.value)} placeholder="Wi-Fi name" aria-label="Wi-Fi name" />
+                      <input value={wifiPass} onChange={(e) => setWifiPass(e.target.value)} placeholder="Wi-Fi password" type="password" aria-label="Wi-Fi password" />
+                    </span>
+                  )}
                   <span className="bp-row">
                     <button className="primary" onClick={copyProgram} disabled={!connected || busy || needsMp} data-testid="board-copy">Copy to the board and run it</button>
                   </span>
@@ -264,6 +287,28 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {error && <div className="banner error">{error}</div>}
+
+        {kind === 'esp32' && (
+          <details className="bp-ota" data-testid="board-ota-section">
+            <summary>Update over Wi-Fi</summary>
+            <p className="muted">After you’ve copied the program once with “Also set up updates over Wi-Fi”, the board prints its address when it starts (e.g. “OTA: send updates to http://192.168.1.42:8266”). Type it here to send a new version without the cable.</p>
+            <span className="bp-row">
+              <input value={otaHost} onChange={(e) => setOtaHost(e.target.value)} placeholder="Board address, e.g. 192.168.1.42" aria-label="Board address" />
+              <button
+                disabled={!otaHost.trim() || busy}
+                onClick={async () => {
+                  setOtaLog('Sending…');
+                  const r = await fetch('/api/ota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host: otaHost.replace(/^https?:\/\//, '').replace(/:\d+.*$/, ''), project }) });
+                  const d = await r.json();
+                  setOtaLog(r.ok ? d.log.join('\n') : d.error);
+                }}
+              >
+                Send the program over Wi-Fi
+              </button>
+            </span>
+            {otaLog && <pre className="bp-monitor">{otaLog}</pre>}
+          </details>
+        )}
 
         {parsed.lines.length > 0 && (
           <div className="selftest" data-testid="selftest-results">

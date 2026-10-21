@@ -1,0 +1,47 @@
+// E2E: set up Wi-Fi updates over USB (fake board), then send the program over "Wi-Fi" to the real
+// ota.py running on MicroPython (Unix port) at 127.0.0.1:8266.
+import { chromium } from 'playwright';
+import { readFileSync, writeFileSync, mkdtempSync, existsSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+const fake = readFileSync(new URL('./fake-board.js', import.meta.url), 'utf8');
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
+await ctx.addInitScript(fake);
+const p = await ctx.newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(String(e)));
+await p.goto('http://localhost:5173/?example=esp32-weather-imu&notour');
+await p.waitForSelector('.part');
+await p.click('[data-testid=board-open]');
+await p.click('[data-testid=board-connect]');
+await p.waitForSelector('[data-testid=board-info]');
+await p.check('[data-testid=board-ota]');
+await p.fill('input[aria-label="Wi-Fi name"]', 'MyWifi');
+await p.fill('input[aria-label="Wi-Fi password"]', 'secret');
+await p.click('[data-testid=board-copy]');
+await p.waitForFunction(() => document.querySelector('[data-testid=board-monitor]').textContent.includes('soft reboot'), null, { timeout: 60000 });
+const files = await p.evaluate(() => window.__fakeBoardFiles);
+console.log('copied over USB:', Object.keys(files).join(', '));
+// The "board" on Wi-Fi: real MicroPython running the ota.py that was just copied.
+const dir = mkdtempSync(join(tmpdir(), 'ota-e2e-'));
+writeFileSync(join(dir, 'ota.py'), files['ota.py']);
+const mp = spawn('micropython', ['-c', 'import ota\nota.serve()'], { cwd: dir });
+let out = '';
+mp.stdout.on('data', (d) => (out += d));
+for (let i = 0; i < 50 && !out.includes('OTA ready'); i++) await new Promise((r) => setTimeout(r, 100));
+await p.click('[data-testid=board-ota-section] summary');
+await p.fill('input[aria-label="Board address"]', '127.0.0.1');
+await p.click('[data-testid=board-ota-section] button');
+await p.waitForFunction(() => /restarting|failed|No answer|key/i.test(document.querySelector('[data-testid=board-ota-section] pre')?.textContent ?? ''), null, { timeout: 30000 });
+const log = await p.textContent('[data-testid=board-ota-section] pre');
+console.log('OTA log:', log);
+mp.kill();
+const got = existsSync(join(dir, 'main.py')) ? readFileSync(join(dir, 'main.py'), 'utf8') : '';
+console.log('board main.py starts with:', got.split('\n')[0]);
+console.log('errors:', errors);
+await b.close();
+const pass = 'ota.py' in files && 'boot.py' in files && 'secrets.py' in files && /saved main\.py/.test(log) && got.length > 100 && !errors.length;
+console.log(pass ? 'PASS' : 'FAIL');
+process.exit(pass ? 0 : 1);
