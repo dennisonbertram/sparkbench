@@ -1,0 +1,27 @@
+// E2E: order boards as a 2×2 V-scored panel (KiKit) and download the panel Gerbers.
+import { chromium } from 'playwright';
+import { execSync } from 'node:child_process';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true })).newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(String(e)));
+await p.goto('http://localhost:5173/?example=pico-night-light&notour');
+await p.waitForSelector('.part');
+await p.click('.tabs button:has-text("Circuit board")');
+await p.selectOption('[data-testid=pcb-panel]', '2x2');
+await p.click('[data-testid=pcb-build]');
+await p.waitForSelector('[data-testid=pcb-result]', { timeout: 600000 });
+const note = await p.textContent('[data-testid=pcb-panel-note]');
+console.log('panel:', note);
+await p.click('.pcb-toggle button:has-text("Panel of 4")');
+await p.waitForTimeout(1500);
+await p.locator('.pcb-picture').screenshot({ path: 'test-results/pcb-panel.png' });
+const [dl] = await Promise.all([p.waitForEvent('download'), p.click('[data-testid=pcb-panel-zip]')]);
+await dl.saveAs('test-results/panel-gerbers.zip');
+const list = execSync('unzip -l test-results/panel-gerbers.zip').toString();
+console.log(list.split('\n').filter((l) => /\.(g..|drl|gm1)$/.test(l.trim())).length, 'gerber/drill files');
+console.log('errors:', errors);
+await b.close();
+const pass = /no errors/.test(note) && /Edge_Cuts/.test(list) && !errors.length;
+console.log(pass ? 'PASS' : 'FAIL');
+process.exit(pass ? 0 : 1);

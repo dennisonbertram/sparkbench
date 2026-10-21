@@ -21,6 +21,7 @@ interface Result {
   problems: string[];
   fab: { id: string; name: string; track: number; drill: number; quote: string };
   placement: PlacedPart[];
+  panel: { rows: number; cols: number; drcErrors: number } | null;
   variant: 'prototype' | 'product';
   productNotes: string[];
   sourcing: {
@@ -63,6 +64,7 @@ export function PcbView() {
   const [qrUrl, setQrUrl] = useState('');
   const [editing, setEditing] = useState(false);
   const [variant, setVariant] = useState<'prototype' | 'product'>('prototype');
+  const [panel, setPanel] = useState('1x1');
   const [error, setError] = useState('');
   const designKey = useMemo(() => JSON.stringify([project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b]), project.revision]), [project]);
   const [builtFor, setBuiltFor] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export function PcbView() {
     setStatus(null);
     setEditing(false);
     try {
-      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl, fixed, variant }) });
+      const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl, fixed, variant, panel: { rows: Number(panel[0]), cols: Number(panel[2]) } }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? 'Could not start the board design.');
       setJob(d.id);
@@ -167,6 +169,14 @@ export function PcbView() {
                 <option value="oshpark">OSH Park</option>
               </select>
             </label>
+            <label>
+              Boards per panel
+              <select value={panel} onChange={(e) => setPanel(e.target.value)} data-testid="pcb-panel">
+                <option value="1x1">Single boards</option>
+                <option value="2x2">Panel of 4 (2×2, snap apart)</option>
+                <option value="3x3">Panel of 9 (3×3, snap apart)</option>
+              </select>
+            </label>
             <label className="grow">
               QR code on the board (optional)
               <input value={qrUrl} onChange={(e) => setQrUrl(e.target.value)} placeholder="https://… your blog post or repo" data-testid="pcb-qr" />
@@ -221,6 +231,7 @@ export function PcbView() {
                   {res.problems.map((p, i) => <li key={`p${i}`}>{p}</li>)}
                 </ul>
               )}
+              {res.panel && <p data-testid="pcb-panel-note">Panel: {res.panel.rows * res.panel.cols} boards on one sheet with V-score lines to snap them apart, rails with fiducials and tooling holes for assembly. {res.panel.drcErrors ? `KiCad found ${res.panel.drcErrors} problem${res.panel.drcErrors > 1 ? 's' : ''} on the panel.` : 'KiCad’s rule check on the panel found no errors.'}</p>}
               {res.drc.warnings.length > 0 && <p className="pcb-note">{res.drc.warnings.length} minor note{res.drc.warnings.length === 1 ? '' : 's'}: {[...new Set(res.drc.warnings.map((w) => PLAIN[w.type] ?? w.description))].join(' ')}</p>}
             </div>
 
@@ -229,6 +240,7 @@ export function PcbView() {
               <a className="button" href={`/api/pcb/zip?id=${job}&kind=all&name=${name}`}>All board files: KiCad, 3D, assembly (.zip)</a>
               <a className="button" href={file(`fab/bom-jlcpcb.csv`)}>Assembly parts list (BOM)</a>
               <a className="button" href={file(`fab/cpl-jlcpcb.csv`)}>Part positions (CPL)</a>
+              {res.panel && <a className="button" href={`/api/pcb/zip?id=${job}&kind=panel&name=${name}`} data-testid="pcb-panel-zip">Panel of {res.panel.rows * res.panel.cols} for the factory (.zip)</a>}
               <a className="button" href={file('fab/assembly.pdf')}>Assembly drawing (PDF)</a>
               <a className="button" href={file('TEST.md')}>Test procedure</a>
               <a className="button" href={file('COMPLIANCE.md')}>Selling it? Compliance checklist</a>
@@ -241,13 +253,13 @@ export function PcbView() {
 
             <div className="pcb-picture">
               <div className="pcb-toggle" role="tablist">
-                {(['top', 'bottom', 'copper'] as const).map((s) => (
-                  <button key={s} role="tab" aria-selected={side === s} className={side === s ? 'active' : ''} onClick={() => setSide(s)}>
-                    {s === 'top' ? 'Top' : s === 'bottom' ? 'Bottom' : 'Copper tracks'}
+                {(['top', 'bottom', 'copper', ...(res.panel ? ['panel'] : [])] as const).map((s) => (
+                  <button key={s} role="tab" aria-selected={side === s} className={side === s ? 'active' : ''} onClick={() => setSide(s as any)}>
+                    {s === 'top' ? 'Top' : s === 'bottom' ? 'Bottom' : s === 'copper' ? 'Copper tracks' : `Panel of ${res.panel!.rows * res.panel!.cols}`}
                   </button>
                 ))}
               </div>
-              <img src={file(side === 'top' ? 'board-top.png' : side === 'bottom' ? 'board-bottom.png' : 'board.svg')} alt={`Circuit board, ${side} view`} className={side === 'copper' ? 'copper' : ''} />
+              <img src={file(side === 'top' ? 'board-top.png' : side === 'bottom' ? 'board-bottom.png' : (side as string) === 'panel' ? 'fab/panel/panel-top.png' : 'board.svg')} alt={`Circuit board, ${side} view`} className={side === 'copper' ? 'copper' : ''} />
             </div>
 
             {res.sourcing ? (

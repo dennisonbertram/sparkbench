@@ -260,10 +260,10 @@ export function apiPlugin(): Plugin {
         const { startPcb, pcbToolsStatus } = await import('./pcbjobs');
         const tools = pcbToolsStatus();
         if (!tools.kicad) return send(res, 400, { error: 'Circuit boards need KiCad 8 or newer installed (kicad.org).' });
-        const { project, fab, qrUrl, fixed, variant } = await body(req);
+        const { project, fab, qrUrl, fixed, variant, panel } = await body(req);
         const okUrl = typeof qrUrl === 'string' && /^https?:\/\/\S{3,300}$/.test(qrUrl.trim()) ? qrUrl.trim() : undefined;
         const okFixed = fixed && typeof fixed === 'object' ? Object.fromEntries(Object.entries(fixed).filter(([, v]: any) => [v?.x, v?.y, v?.rot].every((n) => typeof n === 'number' && isFinite(n)))) : undefined;
-        const job = startPcb(project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl, fixed: okFixed as any, variant: variant === 'product' ? 'product' : 'prototype' });
+        const job = startPcb(project, { fab: ['jlcpcb', 'pcbway', 'oshpark'].includes(fab) ? fab : 'jlcpcb', qrUrl: okUrl, fixed: okFixed as any, variant: variant === 'product' ? 'product' : 'prototype', panel: panel && [1, 2, 3].includes(panel.rows) && [1, 2, 3, 4].includes(panel.cols) ? { rows: panel.rows, cols: panel.cols } : undefined });
         return send(res, 200, { id: job.id, routing: tools.freerouting });
       }
       if (req.url === '/api/pcb/enclosure' && req.method === 'POST') {
@@ -292,11 +292,11 @@ export function apiPlugin(): Plugin {
           return res.end(readFileSync(f));
         }
         if (u.pathname === '/api/pcb/zip') {
-          const kind = u.searchParams.get('kind') === 'all' ? 'all' : 'fab';
+          const kind = u.searchParams.get('kind') === 'all' ? 'all' : u.searchParams.get('kind') === 'panel' ? 'panel' : 'fab';
           const buf = await pcbZip(id, kind);
           if (!buf) return send(res, 404, { error: 'not ready' });
           res.setHeader('Content-Type', 'application/zip');
-          res.setHeader('Content-Disposition', `attachment; filename="${u.searchParams.get('name') || 'board'}-${kind === 'fab' ? 'gerbers' : 'board-files'}.zip"`);
+          res.setHeader('Content-Disposition', `attachment; filename="${u.searchParams.get('name') || 'board'}-${kind === 'fab' ? 'gerbers' : kind === 'panel' ? 'panel-gerbers' : 'board-files'}.zip"`);
           return res.end(buf);
         }
       }

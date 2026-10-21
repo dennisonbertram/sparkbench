@@ -20,7 +20,7 @@ const jobs = new Map<string, Job>();
 const ROOT = join(tmpdir(), 'sparkbench-pcb');
 
 export function startPcb(project: Project, opts: PcbOptions = {}): Job {
-  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null, opts.variant ?? 'prototype'])).digest('hex').slice(0, 16);
+  const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null, opts.variant ?? 'prototype', opts.panel ?? null])).digest('hex').slice(0, 16);
   const existing = jobs.get(id);
   if (existing && !existing.error) return existing;
   const job: Job = { id, log: [], done: false };
@@ -44,12 +44,13 @@ export function pcbFile(id: string, path: string): string | null {
 }
 
 /** "fab": what the PCB factory needs (Gerbers + drill). "all": every board file. */
-export async function pcbZip(id: string, kind: 'fab' | 'all'): Promise<Buffer | null> {
+export async function pcbZip(id: string, kind: 'fab' | 'all' | 'panel'): Promise<Buffer | null> {
   const job = jobs.get(id);
   if (!job?.result) return null;
   const zip = new JSZip();
-  const files = job.result.files.filter((f) => (kind === 'fab' ? f.startsWith('fab/gerbers/') : true));
-  for (const f of files) zip.file(kind === 'fab' ? f.slice('fab/gerbers/'.length) : `${job.result.name}-board/${f}`, readFileSync(join(job.result.dir, f)));
+  const prefix = kind === 'fab' ? 'fab/gerbers/' : kind === 'panel' ? 'fab/panel/gerbers/' : '';
+  const files = job.result.files.filter((f) => f.startsWith(prefix));
+  for (const f of files) zip.file(kind === 'all' ? `${job.result.name}-board/${f}` : f.slice(prefix.length), readFileSync(join(job.result.dir, f)));
   return zip.generateAsync({ type: 'nodebuffer' });
 }
 

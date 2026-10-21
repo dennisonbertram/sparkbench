@@ -50,6 +50,8 @@ export interface PcbResult {
   sourcing: PcbSourcing | null;
   fab: { id: FabId; name: string; track: number; drill: number; quote: string };
   variant: 'prototype' | 'product';
+  /** The V-scored panel, if one was made. */
+  panel: { rows: number; cols: number; drcErrors: number } | null;
   /** What the product version changed. */
   productNotes: string[];
   /** Where each part is (origin and reserved area, mm from the board's top-left), for the board editor. */
@@ -71,7 +73,12 @@ export interface PcbOptions {
   fixed?: Record<string, { x: number; y: number; rot: number }>;
   /** 'product': bare module + support circuit + surface-mount parts (see production.ts). */
   variant?: 'prototype' | 'product';
+  /** Several boards on one V-scored panel (KiKit), e.g. { rows: 2, cols: 2 }. */
+  panel?: { rows: number; cols: number };
 }
+
+const KIKIT_LIB = join(homedir(), '.cache/sparkbench/kikit-lib');
+export const kikitAvailable = () => existsSync(join(KIKIT_LIB, 'kikit'));
 
 export async function buildPcb(source: Project, dir: string, onStep: (msg: string) => void = () => {}, opts: PcbOptions = {}): Promise<PcbResult> {
   if (!KICAD_CLI) throw new Error('KiCad is not installed (needed for circuit boards).');
@@ -174,6 +181,31 @@ export async function buildPcb(source: Project, dir: string, onStep: (msg: strin
   } catch (e: any) {
     log.push(`Couldn't write the test procedure: ${e?.message ?? e}`);
   }
+  // Panel: several copies on one V-scored sheet with rails, fiducials and tooling holes (KiKit).
+  let panel: PcbResult['panel'] = null;
+  if (opts.panel && opts.panel.rows * opts.panel.cols > 1) {
+    if (spec.parts.some((p) => p.flushEdge !== undefined)) log.push('Panel skipped: a connector sits on the board edge; order single boards (or ask the maker to panelise with mouse bites).');
+    else if (!kikitAvailable()) log.push('Panel skipped: KiKit is not installed.');
+    else {
+      step(`Making a ${opts.panel.rows}×${opts.panel.cols} panel`);
+      const pdir = join(fab, 'panel');
+      mkdirSync(join(pdir, 'gerbers'), { recursive: true });
+      const ppcb = join(pdir, `${spec.name}-panel.kicad_pcb`);
+      const env = { ...process.env, PYTHONPATH: KIKIT_LIB };
+      await new Promise<void>((res) =>
+        execFile(KICAD_PY, ['-m', 'kikit.ui', 'panelize', '--layout', `grid; rows: ${opts.panel!.rows}; cols: ${opts.panel!.cols}; space: 0mm`, '--tabs', 'full', '--cuts', 'vcuts; clearance: 0.5mm', '--framing', 'railstb; width: 5mm; space: 0mm', '--fiducials', '3fid; hoffset: 5mm; voffset: 2.5mm', '--tooling', '3hole; hoffset: 2.5mm; voffset: 2.5mm; size: 1.5mm', pcb, ppcb], { env, timeout: 300_000 }, () => res()),
+      );
+      if (existsSync(ppcb)) {
+        const pdrc = join(pdir, 'panel-drc.json');
+        await run(KICAD_CLI, ['pcb', 'drc', '--format', 'json', '--output', pdrc, ppcb]);
+        const d = existsSync(pdrc) ? JSON.parse(readFileSync(pdrc, 'utf8')) : { violations: [] };
+        await run(KICAD_CLI, ['pcb', 'export', 'gerbers', '--output', join(pdir, 'gerbers') + '/', '--layers', 'F.Cu,B.Cu,F.Paste,B.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts,User.1', ppcb]);
+        await run(KICAD_CLI, ['pcb', 'export', 'drill', '--output', join(pdir, 'gerbers') + '/', '--format', 'excellon', '--excellon-separate-th', ppcb]);
+        await run(KICAD_CLI, ['pcb', 'render', '--output', join(pdir, 'panel-top.png'), '--side', 'top', '--width', '1600', '--height', '1200', '--quality', 'basic', ppcb], 300_000);
+        panel = { rows: opts.panel.rows, cols: opts.panel.cols, drcErrors: (d.violations ?? []).filter((v: any) => v.severity === 'error').length };
+      } else log.push('Panel could not be made.');
+    }
+  }
   step('Rendering the board');
   await run(KICAD_CLI, ['pcb', 'render', '--output', join(dir, 'board-top.png'), '--side', 'top', '--width', '1600', '--height', '1100', '--quality', 'basic', '--floor', pcb], 300_000);
   await run(KICAD_CLI, ['pcb', 'render', '--output', join(dir, 'board-bottom.png'), '--side', 'bottom', '--width', '1600', '--height', '1100', '--quality', 'basic', pcb], 300_000);
@@ -181,7 +213,7 @@ export async function buildPcb(source: Project, dir: string, onStep: (msg: strin
   await run(KICAD_CLI, ['pcb', 'export', 'step', '--output', join(dir, 'board.step'), '--subst-models', pcb], 300_000);
 
   const files = [...walk(dir)].map((f) => f.slice(dir.length + 1)).filter((f) => !/^(spec|layout)\.json$|\.(dsn|ses|kicad_prl)$/.test(f));
-  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing, variant: opts.variant ?? 'prototype', productNotes, placement: (layout.parts ?? []).map((p: any) => ({ ref: p.ref, x: p.x, y: p.y, rot: p.rot, reserved: p.reserved ?? p.box })), fab: { id: spec.fab, name: FABS[spec.fab].name, track: FABS[spec.fab].track, drill: FABS[spec.fab].drill, quote: FABS[spec.fab].quote } };
+  return { dir, name: spec.name, widthMm: layout.width_mm, heightMm: layout.height_mm, routed: layout.routed, unrouted: layout.unrouted, tracks: layout.tracks, vias: layout.vias, drc, files, problems: [...problems, ...layout.problems], log, sourcing, variant: opts.variant ?? 'prototype', panel, productNotes, placement: (layout.parts ?? []).map((p: any) => ({ ref: p.ref, x: p.x, y: p.y, rot: p.rot, reserved: p.reserved ?? p.box })), fab: { id: spec.fab, name: FABS[spec.fab].name, track: FABS[spec.fab].track, drill: FABS[spec.fab].drill, quote: FABS[spec.fab].quote } };
 }
 
 /** Rename the spec's nets to KiCad's names; report any grouping that differs between the two netlists. */
