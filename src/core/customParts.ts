@@ -16,8 +16,14 @@ export interface CustomSim {
    * hx711: a 24-bit bridge ADC read by clocking PD_SCK and sampling DOUT (HX711/HX710 load-cell amplifiers)
    * spi-device: a chip read over SPI (thermocouple/RTD amplifiers, SPI ADCs); pins use fn spi.sck/spi.miso/spi.mosi/spi.cs
    * uart-device: a serial module (GPS, particulate, CO2); its TX pin has fn uart.tx, its RX pin fn uart.rx
+   * keypad-matrix: a passive row/column key matrix (4×4, 3×4 membrane keypads)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'none';
+  /** keypad-matrix: row and column pins and the key labels (keys[row][col]); the "value" slider holds
+   * key number n (1 = keys[0][0], counting along each row; 0 = nothing pressed). Each key joins its row and column. */
+  rowPins?: string[];
+  colPins?: string[];
+  keys?: string[][];
   /** uart-device: what the module sends by itself every `everyMs` (binary fields, or NMEA sentences built from
    * the controls "lat", "lon" and optionally "speed" [knots] and "alt" [m]), and replies to commands it receives. */
   uartBaud?: number;
@@ -141,6 +147,7 @@ export function specToDef(spec: CustomPartSpec): PartDef {
     controls.push({ key: 'value', label: s.quantity ?? 'Value', kind: 'slider', min, max, step: (max - min) / 200 >= 1 ? 1 : +((max - min) / 200).toPrecision(1), default: s.default ?? (min + max) / 2, unit: s.unit ? ` ${s.unit}`.replace(/^ (°|%)/, '$1') : '' });
   }
   if (s.kind === 'digital-sensor') controls.push({ key: 'active', label: s.quantity ?? 'Triggered', kind: 'toggle', default: 0 });
+  if (s.kind === 'keypad-matrix') controls.push({ key: 'value', label: `Key held (1–${(s.keys ?? []).flat().length}: ${(s.keys ?? []).flat().join(' ')}; 0 = none)`, kind: 'slider', min: 0, max: (s.keys ?? []).flat().length, step: 1, default: 0 });
   for (const d of s.digitalOutputs ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.pin, kind: 'toggle', default: 0 });
   for (const c of s.controls ?? []) {
     if (c.key === 'value' || controls.some((x) => x.key === c.key)) continue;
@@ -227,6 +234,11 @@ export function validateSpec(spec: CustomPartSpec): string[] {
       if (segBits(r.bytes) % 8) errs.push(`uart reply "${r.match}" is not whole bytes`);
       for (const b of r.bytes) if ('control' in b && !keys.has(b.control)) errs.push(`uart field control ${b.control} is not a control`);
     }
+  }
+  if (s.kind === 'keypad-matrix') {
+    if (!s.rowPins?.length || !s.colPins?.length || !s.keys?.length) errs.push('keypad-matrix needs rowPins, colPins and keys');
+    for (const p of [...(s.rowPins ?? []), ...(s.colPins ?? [])]) if (!names.has(p)) errs.push(`keypad pin ${p} is not a pin`);
+    if (s.keys && (s.keys.length !== s.rowPins?.length || s.keys.some((r) => r.length !== s.colPins?.length))) errs.push('keys must be rows × columns');
   }
   if (s.kind === 'hx711' && (!s.outputPin || !s.clockPin || !names.has(s.clockPin) || !s.countsPerUnit)) errs.push('hx711 needs outputPin (DOUT), clockPin (PD_SCK) and countsPerUnit');
   if (s.kind === 'onewire-temp' && s.family !== undefined && ![0x10, 0x22, 0x28, 0x3b, 0x42].includes(s.family)) errs.push(`1-Wire family 0x${s.family.toString(16)} is not a DS18x20-type thermometer`);

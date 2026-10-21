@@ -189,6 +189,10 @@ export class ElectricalModel {
         els.r = c.add(new Resistor(id, n('+'), n('-'), 27));
         break;
       default: {
+        // Passive key matrices (no supply): each key joins its row and column.
+        const kp = customSpec(part.type);
+        if (kp?.sim.kind === 'keypad-matrix')
+          (kp.sim.rowPins ?? []).forEach((r, ri) => (kp.sim.colPins ?? []).forEach((col, ci) => (els[`key:${ri}:${ci}`] = c.add(new Switch(`${id}.k${ri}.${ci}`, n(r), n(col), false)))));
         // Modules: model their supply draw as a resistor, plus signal-pin behaviour.
         const vccPin = def.pins.find((p) => p.role === 'power' && p.name !== 'VREF')?.name;
         const gndPin = def.pins.find((p) => p.role === 'gnd')?.name;
@@ -284,6 +288,12 @@ export class ElectricalModel {
         // Datasheet-defined sensors: map the slider / toggle to an output voltage.
         const cs = customSpec(part.type);
         if (!cs) break;
+        if (cs.sim.kind === 'keypad-matrix') {
+          const ncol = cs.sim.colPins?.length ?? 1;
+          const k = Math.round(st.value ?? 0) - 1;
+          (cs.sim.rowPins ?? []).forEach((_, ri) => (cs.sim.colPins ?? []).forEach((__, ci) => (els[`key:${ri}:${ci}`] as Switch).set(k === ri * ncol + ci)));
+          break;
+        }
         if (cs.sim.digitalOutputs?.length) {
           const vcc0 = this.moduleSupply(partId);
           const on = vcc0 >= (cs.vmin ?? 2.7) * 0.85;
