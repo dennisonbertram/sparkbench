@@ -92,13 +92,30 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
       notes.push(`${part.ref ?? part.id}.${pin.name} → ${bp.name}${bp.gpio !== undefined ? ` (GPIO${bp.gpio})` : ''}${analog ? ' — an analog-capable pin' : ''}.`);
     }
   }
+  // External pull-ups the datasheet asks for: a real resistor from the pin to the part's supply.
+  let extraParts: Project['parts'] = [];
+  for (const pin of def.pins.filter((p) => p.pullUp)) {
+    const sigWire = wires.find((w) => w.a.part === partId && w.a.pin === pin.name);
+    if (!sigWire) continue;
+    let k = 1;
+    while ([...project.parts, ...extraParts].some((x) => x.id === `${partId}_pu${k}`)) k++;
+    const rid = `${partId}_pu${k}`;
+    extraParts.push({ id: rid, type: 'resistor', label: `${pin.name} pull-up`, props: { ohms: pin.pullUp }, x: part.x + 30 * k, y: part.y - 40 });
+    while (project.wires.some((w) => w.id === `w${n}`) || wires.some((w) => w.id === `w${n}`)) n++;
+    wires.push({ id: `w${n}`, a: { part: rid, pin: '1' }, b: { ...sigWire.b }, color: COLORS[sig++ % COLORS.length] });
+    n++;
+    wires.push({ id: `w${n}`, a: { part: rid, pin: '2' }, b: { part: bpart.id, pin: supply }, color: supply === board.supply3v3 ? '#d32f2f' : '#ef6c00' });
+    const ohms = pin.pullUp!;
+    notes.push(`Added a ${ohms >= 1000 ? `${ohms / 1000} kΩ` : `${ohms} Ω`} pull-up resistor from ${pin.name} to ${supply}, as the datasheet requires.`);
+  }
   if (spec?.interface === 'i2c' && spec.i2cAddress !== undefined) notes.push(`It shares the I2C bus (SDA ${board.i2c.sda}, SCL ${board.i2c.scl}) at address 0x${spec.i2cAddress.toString(16)}.`);
   const files = { ...project.files };
   if (spec?.driver && board.language === 'micropython' && !files[spec.driver.filename]) {
     files[spec.driver.filename] = spec.driver.code;
     notes.push(`Added the ${spec.driver.filename} driver written from the datasheet.`);
   }
-  return { project: { ...project, wires: [...project.wires, ...wires], files }, notes };
+  const parts = [...project.parts, ...extraParts];
+  return { project: extraParts.length ? annotate({ ...project, parts, wires: [...project.wires, ...wires], files }) : { ...project, wires: [...project.wires, ...wires], files }, notes };
 }
 
 /** Add a datasheet/library part to a design (registered, placed to the right, wired to the board when there is one). */

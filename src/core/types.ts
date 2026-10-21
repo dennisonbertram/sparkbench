@@ -19,6 +19,8 @@ export interface PinDef {
   wokwi?: string;
   /** Required for the part to work (ERC flags it if left floating). Defaults to true except nc. */
   required?: boolean;
+  /** This pin needs an external pull-up resistor to the part's supply (ohms), e.g. a bare DS18B20's DQ (4700). */
+  pullUp?: number;
 }
 
 export interface PropDef {
