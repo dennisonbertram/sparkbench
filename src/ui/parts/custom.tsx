@@ -100,20 +100,21 @@ function LcdScreen({ x, y, w, lcd }: { x: number; y: number; w: number; lcd: Non
 }
 
 /** A datasheet OLED's picture (128×64, page format), drawn at half size. */
-function OledScreen({ x, y, ram, on }: { x: number; y: number; ram: number[]; on: boolean }) {
+function OledScreen({ x, y, ram, on, size }: { x: number; y: number; ram: number[]; on: boolean; size?: [number, number] }) {
+  const [W, H] = size ?? [128, 64];
   const url = React.useMemo(() => {
     if (typeof document === 'undefined') return '';
     const c = document.createElement('canvas');
-    c.width = 128;
-    c.height = 64;
+    c.width = W;
+    c.height = H;
     const ctx = c.getContext('2d');
     if (!ctx) return '';
-    const img = ctx.createImageData(128, 64);
-    for (let page = 0; page < 8; page++)
-      for (let px = 0; px < 128; px++) {
+    const img = ctx.createImageData(W, H);
+    for (let page = 0; page < H / 8; page++)
+      for (let px = 0; px < W; px++) {
         const b = on ? ram[page * 128 + px] : 0;
         for (let bit = 0; bit < 8; bit++) {
-          const i = ((page * 8 + bit) * 128 + px) * 4;
+          const i = ((page * 8 + bit) * W + px) * 4;
           const lit = (b >> bit) & 1;
           img.data[i] = lit ? 170 : 0;
           img.data[i + 1] = lit ? 225 : 0;
@@ -123,8 +124,9 @@ function OledScreen({ x, y, ram, on }: { x: number; y: number; ram: number[]; on
       }
     ctx.putImageData(img, 0, 0);
     return c.toDataURL();
-  }, [ram, on]);
-  return url ? <image href={url} x={x} y={y} width={64} height={32} style={{ imageRendering: 'pixelated' }} /> : <rect x={x} y={y} width={64} height={32} fill="#000" />;
+  }, [ram, on, W, H]);
+  // Half scale, like the 128×64 panel: a 64×48 glass is drawn 32×24.
+  return url ? <image href={url} x={x + (64 - W / 2) / 2} y={y} width={W / 2} height={H / 2} style={{ imageRendering: 'pixelated' }} /> : <rect x={x + (64 - W / 2) / 2} y={y} width={W / 2} height={H / 2} fill="#000" />;
 }
 
 function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) {
@@ -157,7 +159,7 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
       ) : visual?.tft ? (
         <TftScreen x={w / 2 - 17} y={2} tft={visual.tft} />
       ) : visual?.oled ? (
-        <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} />
+        <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} size={visual.oledSize} />
       ) : cs.sim.kind === 'segment-display' && cs.sim.matrix ? (
         // 8 rows × 8 columns per chained chip; dots shrink so a 32×8 strip still fits the module.
         (() => {

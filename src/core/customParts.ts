@@ -134,7 +134,11 @@ export interface CustomSim {
    * tft-display: 'ssd1351' for the SSD1351 colour OLED command set; 'pcd8544' for the Nokia 5110 84×48 mono LCD (pins
    * fn spi.sck, spi.mosi, spi.cs = CE, tft.dc = DC, tft.reset = RST; width/height are fixed at 84×48). */
   controller?: 'ssd1306' | 'sh1106' | 'ssd1351' | 'pcd8544';
-  rows?: 32 | 64;
+  rows?: 32 | 48 | 64;
+  /** oled-display: first GDDRAM column the panel shows (SH1106 2; 0.49" 64×32 and 0.66" 64×48 SSD1306 panels 32). With
+   * width (the visible columns, default 128) only columns colOffset…colOffset+width−1 and the first rows COM lines are
+   * on the glass, so a driver that forgets the offset draws off-screen just as on the real module. */
+  colOffset?: number;
   /** oled-display: 'spi' for 4-wire SPI modules (D0 = fn spi.sck, D1 = fn spi.mosi, CS = fn spi.cs, DC = fn tft.dc,
    * RES = fn tft.reset); DC low = command byte, high = display data. Default 'i2c' (needs i2cAddress). */
   bus?: 'i2c' | 'spi';
@@ -487,6 +491,14 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   }
   if (s.pixelBits !== undefined && (s.kind !== 'tft-display' || ![16, 18].includes(s.pixelBits))) errs.push('pixelBits (16 or 18) is for tft-display');
   if (s.kind === 'oled-display' && s.controller === 'ssd1351') errs.push("controller 'ssd1351' is a colour OLED: use kind tft-display");
+  if (s.kind === 'oled-display') {
+    const ram = s.controller === 'sh1106' ? 132 : 128;
+    const w = s.width ?? 128;
+    if (s.rows !== undefined && ![32, 48, 64].includes(s.rows)) errs.push('oled-display rows must be 32, 48 or 64');
+    if (!(Number.isInteger(w) && w >= 8 && w <= 128)) errs.push('oled-display width (visible columns) must be 8-128');
+    if (s.colOffset !== undefined && !(Number.isInteger(s.colOffset) && s.colOffset >= 0 && s.colOffset + w <= ram)) errs.push(`oled-display colOffset + width must fit the controller's ${ram} RAM columns`);
+    if (s.height !== undefined) errs.push('oled-display sets its visible height with rows (32, 48 or 64), not height');
+  }
   if (s.kind === 'oled-display' && s.controller === 'pcd8544') errs.push("controller 'pcd8544' (Nokia 5110 LCD) uses kind tft-display");
   if (s.ledProtocol && !['ws2812', 'sk6812-rgbw', 'apa102'].includes(s.ledProtocol)) errs.push(`ledProtocol ${s.ledProtocol} must be ws2812, sk6812-rgbw or apa102`);
   if (s.ledProtocol && s.kind !== 'addressable-led') errs.push('ledProtocol is for addressable-led');

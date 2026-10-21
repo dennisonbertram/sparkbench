@@ -43,6 +43,8 @@ export interface PartVisual {
   pixels?: number[]; // flat r,g,b
   oled?: number[]; // 1024 bytes GDDRAM
   oledOn?: boolean;
+  /** Visible panel size when it isn't 128×64 (the picture sits at the top left of oled). */
+  oledSize?: [number, number];
   /** Segment displays (TM1637/MAX7219): the digits as text, and whether the display is on. */
   segText?: string;
   segOn?: boolean;
@@ -152,7 +154,7 @@ export class SimEngine {
       if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'ht16k33') this.devices.push({ dev: new HT16K33Device(part.id, cs.i2cAddress ?? 0x70), part });
       // An SPI OLED gets no I2C address (-1 never answers a scan); spiWrite feeds it.
       if (cs?.sim.kind === 'char-lcd') this.devices.push({ dev: new Lcd1602Device(part.id, { addr: cs.i2cAddress ?? 0x27, cols: cs.sim.lcd?.cols, rows: cs.sim.lcd?.rows, pins: cs.sim.lcd?.pins }), part });
-      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.sim.bus === 'spi' ? -1 : (cs.i2cAddress ?? 0x3c), controller: cs.sim.controller === 'sh1106' ? 'sh1106' : 'ssd1306', rows: cs.sim.rows }), part });
+      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.sim.bus === 'spi' ? -1 : (cs.i2cAddress ?? 0x3c), controller: cs.sim.controller === 'sh1106' ? 'sh1106' : 'ssd1306', rows: cs.sim.rows, width: cs.sim.width, colOffset: cs.sim.colOffset }), part });
       if (cs?.sim.kind === 'i2c-device')
         for (const sd of cs.sim.subDevices ?? [])
           this.devices.push({ part, dev: new GenericI2CDevice(part.id, sd.i2cAddress, sd.registers ?? {}, sd.measures ?? [], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, sd.responses ?? [], { regWidth: sd.regWidth, autoIncrementBit7: sd.autoIncrementBit7, constants: sd.constants, commandLatch: sd.commandLatch, promCrc4: sd.promCrc4 }) });
@@ -1585,6 +1587,7 @@ export class SimEngine {
             if (d instanceof SSD1306Device) {
               v.oled = v.powered ? d.visibleRam() : new Array(1024).fill(0);
               v.oledOn = v.powered && d.on;
+              v.oledSize = [d.width, d.rows];
             }
           }
           if (cs?.sim.kind === 'actuator' && (cs.sim.inputPin || cs.sim.inputPins?.length)) {

@@ -76,10 +76,11 @@ export function screenText(v: PartVisual | undefined): string[] {
   }
   if (v.oled && v.oledOn !== false) {
     const buf = v.oled;
-    const lit: Pixel = (x, y) => x >= 0 && x < 128 && y >= 0 && y < 64 && ((buf[x + (y >> 3) * 128] >> (y & 7)) & 1) === 1;
-    const lines = ocr(128, 64, lit);
+    const [W, H] = v.oledSize ?? [128, 64];
+    const lit: Pixel = (x, y) => x >= 0 && x < W && y >= 0 && y < H && ((buf[x + (y >> 3) * 128] >> (y & 7)) & 1) === 1;
+    const lines = ocr(W, H, lit);
     // Text drawn dark on a lit background (inverted highlights).
-    return lines.length ? lines : ocr(128, 64, (x, y) => !lit(x, y));
+    return lines.length ? lines : ocr(W, H, (x, y) => x >= 0 && x < W && y >= 0 && y < H && !lit(x, y));
   }
   if (v.epaper) {
     const ram = v.epaper.ram;
