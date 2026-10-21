@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-neo-7m",
+  "board": "Waveshare UART GPS NEO-7M-C (u-blox NEO-7M, 5-pin VCC GND TXD RXD PPS, active IPX antenna)",
+  "reason": "Modelled as a uart-device NMEA stream (GGA+RMC at 9600 baud 8N1, ddmm.mmmmm per the NEO-7 data sheet defaults); pin order taken from the Waveshare schematic header P1. The checksum-verifying NMEA driver decodes it and the check passed on ESP32 and Pico (simulator, breadboard, circuit board, footprint).",
+  "datasheetUrl": "https://content.u-blox.com/sites/default/files/products/documents/NEO-7_DataSheet_%28UBX-13003830%29.pdf",
+  "breakoutPinoutSource": "https://www.waveshare.com/w/upload/3/37/UART-GPS-NEO-Schematic.pdf",
+  "checkRuns": 1
+}

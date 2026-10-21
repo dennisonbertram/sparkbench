@@ -1,0 +1,255 @@
+{
+  "type": "custom-drv8825",
+  "name": "DRV8825 stepper motor driver",
+  "mpn": "DRV8825",
+  "category": "actuator",
+  "description": "Texas Instruments DRV8825 microstepping driver for one bipolar stepper motor: STEP/DIR control with a built-in indexer, full to 1/32 step, adjustable current limit (trimpot, about 1.5 A per coil without cooling, up to 2.2 A with), motor supply 8.2-45 V, logic inputs 3.3 V or 5 V (no logic supply pin: the chip makes its own 3.3 V from VMOT). RST and SLP are pulled LOW in the chip, so both must be driven high. Sold as: Pololu DRV8825 Stepper Motor Driver Carrier, High Current (#2133) (and the many same-pinout purple clone modules), 16 pins in two rows: EN M0 M1 M2 RST SLP STEP DIR, opposite side top to bottom VMOT GND B2 B1 A1 A2 FLT GND.",
+  "eli5": "Turns a stepper motor exactly one small click every time your board sends it a pulse, in the direction you choose.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "EN",
+      "role": "io",
+      "description": "nENBL, active low: low = motor outputs on, high = outputs off and STEP ignored. 100 kOhm pull-down in the chip, so it is enabled if left open",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "M0",
+      "role": "io",
+      "description": "MODE0 microstep select (100 kOhm pull-down in the chip). M0/M1/M2: 000 full, 100 1/2, 010 1/4, 110 1/8, 001 1/16, 101/011/111 1/32",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "M1",
+      "role": "io",
+      "description": "MODE1 microstep select (100 kOhm pull-down in the chip)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "M2",
+      "role": "io",
+      "description": "MODE2 microstep select (100 kOhm pull-down in the chip)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "nRESET, active low: must be HIGH (2.2-5.25 V) for the driver to run. 100 kOhm pull-down in the chip, so the driver is held in reset if left open. Drive it from a GPIO or tie it to SLP and drive both high",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "SLP",
+      "role": "io",
+      "description": "nSLEEP, active low: must be HIGH to run. 1 MOhm pull-down in the chip (unlike the A4988 carrier there is no pull-up), so it sleeps if left open. Wait 1.7 ms after waking before stepping",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "STEP",
+      "role": "io",
+      "description": "STEP: each low-to-high edge moves the motor one (micro)step. Min 1.9 us high and 1.9 us low. 100 kOhm pull-down in the chip",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "DIR",
+      "role": "io",
+      "description": "DIR: direction, read on each STEP rising edge (650 ns setup and hold). 100 kOhm pull-down in the chip",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "VMOT",
+      "role": "power",
+      "description": "Motor supply 8.2-45 V from a separate supply (not the microcontroller), with a >= 47 uF electrolytic capacitor across VMOT/GND close to the board. Also powers the chip's logic (no logic supply pin)",
+      "required": true,
+      "supply": {
+        "vmin": 8.2,
+        "vmax": 45,
+        "currentMa": 2000
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Motor supply ground (printed GND, next to VMOT): the return for the VMOT supply; joined to the other GND on the board",
+      "required": true
+    },
+    {
+      "name": "B2",
+      "role": "io",
+      "description": "Motor coil B, second wire (BOUT2)",
+      "required": false
+    },
+    {
+      "name": "B1",
+      "role": "io",
+      "description": "Motor coil B, first wire (BOUT1)",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Motor coil A, first wire (AOUT1)",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Motor coil A, second wire (AOUT2). Connect the motor, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "FLT",
+      "role": "io",
+      "description": "nFAULT output: open drain through a 1.5 kOhm resistor, pulled up by 10 kOhm to SLP on the board. Low on over-current or over-temperature shutdown; cleared by pulsing RST. Optional",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Logic ground (printed GND, bottom pin next to FLT): connect to the microcontroller GND; joined to the motor GND on the board",
+      "required": true
+    }
+  ],
+  "vmin": 8.2,
+  "vmax": 45,
+  "currentMa": 8,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/drv8825.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "DRV8825 stepper motor driver module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "One supply: motor VMOT 8.2-45 V from a separate supply (12 V or 24 V typical). The board has no logic supply pin; it makes its own 3.3 V from VMOT, so with VMOT off the driver does nothing. Join the motor supply ground and the microcontroller GND (bottom GND pin).",
+    "RST and SLP have pull-downs in the chip (100 kOhm and 1 MOhm), so the driver stays off if they are left open. Drive both high from GPIOs, or tie them together to one GPIO or 3V3. Any external pull-up on SLP must be 4.7 kOhm or less.",
+    "Put a 47 uF or larger electrolytic capacitor across VMOT and GND right at the board: LC spikes on long leads can exceed the 45 V rating even from a 12 V supply.",
+    "Never connect or disconnect the motor while VMOT is powered: it destroys the driver.",
+    "Set the current limit before running the motor: Current limit = 2 x VREF (ICHOP = VREF / (5 x 0.1 Ohm)), with VREF measured on the trimpot or the circled 'ref' via. 1 A -> 0.5 V.",
+    "Microstepping (M0 M1 M2): 000 full, 100 half, 010 1/4, 110 1/8, 001 1/16, 101 1/32. Left open they read low (full step).",
+    "STEP pulses: at least 1.9 us high and 1.9 us low; set DIR and M0-M2 at least 650 ns before the STEP rising edge. After SLP goes high wait 1.7 ms before stepping.",
+    "Above about 1.5 A per coil the chip needs a heat sink or airflow; it shuts down and pulls FLT low when it overheats.",
+    "Pinout is close to the A4988 carrier but not identical: the trimpot is in a different corner, the bottom-right pin is FLT instead of VDD, and SLP is not pulled up."
+  ],
+  "keywords": [
+    "drv8825",
+    "stepper driver",
+    "stepper motor",
+    "step dir",
+    "microstepping",
+    "1/32 step",
+    "pololu 2133",
+    "nema 17",
+    "bipolar stepper"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/drv8825.pdf",
+    "https://www.pololu.com/product/2133",
+    "https://a.pololu-files.com/picture/0J4232.1200.png (Pololu minimal wiring diagram with pin labels)",
+    "https://a.pololu-files.com/picture/0J4222.1200.png (Pololu DRV8824/DRV8825 carrier schematic)",
+    "Fritzing core/DRV8825_breakout_1be7926_002.fzp (DRV8825 carrier pins)"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "STEP",
+      "DIR",
+      "RST",
+      "SLP",
+      "EN",
+      "M0",
+      "M1",
+      "M2"
+    ]
+  },
+  "driver": {
+    "filename": "drv8825.py",
+    "code": "# DRV8825 microstepping bipolar stepper driver (Texas Instruments DRV8825), MicroPython driver.\n# Written from the TI DRV8825 datasheet (SLVSA73F) and the Pololu DRV8825 carrier (#2133) schematic.\n#   STEP: each LOW->HIGH edge moves the indexer one (micro)step. Min HIGH 1.9 us, min LOW 1.9 us (tWH, tWL).\n#   DIR:  direction, sampled on the STEP rising edge. Setup/hold to STEP: 650 ns (tSU, tH).\n#   RST (nRESET, active low): low = indexer to Home, H-bridges off, STEP ignored. 100 kOhm pull-down in the\n#         chip, so it must be driven HIGH (2.2-5.25 V) to run.\n#   SLP (nSLEEP, active low): low = sleep. 1 MOhm pull-down in the chip (the board's 10 kOhm SLP-FLT resistor\n#         is not a pull-up unless FLT is tied high), so it must be driven HIGH. After waking, wait 1.7 ms (tWAKE).\n#   EN (nENBL, active low): high = outputs off and STEP ignored. 100 kOhm pull-down, so enabled if left open.\n#         After EN goes low, wait 650 ns (tENBL) before STEP.\n#   M0 M1 M2 (MODE0-2, Table 1): 000 full, 100 1/2, 010 1/4, 110 1/8, 001 1/16, 101/011/111 1/32\n#         (listed M0 M1 M2). Internal 100 kOhm pull-downs, so full step if left open.\n#   FLT (nFAULT): open drain via 1.5 kOhm, low on over-current or over-temperature. Cleared by pulsing RST.\n# Logic inputs: high >= 2.2 V, low <= 0.7 V, so 3.3 V GPIOs drive it directly (the board has no logic supply pin).\nfrom machine import Pin\nimport time\n\n_MODES = {1: (0, 0, 0), 2: (1, 0, 0), 4: (0, 1, 0), 8: (1, 1, 0), 16: (0, 0, 1), 32: (1, 0, 1)}\n\n\nclass DRV8825:\n    def __init__(self, step, dir, rst=None, slp=None, en=None, mode=None, flt=None):\n        \"\"\"step, dir: GPIO numbers wired to STEP and DIR.\n        rst, slp: GPIOs wired to RST and SLP (driven high here). Both have pull-downs in the chip, so if\n            you pass None you must tie that pin high yourself (e.g. RST and SLP together to one GPIO or to 3V3).\n        en: GPIO wired to EN, or None (the chip's pull-down keeps the outputs enabled).\n        mode: (m0, m1, m2) GPIO numbers, or None (full step via the internal pull-downs).\n        flt: GPIO wired to FLT to read faults, or None.\"\"\"\n        self.step_pin = Pin(step, Pin.OUT, value=0)\n        self.dir_pin = Pin(dir, Pin.OUT, value=0)\n        self.en = Pin(en, Pin.OUT, value=0) if en is not None else None\n        self.mode = [Pin(p, Pin.OUT, value=0) for p in mode] if mode is not None else None\n        self.flt = Pin(flt, Pin.IN, Pin.PULL_UP) if flt is not None else None\n        self.rst = Pin(rst, Pin.OUT, value=1) if rst is not None else None\n        self.slp = Pin(slp, Pin.OUT, value=1) if slp is not None else None\n        self.position = 0\n        # Leaving sleep: tWAKE is up to 1.7 ms before STEP is accepted.\n        time.sleep_ms(2)\n\n    def set_microstep(self, div):\n        \"\"\"div = 1, 2, 4, 8, 16 or 32 (full step ... 1/32 step). Needs mode= pins.\"\"\"\n        if self.mode is None:\n            raise ValueError('M0-M2 not wired: board is fixed at full step')\n        for p, b in zip(self.mode, _MODES[div]):\n            p.value(b)\n        time.sleep_us(1)  # >= 650 ns setup before the next STEP\n\n    def direction(self, forward):\n        \"\"\"Set DIR (1 = forward). Takes effect on the next STEP rising edge.\"\"\"\n        self.dir_pin.value(1 if forward else 0)\n        time.sleep_us(1)  # >= 650 ns setup before STEP\n\n    def step(self, n, delay_us=1000):\n        \"\"\"Move n steps; n < 0 runs backwards. delay_us = time per step (>= 4: 1.9 us high + 1.9 us low).\"\"\"\n        if n == 0:\n            return\n        self.direction(n > 0)\n        half = max(2, delay_us // 2)\n        s = self.step_pin\n        for _ in range(abs(n)):\n            s.value(1)\n            time.sleep_us(half)   # tWH >= 1.9 us\n            s.value(0)\n            time.sleep_us(half)   # tWL >= 1.9 us\n        self.position += n\n\n    def enable(self, on=True):\n        \"\"\"EN low = outputs on (motor holds torque); EN high = outputs off, STEP ignored.\"\"\"\n        if self.en is not None:\n            self.en.value(0 if on else 1)\n            time.sleep_us(1)  # tENBL >= 650 ns\n\n    def disable(self):\n        self.enable(False)\n\n    def sleep(self):\n        \"\"\"SLP low: H-bridges, charge pump and 3.3 V regulator off (about 10 uA).\"\"\"\n        if self.slp is not None:\n            self.slp.value(0)\n\n    def wake(self):\n        \"\"\"SLP high, then wait tWAKE (1.7 ms) before stepping.\"\"\"\n        if self.slp is not None:\n            self.slp.value(1)\n            time.sleep_ms(2)\n\n    def reset(self):\n        \"\"\"Pulse RST low: indexer back to Home, clears a latched over-current fault.\"\"\"\n        if self.rst is not None:\n            self.rst.value(0)\n            time.sleep_us(10)\n            self.rst.value(1)\n            time.sleep_us(10)\n\n    def fault(self):\n        \"\"\"True while FLT is low (over-current or over-temperature shutdown). Needs flt=.\"\"\"\n        return self.flt is not None and self.flt.value() == 0\n\n\ndef vref_for_current(amps, rsense=0.1):\n    \"\"\"VREF (volts, measured on the trimpot / 'ref' via) for a full-scale current limit per coil:\n    ICHOP = VREF / (5 x Rsense) (datasheet equation 1). Pololu #2133 and most clones use 0.100 Ohm,\n    so VREF = amps / 2. Check the sense resistors (R100 = 0.1 Ohm) on your board.\"\"\"\n    return 5 * amps * rsense\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom drv8825 import DRV8825\n\n# STEP/DIR to GPIOs; RST and SLP driven high (both have pull-downs in the chip). Full step: M0-M2 left open.\nmotor = DRV8825({STEP}, {DIR}, rst={RST}, slp={SLP})\nwhile True:\n    motor.step(200)           # one revolution of a 1.8 degree motor\n    print('moved 200 steps forward')\n    time.sleep(1)\n    motor.step(-200)\n    print('moved 200 steps back')\n    time.sleep(1)\n",
+    "test": {
+      "id": "steps",
+      "title": "Holds RST and SLP high, steps 200 forward (DIR high) then 200 back (DIR low)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RST",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SLP",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moved 200 steps forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "STEP",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moved 200 steps back",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RST",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SLP",
+          "on": true
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (7 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:20:28.394Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/drv8825.pdf",
+      "https://www.pololu.com/product/2133"
+    ]
+  }
+}

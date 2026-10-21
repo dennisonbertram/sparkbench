@@ -1,0 +1,133 @@
+{
+  "type": "custom-solenoid-mosfet-module",
+  "name": "Solenoid MOSFET driver (Adafruit 5648) with 5 V solenoid",
+  "mpn": "5648",
+  "category": "actuator",
+  "description": "Low-side N-channel MOSFET switch with an on-board flyback diode, used to fire a 5 V push-pull solenoid from a 3.3 V or 5 V GPIO: the In signal drives the gate of an AO3406 MOSFET (30 V, 70 mOhm max at VGS 4.5 V, VGS(th) 1.5-2.5 V) directly, with a 10 kOhm pull-down (red Sig LED also fed from In through 10 kOhm); a 1N400x / SM4002 diode across the + / - terminal block clamps the coil's turn-off spike. Power V+ 3-30 V, logic 2.5-20 V, 1.5 A continuous / 3 A peak. The usual load is the Adafruit 2776 mini push-pull solenoid (5 V, 4.5 Ohm, 1.1 A, 3 mm stroke), fed from its own 5 V supply. Sold as: Adafruit STEMMA MOSFET+Diode Driver (product 5648, 0.1 inch header Out, In, V+, GND; JST PH V+/GND/In; 2-way terminal block + / -), typically paired with the Adafruit Mini Push-Pull Solenoid - 5V (product 2776).",
+  "eli5": "An electronic switch with a built-in spike catcher: your board's small signal lets a big 1 A current flow through the solenoid so its plunger snaps in.",
+  "refPrefix": "Q",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "Out",
+      "role": "io",
+      "description": "Switched output = terminal block '-': the MOSFET drain, pulled to GND while In is high. Solenoid's second lead goes here (or on the '-' screw terminal). Never wire it to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "In",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Signal input (gate), active high, 2.5-20 V: high = solenoid on, low or unconnected = off (10 kOhm pull-down on the board). A 3.3 V GPIO is enough for a 1 A solenoid. PWM works for holding at lower power.",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Load power = terminal block '+'. The driver board accepts 3-30 V, but here it feeds the 5 V solenoid, so it must be a separate regulated 5 V supply (at least 1.5 A for the Adafruit 2776's 1.1 A), not the microcontroller's 3V3/5V pin. Solenoid's first lead goes on '+'.",
+      "required": true,
+      "supply": {
+        "vmin": 5,
+        "vmax": 5,
+        "currentMa": 1100
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Common ground for the load supply and the microcontroller (MOSFET source).",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 30,
+  "currentMa": 3,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/5648/5648_ds_AO3406.pdf",
+  "priceUsd": 9.9,
+  "supplierQuery": "Adafruit 5648 STEMMA MOSFET Diode Driver + Adafruit 2776 mini push-pull solenoid 5V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two current paths share one ground: In and GND go to the microcontroller; the solenoid sits on the terminal block between '+' (= V+) and '-' (= Out). Feed V+ from a separate 5 V supply (1.5 A or more) and join its ground to the board's GND.",
+    "Do not power a 1.1 A solenoid from the microcontroller board's 5V/VBUS pin or a computer USB port: the inrush browns out the board.",
+    "The flyback diode is already on the board, across + and -, so no extra diode is needed. Solenoid polarity does not matter.",
+    "Use short pulses. A small 5 V push-pull solenoid gets hot if held on: pulse it (e.g. 50 ms-1 s) or, to hold, pull in at full power and then drop to about 30-50 % PWM duty.",
+    "V+ here must be 5 V to match the 5 V solenoid (the driver board itself accepts 3-30 V, so a higher supply is only for a solenoid rated for it): a 5 V solenoid on 12 V will overheat quickly.",
+    "Rated 1.5 A continuous, 3 A peak (AO3406 in SOT-23, no heatsink). The JST PH connector is rated only 2 A; use the terminal block for the load.",
+    "The red Sig LED shows the input state; the green ON LED shows V+ is present. Each can be disabled by cutting its jumper on the back."
+  ],
+  "keywords": [
+    "solenoid",
+    "solenoid driver",
+    "push-pull solenoid",
+    "mosfet driver",
+    "mosfet module",
+    "flyback diode",
+    "ao3406",
+    "adafruit 5648",
+    "adafruit 2776",
+    "stemma",
+    "low side switch",
+    "plunger"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "In"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nsolenoid = Pin({IN}, Pin.OUT, value=0)  # In high = MOSFET on = solenoid pulls in\nwhile True:\n    solenoid.value(1)\n    print('SOLENOID ON')\n    time.sleep(1)   # short pulse: the 5 V solenoid is not rated for continuous duty\n    solenoid.value(0)\n    print('SOLENOID OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "solenoid-pulses",
+      "title": "The solenoid fires, then releases",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SOLENOID ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SOLENOID OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.adafruit.com/product/5648",
+    "https://learn.adafruit.com/adafruit-mosfet-driver/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/117/036/large1024/adafruit_products_front_back.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/117/028/large1024/adafruit_products_schem.png",
+    "https://cdn-shop.adafruit.com/product-files/5648/5648_ds_AO3406.pdf",
+    "https://www.aosmd.com/res/datasheets/AO3406.pdf",
+    "https://www.adafruit.com/product/2776"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:21:14.449Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/5648/5648_ds_AO3406.pdf",
+      "https://www.adafruit.com/product/5648",
+      "https://learn.adafruit.com/adafruit-mosfet-driver/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/117/036/large1024/adafruit_products_front_back.jpg",
+      "https://www.adafruit.com/product/2776"
+    ]
+  }
+}

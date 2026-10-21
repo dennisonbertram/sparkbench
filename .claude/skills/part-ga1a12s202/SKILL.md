@@ -52,7 +52,7 @@ from ga1a12s202 import GA1A12S202
 import time
 sensor = GA1A12S202(26)        # GPIO number of the ADC pin OUT is wired to
 while True:
-    print('L=%.0flx' % sensor.lux())
+    print('L=%dlx' % round(sensor.lux(), -1))  # 3 significant figures: the ADC reading jitters by a count
     time.sleep(1)
 ```
 The driver averages 16 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535 (pass `vref=` if your rail differs). `volts()`, `microamps()` and `log_lux()` give the raw quantities; `log_lux()` (decades) is handy for brightness thresholds and dimming curves.

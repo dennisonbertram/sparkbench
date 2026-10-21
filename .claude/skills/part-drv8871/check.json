@@ -1,0 +1,79 @@
+{
+  "type": "custom-drv8871",
+  "mpn": "DRV8871",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; U2.IN2 → D25 (GPIO25). U2.IN1 → D26 (GPIO26). Added a separate 12 V supply for VM (it needs 6.5–45 V and up to 3.6 A, more than the board can give); its − joins the board's GND. Added the drv8871.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Runs the motor forward, then lets it coast: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; U2.IN2 → GP2 (GPIO2). U2.IN1 → GP3 (GPIO3). Added a separate 12 V supply for VM (it needs 6.5–45 V and up to 3.6 A, more than the board can give); its − joins the board's GND. Added the drv8871.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Runs the motor forward, then lets it coast: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C75864 DRV8871DDAR (8280 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T11:20:22.079Z"
+}

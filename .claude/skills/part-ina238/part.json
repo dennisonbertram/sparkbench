@@ -1,0 +1,210 @@
+{
+  "type": "custom-ina238",
+  "name": "INA238 85 V 16-bit power monitor",
+  "mpn": "INA238",
+  "category": "sensor",
+  "description": "Texas Instruments 16-bit current, voltage and power monitor with an I2C interface: measures a 0–85 V bus (3.125 mV per count), the voltage across a shunt resistor (±163.84 mV, 5 µV per count) and its die temperature (0.125 °C per count), and reports current in amperes once its SHUNT_CAL register is set. Runs on 2.7–5.5 V. Sold as: Adafruit INA238 DC Current Voltage Power Monitor (#6349), 8-pin header VIN, GND, SCL, SDA, VBUS, VIN-, VIN+, ALRT plus a 3-pin screw terminal (V-, VBus, V+), 15 mΩ shunt (up to 10 A), VBUS jumper closed (high side), I2C address 0x40 (0x41/0x44/0x45 with the A0/A1 jumpers).",
+  "eli5": "Sits in the wire to a motor, battery or solar panel (up to 85 V) and tells your board how many volts and amps are flowing.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Logic supply 3–5 V (chip 2.7–5.5 V); use the same voltage as your microcontroller (3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the measured circuit's ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "VBUS",
+      "role": "io",
+      "description": "Bus-voltage sense input, 0–85 V; tied to VIN+ by the back jumper (high side, default), cut it for low side and wire VBUS to the supply rail. Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "VIN-",
+      "role": "io",
+      "description": "Shunt low side: to the load's + lead (high side). Up to 85 V; never to a GPIO. Same net as the terminal's V-.",
+      "required": false
+    },
+    {
+      "name": "VIN+",
+      "role": "io",
+      "description": "Shunt high side: from the supply being measured. Up to 85 V; never to a GPIO. Same net as the terminal's V+.",
+      "required": false
+    },
+    {
+      "name": "ALRT",
+      "role": "io",
+      "description": "Alert output (open-drain, active low); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 0.75,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina238.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ina238.pdf",
+    "https://www.adafruit.com/product/6349",
+    "https://learn.adafruit.com/adafruit-ina237-dc-current-voltage-power-monitor/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/137/318/large1024/adafruit_products_double.jpg",
+    "https://github.com/adafruit/Adafruit-INA237-Power-Monitor-PCB"
+  ],
+  "priceUsd": 11,
+  "supplierQuery": "Adafruit INA238 DC current voltage power monitor 6349",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Put the shunt in series with the load: supply + to VIN+ (terminal V+), VIN- (terminal V-) to the load's +, and the measured supply's ground to the same GND as the microcontroller.",
+    "The VBUS jumper on the back is closed by default (VBUS tied to VIN+, high-side sensing). For low-side sensing cut it and wire VBUS to the supply rail.",
+    "VIN+, VIN- and VBUS may carry up to 85 V: never connect them to a GPIO. The 15 mΩ shunt reads up to about ±10 A (±163.84 mV); carry the load current through the screw terminal with thick wire, never through breadboard rows or the header pins.",
+    "Write SHUNT_CAL (02h) = 819.2e6 × CURRENT_LSB × 0.015 before reading CURRENT (07h); with CURRENT_LSB = 500 µA that is 6144. Current = CURRENT_LSB × CURRENT.",
+    "All result registers are 16-bit (POWER is 24-bit): bus voltage = VBUS × 3.125 mV, shunt voltage = VSHUNT × 5 µV, die temperature = (DIETEMP >> 4) × 0.125 °C.",
+    "MANUFACTURER_ID (3Eh) reads 5449h and DEVICE_ID (3Fh) 238xh: a quick wiring check. Default address 0x40; bridge A0 for 0x41, A1 for 0x44, both for 0x45."
+  ],
+  "keywords": [
+    "ina238",
+    "ina237",
+    "adafruit 6349",
+    "current",
+    "voltage",
+    "power",
+    "shunt",
+    "ammeter",
+    "wattmeter",
+    "85v",
+    "texas instruments"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Bus voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 85,
+    "default": 12,
+    "regWidth": 16,
+    "registers": {
+      "0x00": 0,
+      "0x01": 64360,
+      "0x02": 4096,
+      "0x3E": 21577,
+      "0x3F": 9089
+    },
+    "controls": [
+      {
+        "key": "current",
+        "quantity": "Current through the shunt",
+        "unit": "mA",
+        "min": -10000,
+        "max": 10000,
+        "default": 0
+      },
+      {
+        "key": "temperature",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.33333333333333337,
+        "signed": true,
+        "control": "current"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 0.003125,
+        "control": "value"
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "scale": 0.125,
+        "shift": 4,
+        "signed": true,
+        "control": "temperature"
+      },
+      {
+        "reg": "0x07",
+        "bytes": 2,
+        "scale": 0.5,
+        "signed": true,
+        "control": "current"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ina238.py",
+    "code": "# INA238 85 V, 16-bit current / voltage / power monitor (TI INA238, SLYS025B), MicroPython driver.\n# Register pointer byte, then data MSB first. All registers used here are 16-bit (POWER, 08h, is 24-bit).\n#   04h VSHUNT:  two's complement, 5 uV/LSB (ADCRANGE = 0) or 1.25 uV/LSB (ADCRANGE = 1).\n#   05h VBUS:    3.125 mV/LSB (two's complement, always positive).\n#   06h DIETEMP: bits 15-4, two's complement, 125 m-degC/LSB.\n#   07h CURRENT: two's complement, Current [A] = CURRENT_LSB x CURRENT (datasheet eq. 3),\n#                valid once SHUNT_CAL (02h) = 819.2e6 x CURRENT_LSB x R_SHUNT (eq. 1, ADCRANGE = 0).\n#   3Eh MANUFACTURER_ID = 5449h (\"TI\"), 3Fh DEVICE_ID = 238xh (DIEID 238h + revision).\n# Defaults suit the Adafruit INA238 breakout (#6349): 15 milliohm shunt, up to 10 A.\nimport time\n\n_CONFIG = 0x00\n_ADC_CONFIG = 0x01\n_SHUNT_CAL = 0x02\n_VSHUNT = 0x04\n_VBUS = 0x05\n_DIETEMP = 0x06\n_CURRENT = 0x07\n_MANUFACTURER_ID = 0x3E\n_DEVICE_ID = 0x3F\n\n# MODE = Fh (continuous bus, shunt and temperature), VBUSCT = VSHCT = VTCT = 5h (1052 us),\n# AVG = 2h (16 samples): a fresh result about every 16 x 3 x 1.05 ms = 50 ms.\n_ADC_SETTINGS = 0xFB6A\n\n\ndef _s16(v):\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass INA238:\n    def __init__(self, i2c, addr=0x40, shunt_ohms=0.015, max_amps=10.0):\n        self.i2c = i2c\n        self.addr = addr\n        self.shunt_ohms = shunt_ohms\n        if self._read16(_MANUFACTURER_ID) != 0x5449 or (self._read16(_DEVICE_ID) >> 4) != 0x238:\n            raise OSError('INA238 not found at 0x%02x: check the wiring' % addr)\n        # ADCRANGE = 0 (+-163.84 mV across the shunt). CURRENT_LSB must be at least\n        # max_amps / 2^15 (eq. 2); use a round 500 uA for the 10 A default (305 uA minimum).\n        lsb = max_amps / 32768\n        self.current_lsb = 500e-6 if lsb <= 500e-6 else lsb\n        cal = int(819.2e6 * self.current_lsb * shunt_ohms + 0.5)\n        if not 0 < cal < 0x8000:\n            raise ValueError('shunt_ohms / max_amps give SHUNT_CAL out of range')\n        self._write16(_CONFIG, 0x8000)  # RST: back to power-on defaults (self-clearing)\n        time.sleep_ms(2)\n        self._write16(_CONFIG, 0x0000)  # ADCRANGE = 0, no conversion delay\n        self._write16(_SHUNT_CAL, cal)  # 6144 for 0.015 ohm and 500 uA\n        self._write16(_ADC_CONFIG, _ADC_SETTINGS)\n        time.sleep_ms(60)  # wait for the first averaged result\n\n    def _write16(self, reg, v):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(v >> 8) & 0xFF, v & 0xFF]))\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def bus_voltage(self):\n        \"\"\"Voltage on VBUS relative to GND, in volts (3.125 mV per count).\"\"\"\n        return _s16(self._read16(_VBUS)) * 3.125e-3\n\n    def shunt_voltage_mv(self):\n        \"\"\"Voltage across the shunt (VIN+ minus VIN-) in mV (5 uV per count).\"\"\"\n        return _s16(self._read16(_VSHUNT)) * 5e-3\n\n    def current_ma(self):\n        \"\"\"Current from VIN+ to VIN- in mA (negative when it flows the other way).\"\"\"\n        return _s16(self._read16(_CURRENT)) * self.current_lsb * 1000\n\n    def die_temperature(self):\n        \"\"\"Chip temperature in degrees C (bits 15-4, 0.125 C per count).\"\"\"\n        return (_s16(self._read16(_DIETEMP)) >> 4) * 0.125\n\n    def power_mw(self):\n        \"\"\"Power delivered to the load in mW (bus voltage x current).\"\"\"\n        return self.bus_voltage() * self.current_ma()\n\n    def read(self):\n        \"\"\"Return (bus voltage in V, current in mA).\"\"\"\n        return self.bus_voltage(), self.current_ma()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ina238 import INA238\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = INA238(i2c)  # address 0x40, 15 milliohm shunt, 500 uA per count\nwhile True:\n    v, i = sensor.read()\n    t = sensor.die_temperature()\n    print('V=%.3fV I=%.1fmA T=%.1fC' % (v, i, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the bus voltage, current and chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "current",
+          "value": -2500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 41.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=24.000V I=-2500.0mA T=41.5C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:22:40.820Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ina238.pdf",
+      "https://www.adafruit.com/product/6349"
+    ]
+  }
+}

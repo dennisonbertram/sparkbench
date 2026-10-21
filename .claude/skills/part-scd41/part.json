@@ -1,0 +1,201 @@
+{
+  "type": "custom-scd41",
+  "name": "SCD41 CO2 sensor",
+  "mpn": "SCD41",
+  "category": "sensor",
+  "description": "Sensirion photoacoustic NDIR CO2 sensor (specified 400-5000 ppm, ±(50 ppm + 2.5 %) from 400-1000 ppm, output 0-40000 ppm) with on-board temperature and relative humidity, I2C interface. Unlike the SCD40 it also has an on-demand single shot mode (one reading in 5 s, 0.5 mA average at one reading per 5 min). Chip runs on 2.4-5.5 V. Sold as: Adafruit SCD-41 STEMMA QT breakout (PID 5190; 5-pin header VIN, 3Vo, GND, SCL, SDA, 3-5 V supply), I2C address 0x62 (fixed).",
+  "eli5": "Measures how much carbon dioxide is in the room, so you can tell when it is time to open a window. It can sleep between readings to save battery.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (use your board's logic voltage; an on-board regulator makes 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "io",
+      "description": "3.3 V OUTPUT of the on-board regulator (up to 100 mA), not an input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 18,
+  "i2cAddress": 98,
+  "datasheetUrl": "https://sensirion.com/media/documents/48C4B7FB/64C134E7/Sensirion_SCD4x_Datasheet.pdf",
+  "priceUsd": 50,
+  "supplierQuery": "SCD41 CO2 sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Send stop_periodic_measurement (0x3F86) and wait 500 ms so the sensor is idle. Then for each reading send measure_single_shot (0x219D) and wait 5000 ms.",
+    "Check get_data_ready_status (0xE4B8): ready when the low 11 bits of the word are not 0. Then read_measurement (0xEC05) returns 9 bytes: CO2, temperature, humidity words, each followed by a CRC.",
+    "CO2 [ppm] = word0; T = -45 + 175 x word1 / 65535 °C; RH = 100 x word2 / 65535 %. CRC-8 poly 0x31, init 0xFF.",
+    "After a power cycle (or wake_up) the first single shot reading should be discarded; the driver does this, so the first read() takes about 10 s.",
+    "Peak current is about 205 mA during each measurement pulse at 3.3 V: use a solid supply, the sensor needs ripple under 30 mV.",
+    "Automatic self-calibration in single shot mode is tuned for one reading every 5 minutes and needs fresh outdoor air (about 400 ppm) now and then.",
+    "Do not touch the sensor's membrane; keep it away from the regulator and microcontroller, which warm the air."
+  ],
+  "keywords": [
+    "scd41",
+    "scd4x",
+    "co2",
+    "carbon dioxide",
+    "air quality",
+    "ndir",
+    "sensirion",
+    "single shot",
+    "low power"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "CO2",
+    "unit": "ppm",
+    "min": 0,
+    "max": 40000,
+    "default": 600,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -10,
+        "max": 60,
+        "default": 21
+      },
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "e4 b8",
+        "bytes": [
+          {
+            "const": 32774,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "ec 05",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "temperature",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0015259021896696422
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "scd41.py",
+    "code": "# SCD41 CO2, temperature & humidity sensor (Sensirion SCD4x family), MicroPython driver.\n# Uses the SCD41-only single shot mode (SCD4x datasheet v1.5, section 3.10):\n#   stop_periodic_measurement 0x3F86 (500 ms), measure_single_shot 0x219D (5000 ms),\n#   measure_single_shot_rht_only 0x2196 (50 ms), get_data_ready_status 0xE4B8,\n#   read_measurement 0xEC05, power_down 0x36E0, wake_up 0x36F6 (not acknowledged, 30 ms).\n# Periodic mode (start_periodic_measurement 0x21B1, one reading every 5 s) is also available.\n# Every 16-bit word the sensor sends is followed by a CRC-8 (poly 0x31, init 0xFF).\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SCD41:\n    def __init__(self, i2c, addr=0x62):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(30)  # power-up time is up to 30 ms\n        # The sensor may still be in periodic mode from an earlier run: put it back to idle.\n        self._cmd(0x3F86)\n        time.sleep_ms(500)  # stop_periodic_measurement takes up to 500 ms\n        # Datasheet: after a power cycle the first single shot reading should be discarded.\n        self._discard = True\n\n    def _cmd(self, cmd):\n        self.i2c.writeto(self.addr, bytes([cmd >> 8, cmd & 0xFF]))\n\n    def _read_words(self, cmd, n):\n        self._cmd(cmd)\n        time.sleep_ms(1)  # command execution time 1 ms\n        d = self.i2c.readfrom(self.addr, 3 * n)\n        words = []\n        for i in range(n):\n            if _crc8(d[3 * i:3 * i + 2]) != d[3 * i + 2]:\n                raise OSError('SCD41 CRC mismatch: check the wiring')\n            words.append((d[3 * i] << 8) | d[3 * i + 1])\n        return words\n\n    def data_ready(self):\n        # Data ready when the least significant 11 bits of the status word are not 0.\n        return (self._read_words(0xE4B8, 1)[0] & 0x07FF) != 0\n\n    def _fetch(self, timeout_ms=1000):\n        t0 = time.ticks_ms()\n        while not self.data_ready():\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('SCD41: no measurement ready')\n            time.sleep_ms(50)\n        co2, t_raw, h_raw = self._read_words(0xEC05, 3)\n        return co2, -45 + 175 * t_raw / 65535, 100 * h_raw / 65535\n\n    def _single_shot(self):\n        self._cmd(0x219D)\n        time.sleep_ms(5000)  # measure_single_shot max. duration 5000 ms\n        return self._fetch()\n\n    def read(self):\n        \"\"\"Take one on-demand reading (about 5 s; 10 s the first time).\n        Returns (CO2 in ppm, temperature in °C, relative humidity in %).\"\"\"\n        if self._discard:\n            self._single_shot()  # first reading after power-up is less accurate\n            self._discard = False\n        return self._single_shot()\n\n    def read_rht_only(self):\n        \"\"\"Fast (50 ms) temperature and humidity reading; CO2 is returned as 0.\"\"\"\n        self._cmd(0x2196)\n        time.sleep_ms(50)\n        return self._fetch()\n\n    def power_down(self):\n        self._cmd(0x36E0)\n        time.sleep_ms(1)\n\n    def wake_up(self):\n        try:\n            self._cmd(0x36F6)  # the sensor does not acknowledge wake_up\n        except OSError:\n            pass\n        time.sleep_ms(30)\n        self._discard = True\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom scd41 import SCD41\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SCD41(i2c)\nwhile True:\n    co2, t, h = sensor.read()  # single shot: about 5 s (10 s the first time)\n    print('CO2=%dppm T=%.1fC H=%.0f%%' % (co2, t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2, temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 27
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 40
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1500ppm T=27.0C H=40%",
+          "within": 16000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensirion.com/media/documents/48C4B7FB/64C134E7/Sensirion_SCD4x_Datasheet.pdf",
+    "https://learn.adafruit.com/adafruit-scd-40-and-scd-41/pinouts",
+    "https://www.adafruit.com/product/5190",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20SCD4x.fzpz"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:23:03.561Z",
+    "verifiedSources": [
+      "https://sensirion.com/resource/datasheet/scd4x",
+      "https://www.adafruit.com/product/5190",
+      "https://cdn-shop.adafruit.com/970x728/5190-04.jpg",
+      "https://learn.adafruit.com/adafruit-scd-40-and-scd-41/pinouts"
+    ]
+  }
+}

@@ -1,0 +1,231 @@
+{
+  "type": "custom-pms3003",
+  "name": "PMS3003 particulate matter (PM2.5) sensor",
+  "mpn": "PMS3003",
+  "category": "sensor",
+  "description": "Plantower third-generation (G3) laser-scattering dust sensor reporting PM1.0, PM2.5 and PM10 mass concentration in µg/m³ as 24-byte frames over a 9600-baud UART (3.3 V logic). Needs 5 V for its fan, up to 200 mA. No passive mode or serial commands. Sold as: Plantower PMS3003 (G3) sensor with its 8-wire 1.25 mm cable and the common 1.25-to-2.54 mm adapter board, 8-pin header (datasheet PIN1-PIN8): VCC, GND, SET, RXD, TXD, RESET, NC, NC.",
+  "eli5": "A little fan pulls air past a laser and counts the dust and smoke specks, then tells your board how dirty the air is.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 5 V: the fan needs 5 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SET",
+      "role": "io",
+      "description": "Sleep control, 3.3 V logic: high/open = run, low = sleep",
+      "required": false
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Sensor serial input (3.3 V logic); the PMS3003 takes no commands, so leave it open or wire to the board TX",
+      "required": false
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Sensor serial output (3.3 V logic, 9600 baud): wire to the board UART RX",
+      "required": true
+    },
+    {
+      "name": "RESET",
+      "role": "io",
+      "description": "Module reset, active low, 3.3 V logic; leave open if unused",
+      "required": false
+    },
+    {
+      "name": "NC1",
+      "role": "nc",
+      "description": "Not connected (PIN7)",
+      "required": false
+    },
+    {
+      "name": "NC2",
+      "role": "nc",
+      "description": "Not connected (PIN8)",
+      "required": false
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 200,
+  "datasheetUrl": "https://github.com/avaldebe/AQmon/raw/master/Documents/PMS3003_LOGOELE.pdf",
+  "priceUsd": 20,
+  "supplierQuery": "PMS3003 G3 PM2.5 laser dust sensor with adapter board",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (the fan needs it; up to 200 mA while running, about 2 mA asleep), but SET, RXD, TXD and RESET are 3.3 V logic: fine for ESP32 or Pico directly; a 5 V Arduino needs a level shifter on any pin it drives.",
+    "Only the sensor TXD needs wiring for data: sensor TXD -> board UART RX. The PMS3003 accepts no serial commands.",
+    "9600 baud 8N1. The sensor sends 24-byte frames on its own: 0x42 0x4D, length 20, nine big-endian words, then a 16-bit sum of the first 22 bytes. Resync on 0x42 0x4D and drop frames whose sum does not match.",
+    "Data 4-6 are PM1.0/PM2.5/PM10 under atmospheric environment (use these); data 1-3 are the CF=1 standard-particle values; data 7-9 are reserved.",
+    "Leave SET, RESET and both NC pins unconnected unless you use them; SET low stops the fan. Readings need about 30 s after power-up or waking to settle.",
+    "The sensor connector is a tiny 8-pin 1.25 mm socket: use the adapter board for a breadboard; keep the air inlet and outlet clear."
+  ],
+  "keywords": [
+    "pms3003",
+    "g3",
+    "pm2.5",
+    "pm10",
+    "pm1.0",
+    "particulate",
+    "dust",
+    "air quality",
+    "plantower"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "PM2.5 (atmospheric)",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0 (atmospheric)",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10 (atmospheric)",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "bytes": [
+        {
+          "const": 66,
+          "bits": 8
+        },
+        {
+          "const": 77,
+          "bits": 8
+        },
+        {
+          "const": 20,
+          "bits": 16
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "crc": "sum16",
+          "over": 22
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "pms3003.py",
+    "code": "# Plantower PMS3003 (G3) particulate matter sensor, MicroPython driver.\n# Written from the PMS3003 data manual (digital pin table and serial frame table):\n# 9600 baud, 8N1, 3.3 V TTL. The sensor sends 24-byte frames by itself:\n#   0x42 0x4D, frame length (2 bytes, = 2x9+2 = 20), 9 big-endian 16-bit data words, 16-bit checksum,\n#   checksum = start character 1 + start character 2 + ... + data 9 low byte (the first 22 bytes).\n#   Data 1-3: PM1.0 / PM2.5 / PM10 CF=1 (standard particle, ug/m3)\n#   Data 4-6: PM1.0 / PM2.5 / PM10 under atmospheric environment (ug/m3)\n#   Data 7-9: reserved\n# The PMS3003 has no passive mode and no serial commands: sleep and reset use the SET and RESET pins.\nimport time\n\n_START = b'\\x42\\x4d'\n_FRAME_LEN = 24\n\n\nclass PMS3003:\n    def __init__(self, uart, set_pin=None, reset_pin=None):\n        \"\"\"uart: a machine.UART at 9600 baud whose RX is wired to the sensor's TXD.\n        set_pin / reset_pin: optional machine.Pin outputs wired to SET / RESET (3.3 V logic).\"\"\"\n        self.uart = uart\n        self.set_pin = set_pin\n        self.reset_pin = reset_pin\n        self._buf = b''\n\n    def _frame(self, timeout_ms):\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while time.ticks_diff(deadline, time.ticks_ms()) > 0:\n            n = self.uart.any()\n            if n:\n                got = self.uart.read(n)\n                if got:\n                    self._buf += got\n            else:\n                time.sleep_ms(10)\n            while True:\n                i = self._buf.find(_START)\n                if i < 0:\n                    self._buf = self._buf[-1:]  # keep a trailing 0x42\n                    break\n                self._buf = self._buf[i:]\n                if len(self._buf) < _FRAME_LEN:\n                    break\n                f = self._buf[:_FRAME_LEN]\n                length = (f[2] << 8) | f[3]\n                check = (f[22] << 8) | f[23]\n                if length == 2 * 9 + 2 and (sum(f[:22]) & 0xFFFF) == check:\n                    self._buf = self._buf[_FRAME_LEN:]\n                    return f\n                self._buf = self._buf[2:]  # false start or corrupted frame: resync\n        raise OSError('PMS3003: no valid frame (check the TXD wire, 5 V on VCC, and that SET is not low)')\n\n    def read(self, timeout_ms=3000):\n        \"\"\"Wait for the next valid frame and return a dict of its readings (ug/m3).\n        pm1_0 / pm2_5 / pm10 are the 'atmospheric environment' values (data 4-6);\n        *_cf1 are the CF=1 standard-particle values (data 1-3).\"\"\"\n        f = self._frame(timeout_ms)\n        w = [(f[4 + 2 * k] << 8) | f[5 + 2 * k] for k in range(9)]\n        return {\n            'pm1_0_cf1': w[0], 'pm2_5_cf1': w[1], 'pm10_cf1': w[2],\n            'pm1_0': w[3], 'pm2_5': w[4], 'pm10': w[5],\n        }\n\n    def flush(self):\n        \"\"\"Throw away buffered (possibly stale) bytes.\"\"\"\n        while self.uart.any():\n            self.uart.read(self.uart.any())\n        self._buf = b''\n\n    def sleep(self):\n        \"\"\"SET low: fan and laser stop (standby current only). Needs set_pin.\"\"\"\n        if self.set_pin is None:\n            raise ValueError('PMS3003 sleep needs set_pin (the sensor has no sleep command)')\n        self.set_pin.value(0)\n\n    def wake(self):\n        \"\"\"SET high: run. Readings settle about 30 s after the fan restarts.\"\"\"\n        if self.set_pin is None:\n            raise ValueError('PMS3003 wake needs set_pin')\n        self.set_pin.value(1)\n\n    def reset(self):\n        \"\"\"Pulse RESET low. Needs reset_pin.\"\"\"\n        if self.reset_pin is None:\n            raise ValueError('PMS3003 reset needs reset_pin')\n        self.reset_pin.value(0)\n        time.sleep_ms(100)\n        self.reset_pin.value(1)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nfrom pms3003 import PMS3003\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\npms = PMS3003(uart)\nwhile True:\n    r = pms.read()\n    print('PM1=%d PM2.5=%d PM10=%d' % (r['pm1_0'], r['pm2_5'], r['pm10']))\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM1.0, PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1",
+          "value": 23
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 52
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1=23 PM2.5=37 PM10=52",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://github.com/avaldebe/AQmon/raw/master/Documents/PMS3003_LOGOELE.pdf",
+    "https://github.com/avaldebe/PyPMS/blob/master/docs/sensors/Plantower.md",
+    "https://aqicn.org/sensor/pms3003"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:28:22.338Z",
+    "verifiedSources": [
+      "https://github.com/avaldebe/PyPMS/blob/master/docs/sensors/Plantower.md",
+      "https://aqicn.org/sensor/pms3003/hi",
+      "https://thepihut.com/products/breakout-for-particulate-matter-sensor-pms5003"
+    ]
+  }
+}

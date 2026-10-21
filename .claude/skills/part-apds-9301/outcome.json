@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-apds-9301",
+  "board": "SparkFun Ambient Light Sensor Breakout - APDS-9301 (SEN-14350)",
+  "reason": "Check printed PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test CH0=2500 CH1=800 Lux=712.9, PCB DRC clean). Driver follows AV02-2315EN: command byte 0x80|reg, power up with 0x03 and read it back, ID nibble 0101, TIMING gain/integ, Read Word 0xAC/0xAE low byte first, and the datasheet's CH1/CH0 lux formula with gain/integration scaling and saturation detection.",
+  "datasheetUrl": "https://docs.broadcom.com/doc/AV02-2315EN",
+  "breakoutPinoutSource": "https://cdn.sparkfun.com/assets/learn_tutorials/6/8/6/header_highlighted.png (silkscreen INT, GND, 3.3V, SDA, SCL) and schematic https://cdn.sparkfun.com/assets/9/c/2/4/9/APDS-9301_Breakout_v10.pdf",
+  "checkRuns": 1
+}

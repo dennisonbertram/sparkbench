@@ -1,0 +1,105 @@
+{
+  "type": "custom-ds1822",
+  "name": "DS1822 1-Wire econo digital thermometer",
+  "mpn": "DS1822+",
+  "category": "sensor",
+  "description": "Maxim/Analog Devices econo 1-Wire digital thermometer, -55 to +125 °C (±2 °C from -10 to +85 °C, ±3 °C over the full range), 9-12 bit resolution (0.0625 °C at the default 12 bits, 750 ms conversion), unique 64-bit ROM code with family code 22h, software compatible with the DS18B20. Runs on 3.0-5.5 V. Sold as: DS1822+ in a 3-pin TO-92 through-hole package (datasheet bottom view; with the flat face towards you and legs down: GND, DQ, VDD), needing an external 4.7 kΩ pull-up from DQ to VDD.",
+  "eli5": "A cheap little thermometer chip that sends the temperature as a number down a single wire; several can share the same wire.",
+  "refPrefix": "U",
+  "interface": "onewire",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (TO-92 pin 1, left with the flat face towards you)",
+      "required": true
+    },
+    {
+      "name": "DQ",
+      "role": "io",
+      "fn": "onewire",
+      "description": "1-Wire data in/out, open-drain (TO-92 pin 2, middle); needs a 4.7 kΩ pull-up to VDD",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.0-5.5 V (TO-92 pin 3, right). Use 3.3 V with an ESP32 or Pico so the pull-up keeps DQ at 3.3 V logic",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/DS1822.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "DS1822+ TO-92 1-Wire digital thermometer",
+  "footprint": "Package_TO_SOT_THT:TO-92_Inline",
+  "buildNotes": [
+    "Pin order with the flat face towards you, legs down: left = GND, middle = DQ, right = VDD (the datasheet drawing is a bottom view). Wired backwards it gets hot fast: unplug it at once.",
+    "Fit a 4.7 kΩ pull-up from DQ to VDD and power VDD from 3.3 V when DQ goes to an ESP32 or Pico.",
+    "Send Convert T (44h), then wait at least 750 ms (12-bit) before Read Scratchpad (BEh); MicroPython's ds18x20 module does the commands and the CRC check (it recognises family 22h), your code does the wait.",
+    "Temperature = signed 16-bit register x 0.0625 °C (same format as the DS18B20). A reading of exactly 85 °C is the power-on value: the conversion did not finish or the sensor lost power.",
+    "Accuracy is only ±2 °C (-10 to +85 °C); use a DS18B20 if you need ±0.5 °C.",
+    "Use VDD (external power), not parasite power: parasite mode needs VDD grounded and a strong pull-up during every conversion."
+  ],
+  "keywords": [
+    "ds1822",
+    "ds1822+",
+    "econo",
+    "1-wire",
+    "onewire",
+    "temperature",
+    "thermometer",
+    "dallas",
+    "maxim",
+    "to-92"
+  ],
+  "sim": {
+    "kind": "onewire-temp",
+    "family": 34,
+    "outputPin": "DQ",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 125,
+    "default": 21
+  },
+  "example": {
+    "code": "import machine, onewire, ds18x20, time\n\nds = ds18x20.DS18X20(onewire.OneWire(machine.Pin({DQ})))\nroms = ds.scan()\nprint('found', len(roms))\nwhile True:\n    ds.convert_temp()\n    time.sleep_ms(750)  # 12-bit conversion: up to 750 ms\n    print('T=%.2fC' % ds.read_temp(roms[0]))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -12.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-12.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/DS1822.pdf",
+    "http://web.archive.org/web/2020id_/https://datasheets.maximintegrated.com/en/ds/DS1822.pdf",
+    "https://github.com/micropython/micropython-lib/blob/master/micropython/drivers/sensor/ds18x20/ds18x20.py"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:53:46.104Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/DS1822.pdf",
+      "https://web.archive.org/web/2023/https://www.analog.com/media/en/technical-documentation/data-sheets/DS1822.pdf"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-scd41",
+  "board": "Adafruit SCD-41 STEMMA QT breakout (PID 5190)",
+  "reason": "Built from the Sensirion SCD4x datasheet v1.5. The driver uses the SCD41-only single shot mode: 0x3F86 stop, then 0x219D with a 5000 ms wait, 0xE4B8 data-ready and 0xEC05 read, with a CRC-8 on every word. It discards the first reading after power-up, as the datasheet says to. Header order VIN, 3Vo, GND, SCL, SDA is from Adafruit's pinouts guide, which says the SCD-40 and SCD-41 boards share one pinout, and from its Fritzing part. The check passed on ESP32 and Pico (simulator, breadboard, PCB DRC, footprint, LCSC).",
+  "datasheetUrl": "https://sensirion.com/media/documents/48C4B7FB/64C134E7/Sensirion_SCD4x_Datasheet.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-scd-40-and-scd-41/pinouts + https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20SCD4x.fzpz",
+  "checkRuns": 1
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "digital-sensor",
+  "board": "E18-D80NK-N adjustable infrared proximity switch (orange 18 mm body, 3-wire lead with DuPont plug: red VCC, black GND, yellow OUT)",
+  "reason": "Part check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test, PCB). Modelled as an active-low digital sensor: NPN open-collector output, 5 V supply; the driver enables the GPIO's internal pull-up to 3.3 V because the datasheet's pull-up must not go to the sensor's 5 V rail.",
+  "datasheetUrl": "https://www.mantech.co.za/Datasheets/Products/MD0052-E18-D80NK.pdf",
+  "breakoutPinoutSource": "E18-D80NK-N instruction guides (mantech.co.za MD0052 and m.media-amazon.com/images/I/711Cn4VOqlL.pdf): red VCC, black GND, yellow OUT; components101 for the older brown/blue/black colour code",
+  "checkRuns": 2
+}

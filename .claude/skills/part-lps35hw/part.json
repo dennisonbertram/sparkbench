@@ -1,0 +1,186 @@
+{
+  "type": "custom-lps35hw",
+  "name": "LPS35HW water-resistant pressure sensor",
+  "mpn": "LPS35HW",
+  "category": "sensor",
+  "description": "STMicroelectronics water-resistant MEMS absolute pressure sensor (gel-filled ceramic package), 260-1260 hPa with 24-bit output (4096 LSB/hPa, ±0.1 hPa relative, ±1 hPa absolute accuracy after one-point calibration) and a built-in 16-bit temperature sensor (100 LSB/°C), I2C or SPI; the chip runs on 1.7-3.6 V. Sold as: Adafruit LPS35HW Water Resistant Pressure Sensor [STEMMA QT] (#4258), 8-pin header VIN, 3Vo, GND, SCK, SDO, SDI, CS, INT (SCK = I2C SCL and SDI = I2C SDA, modelled as pins SCL and SDA) with a 3.3 V regulator and I2C level shifting for 3-5 V, I2C address 0x5D (0x5C with SDO tied to GND).",
+  "eli5": "Feels the weight of the air (or water) above it, even when it gets wet, so your board can track the weather, height or water depth.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (on-board 3.3 V regulator feeds the chip; use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, printed SCK on the board (it doubles as the SPI clock); 10 kΩ pull-up and level shifting on the board",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select (SA0): open = 0x5D, tie to GND for 0x5C; SPI data out. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, printed SDI on the board (it doubles as SPI data in); 10 kΩ pull-up and level shifting on the board",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select; leave unconnected for I2C (pulled high on the board)",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt / data-ready output (INT_DRDY), optional",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.1,
+  "i2cAddress": 93,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lps35hw.pdf",
+  "priceUsd": 12.5,
+  "supplierQuery": "Adafruit LPS35HW water resistant pressure sensor STEMMA QT 4258",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lps35hw.pdf",
+    "https://cdn.sparkfun.com/assets/0/a/d/9/5/LPS35HW_DataSheet.pdf",
+    "https://learn.adafruit.com/lps35hw-water-resistant-pressure-sensor.md?view=all",
+    "https://cdn-learn.adafruit.com/assets/assets/000/076/552/medium800/sensors_lps35hw_top_crop.jpg?1559951598",
+    "https://cdn-learn.adafruit.com/assets/assets/000/075/859/medium800/sensors_lps35hw_fab_print.png?1558534883",
+    "https://www.adafruit.com/product/4258"
+  ],
+  "buildNotes": [
+    "The chip powers up in power-down mode (CTRL_REG1 0x10 = 0x00): write an output data rate first, e.g. 0x20 for continuous 10 Hz (bit 7 must stay 0).",
+    "Check WHO_AM_I (0x0F) = 0xB1. Wait for STATUS (0x27) bits P_DA and T_DA, then burst-read 5 bytes from 0x28: PRESS_OUT_XL, _L, _H, TEMP_OUT_L, _H (low byte first, two's complement).",
+    "Pressure = raw24 / 4096 hPa; temperature = raw16 / 100 °C.",
+    "The silkscreen uses SPI names: SCK is the I2C clock (SCL) and SDI is the I2C data line (SDA). Leave CS unconnected for I2C.",
+    "Default address 0x5D; tie SDO to GND for 0x5C (e.g. for a second sensor). 3Vo is the regulator's output: leave it unconnected.",
+    "Only the sensor is water resistant: coat or pot the breakout board and wiring if it will get wet."
+  ],
+  "keywords": [
+    "lps35hw",
+    "lps35",
+    "lps33hw",
+    "pressure",
+    "barometer",
+    "barometric",
+    "water resistant",
+    "waterproof",
+    "depth",
+    "altitude",
+    "temperature",
+    "st"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Air pressure",
+    "unit": "hPa",
+    "min": 260,
+    "max": 1260,
+    "default": 1013,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x0F": 177,
+      "0x10": 0,
+      "0x11": 16,
+      "0x27": 3
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 3,
+        "scale": 0.000244140625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2B",
+        "bytes": 2,
+        "scale": 0.01,
+        "signed": true,
+        "littleEndian": true,
+        "control": "temperature"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lps35hw.py",
+    "code": "# LPS35HW water-resistant pressure + temperature sensor (STMicroelectronics), MicroPython driver.\n# Written from the ST datasheet DocID029129 Rev 1:\n#   I2C address 101110x: 0x5D with SDO/SA0 high, 0x5C with SA0 low.\n#   WHO_AM_I 0x0F = 0xB1, CTRL_REG1 0x10 (ODR[2:0] bits 6:4, bit 7 must be 0),\n#   CTRL_REG2 0x11 (IF_ADD_INC bit 4 = 1 by default), STATUS 0x27 (T_DA bit 1, P_DA bit 0),\n#   PRESS_OUT_XL/L/H 0x28-0x2A: 24-bit two's complement, 4096 LSB/hPa,\n#   TEMP_OUT_L/H 0x2B-0x2C: 16-bit two's complement, 100 LSB/degC.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x10\n_STATUS = 0x27\n_PRESS_OUT_XL = 0x28\n_CHIP_ID = 0xB1\n\n# ODR codes for CTRL_REG1 bits 6:4 (Table 19): 1, 10, 25, 50, 75 Hz.\n_ODR = {1: 0b001, 10: 0b010, 25: 0b011, 50: 0b100, 75: 0b101}\n\n\nclass LPS35HW:\n    def __init__(self, i2c, addr=0x5D, rate=10):\n        \"\"\"addr 0x5D with SDO/SA0 high (Adafruit default), 0x5C with SDO tied to GND.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.period_ms = 1000 // rate\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != _CHIP_ID:\n            raise OSError('LPS35HW not found (WHO_AM_I=0x%02X, expected 0xB1)' % who)\n        # Continuous mode at the chosen rate; low-pass filter off, BDU=0 (a 5-byte burst is read\n        # right after data-ready, well inside one sample period), SIM=0. Bit 7 must be 0.\n        self.i2c.writeto_mem(addr, _CTRL_REG1, bytes([_ODR[rate] << 4]))\n\n    def _wait_ready(self):\n        # STATUS: P_DA (bit 0) and T_DA (bit 1) go to 1 when a new sample is available.\n        deadline = time.ticks_add(time.ticks_ms(), 2 * self.period_ms + 100)\n        while (self.i2c.readfrom_mem(self.addr, _STATUS, 1)[0] & 0x03) != 0x03:\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('LPS35HW: no new data (check wiring and power)')\n            time.sleep_ms(5)\n\n    def read(self):\n        \"\"\"Return (pressure in hPa, temperature in degC).\"\"\"\n        self._wait_ready()\n        d = self.i2c.readfrom_mem(self.addr, _PRESS_OUT_XL, 5)\n        p = d[0] | (d[1] << 8) | (d[2] << 16)\n        if p & 0x800000:\n            p -= 1 << 24\n        t = d[3] | (d[4] << 8)\n        if t & 0x8000:\n            t -= 1 << 16\n        return p / 4096, t / 100\n\n    def pressure(self):\n        return self.read()[0]\n\n    def temperature(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_hpa=1013.25):\n        \"\"\"Approximate altitude in metres from the international barometric formula.\"\"\"\n        return 44330 * (1 - (self.pressure() / sea_level_hpa) ** 0.1903)\n"
+  },
+  "skill": "---\nname: part-lps35hw\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the LPS35HW water-resistant barometric pressure & temperature sensor (STMicroelectronics LPS35HW, Adafruit #4258). Use when designing, wiring, simulating or writing code for an LPS35HW in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# LPS35HW water-resistant pressure & temperature sensor (LPS35HW)\n\n## Overview\nThe **LPS35HW** from STMicroelectronics is a MEMS absolute pressure sensor (260–1260 hPa, 24-bit, 4096 LSB/hPa, ±0.1 hPa relative accuracy, ±1 hPa absolute after one-point calibration) with a built-in temperature sensor (16-bit, 100 LSB/°C). The sensing element sits in a ceramic package under a water-resistant gel, so it survives wet and humid places (it is not rated for submersion depth). It talks I2C or SPI. Hobbyists buy it on the **Adafruit LPS35HW Water Resistant Pressure Sensor [STEMMA QT] (#4258)**, which adds a 3.3 V regulator, I2C level shifting with 10 kΩ pull-ups, two STEMMA QT connectors and an 8-pin header.\n\n## Pinout (Adafruit #4258, header order as printed)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3–5 V (on-board 3.3 V regulator; use your board's logic voltage) |\n| 3Vo | 3.3 V regulator output (up to 100 mA); leave unconnected |\n| GND | Ground |\n| SCK (part pin SCL) | I2C clock (SCL); SPI clock |\n| SDO | I2C address select: open = 0x5D, tied to GND = 0x5C; SPI data out |\n| SDI (part pin SDA) | I2C data (SDA); SPI data in |\n| CS | SPI chip select; leave open for I2C (pulled high on the board) |\n| INT | Interrupt / data-ready output, optional |\n\nSparkbench names the SCK and SDI pins SCL and SDA (their I2C roles); on the board they are printed SCK and SDI.\n\n## Electrical limits\n- Chip VDD: 1.7–3.6 V (absolute max 4.8 V); the breakout's regulator takes 3–5 V on VIN.\n- Current: about 15 µA at 1 Hz (3 µA in low-current mode), 1 µA power-down.\n- I2C up to 400 kHz.\n- Pressure range 260–1260 hPa; operating temperature −40 to +85 °C (full accuracy 0–65 °C).\n\n## Interface details\n- **I2C address 0x5D** (SDO/SA0 high, the Adafruit default); 0x5C with SDO tied to GND.\n- WHO_AM_I (0x0F) reads **0xB1**.\n- The chip powers up in power-down/one-shot mode (CTRL_REG1 0x10 = 0x00). Write an output data rate to CTRL_REG1 bits 6:4 (0x10 = 1 Hz, 0x20 = 10 Hz, 0x30 = 25 Hz, 0x40 = 50 Hz, 0x50 = 75 Hz) for continuous mode. Bit 7 must stay 0.\n- STATUS (0x27): bit 0 P_DA, bit 1 T_DA = new pressure / temperature sample ready.\n- Burst-read 5 bytes from 0x28 (IF_ADD_INC in CTRL_REG2 is on by default): PRESS_OUT_XL, _L, _H, TEMP_OUT_L, _H.\n- Pressure: 24-bit two's complement, low byte first; **P = raw / 4096 hPa**. PRESS_OUT is the measured pressure minus the RPDS offset (0x18/0x19, 0 by default).\n- Temperature: 16-bit two's complement, low byte first; **T = raw / 100 °C**.\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDI → D21 (SDA), SCK → D22 (SCL).\n- Pico: VIN → 3V3(OUT), GND → GND, SDI → GP4 (SDA), SCK → GP5 (SCL).\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDI → pin 3 (SDA), SCK → pin 5 (SCL).\n- Or just plug in a STEMMA QT / Qwiic cable.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom lps35hw import LPS35HW\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nsensor = LPS35HW(i2c)          # 0x5D, continuous at 10 Hz\np, t = sensor.read()\nprint('P=%.2fhPa T=%.2fC' % (p, t))\n```\n`altitude(sea_level_hpa)` gives an approximate height in metres.\n\n## Gotchas\n- Silkscreen uses SPI names: **SCK is SCL and SDI is SDA** in I2C mode.\n- Leave CS unconnected (or high) for I2C; pulling it low switches the chip to SPI.\n- No reading / `OSError` at 0x5D: check whether SDO is tied to GND (then use addr=0x5C).\n- The breakout itself is not waterproof: only the sensor is gel-protected. Pot or coat the board and connections if it will get wet.\n- Under water the reading includes the water column (about 98 hPa per metre of fresh water).\n\n## Datasheet\nhttps://www.st.com/resource/en/datasheet/lps35hw.pdf\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lps35hw import LPS35HW\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = LPS35HW(i2c)\nwhile True:\n    p, t = sensor.read()\n    print('P=%.2fhPa T=%.2fC' % (p, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1050.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 18.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=1050.75hPa T=18.50C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:27:09.232Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/lps35hw-water-resistant-pressure-sensor/pinouts",
+      "https://cdn-learn.adafruit.com/downloads/pdf/lps35hw-water-resistant-pressure-sensor.pdf",
+      "https://raw.githubusercontent.com/adafruit/Adafruit_LPS35HW/master/Adafruit_LPS35HW.h",
+      "https://www.st.com/resource/en/datasheet/lps35hw.pdf"
+    ]
+  }
+}

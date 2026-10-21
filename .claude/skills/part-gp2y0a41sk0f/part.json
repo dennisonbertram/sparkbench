@@ -1,0 +1,123 @@
+{
+  "type": "custom-gp2y0a41sk0f",
+  "name": "Sharp GP2Y0A41SK0F IR distance sensor (4-30 cm)",
+  "mpn": "GP2Y0A41SK0F",
+  "category": "sensor",
+  "description": "Sharp infrared triangulation distance sensor, 4 to 30 cm, analog output: Vo falls from about 2.7 V at 4 cm to 0.4 V at 30 cm (typical, roughly linear in 1/(L+0.42 cm)) and rises to a 3.05 V peak near 3 cm before falling again. 4.5-5.5 V supply, 12 mA average (22 mA max, 111 mA IR LED pulses); a new reading every 16.5 ms. Sold as: Sharp/Socle GP2Y0A41SK0F (Pololu #2464) with a 3-pin JST PH cable such as Pololu #117 / #1799 (male pins), connector order Vo, GND, VCC.",
+  "eli5": "Shines invisible infrared light and sees where the reflection lands, so it can tell how far away something is (4 to 30 cm). The closer the object, the higher the voltage on its Vo wire.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "Vo",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (connector pin 1): about 2.7 V at 4 cm down to 0.4 V at 30 cm, peaks near 3.05 V, so safe for a 3.3 V ADC pin",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (connector pin 2)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 4.5-5.5 V (connector pin 3), 12 mA average, 22 mA max. Use 5 V / VBUS; add 10 uF across VCC-GND near the sensor",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 22,
+  "datasheetUrl": "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0a41sk_e.pdf",
+  "sources": [
+    "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0a41sk_e.pdf",
+    "https://www.pololu.com/product/2464",
+    "https://www.pololu.com/product/117",
+    "https://www.pololu.com/product/1799"
+  ],
+  "priceUsd": 14,
+  "supplierQuery": "Sharp GP2Y0A41SK0F infrared distance sensor 4-30cm with JST cable",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Connector order (datasheet outline 'Connector signal'): pin 1 Vo, pin 2 GND, pin 3 VCC. Cable colours vary between sellers, so follow the pin numbers marked on the sensor housing.",
+    "Power VCC from 5 V (USB 5V / VIN / VBUS): the sensor needs 4.5-5.5 V and does not work on 3.3 V.",
+    "Fit a 10 uF (or larger) capacitor between VCC and GND close to the sensor, as the datasheet recommends; the 111 mA IR LED pulses otherwise show up as noise on Vo.",
+    "Vo stays below about 3.05 V, so it connects straight to an ESP32 ADC1 pin (GPIO32-39) or a Pico ADC pin (GP26-28) without a divider.",
+    "Keep objects at least 4 cm away: closer than that the voltage falls again and the reading looks like a larger distance.",
+    "The curve is typical only (30 cm output 0.25-0.55 V between units); check a few distances against a ruler if accuracy matters."
+  ],
+  "keywords": [
+    "gp2y0a41sk0f",
+    "gp2y0a41sk",
+    "gp2y0a41",
+    "sharp",
+    "socle",
+    "infrared",
+    "ir",
+    "distance",
+    "proximity",
+    "range",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "Vo",
+    "quantity": "Vo output voltage (higher = closer)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.2,
+    "default": 0.43,
+    "vAtMin": 0,
+    "vAtMax": 3.2
+  },
+  "driver": {
+    "filename": "gp2y0a41sk.py",
+    "code": "# Sharp GP2Y0A41SK0F infrared distance sensor (4-30 cm, analog output), MicroPython driver.\n# The sensor measures by triangulation and puts out a voltage on Vo that FALLS as the object\n# gets farther away. The datasheet gives no formula, only \"Example of output distance\n# characteristics\" (Vcc = 5 V, white paper 90 % reflectance) and the same data plotted against\n# 1/(L + 0.42), where Sharp shows the output is close to a straight line. This driver therefore\n# interpolates linearly in 1/(L + 0.42) between the typical points read off that figure.\n# A new measurement is made every 16.5 ms +/- 3.7 ms (datasheet timing chart; the first valid\n# output appears at most 5 ms after the first measurement), so averaging several ADC samples\n# over a few ms smooths the steps and supply ripple without hiding motion.\n# Below 4 cm the output falls again (peak ~3.05 V at about 3 cm), so a high voltage is ambiguous:\n# readings above the 4 cm level are reported as None (too close), below the 30 cm level as None.\nimport time\nfrom machine import ADC, Pin\n\n# (distance in cm, typical Vo in volts) from the datasheet figure (white paper), far to near\nCURVE = (\n    (30, 0.43), (25, 0.53), (20, 0.66), (18, 0.73), (16, 0.81), (14, 0.93),\n    (12, 1.06), (10, 1.27), (9, 1.39), (8, 1.56), (7, 1.77), (6, 2.02),\n    (5, 2.34), (4, 2.72),\n)\nL_OFFSET = 0.42  # cm, from the datasheet's linearising axis 1/(L + 0.42)\n\n\nclass GP2Y0A41SK:\n    def __init__(self, pin, samples=16, vref=3.3):\n        \"\"\"pin: GPIO number (or Pin) wired to Vo. vref: ADC full scale in volts, used when\n        read_uv() is not available (e.g. Pico).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"Averaged Vo in volts.\"\"\"\n        total = 0\n        for _ in range(self.samples):\n            if hasattr(self.adc, 'read_uv'):\n                total += self.adc.read_uv() / 1e6\n            else:\n                total += self.adc.read_u16() * self.vref / 65535\n            time.sleep_us(200)\n        return total / self.samples\n\n    @staticmethod\n    def volts_to_cm(v):\n        \"\"\"Distance in cm for an output voltage, or None outside the 4-30 cm range.\"\"\"\n        if v < CURVE[0][1] or v > CURVE[-1][1]:\n            return None\n        for (d1, v1), (d2, v2) in zip(CURVE, CURVE[1:]):\n            if v1 <= v <= v2:\n                # linear in 1/(L + 0.42) between the two datasheet points\n                x1 = 1 / (d1 + L_OFFSET)\n                x2 = 1 / (d2 + L_OFFSET)\n                x = x1 + (v - v1) * (x2 - x1) / (v2 - v1)\n                return 1 / x - L_OFFSET\n        return None\n\n    def distance_cm(self):\n        \"\"\"Distance to the object in cm (4-30), or None when nothing is in range / too close.\"\"\"\n        return self.volts_to_cm(self.voltage())\n"
+  },
+  "example": {
+    "code": "from gp2y0a41sk import GP2Y0A41SK\nimport time\n\nsensor = GP2Y0A41SK({VO})\nwhile True:\n    d = sensor.distance_cm()\n    print('D=%s' % ('--' if d is None else '%.0fcm' % d))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Converts the Vo voltage on the slider to distance with the datasheet curve (1.27 V = 10 cm, 2.02 V = 6 cm)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.27
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=10cm",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.02
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=6cm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:32:33.645Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J713/gp2y0a41sk0f.pdf",
+      "https://www.pololu.com/product/2464"
+    ]
+  }
+}

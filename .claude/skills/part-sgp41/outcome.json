@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sgp41",
+  "board": "Adafruit SGP41 Multi-Pixel Gas Sensor Breakout - VOC & NOx, STEMMA QT (PID 6455)",
+  "reason": "Modelled from the Sensirion SGP41 datasheet v1.0. The driver runs the required conditioning (0x26 0x12, at most 10 s), then sgp41_measure_raw_signals (0x26 0x19 with RH and T words, each with a CRC). It waits 50 ms and returns the CRC-checked SRAW_VOC and SRAW_NOX ticks. It also has the self-test, serial number and heater-off commands. Header order VIN, 3.3V, GND, SCL, SDA comes from Adafruit's pinout photo. The check passed on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://sensirion.com/media/documents/5FE8673C/61E96F50/Sensirion_Gas_Sensors_Datasheet_SGP41.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-sgp41-multi-pixel-gas-sensor-breakout/pinouts (photo sensors_double.jpg: VIN, 3.3V, GND, SCL, SDA left to right)",
+  "checkRuns": 1
+}

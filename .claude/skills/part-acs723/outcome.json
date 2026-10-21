@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-acs723",
+  "board": "SparkFun Current Sensor Breakout - ACS723 (Low Current), SEN-14544 (ACS723LLCTR-05AB + OPA344 amplifier, header VCC/VO/GND)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring at 5 V, design checks, breadboard, simulator test I=1.5A, DRC-clean PCB, footprint, LCSC C2655492). Model follows the chip datasheet (VCC/2 + 400 mV/A) and the board schematic's inverting OPA344 stage, VO = Vref + G(Vref - VIOUT). The sim fixes one trimmer setting (G=2, Vref=VCC/2), so VO = 2.5 V - 0.8 V/A x I. The driver takes a calibrated zero and sensitivity.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/0/0/5/e/ACS723-Datasheet.pdf",
+  "breakoutPinoutSource": "SparkFun ACS723 Low Current Eagle files (ACS723_Low_Current_Sensor.zip, board silkscreen VCC/VO/GND on JP3 pins 1-3) and schematic v10 https://cdn.sparkfun.com/assets/2/3/c/8/7/ACS723_Low_Current_Sensor.pdf",
+  "checkRuns": 1
+}

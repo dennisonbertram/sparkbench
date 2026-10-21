@@ -1,0 +1,134 @@
+{
+  "type": "custom-a02yyuw",
+  "name": "A02YYUW waterproof ultrasonic distance sensor (UART)",
+  "mpn": "A02YYUW",
+  "category": "sensor",
+  "description": "Sealed IP67 ultrasonic distance sensor (3–450 cm, ±1 cm, 3 cm blind zone, 60° beam) for tank levels and outdoor use. Runs on 3.3–5 V and sends a 4-byte frame by itself about every 100 ms at 9600 baud: 0xFF, distance high byte, distance low byte, checksum (low 8 bits of the sum of the first three); distance is in mm. Leave RX floating or high for the smoothed (processed) value, pull it low for the real-time value. Sold as: DFRobot A02YYUW Waterproof Ultrasonic Sensor (SEN0311, UART version), 4-wire PH2.0 cable VCC, GND, RX, TX.",
+  "eli5": "A waterproof sound-echo sensor: it chirps, times the echo, and keeps telling your board how far away the water or object is, in millimetres, over a serial wire.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (pin 1, red wire); TX logic follows VCC, so use 3.3 V on ESP32/Pico",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2, black wire)",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Output mode select, sensor input (pin 3, yellow wire): floating or high = processed (smoothed) value, low = real-time value. May be wired to the board's UART TX, which idles high",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Sensor serial output, 9600 baud 8-N-1 (pin 4, white wire): wire to the board's UART RX",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 8,
+  "datasheetUrl": "https://wiki.dfrobot.com/sen0311/docs/21651",
+  "priceUsd": 15,
+  "supplierQuery": "DFRobot A02YYUW SEN0311 waterproof ultrasonic sensor UART",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "The sensor talks first: no command is needed. Each frame is 0xFF, DATA_H, DATA_L, SUM with SUM = (0xFF + DATA_H + DATA_L) & 0xFF; distance mm = DATA_H × 256 + DATA_L.",
+    "Wire the sensor's TX (white) to the board's UART RX. RX (yellow) only selects the output mode: floating or high gives the processed value (steadier, 100–300 ms response), low gives the real-time value (100 ms).",
+    "Power it from 3.3 V on ESP32 / Pico so its TX stays at 3.3 V logic; at 5 V it outputs 5 V levels.",
+    "Readings below 30 mm (blind zone) or above 4500 mm are not reliable; the beam is 60° wide, so keep the sensor away from tank walls.",
+    "IP67 means it survives splashes and condensation; it measures through air, not underwater. Leave at least 3 cm between the sensor face and the highest water level.",
+    "Frames pile up in the UART buffer while the program sleeps: flush before reading so you get the current distance, and check the checksum."
+  ],
+  "keywords": [
+    "a02yyuw",
+    "sen0311",
+    "dfrobot",
+    "ultrasonic",
+    "waterproof",
+    "distance",
+    "water level",
+    "tank level",
+    "sonar",
+    "uart"
+  ],
+  "sources": [
+    "https://www.dfrobot.com/product-1935.html",
+    "https://wiki.dfrobot.com/sen0311/",
+    "https://wiki.dfrobot.com/sen0311/docs/21651",
+    "https://wiki.dfrobot.com/sen0311/docs/21654",
+    "https://wiki.dfrobot.com/sen0311/docs/21653"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 30,
+    "max": 4500,
+    "default": 1000,
+    "uartStream": {
+      "everyMs": 100,
+      "bytes": [
+        {
+          "const": 255,
+          "bits": 8
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "crc": "sum8",
+          "over": 3
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "a02yyuw.py",
+    "code": "# DFRobot A02YYUW waterproof ultrasonic distance sensor (SEN0311, UART version), MicroPython driver.\n# Written from the DFRobot SEN0311 wiki \"Communication Protocol Description\":\n# UART 9600 baud, 8 data bits, no parity, 1 stop bit, TTL level. The sensor sends 4-byte frames\n# by itself (about every 100 ms):\n#   0xFF  DATA_H  DATA_L  SUM\n#   distance in mm = DATA_H * 256 + DATA_L\n#   SUM = (0xFF + DATA_H + DATA_L) & 0xFF   (low 8 bits of the sum)\n# RX pin: left floating or held high -> processed (smoothed) value, 100-300 ms response;\n#         held low -> real-time value, 100 ms response.\n# Range 30-4500 mm (3 cm blind zone).\nimport time\n\n_HEAD = 0xFF\n_FRAME_LEN = 4\n\n\nclass A02YYUW:\n    def __init__(self, uart):\n        \"\"\"uart: a machine.UART at 9600 baud whose RX is wired to the sensor's TX (white wire).\"\"\"\n        self.uart = uart\n        self._buf = b''\n\n    def flush(self):\n        \"\"\"Drop buffered (stale) bytes so the next read returns a fresh frame.\"\"\"\n        n = self.uart.any()\n        while n:\n            self.uart.read(n)\n            n = self.uart.any()\n        self._buf = b''\n\n    def _frame(self, timeout_ms):\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while True:\n            # resync on the 0xFF header and verify each candidate frame's checksum\n            while len(self._buf) >= 1:\n                if self._buf[0] != _HEAD:\n                    self._buf = self._buf[1:]\n                    continue\n                if len(self._buf) < _FRAME_LEN:\n                    break\n                f = self._buf[:_FRAME_LEN]\n                if (f[0] + f[1] + f[2]) & 0xFF == f[3]:\n                    self._buf = self._buf[_FRAME_LEN:]\n                    return f\n                self._buf = self._buf[1:]  # bad checksum or false header: resync\n            if time.ticks_diff(deadline, time.ticks_ms()) <= 0:\n                return None\n            n = self.uart.any()\n            if n:\n                got = self.uart.read(n)\n                if got:\n                    self._buf += got\n            else:\n                time.sleep_ms(5)\n\n    def distance_mm(self, timeout_ms=600, fresh=True):\n        \"\"\"Distance in mm from the next valid frame, or None if no valid frame arrived in time.\n        fresh=True drops bytes that piled up while the program was busy elsewhere.\"\"\"\n        if fresh:\n            self.flush()\n        f = self._frame(timeout_ms)\n        if f is None:\n            return None\n        return (f[1] << 8) | f[2]\n\n    def distance_cm(self, timeout_ms=600):\n        mm = self.distance_mm(timeout_ms)\n        return None if mm is None else mm / 10\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom a02yyuw import A02YYUW\n\n# board TX -> sensor RX (idles high = processed-value mode), board RX <- sensor TX\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\nsensor = A02YYUW(uart)\nwhile True:\n    d = sensor.distance_mm()\n    if d is None:\n        print('no reading')\n    else:\n        print('D=%dmm' % d)\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1953
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=1953mm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:26:40.069Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/SKU_SEN0311_A02YYUW_Waterproof_Ultrasonic_Distance_Sensor",
+      "https://www.dfrobot.com/product-1935.html"
+    ]
+  }
+}

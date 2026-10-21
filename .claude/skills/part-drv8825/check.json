@@ -1,0 +1,79 @@
+{
+  "type": "custom-drv8825",
+  "mpn": "DRV8825",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.RST → D25 (GPIO25). U2.SLP → D26 (GPIO26). U2.STEP → D27 (GPIO27). U2.DIR → D13 (GPIO13). Added a separate 12 V supply for VMOT (it needs 8.2–45 V and up to 2 A, more than the board can give); its − joins the board's GND. Added the drv8825.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Holds RST and SLP high, steps 200 forward (DIR high) then 200 back (DIR low): passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×76 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.RST → GP2 (GPIO2). U2.SLP → GP3 (GPIO3). U2.STEP → GP6 (GPIO6). U2.DIR → GP7 (GPIO7). Added a separate 12 V supply for VMOT (it needs 8.2–45 V and up to 2 A, more than the board can give); its − joins the board's GND. Added the drv8825.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Holds RST and SLP high, steps 200 forward (DIR high) then 200 back (DIR low): passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C81582 DRV8825PWPR (13805 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T11:20:28.394Z"
+}

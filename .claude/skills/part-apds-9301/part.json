@@ -1,0 +1,172 @@
+{
+  "type": "custom-apds-9301",
+  "name": "APDS-9301 ambient light (lux) sensor",
+  "mpn": "APDS-9301",
+  "category": "sensor",
+  "description": "Broadcom/Avago light-to-digital converter with a broadband (visible + IR) and an infrared-only photodiode, two integrating 16-bit ADCs and an I2C interface (up to 400 kHz); lux is computed from the two channels with the datasheet's empirical formula. Chip and board run on 2.7-3.6 V only (no regulator, no level shifting). Sold as: SparkFun Ambient Light Sensor Breakout - APDS-9301 (SEN-14350), 5-pin header INT, GND, 3.3V, SDA, SCL with 4.7k I2C pull-ups and a 10k INT pull-up to 3.3V, I2C address 0x39 (address jumper on the back selects 0x29 or 0x49).",
+  "eli5": "Tells your board how bright the light is, in lux, like a camera's light meter.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low (10k pull-up to 3.3V on board); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 2.7-3.6 V straight to the chip (no regulator): never connect to 5 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7k pull-up to 3.3V on board), 3.6 V max",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7k pull-up to 3.3V on board), 3.6 V max",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.6,
+  "currentMa": 0.6,
+  "i2cAddress": 57,
+  "datasheetUrl": "https://docs.broadcom.com/doc/AV02-2315EN",
+  "priceUsd": 6,
+  "supplierQuery": "APDS-9301 ambient light sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the board from 3.3 V only: the APDS-9301 is rated 2.7-3.6 V (absolute max 3.8 V) and the board has no regulator or level shifter, so a 5 V Arduino needs a level translator.",
+    "Every register access starts with a command byte 0x80 | register. Power up by writing 0x03 to 0x80 and read 0x80 back: it returns 0x03 when the chip is answering. ID register 0x8A has 0101 in its upper nibble.",
+    "Timing register (0x81): bit 4 = gain 16x, bits 1:0 = integration 00 13.7 ms, 01 101 ms, 10 402 ms (power-on default 0x02 = 1x, 402 ms). Wait one full integration after power-up or a change before reading.",
+    "Read channel 0 (visible + IR) with Read Word command 0xAC and channel 1 (IR) with 0xAE; each is low byte first.",
+    "Lux comes from both channels with the datasheet's CH1/CH0 formula, characterised at 16x gain and 402 ms: scale counts by 16 at 1x gain and by 322/81 or 322/11 at 101 ms or 13.7 ms. Full scale is 65535 at 402 ms, 37177 at 101 ms, 5047 at 13.7 ms: a full-scale count means saturated.",
+    "Address: 0x39 with the back jumper open. The datasheet gives ADDR SEL to GND = 0x29 and to VDD = 0x49; SparkFun's labels for the two jumper sides disagree, so confirm with an I2C scan after closing one."
+  ],
+  "keywords": [
+    "apds-9301",
+    "apds9301",
+    "lux",
+    "light",
+    "ambient light",
+    "luminosity",
+    "broadcom",
+    "avago",
+    "sparkfun"
+  ],
+  "sources": [
+    "https://docs.broadcom.com/doc/AV02-2315EN",
+    "https://www.sparkfun.com/products/14350",
+    "https://learn.sparkfun.com/tutorials/apds-9301-sensor-hookup-guide",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/6/8/6/header_highlighted.png (silkscreen top to bottom: INT, GND, 3.3V, SDA, SCL)",
+    "https://cdn.sparkfun.com/assets/9/c/2/4/9/APDS-9301_Breakout_v10.pdf (schematic: J1 GND/VCC/SDA/SCL, J2 INT, 4.7k SDA/SCL and 10k INT pull-ups to VCC)",
+    "https://github.com/sparkfun/APDS-9301_Breakout"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Channel 0 visible + infrared light (ADC counts)",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 1000,
+    "controls": [
+      {
+        "key": "ir",
+        "quantity": "Channel 1 infrared light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 200
+      }
+    ],
+    "registers": {
+      "0x8A": 80
+    },
+    "measures": [
+      {
+        "reg": "0xAC",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xAE",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      },
+      {
+        "reg": "0x8C",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x8E",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "apds9301.py",
+    "code": "# APDS-9301 ambient light photo sensor (Broadcom/Avago), MicroPython driver.\n# Written from the APDS-9301 datasheet (AV02-2315EN, January 2010):\n#  - every access starts with a COMMAND byte: bit 7 CMD = 1, bit 6 CLEAR (interrupt clear,\n#    write-one-to-clear), bit 5 WORD (Read/Write Word protocol), bit 4 reserved (0), bits 3:0 register;\n#  - CONTROL (0x0): write 0x03 to power up, 0x00 to power down; reads back 0x03 when powered;\n#  - TIMING (0x1): bit 4 GAIN (0 = 1x, 1 = 16x), bits 1:0 INTEG (00 13.7 ms, 01 101 ms, 10 402 ms),\n#    power-on value 0x02 (1x, 402 ms);\n#  - ID (0xA): bits 7:4 part number 0101, bits 3:0 revision;\n#  - DATA0 (0xC/0xD, visible + IR) and DATA1 (0xE/0xF, IR) are 16-bit, low byte first, read with\n#    the Read Word protocol: command 0xAC (channel 0) and 0xAE (channel 1);\n#  - lux from the datasheet's empirical CH1/CH0 formula, which is characterised at high gain (16x)\n#    and 402 ms; other settings are scaled with the datasheet factors (low gain = 1/16,\n#    13.7 ms = 11/322, 101 ms = 81/322).\nimport time\n\n_CMD = 0x80\n_CLEAR = 0x40\n_WORD = 0x20\n_CONTROL = 0x00\n_TIMING = 0x01\n_INTERRUPT = 0x06\n_ID = 0x0A\n_DATA0 = 0x0C\n_DATA1 = 0x0E\n\n_POWER_UP = 0x03\n_POWER_DOWN = 0x00\n\n# INTEG field -> (nominal integration time in ms, full-scale count, clock-cycle multiple of 918)\n_INTEG = {0: (14, 5047, 11), 1: (101, 37177, 81), 2: (402, 65535, 322)}\n_INTEG_BY_MS = {13: 0, 14: 0, 101: 1, 402: 2}\n\n\ndef calculate_lux(ch0, ch1, gain16=False, integ=2):\n    \"\"\"Datasheet empirical formula: illuminance in lux (float) from raw channel counts.\"\"\"\n    scale = 322 / _INTEG[integ][2]\n    if not gain16:\n        scale *= 16\n    c0 = ch0 * scale\n    c1 = ch1 * scale\n    if c0 == 0:\n        return 0.0\n    ratio = c1 / c0\n    if ratio <= 0.50:\n        lux = 0.0304 * c0 - 0.062 * c0 * (ratio ** 1.4)\n    elif ratio <= 0.61:\n        lux = 0.0224 * c0 - 0.031 * c1\n    elif ratio <= 0.80:\n        lux = 0.0128 * c0 - 0.0153 * c1\n    elif ratio <= 1.30:\n        lux = 0.00146 * c0 - 0.00112 * c1\n    else:\n        lux = 0.0\n    return lux if lux > 0 else 0.0\n\n\nclass APDS9301:\n    def __init__(self, i2c, addr=0x39, gain=1, integration_ms=402):\n        \"\"\"addr: 0x39 (ADDR SEL floating), 0x29 (ADDR SEL to GND) or 0x49 (ADDR SEL to VDD).\n        gain: 1 or 16. integration_ms: 13 (13.7 ms), 101 or 402.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self._write8(_CONTROL, _POWER_UP)\n        if self._read8(_CONTROL) & 0x03 != 0x03:\n            raise OSError('APDS-9301 not responding at 0x%02X: check the wiring and address' % addr)\n        part = self._read8(_ID) >> 4\n        if part != 0x5:\n            raise OSError('Device at 0x%02X is not an APDS-9301 (ID 0x%X)' % (addr, part))\n        self._write8(_INTERRUPT, 0x00)  # level interrupt output disabled\n        self.configure(gain, integration_ms)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto_mem(self.addr, _CMD | reg, bytes((value & 0xFF,)))\n\n    def _read8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, _CMD | reg, 1)[0]\n\n    def _read_word(self, reg):\n        # Read Word protocol: command with WORD bit, repeated start, low byte then high byte.\n        d = self.i2c.readfrom_mem(self.addr, _CMD | _WORD | reg, 2)\n        return d[0] | (d[1] << 8)\n\n    def configure(self, gain=1, integration_ms=402):\n        if gain not in (1, 16):\n            raise ValueError('gain must be 1 or 16')\n        if integration_ms not in _INTEG_BY_MS:\n            raise ValueError('integration_ms must be 13, 101 or 402')\n        self.gain = gain\n        self.integ = _INTEG_BY_MS[integration_ms]\n        self._write8(_TIMING, (0x10 if gain == 16 else 0x00) | self.integ)\n        # New data appears only after a full integration cycle with the new setting.\n        self._ready_at = time.ticks_add(time.ticks_ms(), _INTEG[self.integ][0] + 10)\n\n    def _wait_ready(self):\n        wait = time.ticks_diff(self._ready_at, time.ticks_ms())\n        if wait > 0:\n            time.sleep_ms(wait)\n\n    def raw(self):\n        \"\"\"Return (channel 0 visible+IR counts, channel 1 IR counts).\"\"\"\n        self._wait_ready()\n        return self._read_word(_DATA0), self._read_word(_DATA1)\n\n    def saturated(self, ch0, ch1):\n        full = _INTEG[self.integ][1]\n        return ch0 >= full or ch1 >= full\n\n    def lux(self):\n        \"\"\"Illuminance in lux (datasheet formula), or None when a channel is saturated.\"\"\"\n        ch0, ch1 = self.raw()\n        if self.saturated(ch0, ch1):\n            return None\n        return calculate_lux(ch0, ch1, self.gain == 16, self.integ)\n\n    def set_thresholds(self, low, high):\n        \"\"\"Channel 0 interrupt window (Write Word protocol, low byte first).\"\"\"\n        self.i2c.writeto_mem(self.addr, _CMD | _WORD | 0x02, bytes((low & 0xFF, low >> 8 & 0xFF)))\n        self.i2c.writeto_mem(self.addr, _CMD | _WORD | 0x04, bytes((high & 0xFF, high >> 8 & 0xFF)))\n\n    def enable_interrupt(self, persist=1):\n        \"\"\"Level interrupt on INT (active low) when channel 0 leaves the window for `persist` cycles.\"\"\"\n        self._write8(_INTERRUPT, 0x10 | (persist & 0x0F))\n\n    def disable_interrupt(self):\n        self._write8(_INTERRUPT, 0x00)\n\n    def clear_interrupt(self):\n        self.i2c.writeto(self.addr, bytes((_CMD | _CLEAR,)))\n\n    def power_down(self):\n        self._write8(_CONTROL, _POWER_DOWN)\n\n    def power_up(self):\n        self._write8(_CONTROL, _POWER_UP)\n        self._ready_at = time.ticks_add(time.ticks_ms(), _INTEG[self.integ][0] + 10)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom apds9301 import APDS9301\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = APDS9301(i2c)  # gain 1x, 402 ms\nwhile True:\n    ch0, ch1 = sensor.raw()\n    lux = sensor.lux()\n    if lux is None:\n        print('CH0=%d CH1=%d Lux=saturated' % (ch0, ch1))\n    else:\n        print('CH0=%d CH1=%d Lux=%.1f' % (ch0, ch1, lux))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the channel counts set on the sliders and the datasheet lux",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 800
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=2500 CH1=800 Lux=712.9",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:20:50.601Z",
+    "verifiedSources": [
+      "https://docs.broadcom.com/doc/AV02-2315EN",
+      "https://learn.sparkfun.com/tutorials/apds-9301-sensor-hookup-guide",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/6/8/6/header_highlighted.png"
+    ]
+  }
+}

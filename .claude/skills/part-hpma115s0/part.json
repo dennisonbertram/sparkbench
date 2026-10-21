@@ -1,0 +1,282 @@
+{
+  "type": "custom-hpma115s0",
+  "name": "HPMA115S0 laser PM2.5/PM10 particle sensor",
+  "mpn": "HPMA115S0-XXX",
+  "category": "sensor",
+  "description": "Honeywell laser-scattering particulate matter sensor with a built-in fan: reports PM2.5 and PM10 (0-1000 µg/m³, 1 µg/m³ steps) over a 9600-baud 3.3 V TTL UART, by itself in 32-byte frames (factory default) or on request. Needs 5 V ±0.2 V at under 80 mA (600 mA inrush). Sold as: Honeywell HPMA115S0-XXX standard-size sensor (43×36×23.7 mm) with an 8-pin Molex 51021-0800 1.25 mm cable (pins VOUT, VCC, N/A, N/A, RES, TX, RX, GND).",
+  "eli5": "A small box with a fan that pulls air past a laser and tells you how much fine dust and smoke is in the air.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VOUT",
+      "role": "io",
+      "description": "3.3 V OUTPUT from the sensor (100 mA max). Not a supply input: leave unconnected (pin 1).",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply input, 5 V ±0.2 V, under 80 mA running, 600 mA inrush (pin 2).",
+      "required": true
+    },
+    {
+      "name": "NC3",
+      "role": "nc",
+      "description": "N/A in the datasheet: leave unconnected (pin 3).",
+      "required": false
+    },
+    {
+      "name": "NC4",
+      "role": "nc",
+      "description": "N/A in the datasheet: leave unconnected (pin 4).",
+      "required": false
+    },
+    {
+      "name": "RES",
+      "role": "nc",
+      "description": "Reserved / factory test: leave unconnected (pin 5).",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Sensor UART TX output (0-3.3 V, 9600 baud): wire to the board's RX (pin 6).",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Sensor UART RX input (0-3.3 V): wire to the board's TX; needed for commands (pin 7).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 8).",
+      "required": true
+    }
+  ],
+  "vmin": 4.8,
+  "vmax": 5.2,
+  "currentMa": 80,
+  "datasheetUrl": "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/particulate-matter-sensors-hpm-series/documents/sps-siot-particulate-hpm-series-datasheet-32322550-ciid-165855.pdf",
+  "priceUsd": 25,
+  "supplierQuery": "Honeywell HPMA115S0-XXX particle sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (VIN/VBUS), never 3V3: the datasheet range is 5 V ±0.2 V; it draws under 80 mA running with up to 600 mA inrush, so add a 22 µF + 100 nF capacitor near the sensor if the 5 V rail is noisy.",
+    "The UART is 0-3.3 V, so TX/RX connect straight to an ESP32 or Pico: sensor TX -> board RX, sensor RX -> board TX. 9600 baud, 8N1.",
+    "VOUT (pin 1) is a 3.3 V OUTPUT, not an input. Pins 3, 4 and 5 stay unconnected.",
+    "The sensor's own connector is a 1.25 mm Molex 51021-0800; use a pre-crimped cable to reach a 2.54 mm header.",
+    "Factory default is auto-send: 42 4D 00 1C + 13 big-endian words (word 1 = PM2.5, word 2 = PM10) + 16-bit sum of bytes 0-29.",
+    "Commands are 68 LEN CMD [DATA] CS with CS = (65536 - sum) % 256; the sensor answers A5 A5 (ACK) or 96 96 (NACK).",
+    "Mount it in one of the datasheet's orientations and keep the inlet and fan outlet clear; stop() turns the fan off to extend life."
+  ],
+  "keywords": [
+    "hpma115s0",
+    "honeywell",
+    "hpm",
+    "pm2.5",
+    "pm10",
+    "particulate",
+    "dust",
+    "air quality",
+    "laser"
+  ],
+  "sources": [
+    "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/particulate-matter-sensors-hpm-series/documents/sps-siot-particulate-hpm-series-datasheet-32322550-ciid-165855.pdf",
+    "https://www.farnell.com/datasheets/2313714.pdf",
+    "https://sps.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/particulate-matter-sensors-hpm-series/documents/sps-siot-particulate-hpm-series-datasheet-32322550-ciid-165855.pdf"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "PM2.5",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm10",
+        "quantity": "PM10",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 20
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "bytes": [
+        {
+          "const": 66,
+          "bits": 8
+        },
+        {
+          "const": 77,
+          "bits": 8
+        },
+        {
+          "const": 28,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "crc": "sum16",
+          "over": 30
+        }
+      ]
+    },
+    "uartReplies": [
+      {
+        "match": "68 01 01 96",
+        "bytes": [
+          {
+            "const": 165,
+            "bits": 8
+          },
+          {
+            "const": 165,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "68 01 02 95",
+        "bytes": [
+          {
+            "const": 165,
+            "bits": 8
+          },
+          {
+            "const": 165,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "68 01 40 57",
+        "bytes": [
+          {
+            "const": 165,
+            "bits": 8
+          },
+          {
+            "const": 165,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "68 02 08 64 2a",
+        "bytes": [
+          {
+            "const": 165,
+            "bits": 8
+          },
+          {
+            "const": 165,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hpma115s0.py",
+    "code": "# Honeywell HPMA115S0 laser PM2.5/PM10 sensor, MicroPython driver.\n# UART 9600 8N1, 3.3 V TTL. Protocol from the Honeywell HPM Series datasheet 32322550 (Issue G):\n# - Auto-send mode (factory default): 32-byte frames\n#     42 4D LEN_H LEN_L(=0x001C) D0 D1(PM2.5) D2(PM10) D3..D12 CS_H CS_L\n#   each Dn is big-endian 16 bits; checksum = 16-bit sum of bytes 0..29.\n# - Commands: HEAD(0x68) LEN CMD [DATA] CS, CS = (65536 - (HEAD+LEN+CMD+DATA)) % 256.\n#   Positive ACK = A5 A5, negative ACK = 96 96.\n#   Read result reply: 40 05 04 DF1 DF2 DF3 DF4 CS; PM2.5 = DF1*256+DF2, PM10 = DF3*256+DF4.\nimport time\n\n\nclass HPMA115S0:\n    def __init__(self, uart):\n        self.uart = uart\n        self._buf = b''\n\n    def _poll(self):\n        n = self.uart.any()\n        if n:\n            d = self.uart.read(n)\n            if d:\n                self._buf = (self._buf + d)[-128:]\n\n    def read_auto(self):\n        \"\"\"Newest (pm2_5, pm10) in ug/m3 from auto-send frames, or None if no valid frame yet.\"\"\"\n        self._poll()\n        b = self._buf\n        result = None\n        i = 0\n        while i + 32 <= len(b):\n            if b[i] == 0x42 and b[i + 1] == 0x4D and b[i + 2] == 0x00 and b[i + 3] == 0x1C:\n                if sum(b[i:i + 30]) & 0xFFFF == (b[i + 30] << 8) | b[i + 31]:\n                    result = ((b[i + 6] << 8) | b[i + 7], (b[i + 8] << 8) | b[i + 9])\n                    i += 32\n                    continue\n            i += 1\n        self._buf = b[i:]\n        return result\n\n    def read(self, timeout_ms=3000):\n        \"\"\"Wait for the next auto-send frame; returns (pm2_5, pm10) or None on timeout.\"\"\"\n        t = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t) < timeout_ms:\n            r = self.read_auto()\n            if r:\n                return r\n            time.sleep_ms(50)\n        return None\n\n    def _send(self, cmd, data=b''):\n        frame = bytes([0x68, 1 + len(data), cmd]) + bytes(data)\n        self.uart.write(frame + bytes([(65536 - sum(frame)) % 256]))\n\n    def _reply(self, n, timeout_ms=1000):\n        out = b''\n        t = time.ticks_ms()\n        while len(out) < n and time.ticks_diff(time.ticks_ms(), t) < timeout_ms:\n            if self.uart.any():\n                out += self.uart.read(n - len(out)) or b''\n            else:\n                time.sleep_ms(5)\n        return out\n\n    def _ack(self, cmd, data=b''):\n        self.uart.read()  # drop anything pending (e.g. auto-send bytes)\n        self._buf = b''\n        self._send(cmd, data)\n        return self._reply(2) == b'\\xa5\\xa5'\n\n    def start(self):\n        \"\"\"Start the fan and measurement (0x01).\"\"\"\n        return self._ack(0x01)\n\n    def stop(self):\n        \"\"\"Stop measurement and the fan (0x02) to extend sensor life.\"\"\"\n        return self._ack(0x02)\n\n    def stop_auto_send(self):\n        \"\"\"Switch to polled mode (0x20); then use read_measurement().\"\"\"\n        ok = self._ack(0x20)\n        time.sleep_ms(100)\n        self.uart.read()\n        return ok\n\n    def enable_auto_send(self):\n        \"\"\"Back to the factory-default auto-send mode (0x40).\"\"\"\n        return self._ack(0x40)\n\n    def read_measurement(self):\n        \"\"\"Polled read (command 0x04, needs auto-send stopped). Returns (pm2_5, pm10) or None.\"\"\"\n        self.uart.read()\n        self._send(0x04)\n        r = self._reply(8)\n        if len(r) == 8 and r[0] == 0x40 and r[1] == 0x05 and r[2] == 0x04:\n            if (65536 - sum(r[0:7])) % 256 == r[7]:\n                return ((r[3] << 8) | r[4], (r[5] << 8) | r[6])\n        return None\n\n    def set_coefficient(self, k):\n        \"\"\"Customer adjustment coefficient 30-200 (default 100) (0x08).\"\"\"\n        return self._ack(0x08, bytes([max(30, min(200, int(k)))]))\n\n    def read_coefficient(self):\n        \"\"\"Read the adjustment coefficient (0x10): reply 40 02 10 DF1 CS.\"\"\"\n        self.uart.read()\n        self._send(0x10)\n        r = self._reply(5)\n        if len(r) == 5 and r[0] == 0x40 and r[1] == 0x02 and r[2] == 0x10 and (65536 - sum(r[0:4])) % 256 == r[4]:\n            return r[3]\n        return None\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nfrom hpma115s0 import HPMA115S0\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\nsensor = HPMA115S0(uart)\nwhile True:\n    r = sensor.read()\n    if r:\n        print('PM2.5=%d PM10=%d' % r)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 48
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM2.5=35 PM10=48",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:29:00.328Z",
+    "verifiedSources": [
+      "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/particulate-matter-sensors-hpm-series/documents/sps-siot-particulate-hpm-series-datasheet-32322550-ciid-165855.pdf"
+    ]
+  }
+}

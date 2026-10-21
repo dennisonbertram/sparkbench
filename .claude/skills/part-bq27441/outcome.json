@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bq27441",
+  "board": "SparkFun Battery Babysitter - LiPo Battery Manager (PRT-13777, BQ27441-G1A)",
+  "reason": "Part check PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test, PCB DRC clean, footprint). Sim models the little-endian standard-command words (Voltage mV, SOC %, signed AverageCurrent mA, Temperature 0.1 K, RemainingCapacity/FullChargeCapacity mAh) at I2C 0x55; Control() subcommand replies such as DEVICE_TYPE are not simulated and the example does not use them.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/bq27441-g1.pdf",
+  "breakoutPinoutSource": "SparkFun Battery_Babysitter Eagle board file (Hardware/sparkfun-battery-babysitter.brd: JP10 GND/VPU/SDA/SCL + JP11 GPOUT/!CE! along the bottom edge) and the SparkFun Battery Babysitter hookup guide",
+  "checkRuns": 1
+}

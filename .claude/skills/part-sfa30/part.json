@@ -1,0 +1,188 @@
+{
+  "type": "custom-sfa30",
+  "name": "SFA30 formaldehyde sensor",
+  "mpn": "SFA30-D-T",
+  "category": "sensor",
+  "description": "Sensirion electrochemical formaldehyde (HCHO) sensor module, 0–1000 ppb (resolution 1 ppb, ±20 ppb or ±20 %), with an on-board Sensirion humidity and temperature sensor for compensation and output; a new averaged reading every 0.5 s. Runs on 3.15–5.5 V; I2C mode (SEL to GND) at address 0x5D, 100 kHz, external pull-ups needed. Sold as: Sensirion SFA30-D-T module (e.g. in the SEK-SFA30 evaluation kit) on its Molex Micro-Lock Plus 1.25 mm 7-pin connector wired out with jumper leads, pins VDD, GND, SDA, SCL, SEL (pins 6 and 7 are NC and left unwired).",
+  "eli5": "Smells the air for formaldehyde, a harmful gas that comes out of new furniture, glues and paints, and also tells you the temperature and humidity.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.15–5.5 V (3.3 V or 5 V typical); 1–2 mA measuring, 5 mA peak",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "pullUp": 10000,
+      "description": "I2C data (pin 3, RX in UART mode). Open-drain, needs an external pull-up (10 kΩ) to the bus voltage; inputs tolerate up to 5.5 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "pullUp": 10000,
+      "description": "I2C clock (pin 4, TX in UART mode). Open-drain, needs an external pull-up (10 kΩ) to the bus voltage",
+      "required": true
+    },
+    {
+      "name": "SEL",
+      "role": "gnd",
+      "description": "Interface select (pin 5): pull to GND before or at power-up for I2C; floating or VDD selects UART",
+      "required": true
+    }
+  ],
+  "vmin": 3.15,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "i2cAddress": 93,
+  "datasheetUrl": "https://static.chipdip.ru/lib/228/DOC011228506.pdf",
+  "sources": [
+    "https://static.chipdip.ru/lib/228/DOC011228506.pdf",
+    "https://sensirion.com/en/media/documents/974A16B3/634D0684/Sensirion_Formaldehyde_Sensor_I2C_Interface.pdf",
+    "https://www.digikey.com/en/products/detail/sensirion-ag/SFA30-D-T/13577462",
+    "https://esphome.io/api/sfa30_8cpp_source"
+  ],
+  "priceUsd": 30,
+  "supplierQuery": "Sensirion SFA30 formaldehyde sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VDD from 3.3 V (3.15–5.5 V allowed). The I2C levels follow the supply, so on an ESP32 or Pico run the sensor from 3.3 V and pull SDA/SCL up to 3.3 V.",
+    "SEL (connector pin 5) must be tied to GND before or at power-up to select I2C; floating or tied to VDD the module talks UART (SHDLC, 115200 baud) and never answers at 0x5D.",
+    "SDA and SCL are open-drain and need external pull-ups (10 kΩ to the bus voltage). Keep the I2C cable under 10 cm; Sensirion recommends UART for anything longer than 20 cm.",
+    "Commands are 16-bit, sent MSB first with no CRC: start 0x0006, stop 0x0104, read values 0x0327, device marking 0xD060, reset 0xD304. Wait 5 ms between the command and the read.",
+    "Read values returns 9 bytes: three signed 16-bit words each followed by a CRC-8 (poly 0x31, init 0xFF): HCHO = raw / 5 ppb, RH = raw / 100 %, T = raw / 200 °C.",
+    "The HCHO output reads 0 for the first 10 s after power-up; humidity and temperature are valid at once. Do not press on the orange or black electrochemical cell, and keep its area clear."
+  ],
+  "keywords": [
+    "sfa30",
+    "formaldehyde",
+    "hcho",
+    "ch2o",
+    "air quality",
+    "voc",
+    "sensirion",
+    "electrochemical"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Formaldehyde (HCHO) concentration",
+    "unit": "ppb",
+    "min": 0,
+    "max": 1000,
+    "default": 20,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%RH",
+        "min": 0,
+        "max": 100,
+        "default": 45
+      },
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -20,
+        "max": 50,
+        "default": 22
+      }
+    ],
+    "responses": [
+      {
+        "match": "03 27",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.2,
+            "signed": true
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.01,
+            "signed": true
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "temperature",
+            "bits": 16,
+            "scale": 0.005,
+            "signed": true
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sfa30.py",
+    "code": "# Sensirion SFA30 formaldehyde (HCHO) sensor module, MicroPython driver (I2C mode).\n# Written from \"Description of the SFA30 I2C Interface\" (Sensirion app note V1.0, July 2022):\n# address 0x5D, 16-bit commands sent MSB first without CRC, every 2-byte data word followed by a\n# CRC-8 (poly 0x31, init 0xFF), 100 kHz max, wait ~5 ms between a command and its read.\n# The SEL pin must be tied to GND before (or when) the module powers up to select I2C.\nimport time\n\n_START = 0x0006   # start continuous measurement (only from idle mode)\n_STOP = 0x0104    # stop continuous measurement\n_READ = 0x0327    # read measured values: 3 x (int16 + CRC)\n_MARKING = 0xD060 # device marking string, 16 words\n_RESET = 0xD304   # soft reset\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\ndef _i16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass SFA30:\n    def __init__(self, i2c, addr=0x5D):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _cmd(self, cmd):\n        self.i2c.writeto(self.addr, bytes([cmd >> 8, cmd & 0xFF]))\n\n    def _read_words(self, cmd, n_words):\n        self._cmd(cmd)\n        time.sleep_ms(5)  # sensor needs time to fill its read buffer\n        d = self.i2c.readfrom(self.addr, n_words * 3)\n        out = []\n        for i in range(0, n_words * 3, 3):\n            if _crc8(d[i:i + 2]) != d[i + 2]:\n                raise OSError('SFA30 CRC mismatch: check wiring, pull-ups and cable length')\n            out.append((d[i], d[i + 1]))\n        return out\n\n    def start(self):\n        \"\"\"Enter measurement mode. A new value is ready every 0.5 s; the HCHO output reads 0\n        for the first 10 s after power-up.\"\"\"\n        self._cmd(_START)\n        time.sleep_ms(600)  # no result exists for the first 0.5 s\n\n    def stop(self):\n        self._cmd(_STOP)\n        time.sleep_ms(5)\n\n    def reset(self):\n        self._cmd(_RESET)\n        time.sleep_ms(100)\n\n    def read(self):\n        \"\"\"Return (formaldehyde in ppb, relative humidity in %RH, temperature in degC).\n        Values are averages of all 0.5 s measurements since the previous read.\"\"\"\n        w = self._read_words(_READ, 3)\n        hcho = _i16(*w[0]) / 5.0\n        rh = _i16(*w[1]) / 100.0\n        t = _i16(*w[2]) / 200.0\n        return hcho, rh, t\n\n    def device_marking(self):\n        w = self._read_words(_MARKING, 16)\n        s = bytes(b for pair in w for b in pair)\n        return s.split(b'\\x00')[0].decode()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sfa30 import SFA30\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = SFA30(i2c)\nsensor.start()\nwhile True:\n    hcho, rh, t = sensor.read()\n    print('HCHO=%.1f ppb RH=%.2f%% T=%.2fC' % (hcho, rh, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the formaldehyde, humidity and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 120
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 55.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": -5.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "HCHO=120.0 ppb RH=55.50% T=-5.50C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:25:11.956Z",
+    "verifiedSources": [
+      "https://sensirion.com/resource/datasheet/sfa30",
+      "https://github.com/Sensirion/embedded-i2c-sfa3x"
+    ]
+  }
+}

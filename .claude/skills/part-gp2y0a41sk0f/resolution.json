@@ -1,0 +1,16 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says Vo, datasheet reading says VCC",
+      "verdict": "part-correct",
+      "evidence": "Sharp GP2Y0A41SK0F datasheet (Sheet No. OP13008EN), page 2 'Outline' drawing CY13036j02A, 'Connector signal' table: (1) Vo, (2) GND, (3) Vcc; connector JCTC 12001W90-3P-HF with pins marked 1-2-3 on the drawing. The second reading listed the pins in arbitrary order (VCC, GND, VO) rather than by connector number; pin 1 is Vo.",
+      "source": "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0a41sk_e.pdf"
+    },
+    {
+      "diff": "header pin 3: part says VCC, datasheet reading says VO",
+      "verdict": "part-correct",
+      "evidence": "Sharp GP2Y0A41SK0F datasheet (Sheet No. OP13008EN), page 2 'Outline' drawing CY13036j02A, 'Connector signal' table: (1) Vo, (2) GND, (3) Vcc. Pin 3 is Vcc, as the model says; the same Pololu-hosted copy of the datasheet (pololu.com/file/0J713) is identical.",
+      "source": "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0a41sk_e.pdf"
+    }
+  ]
+}

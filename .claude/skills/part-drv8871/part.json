@@ -1,0 +1,160 @@
+{
+  "type": "custom-drv8871",
+  "name": "DRV8871 brushed DC motor driver",
+  "mpn": "DRV8871",
+  "category": "actuator",
+  "description": "TI DRV8871 single H-bridge brushed DC motor driver with internal current sensing: runs one DC motor forwards, backwards, braked or coasting from two logic inputs (3.3 V or 5 V, PWM up to 200 kHz), motor supply 6.5-45 V, 3.6 A peak, current limit set by a resistor (30 kOhm fitted = about 2.1 A), sleeps when both inputs are low. Sold as: Adafruit DRV8871 DC Motor Driver Breakout Board - 3.6A Max (#3190), 4-pin header IN2 IN1 VM GND, plus a MOTOR screw terminal (OUT2, OUT1) and a POWER screw terminal (+ = VM, - = GND) on the opposite edge.",
+  "eli5": "Lets your board make one DC motor spin forwards or backwards, using a separate battery or power supply for the motor.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "IN2",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Header pin 1: logic input 2, controls OUT2 (high >= 1.5 V, low <= 0.5 V, max 5.5 V; 100 kOhm pull-down; PWM for speed)"
+    },
+    {
+      "name": "IN1",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Header pin 2: logic input 1, controls OUT1 (high >= 1.5 V, max 5.5 V; 100 kOhm pull-down)"
+    },
+    {
+      "name": "VM",
+      "role": "power",
+      "required": true,
+      "description": "Header pin 3: motor supply 6.5-45 V, also powers the chip (no logic supply needed). Same net as the POWER + terminal. Never connect to the microcontroller when an external supply is used",
+      "supply": {
+        "vmin": 6.5,
+        "vmax": 45,
+        "currentMa": 3600
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Header pin 4: ground, shared by the motor supply (POWER - terminal) and the microcontroller"
+    },
+    {
+      "name": "OUT2",
+      "role": "io",
+      "required": false,
+      "description": "MOTOR screw terminal (marked 2): motor output 2; connect the motor, never the microcontroller"
+    },
+    {
+      "name": "OUT1",
+      "role": "io",
+      "required": false,
+      "description": "MOTOR screw terminal (marked 1): motor output 1"
+    }
+  ],
+  "vmin": 6.5,
+  "vmax": 45,
+  "currentMa": 10,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/drv8871.pdf",
+  "priceUsd": 7.5,
+  "supplierQuery": "Adafruit DRV8871 DC motor driver breakout 3190",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Truth table (TI datasheet Table 1): IN1 high/IN2 low = forward (OUT1 H, OUT2 L), IN1 low/IN2 high = reverse, both high = brake, both low = coast (outputs Hi-Z, then sleep after about 1 ms).",
+    "Motor supply 6.5-45 V into the POWER terminal or the VM pin (same net). Under-voltage lockout at about 6.1-6.4 V, so a 5 V USB supply will NOT run it.",
+    "Join the board GND to the microcontroller GND. Never connect VM to the microcontroller while an external supply is used.",
+    "Logic inputs take 0-5.5 V and count as high above 1.5 V, so 3.3 V GPIOs drive them directly. They have 100 kOhm pull-downs: unconnected inputs = coast/sleep.",
+    "Speed: PWM one input while holding the other high (drive/brake, slow decay; the motor drives while the PWM pin is low) or PWM one input with the other low (drive/coast). PWM up to 200 kHz; 20 kHz is silent.",
+    "Current limit ITRIP = 64 kV / RILIM (datasheet Eq. 1). The board's 30 kOhm gives about 2.1 A (1.97-2.3 A). Overcurrent above 3.7 A and overtemperature shut the bridge off and it retries after about 3 ms.",
+    "About 2 A RMS continuous on a typical board; 3.6 A only as short peaks."
+  ],
+  "keywords": [
+    "drv8871",
+    "h-bridge",
+    "motor driver",
+    "dc motor",
+    "brushed motor",
+    "adafruit 3190",
+    "3.6a"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/drv8871.pdf",
+    "https://learn.adafruit.com/adafruit-drv8871-brushed-dc-motor-driver-breakout/pinouts",
+    "https://github.com/adafruit/Adafruit-DRV8871-Breakout-PCB",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20DRV8871.fzpz",
+    "https://www.adafruit.com/product/3190"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "IN1",
+      "IN2"
+    ]
+  },
+  "driver": {
+    "filename": "drv8871.py",
+    "code": "# DRV8871 3.6 A brushed DC motor driver (TI DRV8871), MicroPython driver.\n# One H-bridge, one DC motor. H-bridge logic from the TI datasheet (SLVSCY9B, Table 1):\n#   IN1 = 0, IN2 = 0 -> OUT1/OUT2 Hi-Z: coast (the chip sleeps after tSLEEP, about 1 ms)\n#   IN1 = 0, IN2 = 1 -> OUT1 L, OUT2 H: reverse (current OUT2 -> OUT1)\n#   IN1 = 1, IN2 = 0 -> OUT1 H, OUT2 L: forward (current OUT1 -> OUT2)\n#   IN1 = 1, IN2 = 1 -> both L: brake (low-side slow decay)\n# Speed (datasheet 7.3.1): switch between driving and braking, e.g. forward = IN1 held high, IN2 PWM;\n# the motor is driven while IN2 is LOW, so the IN2 duty is (100 - speed) %.\n# Inputs: high >= 1.5 V, low <= 0.5 V, max 5.5 V, 100 kOhm pull-downs; PWM up to 200 kHz (20 kHz default).\n# There is no sleep pin: both inputs low for ~1 ms = sleep; a high input wakes it within 50 us (tON).\nfrom machine import Pin, PWM\n\n\nclass DRV8871:\n    def __init__(self, in1, in2, freq=20000):\n        \"\"\"in1, in2: GPIO numbers wired to IN1 / IN2. freq: PWM frequency for speed control (<= 200 kHz).\"\"\"\n        self._n1 = in1\n        self._n2 = in2\n        self._freq = freq\n        self._pwm = None\n        self.a = Pin(in1, Pin.OUT, value=0)\n        self.b = Pin(in2, Pin.OUT, value=0)\n\n    def _digital(self, v1, v2):\n        if self._pwm is not None:\n            self._pwm.deinit()\n            self._pwm = None\n            self.a = Pin(self._n1, Pin.OUT)\n            self.b = Pin(self._n2, Pin.OUT)\n        self.a.value(v1)\n        self.b.value(v2)\n\n    def _slow_decay(self, high_pin, pwm_pin, speed):\n        # high_pin held at 1; pwm_pin low (driving) for `speed` % of each period, high (braking) otherwise.\n        speed = max(0, min(100, speed))\n        if speed >= 100:\n            return False\n        if self._pwm is not None:\n            self._pwm.deinit()\n            self._pwm = None\n        Pin(high_pin, Pin.OUT, value=1)\n        self._pwm = PWM(Pin(pwm_pin), freq=self._freq, duty_u16=(100 - speed) * 65535 // 100)\n        return True\n\n    def forward(self, speed=100):\n        \"\"\"OUT1 high, OUT2 low. speed 0-100 %.\"\"\"\n        if not self._slow_decay(self._n1, self._n2, speed):\n            self._digital(1, 0)\n\n    def reverse(self, speed=100):\n        \"\"\"OUT1 low, OUT2 high. speed 0-100 %.\"\"\"\n        if not self._slow_decay(self._n2, self._n1, speed):\n            self._digital(0, 1)\n\n    def drive(self, speed):\n        \"\"\"speed -100..100: positive = forward, negative = reverse, 0 = brake.\"\"\"\n        if speed > 0:\n            self.forward(speed)\n        elif speed < 0:\n            self.reverse(-speed)\n        else:\n            self.brake()\n\n    def brake(self):\n        \"\"\"Both inputs high: both outputs low, the motor is shorted and stops quickly.\"\"\"\n        self._digital(1, 1)\n\n    def coast(self):\n        \"\"\"Both inputs low: outputs Hi-Z, the motor spins down freely; the chip sleeps after ~1 ms.\"\"\"\n        self._digital(0, 0)\n\n    def stop(self):\n        self.brake()\n"
+  },
+  "example": {
+    "code": "import time\nfrom drv8871 import DRV8871\n\nmotor = DRV8871({IN1}, {IN2})\nwhile True:\n    motor.forward()\n    print('motor forward')\n    time.sleep(1)\n    motor.coast()\n    print('motor coasting')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Runs the motor forward, then lets it coast",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor coasting",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": false
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:20:22.079Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/drv8871.pdf",
+      "https://learn.adafruit.com/adafruit-drv8871-brushed-dc-motor-driver-breakout/pinouts"
+    ]
+  }
+}

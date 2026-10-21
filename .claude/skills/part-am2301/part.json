@@ -1,0 +1,120 @@
+{
+  "type": "custom-am2301",
+  "name": "AM2301 (DHT21) wired temperature & humidity sensor",
+  "mpn": "AM2301",
+  "category": "sensor",
+  "description": "Aosong/ASAIR AM2301 (also sold as DHT21) calibrated temperature (-40 to 80 °C, ±0.5 °C) and relative humidity (0–99.9 %RH, ±3 %RH) sensor in a black housing with a single-wire digital output, 0.1 °C / 0.1 %RH resolution, read at most every 2 s. Runs on 3.3–5.5 V (5 V recommended); the data wire needs a 5.1 kΩ pull-up. Uses the same 40-bit data format as the DHT22/AM2302. Sold as: Aosong AM2301 / DHT21 wired sensor with a 3-wire lead (red VDD, yellow SDA = data, black GND).",
+  "eli5": "A small black box on a cable that tells your board how warm and how damp the air is, to a tenth of a degree, over one wire. It needs one resistor to help it talk.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Red wire (pin 1): supply, 3.3–5.5 V DC (5 V recommended)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Yellow wire (pin 2): single-wire bidirectional data (Aosong one-wire protocol, NOT I2C); needs a 5.1 kΩ pull-up to VDD",
+      "required": true,
+      "pullUp": 5100
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black wire (pin 3): ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 1.2,
+  "datasheetUrl": "https://www.lcsc.com/datasheet/C83990.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "AM2301 DHT21 temperature humidity sensor wired",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire colours (Aosong datasheet table 4): red = VDD, yellow = SDA (data), black = GND. The yellow 'SDA' wire is the single-wire DHT data line, not I2C: connect it to any GPIO that can output as well as input (not GPIO 34-39 on an ESP32), not to the board's I2C SDA pin specifically.",
+    "Fit a 5.1 kΩ pull-up from the yellow data wire to VDD (datasheet: 1–100 kΩ allowed, 5.1 kΩ recommended for leads under 30 m).",
+    "5 V is the recommended supply. On 3.3 V keep the total lead under 1 m, or the voltage drop makes readings wrong.",
+    "Use MicroPython's built-in dht module with the DHT22 class: dht.DHT22(Pin(n)). The AM2301 sends the same 40 bits (humidity x10, temperature x10 with bit 15 as the minus sign, then an 8-bit sum checksum), so DHT22 decoding is correct; a bad checksum or no answer raises OSError.",
+    "Wait at least 2 s after power-up before the first read, then read no more often than every 2 s. Each read returns the previous measurement, so after a long pause read twice and use the second value.",
+    "Normal operating range is 0-80 %RH; long exposure above 80 %RH causes a temporary drift."
+  ],
+  "keywords": [
+    "am2301",
+    "dht21",
+    "temperature",
+    "humidity",
+    "aosong",
+    "asair",
+    "dht",
+    "wired",
+    "hygrometer"
+  ],
+  "sources": [
+    "https://www.lcsc.com/datasheet/C83990.pdf",
+    "https://datasheet.lcsc.com/datasheet/pdf/0918499024446624d64207dd09da8827.pdf",
+    "https://lcsc.com/product-detail/_Aosong-Guangzhou-Elec-AM2301_C83990.html",
+    "https://wiki.elecrow.com/images/4/44/AM2301_Datasheet.pdf"
+  ],
+  "sim": {
+    "kind": "dht-sensor",
+    "outputPin": "SDA",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 80,
+    "default": 22,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%RH",
+        "min": 0,
+        "max": 99.9,
+        "default": 50
+      }
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport dht, time\n\n# AM2301 / DHT21 uses the same data format as the DHT22\nsensor = dht.DHT22(Pin({SDA}))\ntime.sleep(2)  # AM2301: wait at least 2 s after power-up\nwhile True:\n    try:\n        sensor.measure()\n        print('T=%.1fC H=%.1f%%' % (sensor.temperature(), sensor.humidity()))\n    except OSError as e:\n        print('AM2301 read failed:', e)\n    time.sleep(2)  # AM2301: at most one reading every 2 s\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature (including below zero) and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -8.6
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 63.8
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-8.6C H=63.8%",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:34:28.593Z",
+    "verifiedSources": [
+      "http://www.haoyuelectronics.com/Attachment/AM2301/AM2301.pdf"
+    ]
+  }
+}

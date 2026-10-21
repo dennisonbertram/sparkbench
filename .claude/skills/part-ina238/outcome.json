@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ina238",
+  "board": "Adafruit INA238 DC Current Voltage Power Monitor (#6349), 8-pin header VIN, GND, SCL, SDA, VBUS, VIN-, VIN+, ALRT, 15 mOhm shunt",
+  "reason": "Check passed on ESP32 and Pico: the sim encodes the 16-bit VBUS (05h, 3.125 mV/LSB), signed VSHUNT (04h, 5 uV/LSB), DIETEMP (06h, bits 15-4, 0.125 C/LSB) and signed CURRENT (07h, 500 uA/LSB with SHUNT_CAL 6144 = 819.2e6 x 500e-6 x 0.015) as the datasheet does; the driver checks the IDs (5449h/238xh), writes SHUNT_CAL and decodes them. POWER and the alert limits are not modelled.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina238.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-INA237-Power-Monitor-PCB (INA237/INA238 shared board; silkscreen order VIN GND SCL SDA VBUS VIN- VIN+ ALRT, matching the Adafruit learn-guide board photo)",
+  "checkRuns": 1
+}

@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "pin count: part has 6 (GND VPU SDA SCL GPOUT CE), datasheet reading has 5 (GND VPU SDA SCL GPOUT)",
+      "verdict": "part-correct",
+      "evidence": "SparkFun Battery Babysitter board file silkscreen on the header edge reads GND (x=7.62), VPU (10.16), SDA (12.7), SCL (15.24), GPOUT (17.78), !CE! (20.32) on both top and bottom layers. Net '!CE!' connects U1 (BQ24075) pad 4 and R8 to JP11 pad 1; net GPOUT connects U2 (BQ27441) pad 12 to JP11 pad 2. JP10 (1x04) carries GND/VPU/SDA/SCL, so the header has 6 pins; the second reading omitted the charger's active-low CE pin.",
+      "source": "https://github.com/sparkfun/Battery_Babysitter/blob/master/Hardware/sparkfun-battery-babysitter.brd"
+    },
+    {
+      "diff": "minimum supply: part 1.62 V, datasheet reading 3 V",
+      "verdict": "part-correct",
+      "evidence": "TI BQ27441-G1 datasheet, Recommended Operating Conditions: 'VPU External pullup voltage for open-drain pins (SDA, SCL, GPOUT) 1.62 ... 3.6 V'. The modeled supply pin is VPU (the gauge itself runs from BAT, 2.45-4.5 V). The 3 V figure in the second reading is the board's VOUT power-path output range ('between 3V and 5.5V' per SparkFun hookup guide), not the VPU header pin.",
+      "source": "https://www.ti.com/lit/ds/symlink/bq27441-g1.pdf"
+    },
+    {
+      "diff": "temperature_K: offset -273.1 vs datasheet reading 0",
+      "verdict": "part-correct",
+      "evidence": "TI datasheet standard commands table: 'Temperature() TEMP 0x02 and 0x03 0.1°K' and 'InternalTemperature() 0x1E and 0x1F 0.1°K'. Both readings use scale 0.1; the second reading stays in kelvin (offset 0), while the model converts to degrees Celsius (raw*0.1 - 273.15), which is the same quantity in a different but equivalent unit (driver: _word(_TEMP)/10 - 273.15; sim control unit °C).",
+      "source": "https://www.ti.com/lit/ds/symlink/bq27441-g1.pdf"
+    }
+  ]
+}

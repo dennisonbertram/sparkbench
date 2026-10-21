@@ -1,0 +1,225 @@
+{
+  "type": "custom-sgp41",
+  "name": "SGP41 VOC & NOx air quality sensor",
+  "mpn": "SGP41",
+  "category": "sensor",
+  "description": "Sensirion metal-oxide (MOx) gas sensor with two heated sensing pixels, one for volatile organic compounds (VOCs) and one for nitrogen oxides (NOx), and an I2C interface. Each measurement returns two 16-bit raw signals in ticks, SRAW_VOC (falls as VOCs rise) and SRAW_NOX (rises as NOx rises), each proportional to the logarithm of its sensing layer's resistance; Sensirion's Gas Index Algorithm on the host turns them into 1-500 VOC and NOx Indices. Needs up to 10 s of conditioning after power-up. Chip runs on 1.7-3.6 V. Sold as: Adafruit SGP41 Multi-Pixel Gas Sensor Breakout - VOC & NOx, STEMMA QT (PID 6455; 5-pin header VIN, 3.3V, GND, SCL, SDA, 3-5 V supply via an on-board regulator), I2C address 0x59 (fixed).",
+  "eli5": "Sniffs the air for smells like paint, cleaning sprays or cooking fumes, and for exhaust gases from traffic or a gas stove, so you can tell when the air in a room is getting bad.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (use your board's logic voltage; an on-board regulator makes 3.3 V for the sensor)",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "io",
+      "description": "3.3 V OUTPUT of the on-board regulator (up to 100 mA), not an input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (level shifted, 10 k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (level shifted, 10 k pull-up on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 8,
+  "i2cAddress": 89,
+  "datasheetUrl": "https://sensirion.com/media/documents/5FE8673C/61E96F50/Sensirion_Gas_Sensors_Datasheet_SGP41.pdf",
+  "priceUsd": 20,
+  "supplierQuery": "SGP41 VOC NOx gas sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "After power-up (or after heater off) run conditioning first: write 0x26 0x12 0x80 0x00 0xA2 0x66 0x66 0x93, wait 50 ms, read 3 bytes (SRAW_VOC + CRC). Repeat about once a second for 10 s, and NEVER condition for more than 10 s: it damages the NOx sensing layer.",
+    "Measure: write 0x26 0x19 followed by the humidity word + CRC and the temperature word + CRC, wait 50 ms, read 6 bytes: SRAW_VOC MSB, LSB, CRC, SRAW_NOX MSB, LSB, CRC.",
+    "Send 0x80 0x00 0xA2 0x66 0x66 0x93 (50 %RH, 25 °C, the datasheet defaults) to leave humidity compensation off, or real values from a humidity sensor: RH ticks = RH% x 65535 / 100, T ticks = (T°C + 45) x 65535 / 175.",
+    "CRC-8 after every word, poly 0x31, init 0xFF (0xBE 0xEF -> 0x92). A mismatch almost always means a loose SDA/SCL wire.",
+    "Measure once a second without switching the heater off; the Gas Index Algorithm expects 1 s sampling. 0x36 0x15 switches the heaters off. Discard the first reading if you use the raw signals directly.",
+    "Raw ticks are not concentrations. The VOC signal needs about an hour and the NOx signal up to a few days of running to meet specifications.",
+    "Power VIN from 3.3 V on an ESP32 or Pico so the I2C pull-ups sit at 3.3 V.",
+    "Keep the sensor's opening uncovered and away from the regulator and microcontroller; never let condensation form on it."
+  ],
+  "keywords": [
+    "sgp41",
+    "sgp4x",
+    "voc",
+    "nox",
+    "no2",
+    "air quality",
+    "gas",
+    "mox",
+    "iaq",
+    "sensirion"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "VOC raw signal (SRAW_VOC)",
+    "unit": "ticks",
+    "min": 0,
+    "max": 65535,
+    "default": 30000,
+    "controls": [
+      {
+        "key": "nox",
+        "quantity": "NOx raw signal (SRAW_NOX)",
+        "unit": "ticks",
+        "min": 0,
+        "max": 65535,
+        "default": 15000
+      }
+    ],
+    "responses": [
+      {
+        "match": "26 12",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "26 19",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nox",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "28 0e",
+        "bytes": [
+          {
+            "const": 54272,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "36 82",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "const": 1042,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "const": 23610,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sgp41.py",
+    "code": "# SGP41 VOC + NOx gas sensor (Sensirion SGP41), MicroPython driver.\n# From the SGP41 datasheet v1.0 (Dec 2021), I2C address 0x59:\n#   sgp41_execute_conditioning 0x26 0x12 + RH word + CRC + T word + CRC, wait 50 ms, read 3 bytes (SRAW_VOC)\n#   sgp41_measure_raw_signals  0x26 0x19 + RH word + CRC + T word + CRC, wait 50 ms, read 6 bytes\n#                              (SRAW_VOC + CRC, SRAW_NOX + CRC)\n#   sgp41_execute_self_test    0x28 0x0E, wait 320 ms, read 3 bytes (low byte bit0 = VOC fail, bit1 = NOx fail)\n#   sgp4x_turn_heater_off      0x36 0x15 (back to idle)\n#   sgp4x_get_serial_number    0x36 0x82, wait 1 ms, read 9 bytes (3 words + CRC each)\n# Every 16-bit word (sent or received) is followed by a CRC-8 (poly 0x31, init 0xFF).\n# After power-up or heater-off, run conditioning (recommended 10 s, NEVER more than 10 s) before\n# the first measure_raw(). The raw signals are in ticks, proportional to the logarithm of each\n# sensing layer's resistance: SRAW_VOC falls when VOCs rise, SRAW_NOX rises when NOx rises.\n# VOC/NOx Index (1-500) needs Sensirion's Gas Index Algorithm (github.com/Sensirion/gas-index-algorithm),\n# fed once a second; it is not included here.\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\ndef _word(v):\n    v = max(0, min(65535, int(v)))\n    b = bytes([v >> 8, v & 0xFF])\n    return b + bytes([_crc8(b)])\n\n\ndef _comp(humidity, temperature):\n    if humidity is None or temperature is None:\n        return _word(0x8000) + _word(0x6666)  # datasheet defaults (50 %RH, 25 C): compensation off\n    rh = round(humidity * 65535 / 100)\n    t = round((temperature + 45) * 65535 / 175)\n    return _word(rh) + _word(t)\n\n\nclass SGP41:\n    def __init__(self, i2c, addr=0x59):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(1)  # power-up time is at most 0.6 ms\n\n    def _read_words(self, cmd, wait_ms, n):\n        self.i2c.writeto(self.addr, cmd)\n        time.sleep_ms(wait_ms)\n        d = self.i2c.readfrom(self.addr, 3 * n)\n        out = []\n        for i in range(0, 3 * n, 3):\n            if _crc8(d[i:i + 2]) != d[i + 2]:\n                raise OSError('SGP41 CRC mismatch: check the wiring')\n            out.append((d[i] << 8) | d[i + 1])\n        return out\n\n    def condition_once(self, humidity=None, temperature=None):\n        \"\"\"One sgp41_execute_conditioning call; returns SRAW_VOC in ticks.\n\n        Call it about once a second, for 10 s in total (never longer: the datasheet warns\n        that conditioning beyond 10 s damages the NOx sensing material), then switch to\n        measure_raw(). The datasheet asks for the default RH/T values here.\n        \"\"\"\n        return self._read_words(b'\\x26\\x12' + _comp(humidity, temperature), 50, 1)[0]\n\n    def condition(self, seconds=10):\n        \"\"\"Run the conditioning for `seconds` (1-10, default the recommended 10 s).\"\"\"\n        seconds = max(1, min(10, int(seconds)))\n        for i in range(seconds):\n            t0 = time.ticks_ms()\n            self.condition_once()\n            if i < seconds - 1:\n                time.sleep_ms(max(0, 1000 - time.ticks_diff(time.ticks_ms(), t0)))\n\n    def measure_raw(self, humidity=None, temperature=None):\n        \"\"\"One VOC+NOx measurement: returns (SRAW_VOC, SRAW_NOX) in ticks.\n\n        Pass relative humidity (%) and temperature (C) from e.g. an SHT40 to switch on the\n        chip's humidity compensation; without them the defaults leave it off.\n        Call about once a second; the heaters stay on between calls.\n        \"\"\"\n        voc, nox = self._read_words(b'\\x26\\x19' + _comp(humidity, temperature), 50, 2)\n        return voc, nox\n\n    def self_test(self):\n        \"\"\"Built-in self-test (run it from idle, not during conditioning).\n        Returns (voc_ok, nox_ok).\"\"\"\n        r = self._read_words(b'\\x28\\x0e', 320, 1)[0]\n        return (r & 0x01) == 0, (r & 0x02) == 0\n\n    def serial_number(self):\n        \"\"\"48-bit unique serial number.\"\"\"\n        w = self._read_words(b'\\x36\\x82', 1, 3)\n        return (w[0] << 32) | (w[1] << 16) | w[2]\n\n    def heater_off(self):\n        \"\"\"Switch the hotplates off and return to idle (about 34 uA).\n        Run conditioning again before the next measure_raw().\"\"\"\n        self.i2c.writeto(self.addr, b'\\x36\\x15')\n        time.sleep_ms(1)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sgp41 import SGP41\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SGP41(i2c)\nsensor.condition(10)  # required after power-up; never longer than 10 s\nsensor.measure_raw()  # discard the first reading\nwhile True:\n    time.sleep(1)\n    voc, nox = sensor.measure_raw(humidity=50, temperature=25)\n    print('SRAW_VOC=%d SRAW_NOX=%d' % (voc, nox))\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the raw VOC and NOx signals set on the sliders after conditioning",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "wait",
+          "ms": 10000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "nox",
+          "value": 17250
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SRAW_VOC=27500 SRAW_NOX=17250",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensirion.com/media/documents/5FE8673C/61E96F50/Sensirion_Gas_Sensors_Datasheet_SGP41.pdf",
+    "https://learn.adafruit.com/adafruit-sgp41-multi-pixel-gas-sensor-breakout/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/142/346/large1024/sensors_double.jpg",
+    "https://www.adafruit.com/product/6455"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:23:41.898Z",
+    "verifiedSources": [
+      "https://sensirion.com/media/documents/5FE8673C/61E96F50/Sensirion_Gas_Sensors_Datasheet_SGP41.pdf",
+      "https://www.adafruit.com/product/6455",
+      "https://cdn-shop.adafruit.com/970x728/6455-00.jpg"
+    ]
+  }
+}

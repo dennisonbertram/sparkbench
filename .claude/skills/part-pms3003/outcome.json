@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "uart-device",
+  "board": "Plantower PMS3003 (G3) sensor with its 8-wire 1.25 mm cable and the common 1.25-to-2.54 mm adapter board",
+  "reason": "Check passed on ESP32 and Pico. The model streams the datasheet's 24-byte frame: 0x42 0x4D, length 20, 9 words and a sum16 over 22 bytes. The driver correctly decodes the sample frame printed in the datasheet.",
+  "datasheetUrl": "https://github.com/avaldebe/AQmon/raw/master/Documents/PMS3003_LOGOELE.pdf",
+  "breakoutPinoutSource": "PMS3003 data manual digital pin table (PIN1 VCC, PIN2 GND, PIN3 SET, PIN4 RXD, PIN5 TXD, PIN6 RESET, PIN7/8 NC), confirmed by the PyPMS Plantower connector table",
+  "checkRuns": 1
+}

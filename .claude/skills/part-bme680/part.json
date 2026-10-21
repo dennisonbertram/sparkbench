@@ -1,0 +1,256 @@
+{
+  "type": "custom-bme680",
+  "name": "BME680 gas, temperature, humidity & pressure sensor",
+  "mpn": "BME680",
+  "category": "sensor",
+  "description": "Bosch 4-in-1 environmental sensor: temperature (-40 to +85 °C, ±1 °C), relative humidity (0–100 %RH, ±3 %), barometric pressure (300–1100 hPa, ±0.6 hPa) and a heated metal-oxide gas sensor whose resistance falls when volatile organic compounds (VOCs) are present. I2C and SPI interfaces. The chip runs on 1.71–3.6 V. Sold as: Adafruit BME680 Temperature, Humidity, Pressure and Gas Sensor breakout, STEMMA QT version (#3660; 7-pin header VIN, 3Vo, GND, SCK, SDO, SDI, CS; AP2112K 3.3 V regulator, 10 kΩ I2C pull-ups with BSS138 level shifting, 3–5 V), I2C address 0x77 (0x76 with SDO tied to GND).",
+  "eli5": "A tiny weather station with a nose: it tells your board the temperature, how damp the air is, the air pressure, and gives a reading that drops when there are fumes or stale air around.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V into the onboard AP2112K 3.3 V regulator; also sets the SCK/SDI logic level. Feed it from the microcontroller's 3V3 or 5V pin.",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the onboard regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock SCL (SPI clock). 10 kΩ pull-up and BSS138 level shifter on the board, 5 V safe.",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select (SPI data out): pulled up to 3.3 V on the board = 0x77; tie to GND (or close the solder jumper) for 0x76. 3.3 V logic only.",
+      "required": false
+    },
+    {
+      "name": "SDI",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data SDA (SPI data in). 10 kΩ pull-up and BSS138 level shifter on the board, 5 V safe.",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select: pulled high on the board = I2C mode. Leave unconnected for I2C.",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 18,
+  "i2cAddress": 119,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme680-ds001.pdf",
+  "priceUsd": 19,
+  "supplierQuery": "Adafruit BME680 temperature humidity pressure gas sensor breakout 3660",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme680-ds001.pdf",
+    "https://learn.adafruit.com/adafruit-bme680-humidity-temperature-barometic-pressure-voc-gas/pinouts",
+    "https://github.com/adafruit/Adafruit-BME680-PCB",
+    "https://www.adafruit.com/product/3660",
+    "https://github.com/adafruit/Adafruit_CircuitPython_BME680"
+  ],
+  "buildNotes": [
+    "Power VIN from 3.3 V or 5 V: the Adafruit board regulates down to 3.3 V and level-shifts SCK/SDI. A bare BME680 chip (or a regulator-less clone) must never see more than 3.6 V (absolute max 4.25 V).",
+    "Default I2C address is 0x77 because SDO is pulled up on the board; tie SDO to GND for 0x76. Check chip ID: register 0xD0 reads 0x61.",
+    "Every reading needs the factory calibration (0x8A–0xA0, 0xE1–0xEE, plus 0x00/0x02/0x04) and the datasheet compensation formulas; compute temperature first (t_fine).",
+    "Forced mode: set osrs_h (0x72), then osrs_t/osrs_p with mode 01 in 0x74. For gas: write res_heat_0 (0x5A) from the heater formula, gas_wait_0 (0x64), and run_gas=1, nb_conv=0 in 0x71 before triggering.",
+    "Gas readings are only valid when gas_valid_r and heat_stab_r (0x2B bits 5 and 4) are both 1. Gas resistance is a relative air-quality indicator: it drifts and needs minutes (days for a new sensor) of burn-in; compare against your own clean-air baseline.",
+    "The hot plate draws about 12–18 mA while heating and warms the chip slightly: keep the heater time short (≈150 ms) and read no more than about once per second, or the temperature reads high.",
+    "Pins are named for SPI: SCK = I2C SCL, SDI = I2C SDA. Leave CS unconnected (pulled high) for I2C."
+  ],
+  "keywords": [
+    "bme680",
+    "gas",
+    "voc",
+    "air quality",
+    "humidity",
+    "pressure",
+    "barometer",
+    "temperature",
+    "bosch",
+    "adafruit 3660"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "hPa",
+        "min": 300,
+        "max": 1100,
+        "default": 1013.25
+      },
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      },
+      {
+        "key": "gas",
+        "quantity": "Gas sensor conductance (1 / gas resistance)",
+        "unit": "µS",
+        "min": 5,
+        "max": 11,
+        "default": 6
+      }
+    ],
+    "registers": {
+      "0x00": 44,
+      "0x02": 16,
+      "0x04": 0,
+      "0x1d": 128,
+      "0x2b": 54,
+      "0x8a": 144,
+      "0x8b": 101,
+      "0x8c": 0,
+      "0x8e": 160,
+      "0x8f": 140,
+      "0x90": 0,
+      "0x91": 0,
+      "0x92": 0,
+      "0x93": 0,
+      "0x94": 0,
+      "0x95": 0,
+      "0x96": 0,
+      "0x97": 0,
+      "0x98": 0,
+      "0x99": 0,
+      "0x9a": 0,
+      "0x9b": 0,
+      "0x9c": 0,
+      "0x9d": 0,
+      "0x9e": 0,
+      "0x9f": 0,
+      "0xa0": 0,
+      "0xe1": 64,
+      "0xe2": 84,
+      "0xe3": 42,
+      "0xe4": 0,
+      "0xe5": 0,
+      "0xe6": 0,
+      "0xe7": 0,
+      "0xe8": 0,
+      "0xe9": 144,
+      "0xea": 101,
+      "0xeb": 8,
+      "0xec": 213,
+      "0xed": 244,
+      "0xee": 18,
+      "0xd0": 97
+    },
+    "measures": [
+      {
+        "reg": "0x22",
+        "bytes": 3,
+        "shift": 4,
+        "scale": 0.00030994415283203125,
+        "offset": -128.936767578125,
+        "control": "value"
+      },
+      {
+        "reg": "0x1F",
+        "bytes": 3,
+        "shift": 4,
+        "scale": -0.001736111111111111,
+        "offset": 1820.4444444444443,
+        "control": "pressure"
+      },
+      {
+        "reg": "0x25",
+        "bytes": 2,
+        "scale": 0.003925323486328125,
+        "offset": -42.456298828125,
+        "control": "humidity"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 1,
+        "scale": 0.023880597014925373,
+        "offset": 4.943283582089553,
+        "control": "gas"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bme680.py",
+    "code": "# MicroPython driver for the Bosch BME680 gas, humidity, pressure & temperature sensor (I2C).\n# Written from Bosch datasheet BST-BME680-DS001 rev 1.9:\n#   quick start / forced mode flow sec. 3.2, floating-point compensation sec. 3.3.1-3.3.3,\n#   heater set-point (res_heat_x) sec. 3.3.5, gas resistance sec. 3.4.1 (tables 15 and 16),\n#   memory map sec. 5.2, gas_wait_x encoding sec. 5.3.3.3, status bits sec. 5.3.5.\nimport time\n\nREG_RES_HEAT_VAL = 0x00    # signed heater resistance correction\nREG_RES_HEAT_RANGE = 0x02  # bits 5:4\nREG_RANGE_SW_ERR = 0x04    # bits 7:4, signed 4-bit\nREG_FIELD0 = 0x1D          # meas_status_0 .. gas_r_lsb (0x1D..0x2B)\nREG_RES_HEAT_0 = 0x5A\nREG_GAS_WAIT_0 = 0x64\nREG_CTRL_GAS_0 = 0x70      # heat_off bit 3\nREG_CTRL_GAS_1 = 0x71      # run_gas bit 4, nb_conv 3:0\nREG_CTRL_HUM = 0x72        # osrs_h 2:0\nREG_CTRL_MEAS = 0x74       # osrs_t 7:5, osrs_p 4:2, mode 1:0\nREG_CONFIG = 0x75          # filter 4:2\nREG_CHIP_ID = 0xD0         # 0x61\nREG_RESET = 0xE0           # write 0xB6\nCHIP_ID = 0x61\n\n# Table 16, floating-point constants indexed by gas_range_r\n_GAS_C1 = (1.0, 1.0, 1.0, 1.0, 1.0, 0.99, 1.0, 0.992, 1.0, 1.0, 0.998, 0.995, 1.0, 0.99, 1.0, 1.0)\n_GAS_C2 = (8000000.0, 4000000.0, 2000000.0, 1000000.0, 499500.4995, 248262.1648, 125000.0,\n           63004.03226, 31281.28128, 15625.0, 7812.5, 3906.25, 1953.125, 976.5625, 488.28125,\n           244.140625)\n_OS_CYCLES = (0, 1, 2, 4, 8, 16)  # oversampling code -> conversions\n\n\ndef _s8(v):\n    return v - 256 if v > 127 else v\n\n\ndef _s16(v):\n    return v - 65536 if v > 32767 else v\n\n\nclass BME680:\n    def __init__(self, i2c, addr=0x77, osrs_t=2, osrs_p=1, osrs_h=1,\n                 heater_temp=320, heater_ms=150, amb_temp=25):\n        \"\"\"addr 0x77 = SDO high (Adafruit default), 0x76 = SDO low.\n        osrs codes: 0=skip, 1=x1, 2=x2, 3=x4, 4=x8, 5=x16.\n        heater_temp in degC (200-400 typical), heater_ms 1-4032 ms.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(REG_CHIP_ID, 1)[0]\n        if cid != CHIP_ID:\n            raise OSError(\"BME680 not found at 0x%02X (chip id 0x%02X)\" % (addr, cid))\n        self._w(REG_RESET, 0xB6)\n        time.sleep_ms(10)  # start-up time 2 ms max\n        self._load_calib()\n        self.osrs_t = osrs_t & 7\n        self.osrs_p = osrs_p & 7\n        self.osrs_h = osrs_h & 7\n        self.heater_ms = heater_ms\n        self.t_fine = 0.0\n        self.temp_c = amb_temp\n        # Sleep mode while configuring; IIR filter off.\n        self._w(REG_CTRL_MEAS, (self.osrs_t << 5) | (self.osrs_p << 2))\n        self._w(REG_CONFIG, 0x00)\n        self._w(REG_CTRL_HUM, self.osrs_h)\n        self.set_heater(heater_temp, heater_ms, amb_temp)\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _load_calib(self):\n        c = self._r(0x8A, 23)   # 0x8A..0xA0\n        e = self._r(0xE1, 14)   # 0xE1..0xEE\n        g = lambda reg: c[reg - 0x8A]\n        h = lambda reg: e[reg - 0xE1]\n        self.T1 = h(0xE9) | (h(0xEA) << 8)\n        self.T2 = _s16(g(0x8A) | (g(0x8B) << 8))\n        self.T3 = _s8(g(0x8C))\n        self.P1 = g(0x8E) | (g(0x8F) << 8)\n        self.P2 = _s16(g(0x90) | (g(0x91) << 8))\n        self.P3 = _s8(g(0x92))\n        self.P4 = _s16(g(0x94) | (g(0x95) << 8))\n        self.P5 = _s16(g(0x96) | (g(0x97) << 8))\n        self.P6 = _s8(g(0x99))\n        self.P7 = _s8(g(0x98))\n        self.P8 = _s16(g(0x9C) | (g(0x9D) << 8))\n        self.P9 = _s16(g(0x9E) | (g(0x9F) << 8))\n        self.P10 = g(0xA0)\n        self.H1 = (h(0xE3) << 4) | (h(0xE2) & 0x0F)\n        self.H2 = (h(0xE1) << 4) | (h(0xE2) >> 4)\n        self.H3 = _s8(h(0xE4))\n        self.H4 = _s8(h(0xE5))\n        self.H5 = _s8(h(0xE6))\n        self.H6 = h(0xE7)\n        self.H7 = _s8(h(0xE8))\n        self.G1 = _s8(h(0xED))\n        self.G2 = _s16(h(0xEB) | (h(0xEC) << 8))\n        self.G3 = _s8(h(0xEE))\n        self.res_heat_val = _s8(self._r(REG_RES_HEAT_VAL, 1)[0])\n        self.res_heat_range = (self._r(REG_RES_HEAT_RANGE, 1)[0] >> 4) & 0x03\n        sw = self._r(REG_RANGE_SW_ERR, 1)[0] >> 4\n        self.range_sw_err = sw - 16 if sw > 7 else sw  # signed 4-bit\n\n    def _res_heat(self, target, amb):\n        # Sec. 3.3.5 floating point\n        target = min(target, 400)\n        var1 = self.G1 / 16.0 + 49.0\n        var2 = (self.G2 / 32768.0) * 0.0005 + 0.00235\n        var3 = self.G3 / 1024.0\n        var4 = var1 * (1.0 + var2 * target)\n        var5 = var4 + var3 * amb\n        r = int(3.4 * ((var5 * (4.0 / (4.0 + self.res_heat_range)) *\n                        (1.0 / (1.0 + self.res_heat_val * 0.002))) - 25))\n        return max(0, min(255, r))\n\n    @staticmethod\n    def _gas_wait(ms):\n        # Sec. 5.3.3.3: 6-bit value x multiplier 1/4/16/64 in bits 7:6\n        if ms >= 0xFC0:\n            return 0xFF\n        f = 0\n        while ms > 0x3F:\n            ms //= 4\n            f += 1\n        return ms + f * 64\n\n    def set_heater(self, temp_c, ms, amb_temp=25):\n        \"\"\"Heater profile 0: hot plate temperature (degC) and time (ms); temp_c=0 turns gas off.\"\"\"\n        self.heater_ms = ms\n        if not temp_c or not ms:\n            self._w(REG_CTRL_GAS_1, 0x00)  # run_gas = 0\n            self._w(REG_CTRL_GAS_0, 0x08)  # heat_off\n            self.gas_on = False\n            return\n        self._w(REG_RES_HEAT_0, self._res_heat(temp_c, amb_temp))\n        self._w(REG_GAS_WAIT_0, self._gas_wait(ms))\n        self._w(REG_CTRL_GAS_0, 0x00)\n        self._w(REG_CTRL_GAS_1, 0x10 | 0x00)  # run_gas = 1, nb_conv = 0\n        self.gas_on = True\n\n    def _meas_ms(self):\n        # Bosch sensor API duration estimate: 1963 us per conversion + switching + gas, + 1 ms wake-up\n        cyc = _OS_CYCLES[min(self.osrs_t, 5)] + _OS_CYCLES[min(self.osrs_p, 5)] + _OS_CYCLES[min(self.osrs_h, 5)]\n        us = cyc * 1963 + 477 * 4 + 477 * 5 + 500\n        return us // 1000 + 1 + (self.heater_ms if self.gas_on else 0)\n\n    def _comp_t(self, adc):\n        var1 = (adc / 16384.0 - self.T1 / 1024.0) * self.T2\n        var2 = ((adc / 131072.0 - self.T1 / 8192.0) * (adc / 131072.0 - self.T1 / 8192.0)) * (self.T3 * 16.0)\n        self.t_fine = var1 + var2\n        return self.t_fine / 5120.0\n\n    def _comp_p(self, adc):\n        var1 = self.t_fine / 2.0 - 64000.0\n        var2 = var1 * var1 * (self.P6 / 131072.0)\n        var2 = var2 + var1 * self.P5 * 2.0\n        var2 = var2 / 4.0 + self.P4 * 65536.0\n        var1 = ((self.P3 * var1 * var1) / 16384.0 + self.P2 * var1) / 524288.0\n        var1 = (1.0 + var1 / 32768.0) * self.P1\n        if var1 == 0:\n            return 0.0\n        p = 1048576.0 - adc\n        p = ((p - var2 / 4096.0) * 6250.0) / var1\n        var1 = (self.P9 * p * p) / 2147483648.0\n        var2 = p * (self.P8 / 32768.0)\n        var3 = (p / 256.0) * (p / 256.0) * (p / 256.0) * (self.P10 / 131072.0)\n        return p + (var1 + var2 + var3 + self.P7 * 128.0) / 16.0  # Pa\n\n    def _comp_h(self, adc, temp_c):\n        var1 = adc - (self.H1 * 16.0 + (self.H3 / 2.0) * temp_c)\n        var2 = var1 * ((self.H2 / 262144.0) * (1.0 + (self.H4 / 16384.0) * temp_c +\n                                               (self.H5 / 1048576.0) * temp_c * temp_c))\n        var3 = self.H6 / 16384.0\n        var4 = self.H7 / 2097152.0\n        h = var2 + (var3 + var4 * temp_c) * var2 * var2\n        return 100.0 if h > 100.0 else (0.0 if h < 0.0 else h)\n\n    def _comp_gas(self, adc, rng):\n        var1 = (1340.0 + 5.0 * self.range_sw_err) * _GAS_C1[rng]\n        return var1 * _GAS_C2[rng] / (adc - 512.0 + var1)  # ohms\n\n    def read(self):\n        \"\"\"One forced-mode measurement. Returns (temp degC, pressure hPa, humidity %RH, gas ohms or None).\n        Gas is None when the heater did not reach its set-point (heat_stab_r = 0) or gas is off.\"\"\"\n        self._w(REG_CTRL_HUM, self.osrs_h)\n        self._w(REG_CTRL_MEAS, (self.osrs_t << 5) | (self.osrs_p << 2) | 0x01)  # forced mode\n        time.sleep_ms(self._meas_ms())\n        for _ in range(50):\n            d = self._r(REG_FIELD0, 15)\n            if d[0] & 0x80:  # new_data_0\n                break\n            time.sleep_ms(5)\n        else:\n            raise OSError(\"BME680: no new data\")\n        adc_p = (d[2] << 12) | (d[3] << 4) | (d[4] >> 4)\n        adc_t = (d[5] << 12) | (d[6] << 4) | (d[7] >> 4)\n        adc_h = (d[8] << 8) | d[9]\n        adc_g = (d[13] << 2) | (d[14] >> 6)\n        g_range = d[14] & 0x0F\n        t = self._comp_t(adc_t)\n        p = self._comp_p(adc_p) / 100.0\n        h = self._comp_h(adc_h, t)\n        gas = None\n        if self.gas_on and (d[14] & 0x20) and (d[14] & 0x10):  # gas_valid_r and heat_stab_r\n            gas = self._comp_gas(adc_g, g_range)\n        self.temp_c = t\n        return t, p, h, gas\n\n    def altitude(self, sea_level_hpa=1013.25):\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_hpa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bme680 import BME680\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BME680(i2c, addr=0x77)  # Adafruit board: SDO pulled high\nwhile True:\n    t, p, h, g = sensor.read()\n    if g is None:\n        print('T=%.1fC P=%.1fhPa H=%.1f%% G=--' % (t, p, h))\n    else:\n        print('T=%.1fC P=%.1fhPa H=%.1f%% G=%.1fkOhm' % (t, p, h, g / 1000))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature, pressure, humidity and gas resistance set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 987.6
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 55
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gas",
+          "value": 10
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.3C P=987.6hPa H=55.0% G=99.9kOhm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:55:50.014Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/3660/BME680.pdf",
+      "https://learn.adafruit.com/adafruit-bme680-humidity-temperature-barometic-pressure-voc-gas/pinouts",
+      "https://www.adafruit.com/product/3660"
+    ]
+  }
+}

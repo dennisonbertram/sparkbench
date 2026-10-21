@@ -1,0 +1,110 @@
+{
+  "type": "custom-e18-d80nk",
+  "name": "E18-D80NK adjustable IR proximity switch",
+  "mpn": "E18-D80NK",
+  "category": "sensor",
+  "description": "Diffuse-reflective infrared proximity switch in an 18 mm threaded barrel: it sends modulated IR (so ordinary room light and sunlight barely disturb it) and switches its output when something is within the range set by the rear potentiometer, about 3-80 cm (white objects are seen furthest, black closest). Gives on/off only, not a distance. NPN open-collector output, normally open: OUT is pulled LOW when an object is detected and needs a pull-up resistor otherwise. Runs on 5 V DC, 10-15 mA. Sold as: E18-D80NK-N adjustable infrared proximity switch (orange 18 mm x 45 mm body, 20 cm 3-wire lead with DuPont plug: red VCC, black GND, yellow OUT), also sold as plain E18-D80NK.",
+  "eli5": "A little tube that shines invisible light and tells your board when something comes close, up to almost a metre away, like an automatic door sensor.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 5 V DC (red wire on the E18-D80NK-N; brown on some older batches). Wire it to the board's 5V/VBUS pin.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire on the E18-D80NK-N; blue on some older batches).",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "NPN open-collector output (yellow wire on the E18-D80NK-N; black on some older batches): pulled LOW while an object is detected, otherwise open. Needs a pull-up to the microcontroller's 3.3 V logic (the GPIO's internal pull-up, or 1-10 kOhm to 3V3). Sinks up to 100 mA.",
+      "required": true
+    }
+  ],
+  "vmin": 5,
+  "vmax": 5,
+  "currentMa": 15,
+  "datasheetUrl": "https://www.mantech.co.za/Datasheets/Products/MD0052-E18-D80NK.pdf",
+  "sources": [
+    "https://www.mantech.co.za/Datasheets/Products/MD0052-E18-D80NK.pdf",
+    "https://m.media-amazon.com/images/I/711Cn4VOqlL.pdf",
+    "https://www.energiazero.org/cartelle/arduino/arduino_sensori/sensore%20prossimita%20e18-d80nk.pdf",
+    "https://components101.com/sensors/e18-d80nk-infrared-proximity-sensor-pinout-features-datasheet-alternative-working",
+    "https://protosupplies.com/product/e18-d80nk-adjustable-infrared-proximity-sensor-module/",
+    "https://forum.arduino.cc/t/sensor-e18-d80nk-not-working/922158"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "E18-D80NK infrared proximity switch 3-80cm",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "It is a sensor on a lead, not a breadboard module: the three wires end in a DuPont plug (or bare ends). Wire colours differ between batches, so go by the label or the seller's sheet: E18-D80NK-N is red = VCC, black = GND, yellow = OUT; older E18-D80NK lots are often brown = VCC, blue = GND, black = OUT. Swapping supply and ground can destroy the sensor.",
+    "Power it from 5 V (the board's 5V / VBUS pin), not 3V3: the datasheet specifies 5 V DC.",
+    "OUT is an NPN open-collector switch, active LOW: it reads 0 when something is in range. The datasheet asks for a pull-up on OUT; pull it up to 3V3 (the GPIO's internal pull-up, or 1-10 kOhm to 3V3), never to 5 V on an ESP32 or Pico.",
+    "Some sellers' units have their own pull-up inside to VCC. Before connecting OUT to a 3.3 V board, power the sensor and measure OUT to GND with nothing in front: if it reads about 5 V, put a 10 kOhm / 20 kOhm divider between OUT and the GPIO.",
+    "Set the range with the potentiometer on the back (a small screwdriver): the red LED on the back lights while it detects. Dark matte objects are seen much closer than white ones.",
+    "There are also 6-36 V versions sold under the same name: their output can rise to the supply voltage, so check the label before wiring."
+  ],
+  "keywords": [
+    "e18-d80nk",
+    "e18-d80nk-n",
+    "e18",
+    "ir",
+    "infrared",
+    "proximity",
+    "switch",
+    "obstacle",
+    "photoelectric",
+    "npn",
+    "robot",
+    "counter"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Object in range",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "e18d80nk.py",
+    "code": "# E18-D80NK(-N) adjustable infrared proximity switch, MicroPython driver.\n# The sensor sends modulated IR and demodulates the reflection; its output is an\n# NPN open-collector transistor, normally open (manufacturer instruction guide):\n#   OUT LOW  (0) -> an object is within the range set by the rear potentiometer (3-80 cm)\n#   OUT HIGH (1) -> nothing detected (needs a pull-up resistor on OUT)\n# The guide asks for a pull-up on the signal output. Pull it up to the board's\n# 3.3 V logic (this driver enables the GPIO's internal pull-up; add an external\n# 1-10 kOhm resistor to 3V3 for long leads), never to the sensor's 5 V supply on a\n# 3.3 V board. Power the sensor itself from 5 V.\nfrom machine import Pin\n\n\nclass E18D80NK:\n    def __init__(self, pin, pull_up=True):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n\n    def raw(self):\n        \"\"\"Logic level on OUT: 0 = object detected, 1 = clear.\"\"\"\n        return self.pin.value()\n\n    def detected(self):\n        \"\"\"True while an object is within the set range (NPN output pulls OUT low).\"\"\"\n        return self.pin.value() == 0\n\n    def irq(self, handler, on_detect=True):\n        \"\"\"Call handler(pin) when an object appears (falling edge) or, with\n        on_detect=False, when it goes away (rising edge).\"\"\"\n        trig = Pin.IRQ_FALLING if on_detect else Pin.IRQ_RISING\n        return self.pin.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from e18d80nk import E18D80NK\nimport time\n\nsensor = E18D80NK({OUT})\nwhile True:\n    print('Object: %s' % ('YES' if sensor.detected() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports an object when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Object: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:55:55.649Z",
+    "verifiedSources": [
+      "https://components101.com/sensors/e18-d80nk-infrared-proximity-sensor-pinout-features-datasheet-alternative-working",
+      "https://protosupplies.com/?p=5083"
+    ]
+  }
+}

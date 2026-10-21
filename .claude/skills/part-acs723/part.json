@@ -1,0 +1,114 @@
+{
+  "type": "custom-acs723",
+  "name": "SparkFun ACS723 current sensor breakout (Low Current)",
+  "mpn": "ACS723LLCTR-05AB-T",
+  "category": "sensor",
+  "description": "Hall-effect current sensor from Allegro MicroSystems for AC or DC current up to ±5 A, isolated from the sensing side, followed on this board by an OPA344 inverting amplifier with GAIN (2–22×) and Vref trimmers for small currents. The chip gives VCC/2 + 400 mV/A; the board output is VO = Vref + G × (Vref − VIOUT), so VO falls as current rises. Sold as: SparkFun Current Sensor Breakout - ACS723 (Low Current), SEN-14544 (ACS723LLCTR-05AB, IP+/IP- pads on one edge, 3-pin header VCC, VO, GND on the other).",
+  "eli5": "Put it in series with a wire and it tells you how much current flows: its VO pin moves by a set number of volts per amp, which you tune with two tiny knobs and then measure once to calibrate.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 4.5 V to 5.5 V: connect to 5 V (3.3 V is too low).",
+      "required": true
+    },
+    {
+      "name": "VO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Amplified analog output, 0 V to VCC. Modelled setting (GAIN minimum, Vref wiper at VCC/2): VO = 2.5 V − 0.8 V/A × I. Can reach 5 V with other trimmer settings: check before wiring to a 3.3 V ADC.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 15,
+  "cabled": true,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/0/0/5/e/ACS723-Datasheet.pdf",
+  "priceUsd": 15.95,
+  "supplierQuery": "SparkFun ACS723 Low Current SEN-14544",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: VCC, VO, GND (pin 1 = VCC, as printed on the board). Power VCC from 5 V; the ACS723 needs 4.5–5.5 V.",
+    "The measured current goes through the IP+ / IP- pads on the opposite edge, in series with the load: in at IP+ and out at IP- is positive. Keep to low-voltage loads; the board is not designed for mains.",
+    "The amplifier is inverting: VO = Vref + G × (Vref − VIOUT), G = 2 to 22, so VO goes DOWN as current goes up. Calibrate: calibrate_zero() with no current, then calibrate_sensitivity(known_amps) with a known current.",
+    "VO swings 0 V to 5 V. Measure it with a multimeter before connecting it to a 3.3 V ADC pin, or add a 10 kΩ (VO to ADC) / 20 kΩ (ADC to GND) divider and pass divider=1.5.",
+    "Sparkbench models GAIN at minimum (2×) and the Vref wiper at VCC/2: VO = 2.5 V − 0.8 V/A × I (3.3 V at −1 A, 0.1 V at +3 A). These are the driver defaults.",
+    "Turn the trimmers with a plastic screwdriver (a magnetised one upsets the Hall sensor). JP1 on the back: open = 20 kHz low-noise (default), closed = 80 kHz."
+  ],
+  "keywords": [
+    "acs723",
+    "acs723llctr-05ab",
+    "sparkfun",
+    "sen-14544",
+    "current",
+    "ammeter",
+    "hall",
+    "analog",
+    "sensor",
+    "low current"
+  ],
+  "sources": [
+    "https://cdn.sparkfun.com/assets/d/0/0/5/e/ACS723-Datasheet.pdf",
+    "https://learn.sparkfun.com/tutorials/current-sensor-breakout-acs723-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/2/3/c/8/7/ACS723_Low_Current_Sensor.pdf",
+    "https://cdn.sparkfun.com/assets/d/d/0/0/9/ACS723_Low_Current_Sensor.zip",
+    "https://github.com/sparkfun/Current_Sensor_Breakout-ACS723-Low_Current"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "VO",
+    "quantity": "Current (IP+ to IP-)",
+    "unit": "A",
+    "min": -1,
+    "max": 3,
+    "default": 0,
+    "vAtMin": 3.3,
+    "vAtMax": 0.1,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "acs723.py",
+    "code": "# SparkFun Current Sensor Breakout - ACS723 (Low Current), SEN-14544, MicroPython driver.\n# Chip: Allegro ACS723LLCTR-05AB-T (+/-5 A, bidirectional). Datasheet: VCC = 4.5-5.5 V,\n#   VIOUT = VCC x 0.5 + 0.400 V/A x I at VCC = 5 V (ratiometric), positive slope for\n#   current flowing IP+ -> IP-.\n# The board follows the chip with an OPA344 INVERTING amplifier (SparkFun schematic v10):\n#   VO = Vref + G x (Vref - VIOUT),  G = 22k / (1k + VR1) = 2 ... 22 (GAIN trimmer),\n#   Vref = VREF trimmer wiper (0 ... VCC).\n# So VO falls as current IP+ -> IP- rises, and both the zero point and the slope depend on\n# the two trimmers. Measure them once (calibrate_zero / calibrate_sensitivity) and pass them in.\n# Defaults = GAIN trimmer at minimum (G = 2) and VREF wiper at VCC/2:\n#   zero = 2.5 V, sensitivity = -2 x 0.400 = -0.800 V/A.\nfrom machine import ADC, Pin\n\n\nclass ACS723LC:\n    CHIP_SENS = 0.400  # V/A at VCC = 5 V, ACS723LLCTR-05AB\n\n    def __init__(self, pin, zero=2.5, sensitivity=-0.8, divider=1.0, samples=64, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to VO. zero: VO (V) with no current flowing.\n        sensitivity: change of VO per amp IP+ -> IP- (V/A, negative on this board).\n        divider: VO / Vadc if a resistor divider sits between VO and the ADC pin.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.zero = zero\n        self.sens = sensitivity\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC full scale used when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Averaged VO voltage (V).\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with NO current flowing: stores the measured zero-current VO.\"\"\"\n        self.zero = self.voltage()\n        return self.zero\n\n    def calibrate_sensitivity(self, known_amps):\n        \"\"\"Call with a known current (A, IP+ -> IP-) flowing, after calibrate_zero().\"\"\"\n        self.sens = (self.voltage() - self.zero) / known_amps\n        return self.sens\n\n    def gain(self):\n        \"\"\"Amplifier gain implied by the sensitivity (VCC = 5 V).\"\"\"\n        return -self.sens / self.CHIP_SENS\n\n    def current(self):\n        \"\"\"Current in amperes (positive = IP+ to IP-).\"\"\"\n        return (self.voltage() - self.zero) / self.sens\n"
+  },
+  "example": {
+    "code": "from acs723 import ACS723LC\nimport time\n\nsensor = ACS723LC({VO})  # GAIN at minimum, Vref at mid: zero 2.5 V, -0.8 V/A\nwhile True:\n    print('I=%.1fA' % sensor.current())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the current set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "I=1.5A",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:31:30.457Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/d/0/0/5/e/ACS723-Datasheet.pdf",
+      "https://cdn.sparkfun.com/assets/2/3/c/8/7/ACS723_Low_Current_Sensor.pdf",
+      "https://www.sparkfun.com/products/14544"
+    ]
+  }
+}

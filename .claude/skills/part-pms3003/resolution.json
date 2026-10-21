@@ -1,0 +1,28 @@
+{
+  "diffs": [
+    {
+      "diff": "pin count: part has 8 (VCC GND SET RXD TXD RESET NC1 NC2), datasheet reading has 6 (VCC GND SET RX TX RST)",
+      "verdict": "part-correct",
+      "evidence": "PMS3003 data manual, page 4 'Digital pins interface definition' table (image): 'PIN1 VCC 电源正 5V; PIN2 GND 电源负; PIN3 SET 设置管脚 /TTL电平@3.3V; PIN4 RXD 串口接收管脚 /TTL电平@3.3V; PIN5 TXD 串口发送管脚 /TTL电平@3.3V; PIN6 RESET 模块复位信号 /TTL电平@3.3V; PIN7\\8 NC 悬空'. The sensor connector has 8 positions, with PIN7 and PIN8 not connected. The model's first six pins (VCC GND SET RXD TXD RESET) match the reading's six in order and role. The model adds the two NC pins (role nc, not required) so the 8-pin header is modeled in full. The second reading left out the NC positions. One of its sources is the PMS5003 Pi Hut breakout, which is a different product.",
+      "source": "https://github.com/avaldebe/AQmon/raw/master/Documents/PMS3003_LOGOELE.pdf"
+    },
+    {
+      "diff": "PM1.0 ug/m3: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "PMS3003 data manual, page 8 frame table (image): '数据1 表示 PM1.0 浓度（CF=1，标准颗粒物）单位 ug/m3' and '数据4 表示 PM1.0 浓度（大气环境下）单位 ug/m3'. The 16-bit word is the concentration in ug/m3, which is 1 ug/m3 per count. The model already does this: sim.uartStream sends control 'pm1' with bits 16 and scale 1 at data 1 and data 4, and the driver returns the raw word (w[3]) as pm1_0 in ug/m3. The gate's authorConversions() reads only sim.measure and sim.responses, so it does not see the uartStream scale.",
+      "source": "https://github.com/avaldebe/AQmon/raw/master/Documents/PMS3003_LOGOELE.pdf"
+    },
+    {
+      "diff": "PM2.5 ug/m3: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "PMS3003 data manual, page 8 frame table (image): '数据2 表示 PM2.5 浓度（CF=1，标准颗粒物）单位 ug/m3' and '数据5 表示 PM2.5 浓度（大气环境下）单位 ug/m3'. The value is a direct count, 1 ug/m3 per count. The model's sim.uartStream sends control 'value' (PM2.5) with bits 16 and scale 1 at data 2 and data 5. The driver returns w[4] unscaled as pm2_5 in ug/m3. The gate does not read uartStream scales, which is why it says 'none'.",
+      "source": "https://github.com/avaldebe/AQmon/raw/master/Documents/PMS3003_LOGOELE.pdf"
+    },
+    {
+      "diff": "PM10 ug/m3: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "PMS3003 data manual, page 8 frame table (image): '数据3 表示 PM10 浓度（CF=1，标准颗粒物）单位 ug/m3' and '数据6 表示 PM10 浓度（大气环境下）单位 ug/m3'. The value is a direct count, 1 ug/m3 per count. The model's sim.uartStream sends control 'pm10' with bits 16 and scale 1 at data 3 and data 6. The driver returns w[5] unscaled as pm10 in ug/m3. The gate does not read uartStream scales, which is why it says 'none'.",
+      "source": "https://github.com/avaldebe/AQmon/raw/master/Documents/PMS3003_LOGOELE.pdf"
+    }
+  ]
+}

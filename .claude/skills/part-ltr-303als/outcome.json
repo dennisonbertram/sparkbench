@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ltr-303als",
+  "board": "Adafruit LTR-303 Light Sensor - STEMMA QT / Qwiic (#5610)",
+  "reason": "Modelled from the Lite-On LTR-303ALS-01 datasheet (DS86-2013-0004): address 0x29, PART_ID 0xA0, ALS_CONTR/ALS_MEAS_RATE setup, status bit 2, CH1-then-CH0 little-endian data at 0x88-0x8B, interrupt registers 0x8F/0x97-0x9A/0x9E set before active mode, Appendix A lux formula; header order VIN,3Vo,GND,SCL,SDA,INT from Adafruit's LTR-303 Eagle board file. Check printed PASS on ESP32 and Pico (INT pin not simulated, optional).",
+  "datasheetUrl": "https://cdn.eicom.ru/media/PDF/4386555.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-LTR-329-LTR-303-PCB (Adafruit LTR-303.brd: JP1 pads 1-6 = VCC/3.3V/GND/SCL/SDA/INT, silkscreen VIN 3Vo GND SCL SDA INT; INT has R2 10k pull-up to 3.3V)",
+  "checkRuns": 2
+}

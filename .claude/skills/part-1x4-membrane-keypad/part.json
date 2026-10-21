@@ -1,0 +1,174 @@
+{
+  "type": "custom-1x4-membrane-keypad",
+  "name": "1x4 membrane keypad",
+  "mpn": "1x4 membrane keypad (Adafruit 1332)",
+  "category": "input",
+  "description": "Self-adhesive 4-key membrane keypad (keys 1 2 3 4): four passive switches sharing one common wire, so each key has its own line and no matrix scanning is needed. No chip and no power pin; generic membrane keypad contacts are rated 30 V DC / 30 mA max, used at the microcontroller's 3.3 V logic level. Sold as: Adafruit Membrane 1x4 Keypad + Extras (#1332) and its clones, 5-pin 0.1\" ribbon in the order R1 (common), C2, C1, C4, C3.",
+  "eli5": "A thin sticker with four buttons: pressing a button connects its own wire to a shared wire, and your board sees that wire go low.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "R1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Common line shared by all four keys; ribbon pin 1. Drive it low from a GPIO (or wire it to GND)",
+      "required": true
+    },
+    {
+      "name": "C2",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Key 2; ribbon pin 2; use the GPIO's internal pull-up",
+      "required": true
+    },
+    {
+      "name": "C1",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Key 1; ribbon pin 3; use the GPIO's internal pull-up",
+      "required": true
+    },
+    {
+      "name": "C4",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Key 4; ribbon pin 4; use the GPIO's internal pull-up",
+      "required": true
+    },
+    {
+      "name": "C3",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Key 3; ribbon pin 5; use the GPIO's internal pull-up",
+      "required": true
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://asset.conrad.com/media10/add/160267/c1/-/en/001341282DS01/tehnicni-podatki-1341282-tipkovnica-s-folijo-matrika-3-x-4-su709930-1-kos.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "1x4 membrane keypad 4 key 5 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Ribbon pin 1 is the left end with the keys facing you and the tail pointing down: R1 (common), C2, C1, C4, C3 (Adafruit #1332 pinout). The key lines are NOT in 1-2-3-4 order.",
+    "Clones may differ: check with a multimeter on continuity. Holding key 1 should join ribbon pin 1 (R1) and pin 3 (C1).",
+    "No power wire: the key lines use the GPIO internal pull-ups and the common line is held low (a GPIO set to 0, or wired to GND).",
+    "Debounce: confirm a key is still down about 20 ms after it is first seen.",
+    "Plug the ribbon into the included 5-pin header; avoid bending the flat tail sharply where it leaves the keypad, as the printed traces crack."
+  ],
+  "keywords": [
+    "keypad",
+    "membrane",
+    "1x4",
+    "4 key",
+    "buttons",
+    "adafruit 1332"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "R1"
+    ],
+    "colPins": [
+      "C1",
+      "C2",
+      "C3",
+      "C4"
+    ],
+    "keys": [
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "keypad1x4.py",
+    "code": "# 1x4 membrane keypad (Adafruit #1332 and its clones), MicroPython driver.\n# The keypad is just 4 switches with one shared (common) wire: every key joins the common line R1\n# to its own line C1-C4. Ribbon order (pin 1 first) is R1, C2, C1, C4, C3 -- not 1-2-3-4.\n# Reading: the common line is held low (a GPIO driven to 0, or tied to GND) and the four key lines\n# are inputs with pull-ups; a key line that reads 0 means that key is held.\nimport time\n\nKEYS_1X4 = ('1', '2', '3', '4')\n\n\nclass Keypad1x4:\n    def __init__(self, com_pin, key_pins, keys=KEYS_1X4, debounce_ms=20):\n        \"\"\"com_pin: GPIO wired to R1 (or None if R1 is wired straight to GND).\n        key_pins: GPIOs wired to C1, C2, C3, C4 (keys 1, 2, 3, 4), in that order.\"\"\"\n        from machine import Pin\n        self.com = Pin(com_pin, Pin.OUT, value=0) if com_pin is not None else None\n        self.cols = [Pin(p, Pin.IN, Pin.PULL_UP) for p in key_pins]\n        self.keys = keys\n        self.debounce_ms = debounce_ms\n        self._last = None\n\n    def pressed(self):\n        \"\"\"Return a list of the labels of every key held right now (each key has its own line,\n        so any combination is read correctly).\"\"\"\n        return [self.keys[i] for i, c in enumerate(self.cols) if c.value() == 0]\n\n    def scan(self):\n        \"\"\"Return the label of the first key held right now, or None.\"\"\"\n        p = self.pressed()\n        return p[0] if p else None\n\n    def get_key(self):\n        \"\"\"Return a key's label once, when it is newly pressed (debounced); otherwise None.\"\"\"\n        k = self.scan()\n        if k is not None and k != self._last:\n            time.sleep_ms(self.debounce_ms)\n            if self.scan() != k:\n                return None  # contact bounce or released: ignore\n            self._last = k\n            return k\n        self._last = k\n        return None\n"
+  },
+  "example": {
+    "code": "import time\nfrom keypad1x4 import Keypad1x4\n\n# common line R1, then the key lines for keys 1, 2, 3, 4\nkp = Keypad1x4({R1}, ({C1}, {C2}, {C3}, {C4}))\nwhile True:\n    key = kp.get_key()\n    if key:\n        print('KEY=' + key)\n    time.sleep_ms(10)\n",
+    "test": {
+      "id": "keys",
+      "title": "Prints the key held on the keypad",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=3",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=2",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 4
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=4",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.adafruit.com/product/1332",
+    "https://learn.adafruit.com/matrix-keypad/pinouts",
+    "https://cdn-learn.adafruit.com/downloads/pdf/matrix-keypad.pdf",
+    "https://forums.adafruit.com/viewtopic.php?t=64484",
+    "https://asset.conrad.com/media10/add/160267/c1/-/en/001341282DS01/tehnicni-podatki-1341282-tipkovnica-s-folijo-matrika-3-x-4-su709930-1-kos.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:35:20.566Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/1332",
+      "https://learn.adafruit.com/matrix-keypad/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/091/593/large1024/raspberry_pi_PID1332_Pinout.jpg"
+    ]
+  }
+}

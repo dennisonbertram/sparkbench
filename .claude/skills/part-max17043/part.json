@@ -1,0 +1,169 @@
+{
+  "type": "custom-max17043",
+  "name": "MAX17043 LiPo fuel gauge",
+  "mpn": "MAX17043",
+  "category": "sensor",
+  "description": "Maxim (Analog Devices) single-cell Li-ion/LiPo fuel gauge with ModelGauge: reports cell voltage (12-bit, 1.25 mV steps, ±12.5 mV) and state of charge (1/256 %) over I2C at 0x36, with a low-SOC alert output and no sense resistor. The chip is powered from the battery itself (2.5–4.5 V). Sold as: SparkFun LiPo Fuel Gauge - MAX17043 (PRT-20680, v1.2; two 1x3 headers SDA/SCL/QST and VCC/GND/ALT plus a 2-pin JST battery connector with + / − pads), I2C address 0x36.",
+  "eli5": "Sits on your LiPo battery's wires and tells your board the battery voltage and how full it is, in percent.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kΩ pull-up to VCC on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kΩ pull-up to VCC on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "QST",
+      "role": "io",
+      "description": "Quick-start input (chip QSTRT): a rising edge restarts the SOC estimate. Pulled to GND by a 2.2 kΩ resistor on the board; leave unconnected for normal use.",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply for the I2C and alert pull-up resistors only, up to 5.5 V; use the microcontroller's logic voltage (3.3 V). The MAX17043 itself runs from the battery on the JST/+ − pads.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, common with the battery's negative and the microcontroller",
+      "required": true
+    },
+    {
+      "name": "ALT",
+      "role": "io",
+      "description": "Alert output (chip ALRT), open-drain, active low, pulled up to VCC on the board: goes low when SOC falls below the alert threshold (default 4 %). Optional.",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 0.05,
+  "i2cAddress": 54,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX17043-MAX17044.pdf",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX17043-MAX17044.pdf",
+    "https://cdn.sparkfun.com/datasheets/Prototyping/MAX17043-MAX17044.pdf",
+    "https://learn.sparkfun.com/tutorials/lipo-fuel-gauge-max1704x-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/2/9/4/6/20680-_SparkFun_LiPo_Fuel_Gauge-MAX17043_Bottom_View.jpg",
+    "https://www.sparkfun.com/products/20680"
+  ],
+  "priceUsd": 11,
+  "supplierQuery": "SparkFun LiPo Fuel Gauge MAX17043 breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "The pins sit on two 1x3 headers on opposite edges (SDA, SCL, QST and VCC, GND, ALT), so the board is wired with jumper leads.",
+    "Plug a 1-cell LiPo/Li-ion battery into the 2-pin JST connector (or solder to the + / − pads) and run the same pads to your system's battery input. The MAX17043 is powered by the battery: without one (or below 2.5 V) it does not answer on I2C.",
+    "VCC only feeds the 2.2 kΩ I2C / alert pull-ups (v1.2 board): give it the microcontroller's logic voltage, 3.3 V on ESP32/Pico. Never connect the battery's + to VCC or a GPIO.",
+    "Registers are 16-bit words read MSB first: VCELL (0x02) >> 4 × 1.25 mV = volts; SOC (0x04) / 256 = percent. CONFIG (0x0C) default 0x971C.",
+    "If SDA and SCL are both held low for 2.5 s (e.g. the microcontroller is unpowered) the chip goes to sleep; any edge on SDA/SCL wakes it.",
+    "SOC is a first guess right after the battery is connected and gets more accurate over time; only quick-start while the cell is resting."
+  ],
+  "keywords": [
+    "max17043",
+    "max17044",
+    "fuel gauge",
+    "battery",
+    "lipo",
+    "li-ion",
+    "state of charge",
+    "soc",
+    "battery monitor",
+    "maxim",
+    "analog devices",
+    "sparkfun"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Cell voltage",
+    "unit": "V",
+    "min": 2.5,
+    "max": 5,
+    "default": 3.7,
+    "registers": {
+      "0x0C": 151,
+      "0x0D": 28,
+      "0xFE": 255,
+      "0xFF": 255
+    },
+    "controls": [
+      {
+        "key": "soc",
+        "quantity": "State of charge",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.00125,
+        "shift": 4,
+        "control": "value"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "control": "soc"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "max17043.py",
+    "code": "# MAX17043 1-cell LiPo / Li-ion fuel gauge (Maxim / Analog Devices MAX17043-MAX17044 datasheet),\n# MicroPython driver. I2C address 0x36 (0x6C write / 0x6D read). Every register is a 16-bit word\n# sent MSB first at an even byte address; reads and writes are only valid if all 16 bits are moved\n# in one transaction.\n#   VCELL 0x02: 12-bit result in bits 15..4 (bits 3..0 read 0), 1.25 mV per count\n#   SOC   0x04: high byte = whole percent, low byte = 1/256 %\n#   MODE  0x06: write 0x4000 = quick-start\n#   VERSION 0x08, CONFIG 0x0C (default 0x971C: RCOMP 0x97, SLEEP bit 7, ALRT bit 5, ATHD bits 4..0)\n#   COMMAND 0xFE: write 0x5400 = power-on reset\n# The chip is powered from the battery (VDD 2.5-4.5 V), so it does not answer until a cell is connected.\n\n_REG_VCELL = 0x02\n_REG_SOC = 0x04\n_REG_MODE = 0x06\n_REG_VERSION = 0x08\n_REG_CONFIG = 0x0C\n_REG_CMD = 0xFE\n\n\nclass MAX17043:\n    def __init__(self, i2c, addr=0x36):\n        self.i2c = i2c\n        self.addr = addr\n        try:\n            self.version = self._read(_REG_VERSION)\n        except OSError:\n            raise OSError('MAX17043 not found at 0x%02X: is a battery connected?' % addr)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(value >> 8) & 0xFF, value & 0xFF]))\n\n    def voltage(self):\n        \"\"\"Cell voltage in volts: VCELL >> 4 counts of 1.25 mV (updated every 500 ms).\"\"\"\n        return (self._read(_REG_VCELL) >> 4) * 0.00125\n\n    def soc(self):\n        \"\"\"State of charge in percent (high byte = %, low byte = 1/256 %). First valid 125 ms after POR.\"\"\"\n        return self._read(_REG_SOC) / 256\n\n    def read(self):\n        \"\"\"Return (cell voltage in V, state of charge in %).\"\"\"\n        return self.voltage(), self.soc()\n\n    # --- alert --------------------------------------------------------------------------------\n    def alert(self):\n        \"\"\"True while the CONFIG.ALRT flag is set (SOC fell below the alert threshold).\"\"\"\n        return bool(self._read(_REG_CONFIG) & 0x0020)\n\n    def clear_alert(self):\n        \"\"\"Clear CONFIG.ALRT so the ALRT pin releases (only software can clear it).\"\"\"\n        self._write(_REG_CONFIG, self._read(_REG_CONFIG) & ~0x0020)\n\n    def set_alert_threshold(self, percent):\n        \"\"\"Low-SOC alert threshold, 1-32 %: ATHD = 32 - percent (00000 = 32 %, 11111 = 1 %).\"\"\"\n        percent = max(1, min(32, int(percent)))\n        cfg = self._read(_REG_CONFIG)\n        self._write(_REG_CONFIG, (cfg & ~0x001F) | ((32 - percent) & 0x1F))\n\n    def set_rcomp(self, rcomp):\n        \"\"\"Battery compensation byte (CONFIG high byte, default 0x97).\"\"\"\n        cfg = self._read(_REG_CONFIG)\n        self._write(_REG_CONFIG, ((rcomp & 0xFF) << 8) | (cfg & 0x00FF))\n\n    # --- control ------------------------------------------------------------------------------\n    def quick_start(self):\n        \"\"\"Restart the SOC estimate from the present voltage (MODE = 0x4000). Only when the cell is\n        relaxed (no heavy load or charging), otherwise the first guess is wrong.\"\"\"\n        self._write(_REG_MODE, 0x4000)\n\n    def sleep(self, on=True):\n        \"\"\"CONFIG.SLEEP = 1 halts the gauge; writing it back to 0 wakes it (VCELL updates 500 ms later).\"\"\"\n        cfg = self._read(_REG_CONFIG)\n        self._write(_REG_CONFIG, (cfg | 0x0080) if on else (cfg & ~0x0080))\n\n    def reset(self):\n        \"\"\"Power-on reset (COMMAND = 0x5400). The chip does not ACK this write.\"\"\"\n        try:\n            self._write(_REG_CMD, 0x5400)\n        except OSError:\n            pass\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom max17043 import MAX17043\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ngauge = MAX17043(i2c)  # address 0x36; needs a battery plugged in\nwhile True:\n    v, soc = gauge.read()\n    print('V=%.3fV SOC=%.1f%%' % (v, soc))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the cell voltage and state of charge set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3.85
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "soc",
+          "value": 72.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=3.850V SOC=72.5%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:24:53.683Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/datasheets/Prototyping/MAX17043-MAX17044.pdf",
+      "https://learn.sparkfun.com/tutorials/lipo-fuel-gauge-max1704x-hookup-guide/all?print=1",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/2/9/4/6/20680-_SparkFun_LiPo_Fuel_Gauge-MAX17043_Bottom_View.jpg"
+    ]
+  }
+}

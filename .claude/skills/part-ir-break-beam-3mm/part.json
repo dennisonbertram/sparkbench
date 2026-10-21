@@ -1,0 +1,121 @@
+{
+  "type": "custom-ir-break-beam-3mm",
+  "name": "IR break beam sensor, 3 mm LEDs",
+  "mpn": "Adafruit 2167",
+  "category": "sensor",
+  "description": "Infrared break beam pair: an emitter (IR LED, 2 wires) shines a 10 degree beam across a gap of up to about 25 cm onto a receiver (3 wires) whose open-collector output pulls LOW while the beam is broken and floats (needs a pull-up) while it is intact. Response under 2 ms; runs on 3.3-5.5 V. Sold as: Adafruit IR Break Beam Sensors with Premium Wire Header Ends - 3mm LEDs (product 2167), receiver red/black/white wires plus emitter red/black wires, 230 mm leads with male header ends.",
+  "eli5": "An invisible light beam across a gap: your board is told the moment something walks through and blocks it.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "RX_VCC",
+      "role": "power",
+      "description": "Receiver red wire: supply 3.3-5.5 V. Use the board's 3V3 on an ESP32/Pico, since the signal pull-up goes to this rail.",
+      "required": true
+    },
+    {
+      "name": "RX_GND",
+      "role": "gnd",
+      "description": "Receiver black wire: ground",
+      "required": true
+    },
+    {
+      "name": "RX_SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Receiver white (or yellow) wire: open-collector output, LOW = beam broken, HIGH (through the pull-up) = beam intact. Needs a pull-up: 10 kOhm to the red wire, or the GPIO's internal pull-up.",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "EM_VCC",
+      "role": "power",
+      "description": "Emitter red wire: supply 3.3-5.5 V (about 10 mA at 3.3 V, 20 mA at 5 V; 5 V gives more range)",
+      "required": true
+    },
+    {
+      "name": "EM_GND",
+      "role": "gnd",
+      "description": "Emitter black wire: ground",
+      "required": true
+    }
+  ],
+  "cabled": true,
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 25,
+  "datasheetUrl": "https://cdn-learn.adafruit.com/downloads/pdf/ir-breakbeam-sensors.pdf",
+  "sources": [
+    "https://www.adafruit.com/product/2167",
+    "https://learn.adafruit.com/ir-breakbeam-sensors/arduino",
+    "https://learn.adafruit.com/ir-breakbeam-sensors/circuitpython",
+    "https://cdn-learn.adafruit.com/downloads/pdf/ir-breakbeam-sensors.pdf"
+  ],
+  "priceUsd": 2.95,
+  "supplierQuery": "Adafruit 2167 IR break beam sensor 3mm",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "These are two separate parts on loose 230 mm leads, each ending in a single male header pin: receiver red/black/white and emitter red/black. There are no printed labels; go by wire colour (the signal may be yellow instead of white).",
+    "Point the emitter straight at the receiver, at most about 25 cm apart (less at 3.3 V). Their 10 degree beam needs them lined up.",
+    "The receiver output is open collector: it needs a pull-up. Fit a 10 kOhm resistor from the white wire to the receiver's red wire, or enable the GPIO's internal pull-up (Pin.PULL_UP).",
+    "On an ESP32 or Pico power the receiver (and its pull-up) from 3V3 so the signal never exceeds 3.3 V. The emitter may run from 5 V for longer range.",
+    "Signal reads 0 while the beam is broken and 1 while it is intact.",
+    "Strong sunlight contains IR and can swamp the receiver outdoors."
+  ],
+  "keywords": [
+    "break beam",
+    "breakbeam",
+    "ir",
+    "infrared",
+    "beam",
+    "interrupter",
+    "gate",
+    "counter",
+    "adafruit 2167",
+    "emitter",
+    "receiver",
+    "3mm"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "RX_SIG",
+    "quantity": "Beam broken",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "breakbeam.py",
+    "code": "# Adafruit IR break beam sensor (3 mm LEDs, product 2167), MicroPython driver.\n# The emitter (2 wires: red = power, black = ground) just needs 3.3-5.5 V.\n# The receiver (3 wires: red = power, black = ground, white/yellow = signal) has an\n# open-collector output: its transistor pulls the signal to ground while the beam is\n# broken and lets it float while the beam is intact. A pull-up is therefore required:\n# the internal pull-up is enabled here, and a 10 kOhm resistor from the signal wire to the receiver's red wire\n# also works (Adafruit guide).\n#   signal LOW  (0) -> beam broken (something between emitter and receiver)\n#   signal HIGH (1) -> beam intact (receiver sees the emitter)\n# Response time < 2 ms.\nfrom machine import Pin\n\n\nclass BreakBeam:\n    def __init__(self, pin):\n        self.pin = Pin(pin, Pin.IN, Pin.PULL_UP) if isinstance(pin, int) else pin\n\n    def raw(self):\n        \"\"\"Logic level on the signal wire: 0 = broken, 1 = intact.\"\"\"\n        return self.pin.value()\n\n    def broken(self):\n        \"\"\"True while something blocks the beam.\"\"\"\n        return self.pin.value() == 0\n\n    def irq(self, handler, on_break=True):\n        \"\"\"Call handler(pin) when the beam is broken (falling edge) or, with\n        on_break=False, when it is restored (rising edge).\"\"\"\n        trig = Pin.IRQ_FALLING if on_break else Pin.IRQ_RISING\n        return self.pin.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from breakbeam import BreakBeam\nimport time\n\nbeam = BreakBeam({RX_SIG})\nwhile True:\n    print('Beam: %s' % ('BROKEN' if beam.broken() else 'intact'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "breaks",
+      "title": "Reports the beam as broken when something blocks it",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Beam: BROKEN",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:30:45.098Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/2167",
+      "https://learn.adafruit.com/ir-breakbeam-sensors"
+    ]
+  }
+}

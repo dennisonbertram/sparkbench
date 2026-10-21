@@ -1,0 +1,40 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says VIN, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Adafruit's Eagle board file for product 4415 wires header JP1 pads 1-6 to VCC(VIN), 3.3V(3Vo), GND, SCL, SDA, !RESET(Rst) and header JP2 pads 1-6 to GND, 1PPS, VCC(VIN), RXI, TXO, WAKEUP. The part lists JP1 then JP2 (pins 1-6 = JP1, 7-12 = JP2); the second reading lists the same two headers with identical internal order but JP2 first, so every pin's name and function agrees and only the header numbering differs. JP1 pad 1 = VCC (VIN); GND is JP2 pad 1.",
+      "source": "https://github.com/adafruit/Adafruit-PA1010D-Mini-GPS-PCB/blob/master/Adafruit%20PA1010D%20Mini%20GPS.brd"
+    },
+    {
+      "diff": "header pin 3: part says GND, datasheet reading says VIN",
+      "verdict": "part-correct",
+      "evidence": "Adafruit's Eagle board file for product 4415 wires header JP1 pads 1-6 to VCC(VIN), 3.3V(3Vo), GND, SCL, SDA, !RESET(Rst) and header JP2 pads 1-6 to GND, 1PPS, VCC(VIN), RXI, TXO, WAKEUP. The part lists JP1 then JP2 (pins 1-6 = JP1, 7-12 = JP2); the second reading lists the same two headers with identical internal order but JP2 first, so every pin's name and function agrees and only the header numbering differs. JP1 pad 3 = GND; VIN is JP2 pad 3.",
+      "source": "https://github.com/adafruit/Adafruit-PA1010D-Mini-GPS-PCB/blob/master/Adafruit%20PA1010D%20Mini%20GPS.brd"
+    },
+    {
+      "diff": "header pin 7: part says GND2, datasheet reading says VIN",
+      "verdict": "part-correct",
+      "evidence": "Adafruit's Eagle board file for product 4415 wires header JP1 pads 1-6 to VCC(VIN), 3.3V(3Vo), GND, SCL, SDA, !RESET(Rst) and header JP2 pads 1-6 to GND, 1PPS, VCC(VIN), RXI, TXO, WAKEUP. The part lists JP1 then JP2 (pins 1-6 = JP1, 7-12 = JP2); the second reading lists the same two headers with identical internal order but JP2 first, so every pin's name and function agrees and only the header numbering differs. JP2 pad 1 = GND (modelled as GND2); VIN is JP1 pad 1.",
+      "source": "https://github.com/adafruit/Adafruit-PA1010D-Mini-GPS-PCB/blob/master/Adafruit%20PA1010D%20Mini%20GPS.brd"
+    },
+    {
+      "diff": "header pin 9: part says VIN2, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Adafruit's Eagle board file for product 4415 wires header JP1 pads 1-6 to VCC(VIN), 3.3V(3Vo), GND, SCL, SDA, !RESET(Rst) and header JP2 pads 1-6 to GND, 1PPS, VCC(VIN), RXI, TXO, WAKEUP. The part lists JP1 then JP2 (pins 1-6 = JP1, 7-12 = JP2); the second reading lists the same two headers with identical internal order but JP2 first, so every pin's name and function agrees and only the header numbering differs. JP2 pad 3 = VCC (VIN, modelled as VIN2); GND is JP1 pad 3.",
+      "source": "https://github.com/adafruit/Adafruit-PA1010D-Mini-GPS-PCB/blob/master/Adafruit%20PA1010D%20Mini%20GPS.brd"
+    },
+    {
+      "diff": "header pin 10: part says RXI, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "Adafruit's Eagle board file for product 4415 wires header JP1 pads 1-6 to VCC(VIN), 3.3V(3Vo), GND, SCL, SDA, !RESET(Rst) and header JP2 pads 1-6 to GND, 1PPS, VCC(VIN), RXI, TXO, WAKEUP. The part lists JP1 then JP2 (pins 1-6 = JP1, 7-12 = JP2); the second reading lists the same two headers with identical internal order but JP2 first, so every pin's name and function agrees and only the header numbering differs. JP2 pad 4 = RXI; SCL is JP1 pad 4.",
+      "source": "https://github.com/adafruit/Adafruit-PA1010D-Mini-GPS-PCB/blob/master/Adafruit%20PA1010D%20Mini%20GPS.brd"
+    },
+    {
+      "diff": "header pin 11: part says TXO, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "Adafruit's Eagle board file for product 4415 wires header JP1 pads 1-6 to VCC(VIN), 3.3V(3Vo), GND, SCL, SDA, !RESET(Rst) and header JP2 pads 1-6 to GND, 1PPS, VCC(VIN), RXI, TXO, WAKEUP. The part lists JP1 then JP2 (pins 1-6 = JP1, 7-12 = JP2); the second reading lists the same two headers with identical internal order but JP2 first, so every pin's name and function agrees and only the header numbering differs. JP2 pad 5 = TXO; SDA is JP1 pad 5.",
+      "source": "https://github.com/adafruit/Adafruit-PA1010D-Mini-GPS-PCB/blob/master/Adafruit%20PA1010D%20Mini%20GPS.brd"
+    }
+  ]
+}

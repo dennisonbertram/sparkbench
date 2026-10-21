@@ -1,0 +1,79 @@
+{
+  "type": "custom-gp2y0a41sk0f",
+  "mpn": "GP2Y0A41SK0F",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Sharp GP2Y0A41SK0F IR distance sensor (4-30 cm) needs at least 4.5 V, so it is powered from 5 V. U2.Vo → D32 (GPIO32) — an analog-capable pin. Added the gp2y0a41sk.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Converts the Vo voltage on the slider to distance with the datasheet curve (1.27 V = 10 cm, 2.02 V = 6 cm): passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Sharp GP2Y0A41SK0F IR distance sensor (4-30 cm) needs at least 4.5 V, so it is powered from 5 V. U2.Vo → GP28 (GPIO28) — an analog-capable pin. Added the gp2y0a41sk.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Converts the Vo voltage on the slider to distance with the datasheet curve (1.27 V = 10 cm, 2.02 V = 6 cm): passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C691377 GP2Y0A41SK0F (200 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T11:32:33.645Z"
+}

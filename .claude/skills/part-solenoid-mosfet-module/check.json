@@ -1,0 +1,79 @@
+{
+  "type": "custom-solenoid-mosfet-module",
+  "mpn": "5648",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Q1.In → D25 (GPIO25). Added a separate 5 V supply for V+ (it needs 5–5 V and up to 1.1 A, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The solenoid fires, then releases: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Q1.In → GP2 (GPIO2). Added a separate 5 V supply for V+ (it needs 5–5 V and up to 1.1 A, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The solenoid fires, then releases: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C649950 AD5648ARUZ-2 (3 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T11:21:14.449Z"
+}

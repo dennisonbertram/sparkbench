@@ -1,0 +1,178 @@
+{
+  "type": "custom-neo-7m",
+  "name": "NEO-7M GPS module",
+  "mpn": "NEO-7M",
+  "category": "sensor",
+  "description": "u-blox NEO-7M GNSS receiver (GPS by default, GLONASS/Galileo/QZSS selectable) that streams NMEA 0183 sentences (position, altitude, speed, UTC time) over a UART at 9600 baud 8N1, once per second. The chip runs on 1.65–3.6 V; the module's RT9193-33 3.3 V regulator lets it run from 3.3–5 V, and TXD/RXD are 3.3 V logic through 510 Ω series resistors. Sold as: Waveshare UART GPS NEO-7M-C (5-pin: VCC, GND, TXD, RXD, PPS) with active antenna on IPX, rechargeable backup battery, AT24C32 EEPROM and fix LED.",
+  "eli5": "Listens to GPS satellites and tells your board where on Earth it is, once a second.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (on-board RT9193-33 regulator feeds the 1.65–3.6 V NEO-7M)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module serial output (3.3 V logic, 510 Ω series), NMEA at 9600 baud 8N1: connect to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module serial input (3.3 V logic, absolute max 3.6 V): connect to the board's UART TX. Only needed to send UBX/NMEA configuration commands",
+      "required": false
+    },
+    {
+      "name": "PPS",
+      "role": "io",
+      "description": "Time pulse output, 1 pulse per second aligned to the GNSS time grid by default. Optional",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 35,
+  "datasheetUrl": "https://content.u-blox.com/sites/default/files/products/documents/NEO-7_DataSheet_%28UBX-13003830%29.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "Waveshare UART GPS NEO-7M-C module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Cross the serial lines: module TXD goes to the board's UART RX pin, module RXD (optional) to the board's UART TX pin.",
+    "Default is 9600 baud, 8 data bits, no parity, 1 stop bit; open the UART at 9600 or the sentences come out as garbage.",
+    "TXD/RXD connect straight to the 3.3 V NEO-7M (input absolute max 3.6 V). ESP32 and Pico are 3.3 V, so wire them directly; use a level shifter with a 5 V Arduino.",
+    "Screw the active antenna onto the IPX socket and give it a view of the sky. A cold start outdoors takes 30 s to a few minutes; indoors it may never get a fix.",
+    "The on-board LED stays on while searching and blinks once a fix is found.",
+    "Peak supply current of the NEO-7M is up to 67 mA; power the module from the board's 3V3 or 5V/VBUS pin, not a GPIO."
+  ],
+  "keywords": [
+    "neo-7m",
+    "neo7m",
+    "neo-7m-c",
+    "gps",
+    "gnss",
+    "nmea",
+    "u-blox",
+    "ublox",
+    "location",
+    "waveshare"
+  ],
+  "sources": [
+    "https://content.u-blox.com/sites/default/files/products/documents/NEO-7_DataSheet_%28UBX-13003830%29.pdf",
+    "https://www.waveshare.com/w/upload/5/5e/NEO-7-DataSheet.pdf",
+    "https://www.waveshare.com/wiki/UART_GPS_NEO-7M-C",
+    "https://www.waveshare.com/w/upload/3/37/UART-GPS-NEO-Schematic.pdf",
+    "https://www.waveshare.com/w/upload/8/8c/UART-GPS-NEO-7M-C-UserManual.pdf"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Latitude",
+    "unit": "°",
+    "min": -90,
+    "max": 90,
+    "default": 48.8584,
+    "controls": [
+      {
+        "key": "lat",
+        "quantity": "Latitude",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 48.8584
+      },
+      {
+        "key": "lon",
+        "quantity": "Longitude",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": 2.2945
+      },
+      {
+        "key": "alt",
+        "quantity": "Altitude above sea level",
+        "unit": "m",
+        "min": -100,
+        "max": 5000,
+        "default": 35
+      },
+      {
+        "key": "speed",
+        "quantity": "Speed over ground",
+        "unit": "knots",
+        "min": 0,
+        "max": 100,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "nmea": true
+    }
+  },
+  "driver": {
+    "filename": "neo7m.py",
+    "code": "# u-blox NEO-7M GNSS receiver (Waveshare UART GPS NEO-7M-C module), MicroPython NMEA driver.\n# The NEO-7M sends NMEA 0183 (v2.3) sentences on its UART at 9600 baud, 8N1 by default\n# (NEO-7 data sheet UBX-13003830, \"Default messages\": GGA, GLL, GSA, GSV, RMC, VTG, TXT once per second).\n# Each sentence is checked with its NMEA checksum (XOR of every character between '$' and '*').\n# GGA / RMC are decoded as in the u-blox 7 Receiver Description: latitude ddmm.mmmmm,\n# longitude dddmm.mmmmm (degrees + minutes). Talker is GP for GPS only (default),\n# GL / GN when GLONASS is enabled, so the sentence type is read after the 2-letter talker.\n\n\ndef _checksum_ok(line):\n    # line: str without CR/LF, starting with '$'\n    star = line.rfind('*')\n    if line[:1] != '$' or star < 0 or len(line) < star + 3:\n        return False\n    cs = 0\n    for c in line[1:star]:\n        cs ^= ord(c)\n    try:\n        return cs == int(line[star + 1:star + 3], 16)\n    except ValueError:\n        return False\n\n\ndef _deg(field, hemi, dlen):\n    # 'ddmm.mmmmm' (dlen=2) or 'dddmm.mmmmm' (dlen=3) -> signed decimal degrees, None if empty\n    if not field or not hemi:\n        return None\n    d = int(field[:dlen]) + float(field[dlen:]) / 60\n    return -d if hemi in ('S', 'W') else d\n\n\ndef _num(field):\n    return float(field) if field else None\n\n\nclass NEO7M:\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 9600 baud, rx= the pin wired to the module's TXD.\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.fix = False          # True when GGA fix quality > 0 or RMC status 'A'\n        self.fix_quality = 0      # GGA: 0 none, 1 GNSS fix, 2 DGPS, 6 dead reckoning\n        self.latitude = None      # decimal degrees, + north\n        self.longitude = None     # decimal degrees, + east\n        self.altitude = None      # metres above mean sea level (GGA)\n        self.satellites = 0       # satellites used (GGA)\n        self.hdop = None\n        self.speed_knots = None   # speed over ground (RMC)\n        self.course = None        # course over ground, degrees (RMC)\n        self.utc_time = None      # (hh, mm, ss)\n        self.date = None          # (day, month, 2-digit year)\n        self.bad_checksums = 0\n\n    def update(self):\n        \"\"\"Read whatever has arrived and decode complete sentences. Returns True if a GGA or RMC was decoded.\"\"\"\n        n = self.uart.any()\n        if n:\n            data = self.uart.read(n)\n            if data:\n                self._buf += data\n        got = False\n        while True:\n            nl = self._buf.find(b'\\n')\n            if nl < 0:\n                break\n            line = self._buf[:nl].strip()\n            self._buf = self._buf[nl + 1:]\n            try:\n                line = line.decode()\n            except UnicodeError:  # noise on the line\n                self.bad_checksums += 1\n                continue\n            try:\n                if line and self._parse(line):\n                    got = True\n            except (ValueError, IndexError):  # malformed field\n                pass\n        if len(self._buf) > 512:  # garbage without newlines (wrong baud rate?)\n            self._buf = b''\n        return got\n\n    def _parse(self, line):\n        if not _checksum_ok(line):\n            self.bad_checksums += 1\n            return False\n        f = line[1:line.rfind('*')].split(',')\n        kind = f[0][2:]\n        if kind == 'GGA' and len(f) >= 10:\n            self._time(f[1])\n            self.fix_quality = int(f[6]) if f[6] else 0\n            self.fix = self.fix_quality > 0\n            self.satellites = int(f[7]) if f[7] else 0\n            self.hdop = _num(f[8])\n            if self.fix:\n                self.latitude = _deg(f[2], f[3], 2)\n                self.longitude = _deg(f[4], f[5], 3)\n                self.altitude = _num(f[9])\n            return True\n        if kind == 'RMC' and len(f) >= 10:\n            self._time(f[1])\n            self.fix = f[2] == 'A'\n            if self.fix:\n                self.latitude = _deg(f[3], f[4], 2)\n                self.longitude = _deg(f[5], f[6], 3)\n                self.speed_knots = _num(f[7])\n                self.course = _num(f[8])\n            if len(f[9]) == 6:\n                self.date = (int(f[9][0:2]), int(f[9][2:4]), int(f[9][4:6]))\n            return True\n        return False\n\n    def _time(self, t):\n        if len(t) >= 6:\n            self.utc_time = (int(t[0:2]), int(t[2:4]), int(float(t[4:])))\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom neo7m import NEO7M\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\ngps = NEO7M(uart)\nwhile True:\n    if gps.update():\n        if gps.fix and gps.latitude is not None:\n            print('LAT=%.4f LON=%.4f ALT=%.1fm SPD=%.1fkn' % (gps.latitude, gps.longitude, gps.altitude or 0, gps.speed_knots or 0))\n        else:\n            print('Waiting for fix...')\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "fix",
+      "title": "Reports the position, altitude and speed set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lat",
+          "value": 35.3606
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lon",
+          "value": 138.7274
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "alt",
+          "value": 2400
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "speed",
+          "value": 12.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LAT=35.3606 LON=138.7274 ALT=2400.0m SPD=12.5kn",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:30:03.531Z",
+    "verifiedSources": [
+      "https://content.u-blox.com/sites/default/files/products/documents/NEO-7_DataSheet_%28UBX-13003830%29.pdf",
+      "https://www.waveshare.com/wiki/UART_GPS_NEO-7M-C"
+    ]
+  }
+}

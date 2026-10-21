@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ds1822",
+  "board": "DS1822+ bare chip in 3-pin TO-92 (Maxim/Analog Devices), pins GND, DQ, VDD",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring with an auto-added 4.7 kOhm DQ pull-up, design checks, breadboard, simulator test at -12.25 C, PCB DRC, TO-92_Inline footprint). It uses family 22h and the 12-bit 0.0625 C two's-complement register from the datasheet, read with MicroPython's built-in ds18x20 module, so no custom driver is needed.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/DS1822.pdf",
+  "breakoutPinoutSource": "DS1822 datasheet (Maxim 042815) Table 1 and TO-92 bottom-view pin assignment: pin 1 GND, pin 2 DQ, pin 3 VDD (archived at http://web.archive.org/web/2020id_/https://datasheets.maximintegrated.com/en/ds/DS1822.pdf)",
+  "checkRuns": 2
+}
