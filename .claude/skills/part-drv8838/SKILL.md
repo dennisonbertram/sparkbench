@@ -44,7 +44,7 @@ Two rows of five, 0.4″ apart. Logic row (top to bottom as printed), then the m
 Speed: hold PH for the direction and PWM EN. The duty cycle equals the speed, and the motor brakes during the low part of each period.
 
 ## Wiring
-- Power: VCC → 3V3, GND → GND, battery + → VIN, battery − → GND. The motor goes across O1 and O2.
+- Power: VCC → 3V3, GND → GND, motor supply + → VIN (1.5–11 V; Sparkbench adds a separate DC supply), motor supply − → GND. The motor goes across O1 and O2.
 - ESP32: PH → D26, EN → D27, SLP → D25 (optional).
 - Pico: PH → GP3, EN → GP2, SLP → GP4 (optional).
 - Raspberry Pi 4: PH → GPIO27 (pin 13), EN → GPIO18 (pin 12, hardware PWM), SLP → GPIO17 (pin 11).

@@ -51,7 +51,7 @@ For one bridge (motor between 1Y and 2Y):
 Bridge 2 is the same with 3,4EN, 3A, 4A. In thermal shutdown all outputs go off.
 
 ## Wiring
-- Power: VCC1 (pin 16) -> 5 V (ESP32 5V/VIN, Pico VBUS). VCC2 (pin 8) -> motor battery + (or 5 V for a tiny motor). All four GND pins (4, 5, 12, 13) -> GND, shared with the battery minus and the microcontroller GND.
+- Power: VCC1 (pin 16) -> 5 V (ESP32 5V/VIN, Pico VBUS). VCC2 (pin 8) -> the motor supply + (VCC1 up to 36 V; Sparkbench adds a separate DC supply for it). All four GND pins (4, 5, 12, 13) -> GND, shared with the battery minus and the microcontroller GND.
 - ESP32: 1,2EN -> D25, 1A -> D26, 2A -> D27 (3,4EN, 3A, 4A to any other output pins, or 3,4EN to GND if unused).
 - Pico: 1,2EN -> GP2, 1A -> GP3, 2A -> GP4.
 - Raspberry Pi 4: 1,2EN -> GPIO18 (pin 12), 1A -> GPIO23 (pin 16), 2A -> GPIO24 (pin 18).

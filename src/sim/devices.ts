@@ -463,7 +463,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     for (const [k, v] of Object.entries(registers)) this.setReg(Number(k), v);
@@ -523,7 +523,10 @@ export class GenericI2CDevice implements I2CDevice {
     this.reply = [];
     if (this.layout.pointerless) {
       this.ptr = 0;
-      this.setReg(0, bytes[bytes.length - 1]);
+      const k = this.layout.pointerlessBytes ?? 1;
+      // Each complete group of k bytes sets the port(s); the last complete group wins.
+      const whole = bytes.length - (bytes.length % k);
+      if (whole) for (let i = 0; i < k; i++) this.setReg(i, bytes[whole - k + i]);
       return;
     }
     const aw = this.layout.addrWidth === 16 ? 2 : 1;
@@ -553,7 +556,9 @@ export class GenericI2CDevice implements I2CDevice {
     if (this.layout.pointerless) this.ptr = 0;
     const out: number[] = [];
     // Byte registers auto-increment; word registers stream the word at the pointer (then the next).
-    for (let i = 0; i < n; i++) out.push(this.wide ? this.byteAt(this.ptr + (i >> 1), i & 1) : (view.get(this.ptr + i) ?? this.byteAt(this.ptr + i, 0)));
+    // A pointerless expander repeats its port(s): PCF8574 port, port…; PCF8575 port 0, port 1, port 0…
+    const at = (i: number) => (this.layout.pointerless ? i % (this.layout.pointerlessBytes ?? 1) : this.ptr + i);
+    for (let i = 0; i < n; i++) out.push(this.wide ? this.byteAt(this.ptr + (i >> 1), i & 1) : (view.get(at(i)) ?? this.byteAt(at(i), 0)));
     if (!this.wide && !this.layout.pointerless) this.ptr = (this.ptr + n) & 0xffff;
     return out;
   }

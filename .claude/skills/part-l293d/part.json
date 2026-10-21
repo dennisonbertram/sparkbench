@@ -57,7 +57,12 @@
       "name": "VCC2",
       "role": "power",
       "description": "Motor supply (pin 8): VCC1 up to 36 V, 36 V absolute max. Use a separate battery for anything but a tiny motor",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 5,
+        "vmax": 36,
+        "currentMa": 1200
+      }
     },
     {
       "name": "3,4EN",

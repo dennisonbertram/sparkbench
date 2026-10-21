@@ -146,3 +146,18 @@ describe('ASCII hex fields', () => {
     expect([b[0], b[13]]).toEqual([0x02, 0x03]);
   });
 });
+
+describe('pointerless expanders', () => {
+  it('takes a 16-bit port as byte pairs and reads both ports back in turn (PCF8575)', () => {
+    const d = new GenericI2CDevice('u', 0x20, { '0x00': 0xff, '0x01': 0xff }, [], () => 0, [], { pointerless: true, pointerlessBytes: 2 });
+    d.write([0x12, 0x34, 0x56]); // the odd byte is not a complete pair
+    expect(d.read(4)).toEqual([0x12, 0x34, 0x12, 0x34]);
+    d.write([0xaa, 0xbb, 0xcc, 0xdd]);
+    expect(d.read(2)).toEqual([0xcc, 0xdd]);
+  });
+  it('repeats a single 8-bit port on longer reads (PCF8574)', () => {
+    const d = new GenericI2CDevice('u', 0x20, { '0x00': 0xff }, [], () => 0, [], { pointerless: true });
+    d.write([0x0f]);
+    expect(d.read(3)).toEqual([0x0f, 0x0f, 0x0f]);
+  });
+});

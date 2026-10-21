@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "9 pins wired; L293D dual H-bridge motor driver needs at least 4.5 V, so it is powered from 5 V. U2.1,2EN → D25 (GPIO25). U2.1A → D26 (GPIO26). U2.2A → D27 (GPIO27). Added the l293d.py driver written from the datasheet."
+        "detail": "9 pins wired; L293D dual H-bridge motor driver needs at least 4.5 V, so it is powered from 5 V. U2.1,2EN → D25 (GPIO25). U2.1A → D26 (GPIO26). U2.2A → D27 (GPIO27). Added a separate 12 V supply for VCC2 (it needs 5–36 V and up to 1.2 A, more than the board can give); its − joins the board's GND. Added the l293d.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "52.5×66.5 mm, DRC clean"
+        "detail": "53.5×66.5 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "9 pins wired; L293D dual H-bridge motor driver needs at least 4.5 V, so it is powered from 5 V. U2.1,2EN → GP2 (GPIO2). U2.1A → GP3 (GPIO3). U2.2A → GP6 (GPIO6). Added the l293d.py driver written from the datasheet."
+        "detail": "9 pins wired; L293D dual H-bridge motor driver needs at least 4.5 V, so it is powered from 5 V. U2.1,2EN → GP2 (GPIO2). U2.1A → GP3 (GPIO3). U2.2A → GP6 (GPIO6). Added a separate 12 V supply for VCC2 (it needs 5–36 V and up to 1.2 A, more than the board can give); its − joins the board's GND. Added the l293d.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -75,5 +75,5 @@
       "detail": "C19632281 L293DNE(MS) (132 in stock)"
     }
   ],
-  "checkedAt": "2026-10-21T10:59:28.924Z"
+  "checkedAt": "2026-10-21T11:21:19.464Z"
 }

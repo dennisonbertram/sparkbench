@@ -35,8 +35,11 @@ function check(step: Extract<TestStep, { kind: 'expect' }>, f: SimFrame, id: str
     }
     case 'relay':
       return { ok: step.on === false ? !v?.relay : !!v?.relay, saw: `${step.part} ${v?.relay ? 'on' : 'off'}` };
-    case 'motor':
-      return { ok: step.on === false ? !(v?.spin ?? 0) : (v?.spin ?? 0) > 0, saw: `${step.part} ${v?.spin ? 'spinning' : 'stopped'}` };
+    case 'motor': {
+      // text "cw"/"ccw" also checks the direction (continuous-rotation servos).
+      const turning = (v?.spin ?? 0) > 0 && (!step.text || v?.dir === step.text);
+      return { ok: step.on === false ? !(v?.spin ?? 0) : turning, saw: `${step.part} ${v?.spin ? `spinning${v.dir ? ` ${v.dir === 'cw' ? 'clockwise' : 'anticlockwise'}` : ''}` : 'stopped'}` };
+    }
     case 'active': {
       // text names one control input (e.g. "IN1"); otherwise any input counts.
       const on = step.text ? !!v?.inputs?.[step.text] : !!v?.active;
@@ -58,7 +61,7 @@ function describe(step: Extract<TestStep, { kind: 'expect' }>): string {
     case 'buzzer': return `${step.part} to be ${not ? 'silent' : 'beeping'}`;
     case 'servo': return `${step.part} to turn to ${step.min ?? 0}–${step.max ?? 180}°`;
     case 'relay': return `${step.part} to switch ${not ? 'off' : 'on'}`;
-    case 'motor': return `${step.part} to ${not ? 'stop' : 'run'}`;
+    case 'motor': return `${step.part} to ${not ? 'stop' : `run${step.text === 'cw' ? ' clockwise' : step.text === 'ccw' ? ' anticlockwise' : ''}`}`;
     case 'pixels': return `${step.part} to ${not ? 'go dark' : 'light up'}`;
     case 'active': return `${step.part}${step.text ? ` ${step.text}` : ''} to be switched ${not ? 'off' : 'on'}`;
     case 'no-error': return 'no errors';

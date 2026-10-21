@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "7 pins wired; U2.EN → D25 (GPIO25). U2.PH → D26 (GPIO26). Added the drv8838.py driver written from the datasheet."
+        "detail": "7 pins wired; U2.EN → D25 (GPIO25). U2.PH → D26 (GPIO26). Added a separate 9 V supply for VIN (it needs 1.5–11 V and up to 1.7 A, more than the board can give); its − joins the board's GND. Added the drv8838.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×66.5 mm, DRC clean"
+        "detail": "54.5×66.5 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "7 pins wired; U2.EN → GP2 (GPIO2). U2.PH → GP3 (GPIO3). Added the drv8838.py driver written from the datasheet."
+        "detail": "7 pins wired; U2.EN → GP2 (GPIO2). U2.PH → GP3 (GPIO3). Added a separate 9 V supply for VIN (it needs 1.5–11 V and up to 1.7 A, more than the board can give); its − joins the board's GND. Added the drv8838.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "C86667 DRV8838DSGR (2515 in stock)"
     }
   ],
-  "checkedAt": "2026-10-21T10:59:52.898Z"
+  "checkedAt": "2026-10-21T11:21:30.792Z"
 }
