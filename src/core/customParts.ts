@@ -80,6 +80,10 @@ export interface CustomSim {
   regWidth?: 8 | 16;
   /** i2c-device: register address width in bits (16 for e.g. VL53L1X, VL6180X). */
   addrWidth?: 8 | 16;
+  /** i2c-device: a real-time clock's seven BCD time registers starting at `reg`, ticking with simulated time
+   * (starts 2026-10-21 12:00:00, 24-hour mode; writing them sets the clock). order 'ds1307' = sec, min, hour,
+   * weekday, date, month, year (DS1307/DS3231); 'pcf8563' = sec, min, hour, date, weekday, month, year. */
+  rtc?: { reg: string; order: 'ds1307' | 'pcf8563' };
   /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
   pointerless?: boolean;
   /** i2c-device: register bits that are output pins (e.g. an expander's P0…P7), shown as on/off and testable

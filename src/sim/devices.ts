@@ -463,7 +463,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; pointerless?: boolean; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[] } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; pointerless?: boolean; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     for (const [k, v] of Object.entries(registers)) this.setReg(Number(k), v);
@@ -478,6 +478,34 @@ export class GenericI2CDevice implements I2CDevice {
     } else this.store.set(addr & 0xffff, [v & 0xff]);
   }
   private store = new Map<number, number[]>();
+  /** RTC: seconds between the simulated clock's epoch and the time set on the chip. */
+  private rtcOffset = Date.UTC(2026, 9, 21, 12, 0, 0) / 1000;
+  private rtcFields(): number[] | null {
+    const r = this.layout.rtc;
+    if (!r) return null;
+    const t = new Date((this.rtcOffset + Math.floor((this.layout.nowMs?.() ?? 0) / 1000)) * 1000);
+    const bcd = (n: number) => ((Math.floor(n / 10) << 4) | n % 10) & 0xff;
+    const dow = t.getUTCDay() || 7;
+    const [s, m, h, d, mo, y] = [t.getUTCSeconds(), t.getUTCMinutes(), t.getUTCHours(), t.getUTCDate(), t.getUTCMonth() + 1, t.getUTCFullYear() % 100];
+    return r.order === 'pcf8563' ? [bcd(s), bcd(m), bcd(h), bcd(d), dow % 7, bcd(mo), bcd(y)] : [bcd(s), bcd(m), bcd(h), dow, bcd(d), bcd(mo), bcd(y)];
+  }
+  /** Put the current time into the RTC registers. */
+  private rtcMaterialize() {
+    const f = this.rtcFields();
+    if (f) f.forEach((v, i) => this.setReg(Number(this.layout.rtc!.reg) + i, v));
+  }
+  /** After a write: read the time registers back as the newly set time. */
+  private rtcAdopt() {
+    const r = this.layout.rtc;
+    if (!r) return;
+    const base = Number(r.reg);
+    const g = (i: number) => this.byteAt(base + i, 0);
+    const dec = (b: number, mask: number) => ((b & mask) >> 4) * 10 + (b & 0x0f);
+    const [s, m, h] = [dec(g(0), 0x70), dec(g(1), 0x70), dec(g(2), 0x30)];
+    const [d, mo, y] = r.order === 'pcf8563' ? [dec(g(3), 0x30), dec(g(5), 0x10), dec(g(6), 0xf0)] : [dec(g(4), 0x30), dec(g(5), 0x10), dec(g(6), 0xf0)];
+    const set = Date.UTC(2000 + y, Math.max(0, mo - 1), Math.max(1, d), h, m, s) / 1000;
+    this.rtcOffset = set - Math.floor((this.layout.nowMs?.() ?? 0) / 1000);
+  }
   private byteAt(addr: number, i: number): number {
     const w = this.store.get(addr);
     return w?.[i] ?? 0;
@@ -501,12 +529,17 @@ export class GenericI2CDevice implements I2CDevice {
     const aw = this.layout.addrWidth === 16 ? 2 : 1;
     this.ptr = aw === 2 ? ((bytes[0] << 8) | (bytes[1] ?? 0)) : bytes[0];
     const data = bytes.slice(aw);
+    const rtcBase = this.layout.rtc ? Number(this.layout.rtc.reg) : -1;
+    const touchesRtc = rtcBase >= 0 && data.length > 0 && this.ptr < rtcBase + 7 && this.ptr + data.length > rtcBase;
+    if (touchesRtc) this.rtcMaterialize();
     if (this.wide) {
       for (let i = 0; i + 1 < data.length; i += 2) this.setReg(this.ptr + i / 2, (data[i] << 8) | data[i + 1]);
     } else data.forEach((b, i) => this.setReg(this.ptr + i, b));
+    if (touchesRtc) this.rtcAdopt();
   }
   read(n: number) {
     if (this.reply.length) return Array.from({ length: n }, (_, i) => this.reply[i] ?? 0);
+    this.rtcMaterialize();
     for (const m of this.measures) {
       const reg = Number(m.reg);
       let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1)) * 2 ** (m.shift ?? 0);
