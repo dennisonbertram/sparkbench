@@ -149,6 +149,71 @@ export function apiPlugin(): Plugin {
           return send(res, 502, { error: String(e?.message ?? e) });
         }
       }
+      if (req.url?.startsWith('/api/gallery') || req.url?.startsWith('/api/class') || req.url?.startsWith('/api/room')) {
+        const cm = await import('./community');
+        const u = new URL(req.url, 'http://x');
+        const seg = u.pathname.split('/').filter(Boolean); // api, gallery|class|room, id?, action?
+        const [, kind, key, action] = seg;
+        if (kind === 'gallery') {
+          if (!key && req.method === 'GET') return send(res, 200, { entries: cm.listGallery() });
+          if (!key && req.method === 'POST') {
+            const { project, author, blurb } = await body(req);
+            return send(res, 200, cm.publish(project, author, blurb));
+          }
+          if (key && action === 'like' && req.method === 'POST') return send(res, 200, cm.like(key) ?? { error: 'not found' });
+          if (key && req.method === 'GET') {
+            const g = cm.getGallery(key);
+            return g ? send(res, 200, g) : send(res, 404, { error: 'not found' });
+          }
+        }
+        if (kind === 'class') {
+          if (!key && req.method === 'POST') {
+            const { title, brief, requirements, teacher } = await body(req);
+            if (!title || !Array.isArray(requirements) || !requirements.length) return send(res, 400, { error: 'Give the assignment a title and at least one requirement.' });
+            return send(res, 200, cm.createAssignment({ title, brief: brief ?? '', requirements, teacher: teacher ?? '' }));
+          }
+          if (key && !action && req.method === 'GET') {
+            const a = cm.getAssignment(key);
+            return a ? send(res, 200, a) : send(res, 404, { error: 'No class with that code.' });
+          }
+          if (key && action === 'submit' && req.method === 'POST') {
+            const a = cm.getAssignment(key);
+            if (!a) return send(res, 404, { error: 'No class with that code.' });
+            const { student, project } = await body(req);
+            const { gradeSubmission } = await import('./grading');
+            const grade = await gradeSubmission(project, a.requirements);
+            return send(res, 200, cm.addSubmission(key, { student, project, grade }));
+          }
+          if (key && action === 'dashboard' && req.method === 'GET') {
+            const d = cm.dashboard(key, u.searchParams.get('key') ?? '');
+            return d ? send(res, 200, d) : send(res, 403, { error: 'Wrong teacher key.' });
+          }
+          if (key && action === 'submission' && req.method === 'GET') {
+            const pr = cm.submissionProject(key, u.searchParams.get('key') ?? '', u.searchParams.get('id') ?? '');
+            return pr ? send(res, 200, { project: pr }) : send(res, 404, { error: 'not found' });
+          }
+        }
+        if (kind === 'room') {
+          if (!key && req.method === 'POST') {
+            const { project } = await body(req);
+            return send(res, 200, { room: cm.createRoom(project) });
+          }
+          if (key && action === 'events' && req.method === 'GET') {
+            if (!cm.joinRoom(key, u.searchParams.get('name') ?? '', res as any)) return send(res, 404, { error: 'This shared session has ended.' });
+            return;
+          }
+          if (key && action === 'update' && req.method === 'POST') {
+            const { project, version, by } = await body(req);
+            return send(res, 200, cm.updateRoom(key, project, Number(version), by));
+          }
+          if (key && action === 'comment' && req.method === 'POST') {
+            const { target, text, by } = await body(req);
+            const c = cm.commentRoom(key, target, text, by);
+            return c ? send(res, 200, c) : send(res, 404, { error: 'not found' });
+          }
+        }
+        return send(res, 404, { error: 'not found' });
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });

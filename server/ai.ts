@@ -425,3 +425,26 @@ export async function aiExplainLine(project: Project, file: string, line: number
   const out = await askJson('You explain firmware to complete beginners in Sparkbench. Be concrete about this project\'s hardware. No jargon without a short explanation.', [{ role: 'user', content: `Project: ${project.name} (${project.board}). Wiring: ${wiring}\nFile ${file}, around line ${line} (marked >):\n${ctx}\n\nExplain line ${line}.` }], ExplainSchema, { effort: 'low' });
   return out.explanation;
 }
+
+// ---------- Strict grading of one classroom requirement ----------
+
+const GradeSchema = z.object({
+  applies: z.boolean().describe('Does this design contain the hardware the requirement names (same kind AND colour/role, e.g. "the red LED" needs an LED whose colour is red)? false if anything named is missing or different.'),
+  why: z.string().describe('One sentence: which parts satisfy the requirement, or what is missing'),
+  tests: z.array(z.object({ title: z.string(), steps: z.array(StepSchema) })).describe('1-2 tests that check the requirement LITERALLY on this design (empty if applies is false)'),
+});
+
+const GRADE_SYSTEM = `${TESTS_SYSTEM}
+You are grading a student's project against a teacher's requirement. Be strict and literal: never reinterpret the requirement to fit the design. If the requirement mentions a part (by kind, colour or role) that the design doesn't have, set applies=false. Otherwise write tests that check exactly what the requirement says.`;
+
+export async function aiGradeRequirement(project: Project, requirement: string): Promise<{ applies: boolean; why: string; tests: AcceptanceTest[] }> {
+  const parts = project.parts.map((p) => ({ ref: p.ref ?? p.id, type: p.type, label: p.label ?? null, color: p.props?.color ?? null }));
+  const out = await askJson(
+    GRADE_SYSTEM,
+    [{ role: 'user', content: `Project: ${project.name}\nParts (with colours): ${JSON.stringify(parts)}\nSimulator controls: ${JSON.stringify(partControls(project))}\nmain.py:\n\`\`\`python\n${project.files['main.py'] ?? ''}\n\`\`\`\n\nRequirement: ${requirement}` }],
+    GradeSchema,
+    { effort: 'low' },
+  );
+  const tests = out.tests.map((t, i) => ({ id: `grade-${Date.now().toString(36)}-${i}`, title: t.title, source: 'ai' as const, steps: t.steps.map(toStep).filter((x): x is TestStep => !!x) })).filter((t) => t.steps.length);
+  return { applies: out.applies, why: out.why, tests };
+}

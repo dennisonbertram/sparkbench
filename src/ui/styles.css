@@ -659,3 +659,29 @@ h2, h3 { margin: 0; }
 .power-table td { border-top: 1px solid var(--line); padding: 5px 4px; vertical-align: top; }
 .power-table td:last-child { white-space: nowrap; }
 .bp-ota-opt { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 4px; } .bp-ota summary { cursor: pointer; font-weight: 600; }
+.modal-back { position: fixed; inset: 0; background: #0006; z-index: 50; display: grid; place-items: center; padding: 16px; }
+.modal { background: var(--surface); border-radius: var(--radius); width: min(520px, 100%); max-height: 90vh; overflow: auto; box-shadow: 0 20px 60px #0004; }
+.modal-body { padding: 12px 16px 16px; }
+.modal-body form { display: grid; gap: 10px; }
+.modal-body label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
+.modal-body input, .modal-body textarea { font: inherit; color: var(--ink); }
+.modal-body .primary { justify-self: start; }
+.class-code { font-family: var(--mono); font-size: 1.2em; letter-spacing: 0.08em; }
+.class-banner { background: color-mix(in srgb, var(--signal) 18%, var(--surface)); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13.5px; }
+.class-banner ul { margin: 2px 0; padding-left: 18px; }
+.class-banner .cb-main { flex: 1; min-width: 260px; }
+.class-banner .cb-submit { display: flex; gap: 6px; align-items: start; flex-wrap: wrap; }
+.class-banner .cb-grade { flex-basis: 100%; }
+.class-banner .cb-grade li.pass { color: var(--ok); }
+.class-banner .cb-grade li.fail { color: var(--error); }
+.share-bar { background: color-mix(in srgb, var(--select) 12%, var(--surface)); border-bottom: 1px solid var(--line); padding: 6px 16px; display: flex; gap: 12px; align-items: center; font-size: 13px; }
+.share-bar span { flex: 1; }
+.join-class { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.join-class input { width: 120px; font: inherit; text-transform: uppercase; }
+.teacher { max-width: 1100px; margin: 0 auto; padding: 0 20px 40px; }
+.teacher-table td, .teacher-table th { text-align: center; }
+.teacher-table td:first-child, .teacher-table th:first-child { text-align: left; }
+.comments { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.comments h3 { font-size: 13px; margin: 0 0 6px; }
+.comments ul { padding-left: 16px; margin: 0 0 6px; font-size: 13px; }
+.comments input { width: 100%; font: inherit; }

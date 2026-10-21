@@ -14,6 +14,7 @@ import { useTestRunner } from './TestsPanel';
 import { BoardPanel } from './BoardPanel';
 import { AttachImages } from './Attach';
 import { QuestionsCard } from './Requirements';
+import { GallerySection, PublishDialog, TeachDialog, ClassBanner, TeacherDashboard, ShareBar, JoinClass, useLiveRoom, openGallery, startSharing } from './Community';
 import type { Shrunk } from './images';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
@@ -33,7 +34,10 @@ export function App() {
   const tab = useStore((s) => s.tab);
   const tourStep = useStore((s) => s.tourStep);
   const boardPanel = useStore((s) => s.boardPanel);
+  const dialog = useStore((s) => s.dialog);
+  const teach = useStore((s) => s.teach);
   useTestRunner();
+  useLiveRoom();
 
   useEffect(() => {
     fetch('/api/status')
@@ -42,6 +46,14 @@ export function App() {
       .catch(() => {});
     const p = loadCurrent();
     const url = new URL(location.href);
+    const cls = url.searchParams.get('class');
+    if (cls) useStore.getState().set({ classCode: cls.toUpperCase() });
+    const teach = url.searchParams.get('teach');
+    if (teach && url.searchParams.get('key')) useStore.getState().set({ teach: { code: teach.toUpperCase(), key: url.searchParams.get('key')! } });
+    const room = url.searchParams.get('room');
+    if (room) useStore.getState().set({ room: { id: room, version: 0, people: [], comments: [] } });
+    const gal = url.searchParams.get('gallery');
+    if (gal) openGallery(gal).catch(() => {});
     const ex = url.searchParams.get('example');
     if (ex && EXAMPLES.some((e) => e.id === ex)) {
       useStore.getState().setProject(buildExample(ex), { record: false });
@@ -80,10 +92,25 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  if (!project) return <Welcome />;
+  if (teach) return <TeacherDashboard code={teach.code} teacherKey={teach.key} />;
+  const dialogs = (
+    <>
+      {dialog === 'publish' && <PublishDialog onClose={() => useStore.getState().set({ dialog: null })} />}
+      {dialog === 'teach' && <TeachDialog onClose={() => useStore.getState().set({ dialog: null })} />}
+    </>
+  );
+  if (!project)
+    return (
+      <>
+        <Welcome />
+        {dialogs}
+      </>
+    );
   return (
     <div className="app">
       <Topbar />
+      <ClassBanner />
+      <ShareBar />
       <div className="main">
         <Copilot />
         <section className="center">
@@ -107,6 +134,7 @@ export function App() {
         </section>
         <Inspector />
       </div>
+      {dialogs}
       {boardPanel && <BoardPanel onClose={() => useStore.getState().set({ boardPanel: false })} />}
       {tourStep !== null && <Tour />}
     </div>
@@ -265,6 +293,19 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
       >
         Duplicate this project
       </button>
+      <div className="menu-sep">Share</div>
+      <button onClick={() => (useStore.getState().set({ dialog: 'publish' }), onClose())} data-testid="menu-publish">Publish to the gallery…</button>
+      <button
+        data-testid="menu-share"
+        onClick={async () => {
+          const url = await startSharing();
+          navigator.clipboard?.writeText(url).catch(() => {});
+          onClose();
+        }}
+      >
+        Edit together (copy a live link)
+      </button>
+      <button onClick={() => (useStore.getState().set({ dialog: 'teach' }), onClose())}>Set a class assignment…</button>
       <div className="menu-sep">Recent</div>
       {saved.slice(0, 10).map((p) => (
         <div className="menu-row" key={p.id}>
@@ -361,6 +402,7 @@ function Welcome() {
   const boardName = (b: string) => (b === 'none' ? 'No MCU' : BOARDS[b as 'esp32'].short);
   return (
     <div className="welcome">
+      <ClassBanner />
       <header className="welcome-top">
         <span className="brand">
           <Logo /> <span>Sparkbench</span>
@@ -409,6 +451,7 @@ function Welcome() {
           </div>
         )}
         <p className="hero-hint">Works with ESP32, Raspberry Pi Pico, Raspberry Pi 4, or plain components (555 timers, transistors).</p>
+        <JoinClass />
       </section>
       <section className="gallery" aria-label="Example projects">
         <h2>Or open a working example</h2>
@@ -425,6 +468,7 @@ function Welcome() {
           ))}
         </div>
       </section>
+      <GallerySection />
     </div>
   );
 }

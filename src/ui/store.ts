@@ -56,6 +56,11 @@ interface State {
   /** Latest acceptance-test run for the open project (see TestsPanel). */
   /** The "Your board" panel (real hardware over USB) is open. */
   boardPanel: boolean;
+  /** Community: open dialog, the class being worked on, teacher dashboard, live-shared room. */
+  dialog: null | 'publish' | 'teach';
+  classCode: string | null;
+  teach: { code: string; key: string } | null;
+  room: { id: string; version: number; people?: string[]; comments?: { id: string; target: string; text: string; by: string; at: number }[]; lastBy?: string; offline?: boolean; conflict?: boolean } | null;
   testRun: { key: string; running: boolean; results: import('../core/acceptance').TestResult[]; error?: string } | null;
   showWelcome: boolean;
   /** Set while the AI is working, with a short status line. */
@@ -100,6 +105,10 @@ export const useStore = create<State>((set, get) => ({
   bottomTab: 'serial',
   testRun: null,
   boardPanel: false,
+  dialog: null,
+  classCode: null,
+  teach: null,
+  room: null,
   showWelcome: true,
   busy: null,
   pinnedNet: null,

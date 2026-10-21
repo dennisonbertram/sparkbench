@@ -13,6 +13,7 @@ import { TestsPanel, TestsBadge } from './TestsPanel';
 import { RequirementsCard, QuestionsCard } from './Requirements';
 import { AttachImages } from './Attach';
 import { PowerCard } from './PowerCard';
+import { CommentsPanel } from './Community';
 import type { Shrunk } from './images';
 import type { CheckResult, FixAction } from '../core/types';
 import { annotate } from '../core/netlist';
@@ -243,6 +244,7 @@ export function Inspector() {
               Remove {part.ref}
             </button>
           )}
+          <CommentsPanel target={part.id} label={`${part.ref} ${part.label ?? def.name}`} />
         </div>
       </aside>
     );
