@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-vl53l1x",
+  "board": "Adafruit VL53L1X Time of Flight Distance Sensor (#3967)",
+  "reason": "Check passed on ESP32 and Pico: the ST ULD driver (16-bit register addresses, 91-byte default config, data-ready on 0x0031, mm at 0x0096, range status 0x0089 = 9) reads the slider's 1234 mm exactly. The sim holds data-ready at 1 because it does not model range timing.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vl53l1x.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-VL53L1X-PCB (silkscreen order VIN, GND, SCL, SDA, GPIO, XSHUT) and https://learn.adafruit.com/adafruit-vl53l1x/pinouts",
+  "checkRuns": 1
+}

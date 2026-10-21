@@ -1,0 +1,230 @@
+{
+  "type": "custom-apds9960",
+  "name": "APDS-9960 proximity, gesture & colour sensor",
+  "mpn": "APDS-9960",
+  "category": "sensor",
+  "description": "Broadcom (Avago) APDS-9960: an IR-LED proximity sensor (8-bit count), clear/red/green/blue ambient light channels (16-bit counts each) and a four-direction gesture engine, over I2C at the fixed address 0x39. Chip runs on 2.4-3.6 V (3.8 V absolute max) with 3.3 V logic. Sold as: SparkFun RGB and Gesture Sensor - APDS-9960 (SEN-12787), 6-pin header VL, GND, VCC, SDA, SCL, INT, no regulator; the purple GY-9960-3.3 clone modules use the same pin order.",
+  "eli5": "Shines invisible light to tell how close your hand is, and measures how much red, green and blue light is falling on it.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VL",
+      "role": "power",
+      "description": "IR LED supply (3.0-4.5 V), only needed if the PS jumper is opened; with PS closed (as shipped) it is tied to VCC, so leave it unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Sensor supply, 2.4-3.6 V (3.3 V). NOT 5 V tolerant: no regulator on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 3.3 V logic (10k pull-up to VCC via the I2C PU jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 3.3 V logic (10k pull-up to VCC via the I2C PU jumper)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low; not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2.4,
+  "vmax": 3.6,
+  "currentMa": 3,
+  "i2cAddress": 57,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/learn_tutorials/3/2/1/Avago-APDS-9960-datasheet.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "APDS-9960 RGB gesture proximity sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V only: the chip's absolute maximum is 3.8 V and the SparkFun board has no regulator or level shifter. Do not use 5 V on VCC, SDA or SCL.",
+    "With the PS jumper closed (as shipped) the IR LED runs from VCC, which must then be at least 3.0 V for the LED (VLEDA 3.0-4.5 V); 3.3 V is right.",
+    "Check the ID register 0x92 reads 0xAB (some clone chips report 0x9C or 0xA8). The address 0x39 is fixed: one sensor per I2C bus.",
+    "Write all the control registers first, then ENABLE (0x80) = 0x07 (PON + AEN + PEN); the chip takes 5.7 ms to start after PON.",
+    "Colour integration = 2.78 ms x (256 - ATIME); max count = min(65535, 1025 x (256 - ATIME)). Wait for STATUS AVALID, then read 8 bytes from 0x94: clear, red, green, blue, each low byte first.",
+    "Proximity: wait for STATUS PVALID, then read PDATA (0x9C), 0-255, higher = closer. The IR LED pulses up to 100 mA, so give the board a short, solid supply wire.",
+    "Gesture detection uses the FIFO at 0xFC-0xFF and is not covered by this driver or the simulator."
+  ],
+  "keywords": [
+    "apds9960",
+    "apds-9960",
+    "gesture",
+    "proximity",
+    "colour sensor",
+    "color sensor",
+    "rgb",
+    "ambient light",
+    "sparkfun 12787",
+    "gy-9960",
+    "avago",
+    "broadcom"
+  ],
+  "sources": [
+    "https://cdn.sparkfun.com/assets/learn_tutorials/3/2/1/Avago-APDS-9960-datasheet.pdf",
+    "https://learn.sparkfun.com/tutorials/apds-9960-rgb-and-gesture-sensor-hookup-guide/all",
+    "https://www.sparkfun.com/products/12787",
+    "https://github.com/sparkfun/APDS-9960_RGB_and_Gesture_Sensor",
+    "https://raw.githubusercontent.com/sparkfun/APDS-9960_RGB_and_Gesture_Sensor/master/Hardware/SparkFun_APDS-9960_RGB_and_Gesture_Sensor.brd"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Proximity (counts, higher = closer)",
+    "unit": "counts",
+    "min": 0,
+    "max": 255,
+    "default": 20,
+    "controls": [
+      {
+        "key": "clear",
+        "quantity": "Clear light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      },
+      {
+        "key": "red",
+        "quantity": "Red light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 800
+      },
+      {
+        "key": "green",
+        "quantity": "Green light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 700
+      },
+      {
+        "key": "blue",
+        "quantity": "Blue light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 500
+      }
+    ],
+    "registers": {
+      "0x92": 171,
+      "0x93": 3
+    },
+    "measures": [
+      {
+        "reg": "0x9C",
+        "bytes": 1,
+        "scale": 1,
+        "control": "value"
+      },
+      {
+        "reg": "0x94",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "clear"
+      },
+      {
+        "reg": "0x96",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "red"
+      },
+      {
+        "reg": "0x98",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "green"
+      },
+      {
+        "reg": "0x9A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "blue"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "apds9960.py",
+    "code": "# APDS-9960 proximity / ambient light / RGB colour sensor (Broadcom/Avago), MicroPython driver.\n# Written from the APDS-9960 datasheet (AV02-4191EN):\n#  - fixed I2C address 0x39; ID register 0x92 reads 0xAB;\n#  - set every control register first, then ENABLE (0x80): PON | AEN | PEN;\n#    the chip needs 5.7 ms to initialise after power-on;\n#  - ATIME (0x81): integration = 2.78 ms x (256 - ATIME), max count = min(65535, 1025 x (256 - ATIME));\n#  - STATUS (0x93): AVALID (bit 0) when a colour cycle is done, PVALID (bit 1) when a proximity cycle is done;\n#  - CDATAL..BDATAH (0x94-0x9B) are 16-bit little-endian; reading CDATAL latches all eight bytes, so read\n#    them in one 8-byte transaction starting at 0x94;\n#  - PDATA (0x9C) is an 8-bit proximity count (bigger = closer / more reflective).\n# The gesture engine (GEN, FIFO at 0xFC-0xFF) is not used by this driver.\nimport time\n\n_ENABLE = 0x80\n_ATIME = 0x81\n_WTIME = 0x83\n_PERS = 0x8C\n_CONFIG1 = 0x8D\n_PPULSE = 0x8E\n_CONTROL = 0x8F\n_CONFIG2 = 0x90\n_ID = 0x92\n_STATUS = 0x93\n_CDATAL = 0x94\n_PDATA = 0x9C\n_CONFIG3 = 0x9F\n_GCONF4 = 0xAB\n\n_PON = 0x01\n_AEN = 0x02\n_PEN = 0x04\n_AVALID = 0x01\n_PVALID = 0x02\n\n_AGAIN = {1: 0, 4: 1, 16: 2, 64: 3}\n_PGAIN = {1: 0, 2: 1, 4: 2, 8: 3}\n\n# 0xAB is the datasheet ID; 0x9C and 0xA8 are reported by chips on many clone boards.\n_IDS = (0xAB, 0x9C, 0xA8)\n\n\nclass APDS9960:\n    def __init__(self, i2c, addr=0x39, atime=0xB6, again=4, pgain=4):\n        \"\"\"atime: 0xFF (2.78 ms) .. 0x00 (712 ms); default 0xB6 = 200 ms, full 0-65535 range.\n        again: colour gain 1, 4, 16 or 64. pgain: proximity gain 1, 2, 4 or 8.\"\"\"\n        if again not in _AGAIN or pgain not in _PGAIN:\n            raise ValueError('again must be 1/4/16/64, pgain 1/2/4/8')\n        self.i2c = i2c\n        self.addr = addr\n        dev_id = self._read8(_ID)\n        if dev_id not in _IDS:\n            raise OSError('APDS-9960 not found (ID 0x%02X): check the wiring' % dev_id)\n        self.atime = atime & 0xFF\n        # Datasheet: configure everything with the engines off, then enable.\n        self._write8(_ENABLE, 0x00)\n        self._write8(_GCONF4, 0x00)  # gesture mode off\n        self._write8(_ATIME, self.atime)\n        self._write8(_WTIME, 0xFF)  # 2.78 ms wait (WEN is left off anyway)\n        self._write8(_PERS, 0x00)\n        self._write8(_CONFIG1, 0x60)  # reserved bits 6:5 = 1, WLONG = 0\n        self._write8(_PPULSE, 0x87)  # PPLEN 16 us, 8 pulses\n        # LDRIVE = 0 (100 mA), PGAIN, AGAIN\n        self._write8(_CONTROL, (_PGAIN[pgain] << 2) | _AGAIN[again])\n        self._write8(_CONFIG2, 0x01)  # no saturation interrupts, LED_BOOST 100 %, reserved bit 0 = 1\n        self._write8(_CONFIG3, 0x00)\n        self._write8(_ENABLE, _PON)\n        time.sleep_ms(10)  # power-on initialise takes 5.7 ms\n        self._write8(_ENABLE, _PON | _AEN | _PEN)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto(self.addr, bytes((reg, value & 0xFF)))\n\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes((reg,)))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _read8(self, reg):\n        return self._read(reg, 1)[0]\n\n    def integration_ms(self):\n        return 2.78 * (256 - self.atime)\n\n    def max_count(self):\n        return min(65535, 1025 * (256 - self.atime))\n\n    def _wait(self, bit):\n        deadline = time.ticks_add(time.ticks_ms(), int(self.integration_ms() * 2) + 100)\n        while not (self._read8(_STATUS) & bit):\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('APDS-9960 timed out waiting for a reading')\n            time.sleep_ms(5)\n\n    def proximity(self):\n        \"\"\"8-bit proximity count, 0 (nothing) .. 255 (very close).\"\"\"\n        self._wait(_PVALID)\n        return self._read8(_PDATA)\n\n    def color_raw(self):\n        \"\"\"Return (clear, red, green, blue) ADC counts from a completed integration.\"\"\"\n        self._wait(_AVALID)\n        d = self._read(_CDATAL, 8)\n        return (d[0] | (d[1] << 8), d[2] | (d[3] << 8), d[4] | (d[5] << 8), d[6] | (d[7] << 8))\n\n    def saturated(self, clear):\n        return clear >= self.max_count()\n\n    def sleep(self):\n        self._write8(_ENABLE, 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom apds9960 import APDS9960\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = APDS9960(i2c)\nwhile True:\n    p = sensor.proximity()\n    c, r, g, b = sensor.color_raw()\n    print('P=%d C=%d R=%d G=%d B=%d' % (p, c, r, g, b))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the proximity and the clear, red, green and blue counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 120
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "clear",
+          "value": 9000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 4100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "green",
+          "value": 3300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "blue",
+          "value": 1800
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=120 C=9000 R=4100 G=3300 B=1800",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:16:37.803Z",
+    "verifiedSources": [
+      "https://docs.broadcom.com/doc/AV02-4191EN",
+      "https://learn.sparkfun.com/tutorials/apds-9960-rgb-and-gesture-sensor-hookup-guide",
+      "https://www.sparkfun.com/products/12787"
+    ]
+  }
+}

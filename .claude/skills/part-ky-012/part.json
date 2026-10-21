@@ -1,0 +1,109 @@
+{
+  "type": "custom-ky-012",
+  "name": "KY-012 active buzzer module",
+  "mpn": "KY-012",
+  "category": "actuator",
+  "description": "Active piezo buzzer module: a buzzer with a built-in oscillator that beeps at about 2.5 kHz (2500 ± 300 Hz, at least 85 dB) whenever 3.3–5 V DC is applied between its S and - pins. No tone generation or PWM needed: a GPIO high is on, low is off. The signal pin powers the buzzer directly (up to about 30 mA). Sold as: Joy-IT / Keyes KY-012 active piezo buzzer module (COM-KY012APB), 3-pin header S, (middle, not connected), -.",
+  "eli5": "A little beeper: set the pin high and it beeps, set it low and it goes quiet.",
+  "refPrefix": "BZ",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Signal: high (3.3–5 V) = beep, low = silent. This pin also supplies the buzzer's current (up to about 30 mA).",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Middle pin, not connected on this module (leave unconnected)",
+      "required": false
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 30,
+  "datasheetUrl": "https://www.joy-it.net/files/files/Produkte/COM-KY012APB/COM-KY012APB-Datasheet-20200408.pdf",
+  "priceUsd": 1,
+  "supplierQuery": "KY-012 active buzzer module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire S to a GPIO and - to GND; leave the middle pin unconnected. There is no separate supply pin: the GPIO powers the buzzer.",
+    "Active buzzer: it makes its own ~2.5 kHz tone from DC. Just drive the pin high or low; PWM or tone() will not change the pitch much and only makes it crackle. For melodies use a passive buzzer (KY-006).",
+    "The buzzer draws up to about 30 mA from the GPIO. An ESP32 pin can supply this; a Raspberry Pi Pico or Raspberry Pi pin is rated for much less (about 12 mA / 16 mA), so it will be quieter and stresses the pin. For full volume, or at 5 V, switch it with an NPN transistor (e.g. 2N2222 + 1 kΩ base resistor) from the 5 V rail.",
+    "It is loud (85 dB at 10 cm). Peel off the 'remove seal after washing' sticker only if you want it even louder.",
+    "Some clone boards print different labels or put + in the middle; check the silkscreen before wiring."
+  ],
+  "keywords": [
+    "ky-012",
+    "ky012",
+    "buzzer",
+    "active buzzer",
+    "piezo",
+    "beeper",
+    "alarm",
+    "sound"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "S"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nbuzzer = Pin({S}, Pin.OUT, value=0)  # S high = beep (active buzzer)\nwhile True:\n    buzzer.value(1)\n    print('BEEP ON')\n    time.sleep(1)\n    buzzer.value(0)\n    print('BEEP OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "beeps",
+      "title": "The buzzer switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BEEP ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BEEP OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.joy-it.net/files/files/Produkte/COM-KY012APB/COM-KY012APB-Datasheet-20200408.pdf",
+    "https://www.joy-it.net/files/files/Produkte/COM-KY012APB/COM-KY012APB_Manual_2024-05-06.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-012",
+    "https://arduinomodules.info/ky-012-active-buzzer-module/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:23:21.424Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-012"
+    ]
+  }
+}

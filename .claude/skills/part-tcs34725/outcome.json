@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tcs34725",
+  "board": "Adafruit TCS34725 RGB Color Sensor with IR filter and White LED (#1334)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC). Driver follows the TCS3472 datasheet: command byte 0x80|reg (0xA0 auto-increment), PON then 2.4 ms wait then AEN, AVALID poll, one 8-byte little-endian read of C/R/G/B from 0xB4; the sim keys registers on the same command bytes (ID 0x92 = 0x44, STATUS 0x93 AVALID, counts at 0xB4-0xBB LE).",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/TCS34725.pdf",
+  "breakoutPinoutSource": "https://raw.githubusercontent.com/adafruit/Adafruit-TCS34725-Color-Sensor-Breakout-PCB/master/Adafruit%20TCS34725.brd",
+  "checkRuns": 1
+}

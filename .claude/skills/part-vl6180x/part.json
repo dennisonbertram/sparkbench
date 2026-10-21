@@ -1,0 +1,170 @@
+{
+  "type": "custom-vl6180x",
+  "name": "VL6180X time-of-flight proximity & light sensor",
+  "mpn": "VL6180X",
+  "category": "sensor",
+  "description": "ST time-of-flight proximity sensor that times an 850 nm infrared pulse to measure absolute distance from 0 to about 100 mm (8-bit result in mm), plus a 16-bit ambient light sensor (0.32 lux/count at gain 1, 100 ms). I2C up to 400 kHz at fixed address 0x29 with 16-bit register addresses. The bare chip runs on 2.6-3.0 V. Sold as: Adafruit VL6180X Time of Flight Distance Ranging Sensor - STEMMA QT (#3316), 6-pin header VIN, GND, SCL, SDA, GPIO, XSHUT with a 2.8 V regulator and I2C level shifting for 3-5 V.",
+  "eli5": "Shines an invisible light pulse and times the bounce to tell how many millimetres away something close is (up to about 10 cm), and also measures how bright the room is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (regulated to 2.8 V on the board)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "GPIO",
+      "role": "io",
+      "description": "Chip GPIO1 interrupt output, active low when a new sample is ready; 2.8 V logic, not level shifted; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "XSHUT",
+      "role": "io",
+      "description": "Shutdown input (chip GPIO0/CE), active low, pulled up on board; drive low to hold the sensor in hardware standby; not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 25,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vl6180x.pdf",
+  "priceUsd": 14,
+  "supplierQuery": "VL6180X time of flight proximity sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Peel the protective film off the sensor window before use, or every reading will be wrong.",
+    "Registers have 16-bit addresses: write the address MSB then LSB, then the data (or read after writing just the address). Model ID register 0x000 reads 0xB4.",
+    "After power-up SYSTEM__FRESH_OUT_OF_RESET (0x016) reads 1: load the mandatory SR03 settings from ST AN4545, then write 0x016 = 0. Without them ranges are inaccurate.",
+    "Single-shot range: wait for bit 0 of RESULT__RANGE_STATUS (0x04D), write 0x01 to SYSRANGE__START (0x018), poll RESULT__INTERRUPT_STATUS_GPIO (0x04F) until bits 2:0 = 4, read RESULT__RANGE_VAL (0x062) in mm, write 0x07 to SYSTEM__INTERRUPT_CLEAR (0x015).",
+    "Range is reliable from 0 to about 100 mm. A non-zero error code in bits 7:4 of 0x04D (e.g. 11 = low signal, 7 = no target) means the reading is invalid.",
+    "Light level: lux = 0.32 x ALS count / gain x 100 ms / integration time. With gain 1 (0x46 to 0x03F) and 100 ms (0x0063 to 0x040), lux = 0.32 x count.",
+    "The address 0x29 resets on every power cycle; to use several sensors, hold XSHUT low on all but one and give each a new address in register 0x212 in turn.",
+    "Ranging draws about 22 mA on average and 38 mA peaks from the chip, so keep the supply wires short."
+  ],
+  "keywords": [
+    "vl6180x",
+    "vl6180",
+    "time of flight",
+    "tof",
+    "proximity",
+    "distance",
+    "lidar",
+    "ambient light",
+    "lux",
+    "st"
+  ],
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/vl6180x.pdf",
+    "https://www.pololu.com/file/0J961/VL6180X.pdf",
+    "https://www.pololu.com/file/0J962/AN4545.pdf",
+    "https://learn.adafruit.com/adafruit-vl6180x-time-of-flight-micro-lidar-distance-sensor-breakout/pinouts",
+    "https://www.adafruit.com/product/3316",
+    "https://github.com/adafruit/Adafruit-VL6180X-ToF-Distance-Sensor-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 0,
+    "max": 200,
+    "default": 50,
+    "addrWidth": 16,
+    "controls": [
+      {
+        "key": "light",
+        "quantity": "Light level",
+        "unit": "lx",
+        "min": 0,
+        "max": 20000,
+        "default": 300
+      }
+    ],
+    "registers": {
+      "0x000": 180,
+      "0x016": 1,
+      "0x04D": 1,
+      "0x04E": 1,
+      "0x04F": 36
+    },
+    "measures": [
+      {
+        "reg": "0x62",
+        "bytes": 1,
+        "scale": 1,
+        "control": "value"
+      },
+      {
+        "reg": "0x50",
+        "bytes": 2,
+        "scale": 0.32,
+        "control": "light"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "vl6180x.py",
+    "code": "# VL6180X time-of-flight proximity + ambient light sensor (ST), MicroPython driver.\n# Written from the ST datasheet (DocID026171 Rev 7) and application note AN4545\n# (mandatory SR03 private-register settings and single-shot ranging sequence).\n# Registers have 16-bit addresses, sent MSB first; multi-byte registers are big-endian.\nimport time\n\n_MODEL_ID = 0x000            # reads 0xB4 on a VL6180X\n_SYSTEM_MODE_GPIO1 = 0x011\n_SYSTEM_INTERRUPT_CONFIG = 0x014\n_SYSTEM_INTERRUPT_CLEAR = 0x015\n_SYSTEM_FRESH_OUT_OF_RESET = 0x016\n_SYSRANGE_START = 0x018\n_SYSALS_START = 0x038\n_SYSALS_ANALOGUE_GAIN = 0x03F\n_SYSALS_INTEGRATION_PERIOD = 0x040\n_RESULT_RANGE_STATUS = 0x04D\n_RESULT_ALS_STATUS = 0x04E\n_RESULT_INTERRUPT_STATUS_GPIO = 0x04F\n_RESULT_ALS_VAL = 0x050\n_RESULT_RANGE_VAL = 0x062\n\n# AN4545 section 9: mandatory private registers, then recommended public ones.\n_SR03 = (\n    (0x0207, 0x01), (0x0208, 0x01), (0x0096, 0x00), (0x0097, 0xFD),\n    (0x00E3, 0x00), (0x00E4, 0x04), (0x00E5, 0x02), (0x00E6, 0x01),\n    (0x00E7, 0x03), (0x00F5, 0x02), (0x00D9, 0x05), (0x00DB, 0xCE),\n    (0x00DC, 0x03), (0x00DD, 0xF8), (0x009F, 0x00), (0x00A3, 0x3C),\n    (0x00B7, 0x00), (0x00BB, 0x3C), (0x00B2, 0x09), (0x00CA, 0x09),\n    (0x0198, 0x01), (0x01B0, 0x17), (0x01AD, 0x00), (0x00FF, 0x05),\n    (0x0100, 0x05), (0x0199, 0x05), (0x01A6, 0x1B), (0x01AC, 0x3E),\n    (0x01A7, 0x1F), (0x0030, 0x00),\n    (0x0011, 0x10),  # GPIO1 = interrupt output, active low\n    (0x010A, 0x30),  # range averaging sample period\n    (0x0031, 0xFF),  # VHV auto-calibration every 255 ranges\n    (0x002E, 0x01),  # one temperature (VHV) calibration now\n    (0x001B, 0x09),  # range inter-measurement period 100 ms (continuous mode)\n    (0x003E, 0x31),  # ALS inter-measurement period 500 ms (continuous mode)\n    (0x0014, 0x24),  # interrupts: new sample ready for range and ALS\n)\n\n# SYSALS__ANALOGUE_GAIN code (low 3 bits) -> analog gain (datasheet 6.2.35)\n_GAINS = (20.0, 10.0, 5.0, 2.5, 1.67, 1.25, 1.0, 40.0)\n\n# RESULT__RANGE_STATUS error codes, bits [7:4] (datasheet 6.2.37)\nRANGE_ERRORS = {\n    0: 'ok', 1: 'VCSEL continuity test', 2: 'VCSEL watchdog test', 3: 'VCSEL watchdog',\n    4: 'PLL1 lock', 5: 'PLL2 lock', 6: 'early convergence estimate', 7: 'no target (max convergence)',\n    8: 'no target (ignore)', 11: 'low signal-to-noise', 12: 'raw underflow', 13: 'raw overflow',\n    14: 'range underflow', 15: 'range overflow',\n}\n\n\nclass VL6180X:\n    def __init__(self, i2c, addr=0x29, gain=6, integration_ms=100, timeout_ms=500):\n        self.i2c = i2c\n        self.addr = addr\n        self.timeout_ms = timeout_ms\n        self.range_error = 0\n        time.sleep_ms(2)  # MCU boot after power-up / XSHUT release\n        if self._r8(_MODEL_ID) != 0xB4:\n            raise OSError('VL6180X not found (model ID 0x000 != 0xB4)')\n        if self._r8(_SYSTEM_FRESH_OUT_OF_RESET) & 0x01:\n            for reg, val in _SR03:\n                self._w8(reg, val)\n            self._w8(_SYSTEM_FRESH_OUT_OF_RESET, 0x00)\n        self.set_als(gain, integration_ms)\n\n    # ---- low level: 16-bit register index, MSB first ----\n    def _w8(self, reg, val):\n        self.i2c.writeto(self.addr, bytes(((reg >> 8) & 0xFF, reg & 0xFF, val & 0xFF)))\n\n    def _w16(self, reg, val):\n        self.i2c.writeto(self.addr, bytes(((reg >> 8) & 0xFF, reg & 0xFF, (val >> 8) & 0xFF, val & 0xFF)))\n\n    def _rn(self, reg, n):\n        self.i2c.writeto(self.addr, bytes(((reg >> 8) & 0xFF, reg & 0xFF)))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _r8(self, reg):\n        return self._rn(reg, 1)[0]\n\n    def _r16(self, reg):\n        b = self._rn(reg, 2)\n        return (b[0] << 8) | b[1]\n\n    def _wait(self, cond):\n        t0 = time.ticks_ms()\n        while not cond():\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('VL6180X timeout')\n            time.sleep_ms(1)\n\n    # ---- configuration ----\n    def set_als(self, gain=6, integration_ms=100):\n        \"\"\"gain: SYSALS__ANALOGUE_GAIN code 0-7 (6 = x1.0). integration_ms: 1-512 (100 recommended).\"\"\"\n        gain &= 0x07\n        integration_ms = max(1, min(512, int(integration_ms)))\n        self._w8(_SYSALS_ANALOGUE_GAIN, 0x40 | gain)  # upper nibble must be 0x4\n        self._w16(_SYSALS_INTEGRATION_PERIOD, integration_ms - 1)  # 1 code = 1 ms, 0 = 1 ms\n        self._gain = _GAINS[gain]\n        self._it_ms = integration_ms\n\n    # ---- measurements ----\n    def range(self):\n        \"\"\"Single-shot range in mm (0-255). Returns None if the sensor reports an error\n        (no target, too close, too much ambient light); the code is in self.range_error.\"\"\"\n        self._wait(lambda: self._r8(_RESULT_RANGE_STATUS) & 0x01)  # device ready\n        self._w8(_SYSRANGE_START, 0x01)\n        self._wait(lambda: (self._r8(_RESULT_INTERRUPT_STATUS_GPIO) & 0x07) == 0x04)\n        mm = self._r8(_RESULT_RANGE_VAL)\n        self._w8(_SYSTEM_INTERRUPT_CLEAR, 0x07)\n        self.range_error = self._r8(_RESULT_RANGE_STATUS) >> 4\n        return None if self.range_error else mm\n\n    def als_count(self):\n        \"\"\"Single-shot ambient light measurement, raw 16-bit count.\"\"\"\n        self._wait(lambda: self._r8(_RESULT_ALS_STATUS) & 0x01)  # device ready\n        self._w8(_SYSALS_START, 0x01)\n        self._wait(lambda: ((self._r8(_RESULT_INTERRUPT_STATUS_GPIO) >> 3) & 0x07) == 0x04)\n        count = self._r16(_RESULT_ALS_VAL)\n        self._w8(_SYSTEM_INTERRUPT_CLEAR, 0x07)\n        return count\n\n    def lux(self):\n        \"\"\"Ambient light in lux: 0.32 lux/count x count / gain x 100 ms / integration time\n        (datasheet 2.10.4; 0.32 is the factory calibration without cover glass).\"\"\"\n        return 0.32 * self.als_count() / self._gain * 100 / self._it_ms\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom vl6180x import VL6180X\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\nsensor = VL6180X(i2c)  # ALS gain 1, 100 ms: 0.32 lux per count\nwhile True:\n    mm = sensor.range()\n    lux = sensor.lux()\n    if mm is None:\n        print('Range=error %d Light=%.1flux' % (sensor.range_error, lux))\n    else:\n        print('Range=%dmm Light=%.1flux' % (mm, lux))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance and light level set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 87
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "light",
+          "value": 6400
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Range=87mm Light=6400.0lux",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:20:30.276Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/037/608/original/VL6180X_datasheet.pdf",
+      "https://learn.adafruit.com/adafruit-vl6180x-time-of-flight-micro-lidar-distance-sensor-breakout/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/089/846/large1024/proximity_VL6180_top.jpg"
+    ]
+  }
+}

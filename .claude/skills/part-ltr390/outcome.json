@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ltr390",
+  "board": "Adafruit LTR390 UV Light Sensor - STEMMA QT / Qwiic (#4831)",
+  "reason": "Modelled from the Lite-On LTR-390UV-01 datasheet (DS86-2015-0004 V1.1): address 0x53, PART_ID 0xB2, MAIN_CTRL 0x02/0x0A for ALS/UVS mode, 20-bit LSB-first data at 0x0D and 0x10, lux = 0.6*ALS/(gain*INT) (0.2 lx/count at gain 3, 18-bit) and UVI = UVS/2300 at gain 18, 20-bit; header order VIN,3Vo,GND,SCL,SDA,INT from Adafruit's Eagle board file. Part check printed PASS on ESP32 and Pico (Lux=1234.4 UVI=6.50, DRC clean).",
+  "datasheetUrl": "https://optoelectronics.liteon.com/upload/download/DS86-2015-0004/LTR-390UV_Final_%20DS_V1%201.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-LTR390-PCB (Adafruit_LTR390.brd: JP1 pads 1-6 = VCC/3.3V/GND/SCL/SDA/INT, silkscreen VIN 3Vo GND SCL SDA INT); https://learn.adafruit.com/adafruit-ltr390-uv-sensor/pinouts",
+  "checkRuns": 1
+}

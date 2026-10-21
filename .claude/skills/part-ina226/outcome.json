@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ina226",
+  "board": "CJMCU-226 INA226 module (8-pin: VCC, GND, SDA, SCL, ALE, VBS, IN-, IN+; 0.1 ohm R100 shunt)",
+  "reason": "Check passed on ESP32 and Pico: the sim encodes bus voltage (02h, 1.25 mV/LSB) and signed shunt voltage (01h, 2.5 uV/LSB, shown as mA through the 0.1 ohm shunt) as the datasheet does, and the driver checks manufacturer ID 5449h and decodes them correctly.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina226.pdf",
+  "breakoutPinoutSource": "https://www.espruino.com/refimages/INA226.jpg",
+  "checkRuns": 3
+}

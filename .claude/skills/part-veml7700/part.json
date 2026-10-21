@@ -1,0 +1,155 @@
+{
+  "type": "custom-veml7700",
+  "name": "VEML7700 ambient light sensor",
+  "mpn": "VEML7700",
+  "category": "sensor",
+  "description": "Vishay 16-bit ambient light (lux) sensor with a human-eye-like response, 0 lx to about 120-140 klx, resolution down to 0.0042 lx/count, I2C interface at fixed address 0x10. The chip runs on 2.5-3.6 V. Sold as: Adafruit VEML7700 Lux Sensor - I2C Light Sensor - STEMMA QT / Qwiic (#4162), 5-pin header VIN, 3Vo, GND, SCL, SDA with a 3.3 V regulator and I2C level shifting for 3-5 V.",
+  "eli5": "Measures how bright the light around it is, in lux, from a dark room to full sunshine.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (regulated to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 k pull-up and BSS138 level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 k pull-up and BSS138 level shifter on board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.1,
+  "i2cAddress": 16,
+  "datasheetUrl": "https://www.vishay.com/docs/84286/veml7700.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "VEML7700 lux ambient light sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "The chip powers up shut down (ALS_CONF bit 0 = 1): write ALS_CONF with ALS_SD = 0, wait at least 2.5 ms, then one integration time before the first reading is valid.",
+    "Registers are 16-bit and travel LSB first: write [command, LSB, MSB]; read the command code with a repeated start and get LSB then MSB.",
+    "Lux = ALS counts x resolution. Resolution is 0.0042 lx/count at gain x2 / 800 ms and doubles for every halving of gain or integration time (gain 1/4, 100 ms = 0.2688 lx/count, up to 17 616 lx).",
+    "Start with gain 1/4 or 1/8 when the light level is unknown; above about 1000 lx apply the app note's polynomial correction (lux_corrected()).",
+    "The address is fixed at 0x10, so only one VEML7700 per I2C bus (use a multiplexer for more).",
+    "Point the sensor window at the light you want to measure and keep it out of the shadow of wires and the board's power LED."
+  ],
+  "keywords": [
+    "veml7700",
+    "lux",
+    "light",
+    "ambient light",
+    "als",
+    "vishay",
+    "illuminance"
+  ],
+  "sources": [
+    "https://www.vishay.com/docs/84286/veml7700.pdf",
+    "https://www.vishay.com/docs/84323/designingveml7700.pdf",
+    "https://learn.adafruit.com/adafruit-veml7700/pinouts",
+    "https://www.adafruit.com/product/4162",
+    "https://github.com/adafruit/Adafruit-VEML7700-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Light level",
+    "unit": "lx",
+    "min": 0,
+    "max": 17616,
+    "default": 300,
+    "controls": [
+      {
+        "key": "white",
+        "quantity": "White channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      }
+    ],
+    "regWidth": 16,
+    "registers": {
+      "0x00": 256,
+      "0x07": 33220
+    },
+    "measures": [
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.2688,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "white"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "veml7700.py",
+    "code": "# VEML7700 ambient light sensor (Vishay, datasheet doc 84286 + app note 84323), MicroPython driver.\n# 16-bit registers (\"command codes\"), sent and received LSB first:\n#   write: [command code, data LSB, data MSB]; read: command code, repeated start, LSB, MSB.\n# Lux = ALS counts x resolution, resolution set by gain and integration time\n# (0.0042 lx/count at gain x2 / 800 ms, doubling for each halving of either).\nimport time\n\n_ALS_CONF = 0x00\n_ALS_WH = 0x01\n_ALS_WL = 0x02\n_POWER_SAVING = 0x03\n_ALS = 0x04\n_WHITE = 0x05\n_ALS_INT = 0x06\n_ID = 0x07\n\n# ALS_GAIN, bits 12:11 of ALS_CONF_0\nGAIN_1 = 0b00\nGAIN_2 = 0b01\nGAIN_1_8 = 0b10\nGAIN_1_4 = 0b11\n\n# ALS_IT, bits 9:6 of ALS_CONF_0, keyed by integration time in ms\n_IT_BITS = {25: 0b1100, 50: 0b1000, 100: 0b0000, 200: 0b0001, 400: 0b0010, 800: 0b0011}\n# Resolution = 0.0042 lx/count x (800 / IT) x _GAIN_DIV[gain]  (app note resolution table)\n_GAIN_DIV = {GAIN_2: 1, GAIN_1: 2, GAIN_1_4: 8, GAIN_1_8: 16}\n\n\nclass VEML7700:\n    def __init__(self, i2c, addr=0x10, gain=GAIN_1_4, it_ms=100):\n        self.i2c = i2c\n        self.addr = addr\n        ident = self._read(_ID)\n        if ident & 0xFF != 0x81:  # low byte of the ID register is always 0x81\n            raise OSError('VEML7700 not found at 0x%02X (ID 0x%04X)' % (addr, ident))\n        self._write(_POWER_SAVING, 0x0000)  # PSM off: a new result every integration time\n        self.configure(gain, it_ms)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)  # LSB first\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF, (value >> 8) & 0xFF]))\n\n    def configure(self, gain=GAIN_1_4, it_ms=100):\n        \"\"\"Set gain (GAIN_2, GAIN_1, GAIN_1_4, GAIN_1_8) and integration time (25..800 ms), power on.\n\n        Start with GAIN_1_4 or GAIN_1_8 when the light level is unknown (app note): x1 and x2\n        saturate and turn non-linear above about 100 lx.\"\"\"\n        if it_ms not in _IT_BITS or gain not in _GAIN_DIV:\n            raise ValueError('it_ms must be 25, 50, 100, 200, 400 or 800 and gain a GAIN_ constant')\n        self.gain = gain\n        self.it_ms = it_ms\n        self.resolution = 0.0042 * (800 / it_ms) * _GAIN_DIV[gain]\n        # ALS_PERS = 1, ALS_INT_EN = 0, ALS_SD = 0 (power on)\n        self._write(_ALS_CONF, (gain << 11) | (_IT_BITS[it_ms] << 6))\n        time.sleep_ms(3)  # >= 2.5 ms after ALS_SD = 0 before the first measurement\n        time.sleep_ms(it_ms + it_ms // 10 + 5)  # wait for the first complete integration\n\n    def raw(self):\n        \"\"\"ALS channel output counts (0..65535).\"\"\"\n        return self._read(_ALS)\n\n    def white(self):\n        \"\"\"WHITE channel output counts (0..65535); no lux conversion is specified for it.\"\"\"\n        return self._read(_WHITE)\n\n    def lux(self):\n        \"\"\"Light level in lx: ALS counts x resolution (datasheet / app note formula, uncorrected).\"\"\"\n        return self.raw() * self.resolution\n\n    def lux_corrected(self):\n        \"\"\"Lux with the app note's polynomial correction, for gain 1/4 or 1/8 above about 1000 lx.\"\"\"\n        x = self.lux()\n        return ((6.0135e-13 * x - 9.3924e-9) * x + 8.1488e-5) * x * x + 1.0023 * x\n\n    def shutdown(self, off=True):\n        \"\"\"ALS_SD: stop measuring (about 0.5 uA); the last result stays readable. off=False powers on again.\"\"\"\n        cfg = self._read(_ALS_CONF)\n        if off:\n            self._write(_ALS_CONF, cfg | 0x0001)\n        else:\n            self._write(_ALS_CONF, cfg & ~0x0001)\n            time.sleep_ms(3 + self.it_ms + self.it_ms // 10 + 5)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom veml7700 import VEML7700, GAIN_1_4\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = VEML7700(i2c, gain=GAIN_1_4, it_ms=100)  # 0.2688 lx per count, up to 17616 lx\nwhile True:\n    print('Lux=%.2f White=%d' % (sensor.lux(), sensor.white()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level and white-channel counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 537.6
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "white",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=537.60 White=1234",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:14:46.583Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/84286/veml7700.pdf",
+      "https://learn.adafruit.com/adafruit-veml7700/pinouts"
+    ]
+  }
+}

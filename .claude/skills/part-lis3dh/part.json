@@ -1,0 +1,220 @@
+{
+  "type": "custom-lis3dh",
+  "name": "LIS3DH 3-axis accelerometer",
+  "mpn": "LIS3DH",
+  "category": "sensor",
+  "description": "STMicroelectronics 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, 12-bit high-resolution mode (1 mg/digit at ±2 g), with I2C/SPI, two interrupt generators and 3 auxiliary ADC inputs. Chip supply 1.71–3.6 V. Sold as: Adafruit LIS3DH Triple-Axis Accelerometer breakout, STEMMA QT version (#2809), modelled by its main 6-pin header VIN, 3Vo, GND, SCL, SDA, INT (3.3 V regulator, 3–5 V supply, I2C address 0x18; the second 6-pin row I2, A3, A2, A1, SDO, CS is not needed for I2C and is left unconnected: SDO open = 0x18, CS pulled high = I2C).",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, on three axes.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board 3.3 V regulator feeds the chip; use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt 1 output (3.3 V push-pull: data ready, motion, tap, free-fall…), optional",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 24,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lis3dh.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "Adafruit LIS3DH triple-axis accelerometer breakout 2809",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lis3dh.pdf",
+    "https://cdn-learn.adafruit.com/assets/assets/000/085/846/original/lis3dh.pdf",
+    "https://learn.adafruit.com/adafruit-lis3dh-triple-axis-accelerometer-breakout/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/094/350/medium800/sensors_LIS3DH_pinouts.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/094/436/medium800/sensors_LIS3DH_fab_print.png",
+    "https://learn.adafruit.com/adafruit-lis3dh-triple-axis-accelerometer-breakout/downloads",
+    "https://github.com/adafruit/Adafruit-LIS3DH-Breakout-PCB"
+  ],
+  "buildNotes": [
+    "The chip powers up in power-down mode (CTRL_REG1 0x20 = 0x07): write an output data rate, e.g. 0x57 = 100 Hz with X/Y/Z on, before reading.",
+    "For 12-bit high-resolution data set HR (and BDU) in CTRL_REG4 0x23, e.g. 0x88 for ±2 g; then wait 7/ODR (70 ms at 100 Hz) for the first valid sample.",
+    "Read OUT_X_L..OUT_Z_H in one 6-byte burst starting at 0xA8 (0x28 with the auto-increment bit 0x80 set). Each axis is two's complement, low byte first, left-justified: shift right by 4, then 1 mg/digit at ±2 g (2/4/12 mg at ±4/8/16 g).",
+    "WHO_AM_I (0x0F) must read 0x33; anything else means a wiring fault or the wrong address.",
+    "Leave the second header row unconnected for I2C at 0x18; tie SDO to 3.3 V for 0x19 (e.g. for a second sensor). Pulling CS low switches the chip to SPI.",
+    "Mount the board flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "lis3dh",
+    "accelerometer",
+    "tilt",
+    "vibration",
+    "tap",
+    "free-fall",
+    "3-axis",
+    "stmicroelectronics",
+    "adafruit 2809"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x0F": 51,
+      "0x20": 7,
+      "0x27": 15
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      },
+      {
+        "reg": "0xA8",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xAA",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0xAC",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lis3dh.py",
+    "code": "# LIS3DH 3-axis accelerometer (STMicroelectronics), MicroPython driver for I2C.\n# From the LIS3DH datasheet (DocID17530 Rev 2):\n#   WHO_AM_I 0x0F = 0x33, CTRL_REG1 0x20 (ODR[7:4], LPen bit 3, Z/Y/X enable bits 2:0),\n#   CTRL_REG4 0x23 (BDU bit 7, FS[5:4], HR bit 3), STATUS_REG 0x27 (ZYXDA bit 3),\n#   OUT_X_L..OUT_Z_H 0x28-0x2D: two's complement, left-justified, low byte first.\n#   Setting the MSB of the register address (0x28 | 0x80) auto-increments for burst reads.\n#   High-resolution (12-bit) mode sensitivity: 1 / 2 / 4 / 12 mg per digit at +-2/4/8/16 g.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x20\n_CTRL_REG4 = 0x23\n_STATUS_REG = 0x27\n_OUT_X_L = 0x28\n_AUTO_INC = 0x80\n\n_FS = {2: (0b00, 1), 4: (0b01, 2), 8: (0b10, 4), 16: (0b11, 12)}  # FS bits, mg/digit (HR mode)\n\n\nclass LIS3DH:\n    def __init__(self, i2c, addr=0x18, g_range=2):\n        \"\"\"addr: 0x18 with SDO/SA0 low or open (Adafruit board), 0x19 with SDO high.\n        g_range: 2, 4, 8 or 16 g full scale (high-resolution 12-bit mode).\"\"\"\n        if g_range not in _FS:\n            raise ValueError('g_range must be 2, 4, 8 or 16')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x33:\n            raise OSError('LIS3DH not found (WHO_AM_I 0x%02X, expected 0x33): check wiring' % who)\n        fs, self._mg_per_digit = _FS[g_range]\n        # 100 Hz ODR (0101), LPen = 0, X/Y/Z enabled\n        self._w(_CTRL_REG1, 0x57)\n        # BDU = 1 (MSB/LSB from the same sample), FS, HR = 1 -> 12-bit high-resolution mode\n        self._w(_CTRL_REG4, 0x80 | (fs << 4) | 0x08)\n        time.sleep_ms(80)  # high-resolution turn-on time is 7/ODR = 70 ms at 100 Hz\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when STATUS_REG ZYXDA says a new X/Y/Z set is available.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _STATUS_REG, 1)[0] & 0x08)\n\n    def raw(self):\n        \"\"\"(x, y, z) 12-bit counts. One 6-byte auto-increment burst from OUT_X_L.\"\"\"\n        for _ in range(20):  # wait up to ~20 ms (two samples at 100 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _OUT_X_L | _AUTO_INC, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # OUT_x_L = low byte, OUT_x_H = high byte\n            if v & 0x8000:\n                v -= 65536\n            out.append(v >> 4)  # left-justified: 12-bit value sits in bits 15:4\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._mg_per_digit / 1000\n        x, y, z = self.raw()\n        return x * k, y * k, z * k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lis3dh import LIS3DH\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = LIS3DH(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.3f Y=%.3f Z=%.3f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.500 Y=-0.300 Z=1.200 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:20:54.880Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/LIS3DH.pdf",
+      "https://learn.adafruit.com/adafruit-lis3dh-triple-axis-accelerometer-breakout/pinouts"
+    ]
+  }
+}

@@ -122,7 +122,8 @@ export function publish(slug: string, opts: { resolved?: boolean } = {}): { stat
     return { status: 'review', detail: diffs };
   }
   const dest = join('.claude', 'skills', `part-${slug}`);
-  if (existsSync(dest)) return { status: 'review', detail: [`${dest} already exists`] };
+  // Already published (e.g. by an earlier run of this same step): report it, don't treat it as a disagreement.
+  if (existsSync(join(dest, 'part.json'))) return { status: 'published', detail: [`${dest} (already in the library)`] };
   mkdirSync(dest, { recursive: true });
   cpSync(dir, dest, { recursive: true, filter: (f) => !/review\.json$/.test(f) });
   spec.library = { status: 'checked', note: `Passed the Sparkbench part check in simulation and matched an independent datasheet reading${resolvedNote ? ` (${resolvedNote})` : ''}. Not yet tested on real hardware.`, checkedAt: check.checkedAt, verifiedSources: facts.sources };

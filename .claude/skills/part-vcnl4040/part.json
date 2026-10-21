@@ -1,0 +1,184 @@
+{
+  "type": "custom-vcnl4040",
+  "name": "VCNL4040 proximity & ambient light sensor",
+  "mpn": "VCNL4040",
+  "category": "sensor",
+  "description": "Vishay proximity sensor (built-in 940 nm IR LED, 16-bit reading, up to about 200 mm) plus 16-bit ambient light sensor (0.0125 to 6553 lx) and white channel, with an I2C interface at fixed address 0x60 and an interrupt output. The chip runs on 2.5-3.6 V. Sold as: Adafruit VCNL4040 Proximity and Lux Sensor - STEMMA QT / Qwiic (#4161), 6-pin header VIN, 3Vo, GND, SCL, SDA, INT with a 3.3 V regulator and I2C level shifting for 3-5 V.",
+  "eli5": "Senses how close your hand is (up to about 20 cm) and how bright the room is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (regulated to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low (pulled up on board); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3,
+  "i2cAddress": 96,
+  "datasheetUrl": "https://www.vishay.com/docs/84274/vcnl4040.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "VCNL4040 proximity lux sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Both the ambient light sensor and the proximity sensor power up shut down (ALS_SD = 1, PS_SD = 1): write ALS_CONF (0x00) and PS_CONF1 (0x03) with the SD bit 0, then wait one integration time before the first reading.",
+    "Registers are 16-bit and travel LSB first: write [command, low byte, high byte]; read the command code with a repeated start and get low then high byte.",
+    "Lux = ALS counts x resolution: 0.1 lx/step at 80 ms (up to 6553.5 lx), 0.05 at 160 ms, 0.025 at 320 ms, 0.0125 at 640 ms (up to 819.2 lx).",
+    "Set PS_HD (bit 3 of PS_CONF2, 0x03 high byte) for 16-bit proximity data; the default is 12-bit (0-4095).",
+    "Proximity is counts of reflected IR, bigger = closer; it is not a distance and depends on the target's colour, so pick thresholds by testing.",
+    "The address is fixed at 0x60, so only one VCNL4040 per I2C bus (use a multiplexer for more).",
+    "Keep wires and the board's power LED out of the sensor's view, and don't cover it with glass without a proper gasket: IR cross-talk raises the proximity baseline."
+  ],
+  "keywords": [
+    "vcnl4040",
+    "proximity",
+    "lux",
+    "light",
+    "ambient light",
+    "als",
+    "ir",
+    "vishay",
+    "gesture"
+  ],
+  "sources": [
+    "https://www.vishay.com/docs/84274/vcnl4040.pdf",
+    "https://learn.adafruit.com/adafruit-vcnl4040-proximity-sensor/pinouts",
+    "https://www.adafruit.com/product/4161",
+    "https://github.com/adafruit/Adafruit-VCNL4040-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Light level",
+    "unit": "lx",
+    "min": 0,
+    "max": 6553.5,
+    "default": 300,
+    "controls": [
+      {
+        "key": "proximity",
+        "quantity": "Proximity counts",
+        "min": 0,
+        "max": 65535,
+        "default": 10
+      },
+      {
+        "key": "white",
+        "quantity": "White channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      }
+    ],
+    "regWidth": 16,
+    "registers": {
+      "0x00": 256,
+      "0x03": 256,
+      "0x0C": 34305
+    },
+    "measures": [
+      {
+        "reg": "0x08",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "proximity"
+      },
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 0.1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x0A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "white"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "vcnl4040.py",
+    "code": "# VCNL4040 proximity & ambient light sensor (Vishay, datasheet doc 84274), MicroPython driver.\n# I2C address 0x60 (fixed). 16-bit registers (\"command codes\"), sent and received LSB first:\n#   write: [command code, data byte low, data byte high]\n#   read:  command code, repeated start, data byte low, data byte high.\n# Lux = ALS counts x resolution: 0.1 / 0.05 / 0.025 / 0.0125 lx per step at ALS_IT 80 / 160 / 320 / 640 ms.\nimport time\n\n_ALS_CONF = 0x00   # L: ALS_CONF, H: reserved (keep 0x00)\n_ALS_THDH = 0x01\n_ALS_THDL = 0x02\n_PS_CONF12 = 0x03  # L: PS_CONF1, H: PS_CONF2\n_PS_CONF3MS = 0x04  # L: PS_CONF3, H: PS_MS\n_PS_CANC = 0x05\n_PS_THDL = 0x06\n_PS_THDH = 0x07\n_PS_DATA = 0x08\n_ALS_DATA = 0x09\n_WHITE_DATA = 0x0A\n_INT_FLAG = 0x0B   # H byte holds the flags; reading clears them\n_ID = 0x0C         # 0x0186\n\n# ALS_IT (ALS_CONF bits 7:6) keyed by integration time in ms, and the datasheet's lux/step (table 14)\n_ALS_IT_BITS = {80: 0b00, 160: 0b01, 320: 0b10, 640: 0b11}\n_ALS_RES = {80: 0.1, 160: 0.05, 320: 0.025, 640: 0.0125}\n\n# PS_IT (PS_CONF1 bits 3:1): 1T, 1.5T, 2T, 2.5T, 3T, 3.5T, 4T, 8T\nPS_IT_1T = 0b000\nPS_IT_2T = 0b010\nPS_IT_4T = 0b110\nPS_IT_8T = 0b111\n\n# LED_I (PS_MS bits 2:0)\nLED_50MA = 0b000\nLED_75MA = 0b001\nLED_100MA = 0b010\nLED_120MA = 0b011\nLED_140MA = 0b100\nLED_160MA = 0b101\nLED_180MA = 0b110\nLED_200MA = 0b111\n\n\nclass VCNL4040:\n    def __init__(self, i2c, addr=0x60, als_it_ms=80, ps_it=PS_IT_8T, led_current=LED_100MA):\n        self.i2c = i2c\n        self.addr = addr\n        ident = self._read(_ID)\n        if ident != 0x0186:\n            raise OSError('VCNL4040 not found at 0x%02X (ID 0x%04X)' % (addr, ident))\n        # PS_CONF1: duty 1/40, persistence 1, PS_IT, PS_SD = 0 (on); PS_CONF2: PS_HD = 1 (16-bit), INT off\n        self._write(_PS_CONF12, ((ps_it & 0x07) << 1) | (0x08 << 8))\n        # PS_CONF3 = 0 (normal mode); PS_MS: White_EN = 0 (white channel on), logic mode off, LED current\n        self._write(_PS_CONF3MS, (led_current & 0x07) << 8)\n        self.configure_als(als_it_ms)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)  # data byte low first\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF, (value >> 8) & 0xFF]))\n\n    def configure_als(self, it_ms=80):\n        \"\"\"Set the ALS integration time (80, 160, 320 or 640 ms) and power the ALS on.\n\n        Longer times are more sensitive but saturate sooner: 80 ms = 0.1 lx/step up to 6553.5 lx,\n        640 ms = 0.0125 lx/step up to 819.2 lx.\"\"\"\n        if it_ms not in _ALS_IT_BITS:\n            raise ValueError('it_ms must be 80, 160, 320 or 640')\n        self.als_it_ms = it_ms\n        self.resolution = _ALS_RES[it_ms]\n        # ALS_IT, ALS_PERS = 1, ALS_INT_EN = 0, ALS_SD = 0 (power on); high byte reserved = 0x00\n        self._write(_ALS_CONF, _ALS_IT_BITS[it_ms] << 6)\n        time.sleep_ms(it_ms + it_ms // 10 + 10)  # let the first full integration finish\n\n    def als_raw(self):\n        \"\"\"ALS output counts (0..65535).\"\"\"\n        return self._read(_ALS_DATA)\n\n    def lux(self):\n        \"\"\"Ambient light in lx: ALS counts x lux/step for the integration time (datasheet table 14).\"\"\"\n        return self.als_raw() * self.resolution\n\n    def white(self):\n        \"\"\"White channel counts (0..65535); the datasheet gives no lux conversion for it.\"\"\"\n        return self._read(_WHITE_DATA)\n\n    def proximity(self):\n        \"\"\"Proximity counts (16-bit, 0..65535): bigger = closer. Not a distance in mm; it\n        depends on the target's colour, size and LED current, so calibrate thresholds in place.\"\"\"\n        return self._read(_PS_DATA)\n\n    def interrupt_flags(self):\n        \"\"\"Read and clear INT_Flag (high byte of 0x0B): bit 6 PS_SPFLAG, 5 ALS_IF_L, 4 ALS_IF_H,\n        1 PS_IF_CLOSE, 0 PS_IF_AWAY. Reading releases the INT pin.\"\"\"\n        return (self._read(_INT_FLAG) >> 8) & 0xFF\n\n    def shutdown(self, off=True):\n        \"\"\"Shut down (ALS_SD = 1, PS_SD = 1; about 0.2 uA) or, with off=False, power both on again.\"\"\"\n        als = self._read(_ALS_CONF)\n        ps = self._read(_PS_CONF12)\n        if off:\n            self._write(_ALS_CONF, als | 0x0001)\n            self._write(_PS_CONF12, ps | 0x0001)\n        else:\n            self._write(_PS_CONF12, ps & ~0x0001)\n            self._write(_ALS_CONF, als & ~0x0001)\n            time.sleep_ms(self.als_it_ms + self.als_it_ms // 10 + 10)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom vcnl4040 import VCNL4040\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = VCNL4040(i2c, als_it_ms=80)  # 0.1 lx per step, up to 6553.5 lx\nwhile True:\n    print('Lux=%.1f Prox=%d White=%d' % (sensor.lux(), sensor.proximity(), sensor.white()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level, proximity and white counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "proximity",
+          "value": 1500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "white",
+          "value": 2345
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=1234.0 Prox=1500 White=2345",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:24:40.553Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/84274/vcnl4040.pdf",
+      "https://learn.adafruit.com/adafruit-vcnl4040-proximity-sensor/pinouts"
+    ]
+  }
+}

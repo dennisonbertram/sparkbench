@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-veml7700",
+  "board": "Adafruit VEML7700 Lux Sensor - I2C Light Sensor - STEMMA QT / Qwiic (#4162)",
+  "reason": "Modelled from the Vishay VEML7700 datasheet (84286 Rev 1.8) and app note 84323: 16-bit LSB-first registers at 0x10, ALS_CONF powers up shut down (0x0001), ID low byte 0x81, lux = counts x resolution (0.2688 lx/count at gain 1/4, 100 ms) plus WHITE channel; header order VIN,3Vo,GND,SCL,SDA from Adafruit's Eagle board file. Part check printed PASS on ESP32 and Pico (sim test Lux=537.60 White=1234, PCB DRC clean).",
+  "datasheetUrl": "https://www.vishay.com/docs/84286/veml7700.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-VEML7700-PCB (Adafruit VEML7700 STEMMA QT.brd: JP2 pads 1-5 = VCC/3.3V/GND/SCL/SDA, silkscreen VIN 3Vo GND SCL SDA); https://learn.adafruit.com/adafruit-veml7700/pinouts",
+  "checkRuns": 1
+}

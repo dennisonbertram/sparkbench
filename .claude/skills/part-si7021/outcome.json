@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-si7021",
+  "board": "GY-21 Si7021 temperature & humidity module (4-pin VIN, GND, SCL, SDA)",
+  "reason": "Check passed on ESP32 and Pico. The no-hold commands 0xF5/0xF3 return 12-bit RH and 14-bit T with the datasheet's fixed low bits (10 for RH, 00 for T) and a CRC-8 (poly 0x31, init 0x00). 0xE0 returns the temperature from the last RH measurement with no CRC. The driver decodes the 16-bit codes with the datasheet formulas and clamps RH to 0-100 %.",
+  "datasheetUrl": "https://cdn-learn.adafruit.com/assets/assets/000/035/931/original/Support_Documents_TechnicalDocs_Si7021-A20.pdf",
+  "breakoutPinoutSource": "https://protosupplies.com/product/gy-21-htu21d-humidity-temperature-sensor-module/",
+  "checkRuns": 1
+}

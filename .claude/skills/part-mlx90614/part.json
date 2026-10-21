@@ -1,0 +1,145 @@
+{
+  "type": "custom-mlx90614",
+  "name": "MLX90614 infrared thermometer",
+  "mpn": "MLX90614",
+  "category": "sensor",
+  "description": "Melexis non-contact infrared thermometer: object temperature -70 to 380 °C and sensor temperature -40 to 125 °C at 0.02 °C resolution (±0.5 °C around room temperature), read over SMBus/I2C at up to 100 kHz, default address 0x5A. Sold as: GY-906 MLX90614 infrared thermometer module (MLX90614ESF-BAA, 4-pin: VIN, GND, SCL, SDA, with 662K 3.3 V regulator and pull-ups), runs on 3.3–5 V.",
+  "eli5": "Points at something and tells you how hot it is without touching it.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3.3–5 V (on-board 3.3 V regulator feeds the 3 V MLX90614BAA)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "SMBus/I2C clock, 10–100 kHz (pull-up on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "SMBus/I2C data (PWM output if reprogrammed; pull-up on board)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "i2cAddress": 90,
+  "datasheetUrl": "https://www.melexis.com/-/media/files/documents/datasheets/mlx90614-datasheet-melexis.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "GY-906 MLX90614 infrared temperature sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Run the I2C bus at 100 kHz or slower: the MLX90614 SMBus works only between 10 and 100 kHz.",
+    "Read a temperature with an SMBus read word: write the RAM address (0x07 object, 0x06 ambient), repeated START, read LSByte then MSByte (the chip then offers a PEC byte).",
+    "T = raw × 0.02 − 273.15 °C; if bit 15 of the word is set the reading is an error.",
+    "Do not poll it continuously: SCL activity couples into the sensor and skews the reading. Read about once per second.",
+    "Point the sensor's window at the object; the field of view of the BAA version is about 90°, so the spot grows with distance."
+  ],
+  "keywords": [
+    "mlx90614",
+    "gy-906",
+    "infrared",
+    "ir thermometer",
+    "non-contact",
+    "temperature",
+    "melexis"
+  ],
+  "sources": [
+    "https://www.melexis.com/-/media/files/documents/datasheets/mlx90614-datasheet-melexis.pdf",
+    "https://protosupplies.com/product/gy-906-mlx90614-non-contact-precision-thermometer-module/",
+    "https://microcontrollerslab.com/mlx90614-contactless-ir-temperature-sensor-pinout-interfacing-arduino/"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Object temperature",
+    "unit": "°C",
+    "min": -70,
+    "max": 380,
+    "default": 21,
+    "controls": [
+      {
+        "key": "ambient",
+        "quantity": "Sensor (ambient) temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 21
+      }
+    ],
+    "regWidth": 16,
+    "measures": [
+      {
+        "reg": "0x07",
+        "bytes": 2,
+        "scale": 0.02,
+        "offset": -273.15,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "scale": 0.02,
+        "offset": -273.15,
+        "littleEndian": true,
+        "control": "ambient"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mlx90614.py",
+    "code": "# MLX90614 infrared thermometer (Melexis), MicroPython driver.\n# SMBus \"read word\" of a RAM cell: write the command (RAM address), repeated START,\n# read LSByte then MSByte (the chip then sends a PEC byte, which the master may skip).\n# Bus clock must be 10-100 kHz (datasheet 4.1.4).\n# Ta is RAM 0x06, Tobj1 is RAM 0x07, Tobj2 (dual-zone parts only) is RAM 0x08.\n# T[K] = raw * 0.02; the MSb of the word is an error flag (datasheet 4.1.8).\n\n_RAM_TA = 0x06\n_RAM_TOBJ1 = 0x07\n_RAM_TOBJ2 = 0x08\n\n\nclass MLX90614:\n    def __init__(self, i2c, addr=0x5A):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _read_temp(self, ram):\n        # readfrom_mem sends the command, then a repeated START and the read, as the chip requires.\n        d = self.i2c.readfrom_mem(self.addr, ram, 2)\n        raw = d[0] | (d[1] << 8)  # LSByte first\n        if raw & 0x8000:\n            raise OSError('MLX90614 error flag set in RAM 0x%02X' % ram)\n        return raw * 0.02 - 273.15\n\n    def ambient(self):\n        \"\"\"Sensor (package) temperature Ta in deg C.\"\"\"\n        return self._read_temp(_RAM_TA)\n\n    def object(self):\n        \"\"\"Object temperature Tobj1 in deg C (what the sensor is pointed at).\"\"\"\n        return self._read_temp(_RAM_TOBJ1)\n\n    def object2(self):\n        \"\"\"Second-zone object temperature (dual-zone MLX90614xBx/xCx parts only).\"\"\"\n        return self._read_temp(_RAM_TOBJ2)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mlx90614 import MLX90614\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = MLX90614(i2c)\nwhile True:\n    print('Obj=%.1fC Amb=%.1fC' % (sensor.object(), sensor.ambient()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the object and ambient temperatures set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ambient",
+          "value": 24
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Obj=37.0C Amb=24.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:13:40.308Z",
+    "verifiedSources": [
+      "https://www.melexis.com/-/media/files/documents/datasheets/mlx90614-datasheet-melexis.pdf",
+      "https://components101.com/sensors/gy-906-mlx90614-ir-temperature-sensor-module"
+    ]
+  }
+}

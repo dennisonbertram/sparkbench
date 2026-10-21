@@ -1,0 +1,198 @@
+{
+  "type": "custom-max17048",
+  "name": "MAX17048 LiPo fuel gauge",
+  "mpn": "MAX17048",
+  "category": "sensor",
+  "description": "Analog Devices (Maxim) single-cell Li-ion/LiPo fuel gauge with ModelGauge: reports cell voltage (78.125 µV resolution, ±7.5 mV), state of charge (1/256 %) and charge rate over I2C at 0x36, with no sense resistor. The chip is powered from the battery itself (2.5–4.5 V). Sold as: Adafruit MAX17048 LiPoly / Li-ion Fuel Gauge and Battery Monitor (#5580, STEMMA QT, 6-pin header: VIN, GND, SCL, SDA, INT, QStart, plus two JST-PH battery ports), I2C address 0x36.",
+  "eli5": "Plugs between your LiPo battery and your project and tells your board how full the battery is, in percent.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Logic supply for the I2C pull-ups and LED, 3–5 V (use your board's logic voltage). The MAX17048 itself runs from the battery.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, common with the battery's negative and the microcontroller",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Alert output (chip ALRT pin), open-drain, active low, 10 kΩ pull-up to VIN. Optional.",
+      "required": false
+    },
+    {
+      "name": "QStart",
+      "role": "io",
+      "description": "Quick-start input: a rising edge restarts the SOC estimate. Not needed for normal use: leave it unconnected or tie it to GND (datasheet: connect QSTRT to GND if unused).",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.04,
+  "i2cAddress": 54,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX17048-MAX17049.pdf",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX17048-MAX17049.pdf",
+    "https://cdn-learn.adafruit.com/assets/assets/000/114/607/original/MAX17048-MAX17049.pdf",
+    "https://learn.adafruit.com/adafruit-max17048-lipoly-liion-fuel-gauge-and-battery-monitor/pinouts",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-max17048-lipoly-liion-fuel-gauge-and-battery-monitor.pdf",
+    "https://www.adafruit.com/product/5580"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "MAX17048 LiPo fuel gauge breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Plug a 1-cell LiPo/Li-ion battery into one JST-PH port and your load or charger into the other. Without a battery (or below about 2.5 V) the MAX17048 does not answer on I2C at all.",
+    "VIN only powers the pull-ups and LED: give it the microcontroller's logic voltage (3.3 V on ESP32/Pico). Never connect the battery's + to VIN or a GPIO.",
+    "Registers are 16-bit words read MSB first: VCELL (0x02) × 78.125 µV = volts; SOC (0x04) / 256 = percent; CRATE (0x16) is signed × 0.208 %/hr.",
+    "SOC needs about 1 s after the battery is connected for its first estimate, and becomes accurate after the cell has been through some charge/discharge; avoid quick-start unless the cell is resting.",
+    "INT (ALRT) pulls low on low-SOC (default 4 %) or voltage alerts and stays low until CONFIG.ALRT is cleared."
+  ],
+  "keywords": [
+    "max17048",
+    "max17049",
+    "fuel gauge",
+    "battery",
+    "lipo",
+    "li-ion",
+    "state of charge",
+    "soc",
+    "battery monitor",
+    "maxim",
+    "analog devices"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Cell voltage",
+    "unit": "V",
+    "min": 2.5,
+    "max": 5,
+    "default": 3.7,
+    "registers": {
+      "0x06": 0,
+      "0x07": 0,
+      "0x08": 0,
+      "0x09": 18,
+      "0x0A": 128,
+      "0x0B": 48,
+      "0x0C": 151,
+      "0x0D": 28,
+      "0x14": 0,
+      "0x15": 255,
+      "0x18": 150,
+      "0x19": 0,
+      "0x1A": 1,
+      "0x1B": 0,
+      "0xFE": 255,
+      "0xFF": 255
+    },
+    "controls": [
+      {
+        "key": "soc",
+        "quantity": "State of charge",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      },
+      {
+        "key": "crate",
+        "quantity": "Charge rate",
+        "unit": "%/hr",
+        "min": -100,
+        "max": 100,
+        "default": 0
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.000078125,
+        "control": "value"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "control": "soc"
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.208,
+        "signed": true,
+        "control": "crate"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "max17048.py",
+    "code": "# MAX17048 1-cell LiPo / Li-ion fuel gauge (Analog Devices / Maxim MAX17048-MAX17049 datasheet),\n# MicroPython driver. I2C address 0x36 (0x6C write / 0x6D read). Every register is a 16-bit word\n# sent MSB first at an even byte address; both bytes must be read (or written) in one transaction.\n#   VCELL 0x02: 78.125 uV per LSB (whole 16-bit word)\n#   SOC   0x04: 1/256 % per LSB (high byte = whole percent)\n#   CRATE 0x16: signed, 0.208 %/hr per LSB\n# The chip is powered from the battery (its VDD pin is the cell voltage), so it does not answer\n# on the bus until a cell is plugged in.\n\n_REG_VCELL = 0x02\n_REG_SOC = 0x04\n_REG_MODE = 0x06\n_REG_VERSION = 0x08\n_REG_HIBRT = 0x0A\n_REG_CONFIG = 0x0C\n_REG_VALRT = 0x14\n_REG_CRATE = 0x16\n_REG_VRESET = 0x18\n_REG_STATUS = 0x1A\n_REG_CMD = 0xFE\n\n\nclass MAX17048:\n    def __init__(self, i2c, addr=0x36):\n        self.i2c = i2c\n        self.addr = addr\n        ver = self._read(_REG_VERSION)\n        if ver & 0xFFF0 != 0x0010:  # datasheet: VERSION reads 0x001_\n            raise OSError('MAX17048 not found (VERSION=0x%04X): is a battery connected?' % ver)\n        self.version = ver\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(value >> 8) & 0xFF, value & 0xFF]))\n\n    def voltage(self):\n        \"\"\"Cell voltage in volts (78.125 uV per count, updated every 250 ms).\"\"\"\n        return self._read(_REG_VCELL) * 78.125e-6\n\n    def soc(self):\n        \"\"\"State of charge in percent (1/256 % per count). First valid about 1 s after power-up.\"\"\"\n        return self._read(_REG_SOC) / 256\n\n    def charge_rate(self):\n        \"\"\"Approximate SOC change rate in %/hour (negative = discharging), 0.208 %/hr per count.\"\"\"\n        raw = self._read(_REG_CRATE)\n        if raw & 0x8000:\n            raw -= 0x10000\n        return raw * 0.208\n\n    def read(self):\n        \"\"\"Return (cell voltage in V, state of charge in %).\"\"\"\n        return self.voltage(), self.soc()\n\n    # --- alerts -----------------------------------------------------------------------------\n    def status(self):\n        \"\"\"STATUS bits 13..8: SC, HD (SOC low), VR (reset), VL (under V), VH (over V), RI (reset indicator).\"\"\"\n        return (self._read(_REG_STATUS) >> 8) & 0x3F\n\n    def clear_alert(self):\n        \"\"\"Clear the STATUS alert bits and CONFIG.ALRT so the ALRT/INT pin releases.\"\"\"\n        st = self._read(_REG_STATUS)\n        self._write(_REG_STATUS, st & 0x40FF)  # keep EnVR, clear SC/HD/VR/VL/VH/RI\n        cfg = self._read(_REG_CONFIG)\n        self._write(_REG_CONFIG, cfg & ~0x0020)\n\n    def set_low_soc_alert(self, percent):\n        \"\"\"Alert when SOC falls past percent (1-32 %): CONFIG.ATHD = 32 - percent.\"\"\"\n        percent = max(1, min(32, int(percent)))\n        cfg = self._read(_REG_CONFIG)\n        self._write(_REG_CONFIG, (cfg & ~0x001F) | (32 - percent))\n\n    def set_voltage_alert(self, vmin, vmax):\n        \"\"\"Alert while VCELL < vmin or > vmax (20 mV steps, 0 to 5.1 V).\"\"\"\n        lo = max(0, min(255, int(vmin / 0.02)))\n        hi = max(0, min(255, int(vmax / 0.02)))\n        self._write(_REG_VALRT, (lo << 8) | hi)\n\n    # --- control ----------------------------------------------------------------------------\n    def quick_start(self):\n        \"\"\"Restart the SOC estimate from the present voltage (MODE.Quick-Start). Use with care:\n        only when the cell is relaxed (no load/charging), see the datasheet's Quick-Start section.\"\"\"\n        self._write(_REG_MODE, 0x4000)\n\n    def sleep(self, on=True):\n        \"\"\"Enter (or leave) sleep mode: MODE.EnSleep = 1, then CONFIG.SLEEP.\"\"\"\n        if on:\n            self._write(_REG_MODE, 0x2000)\n        cfg = self._read(_REG_CONFIG)\n        self._write(_REG_CONFIG, (cfg | 0x0080) if on else (cfg & ~0x0080))\n\n    def reset(self):\n        \"\"\"Power-on reset (write 0x5400 to CMD 0xFE). The chip does not ACK this write.\"\"\"\n        try:\n            self._write(_REG_CMD, 0x5400)\n        except OSError:\n            pass\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom max17048 import MAX17048\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ngauge = MAX17048(i2c)  # address 0x36; needs a battery plugged in\nwhile True:\n    v, soc = gauge.read()\n    print('V=%.3fV SOC=%.1f%% rate=%.1f%%/hr' % (v, soc, gauge.charge_rate()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the cell voltage, state of charge and charge rate set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3.85
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "soc",
+          "value": 72.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "crate",
+          "value": -52
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=3.850V SOC=72.5% rate=-52.0%/hr",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:20:25.999Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/114/607/original/MAX17048-MAX17049.pdf?1661966692",
+      "https://learn.adafruit.com/adafruit-max17048-lipoly-liion-fuel-gauge-and-battery-monitor/pinouts",
+      "https://cdn-learn.adafruit.com/guides/images/000/003/652/medium800/5580-06.jpg"
+    ]
+  }
+}

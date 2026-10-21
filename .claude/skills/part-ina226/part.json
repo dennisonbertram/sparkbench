@@ -1,0 +1,177 @@
+{
+  "type": "custom-ina226",
+  "name": "INA226 current & power monitor",
+  "mpn": "INA226",
+  "category": "sensor",
+  "description": "Texas Instruments 16-bit current, voltage and power monitor with an I2C interface: measures the voltage across a shunt resistor (±81.92 mV, 2.5 µV per count) and a bus voltage of 0–36 V (1.25 mV per count). Runs on 2.7–5.5 V. Sold as: CJMCU-226 INA226 module (8-pin: VCC, GND, SDA, SCL, ALE, VBS, IN-, IN+) with a 0.1 Ω R100 shunt (about ±0.8 A), I2C address 0x40.",
+  "eli5": "Sits in the wire to a gadget and tells your board how many volts and milliamps the gadget is using.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply for the chip, 2.7–5.5 V (3.3 V recommended)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller and the measured circuit",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up fitted on the module)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up fitted on the module)",
+      "required": true
+    },
+    {
+      "name": "ALE",
+      "role": "io",
+      "description": "Alert output (open-drain, active low), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "VBS",
+      "role": "io",
+      "description": "Bus voltage sense input, 0–36 V: wire to IN- (load side) or IN+ to measure the load voltage. Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "IN-",
+      "role": "io",
+      "description": "Shunt low side: to the load's + lead. Up to 36 V; never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "IN+",
+      "role": "io",
+      "description": "Shunt high side: to the supply being measured. Up to 36 V; never to a GPIO.",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.42,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina226.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ina226.pdf",
+    "https://www.espruino.com/INA226",
+    "https://www.espruino.com/refimages/INA226.jpg",
+    "https://done.land/components/power/measuringcurrent/viashunt/ina226/"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "INA226 CJMCU-226 current power monitor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "The shunt goes in series with the load: supply + to IN+, IN- to the load's + lead, and the measured supply's ground to the same GND as the microcontroller.",
+    "VBS is not connected to the shunt on the module: link it to IN- (or IN+) or the bus voltage reads 0 V.",
+    "IN+, IN- and VBS may carry up to 36 V: never connect them to a GPIO. The 0.1 Ω shunt reads up to about ±0.8 A (81.92 mV full scale); use the large screw/solder pads for the load current, not the thin header pins.",
+    "Shunt register 01h is signed at 2.5 µV per count; bus register 02h is 1.25 mV per count. Current = shunt voltage / 0.1 Ω.",
+    "Manufacturer ID register FEh reads 5449h: a quick way to check the wiring. Default address 0x40 (A0 and A1 to GND)."
+  ],
+  "keywords": [
+    "ina226",
+    "cjmcu-226",
+    "current",
+    "voltage",
+    "power",
+    "shunt",
+    "ammeter",
+    "wattmeter",
+    "texas instruments"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Bus voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 36,
+    "default": 12,
+    "registers": {
+      "0x00": 16679,
+      "0x05": 0,
+      "0x06": 0,
+      "0x07": 0,
+      "0xFE": 21577,
+      "0xFF": 8800
+    },
+    "regWidth": 16,
+    "controls": [
+      {
+        "key": "current",
+        "quantity": "Load current",
+        "unit": "mA",
+        "min": -800,
+        "max": 800,
+        "default": 0
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.00125,
+        "control": "value"
+      },
+      {
+        "reg": "0x01",
+        "bytes": 2,
+        "scale": 0.025,
+        "signed": true,
+        "control": "current"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ina226.py",
+    "code": "# INA226 current & power monitor (TI INA226, SBOS547), MicroPython driver.\n# Registers are 16-bit, sent MSB first.\n#   01h Shunt voltage: signed two's complement, LSB 2.5 uV (full scale +-81.92 mV).\n#   02h Bus voltage:   unsigned, LSB 1.25 mV (bit 15 always 0; do not apply more than 36 V).\n#   FEh Manufacturer ID = 5449h (\"TI\").\n# Current is computed from the shunt voltage and the board's shunt resistor\n# (0.1 ohm \"R100\" on the common CJMCU-226 module), so no calibration register is needed.\nimport time\n\n_REG_CONFIG = 0x00\n_REG_SHUNT = 0x01\n_REG_BUS = 0x02\n_REG_MANUFACTURER_ID = 0xFE\n\n# AVG = 16 samples (010), VBUSCT = 1.1 ms (100), VSHCT = 1.1 ms (100),\n# MODE = shunt and bus, continuous (111). Bit 14 reads back as 1 (as in the 4127h default).\n_CONFIG = 0x4527\n\n\nclass INA226:\n    def __init__(self, i2c, addr=0x40, shunt_ohms=0.1):\n        self.i2c = i2c\n        self.addr = addr\n        self.shunt_ohms = shunt_ohms\n        if self._read(_REG_MANUFACTURER_ID) != 0x5449:\n            raise OSError('INA226 not found at 0x%02x: check the wiring' % addr)\n        self.i2c.writeto_mem(addr, _REG_CONFIG, bytes([_CONFIG >> 8, _CONFIG & 0xFF]))\n        # 16 averages x (1.1 ms shunt + 1.1 ms bus) = about 35 ms until the first full result.\n        time.sleep_ms(40)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def shunt_mv(self):\n        \"\"\"Voltage across the shunt resistor in mV (signed, 2.5 uV per count).\"\"\"\n        raw = self._read(_REG_SHUNT)\n        if raw & 0x8000:\n            raw -= 0x10000\n        return raw * 0.0025\n\n    def bus_voltage(self):\n        \"\"\"Voltage on the VBS pin relative to GND, in volts (1.25 mV per count).\"\"\"\n        return (self._read(_REG_BUS) & 0x7FFF) * 0.00125\n\n    def current_ma(self):\n        \"\"\"Current from IN+ to IN- in mA (negative if it flows the other way).\"\"\"\n        return self.shunt_mv() / self.shunt_ohms\n\n    def power_mw(self):\n        \"\"\"Power delivered to the load in mW (bus voltage x current).\"\"\"\n        return self.bus_voltage() * self.current_ma()\n\n    def read(self):\n        \"\"\"Return (bus voltage in V, current in mA).\"\"\"\n        return self.bus_voltage(), self.current_ma()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ina226 import INA226\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = INA226(i2c)  # address 0x40, 0.1 ohm shunt\nwhile True:\n    v, i = sensor.read()\n    print('V=%.3fV I=%.1fmA' % (v, i))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the bus voltage and current set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "current",
+          "value": 250
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=5.000V I=250.0mA",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:15:37.862Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ina226.pdf",
+      "https://openelab.io/it/products/ina226-voltage-and-current-module-cjmcu-226-monitor"
+    ]
+  }
+}

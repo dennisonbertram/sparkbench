@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-apds9960",
+  "board": "SparkFun RGB and Gesture Sensor - APDS-9960 (SEN-12787)",
+  "reason": "Proximity (PDATA 0x9C) and little-endian C/R/G/B counts (0x94-0x9B) modelled as plain registers with ID 0xAB and STATUS AVALID|PVALID; datasheet-based driver decodes them and the check printed PASS on ESP32 and Pico. The gesture FIFO engine is not modelled or used by the driver.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/learn_tutorials/3/2/1/Avago-APDS-9960-datasheet.pdf",
+  "breakoutPinoutSource": "https://raw.githubusercontent.com/sparkfun/APDS-9960_RGB_and_Gesture_Sensor/master/Hardware/SparkFun_APDS-9960_RGB_and_Gesture_Sensor.brd (silkscreen VL, GND, VCC, SDA, SCL, INT) and https://learn.sparkfun.com/tutorials/apds-9960-rgb-and-gesture-sensor-hookup-guide/all",
+  "checkRuns": 1
+}

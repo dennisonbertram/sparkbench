@@ -1,0 +1,103 @@
+{
+  "type": "custom-ds18b20",
+  "name": "DS18B20 1-Wire temperature sensor",
+  "mpn": "DS18B20",
+  "category": "sensor",
+  "description": "Maxim/Analog Devices digital thermometer, -55 to +125 °C (±0.5 °C from -10 to +85 °C), 9-12 bit resolution (0.0625 °C at the default 12 bits), on a 1-Wire bus with a unique 64-bit ROM code per chip. Runs on 3.0-5.5 V. Sold as: KY-001 temperature sensor module (3-pin: S, +, -) with a 4.7 kΩ pull-up from S to + on the board.",
+  "eli5": "A tiny thermometer that sends the temperature as a number down a single wire; you can hang several on the same wire.",
+  "refPrefix": "U",
+  "interface": "onewire",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "onewire",
+      "description": "1-Wire data (DQ); 4.7 kΩ pull-up to + on the module",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.0-5.5 V (use 3.3 V with an ESP32 or Pico: the pull-up goes to this pin)",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/DS18B20.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "KY-001 DS18B20 temperature sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the module from 3.3 V when S goes to an ESP32 or Pico: the on-board 4.7 kΩ pull-up ties S to +.",
+    "Send Convert T (44h), then wait at least 750 ms (12-bit) before Read Scratchpad (BEh); MicroPython's ds18x20 module does the commands and the CRC check, your code does the wait.",
+    "Temperature = signed 16-bit register x 0.0625 °C. A reading of exactly 85 °C is the power-on value: the conversion did not finish or the sensor lost power.",
+    "If scan() finds nothing, check the S wire and that + and - are not swapped (a reversed DS18B20 gets hot fast).",
+    "Several modules can share one GPIO, but their pull-ups add in parallel: keep at most 2-3 fitted."
+  ],
+  "keywords": [
+    "ds18b20",
+    "ky-001",
+    "ky001",
+    "1-wire",
+    "onewire",
+    "temperature",
+    "thermometer",
+    "dallas",
+    "maxim"
+  ],
+  "sim": {
+    "kind": "onewire-temp",
+    "family": 40,
+    "outputPin": "S",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 125,
+    "default": 21
+  },
+  "example": {
+    "code": "import machine, onewire, ds18x20, time\n\nds = ds18x20.DS18X20(onewire.OneWire(machine.Pin({S})))\nroms = ds.scan()\nprint('found', len(roms))\nwhile True:\n    ds.convert_temp()\n    time.sleep_ms(750)  # 12-bit conversion: up to 750 ms\n    print('T=%.2fC' % ds.read_temp(roms[0]))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -10.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-10.50C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/DS18B20.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/DS18B20.pdf",
+    "https://arduinomodules.info/ky-001-temperature-sensor-module/",
+    "https://docs.micropython.org/en/latest/esp32/quickref.html#onewire-driver"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:09:20.177Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/datasheets/Sensors/Temp/DS18B20.pdf",
+      "https://sensorkit.joy-it.net/en/sensors/ky-001"
+    ]
+  }
+}

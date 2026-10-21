@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mlx90614",
+  "board": "GY-906 MLX90614 infrared thermometer module (MLX90614ESF-BAA, 4-pin VIN, GND, SCL, SDA, 662K 3.3 V regulator and pull-ups)",
+  "reason": "Check PASS on ESP32 and Pico on the first run (spec, wiring, design checks, breadboard, simulator test Obj=37.0C Amb=24.0C, DRC-clean PCB, footprint). The sim stores Tobj1 (RAM 0x07) and Ta (RAM 0x06) as LSByte-first words with T = raw*0.02 - 273.15 C, as the datasheet specifies. The driver does an SMBus read word (command, repeated start, LSB, MSB) with a 100 kHz bus and checks the bit-15 error flag. It skips the optional PEC byte, which the simulator does not produce; the SKILL.md says so.",
+  "datasheetUrl": "https://www.melexis.com/-/media/files/documents/datasheets/mlx90614-datasheet-melexis.pdf",
+  "breakoutPinoutSource": "https://protosupplies.com/product/gy-906-mlx90614-non-contact-precision-thermometer-module/ (header VIN, GND, SCL, SDA; 662K 3.3 V regulator; pull-ups on SCL/SDA)",
+  "checkRuns": 1
+}

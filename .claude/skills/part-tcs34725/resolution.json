@@ -1,0 +1,28 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 2: part says GND, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "Adafruit #1334 EAGLE board file netlist: header JP1 (1X07) pad 1 = signal VIN, pad 2 = GND, pad 3 = +3V3, pad 4 = SCL_5V, pad 5 = SDA_5V, pad 6 = INT, pad 7 = LED_EN. Silkscreen (layer 21) labels at y=2.619 from x=17.0 down to x=1.6: VIN, GND, 3V3, SCL, SDA, INT, LED, matching the pad order. Pin 2 is GND (signal GND contactref JP1 pad 2). The second reading's order (3V3, SDA, SCL, GND, VIN, ...) was from memory, not a source.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-TCS34725-Color-Sensor-Breakout-PCB/master/Adafruit%20TCS34725.brd"
+    },
+    {
+      "diff": "header pin 3: part says 3V3, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "Adafruit #1334 EAGLE board file netlist: header JP1 (1X07) pad 1 = signal VIN, pad 2 = GND, pad 3 = +3V3, pad 4 = SCL_5V, pad 5 = SDA_5V, pad 6 = INT, pad 7 = LED_EN. Silkscreen (layer 21) labels at y=2.619 from x=17.0 down to x=1.6: VIN, GND, 3V3, SCL, SDA, INT, LED, matching the pad order. Pin 3 is 3V3 (signal +3V3 contactref JP1 pad 3). The second reading's order (3V3, SDA, SCL, GND, VIN, ...) was from memory, not a source.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-TCS34725-Color-Sensor-Breakout-PCB/master/Adafruit%20TCS34725.brd"
+    },
+    {
+      "diff": "header pin 4: part says SCL, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Adafruit #1334 EAGLE board file netlist: header JP1 (1X07) pad 1 = signal VIN, pad 2 = GND, pad 3 = +3V3, pad 4 = SCL_5V, pad 5 = SDA_5V, pad 6 = INT, pad 7 = LED_EN. Silkscreen (layer 21) labels at y=2.619 from x=17.0 down to x=1.6: VIN, GND, 3V3, SCL, SDA, INT, LED, matching the pad order. Pin 4 is SCL (signal SCL_5V contactref JP1 pad 4). The second reading's order (3V3, SDA, SCL, GND, VIN, ...) was from memory, not a source.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-TCS34725-Color-Sensor-Breakout-PCB/master/Adafruit%20TCS34725.brd"
+    },
+    {
+      "diff": "header pin 5: part says SDA, datasheet reading says VIN",
+      "verdict": "part-correct",
+      "evidence": "Adafruit #1334 EAGLE board file netlist: header JP1 (1X07) pad 1 = signal VIN, pad 2 = GND, pad 3 = +3V3, pad 4 = SCL_5V, pad 5 = SDA_5V, pad 6 = INT, pad 7 = LED_EN. Silkscreen (layer 21) labels at y=2.619 from x=17.0 down to x=1.6: VIN, GND, 3V3, SCL, SDA, INT, LED, matching the pad order. Pin 5 is SDA (signal SDA_5V contactref JP1 pad 5). The second reading's order (3V3, SDA, SCL, GND, VIN, ...) was from memory, not a source.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-TCS34725-Color-Sensor-Breakout-PCB/master/Adafruit%20TCS34725.brd"
+    }
+  ]
+}

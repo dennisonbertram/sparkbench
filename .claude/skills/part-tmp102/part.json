@@ -1,0 +1,138 @@
+{
+  "type": "custom-tmp102",
+  "name": "TMP102 digital temperature sensor",
+  "mpn": "TMP102",
+  "category": "sensor",
+  "description": "Texas Instruments digital temperature sensor, -40 to 125 °C with ±0.5 °C typical (±2 °C max from -25 to 85 °C) accuracy and 0.0625 °C (12-bit) resolution, on an I2C bus. Runs on 1.4–3.6 V only. Sold as: SparkFun Digital Temperature Sensor Breakout - TMP102 (SEN-13314, v13 board, 6-pin header in order: GND, VCC (silkscreen 1.4-3.6V), SDA, SCL, ALT, ADD0), I2C address 0x48 (0x49–0x4B by moving ADD0).",
+  "eli5": "A tiny thermometer chip your board can ask for the temperature over two wires. Give it 3.3 V, never 5 V.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 1.4–3.6 V (silkscreen '1.4-3.6V'; use 3.3 V, 5 V damages the chip)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "ALT",
+      "role": "io",
+      "description": "ALERT output, open-drain with a pull-up on the board, active low by default; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "ADD0",
+      "role": "io",
+      "description": "Address select, pulled to GND on the board through 10 kΩ and the closed ADD0 solder jumper (0x48); cut the jumper, then VCC = 0x49, SDA = 0x4A, SCL = 0x4B",
+      "required": false
+    }
+  ],
+  "vmin": 1.4,
+  "vmax": 3.6,
+  "currentMa": 0.01,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/tmp102.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/tmp102.pdf",
+    "https://learn.sparkfun.com/tutorials/tmp102-digital-temperature-sensor-hookup-guide/all",
+    "https://github.com/sparkfun/Digital_Temperature_Sensor_Breakout_-_TMP102/blob/V_H13.0/Hardware/SparkFun_Digital_Temperature_Sensor_Breakout_-_TMP102.brd",
+    "https://www.sparkfun.com/products/13314"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "SparkFun TMP102 digital temperature sensor breakout SEN-13314",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order on the SEN-13314 (v13) board is GND, VCC (silkscreen 1.4-3.6V), SDA, SCL, ALT, ADD0: pin 1 is GND, not VCC.",
+    "Power it from 3.3 V only: the TMP102 is rated 1.4–3.6 V (absolute maximum 4 V).",
+    "Temperature is register 0x00, two bytes MSB first: a 12-bit two's-complement value left-justified in bits 15–4, 0.0625 °C per step. T = (raw >> 4) × 0.0625, minus 256 when bit 15 is set.",
+    "The configuration register 0x01 powers up as 0x60A0: continuous conversion at 4 per second, normal 12-bit mode. Reading faster than 4 Hz just repeats the last result.",
+    "The temperature register reads 0 °C until the first conversion finishes, about 10–15 ms after power-up.",
+    "ADD0 is pulled to GND through 10 kΩ and a closed solder jumper on the back (address 0x48). Cut that jumper before wiring ADD0 to VCC, SDA or SCL.",
+    "The chip measures its own board temperature: keep it away from the regulator and the microcontroller."
+  ],
+  "keywords": [
+    "tmp102",
+    "temperature",
+    "thermometer",
+    "texas instruments",
+    "sparkfun 13314",
+    "sen-13314"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 24736,
+      "0x02": 19200,
+      "0x03": 20480
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 0.0625,
+      "signed": true,
+      "shift": 4
+    }
+  },
+  "driver": {
+    "filename": "tmp102.py",
+    "code": "# TMP102 digital temperature sensor (Texas Instruments SBOS397I), MicroPython driver.\n# 16-bit registers, MSB first; the pointer byte selects the register:\n#   0x00 temperature (read-only), 0x01 configuration, 0x02 TLOW, 0x03 THIGH.\n# Temperature register: 12-bit two's complement, left-justified (bits 15..4), 0.0625 degC/LSB.\n# Bit 0 of the low byte is 1 in extended mode (13-bit, bits 15..3).\nimport time\n\n_REG_TEMP = 0x00\n_REG_CONFIG = 0x01\n_REG_TLOW = 0x02\n_REG_THIGH = 0x03\n\n_CFG_SD = 0x0100   # byte 1 bit 0: shutdown\n_CFG_OS = 0x8000   # byte 1 bit 7: one-shot / conversion ready\n_CFG_RES = 0x6000  # byte 1 bits 6..5: R1 R0, read-only, always 11\n_CFG_EM = 0x0010   # byte 2 bit 4: extended mode\n_CFG_CR = 0x00C0   # byte 2 bits 7..6: conversion rate\n\n# CR1 CR0 -> conversions per second (datasheet Table 6-5)\nRATE_0_25HZ = 0\nRATE_1HZ = 1\nRATE_4HZ = 2  # power-up default\nRATE_8HZ = 3\n\n\ndef _decode(hi, lo, extended):\n    \"\"\"Temperature / TLOW / THIGH register bytes -> degC (datasheet Tables 6-8, 6-9, 6-13..6-16).\"\"\"\n    raw = (hi << 8) | lo\n    if extended:   # extended mode: 13-bit result in bits 15..3\n        raw >>= 3\n        if raw & 0x1000:\n            raw -= 0x2000\n    else:          # normal mode: 12-bit result in bits 15..4\n        raw >>= 4\n        if raw & 0x800:\n            raw -= 0x1000\n    return raw * 0.0625\n\n\nclass TMP102:\n    def __init__(self, i2c, addr=0x48):\n        self.i2c = i2c\n        self.addr = addr\n        cfg = self._read16(_REG_CONFIG)\n        if cfg & _CFG_RES != _CFG_RES:  # R1/R0 always read 11 on a TMP102\n            raise OSError('TMP102 not found at 0x%02X (config 0x%04X)' % (addr, cfg))\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _write16(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(value >> 8) & 0xFF, value & 0xFF]))\n\n    def temperature(self):\n        \"\"\"Latest conversion in degC. Reads 0 until the first conversion (~10-15 ms after power-up).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _REG_TEMP, 2)\n        return _decode(d[0], d[1], d[1] & 0x01)  # low-byte bit 0 = 1 in extended mode\n\n    def set_rate(self, rate):\n        \"\"\"Continuous conversion rate: RATE_0_25HZ, RATE_1HZ, RATE_4HZ (default) or RATE_8HZ.\"\"\"\n        cfg = self._read16(_REG_CONFIG) & ~_CFG_CR\n        self._write16(_REG_CONFIG, (cfg | ((rate & 3) << 6)) & ~_CFG_OS)\n\n    def shutdown(self, off=True):\n        \"\"\"SD bit: stop converting (under 1 uA) or resume continuous conversion.\"\"\"\n        cfg = self._read16(_REG_CONFIG) & ~_CFG_OS\n        self._write16(_REG_CONFIG, (cfg | _CFG_SD) if off else (cfg & ~_CFG_SD))\n        if not off:\n            time.sleep_ms(30)  # first new result after one conversion (15 ms max)\n\n    def one_shot(self):\n        \"\"\"From shutdown: start a single conversion (OS = 1), wait for it, return degC.\"\"\"\n        cfg = self._read16(_REG_CONFIG)\n        self._write16(_REG_CONFIG, cfg | _CFG_SD | _CFG_OS)\n        t0 = time.ticks_ms()\n        time.sleep_ms(15)  # conversion time: 10 ms typical, 15 ms max\n        while not (self._read16(_REG_CONFIG) & _CFG_OS):  # OS reads 1 when done\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                raise OSError('TMP102 one-shot conversion timed out')\n            time.sleep_ms(2)\n        return self.temperature()\n\n    def limits(self):\n        \"\"\"(TLOW, THIGH) in degC; power-up values are 75 and 80.\"\"\"\n        ext = self._read16(_REG_CONFIG) & _CFG_EM\n        tl = self.i2c.readfrom_mem(self.addr, _REG_TLOW, 2)\n        th = self.i2c.readfrom_mem(self.addr, _REG_THIGH, 2)\n        return _decode(tl[0], tl[1], ext), _decode(th[0], th[1], ext)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tmp102 import TMP102\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TMP102(i2c)  # address 0x48 with ADD0 on its default GND jumper\ntime.sleep_ms(50)  # first conversion finishes 10-15 ms after power-up\nwhile True:\n    print('T=%.2fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -18.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-18.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:25:43.880Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/tmp102.pdf",
+      "https://learn.sparkfun.com/tutorials/tmp102-digital-temperature-sensor-hookup-guide",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/5/4/0/TMP102-TOP.jpg"
+    ]
+  }
+}

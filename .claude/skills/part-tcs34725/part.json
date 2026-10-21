@@ -1,0 +1,211 @@
+{
+  "type": "custom-tcs34725",
+  "name": "TCS34725 RGB colour sensor",
+  "mpn": "TCS34725",
+  "category": "sensor",
+  "description": "ams (TAOS) TCS34725 colour light-to-digital converter: clear, red, green and blue photodiode channels with an IR-blocking filter, each a 16-bit count, over I2C at address 0x29 (fixed). Chip runs on 2.7-3.6 V; the breakout regulates to 3.3 V and level-shifts SDA/SCL so it takes 3.3-5 V. Sold as: Adafruit TCS34725 RGB Color Sensor with IR filter and White LED (#1334), 7-pin header VIN, GND, 3V3, SCL, SDA, INT, LED; the purple clone modules copy the same pin order.",
+  "eli5": "Looks at the light falling on it and tells your board how much red, green and blue there is, so you can tell what colour something is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Board supply, 3.3-5 V (on-board 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "nc",
+      "description": "3.3 V OUTPUT of the on-board regulator, not a supply input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up and level shifter on board, 5 V safe)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up and level shifter on board, 5 V safe)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low, straight from the chip (3.3 V logic, no pull-up on board); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "LED",
+      "role": "io",
+      "description": "White LED enable, pulled up on board so the LED is on; pull low (GND or a GPIO driven low) to turn the LED off",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 5,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/TCS34725.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "TCS34725 RGB color sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every register access starts with a command byte: 0x80 | register (single byte) or 0xA0 | register (auto-increment). Writing the bare register number does nothing useful.",
+    "Power up: write ENABLE = 0x01 (PON), wait at least 2.4 ms, then ENABLE = 0x03 (PON + AEN). Check the ID register (0x92 command) reads 0x44 (0x4D on TCS34727-based clones).",
+    "Integration time = 2.4 ms x (256 - ATIME); the max count is 1024 x (256 - ATIME), capped at 65535. Wait for STATUS AVALID before reading.",
+    "Read all four channels in one 8-byte auto-increment read from 0xB4 (clear, red, green, blue, each low byte first).",
+    "The white LED is on by default; tie LED to GND to switch it off, or wire it to a GPIO and drive it low. Shield the sensor from stray light for repeatable colour readings.",
+    "The address 0x29 is fixed: only one TCS34725 per I2C bus."
+  ],
+  "keywords": [
+    "tcs34725",
+    "tcs3472",
+    "color sensor",
+    "colour sensor",
+    "rgb",
+    "light",
+    "adafruit 1334",
+    "ams",
+    "taos"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/TCS34725.pdf",
+    "https://www.adafruit.com/product/1334",
+    "https://github.com/adafruit/Adafruit-TCS34725-Color-Sensor-Breakout-PCB",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-TCS34725-Color-Sensor-Breakout-PCB/master/Adafruit%20TCS34725.brd"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Clear light (ADC counts)",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 2000,
+    "controls": [
+      {
+        "key": "red",
+        "quantity": "Red light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 800
+      },
+      {
+        "key": "green",
+        "quantity": "Green light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 700
+      },
+      {
+        "key": "blue",
+        "quantity": "Blue light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 500
+      }
+    ],
+    "registers": {
+      "0x92": 68,
+      "0x93": 1
+    },
+    "measures": [
+      {
+        "reg": "0xB4",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB6",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "red"
+      },
+      {
+        "reg": "0xB8",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "green"
+      },
+      {
+        "reg": "0xBA",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "blue"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tcs34725.py",
+    "code": "# TCS34725 RGB colour sensor (ams/TAOS TCS3472 family), MicroPython driver.\n# Written from the TCS3472 datasheet (TAOS135, Aug 2012):\n#  - every register access starts with a COMMAND byte: bit 7 = 1 (CMD), bits 6:5 = TYPE\n#    (00 repeated byte, 01 auto-increment), bits 4:0 = register address;\n#  - power on (PON), wait at least 2.4 ms, then enable the RGBC ADC (AEN);\n#  - integration time = 2.4 ms x (256 - ATIME), max count = min(65535, 1024 x (256 - ATIME));\n#  - CDATA..BDATA (0x14-0x1B) are 16-bit little-endian; read them in one auto-increment\n#    transaction so each high byte comes from the shadow register latched with its low byte.\nimport time\n\n_CMD = 0x80\n_AUTO_INC = 0x20\n_ENABLE = 0x00\n_ATIME = 0x01\n_CONTROL = 0x0F\n_ID = 0x12\n_STATUS = 0x13\n_CDATAL = 0x14\n\n_PON = 0x01\n_AEN = 0x02\n_AVALID = 0x01\n\n_GAINS = {1: 0x00, 4: 0x01, 16: 0x02, 60: 0x03}\n\n\nclass TCS34725:\n    def __init__(self, i2c, addr=0x29, atime=0xC0, gain=4):\n        \"\"\"atime: 0xFF (2.4 ms) .. 0x00 (614 ms); default 0xC0 = 153.6 ms, full 0-65535 range.\n        gain: 1, 4, 16 or 60.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        dev_id = self._read8(_ID)\n        # 0x44 = TCS34721/TCS34725, 0x4D = TCS34723/TCS34727 (sold on some clone boards)\n        if dev_id not in (0x44, 0x4D):\n            raise OSError('TCS34725 not found (ID 0x%02X): check the wiring' % dev_id)\n        self.set_integration(atime)\n        self.set_gain(gain)\n        self._write8(_ENABLE, _PON)\n        time.sleep_ms(3)  # datasheet: at least 2.4 ms after PON before enabling the ADC\n        self._write8(_ENABLE, _PON | _AEN)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto(self.addr, bytes((_CMD | reg, value & 0xFF)))\n\n    def _read8(self, reg):\n        self.i2c.writeto(self.addr, bytes((_CMD | reg,)))\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def set_integration(self, atime):\n        self.atime = atime & 0xFF\n        self._write8(_ATIME, self.atime)\n\n    def set_gain(self, gain):\n        if gain not in _GAINS:\n            raise ValueError('gain must be 1, 4, 16 or 60')\n        self.gain = gain\n        self._write8(_CONTROL, _GAINS[gain])\n\n    def integration_ms(self):\n        return 2.4 * (256 - self.atime)\n\n    def max_count(self):\n        return min(65535, 1024 * (256 - self.atime))\n\n    def read_raw(self):\n        \"\"\"Return (clear, red, green, blue) ADC counts from a completed integration.\"\"\"\n        # RGBC init (2.4 ms) plus one integration cycle, then wait for AVALID.\n        deadline = time.ticks_add(time.ticks_ms(), int(self.integration_ms() * 2) + 50)\n        while not (self._read8(_STATUS) & _AVALID):\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('TCS34725 timed out waiting for a reading')\n            time.sleep_ms(5)\n        self.i2c.writeto(self.addr, bytes((_CMD | _AUTO_INC | _CDATAL,)))\n        d = self.i2c.readfrom(self.addr, 8)\n        c = d[0] | (d[1] << 8)\n        r = d[2] | (d[3] << 8)\n        g = d[4] | (d[5] << 8)\n        b = d[6] | (d[7] << 8)\n        return c, r, g, b\n\n    def saturated(self, clear):\n        return clear >= self.max_count()\n\n    def sleep(self):\n        self._write8(_ENABLE, 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tcs34725 import TCS34725\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TCS34725(i2c)\nwhile True:\n    c, r, g, b = sensor.read_raw()\n    print('C=%d R=%d G=%d B=%d' % (c, r, g, b))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the clear, red, green and blue counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 5200
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "green",
+          "value": 3900
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "blue",
+          "value": 2100
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "C=12000 R=5200 G=3900 B=2100",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:14:17.180Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/TCS34725.pdf",
+      "https://www.adafruit.com/product/1334",
+      "https://learn.adafruit.com/adafruit-color-sensors"
+    ]
+  }
+}
