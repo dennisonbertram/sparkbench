@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-encoder",
+  "board": "M5Stack Unit Encoder (SKU U135)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test, PCB). Modelled from M5Stack's register map: signed 16-bit little-endian counter at 0x10, switch at 0x20 (0 = pressed, per M5Stack's Arduino example and UIFlow driver; the protocol PDF says otherwise), 10k pull-ups to the onboard 3.3 V.",
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/801/Unit-Encoder_Protocol.pdf",
+  "breakoutPinoutSource": "https://docs.m5stack.com/en/unit/encoder (PinMap GND/5V/SDA/SCL) and schematic https://static-cdn.m5stack.com/resource/docs/products/unit/encoder/encoder_sch_01.webp",
+  "checkRuns": 1
+}

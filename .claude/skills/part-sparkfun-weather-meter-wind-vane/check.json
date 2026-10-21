@@ -1,0 +1,79 @@
+{
+  "type": "custom-sparkfun-weather-meter-wind-vane",
+  "mpn": "SEN-15901 wind vane",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "2 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.WDIR → D32 (GPIO32) — an analog-capable pin. Added a 10 kΩ resistor from WDIR to 3V3, as the datasheet's circuit requires. Added the wind_vane.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the direction for the reed switches the vane's magnet closes: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "49×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "2 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.WDIR → GP28 (GPIO28) — an analog-capable pin. Added a 10 kΩ resistor from WDIR to 3V3, as the datasheet's circuit requires. Added the wind_vane.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the direction for the reed switches the vane's magnet closes: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:14:48.905Z"
+}

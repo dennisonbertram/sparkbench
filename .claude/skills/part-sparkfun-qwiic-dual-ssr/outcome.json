@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sparkfun-qwiic-dual-ssr",
+  "board": "SparkFun Qwiic Dual Solid State Relay (COM-16810)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board). The command protocol comes from SparkFun's ATtiny84 firmware: toggle 0x01/0x02, status 0x05/0x06 returning 0x0F or 0x00, all off/on 0x0A/0x0B, slow PWM 0x10/0x11, address 0x0A. The header order GND, 3V3, SDA, SCL, RST comes from SparkFun's hookup-guide photo and schematic.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/7/4/5/8/7/SSRF_Data_Sheet_0409.pdf",
+  "breakoutPinoutSource": "https://cdn.sparkfun.com/r/600-600/assets/learn_tutorials/1/1/8/7/Qwiic_Dual_SSR_Qwiic-I2C.jpg",
+  "checkRuns": 1
+}

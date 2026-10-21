@@ -1,0 +1,397 @@
+{
+  "type": "custom-sparkfun-qwiic-dual-ssr",
+  "name": "SparkFun Qwiic Dual Solid State Relay",
+  "mpn": "COM-16810",
+  "category": "actuator",
+  "description": "I2C-controlled board with two TE SSRF-240D25 zero-cross solid state relays (SPST-NO, AC loads only, 12-280 VAC, 10 A with convection cooling / 25 A with forced air). An ATtiny84 running SparkFun's Qwiic Dual Solid State Relay firmware drives each relay input from 3.3 V through a transistor. Runs on 3.3 V, about 50 mA with both relays on; I2C address 0x0A (0x0B with the ADR jumper cut, or any address stored in EEPROM). Sold as: SparkFun Qwiic Dual Solid State Relay (COM-16810), 2 Qwiic connectors plus a 5-pin 0.1\" header GND, 3V3, SDA, SCL, RST and a 2-way screw terminal per relay.",
+  "eli5": "Two silent electronic switches for mains-powered things (lamps, heaters) that your board turns on and off over two I2C wires.",
+  "refPrefix": "K",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V (no regulator; feeds the ATtiny84, the I2C pull-ups and the SSR inputs, about 20 mA per relay that is on). Never 5 V: SDA/SCL are pulled up to this pin.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 4700,
+      "description": "I2C data (4.7 k pull-up to 3V3 on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 4700,
+      "description": "I2C clock (4.7 k pull-up to 3V3 on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "boardPullUp": 4700,
+      "description": "ATtiny84 reset, active low (4.7 k pull-up on the board). Leave unconnected for normal use.",
+      "required": false
+    }
+  ],
+  "vmin": 3.2,
+  "vmax": 3.6,
+  "currentMa": 50,
+  "i2cAddress": 10,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/7/4/5/8/7/SSRF_Data_Sheet_0409.pdf",
+  "priceUsd": 60,
+  "supplierQuery": "SparkFun Qwiic Dual Solid State Relay COM-16810",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Commands are bytes written to 0x0A: 0x01 / 0x02 toggle relay 1 / 2, 0x0A all off, 0x0B all on. There is no per-relay on/off command: write 0x05 (relay 1) or 0x06 (relay 2) and read 1 byte (0x0F on, 0x00 off), then toggle only if needed.",
+    "Do not use the firmware's toggle-all command 0x0C: it flips the status bytes but writes the wrong ATtiny pins, so a relay can stay on while status says off. Toggle each relay instead.",
+    "Slow PWM: write 0x10 (relay 1) or 0x11 (relay 2) followed by 0-120 for an on time of n/120 of a 1 s period (0 = off). While any relay runs PWM, relays left at PWM 0 are switched off every period.",
+    "AC loads only (12-280 VAC). The SSRs are normally open; a zero-cross SSR also leaks up to 0.1 mA when off, enough to make some LED lamps glow.",
+    "10 A per relay without a fan (25 A only with forced air cooling). Use wire rated for the load current.",
+    "Mains on the screw terminals is dangerous: cut one wire of the load cable and land both ends on one relay's terminal, with the plug pulled. Keep fingers off the board while it is plugged in.",
+    "The board has 4.7 k I2C pull-ups; cut the I2C jumper if many pulled-up boards share the bus."
+  ],
+  "keywords": [
+    "qwiic dual ssr",
+    "qwiic dual solid state relay",
+    "com-16810",
+    "sparkfun ssr",
+    "solid state relay",
+    "i2c relay",
+    "ssrf-240d25",
+    "attiny84"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x05": 0,
+      "0x06": 0,
+      "0x07": 0,
+      "0x08": 0,
+      "0x10": 0,
+      "0x11": 0,
+      "0x12": 0,
+      "0x13": 0
+    },
+    "commands": [
+      {
+        "code": 1,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 2,
+        "actions": [
+          {
+            "reg": "0x06",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 3,
+        "actions": [
+          {
+            "reg": "0x07",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 4,
+        "actions": [
+          {
+            "reg": "0x08",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 5,
+        "read": [
+          "0x05",
+          "0x06",
+          "0x07",
+          "0x08"
+        ],
+        "then": 9
+      },
+      {
+        "code": 6,
+        "read": [
+          "0x06",
+          "0x07",
+          "0x08"
+        ],
+        "then": 9
+      },
+      {
+        "code": 7,
+        "read": [
+          "0x07",
+          "0x08"
+        ],
+        "then": 9
+      },
+      {
+        "code": 8,
+        "read": [
+          "0x08"
+        ],
+        "then": 9
+      },
+      {
+        "code": 10,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "set",
+            "value": 0
+          },
+          {
+            "reg": "0x06",
+            "op": "set",
+            "value": 0
+          },
+          {
+            "reg": "0x07",
+            "op": "set",
+            "value": 0
+          },
+          {
+            "reg": "0x08",
+            "op": "set",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "code": 11,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "set",
+            "value": 15
+          },
+          {
+            "reg": "0x06",
+            "op": "set",
+            "value": 15
+          },
+          {
+            "reg": "0x07",
+            "op": "set",
+            "value": 15
+          },
+          {
+            "reg": "0x08",
+            "op": "set",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 12,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "xor",
+            "value": 15
+          },
+          {
+            "reg": "0x06",
+            "op": "xor",
+            "value": 15
+          },
+          {
+            "reg": "0x07",
+            "op": "xor",
+            "value": 15
+          },
+          {
+            "reg": "0x08",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 16,
+        "data": 1,
+        "actions": [
+          {
+            "reg": "0x10",
+            "op": "set",
+            "value": "data"
+          }
+        ],
+        "read": [
+          "0x10",
+          "0x11",
+          "0x12",
+          "0x13"
+        ],
+        "then": 5
+      },
+      {
+        "code": 17,
+        "data": 1,
+        "actions": [
+          {
+            "reg": "0x11",
+            "op": "set",
+            "value": "data"
+          }
+        ],
+        "read": [
+          "0x11",
+          "0x12",
+          "0x13"
+        ],
+        "then": 5
+      },
+      {
+        "code": 18,
+        "data": 1,
+        "actions": [
+          {
+            "reg": "0x12",
+            "op": "set",
+            "value": "data"
+          }
+        ],
+        "read": [
+          "0x12",
+          "0x13"
+        ],
+        "then": 5
+      },
+      {
+        "code": 19,
+        "data": 1,
+        "actions": [
+          {
+            "reg": "0x13",
+            "op": "set",
+            "value": "data"
+          }
+        ],
+        "read": [
+          "0x13"
+        ],
+        "then": 5
+      },
+      {
+        "code": 199,
+        "data": 1
+      }
+    ],
+    "outputBits": [
+      {
+        "reg": "0x05",
+        "bit": 0,
+        "name": "SSR1"
+      },
+      {
+        "reg": "0x06",
+        "bit": 0,
+        "name": "SSR2"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_dual_ssr.py",
+    "code": "# SparkFun Qwiic Dual Solid State Relay (COM-16810), MicroPython driver.\n# The board's ATtiny84 runs SparkFun's Qwiic_Dual_Solid_State_Relay firmware: written bytes are\n# commands, not a register pointer.\n#   0x01 / 0x02         toggle relay 1 / relay 2 (there is no plain \"on\" or \"off\" per relay)\n#   0x05 / 0x06         status: then read 1 byte, 0x0F = on, 0x00 = off\n#   0x0A / 0x0B         all relays off / all relays on\n#   0x10 / 0x11 <n>     slow PWM for relay 1 / 2: n = 0-120 steps of a 1 s period (0 = PWM off,\n#                       120 = always on); write the code alone then read 1 byte to get n back\n#   0xC7 <addr>         store a new I2C address (0x08-0x77) in EEPROM\n# 0x0C (toggle all) is NOT used: in the shipped firmware it updates the status bytes but writes\n# the wrong ATtiny pins, so the outputs can end up out of step with what status reports.\n# on()/off() read the status first and toggle only if needed, exactly as SparkFun's library does.\nimport time\n\nCMD_TOGGLE = (0x01, 0x02)\nCMD_STATUS = (0x05, 0x06)\nCMD_ALL_OFF = 0x0A\nCMD_ALL_ON = 0x0B\nCMD_PWM = (0x10, 0x11)\nCMD_CHANGE_ADDRESS = 0xC7\nSTATUS_ON = 0x0F\n\n\nclass QwiicDualSSR:\n    def __init__(self, i2c, addr=0x0A):\n        self.i2c = i2c\n        self.addr = addr\n\n    @staticmethod\n    def _idx(relay):\n        if relay not in (1, 2):\n            raise ValueError('relay must be 1 or 2')\n        return relay - 1\n\n    def _write(self, *b):\n        self.i2c.writeto(self.addr, bytes(b))\n\n    def _read(self, cmd):\n        self._write(cmd)\n        time.sleep_ms(1)  # let the ATtiny's I2C interrupt latch the command\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def state(self, relay):\n        \"\"\"1 if the relay is switched on (load powered), 0 if off.\"\"\"\n        return 1 if self._read(CMD_STATUS[self._idx(relay)]) == STATUS_ON else 0\n\n    def toggle(self, relay):\n        self._write(CMD_TOGGLE[self._idx(relay)])\n\n    def on(self, relay):\n        if not self.state(relay):\n            self.toggle(relay)\n\n    def off(self, relay):\n        if self.state(relay):\n            self.toggle(relay)\n\n    def value(self, relay, v=None):\n        if v is None:\n            return self.state(relay)\n        if v:\n            self.on(relay)\n        else:\n            self.off(relay)\n\n    def all_on(self):\n        self._write(CMD_ALL_ON)\n\n    def all_off(self):\n        self._write(CMD_ALL_OFF)\n\n    def toggle_all(self):\n        # Done per relay because the firmware's 0x0C command drives the wrong pins.\n        self.toggle(1)\n        self.toggle(2)\n\n    def set_slow_pwm(self, relay, steps):\n        \"\"\"Slow 1 Hz PWM: steps 0-120 (each 1/120 s, one 60 Hz half-cycle). 0 stops PWM.\n        While any relay runs PWM, the firmware forces relays with PWM 0 off each period.\"\"\"\n        if not 0 <= steps <= 120:\n            raise ValueError('steps must be 0-120')\n        self._write(CMD_PWM[self._idx(relay)], steps)\n\n    def get_slow_pwm(self, relay):\n        return self._read(CMD_PWM[self._idx(relay)])\n\n    def change_address(self, new_addr):\n        \"\"\"Store a new I2C address (0x08-0x77) in EEPROM. Used only while the ADR jumper is closed.\"\"\"\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._write(CMD_CHANGE_ADDRESS, new_addr)\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_dual_ssr import QwiicDualSSR\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nssr = QwiicDualSSR(i2c)  # 0x0A; 0x0B with the ADR jumper cut open\nssr.all_off()\nwhile True:\n    ssr.on(1)\n    ssr.off(2)\n    print('SSR1=%d SSR2=%d' % (ssr.state(1), ssr.state(2)))\n    time.sleep(1)\n    ssr.off(1)\n    ssr.on(2)\n    print('SSR1=%d SSR2=%d' % (ssr.state(1), ssr.state(2)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "switches",
+      "title": "The two solid state relays switch alternately over I2C and report their state",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR1=1 SSR2=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SSR1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SSR2",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR1=0 SSR2=1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SSR1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SSR2",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.sparkfun.com/products/16810",
+    "https://learn.sparkfun.com/tutorials/sparkfun-qwiic-dual-solid-state-relay-hookup-guide/all",
+    "https://cdn.sparkfun.com/r/600-600/assets/learn_tutorials/1/1/8/7/Qwiic_Dual_SSR_Qwiic-I2C.jpg",
+    "https://cdn.sparkfun.com/assets/6/8/4/0/a/Qwiic_Dual_Solid_State_Relay_Schematic.pdf",
+    "https://cdn.sparkfun.com/assets/7/4/5/8/7/SSRF_Data_Sheet_0409.pdf",
+    "https://github.com/sparkfun/Qwiic_Dual_Solid_State_Relay/blob/master/Firmware/Qwiic_Dual_Solid_State_Relay_Firmware/Qwiic_Dual_Solid_State_Relay_Firmware.ino",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Relay_Arduino_Library"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:07:29.520Z",
+    "verifiedSources": [
+      "https://www.sparkfun.com/sparkfun-qwiic-dual-solid-state-relay.html",
+      "https://cdn.sparkfun.com/assets/6/8/4/0/a/Qwiic_Dual_Solid_State_Relay_Schematic.pdf"
+    ]
+  }
+}

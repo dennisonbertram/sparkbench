@@ -1,0 +1,163 @@
+{
+  "type": "custom-sparkfun-weather-meter-rain-gauge",
+  "name": "SparkFun Weather Meter rain gauge",
+  "mpn": "SEN-15901 rain gauge",
+  "category": "sensor",
+  "description": "Self-emptying tipping-bucket rain gauge from the SparkFun Weather Meter Kit: a magnet on the bucket closes a sealed reed switch once per tip, one momentary closure per 0.2794 mm (0.011 in) of rain. Passive, not polarised, no supply: wire one centre conductor of its RJ11 cable to GND and the other to a GPIO with a pull-up (datasheet circuit: 100 kOhm to VCC + 10 pF) and count falling edges with an interrupt. Sold as: SparkFun Weather Meter Kit SEN-15901 (made by Shenzhen Fine Offset), rain gauge on an RJ11-terminated cable with the switch on the two centre conductors (RAIN, GND).",
+  "eli5": "A little see-saw bucket that fills with rain. Every time it holds 0.28 mm of rain it tips over and empties, and a magnet clicks a switch. Your board counts the clicks to know how much it rained.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "RAIN",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "One RJ11 centre conductor (RAIN_COUNT): connect to a GPIO with the internal pull-up on (or a pull-up to 3.3 V). Idles at 1, pulses to 0 once per bucket tip (0.2794 mm of rain)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "The other RJ11 centre conductor: connect to ground (the switch is not polarised)",
+      "required": true
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf",
+    "https://learn.sparkfun.com/tutorials/weather-meter-hookup-guide/all",
+    "https://www.sparkfun.com/products/15901"
+  ],
+  "priceUsd": 79.95,
+  "supplierQuery": "SparkFun Weather Meter Kit SEN-15901",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "The rain gauge has its own RJ11 plug; the switch is on the two centre conductors. Use an RJ11 jack/breakout or cut the plug off and solder the centre pair to a 2-pin header.",
+    "Not polarised: either centre wire to GND, the other to the GPIO with Pin.PULL_UP (datasheet circuit: 100 kOhm pull-up to VCC and 10 pF to GND). Pull up to 3.3 V, never 5 V.",
+    "Each tip = 0.2794 mm (0.011 in) of rain. Rainfall (mm) = tips x 0.2794; rain rate = tips in an hour x 0.2794 mm/h.",
+    "Count falling edges with Pin.irq; the reed bounces, so ignore edges for a few hundred ms after each counted tip (the driver uses 500 ms).",
+    "Mount it level and away from the wind vane/anemometer so they don't block or drip into the funnel; clear debris regularly."
+  ],
+  "keywords": [
+    "rain gauge",
+    "rainfall",
+    "tipping bucket",
+    "weather meter",
+    "weather station",
+    "sen-15901",
+    "sparkfun",
+    "reed switch",
+    "rain",
+    "precipitation"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "GND"
+    ],
+    "colPins": [
+      "RAIN"
+    ],
+    "keys": [
+      [
+        "TIP"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "rain_gauge.py",
+    "code": "# SparkFun Weather Meter Kit (SEN-15901) tipping-bucket rain gauge, MicroPython driver.\n# The gauge is passive: a sealed reed switch on the two centre conductors of its RJ11 cable\n# closes momentarily each time the self-emptying bucket tips, once per 0.2794 mm (0.011 in)\n# of rain (SparkFun datasheet / hookup guide). Not polarised, no supply, no chip.\n# Wire one conductor to GND and the other to a GPIO with a pull-up; each tip pulls the pin\n# low briefly. Reed contacts bounce for a few ms on closing and again on opening, so after a\n# counted tip every further falling edge is ignored for lockout_ms (default 500 ms). That caps\n# the count at 2 tips/s (about 2000 mm/h), far above any real rain rate (the datasheet also\n# suggests an RC filter at the connector against bounce and noise on long cables).\nimport machine\nfrom machine import Pin\nimport time\n\nMM_PER_TIP = 0.2794\n\n\nclass RainGauge:\n    def __init__(self, pin, mm_per_tip=MM_PER_TIP, lockout_ms=500, pull_up=True):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.mm_per_tip = mm_per_tip\n        self.lockout_ms = lockout_ms\n        self._tips = 0\n        self._last = time.ticks_add(time.ticks_ms(), -lockout_ms)\n        self.pin.irq(trigger=Pin.IRQ_FALLING, handler=self._on_edge)\n\n    def _on_edge(self, p):\n        # Each bucket tip closes the reed switch once: count the first falling edge and ignore\n        # the bounce (closing and opening) that follows within lockout_ms.\n        now = time.ticks_ms()\n        if time.ticks_diff(now, self._last) >= self.lockout_ms:\n            self._tips += 1\n            self._last = now\n\n    def tips(self):\n        \"\"\"Bucket tips counted since start-up or the last reset().\"\"\"\n        return self._tips\n\n    def rainfall_mm(self):\n        \"\"\"Accumulated rain in millimetres (tips x 0.2794 mm).\"\"\"\n        return self._tips * self.mm_per_tip\n\n    def rainfall_in(self):\n        \"\"\"Accumulated rain in inches (tips x 0.011 in).\"\"\"\n        return self.rainfall_mm() / 25.4\n\n    def reset(self):\n        \"\"\"Clear the tip count.\"\"\"\n        s = machine.disable_irq()\n        self._tips = 0\n        machine.enable_irq(s)\n\n    def take(self):\n        \"\"\"Return the tips counted since the last take() and clear the count (for per-interval rates).\"\"\"\n        s = machine.disable_irq()\n        n = self._tips\n        self._tips = 0\n        machine.enable_irq(s)\n        return n\n"
+  },
+  "skill": "---\nname: part-sparkfun-weather-meter-rain-gauge\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the SparkFun Weather Meter Kit (SEN-15901) tipping-bucket rain gauge (reed switch, one momentary closure per 0.2794 mm / 0.011 in of rain, RJ11 cable). Use when designing, wiring, simulating or writing code for a rain gauge / rainfall sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# SparkFun Weather Meter rain gauge (SEN-15901 kit)\n\n## Overview\nThe rain gauge from the **SparkFun Weather Meter Kit (SEN-15901)** is a self-emptying **tipping bucket**. Each time **0.2794 mm (0.011 in)** of rain has collected, the bucket tips, empties itself, and a magnet sweeps past a sealed **reed switch**, giving **one momentary contact closure**. There are no electronics in it: count the closures with a GPIO interrupt.\n- 1 tip = 0.2794 mm of rain; rainfall (mm) = tips x 0.2794; inches = tips x 0.011\n- Passive, not polarised, no supply pin. It needs a pull-up so the closure can be seen.\n- Comes on an RJ11-terminated cable; the switch is on the **two centre conductors**.\n\n## Pinout (two centre conductors of the RJ11 plug, not polarised)\n| Sparkbench pin | Wire | Function |\n|---|---|---|\n| RAIN | RJ11 centre conductor (RAIN_COUNT in the datasheet circuit) | Switch lead: to a GPIO with the internal pull-up on |\n| GND | The other RJ11 centre conductor | Other switch lead: to ground |\n\nEither centre wire can be GND. Use an RJ11 breakout / jack (SparkFun's weather carrier boards have one) or cut the plug off; it is wired with jumper leads, not plugged into the breadboard.\n\n## Electrical limits\n- Just a reed switch: with a 3.3 V GPIO pull-up only microamps flow. Never put 5 V on the RAIN line of an ESP32 / Pico.\n- No supply needed. The datasheet's reference circuit is a **100 kOhm pull-up from RAIN_COUNT to VCC plus 10 pF to GND**; on ESP32 / Pico the internal pull-up (about 50 kOhm) does the same job. Use VCC = 3.3 V, never 5 V. On a long cable a stronger external pull-up (10 kOhm to 3.3 V) helps against noise.\n\n## Interface details\n- Pulled up: RAIN reads **1 idle, 0 during a tip** (a short pulse, tens of ms).\n- Count falling edges with `Pin.irq`. The reed bounces on closing **and** opening, so the driver counts the first falling edge and ignores further edges for `lockout_ms` (500 ms default, i.e. at most 2 tips/s, about 2000 mm/h, well above any real rain).\n- Rain rate: count tips over an interval, e.g. tips per hour x 0.2794 = mm/h.\n- Polling instead of an interrupt can miss the brief closure; use the IRQ.\n\n## Wiring\n| Gauge | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| RAIN | GPIO4 (pull-up on) | GP15 (pull-up on) | GPIO17 (pull-up on) |\n| GND | GND | GND | GND |\n\n## Using the driver\n```python\nfrom rain_gauge import RainGauge\nimport time\nrain = RainGauge(4)            # GPIO the RAIN wire is on, internal pull-up enabled\nwhile True:\n    print('Rain=%.4f mm (%d tips)' % (rain.rainfall_mm(), rain.tips()))\n    time.sleep(10)\n```\n`rain.take()` returns the tips since the last call and clears them (for per-interval rates); `rain.reset()` clears the total; `rainfall_in()` gives inches.\n\n## Gotchas\n- Mount it **level** (newer versions have a bubble level) and away from the wind sensors so they don't block or drip into it.\n- The RJ11 is a 6P4C-style plug: only the centre pair is used for the rain gauge; the anemometer/vane cable is a separate plug.\n- Each tip is 0.2794 mm by design; calibrate by pouring a known volume slowly if accuracy matters (funnel area x depth).\n- Debris or insects in the funnel stop the bucket; clean it regularly.\n\n## Datasheet\nhttps://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf and https://learn.sparkfun.com/tutorials/weather-meter-hookup-guide\n",
+  "example": {
+    "code": "from rain_gauge import RainGauge\nimport time\n\nrain = RainGauge({RAIN})  # internal pull-up on; each bucket tip pulls RAIN low once\nlast = -1\nwhile True:\n    n = rain.tips()\n    if n != last:\n        print('Rain=%.4f mm (%d tips)' % (rain.rainfall_mm(), n))\n        last = n\n    time.sleep(0.1)\n",
+    "test": {
+      "id": "counts",
+      "title": "Counts three bucket tips as 0.8382 mm of rain",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "wait",
+          "ms": 150
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 600
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "wait",
+          "ms": 150
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 600
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "wait",
+          "ms": 150
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 600
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Rain=0.8382 mm (3 tips)",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:15:08.947Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf",
+      "https://www.sparkfun.com/products/15901"
+    ]
+  }
+}

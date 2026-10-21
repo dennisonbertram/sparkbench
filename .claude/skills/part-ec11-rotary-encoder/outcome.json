@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ec11-rotary-encoder",
+  "board": "Alps Alpine EC11E15244B2 bare EC11 rotary encoder with push switch (pins A, C, B / D, E; 30 detents, 15 pulses)",
+  "reason": "Check passed on ESP32 and Pico (2 runs). The part is modelled as three passive contacts (A-C, B-C, D-E) with resistive-sensor elements, with 3.3k/4.7k pull-ups from the datasheet's 1 mA / 0.5 mA minimum contact currents. Phasing (A leads B CW, detents at 11/00) is from the Alps output-wave figure; the part is cabled because the real footprint's lettered pads do not map to the numbered pins.",
+  "datasheetUrl": "https://tech.alpsalpine.com/cms.media/product_catalog_ec_01_ec11e_en_611f078659.pdf",
+  "breakoutPinoutSource": "Alps EC11E catalog Drawing No.3 (terminals A C B, switch D E) and product page https://tech.alpsalpine.com/e/products/detail/EC11E15244B2/",
+  "checkRuns": 2
+}

@@ -1,0 +1,16 @@
+{
+  "diffs": [
+    {
+      "diff": "minimum supply: part 4.5 V, datasheet reading 5 V",
+      "verdict": "part-correct",
+      "evidence": "M5Stack gives only the nominal port supply ('Encoder operation (DC 5V@17mA)', PinMap GND/5V/SDA/SCL) with no tolerance; the 5V pin feeds the SK6812 LEDs directly (the STM32 sits behind an HT7533 3.3 V LDO), and the SK6812 datasheet characterises the LED at 'VDD=4.5 ~ 5.5V', so 4.5 V is the correct lower bound around the 5 V nominal rather than a different value.",
+      "source": "https://docs.m5stack.com/en/unit/encoder ; https://cdn-shop.adafruit.com/product-files/2686/SK6812MINI_REV.01-1-2.pdf"
+    },
+    {
+      "diff": "maximum supply: part 5.5 V, datasheet reading 5 V",
+      "verdict": "part-correct",
+      "evidence": "The second reading copied M5Stack's nominal 'Encoder operation (DC 5V@17mA)'; the component actually tied to the 5V pin is the SK6812, whose datasheet rates 'Power supply voltage' at '+3.5～+5.5' V and specifies operation at 'VDD=4.5 ~ 5.5V', so 5.5 V is the correct maximum (the HT7533 LDO feeding the STM32 tolerates far more).",
+      "source": "https://docs.m5stack.com/en/unit/encoder ; https://cdn-shop.adafruit.com/product-files/2686/SK6812MINI_REV.01-1-2.pdf"
+    }
+  ]
+}

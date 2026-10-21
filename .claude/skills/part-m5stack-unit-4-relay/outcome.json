@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-4-relay",
+  "board": "M5Stack Unit 4Relay (SKU U097)",
+  "reason": "Register-mapped STM32F030 relay controller at 0x26 (0x10 LED-sync mode, 0x11 relays bits 0-3 / LEDs bits 4-7, per M5Stack's Arduino and UiFlow2 libraries) modelled as an i2c-device with outputBits RELAY1-4; the board has no I2C pull-ups, so 4.7 kohm loads to 3V3 are added. The check passed on ESP32 and Pico (relays 1 and 3 switch and read back).",
+  "datasheetUrl": "https://docs.m5stack.com/en/unit/4relay",
+  "breakoutPinoutSource": "https://docs.m5stack.com/en/unit/4relay (PinMap: HY2.0-4P GND, 5V, SDA, SCL) and schematic https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/589/Sch_UNIT-4RELAY.pdf",
+  "checkRuns": 2
+}

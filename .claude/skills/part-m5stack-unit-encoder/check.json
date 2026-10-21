@@ -1,0 +1,79 @@
+{
+  "type": "custom-m5stack-unit-encoder",
+  "mpn": "U135",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; M5Stack Unit Encoder (I2C rotary encoder with RGB LEDs) needs at least 4.5 V, so it is powered from 5 V. It shares the I2C bus (SDA D21, SCL D22) at address 0x40. Added the m5_unit_encoder.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the encoder count and the knob switch: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; M5Stack Unit Encoder (I2C rotary encoder with RGB LEDs) needs at least 4.5 V, so it is powered from 5 V. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x40. Added the m5_unit_encoder.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the encoder count and the knob switch: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C5381708 PTU1350P (158 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:11:25.049Z"
+}

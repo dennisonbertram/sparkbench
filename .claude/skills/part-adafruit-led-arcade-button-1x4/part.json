@@ -1,0 +1,214 @@
+{
+  "type": "custom-adafruit-led-arcade-button-1x4",
+  "name": "Adafruit LED Arcade Button 1x4 STEMMA QT I2C",
+  "mpn": "Adafruit 5296",
+  "category": "input",
+  "description": "Controller for four LED arcade buttons, read and lit over I2C: an ATtiny817 running Adafruit seesaw firmware reads the button switches (seesaw pins 18, 19, 20, 2; pressed = 0) and PWM-dims the button LEDs (seesaw pins 12, 13, 0, 1) through BSS138 low-side switches fed by an on-board 5 V charge pump. Runs on 3-5 V (no regulator: the ATtiny and the 10 k SDA/SCL pull-ups run from VIN, so power it at your board's logic voltage). Sold as: Adafruit LED Arcade Button 1x4 - STEMMA QT I2C Breakout (product 5296), two identical 6-pad rows VIN, GND, SCL, SDA, INT, UPDI plus two STEMMA QT sockets and eight JST XH sockets, I2C address 0x3A (0x3A-0x49 with jumpers A0-A3).",
+  "eli5": "A little board that plugs into four glowing arcade buttons; a tiny chip on it tells your board which buttons are pressed and turns their lights on, all over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V; use your board's logic voltage (3.3 V on ESP32/Pico) because the ATtiny and the I2C pull-ups run from VIN",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up to VIN on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up to VIN on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "seesaw interrupt output, goes low on a button change once enabled (GPIO_INTENSET); swings to VIN; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "UPDI",
+      "role": "nc",
+      "description": "ATtiny817 programming pin (UPDI); leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 100,
+  "i2cAddress": 58,
+  "datasheetUrl": "https://cdn-learn.adafruit.com/assets/assets/000/105/460/original/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf",
+  "sources": [
+    "https://www.adafruit.com/product/5296",
+    "https://learn.adafruit.com/adafruit-led-arcade-button-qt/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/108/545/large1024/adafruit_products_AQT_pinouts_headers_front.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/108/544/large1024/adafruit_products_AQT_pinouts_headers_back.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/108/567/large1024/adafruit_products_AQT_sch.png",
+    "https://github.com/adafruit/Adafruit_seesawPeripheral/blob/main/examples/example_pid5296/example_pid5296.ino",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/examples/seesaw_arcade_qt_simpletest.py",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/seesaw.py",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/attiny8x7.py",
+    "https://cdn-learn.adafruit.com/assets/assets/000/105/460/original/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf"
+  ],
+  "priceUsd": 9.95,
+  "supplierQuery": "Adafruit 5296 LED Arcade Button 1x4 STEMMA QT",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Every seesaw access is a write of two bytes, module base then function register; for a read wait about 8 ms, then read the bytes back, big-endian.",
+    "Buttons 1-4 are seesaw pins 18, 19, 20, 2: set them input with pull-up (DIRCLR_BULK 0x01 0x03, PULLENSET 0x01 0x0B, BULK_SET 0x01 0x05, mask 0x001C0004), then read GPIO_BULK (0x01 0x04, 4 bytes); a bit reads 0 while its button is pressed.",
+    "LEDs 1-4 are seesaw pins 12, 13, 0, 1: write 0x08 0x01 then pin, duty high byte, duty low byte (0-65535).",
+    "Default address 0x3A; cut A0/A1/A2/A3 on the back to add 1/2/4/8 (up to 0x49).",
+    "Arcade buttons and JST XH quick-connect cables are not included: plug each button's switch into SWITCHn and its LED into LEDn.",
+    "The two 6-pad rows carry the same signals; solder headers to both for a breadboard, or use a STEMMA QT / Qwiic cable."
+  ],
+  "keywords": [
+    "arcade button",
+    "adafruit 5296",
+    "arcade qt",
+    "seesaw",
+    "attiny817",
+    "led buttons",
+    "stemma qt",
+    "qwiic",
+    "i2c buttons"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16,
+    "registers": {
+      "0x0001": 135
+    },
+    "inputBits": [
+      {
+        "reg": "0x0105",
+        "bit": 2,
+        "control": "btn1",
+        "label": "Button 1 pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0105",
+        "bit": 3,
+        "control": "btn2",
+        "label": "Button 2 pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0105",
+        "bit": 4,
+        "control": "btn3",
+        "label": "Button 3 pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 2,
+        "control": "btn4",
+        "label": "Button 4 pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "arcade_qt.py",
+    "code": "# Adafruit LED Arcade Button 1x4 STEMMA QT I2C breakout (product 5296, ATtiny817 running seesaw firmware),\n# MicroPython driver.\n# seesaw protocol: every access starts with a write of [module base, function register];\n# for a read, wait briefly, then read the bytes back (all values big-endian).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_SWRST = 0x7F\n_GPIO_BASE = 0x01\n_GPIO_DIRCLR_BULK = 0x03\n_GPIO_BULK = 0x04\n_GPIO_BULK_SET = 0x05\n_GPIO_INTENSET = 0x08\n_GPIO_INTENCLR = 0x09\n_GPIO_PULLENSET = 0x0B\n_TIMER_BASE = 0x08\n_TIMER_PWM = 0x01\n\n_HW_IDS = (0x87, 0x85, 0x89)  # ATtiny817 (this board); ATtiny807/1617 seesaw builds use the same pin map\nBUTTON_PINS = (18, 19, 20, 2)  # SWITCH1, SW #2, SW #3, SWITCH4 (pressed = shorted to GND)\nLED_PINS = (12, 13, 0, 1)      # LED1-LED4, PWM into BSS138 low-side switches from the on-board 5 V pump\n_BUTTON_MASK = 0\nfor _p in BUTTON_PINS:\n    _BUTTON_MASK |= 1 << _p\n\n\nclass ArcadeQT:\n    def __init__(self, i2c, addr=0x3A, reset=True, interrupt=False):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self._write(_STATUS_BASE, _STATUS_SWRST, b'\\xff')\n            time.sleep_ms(500)  # seesaw restarts after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw not in _HW_IDS:\n            raise OSError('seesaw not found at 0x%02x (HW_ID 0x%02x): check the wiring' % (addr, hw))\n        # Buttons: inputs with pull-ups (a pressed button shorts the pin to GND).\n        mask = _BUTTON_MASK.to_bytes(4, 'big')\n        self._write(_GPIO_BASE, _GPIO_DIRCLR_BULK, mask)\n        self._write(_GPIO_BASE, _GPIO_PULLENSET, mask)\n        self._write(_GPIO_BASE, _GPIO_BULK_SET, mask)\n        self._write(_GPIO_BASE, _GPIO_INTENSET if interrupt else _GPIO_INTENCLR, mask)\n        for i in range(4):\n            self.led(i, 0)\n\n    def _write(self, base, reg, data=b''):\n        self.i2c.writeto(self.addr, bytes([base, reg]) + bytes(data))\n\n    def _read(self, base, reg, n, delay_us=8000):\n        self.i2c.writeto(self.addr, bytes([base, reg]))\n        time.sleep_us(delay_us)  # seesaw needs time to fetch the value before the read\n        return self.i2c.readfrom(self.addr, n)\n\n    def buttons(self):\n        \"\"\"List of 4 booleans, True while button 1, 2, 3, 4 is pressed.\"\"\"\n        b = self._read(_GPIO_BASE, _GPIO_BULK, 4)\n        bits = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return [not (bits >> p) & 1 for p in BUTTON_PINS]\n\n    def __getitem__(self, i):\n        return self.buttons()[i]\n\n    def led(self, i, duty):\n        \"\"\"Set LED i (0-3) brightness, 0 (off) to 65535 (full on); 16-bit seesaw PWM value.\"\"\"\n        if not 0 <= i < 4:\n            raise IndexError('LED index 0-3')\n        duty = max(0, min(65535, int(duty)))\n        self._write(_TIMER_BASE, _TIMER_PWM, bytes([LED_PINS[i], duty >> 8, duty & 0xFF]))\n        time.sleep_ms(1)\n"
+  },
+  "skill": "---\nname: part-adafruit-led-arcade-button-1x4\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit LED Arcade Button 1x4 STEMMA QT I2C breakout (product 5296), which reads four arcade buttons and PWM-dims their LEDs over I2C with an ATtiny817 running seesaw firmware. Use when designing, wiring, simulating or writing code for this arcade button board in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit LED Arcade Button 1x4 STEMMA QT (Adafruit 5296)\n\n## Overview\nA 3\" x 0.8\" board with eight 2-pin JST XH sockets: four for arcade button switches (SWITCH1, SW #2, SW #3, SWITCH4) and four for the buttons' built-in LEDs (LED1-LED4). An **ATtiny817** running Adafruit's **seesaw** firmware reads the switches and PWM-dims the LEDs, so the whole board needs only SDA and SCL. Each LED is switched low-side by a BSS138 MOSFET from an on-board AP3602 5 V charge pump, so 5 V button LEDs light fully even from a 3.3 V supply. Two STEMMA QT / Qwiic sockets. Buttons and JST XH cables are sold separately.\n\n## Pinout (header order, as printed on the board)\nTwo identical 6-pad rows sit in the middle of the board (one on each long edge), so it is wired with jumper leads to one row or with a STEMMA QT cable. Seen from the top, from pin 1:\n\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3-5 V; powers the ATtiny817, the I2C pull-ups and the 5 V LED charge pump |\n| GND | Ground |\n| SCL | I2C clock, 10 k pull-up to VIN |\n| SDA | I2C data, 10 k pull-up to VIN |\n| INT | seesaw interrupt output (ATtiny pin PB2), goes low on a button change when enabled |\n| UPDI | ATtiny817 programming pin; leave unconnected |\n\n## Electrical limits\n- Supply: 3-5 V on VIN. There is no regulator: the ATtiny817 and the 10 k SDA/SCL pull-ups run straight from VIN, so power VIN from your board's logic voltage (3V3 for ESP32/Pico/Pi). INT also swings to VIN.\n- Current: a few mA for the ATtiny; the LEDs run from a 5 V charge pump, which draws roughly twice the LED current from VIN (about 10-20 mA per lit arcade LED at 5 V).\n- The LED sockets are low-side switched (BSS138); use the LEDs in Adafruit arcade buttons, which have their resistor built in.\n\n## Interface details\n- **I2C address 0x3A** by default. Cutting A0/A1/A2/A3 on the back adds 1/2/4/8 (0x3A-0x49, up to 16 boards).\n- seesaw protocol: write `[module base, function register]` plus any data. To read, write the two bytes, wait (8 ms, as Adafruit's libraries do), then read. Big-endian.\n- STATUS base 0x00: HW_ID 0x01 reads **0x87** (ATtiny817). SWRST 0x7F: write 0xFF, then wait about 500 ms.\n- Buttons: SWITCH1-SWITCH4 are seesaw pins **18, 19, 20, 2**. Set them input with pull-up: DIRCLR_BULK (0x01 0x03), PULLENSET (0x01 0x0B), BULK_SET (0x01 0x05), mask 0x001C0004. Read GPIO_BULK (0x01 0x04, 4 bytes); a bit reads 0 while its button is pressed. INTENSET (0x01 0x08) with the same mask enables INT.\n- LEDs: LED1-LED4 are seesaw pins **12, 13, 0, 1**. Write TIMER base 0x08, PWM 0x01, then pin, duty high byte, duty low byte (16-bit value, 0 = off, 65535 = full on; the firmware uses 8-bit PWM internally).\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VIN → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n- Or use a STEMMA QT / Qwiic cable.\n- Each arcade button: switch leads into SWITCHn, LED leads into LEDn (the LED socket's + pad is the 5 V side).\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom arcade_qt import ArcadeQT\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\narc = ArcadeQT(i2c)               # address 0x3A\nprint(arc.buttons())              # [1, 2, 3, 4] True = pressed\narc.led(0, 65535)                 # button 1 LED full on\narc.led(1, 8000)                  # button 2 LED dim\n```\n\n## Gotchas\n- Button order is 1, 2, 3, 4 = seesaw pins 18, 19, 20, 2 (not consecutive); LEDs are 12, 13, 0, 1.\n- Always wait a few ms between the register write and the read, or you get stale bytes.\n- An LED whose button has no LED, or is plugged in reversed, simply stays dark.\n- In the Sparkbench simulator the four buttons are toggles; LED PWM writes are accepted but not shown.\n\n## Datasheet\n- ATtiny817 (the chip): https://cdn-learn.adafruit.com/assets/assets/000/105/460/original/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf\n- Board guide: https://learn.adafruit.com/adafruit-led-arcade-button-qt\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom arcade_qt import ArcadeQT\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\narc = ArcadeQT(i2c)\nwhile True:\n    b = arc.buttons()\n    for i in range(4):\n        arc.led(i, 65535 if b[i] else 0)\n    print('buttons=%s' % ''.join('1' if p else '0' for p in b))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports which arcade buttons are pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btn1",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btn3",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "buttons=1010",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btn1",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btn3",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btn4",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "buttons=0001",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btn4",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btn2",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "buttons=0100",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:11:24.040Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/adafruit-led-arcade-button-qt/pinouts",
+      "https://www.adafruit.com/product/5296",
+      "https://raw.githubusercontent.com/adafruit/Adafruit_Seesaw/master/Adafruit_seesaw.h"
+    ]
+  }
+}

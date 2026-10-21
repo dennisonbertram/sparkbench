@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-water-pressure-transducer-0-1-2-mpa",
+  "board": "Seeed Studio Water Pressure Sensor G1/4 1.2MPa (SKU 114991178), generic 5 V G1/4 0-1.2 MPa transducer with red VCC / black GND / yellow OUT leads",
+  "reason": "Check passed on ESP32 and Pico. The model is linear and ratiometric: 0.5-4.5 V over 0-1.2 MPa at 5 V, Vout = VS(0.1 + 0.8P/1.2), per the Seeed spec. A 33k/68k divider keeps OUT under 3.3 V, and the driver scales by 101/68. Output impedance is set to 10 ohm for the amplified output; the datasheet gives no value. Seller pages also print Vout = VCC(0.75P + 0.1), but that does not fit the stated range, and SKILL.md says so.",
+  "datasheetUrl": "https://chipster.ru/upload/files/datasheet/3/4/5/345_file.pdf",
+  "breakoutPinoutSource": "Seeed 114991178 datasheet photo (red/black/yellow leads), direnc.net 1.2MPa listing ('yellow (DATA), red (VCC), black (GND)'), DFRobot SEN0257 wiki pinout (yellow signal, red 5 V, black GND)",
+  "checkRuns": 2
+}

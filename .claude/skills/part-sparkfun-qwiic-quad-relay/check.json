@@ -1,0 +1,79 @@
+{
+  "type": "custom-sparkfun-qwiic-quad-relay",
+  "mpn": "COM-16566",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. Added a separate 12 V supply for VIN (it needs 7–12 V and up to 250 mA, more than the board can give); its − joins the board's GND. It shares the I2C bus (SDA D21, SCL D22) at address 0x6d. Added the qwiic_quad_relay.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Relays follow on/off/toggle-all commands and report their states: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. Added a separate 12 V supply for VIN (it needs 7–12 V and up to 250 mA, more than the board can give); its − joins the board's GND. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x6d. Added the qwiic_quad_relay.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Relays follow on/off/toggle-all commands and report their states: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:08:02.682Z"
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sparkfun-weather-meter-rain-gauge",
+  "board": "SparkFun Weather Meter Kit SEN-15901 tipping-bucket rain gauge (RJ11 cable, switch on the two centre conductors)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test counting 3 tips = 0.8382 mm, PCB DRC). The passive two-wire reed switch has no supply pin, so it is modelled as a one-key keypad-matrix (each tip = one closure to GND) rather than a powered pulse-sensor; driver counts falling edges with a 500 ms bounce lockout.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf",
+  "breakoutPinoutSource": "https://learn.sparkfun.com/tutorials/weather-meter-hookup-guide/all",
+  "checkRuns": 1
+}

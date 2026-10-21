@@ -1,0 +1,126 @@
+{
+  "type": "custom-m5stack-unit-vibrator",
+  "name": "M5Stack Unit Vibrator (N20 motor, Grove)",
+  "mpn": "U059",
+  "category": "actuator",
+  "description": "M5Stack vibration unit: an N20 DC motor (8800 rpm no-load) with a metal eccentric weight, switched on the low side by an AO3400A N-channel MOSFET. DIN drives the gate through 1 kohm with a 51 kohm pull-down; a 1N4148WS flyback diode and 100 nF sit across the motor. DIN high = vibrate, low or floating = off; PWM on DIN (10 kHz recommended) sets the strength; 3.3 V or 5 V logic. The motor runs from the Grove 5 V and draws about 424 mA at 50 % duty, so feed 5V from a separate supply with a common ground. Single direction, no braking. Sold as: M5Stack Unit Vibrator (SKU U059), Grove HY2.0-4P port GND, 5V, DIN, NC (black, red, yellow, white), with a 20 cm Grove cable.",
+  "eli5": "A small motor with a lopsided brass weight: when your board sets DIN high it spins and the whole block shakes hard.",
+  "refPrefix": "M",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (black Grove wire), shared with the microcontroller and the 5 V supply; MOSFET source."
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "required": true,
+      "description": "Motor supply, 5 V (red wire). About 424 mA at 50 % PWM (M5Stack measurement), more at full on and start-up, so use a separate 5 V supply (1 A or more) with a common ground rather than a dev board's 5V/3V3 pin.",
+      "supply": {
+        "vmin": 5,
+        "vmax": 5,
+        "currentMa": 425
+      }
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Motor control (yellow wire): high = vibrate, low = off; PWM (10 kHz recommended) sets the strength. Drives the AO3400A gate through 1 kohm, with a 51 kohm pull-down so the motor is off while DIN floats. 3.3 V or 5 V logic."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (white wire, the Grove port's unused second signal line)."
+    }
+  ],
+  "vmin": 5,
+  "vmax": 5,
+  "currentMa": 425,
+  "datasheetUrl": "https://www.aosmd.com/res/datasheets/AO3400A.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "M5Stack Unit Vibrator U059",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove HY2.0-4P order from the M5Stack PinMap: GND (black), 5V (red), DIN (yellow), NC (white). The unit has a Grove socket, not header pins: use the Grove cable or a Grove-to-jumper cable.",
+    "Circuit (M5Stack schematic): DIN -> 1 kohm -> AO3400A gate, 51 kohm gate pull-down; motor from 5 V to the drain with a 1N4148WS flyback diode and 100 nF across it.",
+    "M5Stack measured 424 mA at 5 V with 10 kHz PWM at 50 % duty. Feed 5V from a separate 5 V supply (1 A or more) and join its ground to the board's GND; an M5Stack Core's Grove port can feed it directly.",
+    "DIN high = vibrate. The AO3400A is a logic-level MOSFET (VGS(th) 0.65-1.45 V, under 48 mohm at 2.5 V), so a 3.3 V GPIO switches it fully.",
+    "For a gentler buzz use machine.PWM at 10 kHz (M5Stack's recommendation) with a lower duty; very low duty may not start the motor.",
+    "On an M5Stack Core's Port B, drive the yellow wire (GPIO26); the white wire (GPIO36) is unused.",
+    "The brass eccentric weight is exposed and spins at up to 8800 rpm: mount the unit firmly and keep fingers, hair and wires clear."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit vibrator",
+    "u059",
+    "vibrator",
+    "vibration motor",
+    "haptic",
+    "n20",
+    "eccentric motor",
+    "buzz",
+    "grove"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "DIN"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# M5Stack Unit Vibrator: DIN high = motor spins (vibrates).\nmotor = Pin({DIN}, Pin.OUT, value=0)\nwhile True:\n    motor.value(1)\n    print('VIBRATE ON')\n    time.sleep(1)\n    motor.value(0)\n    print('VIBRATE OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "vibrates",
+      "title": "The motor switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VIBRATE ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VIBRATE OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://docs.m5stack.com/en/unit/vibrator",
+    "https://static-cdn.m5stack.com/resource/docs/products/unit/unit_fan/unit_fan_sch_01.webp",
+    "https://github.com/m5stack/M5Stack/blob/master/examples/Unit/VIBRATOR/VIBRATOR.ino",
+    "https://uiflow-micropython.readthedocs.io/en/latest/unit/vibrator.html",
+    "https://www.aosmd.com/res/datasheets/AO3400A.pdf"
+  ],
+  "skill": "---\nname: part-m5stack-unit-vibrator\ndescription: Pinout, electrical limits, wiring and MicroPython code for the M5Stack Unit Vibrator (SKU U059; N20 DC motor with a metal eccentric weight, switched by an AO3400A N-MOSFET, Grove HY2.0-4P GND/5V/DIN/NC). Use when designing, wiring, simulating or writing code for an M5Stack vibrator / vibration motor unit in a Sparkbench project or any ESP32 / M5Stack / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit Vibrator (U059)\n\n## Overview\nA strong haptic / vibration unit from M5Stack: an **N20 DC motor (8800 rpm no-load) with a brass eccentric weight**, switched on its low side by an **AO3400A N-channel MOSFET**. Per the M5Stack schematic, DIN goes through **1 kΩ** to the MOSFET gate, with a **51 kΩ** gate pull-down; a **1N4148WS** flyback diode and a 100 nF capacitor sit across the motor, which runs from the Grove 5 V. Hobbyists buy it as the **M5Stack Unit Vibrator (SKU U059)**, with a 20 cm Grove cable. It turns one way only (no braking or reverse).\n\n## Pinout (Grove HY2.0-4P, order and names from the M5Stack PinMap)\n| Pin | Wire | Function |\n|---|---|---|\n| GND | black | Ground (share with the microcontroller) |\n| 5V | red | Motor supply, 5 V (about 425 mA at 50 % PWM) |\n| DIN | yellow | Control: high = vibrate, low/unconnected = off, PWM = strength |\n| NC | white | Not connected |\n\n## Electrical limits\n- Supply 5 V. M5Stack measured **424 mA at 5 V with 10 kHz PWM at 50 % duty**; full-on and start-up draw more. That is more than a dev board's 5V pin should feed alongside the MCU: use a separate 5 V supply (1 A or more) with a common ground, or an M5Stack Core's Grove port.\n- DIN: logic-level MOSFET gate (VGS(th) 0.65–1.45 V, RDS(on) < 48 mΩ at 2.5 V), so 3.3 V and 5 V logic both switch it fully. Gate current is only the 51 kΩ pull-down (about 65 µA at 3.3 V).\n- MOSFET rating 30 V / 5.7 A, far above the motor's needs.\n\n## Interface details\n- Plain digital output: `Pin.value(1)` = vibrate, `Pin.value(0)` = stop. No driver library needed.\n- Strength: `machine.PWM(Pin(n), freq=10000, duty_u16=...)`. M5Stack recommends **10 kHz**; their example uses 50 % duty. Very low duty may not start the motor.\n- UiFlow2's `VibratorUnit.once(freq, duty, duration)` instead pulses the motor at 10–55 Hz for a \"buzzing\" haptic effect.\n\n## Wiring\n- M5Stack Core (Port B): plug in the Grove cable; DIN = GPIO26.\n- ESP32: GND → GND, DIN → GPIO26, 5V → separate 5 V supply (+), supply − → GND.\n- Pico: GND → GND, DIN → GP15, 5V → separate 5 V supply, grounds joined.\n- Raspberry Pi 4: GND → pin 6, DIN → pin 11 (GPIO17), 5V → separate 5 V supply, grounds joined.\n\n## Using it\n```python\nfrom machine import Pin, PWM\nimport time\nmotor = Pin(26, Pin.OUT, value=0)  # DIN\nmotor.value(1); time.sleep(0.3); motor.value(0)    # one buzz\npwm = PWM(Pin(26), freq=10000, duty_u16=32768)     # 50 % strength\n```\n\n## Gotchas\n- This is a big N20 motor, not a coin motor: about 0.4 A or more. Do not run it from a 3.3 V pin, and be careful with a USB-powered dev board's 5V pin.\n- The white wire is not connected. On an M5Stack Core's Port B, drive the yellow wire (GPIO26), not GPIO36.\n- The spinning brass weight is exposed: keep fingers, hair and wires clear and mount the unit firmly (LEGO-compatible holes).\n- Motor brushes make electrical noise; keep it away from analog sensor wiring.\n\n## Datasheet\nhttps://www.aosmd.com/res/datasheets/AO3400A.pdf (AO3400A MOSFET). Product page: https://docs.m5stack.com/en/unit/vibrator. Schematic: https://static-cdn.m5stack.com/resource/docs/products/unit/unit_fan/unit_fan_sch_01.webp\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:18:14.414Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/vibrator"
+    ]
+  }
+}

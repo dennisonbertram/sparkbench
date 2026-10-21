@@ -1,0 +1,198 @@
+{
+  "type": "custom-m5stack-unit-4-relay",
+  "name": "M5Stack Unit 4Relay (4x 10 A relays, I2C)",
+  "mpn": "U097",
+  "category": "actuator",
+  "description": "M5Stack four-channel relay unit controlled over I2C. An STM32F030F4P6 running M5Stack's firmware at address 0x26 drives four 5 V SPDT relays (TH 932-05VDC-SL-AH type) through SS8050 transistors, with a flyback diode per coil and a programmable red LED per channel. Register 0x10 bit 0 selects LED sync (LEDs follow relays) or manual LEDs; register 0x11 bits 0-3 switch relays 1-4 and bits 4-7 LEDs 1-4. Contacts AC 250 V / DC 28 V, 10 A (16 A peak). Supply 5 V (about 70 mA per energised coil, ~300 mA with all four on); an XC6206 makes 3.3 V for the MCU so SDA/SCL are 3.3 V lines, with no pull-ups on the unit. Sold as: M5Stack Unit 4Relay (SKU U097), Grove HY2.0-4P port GND, 5V, SDA, SCL (black, red, yellow, white), with a 20 cm Grove cable and four HT3.96-4P load terminals.",
+  "eli5": "A block with four clicky switches inside; your board tells each one to turn a lamp, fan or pump on or off using just two I2C wires.",
+  "refPrefix": "K",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black Grove wire), shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V (red wire). Feeds the four 5 V relay coils (about 70 mA each when on, ~300 mA all on) and the XC6206 3.3 V regulator for the STM32. 3.3 V is too low to pull the relays in.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (yellow wire), STM32 PA10 at 3.3 V. No pull-up on the unit: Sparkbench adds 4.7 kohm to 3.3 V (an M5Stack Core has its own).",
+      "required": true,
+      "load": {
+        "ohms": 4700,
+        "to": "3v3"
+      }
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (white wire), STM32 PA9 at 3.3 V. No pull-up on the unit: Sparkbench adds 4.7 kohm to 3.3 V (an M5Stack Core has its own).",
+      "required": true,
+      "load": {
+        "ohms": 4700,
+        "to": "3v3"
+      }
+    }
+  ],
+  "vmin": 5,
+  "vmax": 5,
+  "currentMa": 310,
+  "i2cAddress": 38,
+  "datasheetUrl": "https://docs.m5stack.com/en/unit/4relay",
+  "priceUsd": 12,
+  "supplierQuery": "M5Stack Unit 4Relay U097",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power from 5 V (red wire) and share GND. Each energised relay coil draws about 70 mA, so all four on is roughly 300 mA from the 5 V rail; a weak USB port may brown out.",
+    "The unit has no I2C pull-ups. On a bare ESP32 or Pico, fit 4.7 kohm from SDA and SCL to 3.3 V (an M5Stack Core already has them).",
+    "Address 0x26. Write [0x11, bits] to set relays (bits 0-3 = relays 1-4) and LEDs (bits 4-7); write [0x10, 1] for LEDs that follow the relays. Use read-modify-write to change one relay.",
+    "Relay numbering follows M5Stack's Arduino and UiFlow2 libraries (relay n = bit n-1); the docs table lists them in the opposite order, so check which terminal clicks if it matters.",
+    "Contacts are rated AC 250 V / DC 28 V, 10 A. Mains wiring is dangerous: keep it in a closed insulated box and leave it to an adult/qualified person. Start with a low-voltage DC load.",
+    "Never PWM a relay: it is slow and wears out."
+  ],
+  "keywords": [
+    "m5stack",
+    "4relay",
+    "4-relay",
+    "unit 4relay",
+    "u097",
+    "relay",
+    "i2c relay",
+    "quad relay",
+    "stm32f030",
+    "grove relay",
+    "0x26"
+  ],
+  "sources": [
+    "https://docs.m5stack.com/en/unit/4relay",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/589/Sch_UNIT-4RELAY.pdf",
+    "https://github.com/m5stack/M5Unit-RELAY/blob/master/src/Unit_4RELAY.cpp",
+    "https://github.com/m5stack/uiflow-micropython/blob/master/m5stack/libs/unit/relay4.py"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x10": 0,
+      "0x11": 0
+    },
+    "outputBits": [
+      {
+        "reg": "0x11",
+        "bit": 0,
+        "name": "RELAY1"
+      },
+      {
+        "reg": "0x11",
+        "bit": 1,
+        "name": "RELAY2"
+      },
+      {
+        "reg": "0x11",
+        "bit": 2,
+        "name": "RELAY3"
+      },
+      {
+        "reg": "0x11",
+        "bit": 3,
+        "name": "RELAY4"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "unit_4relay.py",
+    "code": "# M5Stack Unit 4Relay (SKU U097), MicroPython driver.\n# An STM32F030F4P6 runs M5Stack's firmware at I2C address 0x26 with two byte registers\n# (write [reg, value] to set; write [reg] then read 1 byte to get):\n#   0x10 mode:  bit 0 = LED sync. 1 = each LED follows its relay, 0 = LEDs set by hand.\n#   0x11 state: bits 0-3 = relays 1-4, bits 4-7 = LEDs 1-4 (1 = on).\n# Bit numbering follows M5Stack's own Arduino (Unit_4RELAY) and UiFlow2 (relay4.py) libraries.\nimport time\n\nADDR = 0x26\nREG_MODE = 0x10\nREG_STATE = 0x11\n\nMODE_MANUAL = 0  # LEDs controlled independently\nMODE_SYNC = 1    # LED n lights while relay n is on\n\n\nclass Unit4Relay:\n    def __init__(self, i2c, addr=ADDR, sync=True):\n        self.i2c = i2c\n        self.addr = addr\n        if addr not in i2c.scan():\n            raise OSError('Unit 4Relay not found at 0x%02X' % addr)\n        # Same start-up as M5Stack's Init(mode): set the mode, then all relays and LEDs off.\n        self.set_mode(MODE_SYNC if sync else MODE_MANUAL)\n        self._write(REG_STATE, 0x00)\n\n    def _write(self, reg, val):\n        time.sleep_ms(1)  # the STM32 firmware needs a short gap between transactions\n        self.i2c.writeto(self.addr, bytes([reg, val & 0xFF]))\n\n    def _read(self, reg):\n        time.sleep_ms(1)\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def set_mode(self, mode):\n        self._write(REG_MODE, 1 if mode else 0)\n\n    def mode(self):\n        return self._read(REG_MODE) & 0x01\n\n    def state(self):\n        \"\"\"Raw state register: bits 0-3 relays 1-4, bits 4-7 LEDs 1-4.\"\"\"\n        return self._read(REG_STATE)\n\n    def relays(self):\n        \"\"\"Relay bits only (bit 0 = relay 1 ... bit 3 = relay 4).\"\"\"\n        return self.state() & 0x0F\n\n    def relay(self, n, on=None):\n        \"\"\"relay(n) returns 1/0; relay(n, True/False) switches relay n (1-4).\"\"\"\n        if not 1 <= n <= 4:\n            raise ValueError('relay number must be 1-4')\n        bit = 1 << (n - 1)\n        s = self.state()\n        if on is None:\n            return 1 if s & bit else 0\n        self._write(REG_STATE, (s | bit) if on else (s & ~bit))\n\n    def led(self, n, on=None):\n        \"\"\"LED n (1-4); only meaningful in manual mode (sync=False).\"\"\"\n        if not 1 <= n <= 4:\n            raise ValueError('LED number must be 1-4')\n        bit = 1 << (n + 3)\n        s = self.state()\n        if on is None:\n            return 1 if s & bit else 0\n        self._write(REG_STATE, (s | bit) if on else (s & ~bit))\n\n    def all(self, on):\n        \"\"\"All four relays on or off (keeps the LED bits).\"\"\"\n        s = self.state()\n        self._write(REG_STATE, (s | 0x0F) if on else (s & 0xF0))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom unit_4relay import Unit4Relay\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nrelays = Unit4Relay(i2c)  # 0x26, LEDs follow relays, all off\nwhile True:\n    for n in (1, 3):\n        relays.relay(n, True)\n        print('RELAY%d ON bits=%04d' % (n, int(bin(relays.relays())[2:])))\n        time.sleep(1)\n        relays.relay(n, False)\n        print('RELAY%d OFF bits=%04d' % (n, int(bin(relays.relays())[2:])))\n        time.sleep(1)\n",
+    "test": {
+      "id": "switches",
+      "title": "Relays 1 and 3 switch on and off over I2C and read back",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELAY1 ON bits=0001",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RELAY1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RELAY3",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELAY1 OFF bits=0000",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RELAY1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELAY3 ON bits=0100",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RELAY3",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELAY3 OFF bits=0000",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RELAY3",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-m5stack-unit-4-relay\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the M5Stack Unit 4Relay (SKU U097; STM32F030F4P6 I2C controller at 0x26 driving four 5 V 10 A SPDT relays, Grove GND/5V/SDA/SCL). Use when designing, wiring, simulating or writing code for an M5Stack 4-Relay unit in a Sparkbench project or any ESP32 / M5Stack / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit 4Relay (U097)\n\n## Overview\nFour mechanical relays on one Grove I2C port. An **STM32F030F4P6** running M5Stack's firmware answers at **I2C address 0x26** and drives four **SS8050** transistors, each switching a 5 V relay coil (TH 932-05VDC-SL-AH type, flyback diode across each coil). Each channel also has a red status LED that can follow its relay (sync mode) or be set by hand. An XC6206 regulator makes 3.3 V for the MCU, so SDA/SCL are 3.3 V lines. Hobbyists buy it as the **M5Stack Unit 4Relay (SKU U097)** with a 20 cm Grove cable and four HT3.96-4P plug-in terminals for the contacts.\n\n## Pinout (Grove HY2.0-4P, M5Stack PinMap)\n| Pin | Wire | Function |\n|---|---|---|\n| GND | black | Ground |\n| 5V | red | Supply 5 V: relay coils + 3.3 V regulator |\n| SDA | yellow | I2C data (3.3 V logic, no pull-up on the unit) |\n| SCL | white | I2C clock (3.3 V logic, no pull-up on the unit) |\n\nLoad terminals J1-J4 (3.96 mm, one per relay) are on the long edge, so the unit is wired with the Grove cable or jumper leads, not plugged into a breadboard.\n\n## Electrical limits\n- Supply 5 V nominal (M5Stack gives no tolerance range; use a regulated 5 V rail such as USB 5 V or an M5Stack Port A). Each energised coil takes roughly 70 mA (0.36 W class 5 V relay), so all four on is about 300 mA from the 5 V rail. 3.3 V will not pull the relays in.\n- Contacts: AC 250 V / DC 28 V, 10 A rated, 16 A peak (M5Stack figures).\n- I2C pins are STM32 pins at 3.3 V. The unit has **no I2C pull-ups** (an M5Stack Core supplies them); on a bare ESP32/Pico add 4.7 kΩ from SDA and SCL to 3.3 V.\n\n## Interface details\n- Address **0x26**. Register write: `[reg, value]`. Register read: write `[reg]`, then read 1 byte.\n- `0x10` mode: bit 0 = 1 sync (LED n follows relay n), 0 = manual (LEDs set by hand).\n- `0x11` state: bits 0-3 = relays 1-4, bits 4-7 = LEDs 1-4 (1 = on). Change one relay with read-modify-write.\n- Bit order follows M5Stack's Arduino `Unit_4RELAY` and UiFlow2 `relay4.py` libraries (relay n = bit n-1). The docs page's register table lists RELAY1 at bit 3; the libraries are what ship, so trust them and check on your unit if the channel number matters.\n- M5Stack's drivers wait ~1 ms between transactions; the driver does the same.\n\n## Wiring\n- ESP32: GND → GND, 5V → 5V/VIN, SDA → GPIO21, SCL → GPIO22, plus 4.7 kΩ pull-ups SDA/SCL → 3V3.\n- M5Stack Core: plug into PORT.A (SDA 21, SCL 22 on Core; 32/33 on Core2).\n- Pico: GND → GND, 5V → VBUS, SDA → GP4, SCL → GP5, plus 4.7 kΩ pull-ups to 3V3(OUT).\n- Raspberry Pi 4: GND → pin 6, 5V → pin 2, SDA → pin 3, SCL → pin 5 (the Pi has 1.8 kΩ pull-ups).\n- Load: supply + → COM, NO → load → supply −.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom unit_4relay import Unit4Relay\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nr = Unit4Relay(i2c)      # 0x26, sync mode, all off\nr.relay(1, True)         # relay 1 on (LED 1 follows)\nprint(r.relays())        # 1 = 0b0001\nr.all(False)\n```\n\n## Gotchas\n- Feed 5 V; four coils together draw about 300 mA, so use a USB supply that can give it.\n- No I2C pull-ups on the unit: without a Core or external resistors the bus will not work.\n- Mains on the terminals is dangerous: closed insulated box, adult/qualified person only. Start with a low-voltage DC load.\n- Relays are slow and wear out: never PWM them.\n\n## Datasheet\nProduct page and register map: https://docs.m5stack.com/en/unit/4relay ·\nSchematic: https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/589/Sch_UNIT-4RELAY.pdf ·\nLibraries: https://github.com/m5stack/M5Unit-RELAY, https://github.com/m5stack/uiflow-micropython/blob/master/m5stack/libs/unit/relay4.py\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:38:19.162Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/4relay"
+    ]
+  }
+}

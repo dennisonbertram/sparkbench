@@ -1,0 +1,79 @@
+{
+  "type": "custom-m5stack-unit-4-relay",
+  "mpn": "U097",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; M5Stack Unit 4Relay (4x 10 A relays, I2C) needs at least 5 V, so it is powered from 5 V. Added a 4.7 kΩ resistor from SDA to 3V3, as the datasheet's circuit requires. Added a 4.7 kΩ resistor from SCL to 3V3, as the datasheet's circuit requires. It shares the I2C bus (SDA D21, SCL D22) at address 0x26. Added the unit_4relay.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Relays 1 and 3 switch on and off over I2C and read back: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; M5Stack Unit 4Relay (4x 10 A relays, I2C) needs at least 5 V, so it is powered from 5 V. Added a 4.7 kΩ resistor from SDA to 3V3, as the datasheet's circuit requires. Added a 4.7 kΩ resistor from SCL to 3V3, as the datasheet's circuit requires. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x26. Added the unit_4relay.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Relays 1 and 3 switch on and off over I2C and read back: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:38:19.162Z"
+}

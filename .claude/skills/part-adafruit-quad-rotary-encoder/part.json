@@ -1,0 +1,298 @@
+{
+  "type": "custom-adafruit-quad-rotary-encoder",
+  "name": "Adafruit Quad Rotary Encoder",
+  "mpn": "Adafruit 5752",
+  "category": "input",
+  "description": "Four rotary encoders with push switches read over I2C: an ATtiny817 running Adafruit seesaw firmware counts each encoder's detents (signed 32-bit positions, registers 0x11 0x30-0x33) and reads the four knob switches (seesaw pins 12, 14, 17, 9), with a NeoPixel under each knob. Runs on 3-5 V; the I2C pull-ups (10 k) go to VIN, so power it at your board's logic voltage. Sold as: Adafruit I2C Quad Rotary Encoder Breakout with NeoPixel - STEMMA QT / Qwiic (product 5752, 'NeoRotary 4', 6-pad header VIN, -, C, D, INT, UPDI plus two STEMMA QT sockets), I2C address 0x49 (0x49-0x50 with jumpers A0-A2).",
+  "eli5": "A board for four turning knobs you can also press; a tiny chip counts the clicks on each knob and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply and I2C logic level, 3-5 V (use your board's logic voltage, 3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "C",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock SCL (10 k pull-up to VIN on board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data SDA (10 k pull-up to VIN on board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "seesaw interrupt output, pulses low on a turn or press (only when enabled); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "UPDI",
+      "role": "nc",
+      "description": "Unlabelled pad: ATtiny817 UPDI programming pin; leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 10,
+  "i2cAddress": 73,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf",
+  "priceUsd": 7.5,
+  "supplierQuery": "Adafruit 5752 I2C quad rotary encoder breakout NeoPixel seesaw",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every seesaw access is a write of two bytes, module base then function register; for a read wait a few ms, then read the bytes back, big-endian.",
+    "Encoder n (0-3) position: base 0x11, register 0x30+n, 4 bytes, signed 32-bit, one count per detent. Register 0x40+n is the delta since the last read.",
+    "Knob switches are seesaw GPIO pins 12, 14, 17, 9 (encoders #0-#3): set them input with pull-up (DIRCLR_BULK 0x01 0x03, PULLENSET 0x01 0x0B, BULK_SET 0x01 0x05), then read GPIO_BULK (0x01 0x04, 4 bytes); a bit reads 0 while pressed.",
+    "STATUS HW_ID (0x00 0x01) reads 0x87 (ATtiny817); VERSION (0x00 0x02) top 16 bits = 5752.",
+    "Default address 0x49; cut A0/A1/A2 on the back to add 1/2/4 (up to 0x50).",
+    "No regulator or level shifter: SDA/SCL pull-ups go to VIN, so power VIN from 3.3 V with a 3.3 V board.",
+    "Encoders are soldered by you (any PEC11-style encoder); NeoPixels are on seesaw pin 18 (4 pixels, GRB)."
+  ],
+  "keywords": [
+    "rotary encoder",
+    "quad encoder",
+    "seesaw",
+    "adafruit 5752",
+    "neorotary",
+    "stemma qt",
+    "qwiic",
+    "i2c encoder",
+    "knob"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16,
+    "quantity": "Encoder #0 position",
+    "unit": "detents",
+    "min": -100,
+    "max": 100,
+    "default": 0,
+    "controls": [
+      {
+        "key": "enc1",
+        "quantity": "Encoder #1 position",
+        "unit": "detents",
+        "min": -100,
+        "max": 100,
+        "default": 0
+      },
+      {
+        "key": "enc2",
+        "quantity": "Encoder #2 position",
+        "unit": "detents",
+        "min": -100,
+        "max": 100,
+        "default": 0
+      },
+      {
+        "key": "enc3",
+        "quantity": "Encoder #3 position",
+        "unit": "detents",
+        "min": -100,
+        "max": 100,
+        "default": 0
+      }
+    ],
+    "registers": {
+      "0x0001": 135,
+      "0x0002": 22,
+      "0x0003": 120,
+      "0x0004": 0,
+      "0x0005": 0
+    },
+    "responses": [
+      {
+        "match": "11 30",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 32,
+            "scale": 1,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "11 31",
+        "bytes": [
+          {
+            "control": "enc1",
+            "bits": 32,
+            "scale": 1,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "11 32",
+        "bytes": [
+          {
+            "control": "enc2",
+            "bits": 32,
+            "scale": 1,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "11 33",
+        "bytes": [
+          {
+            "control": "enc3",
+            "bits": 32,
+            "scale": 1,
+            "signed": true
+          }
+        ]
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x0106",
+        "bit": 4,
+        "control": "sw0",
+        "label": "Knob #0 pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0106",
+        "bit": 6,
+        "control": "sw1",
+        "label": "Knob #1 pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0105",
+        "bit": 1,
+        "control": "sw2",
+        "label": "Knob #2 pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0106",
+        "bit": 1,
+        "control": "sw3",
+        "label": "Knob #3 pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "seesaw_quad_encoder.py",
+    "code": "# Adafruit I2C Quad Rotary Encoder breakout (product 5752, ATtiny817 running seesaw firmware), MicroPython driver.\n# seesaw protocol: every access starts with a write of [module base, function register];\n# for a read, wait briefly, then read the bytes back (all values big-endian).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_VERSION = 0x02\n_STATUS_SWRST = 0x7F\n_GPIO_BASE = 0x01\n_GPIO_DIRCLR_BULK = 0x03\n_GPIO_BULK = 0x04\n_GPIO_BULK_SET = 0x05\n_GPIO_PULLENSET = 0x0B\n_NEOPIXEL_BASE = 0x0E\n_NEOPIXEL_PIN = 0x01\n_NEOPIXEL_SPEED = 0x02\n_NEOPIXEL_BUF_LENGTH = 0x03\n_NEOPIXEL_BUF = 0x04\n_NEOPIXEL_SHOW = 0x05\n_ENCODER_BASE = 0x11\n_ENCODER_POSITION = 0x30  # + encoder number (0-3)\n_ENCODER_DELTA = 0x40     # + encoder number (0-3)\n\n_HW_IDS = (0x55, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89)  # 0x87 = ATtiny817 (this board)\n_PRODUCT_ID = 5752\n_SWITCH_PINS = (12, 14, 17, 9)  # seesaw pins of the push switches of encoders #0-#3\n_NEOPIXEL_SEESAW_PIN = 18\n_NUM = 4\n\n\nclass QuadEncoder:\n    def __init__(self, i2c, addr=0x49, reset=True):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self._write(_STATUS_BASE, _STATUS_SWRST, b'\\xff')\n            time.sleep_ms(500)  # seesaw restarts after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw not in _HW_IDS:\n            raise OSError('seesaw not found at 0x%02x (HW_ID 0x%02x): check the wiring' % (addr, hw))\n        v = self._read(_STATUS_BASE, _STATUS_VERSION, 4)\n        pid = (v[0] << 8) | v[1]\n        if pid != _PRODUCT_ID:\n            raise OSError('seesaw at 0x%02x is product %d, not the quad encoder 5752' % (addr, pid))\n        # Push switches: inputs with pull-ups (a pressed knob pulls its pin to GND).\n        m = 0\n        for p in _SWITCH_PINS:\n            m |= 1 << p\n        mask = m.to_bytes(4, 'big')\n        self._write(_GPIO_BASE, _GPIO_DIRCLR_BULK, mask)\n        self._write(_GPIO_BASE, _GPIO_PULLENSET, mask)\n        self._write(_GPIO_BASE, _GPIO_BULK_SET, mask)\n        # NeoPixels: seesaw pin 18, 800 kHz, 4 pixels x 3 bytes (GRB).\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_PIN, bytes([_NEOPIXEL_SEESAW_PIN]))\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_SPEED, b'\\x01')\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF_LENGTH, (_NUM * 3).to_bytes(2, 'big'))\n\n    def _write(self, base, reg, data=b''):\n        self.i2c.writeto(self.addr, bytes([base, reg]) + bytes(data))\n\n    def _read(self, base, reg, n, delay_us=8000):\n        self.i2c.writeto(self.addr, bytes([base, reg]))\n        time.sleep_us(delay_us)  # seesaw needs time to fetch the value before the read\n        return self.i2c.readfrom(self.addr, n)\n\n    @staticmethod\n    def _int32(b):\n        v = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return v - (1 << 32) if v & 0x80000000 else v\n\n    @staticmethod\n    def _check(n):\n        if not 0 <= n < _NUM:\n            raise IndexError('encoder number 0-3')\n\n    def position(self, n=0):\n        \"\"\"Position of encoder n (0-3) in detents (signed 32-bit counter kept by seesaw).\"\"\"\n        self._check(n)\n        return self._int32(self._read(_ENCODER_BASE, _ENCODER_POSITION + n, 4))\n\n    def positions(self):\n        return [self.position(n) for n in range(_NUM)]\n\n    def set_position(self, n, pos):\n        self._check(n)\n        self._write(_ENCODER_BASE, _ENCODER_POSITION + n, (pos & 0xFFFFFFFF).to_bytes(4, 'big'))\n\n    def delta(self, n=0):\n        \"\"\"Detents encoder n turned since its last delta() read (reading clears it).\"\"\"\n        self._check(n)\n        return self._int32(self._read(_ENCODER_BASE, _ENCODER_DELTA + n, 4))\n\n    def _gpio(self):\n        b = self._read(_GPIO_BASE, _GPIO_BULK, 4)\n        return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n\n    def pressed(self, n=0):\n        \"\"\"True while knob n (0-3) is pushed in.\"\"\"\n        self._check(n)\n        return not (self._gpio() >> _SWITCH_PINS[n]) & 1\n\n    def pressed_all(self):\n        bits = self._gpio()\n        return [not (bits >> p) & 1 for p in _SWITCH_PINS]\n\n    def pixel(self, n, r, g, b, show=True):\n        \"\"\"Set the NeoPixel under encoder n (0-3) to r, g, b (0-255 each).\"\"\"\n        self._check(n)\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF, (n * 3).to_bytes(2, 'big') + bytes([g & 255, r & 255, b & 255]))\n        if show:\n            self.show()\n\n    def show(self):\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_SHOW)\n"
+  },
+  "skill": "---\nname: part-adafruit-quad-rotary-encoder\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit I2C Quad Rotary Encoder Breakout with NeoPixel (product 5752, \"NeoRotary 4\", ATtiny817 running seesaw firmware). Use when designing, wiring, simulating or writing code for this four-knob I2C rotary encoder board in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit I2C Quad Rotary Encoder (Adafruit 5752)\n\n## Overview\nFour rotary encoders with push switches, read over I2C. An **ATtiny817** running Adafruit's **seesaw** firmware counts the detents of each encoder in its own signed 32-bit position and reads the four knob switches, so the whole board needs only SDA and SCL. There is a NeoPixel under each knob (seesaw pin 18, 4 pixels), two STEMMA QT / Qwiic sockets and an INT output. You solder the four encoders yourself (any PEC11-style encoder, with or without a switch).\n\n## Pinout (header order, as printed on the board)\nThe 6-pad header appears twice (top and bottom edge, same signals). Left to right:\n\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3-5 V. It is also the I2C logic level, so use your board's logic voltage |\n| - | Ground |\n| C | I2C clock SCL (10 k pull-up to VIN on board) |\n| D | I2C data SDA (10 k pull-up to VIN on board) |\n| INT | Interrupt output, pulses low on a turn or press (only when enabled in seesaw) |\n| UPDI | Unlabelled pad: ATtiny817 programming pin, leave unconnected |\n\n## Electrical limits\n- Supply: 3-5 V on VIN (ATtiny817 runs straight from VIN; no regulator or level shifter).\n- The SDA/SCL pull-ups go to VIN. On a 3.3 V board (ESP32, Pico, Raspberry Pi) power it from **3.3 V**, never 5 V, or the I2C lines are pulled to 5 V.\n- Current: a few mA, plus up to about 20 mA per NeoPixel at full white.\n\n## Interface details\n- **I2C address 0x49** by default. Cutting the A0/A1/A2 jumpers on the back adds 1/2/4 (up to 0x50).\n- seesaw protocol: write `[module base, function register]` plus any data. To read, write the two bytes, wait (the driver waits 8 ms), then read. Values are big-endian.\n- STATUS base 0x00: HW_ID 0x01 reads **0x87** (ATtiny817). VERSION 0x02 (4 bytes): the top 16 bits are the product number, **5752**. SWRST 0x7F: write 0xFF, then wait about 500 ms.\n- ENCODER base 0x11: POSITION is register **0x30 + n** for encoder n (0-3), a signed 32-bit count of detents (writable). DELTA is **0x40 + n**, cleared on read.\n- Switches: seesaw GPIO pins **12, 14, 17, 9** for encoders #0, #1, #2, #3. Set them as inputs with pull-ups (DIRCLR_BULK 0x01 0x03, PULLENSET 0x01 0x0B, BULK_SET 0x01 0x05 with the pin mask), then read GPIO_BULK (0x01 0x04, 4 bytes). A bit reads 0 while that knob is pressed.\n\n## Wiring\n- ESP32: VIN → 3V3, - → GND, D → D21, C → D22.\n- Pico: VIN → 3V3(OUT), - → GND, D → GP4, C → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), - → pin 6, D → pin 3, C → pin 5.\n- Or use a STEMMA QT / Qwiic cable.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom seesaw_quad_encoder import QuadEncoder\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nq = QuadEncoder(i2c)                 # address 0x49\nprint(q.positions(), q.pressed_all())\nq.pixel(0, 0, 40, 0)                 # green under knob #0\n```\n\n## Gotchas\n- Always leave a short delay between the register write and the read.\n- Encoder #3's switch is seesaw pin 9 (per Adafruit's own examples and library); the learn guide's encoder #0 B-pin listing also shows 9, which is a typo there.\n- Direction: Adafruit's example negates position to make clockwise positive. Flip the sign if needed.\n- In the Sparkbench simulator the sliders set each POSITION register; DELTA is not modelled, so use `position()` there.\n- Driver raises OSError if the seesaw at that address is not product 5752 (e.g. a single-encoder board at 0x36).\n\n## Datasheet\n- ATtiny817 (the chip): https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf\n- Board guide: https://learn.adafruit.com/adafruit-i2c-quad-rotary-encoder-breakout\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom seesaw_quad_encoder import QuadEncoder\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nq = QuadEncoder(i2c)\nwhile True:\n    p = q.positions()\n    s = q.pressed_all()\n    print('pos=%d,%d,%d,%d sw=%s' % (p[0], p[1], p[2], p[3], ''.join('1' if b else '0' for b in s)))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports all four encoder positions and knob switches",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "enc2",
+          "value": -12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "sw1",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "sw3",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=37,0,-12,0 sw=0101",
+          "within": 4000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "enc1",
+          "value": 5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "enc3",
+          "value": -88
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "sw1",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "sw3",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "sw2",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=37,5,-12,-88 sw=0010",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.adafruit.com/product/5752",
+    "https://learn.adafruit.com/adafruit-i2c-quad-rotary-encoder-breakout/pinouts",
+    "https://cdn-shop.adafruit.com/970x728/5752-04.jpg",
+    "https://github.com/adafruit/Adafruit_Seesaw/blob/master/examples/encoder/PID5752_QuadEncoder_demo/PID5752_QuadEncoder_demo.ino",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/examples/seesaw_quadrotary.py",
+    "https://github.com/adafruit/Adafruit_Seesaw/blob/master/Adafruit_seesaw.cpp",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:11:32.346Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/adafruit-i2c-quad-rotary-encoder-breakout/pinouts",
+      "https://www.adafruit.com/product/5752",
+      "https://raw.githubusercontent.com/adafruit/Adafruit_Seesaw/master/Adafruit_seesaw.h"
+    ]
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "type": "custom-sparkfun-qwiic-buzzer",
+  "name": "SparkFun Qwiic Buzzer",
+  "mpn": "BOB-24474",
+  "category": "actuator",
+  "description": "I2C-controlled magnetic buzzer (CUI CBT-09427-SMT-TR, 2730 Hz resonant, 16 Ohm coil): an ATtiny84 running SparkFun's QwiicBuzzerFirmware plays a tone at any frequency set in Hz, for a set duration in ms (0 = until stopped), at one of 4 software volume levels (NPN transistors switch the buzzer's ground return through different resistors; about 95 mA at full volume). A blue STAT LED lights while it buzzes. TRIG pulled low also sounds it without I2C. 3.3 V board with 2.2 kOhm I2C pull-ups, no regulator. I2C address 0x34 (any 0x08-0x77 set in software). Sold as: SparkFun Qwiic Buzzer (BOB-24474), two Qwiic connectors, a 4-pin 0.1\" header SCL, SDA, 3V3, GND on one edge and a 3-pin RST, TRIG, GND header on the opposite edge.",
+  "eli5": "A small beeper your board tells over two I2C wires what note to play, how loud and for how long.",
+  "refPrefix": "BZ",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kOhm pull-up to 3.3 V on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kOhm pull-up to 3.3 V on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V (no regulator; ATtiny84 1.8-5.5 V, buzzer 2.5-4.5 V across its coil after the NPN driver, and the I2C pull-ups go to this pin, so keep it at 3.3 V, 3.0 V minimum). About 95 mA while buzzing at full volume",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "ATtiny84 reset, active low, 10 kOhm pull-up to 3.3 V on the board. Leave open for normal use",
+      "required": false,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "TRIG",
+      "role": "io",
+      "description": "Trigger input, active low (ATtiny internal pull-up): pulling it to GND buzzes with the stored settings without I2C. Held low at power-up for 1 s it factory-resets the board. Leave open for I2C use",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (second GND on the RST/TRIG header)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 100,
+  "i2cAddress": 52,
+  "datasheetUrl": "https://raw.githubusercontent.com/sparkfun/SparkFun_Qwiic_Buzzer/main/docs/assets/board_files/SparkFun_Qwiic_Buzzer_Schematic_V10.pdf",
+  "priceUsd": 6.95,
+  "supplierQuery": "SparkFun Qwiic Buzzer BOB-24474",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "sources": [
+    "https://www.sparkfun.com/sparkfun-qwiic-buzzer.html",
+    "https://docs.sparkfun.com/SparkFun_Qwiic_Buzzer/hardware_overview/",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer/blob/main/docs/assets/board_files/SparkFun_Qwiic_Buzzer_Schematic_V10.pdf",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer/blob/main/docs/assets/component_documentation/cbt-09427-smt-tr.pdf",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer/blob/main/docs/assets/img/BOB-24474-Qwiic-Buzzer_Bottom_View.jpg",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer/blob/main/Firmware/QwiicBuzzerFirmware/QwiicBuzzerFirmware.ino",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer/blob/main/Firmware/QwiicBuzzerFirmware/sfeQwiicBuzzerFirmware.cpp",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer/blob/main/Firmware/QwiicBuzzerFirmware/sfeQwiicBuzzerFirmware.h",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer_Arduino_Library/blob/main/src/sfTk/sfDevBuzzerRegisters.h",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer_Arduino_Library/blob/main/src/sfTk/sfDevBuzzer.cpp",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Buzzer/blob/main/docs/assets/component_documentation/ATTINY84_Datasheet_doc8006.pdf"
+  ],
+  "buildNotes": [
+    "Power it from 3.3 V only: there is no regulator and the I2C pull-ups go to its own 3V3 pin. At full volume the buzzer draws about 95 mA.",
+    "Register reads: write the register number, then read. Register 0x00 must read 0x5E; 0x02/0x01 = firmware major/minor (1.0).",
+    "Settings: frequency in Hz at 0x03 (MSB) / 0x04 (LSB), volume 0-4 at 0x05, duration in ms at 0x06 (MSB) / 0x07 (LSB, 0 = until stopped). Write all five bytes from 0x03 in one transfer.",
+    "Write 1 to 0x08 to buzz and 0 to stop; with a duration set, the firmware clears 0x08 itself when the time is up. Write 1 to 0x09 to save frequency/volume/duration to EEPROM.",
+    "Factory defaults: 2730 Hz (the buzzer's resonant, loudest pitch), volume 4, duration 0, address 0x34. Write a new address (0x08-0x77) to 0x0A; it is stored in EEPROM.",
+    "TRIG (active low) buzzes without I2C; holding TRIG low for 1 s at power-up factory-resets the settings. RST and TRIG can be left unconnected.",
+    "The PTH headers are on two opposite edges, so the board is wired with jumper leads or a Qwiic cable, not plugged into a breadboard. Cut the I2C jumper if many pulled-up boards share the bus."
+  ],
+  "keywords": [
+    "qwiic buzzer",
+    "sparkfun buzzer",
+    "bob-24474",
+    "i2c buzzer",
+    "buzzer",
+    "beeper",
+    "tone",
+    "attiny84",
+    "sound"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 94,
+      "0x01": 0,
+      "0x02": 1,
+      "0x03": 10,
+      "0x04": 170,
+      "0x05": 4,
+      "0x06": 0,
+      "0x07": 0,
+      "0x08": 0,
+      "0x09": 0,
+      "0x0A": 52
+    },
+    "writable": {
+      "0x03": 255,
+      "0x04": 255,
+      "0x05": 7,
+      "0x06": 255,
+      "0x07": 255,
+      "0x08": 1,
+      "0x09": 1,
+      "0x0A": 255
+    },
+    "outputBits": [
+      {
+        "reg": "0x08",
+        "bit": 0,
+        "name": "BUZZ"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_buzzer.py",
+    "code": "# SparkFun Qwiic Buzzer (BOB-24474), MicroPython driver.\n# The board's ATtiny84 runs SparkFun's QwiicBuzzerFirmware, which exposes a byte register map\n# (sfDevBuzzerRegisters.h / sfeQwiicBuzzerFirmware.h): write the register number, then read;\n# a write of [reg, data...] stores the data from reg onwards. 16-bit values are big-endian\n# (MSB register first). Device ID register 0x00 reads 0x5E. Default address 0x34.\nfrom micropython import const\n\n_ID = const(0x00)\n_FW_MINOR = const(0x01)\n_FW_MAJOR = const(0x02)\n_FREQ_MSB = const(0x03)      # tone frequency in Hz, MSB (0x04 = LSB); 0 = rest (silent)\n_VOLUME = const(0x05)        # 0 = off, 1 (quietest) ... 4 (loudest)\n_DURATION_MSB = const(0x06)  # duration in ms, MSB (0x07 = LSB); 0 = until turned off\n_ACTIVE = const(0x08)        # write 1 to buzz, 0 to stop; firmware clears it when a duration ends\n_SAVE = const(0x09)          # write 1 to store frequency/volume/duration in EEPROM\n_I2C_ADDRESS = const(0x0A)\n\nDEVICE_ID = const(0x5E)\nRESONANT_HZ = const(2730)    # the buzzer's loudest pitch, the factory default frequency\n\nVOLUME_OFF = const(0)\nVOLUME_MIN = const(1)\nVOLUME_LOW = const(2)\nVOLUME_MID = const(3)\nVOLUME_MAX = const(4)\n\n\nclass QwiicBuzzer:\n    def __init__(self, i2c, addr=0x34):\n        self.i2c = i2c\n        self.addr = addr\n        if self._read(_ID, 1)[0] != DEVICE_ID:\n            raise OSError('Qwiic Buzzer not found at 0x%02X (wrong ID)' % addr)\n\n    # --- low level: pointer write (with STOP) then read, as SparkFun's library does\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _write(self, reg, data):\n        self.i2c.writeto(self.addr, bytes([reg]) + bytes(data))\n\n    # --- identity\n    def firmware_version(self):\n        return (self._read(_FW_MAJOR, 1)[0], self._read(_FW_MINOR, 1)[0])\n\n    # --- sound\n    def configure(self, frequency=RESONANT_HZ, duration_ms=0, volume=VOLUME_MAX):\n        \"\"\"frequency in Hz (0 = rest), duration_ms 0 = buzz until off(), volume 0-4.\n        Written in one transfer from register 0x03, like the Arduino library's configureBuzzer().\"\"\"\n        if not 0 <= frequency <= 0xFFFF or not 0 <= duration_ms <= 0xFFFF:\n            raise ValueError('frequency and duration must be 0-65535')\n        if not 0 <= volume <= 4:\n            raise ValueError('volume must be 0-4')\n        self._write(_FREQ_MSB, (frequency >> 8, frequency & 0xFF, volume,\n                                duration_ms >> 8, duration_ms & 0xFF))\n\n    def on(self):\n        self._write(_ACTIVE, (1,))\n\n    def off(self):\n        self._write(_ACTIVE, (0,))\n\n    def is_active(self):\n        return bool(self._read(_ACTIVE, 1)[0] & 0x01)\n\n    def settings(self):\n        \"\"\"(frequency Hz, volume, duration ms) as stored in the register map.\"\"\"\n        d = self._read(_FREQ_MSB, 5)\n        return ((d[0] << 8) | d[1], d[2], (d[3] << 8) | d[4])\n\n    def tone(self, frequency, duration_ms, volume=VOLUME_MAX):\n        \"\"\"Play one note and block until it has finished (the firmware times it).\"\"\"\n        import time\n        self.configure(frequency, duration_ms, volume)\n        self.on()\n        time.sleep_ms(duration_ms)\n\n    def save_settings(self):\n        \"\"\"Store the current frequency, volume and duration in EEPROM as power-on defaults.\"\"\"\n        self._write(_SAVE, (1,))\n\n    # --- address (stored in the ATtiny's EEPROM)\n    def set_address(self, new_addr):\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._write(_I2C_ADDRESS, (new_addr,))\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_buzzer import QwiicBuzzer\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nbz = QwiicBuzzer(i2c)  # address 0x34\nprint('ID=0x%02X' % bz._read(0x00, 1)[0])\nprint('FW %d.%d' % bz.firmware_version())\nbz.configure(1000, 0, 3)  # 1 kHz, no duration (buzz until off), volume 3 of 4\nprint('SET %d Hz vol %d dur %d' % bz.settings())\nwhile True:\n    bz.on()\n    print('BUZZ=%d' % bz.is_active())\n    time.sleep(1)\n    bz.off()\n    print('BUZZ=%d' % bz.is_active())\n    time.sleep(1)\n",
+    "test": {
+      "id": "buzzes",
+      "title": "Configures a 1 kHz tone and switches the buzzer on and off over I2C",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ID=0x5E",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "FW 1.0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SET 1000 Hz vol 3 dur 0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUZZ=1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "BUZZ",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUZZ=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "BUZZ",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:17:03.358Z",
+    "verifiedSources": [
+      "https://docs.sparkfun.com/SparkFun_Qwiic_Buzzer/hardware_overview",
+      "https://www.sparkfun.com/sparkfun-qwiic-buzzer.html",
+      "https://docs.sparkfun.com/SparkFun_Qwiic_Buzzer/assets/img/BOB-24474-Qwiic-Buzzer_I2C_Bottom_View.jpg"
+    ]
+  }
+}

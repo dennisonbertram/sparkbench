@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-hall",
+  "board": "M5Stack Unit Hall (SKU U084), 3x A3144E + 74HC08D + HT7533, HY2.0-4P Grove socket OUT, NC, 5V, GND",
+  "reason": "Check passed on ESP32 and Pico (spec, 5 V wiring, design checks, breadboard, simulator test 'MAGNET=1' with the magnet toggle on, PCB DRC clean, footprint). Modelled as an active-low push-pull digital-sensor at 3.3 V: per the M5Stack schematic OUT = A AND B AND C from a 74HC08 on the 3.3 V rail, each input an A3144E open-collector switch with an 820 Ohm pull-up.",
+  "datasheetUrl": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/unit/3141Thru3144E_HALL.PDF",
+  "breakoutPinoutSource": "M5Stack Unit Hall schematic J1 (pin 1 OUT, 2 IO/NC, 3 VCC, 4 GND) https://static-cdn.m5stack.com/resource/docs/products/unit/hall/hall_sch_01.webp; pin map (black GND, red 5V, yellow NC, white digital output) https://docs.m5stack.com/en/unit/hall",
+  "checkRuns": 1
+}

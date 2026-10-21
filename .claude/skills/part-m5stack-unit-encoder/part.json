@@ -1,0 +1,166 @@
+{
+  "type": "custom-m5stack-unit-encoder",
+  "name": "M5Stack Unit Encoder (I2C rotary encoder with RGB LEDs)",
+  "mpn": "U135",
+  "category": "input",
+  "description": "Rotary encoder knob with push switch and two SK6812 RGB LEDs, read over I2C: an STM32F030F4P6 running M5Stack's firmware keeps a signed 16-bit count (register 0x10, low byte first), reports the switch in register 0x20 (0 while pressed) and sets the LEDs from register 0x30. Powered from 5 V with an HT7533 3.3 V regulator for the MCU; SDA/SCL have 10 kOhm pull-ups to that 3.3 V. Sold as: M5Stack Unit Encoder (SKU U135), HY2.0-4P Grove socket with GND, 5V, SDA, SCL, I2C address 0x40.",
+  "eli5": "A turning knob you can also press, with two coloured lights. A tiny chip inside counts the clicks and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V (red wire); feeds the SK6812 LEDs and the HT7533 3.3 V regulator for the STM32",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 10000,
+      "levelV": 3.3,
+      "description": "I2C data (yellow wire), 10 kOhm pull-up to the unit's 3.3 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 10000,
+      "levelV": 3.3,
+      "description": "I2C clock (white wire), 10 kOhm pull-up to the unit's 3.3 V",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 20,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/801/Unit-Encoder_Protocol.pdf",
+  "sources": [
+    "https://docs.m5stack.com/en/unit/encoder",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/801/Unit-Encoder_Protocol.pdf",
+    "https://github.com/m5stack/M5UnitEncoder_Firmware/blob/main/docs/M5UnitEncoder_Register_Map.jpg",
+    "https://static-cdn.m5stack.com/resource/docs/products/unit/encoder/encoder_sch_01.webp",
+    "https://github.com/m5stack/M5Unit-ENCODER/blob/master/src/Unit_Encoder.cpp",
+    "https://github.com/m5stack/M5Unit-ENCODER/blob/master/examples/Unit_Encoder_M5Core/Unit_Encoder_M5Core.ino",
+    "https://github.com/m5stack/uiflow-micropython/blob/master/m5stack/libs/unit/encoder.py"
+  ],
+  "priceUsd": 6.95,
+  "supplierQuery": "M5Stack Unit Encoder U135 I2C rotary encoder",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove wire colours on M5Stack cables: black GND, red 5V, yellow SDA, white SCL. Use a Grove-to-jumper cable on a breadboard.",
+    "Feed the red wire 5 V (ESP32 5V/VIN, Pico VBUS); the I2C pull-ups go to the unit's own 3.3 V, so the bus stays 3.3 V-safe.",
+    "Counter: write 0x10, read 2 bytes, value = signed(L | H << 8). Write 0x40 = 1 to reset it.",
+    "Switch: write 0x20, read 1 byte; 0 means pressed (M5Stack's Arduino example and UIFlow driver), although the protocol PDF says 1 = pressed.",
+    "LEDs: write 0x30 then index (0 = both, 1, 2), R, G, B."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit encoder",
+    "u135",
+    "rotary encoder",
+    "knob",
+    "grove",
+    "i2c encoder",
+    "rgb led",
+    "stm32f030"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Encoder count",
+    "unit": "counts",
+    "min": -100,
+    "max": 100,
+    "default": 0,
+    "measures": [
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "scale": 1,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x20",
+        "bit": 0,
+        "control": "button",
+        "label": "Knob pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "m5_unit_encoder.py",
+    "code": "# M5Stack Unit Encoder (SKU U135), MicroPython driver.\n# An STM32F030F4P6 running M5Stack's firmware counts the knob and reads its push switch.\n# I2C address 0x40. Register map (M5Stack Unit Encoder I2C protocol, firmware V1/V1.1):\n#   0x00 MODE    (W)   0 = pulse (default), 1 = AB\n#   0x10 COUNTER (R/W) signed 16-bit count, low byte first (0x10 = L, 0x11 = H)\n#   0x20 SWITCH  (R)   1 byte; reads 0 while the knob is pressed (switch to GND, 10 k pull-up),\n#                      as M5Stack's own Arduino example and UIFlow driver use it\n#   0x30 RGB     (W)   LED index (0 = both, 1, 2), then R, G, B (0-255 each)\n#   0x40 RESET   (W)   write 1 to clear the counter\n# Every access: write the register number, then read (or write data after it in the same transfer).\n\n_ADDR = 0x40\n_REG_MODE = 0x00\n_REG_COUNTER = 0x10\n_REG_BUTTON = 0x20\n_REG_RGB = 0x30\n_REG_RESET = 0x40\n\n\nclass UnitEncoder:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        if addr not in i2c.scan():\n            raise OSError('Unit Encoder not found at 0x%02x: check the Grove cable and 5 V supply' % addr)\n\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _write(self, reg, data):\n        self.i2c.writeto(self.addr, bytes([reg]) + bytes(data))\n\n    def value(self):\n        \"\"\"Encoder count (signed 16-bit, wraps at +/-32768).\"\"\"\n        b = self._read(_REG_COUNTER, 2)\n        v = b[0] | (b[1] << 8)\n        return v - 0x10000 if v & 0x8000 else v\n\n    def set_value(self, v):\n        \"\"\"Write the counter (signed 16-bit).\"\"\"\n        v &= 0xFFFF\n        self._write(_REG_COUNTER, (v & 0xFF, v >> 8))\n\n    def reset(self):\n        \"\"\"Clear the counter to 0.\"\"\"\n        self._write(_REG_RESET, (1,))\n\n    def pressed(self):\n        \"\"\"True while the knob is pushed in (switch register reads 0).\"\"\"\n        return self._read(_REG_BUTTON, 1)[0] == 0\n\n    def set_mode(self, ab=False):\n        \"\"\"Counting mode: False = pulse (default), True = AB.\"\"\"\n        self._write(_REG_MODE, (1 if ab else 0,))\n\n    def set_led(self, index, r, g, b):\n        \"\"\"Set an RGB LED: index 0 = both, 1 or 2 = one LED; r, g, b 0-255.\"\"\"\n        self._write(_REG_RGB, (index, r & 0xFF, g & 0xFF, b & 0xFF))\n"
+  },
+  "skill": "---\nname: part-m5stack-unit-encoder\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the M5Stack Unit Encoder (SKU U135, rotary encoder with push switch and two SK6812 RGB LEDs, STM32F030 firmware at I2C address 0x40, Grove HY2.0-4P). Use when designing, wiring, simulating or writing code for an M5Stack Unit Encoder in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit Encoder (U135)\n\n## Overview\nA rotary encoder knob with a push switch and two SK6812 RGB LEDs, read over I2C. An **STM32F030F4P6** running M5Stack's firmware counts the knob in a signed 16-bit counter, reads the switch and drives the LEDs, so you only need SDA and SCL. An HT7533 regulator makes 3.3 V for the MCU from the 5 V pin; the LEDs run from 5 V.\n\n## Pinout (Grove HY2.0-4P, M5Stack PinMap order)\n| Pin | Wire | Function |\n|---|---|---|\n| GND | Black | Ground |\n| 5V | Red | Supply, 5 V |\n| SDA | Yellow | I2C data (10 k pull-up to the unit's 3.3 V) |\n| SCL | White | I2C clock (10 k pull-up to the unit's 3.3 V) |\n\n## Electrical limits\n- Supply: **5 V** (4.5-5.5 V; the SK6812 LEDs need 5 V). About 17 mA with the LEDs off, up to roughly 100 mA more with both LEDs full white.\n- The I2C lines are pulled up to the unit's own 3.3 V, so they are safe for 3.3 V boards (ESP32, Pico, Raspberry Pi).\n\n## Interface details (I2C address 0x40)\n| Reg | Access | Content |\n|---|---|---|\n| 0x00 | W | Mode: 0 = pulse (default), 1 = AB |\n| 0x10 | R/W | Counter, signed 16-bit, **low byte first** (0x10 L, 0x11 H) |\n| 0x20 | R | Switch: **0 while pressed** (see Gotchas) |\n| 0x30 | W | LED index (0 = both, 1, 2), then R, G, B |\n| 0x40 | W | Write 1 to reset the counter |\n\nRead: write the register number, then read the bytes. Write: register number followed by the data in one transfer.\n\n## Wiring\n| Unit | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| GND (black) | GND | GND | pin 6 |\n| 5V (red) | 5V / VIN | VBUS | pin 2 |\n| SDA (yellow) | GPIO21 | GP4 | pin 3 |\n| SCL (white) | GPIO22 | GP5 | pin 5 |\n\nUse a Grove-to-jumper cable on a breadboard.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom m5_unit_encoder import UnitEncoder\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nenc = UnitEncoder(i2c)            # address 0x40\nprint(enc.value(), enc.pressed())\nenc.set_led(0, 0, 40, 0)          # both LEDs dim green\nenc.reset()                       # counter back to 0\n```\n\n## Gotchas\n- **Switch polarity:** M5Stack's protocol PDF says 1 = pressed, but the switch pulls a 10 k pull-up to GND and M5Stack's own Arduino example (`if (!btn_status)`) and UIFlow driver (`not buf[0]`) both treat **0 as pressed**. The driver follows the code. If your firmware is different, flip `pressed()`.\n- The counter is 16-bit and wraps at ±32768.\n- Needs 5 V: from 3.3 V the LEDs do not light properly.\n- In the Sparkbench simulator the slider sets the counter register; LED colours and mode writes are accepted but not shown.\n\n## Datasheet\n- Product page / PinMap: https://docs.m5stack.com/en/unit/encoder\n- I2C protocol: https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/801/Unit-Encoder_Protocol.pdf\n- Schematic: https://static-cdn.m5stack.com/resource/docs/products/unit/encoder/encoder_sch_01.webp\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom m5_unit_encoder import UnitEncoder\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nenc = UnitEncoder(i2c)\nwhile True:\n    print('count=%d btn=%s' % (enc.value(), 'down' if enc.pressed() else 'up'))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the encoder count and the knob switch",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 42
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "count=42 btn=down",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -17
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "count=-17 btn=up",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:11:25.049Z",
+    "verifiedSources": [
+      "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/static/pdf/static/en/unit/Unit_Encoder.pdf",
+      "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/801/Unit-Encoder_Protocol.pdf",
+      "https://docs.m5stack.com/en/unit/encoder"
+    ]
+  }
+}

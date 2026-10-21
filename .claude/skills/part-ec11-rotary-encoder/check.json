@@ -1,0 +1,79 @@
+{
+  "type": "custom-ec11-rotary-encoder",
+  "mpn": "EC11E15244B2",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; SW1.A → D25 (GPIO25). SW1.B → D26 (GPIO26). SW1.D → D27 (GPIO27). Added a 3.3 kΩ pull-up resistor from A to 3V3, as the datasheet requires. Added a 3.3 kΩ pull-up resistor from B to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from D to 3V3, as the datasheet requires. Added the ec11.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "16 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Counts three clockwise clicks (A leads B), one counter-clockwise click back, and reports the shaft pressed: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×81 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; SW1.A → GP2 (GPIO2). SW1.B → GP3 (GPIO3). SW1.D → GP6 (GPIO6). Added a 3.3 kΩ pull-up resistor from A to 3V3, as the datasheet requires. Added a 3.3 kΩ pull-up resistor from B to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from D to 3V3, as the datasheet requires. Added the ec11.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "17 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Counts three clockwise clicks (A leads B), one counter-clockwise click back, and reports the shaft pressed: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C470754 EC11E15244B2 (5134 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:16:23.793Z"
+}

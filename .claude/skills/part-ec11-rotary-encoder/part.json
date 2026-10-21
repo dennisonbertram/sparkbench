@@ -1,0 +1,219 @@
+{
+  "type": "custom-ec11-rotary-encoder",
+  "name": "EC11 rotary encoder with push switch (bare, 5-pin)",
+  "mpn": "EC11E15244B2",
+  "category": "sensor",
+  "description": "Bare 11 mm mechanical incremental rotary encoder: two contacts A and B that close to common C in 2-phase Gray code (quadrature, A leads B clockwise; 30 detents and 15 pulses per turn, detents alternate between both open and both closed) plus a momentary push switch between D and E. No electronics: needs pull-ups to 3.3 V (1-10 mA per encoder contact, 0.5 mA min for the switch). Sold as: Alps Alpine EC11E15244B2 bare EC11 rotary encoder with push switch (pins A, C, B and D, E), the same part as the common generic EC11 encoders.",
+  "eli5": "A knob you can turn forever in either direction. Inside are tiny switches that click open and shut in a pattern, so your board can count which way and how far it turned. You can also push the knob like a button.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "A",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "pullUp": 3300,
+      "description": "Encoder contact A, closes to C. GPIO input with a 3.3 kOhm pull-up to 3.3 V (1 mA, the contact's minimum current); reads 0 while closed. Changes before B when turned clockwise (pin 1)"
+    },
+    {
+      "name": "C",
+      "role": "gnd",
+      "required": true,
+      "description": "Encoder common: connect to GND (pin 2)"
+    },
+    {
+      "name": "B",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "pullUp": 3300,
+      "description": "Encoder contact B, closes to C. GPIO input with a 3.3 kOhm pull-up to 3.3 V; reads 0 while closed (pin 3)"
+    },
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "pullUp": 4700,
+      "description": "Push switch terminal, closes to E while the shaft is pressed. GPIO input with a 4.7 kOhm pull-up to 3.3 V (switch minimum 0.5 mA); reads 0 while pressed (pin 4, opposite side)"
+    },
+    {
+      "name": "E",
+      "role": "gnd",
+      "required": true,
+      "description": "Other push switch terminal: connect to GND (pin 5, opposite side). Not joined to C inside the part"
+    }
+  ],
+  "vmin": 0,
+  "vmax": 5,
+  "currentMa": 2.7,
+  "datasheetUrl": "https://tech.alpsalpine.com/cms.media/product_catalog_ec_01_ec11e_en_611f078659.pdf",
+  "sources": [
+    "https://tech.alpsalpine.com/cms.media/product_catalog_ec_01_ec11e_en_611f078659.pdf",
+    "https://tech.alpsalpine.com/e/products/detail/EC11E15244B2/",
+    "https://tech.alpsalpine.com/cms.media/product_detail_fig_ec11_c_21_en_0959753c2b.gif",
+    "https://tech.alpsalpine.com/assets/products/detail-additional/2021-2022/EC/c1.en.gif",
+    "https://www.bourns.com/docs/product-datasheets/pec11r.pdf"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "EC11 rotary encoder with switch 5 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Pins as on the Alps drawing (viewed from the mounting side): A, C, B in one row at 2.5 mm pitch; switch D and E 5 mm apart on the opposite side, 7.5 mm away, plus two mounting tabs. It does not fit one breadboard row: wire it with jumper leads to a 5-pin connector (A, C, B, D, E) or panel-mount it.",
+    "C and E go to GND. A, B and D go to GPIOs, each with a pull-up to 3.3 V: 3.3 kOhm on A and B (the encoder contacts need 1-10 mA), 4.7 kOhm on D (switch minimum 0.5 mA). Never pull them up to 5 V on an ESP32 or Pico.",
+    "Contacts read 0 while closed. Turning clockwise, A changes before B; each click is half a quadrature cycle (rest at A=B=1 or A=B=0), 30 clicks and 15 pulses per turn.",
+    "Optional Alps filter: 10 kOhm series resistor and 0.01 uF to GND on each of A and B to suppress chattering (3 ms max) and bounce (2 ms max).",
+    "Decode every edge of both lines with a state table (as the driver does) rather than counting A edges alone."
+  ],
+  "keywords": [
+    "ec11",
+    "ec11e",
+    "ec11e15244b2",
+    "rotary encoder",
+    "encoder",
+    "knob",
+    "quadrature",
+    "alps",
+    "push switch",
+    "button"
+  ],
+  "sim": {
+    "kind": "resistive-sensor",
+    "quantity": "Contact A-C closed (0 open, 1 closed)",
+    "min": 0,
+    "max": 1,
+    "default": 0,
+    "controls": [
+      {
+        "key": "b",
+        "quantity": "Contact B-C closed (0 open, 1 closed)",
+        "min": 0,
+        "max": 1,
+        "default": 0
+      },
+      {
+        "key": "pressed",
+        "quantity": "Push switch D-E closed (0 released, 1 pressed)",
+        "min": 0,
+        "max": 1,
+        "default": 0
+      }
+    ],
+    "resistive": [
+      {
+        "pin": "A",
+        "to": "C",
+        "control": "value",
+        "curve": "linear",
+        "rAtMin": 100000000,
+        "rAtMax": 1
+      },
+      {
+        "pin": "B",
+        "to": "C",
+        "control": "b",
+        "curve": "linear",
+        "rAtMin": 100000000,
+        "rAtMax": 1
+      },
+      {
+        "pin": "D",
+        "to": "E",
+        "control": "pressed",
+        "curve": "linear",
+        "rAtMin": 100000000,
+        "rAtMax": 0.1
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ec11.py",
+    "code": "# Alps Alpine EC11E15244B2 rotary encoder (bare EC11, 15 pulses / 30 detents, push switch), MicroPython driver.\n# The encoder is three passive contacts: A-C and B-C (the quadrature encoder, C = common) and D-E (push switch).\n# Wire C and E to GND, A, B and D to GPIOs with pull-ups to 3.3 V. Contact closed = pin reads 0.\n# Datasheet: ratings 10 mA max / 1 mA min at 5 V DC (encoder), so use about 3.3 kOhm pull-ups at 3.3 V\n# (the GPIO's internal ~50 kOhm pull-up alone is below the minimum contact current). Switch: 0.5 mA min.\n# Output wave (CW): A changes before B. Detent stability points alternate between both contacts\n# open (A=1, B=1) and both closed (A=0, B=0), so one click = half a quadrature cycle = 2 edges:\n#   (A,B) = 11 -> 01 -> 00 -> 10 -> 11   (CW, two clicks)\n# Every edge on either line is decoded with a full state table, so contact bounce (forward then back)\n# cancels itself instead of adding counts. Chattering 3 ms / bounce 2 ms max per the datasheet.\nfrom machine import Pin\n\n# Index = (old_state << 2) | new_state, state = (A << 1) | B. +1 = clockwise edge, -1 = CCW,\n# 0 = no change or an invalid double change (both lines flipped: direction unknown, ignored).\n_TABLE = (0, -1, 1, 0,\n          1, 0, 0, -1,\n          -1, 0, 0, 1,\n          0, 1, -1, 0)\n\n\nclass EC11:\n    def __init__(self, a, b, sw=None, steps_per_detent=2, use_irq=True):\n        # External pull-ups (3.3 kOhm) are recommended; the internal pull-up does no harm.\n        self.a = Pin(a, Pin.IN, Pin.PULL_UP)\n        self.b = Pin(b, Pin.IN, Pin.PULL_UP)\n        self.sw = Pin(sw, Pin.IN, Pin.PULL_UP) if sw is not None else None\n        self.spd = steps_per_detent   # 2 for EC11E15244B2 (30 detents, 15 pulses); 4 for 1-pulse-per-click types\n        self._state = self._read()\n        self._raw = 0        # edges counted, +1 per clockwise edge\n        self._base = 0       # raw count at the last detent reached\n        self._pos = 0        # detents (clicks), clockwise positive\n        if use_irq:\n            trig = Pin.IRQ_RISING | Pin.IRQ_FALLING\n            self.a.irq(handler=self._edge, trigger=trig)\n            self.b.irq(handler=self._edge, trigger=trig)\n\n    def _read(self):\n        return (self.a.value() << 1) | self.b.value()\n\n    def _edge(self, _pin=None):\n        new = self._read()\n        if new == self._state:\n            return\n        self._raw += _TABLE[(self._state << 2) | new]\n        self._state = new\n        # Latch whole clicks only at a detent stability point: 11 always; 00 too on 2-edge-per-click types.\n        if new == 3 or (self.spd == 2 and new == 0) or self.spd == 1:\n            d = self._raw - self._base\n            n = (d + self.spd // 2) // self.spd if d >= 0 else -((-d + self.spd // 2) // self.spd)\n            if n:\n                self._pos += n\n                self._base += n * self.spd\n\n    def update(self):\n        \"\"\"Poll the pins (call often) when not using interrupts.\"\"\"\n        self._edge()\n\n    def position(self):\n        \"\"\"Clicks turned since start (or reset): clockwise positive.\"\"\"\n        return self._pos\n\n    def reset(self, value=0):\n        self._pos = value\n        self._base = self._raw\n\n    def pressed(self):\n        \"\"\"True while the knob is pushed in (switch D-E closed, D pulled to GND).\"\"\"\n        return self.sw is not None and self.sw.value() == 0\n"
+  },
+  "skill": "---\nname: part-ec11-rotary-encoder\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the bare EC11 rotary encoder with push switch (Alps Alpine EC11E15244B2, 5 pins A/C/B + D/E, quadrature, 30 detents / 15 pulses). Use when designing, wiring, simulating or writing code for a bare EC11 encoder in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# EC11 rotary encoder with push switch (Alps Alpine EC11E15244B2)\n\n## Overview\nThe **EC11** is the 11 mm metal-shaft incremental rotary encoder that most knob modules (KY-040 and friends) are\nbuilt around. Bought bare it is **just switch contacts, no electronics**:\n- Two encoder contacts **A–C** and **B–C** (C = common) that open and close in **2-phase Gray code (quadrature)**\n- A momentary **push switch D–E** (SPST, closes when the shaft is pressed)\n- EC11E15244B2: **30 detents (clicks) and 15 pulses per turn**, switch travel 1.5 mm, 360° continuous\n- Ratings: encoder **10 mA max / 1 mA min at 5 V DC**; switch 0.1 A 5 V DC, **500 µA min**\n- Chattering 3 ms max, bounce 2 ms max (measured with R = 5 kΩ)\n\n## Pinout (as printed on the Alps drawing)\nViewed from the mounting side: A, C, B in a row at 2.5 mm pitch; D and E 5 mm apart on the opposite side\n(7.5 mm away), plus two mounting tabs. It does not sit in one breadboard row: wire it with jumper leads\n(or solder leads and panel-mount it).\n\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | A | Encoder contact A, closes to C. GPIO with 3.3 kΩ pull-up to 3.3 V; reads 0 while closed |\n| 2 | C | Encoder common: connect to GND |\n| 3 | B | Encoder contact B, closes to C. GPIO with 3.3 kΩ pull-up to 3.3 V |\n| 4 | D | Push switch terminal: GPIO with pull-up (4.7 kΩ); reads 0 while pressed |\n| 5 | E | Other push switch terminal: connect to GND |\n\n## Electrical limits\n- No supply pin. The pull-up voltage sets the signal level: pull up to **3.3 V** on an ESP32 / Pico, never 5 V.\n- Encoder contacts: 1–10 mA. With 3.3 V, 3.3 kΩ gives 1 mA; the GPIO's internal ~50 kΩ pull-up alone gives\n  about 66 µA, below the datasheet minimum, so contacts can read unreliably as they wear or oxidise.\n- Switch: at least 0.5 mA (4.7 kΩ at 3.3 V = 0.7 mA).\n- Do not run loads through the contacts.\n\n## Interface details\nDatasheet output wave, CW direction (seen from the shaft): **A changes before B**. Detent stability points alternate\nbetween both open (A=1, B=1) and both closed (A=0, B=0), so each click is **half a quadrature cycle (2 edges)**:\n`(A,B) 11 → 01 → 00 → 10 → 11` = two clockwise clicks. Counter-clockwise is the reverse.\n- Decode every edge of both lines with a state table: a bounce goes forward then back and cancels out.\n- Alps' example filter: 10 kΩ pull-up, then 10 kΩ series + 0.01 µF to GND on each of A and B (optional, cuts chatter).\n- Push switch: reads 0 while pressed.\n\n## Wiring\n| Encoder | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| A (+3.3 kΩ to 3V3) | GPIO32 | GP14 (pin 19) | GPIO17 (pin 11) |\n| C | GND | GND | GND |\n| B (+3.3 kΩ to 3V3) | GPIO33 | GP15 (pin 20) | GPIO27 (pin 13) |\n| D (+4.7 kΩ to 3V3) | GPIO25 | GP13 (pin 17) | GPIO22 (pin 15) |\n| E | GND | GND | GND |\n\n## Using the driver\n```python\nfrom ec11 import EC11\nimport time\nenc = EC11(32, 33, 25)      # GPIOs wired to A, B, D\nwhile True:\n    print('pos=%d btn=%d' % (enc.position(), enc.pressed()))\n    time.sleep_ms(200)\n```\nThe driver uses pin interrupts on both edges of A and B and a full Gray-code state table. `position()` returns\nclicks turned (clockwise positive), `reset()` zeroes it, `pressed()` is True while the shaft is pushed.\nDefault `steps_per_detent=2` matches the 30-detent / 15-pulse EC11E15244B2; use 4 for encoders with one full\npulse per click (e.g. 20 detents / 20 pulses). `use_irq=False` plus frequent `update()` calls polls instead.\n\n## Gotchas\n- **Never pull the contacts up to 5 V** on a 3.3 V board.\n- **Floating pins**: without pull-ups A, B and D float when open. Fit the resistors (or at least `Pin.PULL_UP`).\n- **Counts jump by 2 per click or need two clicks per count**: wrong `steps_per_detent` for your encoder.\n- Direction backwards? Swap A and B (or negate the position).\n- C and E are separate: the switch is not connected to the encoder common inside the part; ground both.\n- Long `sleep`s in a polling loop lose steps when turned fast: use the interrupt mode.\n\n## Datasheet\nAlps Alpine EC11E series catalog: https://tech.alpsalpine.com/cms.media/product_catalog_ec_01_ec11e_en_611f078659.pdf\nProduct page (output wave, ratings): https://tech.alpsalpine.com/e/products/detail/EC11E15244B2/\n",
+  "example": {
+    "code": "from ec11 import EC11\nimport time\n\nenc = EC11({A}, {B}, {D})\nwhile True:\n    print('pos=%d btn=%d' % (enc.position(), enc.pressed()))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Counts three clockwise clicks (A leads B), one counter-clockwise click back, and reports the shaft pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "b",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "b",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "b",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "b",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressed",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=2 btn=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:16:23.793Z",
+    "verifiedSources": [
+      "https://tech.alpsalpine.com/e/products/detail/EC11E15244B2/",
+      "https://tech.alpsalpine.com/cms.media/product_catalog_ec_01_ec11e_en_611f078659.pdf"
+    ]
+  }
+}

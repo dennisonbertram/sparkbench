@@ -1,0 +1,135 @@
+{
+  "type": "custom-xgzp6847a",
+  "name": "XGZP6847A gauge pressure sensor",
+  "mpn": "XGZP6847A040KPG",
+  "category": "sensor",
+  "description": "CFSensor XGZP6847A calibrated, temperature-compensated piezoresistive gauge pressure sensor module with a ratiometric analog output: Vout = VDD × (0.1 + 0.8 × P / FS), 0.5 V at 0 kPa to 4.5 V at full scale on a 5 V supply (3 mA max); modelled as the 0–40 kPa XGZP6847A040KPG (100 mV per kPa). Sold as: CFSensor XGZP6847A040KPG DIP6 pressure sensor module with a 3 mm hose port, pins 1 N/C, 2 VDD, 3 GND, 4 VDD, 5 OUT, 6 GND (current datasheet V2.5; 2019 revisions show 2 and 6 as N/C) (two rows 10 mm apart).",
+  "eli5": "Push air into its little tube and its OUT pin rises from 0.5 V (no extra pressure) by 0.1 V for every kilopascal, up to 4.5 V at 40 kPa.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "NC1",
+      "role": "nc",
+      "description": "Pin 1. N/C: the datasheet says N/C pins must be left floating. Leave unwired.",
+      "required": false
+    },
+    {
+      "name": "VDD2",
+      "role": "power",
+      "description": "Pin 2. VDD in the current CFSensor datasheet (V2.5, 2022): a second supply pin, tied to the same 5 V as pin 4. Older (2019) datasheet revisions mark it N/C 'must be left floating': on such a part leave pin 2 unconnected (pin 4 alone powers it).",
+      "required": false
+    },
+    {
+      "name": "VSS",
+      "role": "gnd",
+      "description": "Pin 3 (Vss / GND). Ground.",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Pin 4 (Vdd). Main supply pin. Supply 5 V for the standard model (3 mA max); 6.5 V or 5 mA overload can burn the ASIC. 3.3 V is only for models ending in 33.",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Pin 5. Ratiometric analog output, 0.5 V at 0 kPa to 4.5 V at 40 kPa (VDD = 5 V). It exceeds 3.3 V above 28 kPa, so on a 3.3 V board it goes to the ADC pin through a 33 kΩ / 68 kΩ divider (Sparkbench adds it).",
+      "required": true,
+      "divider": {
+        "top": 33000,
+        "bottom": 68000
+      }
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Pin 6. GND in the current CFSensor datasheet (V2.5, 2022): a second ground pin, tied to GND with pin 3. Older (2019) datasheet revisions mark it N/C 'must be left floating': on such a part leave pin 6 unconnected (pin 3 alone grounds it).",
+      "required": false
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 3,
+  "datasheetUrl": "https://empere.in/wp-content/uploads/2023/02/XGZP6847A-Pressure-Sensor-V2.5.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "XGZP6847A040KPG",
+  "footprint": "Package_DIP:DIP-6_W10.16mm",
+  "buildNotes": [
+    "DIP6 pin order (CFSensor datasheet V2.5/2022.12): 1 N/C, 2 VDD, 3 GND, 4 VDD, 5 OUT, 6 GND. Older (2019) datasheets show 1 N/C, 2 N/C, 3 Vss, 4 Vdd, 5 OUT, 6 N/C; if your part's datasheet is that revision, leave pins 2 and 6 unconnected (pins 3, 4, 5 are enough). Pins 1-3 are one row, 6-5-4 the opposite row (pin 4 across from pin 3); the KiCad DIP-6 W10.16 mm footprint fits.",
+    "Power pin 4 (and pin 2) from 5 V, ground pin 3 (and pin 6). Never connect pin 1 (N/C).",
+    "Pressure (kPa) = (Vout / VDD - 0.1) / 0.8 x 40 for the 040KPG. At 5 V: 0.5 V = 0 kPa, 2.5 V = 20 kPa, 4.5 V = 40 kPa. Other ranges: replace 40 with the model's full scale.",
+    "OUT reaches 4.5 V: on a 3.3 V board use a 33 kΩ (OUT to ADC pin) / 68 kΩ (ADC pin to GND) divider and pass divider=101/68 to the driver.",
+    "Push a 2.5 mm ID tube firmly over the port; keep liquids out (dry air only) and shield clear tubing from strong light.",
+    "Call calibrate_zero() once with the port open to air to remove the part's offset."
+  ],
+  "keywords": [
+    "xgzp6847a",
+    "xgzp6847",
+    "cfsensor",
+    "pressure",
+    "gauge",
+    "kpa",
+    "water level",
+    "air pressure",
+    "analog",
+    "sensor"
+  ],
+  "sources": [
+    "https://empere.in/wp-content/uploads/2023/02/XGZP6847A-Pressure-Sensor-V2.5.pdf",
+    "https://www.micros.com.pl/mediaserver/CZ_XGZP6847a010kpg_0001.pdf",
+    "https://www.compel.ru/infosheet/CFSENSOR/XGZP6847A020KPG",
+    "https://www.flux.ai/jecstronic/xgzp6847a~9f4.md",
+    "https://www.lcsc.com/search?q=XGZP6847A"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Gauge pressure",
+    "unit": "kPa",
+    "min": 0,
+    "max": 40,
+    "default": 0,
+    "vAtMin": 0.5,
+    "vAtMax": 4.5,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "xgzp6847a.py",
+    "code": "# XGZP6847A gauge pressure sensor (CFSensor), analog version, MicroPython driver.\n# Datasheet \"XGZP6847A Pressure Sensor Module\": supply 5 V (default model), 3 mA max,\n# calibrated, temperature-compensated ratiometric output 0.5 V at 0 to 4.5 V at full scale.\n#   Vout = VDD x (0.1 + 0.8 x P / FS)   ->   P = (Vout / VDD - 0.1) / 0.8 x FS\n# FS is set by the model number, e.g. XGZP6847A040KPG = 0..40 kPa, 100KPG = 0..100 kPa.\n# \"...33\" models run on 3.3 V with 0.2-2.7 V output: use vs=3.3, lo=0.2, hi=2.7.\n# DIP6 pins (datasheet V2.5): 1 N/C, 2 VDD, 3 GND, 4 VDD, 5 OUT, 6 GND. Older (2019) revisions\n# mark 2 and 6 N/C (leave them floating there); pins 3, 4, 5 alone are enough. Never wire pin 1.\n# OUT reaches 4.5 V: on a 3.3 V board feed it through a divider and pass divider=(top+bottom)/bottom.\nfrom machine import ADC, Pin\n\n\nclass XGZP6847A:\n    def __init__(self, pin, fs_kpa=40.0, vs=5.0, lo=0.5, hi=4.5, pmin_kpa=0.0,\n                 divider=1.0, samples=32, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to OUT. fs_kpa: pressure at hi volts; pmin_kpa: pressure at lo volts\n        (e.g. -100 for a 100KPGPN). lo/hi: output at pmin/fs with supply vs (datasheet nominal).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable\n        except AttributeError:\n            pass\n        self.vs = vs\n        self.lo = lo / vs   # output as a fraction of the supply (ratiometric)\n        self.span = (hi - lo) / vs\n        self.pmin = pmin_kpa\n        self.fs = fs_kpa\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"Averaged voltage at the sensor's OUT pin (V).\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with the port open to air (0 kPa gauge) on a 0..FS model: stores the real offset.\"\"\"\n        self.lo = self.voltage() / self.vs\n        return self.lo * self.vs\n\n    def pressure_kpa(self):\n        \"\"\"Gauge pressure in kPa (datasheet linear transfer function).\"\"\"\n        return self.pmin + (self.voltage() / self.vs - self.lo) / self.span * (self.fs - self.pmin)\n"
+  },
+  "skill": "---\nname: part-xgzp6847a\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the CFSensor XGZP6847A gauge pressure sensor (analog output, DIP6 module, XGZP6847A040KPG 0-40 kPa at 5 V). Use when designing, wiring, simulating or writing code for an XGZP6847A in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# XGZP6847A gauge pressure sensor (CFSensor, analog)\n\n## Overview\nThe **XGZP6847A** (CFSensor) is a silicon piezoresistive pressure sensor with a calibration ASIC on a small board, sold as a 6-pin **DIP6 \"pressure sensor module\"** with one 3 mm hose barb on top. It measures **gauge pressure** (relative to the air around it) and gives a calibrated, temperature-compensated, **ratiometric analog voltage**. The pressure range is part of the model number; this part is modelled as the common **XGZP6847A040KPG**:\n- Range: **0 to 40 kPa** gauge (0 to 5.8 psi, about 0 to 4 m of water)\n- Output: **0.5 V at 0 kPa to 4.5 V at 40 kPa** with a 5 V supply (100 mV per kPa)\n- Transfer function: **Vout = VDD × (0.1 + 0.8 × P / 40 kPa)**\n- Accuracy ±1.0 % span (≥ 20 kPa ranges), compensated 0 to 60 °C\n- Supply: **5 V**, 3 mA max\n\nOther ranges use the same pins and formula with a different full scale: 005KPG = 5 kPa, 010KPG = 10 kPa, 100KPG = 100 kPa, 200KPG, 500KPG, 001MPG = 1 MPa; GN = vacuum, GPN = ± ranges (see the datasheet tables). Models ending in **33** run on 3.3 V with a **0.2–2.7 V** output.\n\nTypical uses: water level in a tank (air tube), cuff/blood pressure projects, air pumps, vacuum cleaners, pneumatics.\n\n## Pinout (DIP6, two rows 10.0 mm apart, 2.54 mm pitch)\nPins 1–3 are on one side, 4–6 on the other (counter-clockwise, like a DIP IC; pin 1 is under 6).\n\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | N/C | Do not connect |\n| 2 | VDD | Second supply pin, same 5 V as pin 4 (N/C on 2019 revisions) |\n| 3 | GND (Vss) | Ground |\n| 4 | VDD | Supply, 5 V |\n| 5 | OUT | Analog output, 0.5–4.5 V |\n| 6 | GND | Second ground pin, same as pin 3 (N/C on 2019 revisions) |\n\nThis is the current CFSensor datasheet (V2.5, 2022.12). Older datasheets (2019) show pins 2 and 6 as N/C that \"must be left floating\": on such a part leave 2 and 6 unconnected. Pins 3, 4 and 5 alone are enough on every revision.\n\n## Electrical limits\n- Supply 5 V (the 5 V model). **6.5 V or 5 mA overload can burn the ASIC.**\n- Over-pressure 2× rated (80 kPa for the 040KPG). Dry air / non-corrosive gas only, no liquids.\n- Ambient −10 to 85 °C. The chip is light-sensitive: keep clear tubing out of strong light.\n- Never connect pin 1 (N/C). Pins 2 and 6 are VDD/GND on the current datasheet but N/C on 2019 revisions.\n\n## Interface details\n```\nP (kPa) = (Vout / VDD − 0.1) / 0.8 × 40\n```\nAt VDD = 5 V: 0.5 V = 0 kPa, 1.5 V = 10 kPa, 2.5 V = 20 kPa, 3.5 V = 30 kPa, 4.5 V = 40 kPa.\nThe output is ratiometric: if the 5 V rail is really 4.8 V, pass `vs=4.8`.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| Vdd (pins 4, 2) | 5V / VIN | VBUS (pin 40) | 5V (pin 2) |\n| OUT (pin 5) | GPIO34 (ADC1) via divider | GP26 / ADC0 via divider | External ADC (e.g. ADS1115) |\n| GND (pins 3, 6) | GND | GND | GND |\n| N/C (pin 1) | not connected | not connected | not connected |\n\n## Using the driver\n```python\nfrom xgzp6847a import XGZP6847A\nimport time\ns = XGZP6847A(34, fs_kpa=40, divider=101 / 68)  # 33k/68k divider on OUT\ns.calibrate_zero()                             # port open to air\nwhile True:\n    print('P=%.1f kPa' % s.pressure_kpa())\n    time.sleep(1)\n```\nFor a ± or vacuum model pass `pmin_kpa` (pressure at 0.5 V) and `fs_kpa` (pressure at 4.5 V), e.g. 100KPGN: `pmin_kpa=-100, fs_kpa=0`. For a \"33\" model: `vs=3.3, lo=0.2, hi=2.7` (no divider needed).\n\n## Gotchas\n- **Check the model suffix**: the same-looking part comes in many ranges; the wrong `fs_kpa` scales every reading.\n- **Power it from 5 V** (unless it is a 33 model). On 3.3 V the 5 V model's output is wrong.\n- **Divider on 3.3 V boards**: OUT reaches 4.5 V.\n- **Gauge pressure**: the reading is relative to room air; it does not measure atmospheric pressure.\n- **ESP32 ADC** is nonlinear near its ends; use ADC1 pins (ADC2 stops with Wi-Fi).\n\n## On a 3.3 V board\n- **OUT** can rise to 4.5 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 33 kΩ from OUT to the pin, 68 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.49 (the driver's `divider` argument does this).\n\n## Datasheet\nhttps://empere.in/wp-content/uploads/2023/02/XGZP6847A-Pressure-Sensor-V2.5.pdf (CFSensor XGZP6847A datasheet V2.5, 2022)\nOlder revision: https://www.micros.com.pl/mediaserver/CZ_XGZP6847a010kpg_0001.pdf\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from xgzp6847a import XGZP6847A\nimport time\n\n# XGZP6847A040KPG (0-40 kPa) on 5 V; OUT reaches 4.5 V so it passes a 33k/68k divider.\nsensor = XGZP6847A({OUT}, fs_kpa=40, divider=101 / 68)\nwhile True:\n    print('P=%.0fkPa' % sensor.pressure_kpa())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the gauge pressure set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 23
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=23kPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:20:20.308Z",
+    "verifiedSources": [
+      "https://empere.in/wp-content/uploads/2023/02/XGZP6847A-Pressure-Sensor-V2.5.pdf",
+      "https://cfsensor.com/wp-content/uploads/2022/11/XGZP6847A-Pressure-Sensor-V2.7.pdf"
+    ]
+  }
+}

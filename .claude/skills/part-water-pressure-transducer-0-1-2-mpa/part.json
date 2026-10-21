@@ -1,0 +1,119 @@
+{
+  "type": "custom-water-pressure-transducer-0-1-2-mpa",
+  "name": "Water pressure transducer 0-1.2 MPa",
+  "mpn": "114991178",
+  "category": "sensor",
+  "description": "G1/4\" threaded gauge pressure transducer for water, oil or air, 0 to 1.2 MPa (12 bar, 174 psi), with a linear, ratiometric analog output: Vout = VS × (0.1 + 0.8 × P / 1.2), 0.5 V at 0 MPa to 4.5 V at 1.2 MPa at a 5 V (4.5–5.5 V) supply, ≤10 mA, ±1.5 % FS. Sold as: Seeed Studio Water Pressure Sensor G1/4 1.2MPa (SKU 114991178), and identical generic 'DC 5V G1/4 1.2MPa pressure transducer' clones, three leads red VCC, black GND, yellow OUT.",
+  "eli5": "Screw it into a water pipe and it tells you how hard the water is pushing: its yellow wire sits at 0.5 V with no pressure and climbs to 4.5 V at 12 bar.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Red lead. Supply 4.5–5.5 V: connect to 5 V (3.3 V is too low).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black lead. Ground.",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Yellow lead. Analog output 0.5 V (0 MPa) to 4.5 V (1.2 MPa), ratiometric to VCC. On a 3.3 V board it goes to the ADC pin through a 33 kΩ / 68 kΩ divider (Sparkbench adds it); 4.5 V becomes 3.03 V.",
+      "required": true,
+      "divider": {
+        "top": 33000,
+        "bottom": 68000
+      }
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 10,
+  "datasheetUrl": "https://chipster.ru/upload/files/datasheet/3/4/5/345_file.pdf",
+  "priceUsd": 14,
+  "supplierQuery": "G1/4 pressure transducer 5V 1.2MPa 0.5-4.5V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Leads: red VCC (5 V), black GND, yellow OUT. Go by colour; clones with an XH2.54 plug use the same colours.",
+    "Power from 5 V (4.5–5.5 V, ≤10 mA). The output is ratiometric: pass the real rail voltage as vs= to the driver.",
+    "Pressure (MPa) = (Vout / VS − 0.1) × 1.2 / 0.8. At 5 V: 0.5 V = 0, 2.5 V = 0.6 MPa, 4.5 V = 1.2 MPa.",
+    "OUT reaches 4.5 V: on a 3.3 V board use 33 kΩ (OUT to ADC pin) / 68 kΩ (ADC pin to GND) and pass divider=101/68.",
+    "Seal the G1/4 thread with PTFE tape or the O-ring. Max 2.4 MPa overload, 3.0 MPa burst; clean, non-corrosive media only."
+  ],
+  "keywords": [
+    "pressure",
+    "transducer",
+    "water pressure",
+    "g1/4",
+    "1.2mpa",
+    "12 bar",
+    "174 psi",
+    "0.5-4.5v",
+    "analog",
+    "seeed",
+    "114991178",
+    "sensor"
+  ],
+  "sources": [
+    "https://chipster.ru/upload/files/datasheet/3/4/5/345_file.pdf",
+    "https://www.seeedstudio.com/Water-Pressure-Sensor-G1-4-1-2MPa-p-2887.html",
+    "https://eu.robotshop.com/products/water-pressure-sensor-g1-4-12mpa",
+    "https://www.direnc.net/5-v-g14-0-12-mpa-hidrolik-suyaggaz-basinc-sensoru-en",
+    "https://wiki.dfrobot.com/gravity__water_pressure_sensor_sku__sen0257"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Pressure",
+    "unit": "MPa",
+    "min": 0,
+    "max": 1.2,
+    "default": 0,
+    "vAtMin": 0.5,
+    "vAtMax": 4.5,
+    "registers": {},
+    "outputOhms": 10
+  },
+  "driver": {
+    "filename": "pressure_transducer.py",
+    "code": "# G1/4\" 0-1.2 MPa water pressure transducer (Seeed Studio 114991178 and identical clones), MicroPython driver.\n# Specification (Seeed \"Water Pressure Sensor G1/4 1.2MPa\"): supply DC 5 +/- 0.5 V, <= 10 mA,\n# output DC 0.5-4.5 V linear over 0-1.2 MPa, accuracy +/-1.5 %FS, response <= 2 ms.\n# The output is ratiometric to the supply:\n#   Vout = VS x (0.1 + 0.8 x P / 1.2)      (0.5 V at 0 MPa, 4.5 V at 1.2 MPa with VS = 5 V)\n#   =>  P (MPa) = (Vout / VS - 0.1) x 1.2 / 0.8\n# Leads: red +5 V, black GND, yellow signal.\n# Vout reaches 4.5 V: on a 3.3 V board feed the ADC through a divider (e.g. 33k OUT->ADC, 68k ADC->GND).\nfrom machine import ADC, Pin\n\n\nclass PressureTransducer:\n    def __init__(self, pin, full_scale_mpa=1.2, vs=5.0, divider=1.0, samples=32, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to the yellow lead (through the divider if used).\n        full_scale_mpa: rated range (1.2 for this sensor).\n        vs: the sensor's supply voltage (output is ratiometric to it).\n        divider: Vout / Vadc, e.g. 101/68 for 33k (top) / 68k (bottom); 1.0 when wired directly.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.fs = full_scale_mpa\n        self.vs = vs\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC full scale when read_uv() is not available (e.g. Pico)\n        self.offset = 0.1  # Vout / VS at 0 MPa (0.5 V at 5 V)\n\n    def voltage(self):\n        \"\"\"Averaged transducer output voltage (V) on the yellow lead.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with the port open to air (0 MPa gauge): stores the real zero offset.\"\"\"\n        self.offset = self.voltage() / self.vs\n        return self.offset * self.vs\n\n    def pressure_mpa(self):\n        \"\"\"Gauge pressure in MPa (linear 0.5-4.5 V over 0-full scale).\"\"\"\n        return (self.voltage() / self.vs - self.offset) * self.fs / 0.8\n\n    def pressure_bar(self):\n        return self.pressure_mpa() * 10\n\n    def pressure_psi(self):\n        return self.pressure_mpa() * 145.038\n"
+  },
+  "skill": "---\nname: part-water-pressure-transducer-0-1-2-mpa\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the G1/4\" 5 V water pressure transducer, 0-1.2 MPa, 0.5-4.5 V analog output (Seeed Studio 114991178 and identical clones). Use when designing, wiring, simulating or writing code for a 0-1.2 MPa pressure transducer in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Water pressure transducer, G1/4\", 0–1.2 MPa (0.5–4.5 V)\n\n## Overview\nA sealed stainless/carbon-steel pressure transducer with a **G1/4\" (BSPP) male thread** that screws into a water pipe, pump outlet or air line. Inside, a temperature-compensated sensing element and amplifier give an **analog voltage** proportional to the gauge pressure. The modelled product is the **Seeed Studio \"Water Pressure Sensor G1/4 1.2MPa\" (SKU 114991178)**; the same transducer is sold under many names on Amazon/AliExpress as \"DC 5V G1/4 pressure transducer 1.2 MPa / 174 psi / 12 bar\".\n- Range: **0 to 1.2 MPa** gauge (0–12 bar, 0–174 psi)\n- Output: **0.5 V at 0 MPa to 4.5 V at 1.2 MPa** at a 5 V supply (3.33 V per MPa)\n- Transfer function: **Vout = VS × (0.1 + 0.8 × P / 1.2)**, ratiometric to the supply\n- Accuracy ±1.5 % FS; response time ≤ 2 ms; IP65\n- Supply: **5 V ± 0.5 V**, ≤ 10 mA\n- Overload 2.4 MPa, burst 3.0 MPa; media: clean, non-corrosive liquid or gas\n\n## Pinout (three flying leads)\n| Lead | Name | Function |\n|------|------|----------|\n| Red | VCC | Supply, 4.5–5.5 V (use 5 V) |\n| Black | GND | Ground |\n| Yellow | OUT | Analog output, 0.5–4.5 V |\n\nSome clones end in a 3-pin XH2.54 plug; the colours are the same. Always go by colour, not plug position.\n\n## Electrical limits\n- Supply 4.5–5.5 V. **3.3 V is not enough** (the output would be wrong and the zero shifts).\n- Do not exceed 2.4 MPa (overload); 3.0 MPa destroys it. Pressure spikes from water hammer count.\n- Operating temperature −20 to +105 °C (Seeed); some clone listings say 0–85 °C.\n\n## Interface details\n```\nP (MPa) = (Vout / VS − 0.1) × 1.2 / 0.8\n```\nWith VS = 5 V: 0.5 V = 0 MPa, 1.5 V = 0.3 MPa, 2.5 V = 0.6 MPa, 4.5 V = 1.2 MPa. 1 MPa = 10 bar = 145 psi.\nSome seller pages print `Vout = VCC × (0.75 × P + 0.1)`; that formula does not match the 0.5–4.5 V over 0–1.2 MPa specification (it would give 4.5 V at 1.07 MPa) and is ignored here. Below 0.5 V or above 4.5 V means a fault (broken lead, overpressure).\n\n## Wiring\n| Transducer | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| Red (VCC) | 5V / VIN | VBUS (pin 40) | 5V (pin 2) |\n| Yellow (OUT) | GPIO34 (ADC1) via divider | GP26 / ADC0 via divider | External ADC (e.g. ADS1115 A0) |\n| Black (GND) | GND | GND | GND |\n\n## Using the driver\n```python\nfrom pressure_transducer import PressureTransducer\nimport time\ns = PressureTransducer(26, divider=101 / 68)  # 33k/68k divider, VS = 5 V\ns.calibrate_zero()                            # optional: with the port open to air\nwhile True:\n    print('P=%.2fMPa (%.1f bar)' % (s.pressure_mpa(), s.pressure_bar()))\n    time.sleep(1)\n```\nThe driver averages 32 samples, using calibrated `read_uv()` where available (ESP32), otherwise `read_u16()` × 3.3 / 65535. Pass `vs=` if your 5 V rail is not 5.0 V (USB is often 4.8–5.1 V).\n\n## Gotchas\n- **Power from 5 V**, not 3.3 V, and use a divider on the output for 3.3 V boards.\n- **Ratiometric output:** a sagging USB rail scales the reading; measure the rail and pass `vs=`, or read the rail with a second ADC channel.\n- **Seal the thread** with PTFE tape or the supplied O-ring; do not over-tighten by the cable end.\n- **Zero offset** varies a little: calibrate at atmospheric pressure (it reads gauge pressure).\n- **ESP32 ADC** is nonlinear near its ends; use ADC1 pins (ADC2 is unusable with Wi-Fi).\n\n## On a 3.3 V board\n- **OUT** rises to 4.5 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 33 kΩ from OUT to the pin, 68 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage (4.5 V becomes 3.03 V), so multiply ADC readings by 1.49 (the driver's `divider` argument does this).\n\n## Datasheet\nhttps://chipster.ru/upload/files/datasheet/3/4/5/345_file.pdf (Seeed Studio Water Pressure Sensor G1/4 1.2MPa, SKU 114991178)\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from pressure_transducer import PressureTransducer\nimport time\n\n# OUT reaches 4.5 V, so it reaches the ADC through a 33k/68k divider.\nsensor = PressureTransducer({OUT}, divider=101 / 68)\nwhile True:\n    print('P=%.2fMPa' % sensor.pressure_mpa())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.6
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=0.60MPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:13:19.949Z",
+    "verifiedSources": [
+      "https://www.seeedstudio.com/Water-Pressure-Sensor-G1-4-1-2MPa-p-4631.html",
+      "https://wiki.seeedstudio.com/Water-Pressure-Sensor/"
+    ]
+  }
+}

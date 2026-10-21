@@ -1,0 +1,233 @@
+{
+  "type": "custom-sparkfun-qwiic-keypad",
+  "name": "SparkFun Qwiic Keypad - 12 Button",
+  "mpn": "COM-15290",
+  "category": "input",
+  "description": "12-key telephone-style keypad (1-9, *, 0, #) read over I2C through an ATtiny84 running SparkFun's Qwiic_KeyPad firmware: it scans the 4x3 matrix, stores key presses with timestamps in a FIFO (ring of 15 slots, oldest overwritten when full) and pulls INT low while keys are waiting. 3.3 V board, no regulator, 2.2 kOhm I2C pull-ups. I2C address 0x4B (0x4A with the ADR jumper closed, or set in software). Sold as: SparkFun Qwiic Keypad - 12 Button (COM-15290), 6-pin 0.1\" header RST, INT, SCL, SDA, 3.3V, GND plus two Qwiic connectors.",
+  "eli5": "A phone-style number pad that remembers which keys you pressed and tells your board over two wires, one key at a time.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "ATtiny84 reset, active low, 4.7 kOhm pull-up to 3.3 V on the board; pull low to restart the keypad. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low: low while key presses are waiting in the FIFO, high when it is empty (push-pull from the 3.3 V ATtiny, plus 4.7 kOhm pull-up). Not needed for basic use",
+      "required": false,
+      "boardPullUp": 4700
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kOhm pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kOhm pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 3.3 V (no regulator on the board; the Qwiic system is 3.3 V only)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.6,
+  "currentMa": 4,
+  "i2cAddress": 75,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf",
+  "priceUsd": 11.5,
+  "supplierQuery": "SparkFun Qwiic Keypad 12 Button COM-15290",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.sparkfun.com/products/15290",
+    "https://learn.sparkfun.com/tutorials/qwiic-keypad-hookup-guide/all",
+    "https://github.com/sparkfun/Qwiic_Keypad/blob/master/Firmware/Qwiic_KeyPad/Qwiic_KeyPad.ino",
+    "https://github.com/sparkfun/Qwiic_Keypad/blob/master/Hardware/Qwiic_keypad.brd",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Keypad_Arduino_Library/blob/master/src/SparkFun_Qwiic_Keypad_Arduino_Library.cpp",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf"
+  ],
+  "buildNotes": [
+    "Power it from 3.3 V only: the board has no regulator and its I2C pull-ups go to its own 3.3V pin.",
+    "To get a key: write 0x06 0x01 (load-FIFO command), then write 0x03 and read; the firmware loads the oldest key during that read. Register 0x03 is the key as ASCII ('0'-'9', '*', '#'), 0 when the FIFO is empty; 0x04-0x05 are ms since the press, MSB first.",
+    "Register 0x00 always reads 0x4B; 0x01/0x02 are the firmware version.",
+    "Default address 0x4B; closing the ADR jumper forces 0x4A; writing 0x07 stores a new address (0x08-0x77) in EEPROM.",
+    "The FIFO keeps the most recent presses (15-slot ring); poll often enough or older presses are overwritten.",
+    "INT and RST are optional: INT goes low while presses are waiting; RST restarts the ATtiny84."
+  ],
+  "keywords": [
+    "qwiic keypad",
+    "sparkfun",
+    "keypad",
+    "12 button",
+    "telephone keypad",
+    "i2c keypad",
+    "attiny84",
+    "com-15290"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 75,
+      "0x01": 1,
+      "0x02": 0,
+      "0x03": 0,
+      "0x04": 0,
+      "0x05": 0,
+      "0x06": 0,
+      "0x07": 75
+    },
+    "writable": {
+      "0x06": 1,
+      "0x07": 255
+    },
+    "controls": [
+      {
+        "key": "key",
+        "quantity": "Key held down (1-9 = keys 1-9, 10 = *, 11 = 0, 12 = #; 0 = none)",
+        "min": 0,
+        "max": 12,
+        "default": 0
+      }
+    ],
+    "eventFifo": {
+      "depth": 15,
+      "sources": [
+        {
+          "control": "key",
+          "codes": [
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            42,
+            48,
+            35
+          ]
+        }
+      ],
+      "popReg": "0x06",
+      "popMask": 1,
+      "codeReg": "0x03",
+      "timeReg": "0x04"
+    }
+  },
+  "driver": {
+    "filename": "qwiic_keypad.py",
+    "code": "# SparkFun Qwiic Keypad - 12 Button (COM-15290), MicroPython driver.\n# The board's ATtiny84 runs SparkFun's Qwiic_KeyPad firmware, which scans the 4x3 key matrix and keeps the\n# last key presses in a FIFO (ring of 15 slots). Register map (firmware memoryMap / hookup guide):\n#   0x00 id (= 0x4B, the default address)   0x01/0x02 firmware major/minor\n#   0x03 oldest key in the FIFO as ASCII ('0'-'9', '*', '#'; 0 = none)\n#   0x04/0x05 ms since that key was pressed (MSB first)\n#   0x06 bit0 = \"load the next FIFO entry\" command; the firmware acts on it at the NEXT read request\n#   0x07 I2C address (stored in EEPROM, 0x08-0x77)\n# Reads: write the register number, then read; the firmware sends the map from that register onward.\nfrom micropython import const\nimport time\n\n_ID = const(0x00)\n_FW_MAJOR = const(0x01)\n_FW_MINOR = const(0x02)\n_BUTTON = const(0x03)\n_TIME_MSB = const(0x04)\n_UPDATE_FIFO = const(0x06)\n_CHANGE_ADDRESS = const(0x07)\n\n\nclass QwiicKeypad:\n    def __init__(self, i2c, addr=0x4B):\n        self.i2c = i2c\n        self.addr = addr\n        # Register 0x00 always holds the firmware's default address 0x4B, even after an address change.\n        if self._read(_ID)[0] != 0x4B:\n            raise OSError('Qwiic Keypad not found at 0x%02X (wrong ID)' % addr)\n\n    def _read(self, reg, n=1):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _write(self, reg, val):\n        self.i2c.writeto(self.addr, bytes([reg, val & 0xFF]))\n\n    def version(self):\n        d = self._read(_FW_MAJOR, 2)\n        return 'v%d.%d' % (d[0], d[1])\n\n    def update_fifo(self):\n        \"\"\"Ask the keypad to load its oldest stored key into 0x03-0x05 on the next read.\"\"\"\n        self._write(_UPDATE_FIFO, 0x01)\n\n    def button(self):\n        \"\"\"Key code (ASCII) currently loaded in register 0x03, 0 if none.\"\"\"\n        return self._read(_BUTTON)[0]\n\n    def time_since_pressed(self):\n        d = self._read(_TIME_MSB, 2)\n        return (d[0] << 8) | d[1]\n\n    def read_event(self):\n        \"\"\"Pop the oldest key press. Returns (key_char, ms_ago) or None when the FIFO is empty.\n        ms_ago is 16-bit (wraps after 65.535 s).\"\"\"\n        self.update_fifo()\n        d = self._read(_BUTTON, 3)   # this read triggers the FIFO load, then returns 0x03..0x05\n        if d[0] == 0:\n            return None\n        return chr(d[0]), (d[1] << 8) | d[2]\n\n    def get_key(self):\n        \"\"\"Oldest stored key as a one-character string, or None.\"\"\"\n        e = self.read_event()\n        return e[0] if e else None\n\n    def set_address(self, new_addr):\n        \"\"\"Store a new I2C address in the keypad's EEPROM (ignored while the ADR jumper is closed: 0x4A).\"\"\"\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._write(_CHANGE_ADDRESS, new_addr)\n        time.sleep_ms(100)\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_keypad import QwiicKeypad\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nkp = QwiicKeypad(i2c)\nprint('ID=0x%02X' % kp._read(0x00)[0])\ntyped = ''\nwhile True:\n    e = kp.read_event()\n    if e:\n        typed += e[0]\n        print('KEY=%s TYPED=%s' % (e[0], typed))\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "keys",
+      "title": "Key presses come out of the FIFO in order",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ID=0x4B",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key",
+          "value": 7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key",
+          "value": 10
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=7 TYPED=7",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=* TYPED=7*",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key",
+          "value": 11
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=0 TYPED=7*0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "key",
+          "value": 12
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "KEY=# TYPED=7*0#",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:06:34.763Z",
+    "verifiedSources": [
+      "https://www.sparkfun.com/sparkfun-qwiic-keypad-12-button.html",
+      "https://learn.sparkfun.com/tutorials/qwiic-keypad-hookup-guide/hardware-overview",
+      "https://cdn.sparkfun.com/assets/c/2/f/a/4/Qwiic_Keypad_Schematic.pdf"
+    ]
+  }
+}

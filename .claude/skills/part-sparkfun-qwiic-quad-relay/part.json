@@ -1,0 +1,356 @@
+{
+  "type": "custom-sparkfun-qwiic-quad-relay",
+  "name": "SparkFun Qwiic Quad Relay",
+  "mpn": "COM-16566",
+  "category": "actuator",
+  "description": "I2C-controlled board with four JZC-11F 5 V SPDT relays (5 A at 250 VAC or 30 VDC each, NO/COM/NC screw terminals). An ATtiny84A running SparkFun's Qwiic Quad Relay firmware drives each relay through an optocoupler and transistor. The logic side runs on 3.3 V (header or Qwiic); the relay coils run on a separate 5 V rail made from a 7-12 V barrel jack supply (about 250 mA with all four on). I2C address 0x6D (0x6C with the ADDR jumper closed, or any 0x08-0x77 set in software). Sold as: SparkFun Qwiic Quad Relay v2.0 (COM-16566), 2 Qwiic connectors plus a 4-pin 0.1\" header GND, 3V3, SDA, SCL, a 7-12 V DC barrel jack and four NO/COM/NC screw terminals.",
+  "eli5": "Four switches for big things (lamps, pumps, fans) that your board flips on and off over two I2C wires.",
+  "refPrefix": "K",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (shared by the logic side and the barrel jack sleeve)",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Logic supply, 3.3 V: ATtiny84A and the optocoupler LEDs (100 ohm each, up to about 85 mA with all four relays on). Does not power the relay coils.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; the board has no I2C pull-up resistors, add 4.7 k to 3.3 V (or use a Qwiic host that has them)",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock; the board has no I2C pull-up resistors, add 4.7 k to 3.3 V (or use a Qwiic host that has them)",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Barrel jack centre pin (silkscreen 7-12V): relay supply, regulated on board to 5 V for the coils. About 250 mA with all four relays on. Close the BYP (5V Wall Adapter) jumper only when feeding exactly 5 V.",
+      "required": true,
+      "supply": {
+        "vmin": 7,
+        "vmax": 12,
+        "currentMa": 250
+      }
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 85,
+  "i2cAddress": 109,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/5/4/9/f/6/Qwiic_Quad_Relay_Schematic-v20.pdf",
+  "priceUsd": 30,
+  "supplierQuery": "SparkFun Qwiic Quad Relay COM-16566",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Commands are single bytes written to 0x6D: 0x01-0x04 toggle relay 1-4, 0x0A all off, 0x0B all on, 0x0C toggle all.",
+    "Status: write 0x05-0x08 (relay 1-4), then read; each byte is 0x0F for on, 0x00 for off. Reading 4 bytes after 0x05 returns all four relays.",
+    "There is no 'relay N on' command: read the relay's status and toggle only if it is in the wrong state (the driver's on()/off() do this).",
+    "Two power systems: 3.3 V on the header/Qwiic for the ATtiny84A, and a 7-12 V barrel jack supply (a 9 V or 12 V wall adapter) for the relay coils. Without the barrel jack the I2C side answers but the relays never click.",
+    "The board has no I2C pull-ups; add 4.7 k from SDA and SCL to 3.3 V unless another board on the bus provides them.",
+    "Closing the ADDR jumper selects 0x6C; write 0xC7 <addr> to store a new address (0x08-0x77) in EEPROM.",
+    "Mains on NO/COM/NC is dangerous: COM to the live wire, NO (off at rest) or NC (on at rest) to the load. Keep fingers off the screw terminals while it is plugged in."
+  ],
+  "keywords": [
+    "qwiic quad relay",
+    "quad relay",
+    "com-16566",
+    "com-15102",
+    "sparkfun relay",
+    "i2c relay",
+    "4 channel relay",
+    "relay",
+    "jzc-11f"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x05": 0,
+      "0x06": 0,
+      "0x07": 0,
+      "0x08": 0
+    },
+    "commands": [
+      {
+        "code": 1,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 2,
+        "actions": [
+          {
+            "reg": "0x06",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 3,
+        "actions": [
+          {
+            "reg": "0x07",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 4,
+        "actions": [
+          {
+            "reg": "0x08",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 5,
+        "read": [
+          "0x05",
+          "0x06",
+          "0x07",
+          "0x08"
+        ],
+        "then": 5
+      },
+      {
+        "code": 6,
+        "read": [
+          "0x06",
+          "0x07",
+          "0x08"
+        ],
+        "then": 5
+      },
+      {
+        "code": 7,
+        "read": [
+          "0x07",
+          "0x08"
+        ],
+        "then": 5
+      },
+      {
+        "code": 8,
+        "read": [
+          "0x08"
+        ],
+        "then": 5
+      },
+      {
+        "code": 10,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "set",
+            "value": 0
+          },
+          {
+            "reg": "0x06",
+            "op": "set",
+            "value": 0
+          },
+          {
+            "reg": "0x07",
+            "op": "set",
+            "value": 0
+          },
+          {
+            "reg": "0x08",
+            "op": "set",
+            "value": 0
+          }
+        ]
+      },
+      {
+        "code": 11,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "set",
+            "value": 15
+          },
+          {
+            "reg": "0x06",
+            "op": "set",
+            "value": 15
+          },
+          {
+            "reg": "0x07",
+            "op": "set",
+            "value": 15
+          },
+          {
+            "reg": "0x08",
+            "op": "set",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 12,
+        "actions": [
+          {
+            "reg": "0x05",
+            "op": "xor",
+            "value": 15
+          },
+          {
+            "reg": "0x06",
+            "op": "xor",
+            "value": 15
+          },
+          {
+            "reg": "0x07",
+            "op": "xor",
+            "value": 15
+          },
+          {
+            "reg": "0x08",
+            "op": "xor",
+            "value": 15
+          }
+        ]
+      },
+      {
+        "code": 199,
+        "data": 1
+      }
+    ],
+    "outputBits": [
+      {
+        "reg": "0x05",
+        "bit": 0,
+        "name": "Relay 1"
+      },
+      {
+        "reg": "0x06",
+        "bit": 0,
+        "name": "Relay 2"
+      },
+      {
+        "reg": "0x07",
+        "bit": 0,
+        "name": "Relay 3"
+      },
+      {
+        "reg": "0x08",
+        "bit": 0,
+        "name": "Relay 4"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_quad_relay.py",
+    "code": "# SparkFun Qwiic Quad Relay (COM-16566 v2.0 / COM-15102 v1.0), MicroPython driver.\n# The board's ATtiny84A runs SparkFun's Qwiic_Quad_Relay firmware: one-byte commands, not a register map.\n#   0x01-0x04  toggle relay 1-4\n#   0x05-0x08  select the status of relay 1-4; the next read returns 0x0F (on) or 0x00 (off).\n#              A longer read continues with the following relays up to relay 4 (0x05 + 4 bytes = all four).\n#   0x0A all off, 0x0B all on, 0x0C toggle all\n#   0xC7 <addr> change the I2C address (0x08-0x77, stored in EEPROM)\n# There is no \"relay N on\" command: on()/off() read the status and toggle only when needed,\n# as SparkFun's Arduino library does.\n\nCMD_TOGGLE_BASE = 0x00   # + relay (1-4)\nCMD_STATUS_BASE = 0x04   # + relay (1-4)\nCMD_ALL_OFF = 0x0A\nCMD_ALL_ON = 0x0B\nCMD_TOGGLE_ALL = 0x0C\nCMD_CHANGE_ADDRESS = 0xC7\nRELAY_IS_ON = 0x0F\n\n\nclass QwiicQuadRelay:\n    def __init__(self, i2c, addr=0x6D):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _cmd(self, c):\n        self.i2c.writeto(self.addr, bytes([c]))\n\n    @staticmethod\n    def _check(relay):\n        if relay not in (1, 2, 3, 4):\n            raise ValueError('relay must be 1-4')\n\n    def state(self, relay):\n        \"\"\"1 if relay 1-4 is energised (COM connected to NO), else 0.\"\"\"\n        self._check(relay)\n        self._cmd(CMD_STATUS_BASE + relay)\n        return 1 if self.i2c.readfrom(self.addr, 1)[0] == RELAY_IS_ON else 0\n\n    def states(self):\n        \"\"\"States of all four relays as a list [r1, r2, r3, r4] (one status read of 4 bytes).\"\"\"\n        self._cmd(CMD_STATUS_BASE + 1)\n        return [1 if b == RELAY_IS_ON else 0 for b in self.i2c.readfrom(self.addr, 4)]\n\n    def toggle(self, relay):\n        self._check(relay)\n        self._cmd(CMD_TOGGLE_BASE + relay)\n\n    def on(self, relay):\n        if not self.state(relay):\n            self.toggle(relay)\n\n    def off(self, relay):\n        if self.state(relay):\n            self.toggle(relay)\n\n    def value(self, relay, v=None):\n        \"\"\"value(n) returns relay n's state; value(n, 1/0) switches it.\"\"\"\n        if v is None:\n            return self.state(relay)\n        if v:\n            self.on(relay)\n        else:\n            self.off(relay)\n\n    def all_on(self):\n        self._cmd(CMD_ALL_ON)\n\n    def all_off(self):\n        self._cmd(CMD_ALL_OFF)\n\n    def toggle_all(self):\n        self._cmd(CMD_TOGGLE_ALL)\n\n    def change_address(self, new_addr):\n        \"\"\"Store a new I2C address (0x08-0x77) in EEPROM; the board answers there at once\n        (unless the ADDR jumper is closed, which forces 0x6C).\"\"\"\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self.i2c.writeto(self.addr, bytes([CMD_CHANGE_ADDRESS, new_addr]))\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_quad_relay import QwiicQuadRelay\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nrelays = QwiicQuadRelay(i2c)  # 0x6D; 0x6C with the ADDR jumper closed\nrelays.all_off()\nrelays.on(2)\nrelays.on(4)\nrelays.on(4)  # already on: on() checks first, so no change\nprint('R=' + ''.join(str(s) for s in relays.states()))\ntime.sleep(2)\nrelays.toggle_all()\nprint('T=' + ''.join(str(s) for s in relays.states()))\ntime.sleep(2)\nrelays.off(3)\nprint('O=' + ''.join(str(relays.state(n)) for n in (1, 2, 3, 4)))\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "switches",
+      "title": "Relays follow on/off/toggle-all commands and report their states",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=0101",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Relay 2",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Relay 1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=1010",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Relay 1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Relay 4",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "O=1000",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Relay 3",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.sparkfun.com/sparkfun-qwiic-quad-relay.html",
+    "https://learn.sparkfun.com/tutorials/qwiic-quad-relay-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/5/4/9/f/6/Qwiic_Quad_Relay_Schematic-v20.pdf",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/3/9/16566-SparkFun_Quad_Relay_Qwiic_Power.jpg",
+    "https://github.com/sparkfun/Qwiic_Quad_Relay/blob/master/Firmware/Qwiic_Quad_Relay_Firmware/Qwiic_Quad_Relay_Firmware.ino",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Relay_Arduino_Library"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:08:02.682Z",
+    "verifiedSources": [
+      "https://learn.sparkfun.com/tutorials/qwiic-quad-relay-hookup-guide",
+      "https://cdn.sparkfun.com/assets/5/4/9/f/6/Qwiic_Quad_Relay_Schematic-v20.pdf",
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny24A-44A-84A-DataSheet-DS40002269A.pdf"
+    ]
+  }
+}

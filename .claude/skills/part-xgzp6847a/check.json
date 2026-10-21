@@ -1,0 +1,79 @@
+{
+  "type": "custom-xgzp6847a",
+  "mpn": "XGZP6847A040KPG",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; XGZP6847A gauge pressure sensor needs at least 4.75 V, so it is powered from 5 V. U2.OUT → D32 (GPIO32) — an analog-capable pin. Added a 33 kΩ / 68 kΩ divider on OUT: it swings to 5 V, and the D32 pin takes 3.3 V at most. Added the xgzp6847a.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "17 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the gauge pressure set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "51×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; XGZP6847A gauge pressure sensor needs at least 4.75 V, so it is powered from 5 V. U2.OUT → GP28 (GPIO28) — an analog-capable pin. Added a 33 kΩ / 68 kΩ divider on OUT: it swings to 5 V, and the GP28 pin takes 3.3 V at most. Added the xgzp6847a.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "17 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the gauge pressure set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-6_W10.16mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:20:20.308Z"
+}

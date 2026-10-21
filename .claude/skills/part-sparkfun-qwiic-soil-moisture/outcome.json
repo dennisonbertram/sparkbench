@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sparkfun-qwiic-soil-moisture",
+  "board": "SparkFun Qwiic Soil Moisture Sensor (SEN-17731)",
+  "reason": "Modelled from SparkFun's schematic and the ATtiny85 gateway firmware: command 0x05 returns the 10-bit ADC reading low byte first (1023 dry, lower wetter), 0x00/0x01 switch the LED, 0x03 sets the address; the check passed on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/e/4/b/b/17731-QwiicSoilMoistureSensor-Schematic.pdf",
+  "breakoutPinoutSource": "SparkFun SEN-17731 schematic (J1 JST-SH Qwiic: 1 GND, 2 +3V3, 3 SDA, 4 SCL) and hookup guide https://learn.sparkfun.com/tutorials/soil-moisture-sensor-hookup-guide/all",
+  "checkRuns": 1
+}
