@@ -27,8 +27,11 @@ export interface CustomSim {
    * the roles: { data, clock, latch, outputs[] } or { load, clock, serialOut, inputs[] }, parallel pins listed A…H
    * (QA…QH on a 595; A…H on a 165, where H is shifted out first). Mark parallel pins required:false. */
   shift?: { type: '595' | '165'; data?: string; clock: string; latch?: string; outputs?: string[]; load?: string; serialOut?: string; inputs?: string[] };
-  /** servo: inputPin is the signal; a pulse of minUs…maxUs (at about 50 Hz) turns it to 0…degrees. */
-  servo?: { minUs: number; maxUs: number; degrees: number };
+  /** servo: inputPin is the signal; a pulse of minUs…maxUs (at about 50 Hz) turns it to 0…degrees.
+   * continuous: a continuous-rotation servo instead. The pulse sets speed and direction: stopped within
+   * stopUs ± deadbandUs/2 (and with no pulses), full speed at minUs and maxUs; pulses below stopUs turn it
+   * `below` ('cw' or 'ccw', seen from the horn side), above it the other way. degrees is ignored. */
+  servo?: { minUs: number; maxUs: number; degrees: number; continuous?: { stopUs: number; deadbandUs: number; below: 'cw' | 'ccw' } };
   /** tft-display: an SPI colour TFT (ST7789/ST7735/ILI9341 command set: 0x2A/0x2B window, 0x2C RGB565 pixels).
    * Pins: fn spi.sck, spi.mosi, spi.cs, tft.dc (data/command) and optionally tft.reset. */
   width?: number;
@@ -127,6 +130,9 @@ export interface CustomSim {
   subDevices?: { i2cAddress: number; registers?: Record<string, number>; measures?: I2CMeasure[]; regWidth?: 8 | 16; autoIncrementBit7?: boolean }[];
   /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
   pointerless?: boolean;
+  /** pointerless i2c-device with a 16-bit port (PCF8575): every transfer is byte pairs, port 0 (register 0x00, P00–P07)
+   * then port 1 (register 0x01, P10–P17); a write takes effect per complete pair, a read streams port 0, port 1, port 0… */
+  pointerlessBytes?: 1 | 2;
   /** i2c-device: register bits that are output pins (e.g. an expander's P0…P7), shown as on/off and testable
    * with expect what:"active" text:<name>. */
   outputBits?: { reg: string; bit: number; name: string }[];
@@ -296,7 +302,11 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   }
   if (s.kind === 'addressable-led' && (!s.inputPin || !s.count || s.count < 1 || s.count > 1024)) errs.push('addressable-led needs inputPin (DIN) and a count of 1-1024');
   if (s.kind === 'dht-sensor' && (!s.outputPin || !keys.has('humidity'))) errs.push('dht-sensor needs outputPin (DATA) and a "humidity" control');
+  if (s.pointerlessBytes !== undefined && (!s.pointerless || ![1, 2].includes(s.pointerlessBytes))) errs.push('pointerlessBytes (1 or 2) needs pointerless: true');
   if (s.kind === 'servo' && (!s.inputPin || !s.servo || s.servo.maxUs <= s.servo.minUs)) errs.push('servo needs inputPin and servo {minUs, maxUs, degrees}');
+  const cont = s.servo?.continuous;
+  if (cont && !(cont.stopUs > s.servo!.minUs && cont.stopUs < s.servo!.maxUs && cont.deadbandUs >= 0 && cont.deadbandUs / 2 < Math.min(cont.stopUs - s.servo!.minUs, s.servo!.maxUs - cont.stopUs) && (cont.below === 'cw' || cont.below === 'ccw')))
+    errs.push('servo.continuous needs minUs < stopUs < maxUs, a deadband narrower than either side, and below "cw" or "ccw"');
   if (s.kind === 'shift-register') {
     const sh = s.shift;
     if (!sh) errs.push('shift-register needs shift');

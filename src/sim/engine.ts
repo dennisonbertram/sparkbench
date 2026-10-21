@@ -53,6 +53,7 @@ export interface PartVisual {
   tone?: number;
   relay?: boolean;
   spin?: number; // motor speed 0..1
+  dir?: 'cw' | 'ccw'; // continuous-rotation servo: which way it turns while spin > 0
   active?: boolean; // datasheet-defined actuator is switched on
   inputs?: Record<string, boolean>; // datasheet-defined actuator: which control inputs are high
   powered?: boolean;
@@ -113,6 +114,8 @@ export class SimEngine {
   private irqQueue: number[] = [];
   private pixels = new Map<string, number[]>();
   private servos = new Map<string, number>();
+  /** Continuous-rotation servos: signed speed −1…1 (positive = clockwise). */
+  private servoSpeeds = new Map<string, number>();
   private tones = new Map<string, number>();
   private relays = new Map<string, boolean>();
   private pirHold = new Map<string, number>();
@@ -152,7 +155,7 @@ export class SimEngine {
           this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
         }
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000 }), part });
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000 }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
@@ -540,14 +543,21 @@ export class SimEngine {
           this.warn(`servo-power-${part.id}`, 'warning', `${part.ref ?? part.id}: the servo has no power — connect its + wire and GND.`, [part.id]);
           continue;
         }
+        const sv = scs.sim.servo;
+        if (sv.continuous && !(p && p.duty > 0)) this.servoSpeeds.set(part.id, 0); // no pulses: it stops
         if (p && p.duty > 0) {
           if (p.freq < 40 || p.freq > 400) {
             this.warn(`servo-freq-${part.id}`, 'warning', `${part.ref ?? part.id}: this servo expects 50 Hz pulses, got ${p.freq} Hz.`, [part.id]);
             continue;
           }
-          const sv = scs.sim.servo;
           const pulseUs = (p.duty / 65535) * (1e6 / p.freq);
-          this.servos.set(part.id, Math.max(0, Math.min(sv.degrees, ((pulseUs - sv.minUs) / (sv.maxUs - sv.minUs)) * sv.degrees)));
+          const c = sv.continuous;
+          if (c) {
+            const off = pulseUs - c.stopUs;
+            const frac = Math.abs(off) <= c.deadbandUs / 2 ? 0 : Math.min(1, off < 0 ? -off / (c.stopUs - sv.minUs) : off / (sv.maxUs - c.stopUs));
+            const cw = off < 0 ? c.below === 'cw' : c.below === 'ccw';
+            this.servoSpeeds.set(part.id, cw ? frac : -frac);
+          } else this.servos.set(part.id, Math.max(0, Math.min(sv.degrees, ((pulseUs - sv.minUs) / (sv.maxUs - sv.minUs)) * sv.degrees)));
         }
       }
       if (part.type === 'buzzer' && this.model.gpiosReachable(part.id, '+').includes(g)) {
@@ -1142,7 +1152,11 @@ export class SimEngine {
           }
           if (cs?.sim.kind === 'servo') {
             v.powered = m.modulePowered(part.id);
-            v.angle = this.servos.get(part.id) ?? (cs.sim.servo?.degrees ?? 180) / 2;
+            if (cs.sim.servo?.continuous) {
+              const sp = v.powered ? (this.servoSpeeds.get(part.id) ?? 0) : 0;
+              v.spin = Math.abs(sp);
+              if (sp) v.dir = sp > 0 ? 'cw' : 'ccw';
+            } else v.angle = this.servos.get(part.id) ?? (cs.sim.servo?.degrees ?? 180) / 2;
           }
           if (cs?.sim.kind === 'tft-display') {
             v.powered = m.modulePowered(part.id);

@@ -144,6 +144,19 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
             return <rect key={i} x={6 + i * 7} y={10} width={5} height={5} rx={1} fill={r + g + b > 10 ? `rgb(${Math.min(255, r * 2)},${Math.min(255, g * 2)},${Math.min(255, b * 2)})` : '#eee'} stroke="#999" strokeWidth={0.4} />;
           })}
         </g>
+      ) : cs.sim.kind === 'servo' ? (
+        // The horn: its angle, or for a continuous-rotation servo a spinning arrow showing the direction.
+        <g transform={`translate(${w / 2} 18)`}>
+          <circle r={9} fill="#111" />
+          {cs.sim.servo?.continuous ? (
+            <g className={(visual?.spin ?? 0) > 0.02 ? 'spinning' : ''} style={{ transformOrigin: '0 0', animationDuration: `${0.6 / Math.max(visual?.spin ?? 0, 0.1)}s`, animationDirection: visual?.dir === 'ccw' ? 'reverse' : 'normal' }}>
+              <path d="M0 -6 A6 6 0 1 1 -6 0" fill="none" stroke="#eee" strokeWidth={1.4} />
+              <path d="M-8 -1 L-6 2 L-4 -1 Z" fill="#eee" />
+            </g>
+          ) : (
+            <rect x={-1.5} y={-8} width={3} height={8} rx={1.5} fill="#eee" transform={`rotate(${(visual?.angle ?? (cs.sim.servo?.degrees ?? 180) / 2) - (cs.sim.servo?.degrees ?? 180) / 2})`} />
+          )}
+        </g>
       ) : visual?.segText === undefined ? (
         <rect x={w / 2 - 14} y={8} width={28} height={20} rx={2} fill="#111" />
       ) : null}

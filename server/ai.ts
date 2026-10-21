@@ -82,7 +82,7 @@ const StepSchema = z.object({
   value: z.number().nullable().describe('set: the value'),
   ms: z.number().nullable().describe('wait: milliseconds; press: how long to hold'),
   what: z.enum(['screen', 'serial', 'led', 'buzzer', 'servo', 'relay', 'motor', 'pixels', 'active', 'no-error']).nullable().describe('expect: what to check'),
-  text: z.string().nullable().describe('expect screen/serial: text that must appear (short, case-insensitive)'),
+  text: z.string().nullable().describe('expect screen/serial: text that must appear (short, case-insensitive); expect motor: "cw" or "ccw" to require a direction (continuous-rotation servos)'),
   on: z.boolean().nullable().describe('expect led/buzzer/relay/motor/pixels: true = on, false = off'),
   min: z.number().nullable().describe('expect servo: lowest acceptable angle'),
   max: z.number().nullable().describe('expect servo: highest acceptable angle'),
