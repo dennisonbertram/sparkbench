@@ -463,7 +463,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16 } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; pointerless?: boolean; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[] } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     for (const [k, v] of Object.entries(registers)) this.setReg(Number(k), v);
@@ -493,6 +493,11 @@ export class GenericI2CDevice implements I2CDevice {
       return;
     }
     this.reply = [];
+    if (this.layout.pointerless) {
+      this.ptr = 0;
+      this.setReg(0, bytes[bytes.length - 1]);
+      return;
+    }
     const aw = this.layout.addrWidth === 16 ? 2 : 1;
     this.ptr = aw === 2 ? ((bytes[0] << 8) | (bytes[1] ?? 0)) : bytes[0];
     const data = bytes.slice(aw);
@@ -512,11 +517,26 @@ export class GenericI2CDevice implements I2CDevice {
       if (this.wide) for (let i = 0; i < b.length; i += 2) this.store.set(reg + i / 2, [b[i], b[i + 1] ?? 0]);
       else b.forEach((x, i) => this.store.set(reg + i, [x]));
     }
+    // Input pins: a quasi-bidirectional pin written high reads the outside level (PCF8574); register inputs read it directly.
+    // (computed for this read only, so a PCF8574's output latch is never overwritten)
+    const view = new Map<number, number>();
+    for (const ib of this.layout.inputBits ?? []) {
+      const reg = Number(ib.reg);
+      const cur = view.get(reg) ?? this.byteAt(reg, 0);
+      const level = this.value(ib.control) > 0 !== !!ib.activeLow;
+      const latchHigh = !this.layout.pointerless || ((this.byteAt(reg, 0) >> ib.bit) & 1) === 1;
+      view.set(reg, level && latchHigh ? cur | (1 << ib.bit) : cur & ~(1 << ib.bit));
+    }
+    if (this.layout.pointerless) this.ptr = 0;
     const out: number[] = [];
     // Byte registers auto-increment; word registers stream the word at the pointer (then the next).
-    for (let i = 0; i < n; i++) out.push(this.wide ? this.byteAt(this.ptr + (i >> 1), i & 1) : this.byteAt(this.ptr + i, 0));
-    if (!this.wide) this.ptr = (this.ptr + n) & 0xffff;
+    for (let i = 0; i < n; i++) out.push(this.wide ? this.byteAt(this.ptr + (i >> 1), i & 1) : (view.get(this.ptr + i) ?? this.byteAt(this.ptr + i, 0)));
+    if (!this.wide && !this.layout.pointerless) this.ptr = (this.ptr + n) & 0xffff;
     return out;
+  }
+  /** One bit of a byte register (for output pins shown on the part). */
+  bit(reg: number, bit: number): boolean {
+    return ((this.byteAt(reg, 0) >> bit) & 1) === 1;
   }
 }
 

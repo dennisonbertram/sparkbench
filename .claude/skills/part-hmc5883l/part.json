@@ -1,0 +1,181 @@
+{
+  "type": "custom-hmc5883l",
+  "name": "HMC5883L 3-axis compass (magnetometer)",
+  "mpn": "HMC5883L",
+  "category": "sensor",
+  "description": "Honeywell three-axis magnetoresistive sensor with a 12-bit ADC measuring the magnetic field on X, Y and Z (selectable ranges ±0.88 to ±8.1 gauss, up to 75 Hz continuous) over I2C at address 0x1E, used as an electronic compass. Sold as: GY-273 HMC5883L 3-axis compass module (5-pin: VCC, GND, SCL, SDA, DRDY), 3.3–5 V supply via its onboard 3.3 V regulator, I2C address 0x1E.",
+  "eli5": "A tiny compass: it feels the Earth's magnetic field in three directions so your board can work out which way is north.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (onboard 3.3 V regulator feeds the 3.6 V-max chip)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up fitted on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up fitted on the module)",
+      "required": true
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Data-ready output, goes low for 250 µs when new data is in the registers; not needed when polling the status register",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.1,
+  "i2cAddress": 30,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/HMC5883L_3-Axis_Digital_Compass_IC.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "GY-273 HMC5883L 3-axis compass magnetometer module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Many modules sold as GY-273 or 'HMC5883L' now carry a QMC5883L clone (I2C address 0x0D, different registers). Scan the bus: 0x1E is a real HMC5883L; identification registers 0x0A-0x0C read 'H43'.",
+    "Setup from the datasheet: write 0x70 to register 0x00 (8-sample average, 15 Hz), the gain to 0x01 (0x20 = ±1.3 Ga, 1090 LSB/gauss), and 0x00 to 0x02 (continuous). Wait for RDY (bit 0 of 0x09), then read 6 bytes from 0x03.",
+    "The data registers are in the order X, Z, Y (not X, Y, Z), each 16-bit two's complement MSB first, range -2048..2047. A value of -4096 means that axis overflowed: choose a larger range.",
+    "Always read all six data bytes: the chip locks its data registers until it has been read completely.",
+    "Keep the module flat and away from motors, speakers, magnets and steel screws, and calibrate (record min/max while turning it) before trusting the heading. Heading = atan2(Y, X) only when the board is level."
+  ],
+  "keywords": [
+    "hmc5883l",
+    "hmc5883",
+    "gy-273",
+    "gy273",
+    "compass",
+    "magnetometer",
+    "magnetic field",
+    "heading",
+    "honeywell"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/HMC5883L_3-Axis_Digital_Compass_IC.pdf",
+    "https://components101.com/ics/hmc5883l-magnetometer-module",
+    "https://microcontrollerslab.com/hmc5883l-3-axis-magnometer-interfacing-arduino/",
+    "https://probots.co.in/gy-273-hmc5883l-triple-axis-magnetometer-compass-module.html"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "G",
+    "min": -1.3,
+    "max": 1.3,
+    "default": 0.2,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Magnetic field Y",
+        "unit": "G",
+        "min": -1.3,
+        "max": 1.3,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Magnetic field Z",
+        "unit": "G",
+        "min": -1.3,
+        "max": 1.3,
+        "default": -0.4
+      }
+    ],
+    "registers": {
+      "0x00": 16,
+      "0x01": 32,
+      "0x02": 1,
+      "0x09": 1,
+      "0x0A": 72,
+      "0x0B": 52,
+      "0x0C": 51
+    },
+    "measures": [
+      {
+        "reg": "0x03",
+        "bytes": 2,
+        "scale": 0.0009174311926605505,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 0.0009174311926605505,
+        "signed": true,
+        "control": "z"
+      },
+      {
+        "reg": "0x07",
+        "bytes": 2,
+        "scale": 0.0009174311926605505,
+        "signed": true,
+        "control": "y"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hmc5883l.py",
+    "code": "# HMC5883L 3-axis digital compass (Honeywell HMC5883L datasheet), MicroPython driver.\n# I2C address 0x1E. Registers: 0x00 CRA, 0x01 CRB (gain), 0x02 mode, 0x03..0x08 data\n# in the order X MSB, X LSB, Z MSB, Z LSB, Y MSB, Y LSB (16-bit two's complement, big-endian,\n# valid range -2048..2047, -4096 = overflow), 0x09 status (bit 0 RDY), 0x0A..0x0C ID \"H43\".\n# Setup follows the datasheet's continuous-measurement example: CRA = 0x70 (8-sample average,\n# 15 Hz), CRB = gain, mode = 0x00 (continuous).\nimport time\n\n_REG_CRA = 0x00\n_REG_CRB = 0x01\n_REG_MODE = 0x02\n_REG_DATA = 0x03\n_REG_STATUS = 0x09\n_REG_ID = 0x0A\n\n# CRB value -> gain in LSB per gauss (datasheet table 9).\nGAIN_0_88 = 0x00  # +-0.88 Ga, 1370 LSB/Ga\nGAIN_1_3 = 0x20   # +-1.3 Ga, 1090 LSB/Ga (default)\nGAIN_1_9 = 0x40   # +-1.9 Ga, 820 LSB/Ga\nGAIN_2_5 = 0x60   # +-2.5 Ga, 660 LSB/Ga\nGAIN_4_0 = 0x80   # +-4.0 Ga, 440 LSB/Ga\nGAIN_4_7 = 0xA0   # +-4.7 Ga, 390 LSB/Ga\nGAIN_5_6 = 0xC0   # +-5.6 Ga, 330 LSB/Ga\nGAIN_8_1 = 0xE0   # +-8.1 Ga, 230 LSB/Ga\n_LSB_PER_GAUSS = {0x00: 1370, 0x20: 1090, 0x40: 820, 0x60: 660,\n                  0x80: 440, 0xA0: 390, 0xC0: 330, 0xE0: 230}\n\n_OVERFLOW = -4096\n\n\ndef _s16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass HMC5883L:\n    def __init__(self, i2c, addr=0x1E, gain=GAIN_1_3):\n        self.i2c = i2c\n        self.addr = addr\n        if self._read(_REG_ID, 3) != b'H43':\n            raise OSError('HMC5883L: ID is not \"H43\" (a module answering at 0x0D is a QMC5883L)')\n        self.gain = gain\n        self.overflow = False\n        self._write(_REG_CRA, 0x70)  # 8 samples averaged, 15 Hz, normal measurement\n        self._write(_REG_CRB, gain)\n        self._write(_REG_MODE, 0x00)  # continuous-measurement mode\n        # First data set is ready after 2/fDO (about 134 ms at 15 Hz).\n        time.sleep_ms(140)\n\n    def _write(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def read_raw(self, timeout_ms=300):\n        \"\"\"Wait for RDY, then return the raw (x, y, z) counts.\"\"\"\n        t0 = time.ticks_ms()\n        while not (self._read(_REG_STATUS, 1)[0] & 0x01):\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('HMC5883L: no data ready (check wiring)')\n            time.sleep_ms(5)\n        d = self._read(_REG_DATA, 6)  # read all six bytes so the data registers unlock\n        x = _s16(d[0], d[1])\n        z = _s16(d[2], d[3])\n        y = _s16(d[4], d[5])\n        return x, y, z\n\n    def read(self):\n        \"\"\"Return the field (x, y, z) in gauss. An axis that overflowed is None; pick a larger range.\"\"\"\n        k = _LSB_PER_GAUSS[self.gain]\n        raw = self.read_raw()\n        self.overflow = _OVERFLOW in raw\n        return tuple(None if r == _OVERFLOW else r / k for r in raw)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom hmc5883l import HMC5883L\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ncompass = HMC5883L(i2c)  # address 0x1E, +-1.3 Ga range (1090 LSB/gauss)\nwhile True:\n    x, y, z = compass.read()\n    if compass.overflow:\n        print('overflow: use a larger range')\n    else:\n        print('X=%.3fG Y=%.3fG Z=%.3fG' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z field set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 0.55
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.300G Y=-0.120G Z=0.550G",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:11:34.993Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/HMC5883L_3-Axis_Digital_Compass_IC.pdf",
+      "https://shillehtek.com/blogs/shillehtek-product-manuals/hmc5883l-gy-273-magnetometer-compass-module-manual"
+    ]
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "type": "custom-sgp40",
+  "name": "SGP40 VOC air quality sensor",
+  "mpn": "SGP40",
+  "category": "sensor",
+  "description": "Sensirion metal-oxide (MOx) gas sensor for volatile organic compounds (VOCs) in indoor air, with an I2C interface. It returns a 16-bit raw signal SRAW_VOC in ticks (proportional to the logarithm of the sensing layer's resistance, falling as VOCs rise) once per measurement command; Sensirion's Gas Index Algorithm on the host turns it into a 1-500 VOC Index. Chip runs on 1.7-3.6 V. Sold as: Adafruit SGP40 STEMMA QT breakout (PID 4829; 5-pin header VIN, 3.3V, GND, SCL, SDA, 3-5 V supply via an on-board regulator), I2C address 0x59 (fixed).",
+  "eli5": "Sniffs the air for smells like paint, cleaning sprays or cooking fumes, so you can tell when the air in a room is getting stale.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (use your board's logic voltage; an on-board regulator makes 3.3 V for the sensor)",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "io",
+      "description": "3.3 V OUTPUT of the on-board regulator (up to 100 mA), not an input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up to VIN on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3,
+  "i2cAddress": 89,
+  "datasheetUrl": "https://sensirion.com/media/documents/296373BB/6203C5DF/Sensirion_Gas_Sensors_Datasheet_SGP40.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "SGP40 VOC air quality sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Measure: write 0x26 0x0F followed by the humidity word + CRC and the temperature word + CRC, wait 30 ms, read 3 bytes: SRAW_VOC MSB, LSB, CRC.",
+    "Send 0x80 0x00 0xA2 0x66 0x66 0x93 (50 %RH, 25 °C, the datasheet defaults) to leave humidity compensation off, or real values from a humidity sensor: RH ticks = RH% x 65535 / 100, T ticks = (T°C + 45) x 65535 / 175.",
+    "CRC-8 after every word, poly 0x31, init 0xFF (0xBE 0xEF -> 0x92). A mismatch almost always means a loose SDA/SCL wire.",
+    "Measure about once a second (0.5-10 s allowed); the hotplate stays on between commands. Send 0x36 0x15 to switch the heater off. Discard the first reading if you use the raw signal directly.",
+    "SRAW_VOC is not a concentration: it falls as VOCs rise. Use Sensirion's Gas Index Algorithm for a 1-500 VOC Index (100 = this room's average over the last 24 h); it needs about a minute to start detecting events and about an hour to settle.",
+    "Power VIN from 3.3 V on an ESP32 or Pico: the SDA/SCL pull-ups go to VIN, so 5 V on VIN would put 5 V on the data lines.",
+    "Keep the sensor's opening uncovered and away from the regulator and microcontroller; never let condensation form on it (above 90 %RH)."
+  ],
+  "keywords": [
+    "sgp40",
+    "sgp4x",
+    "voc",
+    "tvoc",
+    "air quality",
+    "gas",
+    "mox",
+    "iaq",
+    "sensirion"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "VOC raw signal (SRAW_VOC)",
+    "unit": "ticks",
+    "min": 0,
+    "max": 65535,
+    "default": 30000,
+    "responses": [
+      {
+        "match": "26 0f",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "28 0e",
+        "bytes": [
+          {
+            "const": 54272,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sgp40.py",
+    "code": "# SGP40 VOC gas sensor (Sensirion SGP40), MicroPython driver.\n# From the SGP40 datasheet v1.2 (Feb 2022), I2C address 0x59:\n#   sgp40_measure_raw_signal 0x26 0x0F + RH word + CRC + T word + CRC, wait 30 ms, read 3 bytes\n#   sgp40_execute_self_test  0x28 0x0E, wait 320 ms, read 3 bytes (0xD4xx = pass, 0x4Bxx = fail)\n#   sgp4x_turn_heater_off    0x36 0x15 (back to idle)\n# Every 16-bit word (sent or received) is followed by a CRC-8 (poly 0x31, init 0xFF).\n# The result is SRAW_VOC in ticks (0-65535), proportional to the logarithm of the sensing\n# layer's resistance: it goes DOWN when VOCs go up. Turning it into a 1-500 VOC Index needs\n# Sensirion's Gas Index Algorithm (github.com/Sensirion/gas-index-algorithm), not included here.\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\ndef _word(v):\n    v = max(0, min(65535, int(v)))\n    b = bytes([v >> 8, v & 0xFF])\n    return b + bytes([_crc8(b)])\n\n\nclass SGP40:\n    def __init__(self, i2c, addr=0x59):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(1)  # power-up time is at most 0.6 ms\n\n    def _read_word(self, cmd, wait_ms):\n        self.i2c.writeto(self.addr, cmd)\n        time.sleep_ms(wait_ms)\n        d = self.i2c.readfrom(self.addr, 3)\n        if _crc8(d[0:2]) != d[2]:\n            raise OSError('SGP40 CRC mismatch: check the wiring')\n        return (d[0] << 8) | d[1]\n\n    def measure_raw(self, humidity=None, temperature=None):\n        \"\"\"One raw measurement, SRAW_VOC in ticks.\n\n        Pass the air's relative humidity (%) and temperature (°C), e.g. from an SHT31 or\n        SHT40, to switch on the chip's humidity compensation. Without them the datasheet\n        default values (50 %RH, 25 °C) are sent, which leaves compensation off.\n        Call about once a second; the heater stays on between calls.\n        \"\"\"\n        if humidity is None or temperature is None:\n            rh_ticks, t_ticks = 0x8000, 0x6666  # datasheet defaults: compensation disabled\n        else:\n            rh_ticks = round(humidity * 65535 / 100)\n            t_ticks = round((temperature + 45) * 65535 / 175)\n        cmd = b'\\x26\\x0f' + _word(rh_ticks) + _word(t_ticks)\n        return self._read_word(cmd, 30)  # max execution time 30 ms\n\n    def self_test(self):\n        \"\"\"Run the built-in hotplate/MOX self-test. Returns True if it passed.\"\"\"\n        return (self._read_word(b'\\x28\\x0e', 320) >> 8) == 0xD4\n\n    def heater_off(self):\n        \"\"\"Switch the hotplate off and return to idle (about 34 uA).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x36\\x15')\n        time.sleep_ms(1)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sgp40 import SGP40\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SGP40(i2c)\nsensor.measure_raw()  # the first reading after switch-on is discarded\nwhile True:\n    raw = sensor.measure_raw(humidity=50, temperature=25)\n    print('SRAW_VOC=%d' % raw)\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the raw VOC signal set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SRAW_VOC=27500",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensirion.com/media/documents/296373BB/6203C5DF/Sensirion_Gas_Sensors_Datasheet_SGP40.pdf",
+    "https://learn.adafruit.com/adafruit-sgp40/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/097/508/medium800/sensors_SGP40_pinouts.jpg",
+    "https://www.adafruit.com/product/4829"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:11:25.030Z",
+    "verifiedSources": [
+      "https://sensirion.com/media/documents/296373BB/6203C5DF/Sensirion_Gas_Sensors_Datasheet_SGP40.pdf",
+      "https://learn.adafruit.com/adafruit-sgp40/pinouts"
+    ]
+  }
+}

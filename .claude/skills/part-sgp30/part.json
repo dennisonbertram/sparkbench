@@ -1,0 +1,172 @@
+{
+  "type": "custom-sgp30",
+  "name": "SGP30 air quality sensor (TVOC/eCO2)",
+  "mpn": "SGP30",
+  "category": "sensor",
+  "description": "Sensirion metal-oxide multi-pixel gas sensor that reports total volatile organic compounds (TVOC, 0-60000 ppb) and an equivalent CO2 estimate (eCO2, 400-60000 ppm) over I2C. The chip runs on 1.8 V; the breakout's regulator and level shifters let it run from 3-5 V. Sold as: Adafruit SGP30 Air Quality Sensor Breakout - VOC and eCO2 (PID 3709, 5-pin header VIN, 1V8, GND, SCL, SDA plus STEMMA QT), I2C address 0x58.",
+  "eli5": "Sniffs the air and tells your board how much stuff like paint fumes, cooking smells or stale breath is floating around.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (use your board's logic voltage; the on-board regulator makes the chip's 1.8 V)",
+      "required": true
+    },
+    {
+      "name": "1V8",
+      "role": "io",
+      "description": "1.8 V OUTPUT of the on-board regulator (up to 50 mA), not an input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 3-5 V logic (level-shifted, 10 k pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 3-5 V logic (level-shifted, 10 k pull-up to VIN on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 50,
+  "i2cAddress": 88,
+  "datasheetUrl": "https://sensirion.com/media/documents/984E0DD5/61644B8B/Sensirion_Gas_Sensors_Datasheet_SGP30.pdf",
+  "priceUsd": 17.5,
+  "supplierQuery": "SGP30 air quality sensor breakout TVOC eCO2 I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Send sgp30_iaq_init (0x20 0x03) after every power-up, then sgp30_measure_iaq (0x20 0x08) once per second; wait 12 ms and read 6 bytes: eCO2 MSB, LSB, CRC, TVOC MSB, LSB, CRC.",
+    "For the first 15 s after init the chip always reports 400 ppm eCO2 and 0 ppb TVOC; that is normal warm-up, not a fault.",
+    "Check each CRC (poly 0x31, init 0xFF). A mismatch almost always means a loose SDA/SCL wire.",
+    "The heater draws about 49 mA: power VIN from the 3V3 or 5V rail, not from a GPIO. The 1V8 pin is an output; leave it unconnected.",
+    "Readings are relative to a self-learned baseline: run it 12 h in fresh air first, then save get_baseline() and restore it with set_baseline() after each restart."
+  ],
+  "keywords": [
+    "sgp30",
+    "tvoc",
+    "eco2",
+    "voc",
+    "air quality",
+    "gas",
+    "sensirion"
+  ],
+  "sources": [
+    "https://sensirion.com/media/documents/984E0DD5/61644B8B/Sensirion_Gas_Sensors_Datasheet_SGP30.pdf",
+    "https://www.adafruit.com/product/3709",
+    "https://learn.adafruit.com/adafruit-sgp30-gas-tvoc-eco2-mox-sensor/pinouts",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20SGP30.fzpz"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "eCO2 (CO2 equivalent)",
+    "unit": "ppm",
+    "min": 400,
+    "max": 60000,
+    "default": 400,
+    "controls": [
+      {
+        "key": "tvoc",
+        "quantity": "TVOC (total volatile organic compounds)",
+        "unit": "ppb",
+        "min": 0,
+        "max": 60000,
+        "default": 0
+      }
+    ],
+    "responses": [
+      {
+        "match": "20 2f",
+        "bytes": [
+          {
+            "const": 34,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "20 08",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "tvoc",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sgp30.py",
+    "code": "# SGP30 indoor air quality sensor (Sensirion SGP30, datasheet v1.0 May 2020), MicroPython driver.\n# I2C address 0x58. 16-bit commands; every 16-bit word the chip sends is followed by a CRC-8\n# (poly 0x31, init 0xFF), and every data word written to it must carry the same CRC.\n# After iaq_init() call measure() once per second: the on-chip baseline algorithm relies on it.\n# For the first 15 s after iaq_init() the chip returns fixed values 400 ppm eCO2 / 0 ppb TVOC.\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SGP30:\n    def __init__(self, i2c, addr=0x58, init=True):\n        self.i2c = i2c\n        self.addr = addr\n        fs = self.feature_set()\n        if fs >> 12 != 0:  # product type nibble: 0 = SGP30\n            raise OSError('not an SGP30 (feature set 0x%04x)' % fs)\n        if init:\n            self.iaq_init()\n\n    def _cmd(self, cmd, delay_ms, nwords=0, data=None):\n        buf = bytearray([cmd >> 8, cmd & 0xFF])\n        for w in data or ():\n            wb = bytes([w >> 8, w & 0xFF])\n            buf += wb + bytes([_crc8(wb)])\n        self.i2c.writeto(self.addr, buf)\n        time.sleep_ms(delay_ms)\n        if not nwords:\n            return []\n        d = self.i2c.readfrom(self.addr, 3 * nwords)\n        out = []\n        for i in range(0, 3 * nwords, 3):\n            if _crc8(d[i:i + 2]) != d[i + 2]:\n                raise OSError('SGP30 CRC mismatch: check the wiring')\n            out.append((d[i] << 8) | d[i + 1])\n        return out\n\n    def feature_set(self):\n        \"\"\"sgp30_get_feature_set (0x202F): product type in the top 4 bits, version in the low byte.\"\"\"\n        return self._cmd(0x202F, 10, 1)[0]\n\n    def iaq_init(self):\n        \"\"\"sgp30_iaq_init (0x2003): start air-quality mode. Needed after every power-up or reset.\"\"\"\n        self._cmd(0x2003, 10)\n\n    def measure(self):\n        \"\"\"sgp30_measure_iaq (0x2008): return (eCO2 in ppm, TVOC in ppb). Call once per second.\"\"\"\n        co2, tvoc = self._cmd(0x2008, 12, 2)\n        return co2, tvoc\n\n    def measure_raw(self):\n        \"\"\"sgp30_measure_raw (0x2050): raw (H2, ethanol) signals, for testing.\"\"\"\n        h2, eth = self._cmd(0x2050, 25, 2)\n        return h2, eth\n\n    def get_baseline(self):\n        \"\"\"sgp30_get_iaq_baseline (0x2015): (eCO2 baseline, TVOC baseline) to save.\"\"\"\n        co2, tvoc = self._cmd(0x2015, 10, 2)\n        return co2, tvoc\n\n    def set_baseline(self, co2_base, tvoc_base):\n        \"\"\"sgp30_set_iaq_baseline (0x201E): restore after iaq_init(). Sent in the order TVOC, eCO2.\"\"\"\n        self._cmd(0x201E, 10, 0, (tvoc_base, co2_base))\n\n    def set_absolute_humidity(self, grams_per_m3):\n        \"\"\"sgp30_set_absolute_humidity (0x2061): 8.8 fixed point g/m3; 0 turns compensation off.\"\"\"\n        v = int(round(grams_per_m3 * 256))\n        v = max(0, min(0xFFFF, v))\n        self._cmd(0x2061, 10, 0, (v,))\n\n    def set_humidity(self, temp_c, rh):\n        \"\"\"Humidity compensation from a temperature (°C) and relative humidity (%) sensor.\"\"\"\n        import math\n        ah = 216.7 * (rh / 100 * 6.112 * math.exp(17.62 * temp_c / (243.12 + temp_c)) / (273.15 + temp_c))\n        self.set_absolute_humidity(ah)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sgp30 import SGP30\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SGP30(i2c)  # sends iaq_init; the first 15 s read 400 ppm / 0 ppb\nwhile True:\n    co2, tvoc = sensor.measure()\n    print('eCO2=%dppm TVOC=%dppb' % (co2, tvoc))\n    time.sleep(1)  # the baseline algorithm expects one reading per second\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the eCO2 and TVOC set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 850
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "tvoc",
+          "value": 120
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "eCO2=850ppm TVOC=120ppb",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:10:43.992Z",
+    "verifiedSources": [
+      "https://sensirion.com/media/documents/984E0DD5/61644B8B/Sensirion_Gas_Sensors_Datasheet_SGP30.pdf",
+      "https://learn.adafruit.com/adafruit-sgp30-gas-tvoc-eco2-mox-sensor/pinouts",
+      "https://www.adafruit.com/product/3709"
+    ]
+  }
+}

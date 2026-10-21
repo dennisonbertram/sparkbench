@@ -1,0 +1,132 @@
+{
+  "type": "custom-lm75a",
+  "name": "LM75A temperature sensor",
+  "mpn": "LM75A",
+  "category": "sensor",
+  "description": "NXP digital temperature sensor and thermal watchdog, -55 to 125 °C with 0.125 °C resolution (±2 °C from -25 to 100 °C), on an I2C bus, plus an open-drain over-temperature (OS) output. Runs on 2.8–5.5 V. Sold as: CJMCU-75 LM75A temperature sensor module (5-pin header: VCC, GND, SDA, SCL, OS; A0/A1/A2 solder pads), I2C address 0x48 with all three pads bridged to GND (0x48–0x4F).",
+  "eli5": "A small thermometer chip your board asks for the temperature over two wires; it can also flip a pin when it gets too hot.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.8–5.5 V (use the microcontroller's 3.3 V so the pull-ups match its logic level)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "OS",
+      "role": "io",
+      "description": "Over-temperature output, open-drain, active low by default (200k pull-up and red LED on the board); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2.8,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/LM75A.pdf",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/LM75A.pdf",
+    "https://github.com/hpaluch/i2c-cjmcu-75",
+    "https://raw.githubusercontent.com/hpaluch/i2c-cjmcu-75/master/assets/cjmcu-75-top.jpg",
+    "https://github.com/mcauser/micropython-lm75a"
+  ],
+  "priceUsd": 2,
+  "supplierQuery": "CJMCU-75 LM75A temperature sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "The A0, A1 and A2 address pins are NOT on the header and are left floating on the CJMCU-75: bridge each to its GND pad with solder (address 0x48) or to its VCC pad (adds 1, 2 or 4) before use, or the address is undefined.",
+    "Temperature is register 0x00, two bytes MSB first: an 11-bit two's complement value in bits 15–5, 0.125 °C per step. Read both bytes; T = (signed 16-bit raw >> 5) × 0.125.",
+    "The chip converts every 100 ms; the first reading is valid about 100 ms after power-up.",
+    "OS goes low (red LED on) when the temperature passes Tos (80 °C at power-up) and releases below Thyst (75 °C); both are 9-bit values in 0.5 °C steps in registers 0x03 and 0x02.",
+    "The board already has 10k pull-ups on SDA and SCL to VCC, so power it from 3.3 V on a 3.3 V microcontroller.",
+    "There is no chip-ID register, so a scan showing 0x48–0x4F is the only presence check."
+  ],
+  "keywords": [
+    "lm75a",
+    "lm75",
+    "cjmcu-75",
+    "temperature",
+    "thermometer",
+    "thermostat",
+    "nxp"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 125,
+    "default": 21,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 0,
+      "0x02": 19200,
+      "0x03": 20480
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 0.125,
+      "shift": 5,
+      "signed": true
+    }
+  },
+  "driver": {
+    "filename": "lm75a.py",
+    "code": "# LM75A digital temperature sensor and thermal watchdog (NXP LM75A Rev. 04), MicroPython driver.\n# Register pointer: 0x00 Temp (read-only, 2 bytes), 0x01 Conf (1 byte), 0x02 Thyst (2 bytes), 0x03 Tos (2 bytes).\n# Temp: 11-bit two's complement in bits 15..5, 0.125 degC per LSB; the 5 low bits are always 0.\n# Tos/Thyst: 9-bit two's complement in bits 15..7, 0.5 degC per LSB.\nimport time\n\n_REG_TEMP = 0x00\n_REG_CONF = 0x01\n_REG_THYST = 0x02\n_REG_TOS = 0x03\n\n\nclass LM75A:\n    def __init__(self, i2c, addr=0x48):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        raw = (d[0] << 8) | d[1]\n        return raw - 0x10000 if raw & 0x8000 else raw\n\n    def _write16(self, reg, value):\n        value &= 0xFFFF\n        self.i2c.writeto_mem(self.addr, reg, bytes([value >> 8, value & 0xFF]))\n\n    def temperature(self):\n        \"\"\"Temperature in degC, 0.125 degC resolution (datasheet section 7.4.3).\"\"\"\n        return (self._read16(_REG_TEMP) >> 5) * 0.125\n\n    def config(self, value=None):\n        \"\"\"Read (no argument) or write the 8-bit configuration register.\"\"\"\n        if value is None:\n            return self.i2c.readfrom_mem(self.addr, _REG_CONF, 1)[0]\n        self.i2c.writeto_mem(self.addr, _REG_CONF, bytes([value & 0x1F]))\n\n    def shutdown(self, off=True):\n        \"\"\"Conf bit 0: 1 = shutdown (about 3.5 uA, Temp holds last result), 0 = normal (a conversion every 100 ms).\"\"\"\n        c = self.config()\n        self.config((c | 0x01) if off else (c & ~0x01))\n        if not off:\n            time.sleep_ms(100)  # first new conversion takes about 100 ms\n\n    def tos(self, value=None):\n        \"\"\"Overtemperature shutdown threshold in degC (0.5 degC steps, power-up 80).\"\"\"\n        if value is None:\n            return (self._read16(_REG_TOS) >> 7) * 0.5\n        self._write16(_REG_TOS, int(round(value * 2)) << 7)\n\n    def thyst(self, value=None):\n        \"\"\"Hysteresis threshold in degC (0.5 degC steps, power-up 75).\"\"\"\n        if value is None:\n            return (self._read16(_REG_THYST) >> 7) * 0.5\n        self._write16(_REG_THYST, int(round(value * 2)) << 7)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lm75a import LM75A\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = LM75A(i2c)  # 0x48 with the A0, A1, A2 pads bridged to GND\ntime.sleep_ms(150)  # first conversion takes about 100 ms after power-up\nwhile True:\n    print('T=%.3fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -12.375
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-12.375C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:12:28.468Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/LM75A.pdf",
+      "https://github.com/hpaluch/i2c-cjmcu-75",
+      "https://github.com/hpaluch/i2c-cjmcu-75/blob/master/assets/cjmcu-75-top.jpg?raw=true"
+    ]
+  }
+}

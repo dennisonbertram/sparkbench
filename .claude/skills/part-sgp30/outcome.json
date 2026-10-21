@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sgp30",
+  "board": "Adafruit SGP30 Air Quality Sensor Breakout - VOC and eCO2 (PID 3709)",
+  "reason": "Modelled from the Sensirion SGP30 datasheet v1.0: iaq_init 0x2003, measure_iaq 0x2008 returning eCO2 (ppm) and TVOC (ppb) words each with a Sensirion CRC-8, and get_feature_set 0x202F (0x0022). The header order VIN, 1V8, GND, SCL, SDA comes from Adafruit's Fritzing part and its pinouts page. The check passed on ESP32 and Pico. The simulator does not model the chip's 15 s warm-up, when it reports a fixed 400 ppm / 0 ppb; the driver and docs explain it.",
+  "datasheetUrl": "https://sensirion.com/media/documents/984E0DD5/61644B8B/Sensirion_Gas_Sensors_Datasheet_SGP30.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-sgp30-gas-tvoc-eco2-mox-sensor/pinouts + https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20SGP30.fzpz (breadboard SVG header x-order)",
+  "checkRuns": 1
+}

@@ -139,7 +139,7 @@ export class SimEngine {
       const cs = customSpec(part.type);
       if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller, rows: cs.sim.rows }), part });
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth }), part });
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, pointerless: cs.sim.pointerless, inputBits: cs.sim.inputBits }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
@@ -997,6 +997,14 @@ export class SimEngine {
         default: {
           if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
           const cs = customSpec(part.type);
+          if (cs?.sim.kind === 'i2c-device' && cs.sim.outputBits?.length) {
+            const d = this.devices.find((x) => x.part.id === part.id)?.dev;
+            if (d instanceof GenericI2CDevice) {
+              v.powered = m.modulePowered(part.id);
+              v.inputs = Object.fromEntries(cs.sim.outputBits.map((o) => [o.name, !!v.powered && d.bit(Number(o.reg), o.bit)]));
+              v.active = Object.values(v.inputs).some(Boolean);
+            }
+          }
           if (cs?.sim.kind === 'segment-display') {
             v.powered = m.modulePowered(part.id);
             const d = this.segDev(part)!;

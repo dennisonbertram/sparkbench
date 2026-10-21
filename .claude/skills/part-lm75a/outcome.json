@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lm75a",
+  "board": "CJMCU-75 LM75A temperature sensor module (purple, 5-pin header VCC, GND, SDA, SCL, OS)",
+  "reason": "Check PASS on esp32 and pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). Temp register 0x00 is modelled bit-exact as an 11-bit two's complement value in bits 15-5 at 0.125 C (signed, shift 5), and the driver decodes it per the datasheet section 7.4.3; Conf/Thyst/Tos hold their power-up values 0x00/0x4B00/0x5000.",
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/LM75A.pdf",
+  "breakoutPinoutSource": "Photo of the CJMCU-75 top silkscreen (github.com/hpaluch/i2c-cjmcu-75 assets/cjmcu-75-top.jpg): header VCC, GND, SDA, SCL, OS; the same repo's traced schematic shows A0-A2 as open solder pads between VCC and GND, 10k pull-ups on SDA/SCL, 200k pull-up and LED on OS",
+  "checkRuns": 1
+}

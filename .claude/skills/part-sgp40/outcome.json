@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sgp40",
+  "board": "Adafruit SGP40 STEMMA QT breakout (PID 4829)",
+  "reason": "Modelled from the Sensirion SGP40 datasheet v1.2. The driver sends sgp40_measure_raw_signal (0x26 0x0F with RH and T words, each with a CRC), waits 30 ms and returns the CRC-checked SRAW_VOC ticks. It also has the self-test (0x28 0x0E) and heater-off (0x36 0x15) commands. The VOC Index algorithm is host-side and is not included. Header order VIN, 3.3V, GND, SCL, SDA comes from Adafruit's pinout photo and page. The check passed on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://sensirion.com/media/documents/296373BB/6203C5DF/Sensirion_Gas_Sensors_Datasheet_SGP40.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-sgp40/pinouts (pinout photo sensors_SGP40_pinouts.jpg: VIN, 3.3V, GND, SCL, SDA left to right)",
+  "checkRuns": 1
+}

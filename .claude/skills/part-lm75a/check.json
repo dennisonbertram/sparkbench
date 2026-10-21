@@ -1,0 +1,79 @@
+{
+  "type": "custom-lm75a",
+  "mpn": "LM75A",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; It shares the I2C bus (SDA D21, SCL D22) at address 0x48. Added the lm75a.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the temperature set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; It shares the I2C bus (SDA GP4, SCL GP5) at address 0x48. Added the lm75a.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the temperature set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C7963 LM75AD,118 (6346 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T05:12:28.468Z"
+}

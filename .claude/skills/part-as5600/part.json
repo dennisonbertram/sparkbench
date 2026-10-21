@@ -1,0 +1,146 @@
+{
+  "type": "custom-as5600",
+  "name": "AS5600 magnetic angle sensor (rotary encoder)",
+  "mpn": "AS5600",
+  "category": "sensor",
+  "description": "ams AS5600 contactless 12-bit magnetic rotary position sensor: reads the angle of a diametric magnet spun above the chip (0-360 degrees, 4096 counts per turn) over I2C at fixed address 0x36, with an analog/PWM angle output as well. Sold as: Adafruit AS5600 Magnetic Angle Sensor - STEMMA QT (#6357), 6-pin header VIN, 3Vo, GND, SCL, SDA, OUT, 3-5 V supply via its onboard 3.3 V regulator and I2C level shifter, I2C address 0x36.",
+  "eli5": "Put a small magnet on a shaft over this chip and it tells your board exactly which way the shaft is pointing, without touching it.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (use the same voltage as your board's logic); feeds the onboard AP2127K-3.3 regulator",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the onboard regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 3-5 V logic, 10K pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 3-5 V logic, 10K pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Angle output: analog 0-3.3 V ratiometric by default (or PWM if CONF.OUTS is changed); not needed when reading over I2C",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 6.5,
+  "i2cAddress": 54,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-12-bit-Magnetic-Rotary-Position-Sensor-AS5600/res/Magnetic%20Rotary%20Position%20Sensor%20AS5600%20Datasheet.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Adafruit AS5600 magnetic angle sensor STEMMA QT 6357",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Use a diametrically magnetised magnet (N and S on opposite edges, not on the two flat faces), centred over the chip and 0.5-3 mm above it.",
+    "Read the angle as two bytes from register 0x0C (RAW ANGLE) or 0x0E (ANGLE): count = ((b0 & 0x0F) << 8) | b1, degrees = count x 360 / 4096.",
+    "Check STATUS (0x0B) bit 5 (MD) before trusting the angle; bit 4 (ML) means the magnet is too weak/far, bit 3 (MH) too strong/close. AGC (0x1A) near mid-range means a good air gap.",
+    "Never write register 0xFF (BURN): ZPOS/MPOS can only be burned 3 times and the settings cannot be undone.",
+    "The DIR solder jumper on the back is closed (GND) so the angle rises clockwise; cut it to make it rise counter-clockwise.",
+    "The I2C address is fixed at 0x36, so only one AS5600 per I2C bus (use the second I2C bus or a multiplexer for two)."
+  ],
+  "keywords": [
+    "as5600",
+    "magnetic encoder",
+    "angle sensor",
+    "rotary position",
+    "rotary encoder",
+    "magnet",
+    "contactless potentiometer",
+    "adafruit 6357"
+  ],
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove-12-bit-Magnetic-Rotary-Position-Sensor-AS5600/res/Magnetic%20Rotary%20Position%20Sensor%20AS5600%20Datasheet.pdf",
+    "https://www.adafruit.com/product/6357",
+    "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/pinouts",
+    "https://github.com/adafruit/Adafruit-AS5600-Magnetic-Angle-Sensor-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Shaft angle",
+    "unit": "°",
+    "min": 0,
+    "max": 359.9,
+    "default": 90,
+    "registers": {
+      "0x0B": 32,
+      "0x1A": 64,
+      "0x1B": 6,
+      "0x1C": 128
+    },
+    "measures": [
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 0.087890625,
+        "control": "value"
+      },
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 0.087890625,
+        "control": "value"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "as5600.py",
+    "code": "# AS5600 12-bit magnetic rotary position sensor (ams AS5600 datasheet v1-06), MicroPython driver.\n# I2C address 0x36. Output registers are 12-bit, high nibble first:\n#   RAW ANGLE 0x0C/0x0D (unscaled), ANGLE 0x0E/0x0F (scaled by ZPOS/MPOS/MANG; equal to the raw\n#   angle over the full turn on an unprogrammed chip). Degrees = count * 360 / 4096.\n# STATUS 0x0B: MD (bit 5) magnet detected, ML (bit 4) magnet too weak, MH (bit 3) magnet too strong.\n# AGC 0x1A (0-255 in 5 V mode, 0-128 in 3.3 V mode), MAGNITUDE 0x1B/0x1C (12-bit CORDIC magnitude).\n# This driver only reads; it never touches the one-time-programmable BURN register (0xFF).\nimport time\n\n_REG_ZMCO = 0x00\n_REG_ZPOS = 0x01\n_REG_MPOS = 0x03\n_REG_MANG = 0x05\n_REG_CONF = 0x07\n_REG_STATUS = 0x0B\n_REG_RAW_ANGLE = 0x0C\n_REG_ANGLE = 0x0E\n_REG_AGC = 0x1A\n_REG_MAGNITUDE = 0x1B\n\n_MD = 0x20\n_ML = 0x10\n_MH = 0x08\n\nCOUNTS_PER_TURN = 4096\n\n\nclass AS5600:\n    def __init__(self, i2c, addr=0x36):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(10)  # power-up time T_PU is 10 ms max\n\n    def _read12(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return ((d[0] & 0x0F) << 8) | d[1]\n\n    def status(self):\n        \"\"\"Return (magnet_detected, too_weak, too_strong) from the STATUS register.\"\"\"\n        s = self.i2c.readfrom_mem(self.addr, _REG_STATUS, 1)[0]\n        return bool(s & _MD), bool(s & _ML), bool(s & _MH)\n\n    def magnet_detected(self):\n        return self.status()[0]\n\n    def raw_angle(self):\n        \"\"\"Unscaled angle, 0-4095 counts per turn (RAW ANGLE register).\"\"\"\n        return self._read12(_REG_RAW_ANGLE)\n\n    def angle_counts(self):\n        \"\"\"Scaled angle, 0-4095 (ANGLE register, uses the programmed ZPOS/MPOS/MANG range).\"\"\"\n        return self._read12(_REG_ANGLE)\n\n    def raw_degrees(self):\n        return self.raw_angle() * 360 / COUNTS_PER_TURN\n\n    def degrees(self):\n        \"\"\"Angle in degrees from the ANGLE register (0 to 359.9 on an unprogrammed chip).\"\"\"\n        return self.angle_counts() * 360 / COUNTS_PER_TURN\n\n    def agc(self):\n        \"\"\"Automatic gain control value; aim for mid-range (about 64 in 3.3 V mode, 128 in 5 V mode).\"\"\"\n        return self.i2c.readfrom_mem(self.addr, _REG_AGC, 1)[0]\n\n    def magnitude(self):\n        return self._read12(_REG_MAGNITUDE)\n\n    def conf(self):\n        \"\"\"16-bit CONF register (0x07/0x08): PM, HYST, OUTS, PWMF, SF, FTH, WD fields.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _REG_CONF, 2)\n        return ((d[0] & 0x3F) << 8) | d[1]\n\n    def set_conf(self, value):\n        \"\"\"Write CONF (volatile, lost at power-off). Read-modify-write as the datasheet asks.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _REG_CONF, 2)\n        hi = (d[0] & 0xC0) | ((value >> 8) & 0x3F)\n        self.i2c.writeto_mem(self.addr, _REG_CONF, bytes([hi, value & 0xFF]))\n\n    def burn_count(self):\n        \"\"\"ZMCO: how many times ZPOS/MPOS have been permanently burned (max 3).\"\"\"\n        return self.i2c.readfrom_mem(self.addr, _REG_ZMCO, 1)[0] & 0x03\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom as5600 import AS5600\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nenc = AS5600(i2c)  # address 0x36\nwhile True:\n    magnet, weak, strong = enc.status()\n    print('angle=%.1f deg raw=%d magnet=%s' % (enc.degrees(), enc.raw_angle(), 'yes' if magnet else 'no'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the shaft angle set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 123
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "angle=123.0 deg raw=1399 magnet=yes",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:18:55.137Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/138/130/original/Magnetic_Rotary_Position_Sensor_AS5600_Datasheet.pdf",
+      "https://learn.adafruit.com/adafruit-as5600-magnetic-angle-sensor/pinouts"
+    ]
+  }
+}

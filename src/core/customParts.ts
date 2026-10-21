@@ -80,6 +80,13 @@ export interface CustomSim {
   regWidth?: 8 | 16;
   /** i2c-device: register address width in bits (16 for e.g. VL53L1X, VL6180X). */
   addrWidth?: 8 | 16;
+  /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
+  pointerless?: boolean;
+  /** i2c-device: register bits that are output pins (e.g. an expander's P0…P7), shown as on/off and testable
+   * with expect what:"active" text:<name>. */
+  outputBits?: { reg: string; bit: number; name: string }[];
+  /** i2c-device: register bits that read input pins, driven by toggles (control key). activeLow: pressed reads 0. */
+  inputBits?: { reg: string; bit: number; control: string; label?: string; activeLow?: boolean }[];
 }
 
 export interface I2CMeasure {
@@ -155,6 +162,7 @@ export function specToDef(spec: CustomPartSpec): PartDef {
   if (s.kind === 'digital-sensor') controls.push({ key: 'active', label: s.quantity ?? 'Triggered', kind: 'toggle', default: 0 });
   if (s.kind === 'keypad-matrix') controls.push({ key: 'value', label: `Key held (1–${(s.keys ?? []).flat().length}: ${(s.keys ?? []).flat().join(' ')}; 0 = none)`, kind: 'slider', min: 0, max: (s.keys ?? []).flat().length, step: 1, default: 0 });
   for (const d of s.digitalOutputs ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.pin, kind: 'toggle', default: 0 });
+  for (const d of s.inputBits ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.control, kind: 'toggle', default: 0 });
   for (const c of s.controls ?? []) {
     if (c.key === 'value' || controls.some((x) => x.key === c.key)) continue;
     controls.push({ key: c.key, label: c.quantity, kind: 'slider', min: c.min, max: c.max, step: (c.max - c.min) / 200 >= 1 ? 1 : +((c.max - c.min) / 200).toPrecision(1), default: c.default ?? (c.min + c.max) / 2, unit: c.unit ? ` ${c.unit}`.replace(/^ (°|%)/, '$1') : '' });
@@ -215,7 +223,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   }
   if (!spec.pins?.some((p) => p.role === 'gnd') && spec.interface !== 'passive') errs.push('no ground pin');
   const s = spec.sim;
-  const keys = new Set(['value', 'active', ...(s.controls ?? []).map((c) => c.key), ...(s.digitalOutputs ?? []).map((d) => d.control)]);
+  const keys = new Set(['value', 'active', ...(s.controls ?? []).map((c) => c.key), ...(s.digitalOutputs ?? []).map((d) => d.control), ...(s.inputBits ?? []).map((d) => d.control)]);
   if (s.outputPin && !names.has(s.outputPin)) errs.push(`sim.outputPin ${s.outputPin} is not a pin`);
   if (s.inputPin && !names.has(s.inputPin)) errs.push(`sim.inputPin ${s.inputPin} is not a pin`);
   if (s.kind === 'i2c-device' && spec.i2cAddress === undefined) errs.push('i2c-device without i2cAddress');
