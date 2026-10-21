@@ -1,0 +1,28 @@
+// E2E: the Add part popover lists checked library parts in their categories; adding one wires it.
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await (await b.newContext({ viewport: { width: 1280, height: 860 } })).newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(String(e)));
+await p.goto('http://localhost:5173/?example=pico-traffic-light&notour');
+await p.waitForSelector('.part');
+await p.click('button.add-part');
+await p.waitForSelector('.library .lib-item');
+await p.fill('.library-head input', 'CO2');
+await p.waitForTimeout(300);
+const co2 = await p.$$eval('.library .lib-item .lib-name', (els) => els.map((e) => e.textContent));
+console.log('CO2 search:', co2);
+await p.screenshot({ path: 'test-results/library-co2.png' });
+await p.fill('.library-head input', 'keypad');
+await p.waitForTimeout(300);
+await p.click('.library .lib-item:has-text("4x4")');
+await p.waitForTimeout(800);
+const parts = await p.$$eval('.part', (els) => els.length);
+const chat = await p.textContent('.chat, .copilot');
+console.log('parts on canvas:', parts, '| chat mentions keypad:', /keypad/i.test(chat ?? ''));
+await p.screenshot({ path: 'test-results/library-keypad.png' });
+console.log('errors:', errors);
+const pass = co2.some((t) => /SCD40/.test(t) && /checked/.test(t)) && /keypad/i.test(chat ?? '') && !errors.length;
+console.log(pass ? 'PASS' : 'FAIL');
+await b.close();
+process.exit(pass ? 0 : 1);

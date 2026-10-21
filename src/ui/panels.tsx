@@ -7,7 +7,7 @@ import { marked } from 'marked';
 import { Glossed } from './Glossed';
 import { startSim } from './simClient';
 import { PARTS, partDef } from '../core/parts';
-import { buildNets, pinKey } from '../core/netlist';
+import { boardPart, buildNets, pinKey } from '../core/netlist';
 import { runChecks } from '../core/checks';
 import { SimControls } from './SimControls';
 import { TestsPanel, TestsBadge } from './TestsPanel';
@@ -181,7 +181,11 @@ export function Inspector() {
           </p>
           {def.category !== 'board' && def.category !== 'passive' && project.board !== 'none' && !(project.features ?? []).some((f) => f.parts.includes(part.id)) && !new RegExp(`\\b${part.id}\\b|${part.ref}`).test(project.files['main.py'] ?? '') && (
             <div className="banner warn">
-              The code doesn't use {part.ref} yet. Wire it to a free pin, then ask the copilot to “use the {def.name.toLowerCase()} I added” (with Claude), or add it in the Code tab.
+              The code doesn't use {part.ref} yet.{' '}
+              {project.wires.some((w) => (w.a.part === part.id || w.b.part === part.id) && (w.a.part === boardPart(project)?.id || w.b.part === boardPart(project)?.id))
+                ? 'It is wired to the board: ask the copilot to'
+                : 'Wire it to a free pin, then ask the copilot to'}{' '}
+              “use the {def.name.toLowerCase()} I added” (with Claude), or add it in the Code tab.
             </div>
           )}
           <p className="muted small">{def.description}</p>
@@ -572,6 +576,27 @@ function Scope() {
   );
 }
 
+/** A part from the parts library (datasheet parts), with its checked status. */
+function LibraryItem({ spec: s, onDone }: { spec: CustomPartSpec; onDone(): void }) {
+  const lib = (s as any).library;
+  const checked = lib?.status === 'checked';
+  return (
+    <button className="lib-item" onClick={() => addCustomPart(s).then(onDone)}>
+      <span className="lib-name">
+        {s.name}{' '}
+        <span className={`ds-badge${checked ? ' checked' : ''}`} title={checked ? [lib.note, lib.simNote, lib.caveat].filter(Boolean).join(' ') : 'Read from the datasheet by Claude; not checked by the part check yet.'}>
+          {checked ? '✓ checked in simulation' : 'from a datasheet'}
+        </span>
+      </span>
+      <span className="lib-desc">
+        {s.eli5}
+        {s.vmin !== undefined && ` · ${s.vmin}–${s.vmax} V`}
+      </span>
+      <span className="lib-price">${s.priceUsd.toFixed(2)}</span>
+    </button>
+  );
+}
+
 // ------------------------------------------------------------------ Part library popover
 export function PartLibrary({ onClose }: { onClose(): void }) {
   const [q, setQ] = useState('');
@@ -585,7 +610,7 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
   const match = (text: string) => !q || text.toLowerCase().includes(q.toLowerCase());
   const list = PARTS.filter((p) => p.category !== 'board' && !p.production).filter((p) => match(`${p.name} ${p.description} ${p.keywords.join(' ')}`));
   const myList = mine.filter((s) => match(`${s.name} ${s.mpn} ${s.description}`));
-  const cats = ['display', 'input', 'sensor', 'output', 'actuator', 'passive', 'ic', 'power'];
+  const cats = ['sensor', 'display', 'input', 'output', 'actuator', 'ic', 'passive', 'power'];
   const ref = useDialog<HTMLDivElement>(onClose, { trap: false, autoFocus: false });
   return (
     <div className="library" role="dialog" aria-label="Add a part" onPointerDown={(e) => e.stopPropagation()} ref={ref}>
@@ -597,34 +622,16 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
       </div>
       <div className="library-list">
         <AddAnyComponent initial={list.length + myList.length === 0 ? q : ''} onDone={onClose} />
-        {myList.length > 0 && (
-          <div>
-            <div className="lib-cat">Parts library</div>
-            {myList.map((s) => {
-              const checked = (s as any).library?.status === 'checked';
-              return (
-              <button key={s.type} className="lib-item" onClick={() => addCustomPart(s).then(onClose)}>
-                <span className="lib-name">
-                  {s.name}{' '}
-                  <span className={`ds-badge${checked ? ' checked' : ''}`} title={checked ? [(s as any).library.note, (s as any).library.simNote, (s as any).library.caveat].filter(Boolean).join(' ') : 'Read from the datasheet by Claude; not checked by the part check yet.'}>
-                    {checked ? '✓ checked in simulation' : 'from a datasheet'}
-                  </span>
-                </span>
-                <span className="lib-desc">
-                  {s.eli5} · {s.vmin}–{s.vmax} V
-                </span>
-                <span className="lib-price">${s.priceUsd.toFixed(2)}</span>
-              </button>
-              );
-            })}
-          </div>
-        )}
         {cats.map((c) => {
           const items = list.filter((p) => p.category === c);
-          if (!items.length) return null;
+          const mine = myList.filter((s) => s.category === c);
+          if (!items.length && !mine.length) return null;
           return (
             <div key={c}>
               <div className="lib-cat">{c === 'ic' ? 'Chips' : c[0].toUpperCase() + c.slice(1) + 's'}</div>
+              {mine.map((s) => (
+                <LibraryItem key={s.type} spec={s} onDone={onClose} />
+              ))}
               {items.map((p) => (
                 <button
                   key={p.type}
