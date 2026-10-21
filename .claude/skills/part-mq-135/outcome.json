@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-135",
+  "board": "MQ-135 gas sensor module, common blue FC-22-style board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The second check run passed: ESP32 and Pico wiring, design checks, breadboard, the simulator example (AO voltage slider plus an active-low DO toggle) and the circuit board. AO is modelled as the datasheet's VRL across the load resistor, and the driver computes Rs = (Vc/VRL - 1) x RL with Rs/Ro calibration. The run 1 failure was fixed by marking DO as required, because the example uses it. The LCSC stage matched an unrelated MQ1350 inductor, so ignore that match.",
+  "datasheetUrl": "https://www.olimex.com/Products/Components/Sensors/Gas/SNS-MQ135/resources/SNS-MQ135.pdf",
+  "breakoutPinoutSource": "https://components101.com/sensors/mq135-gas-sensor-for-air-quality",
+  "checkRuns": 2
+}

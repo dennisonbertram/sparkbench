@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-veml6070",
+  "board": "Adafruit VEML6070 UV Index Sensor Breakout (#2899)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB DRC). The sim answers at 0x38 (command write / LSB read), 0x39 (MSB) and 0x0C (ARA) per the datasheet, and the driver follows the datasheet init (clear ARA, write 0x06) and the MSB-then-LSB read.",
+  "datasheetUrl": "https://www.vishay.com/docs/84277/veml6070.pdf",
+  "breakoutPinoutSource": "Adafruit-VEML6070-PCB Eagle files (JP1 pins 1-5 = VDD, GND, SCL, SDA, ACK; silkscreen VIN, G, SCL, SDA, ACK) and learn.adafruit.com/adafruit-veml6070-uv-light-sensor-breakout/pinouts",
+  "checkRuns": 1
+}

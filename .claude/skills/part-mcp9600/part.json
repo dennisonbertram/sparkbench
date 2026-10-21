@@ -1,0 +1,182 @@
+{
+  "type": "custom-mcp9600",
+  "name": "MCP9600 I2C thermocouple amplifier",
+  "mpn": "MCP9600",
+  "category": "sensor",
+  "description": "Microchip thermocouple EMF-to-temperature converter with built-in cold-junction compensation, reporting the thermocouple (hot-junction) temperature in 0.0625 °C steps over I2C; supports type K, J, T, N, S, E, B and R thermocouples (type K: -200 to 1372 °C, ±1.5 °C max). Runs on 2.7–5.5 V. Sold as: Adafruit MCP9600 I2C Thermocouple Amplifier (product 4101; 9-pin header VIN, GND, SCL, SDA, A1, A2, A3, A4, ADR, plus a 2-pin screw terminal for the thermocouple), I2C address 0x67 (ADR tied to VIN on the board; 0x60 with ADR to GND).",
+  "eli5": "Plug a thermocouple wire into it and it tells your board how hot the tip is, even inside an oven or a flame.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 2.7–5 V (use the same voltage as your board's logic, 3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up on the board), 100 kHz",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Alert 1 output (push-pull, programmable), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Alert 2 output, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A3",
+      "role": "io",
+      "description": "Alert 3 output, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A4",
+      "role": "io",
+      "description": "Alert 4 output, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "ADR",
+      "role": "io",
+      "description": "Address select: tied to VIN on the board = 0x67; to GND = 0x60; solder jumpers give other addresses",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5,
+  "currentMa": 1.5,
+  "i2cAddress": 103,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP960X-Data-Sheet-20005426.pdf",
+  "priceUsd": 16,
+  "supplierQuery": "MCP9600 I2C thermocouple amplifier breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "buildNotes": [
+    "The thermocouple goes into the 2-pin screw terminal, not the header: red/negative lead to '-', the other lead to '+' (type K: yellow +, red -). If the reading falls when you heat the tip, swap the wires.",
+    "Read a temperature by writing the register pointer (0x00 = thermocouple, 0x02 = cold junction), then reading 2 bytes in a separate transaction; value = signed 16-bit × 0.0625 °C.",
+    "Set the thermocouple type in register 0x05 (bits 6-4: 0 = K, 1 = J, 2 = T, 3 = N, 4 = S, 5 = E, 6 = B, 7 = R) to match your probe, or the reading will be wrong.",
+    "The chip stretches the I2C clock for up to 60 µs; use 100 kHz. Raspberry Pi (Linux) I2C does not handle clock stretching well, so lower its bus speed or use a microcontroller.",
+    "Default address 0x67; tie ADR to GND for 0x60 when using two boards."
+  ],
+  "keywords": [
+    "mcp9600",
+    "mcp9601",
+    "thermocouple",
+    "type k",
+    "k-type",
+    "temperature",
+    "oven",
+    "kiln",
+    "amplifier",
+    "microchip"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP960X-Data-Sheet-20005426.pdf",
+    "https://learn.adafruit.com/adafruit-mcp9600-i2c-thermocouple-amplifier/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/076/152/large1024/adafruit_products_MCP9600_Top_Pinouts.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/077/677/large1024/adafruit_products_MCP9600_Pinouts_Image.png",
+    "https://www.adafruit.com/product/4101"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Thermocouple temperature",
+    "unit": "°C",
+    "min": -200,
+    "max": 1372,
+    "default": 25,
+    "regWidth": 16,
+    "registers": {
+      "0x20": 16400
+    },
+    "controls": [
+      {
+        "key": "cold",
+        "quantity": "Cold-junction (board) temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "control": "cold"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp9600.py",
+    "code": "# MCP9600 thermocouple EMF-to-temperature converter (Microchip MCP960X datasheet DS20005426), MicroPython driver.\n# Register pointer write, STOP, then a separate read (Figure 4-3); the chip keeps the pointer between reads.\n# Temperatures are 16-bit two's complement, 0.0625 degC/LSB (Equations 5-1 and 5-3).\nimport time\n\n_TH = 0x00       # hot-junction (thermocouple) temperature, cold-junction compensated\n_TDELTA = 0x01   # junctions temperature delta\n_TC = 0x02       # cold-junction (board) temperature\n_STATUS = 0x04\n_SENSOR_CFG = 0x05\n_DEVICE_CFG = 0x06\n_DEVICE_ID = 0x20\n\nTYPES = {'K': 0, 'J': 1, 'T': 2, 'N': 3, 'S': 4, 'E': 5, 'B': 6, 'R': 7}\n\n\nclass MCP9600:\n    def __init__(self, i2c, addr=0x67, tc_type='K', filter_n=0):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(20)  # tPOR power-up time\n        dev_id = self._read(_DEVICE_ID, 2)[0]\n        if dev_id not in (0x40, 0x41):  # 0x40 = MCP9600, 0x41 = MCP9601\n            raise OSError('MCP9600 not found (device ID 0x%02X)' % dev_id)\n        # Sensor configuration: bits 6-4 thermocouple type, bits 2-0 IIR filter coefficient.\n        self._write(_SENSOR_CFG, (TYPES[tc_type] << 4) | (filter_n & 0x07))\n        # Device configuration: 0.0625 degC cold-junction, 18-bit ADC, normal (continuous) mode.\n        self._write(_DEVICE_CFG, 0x00)\n\n    def _write(self, reg, value):\n        self.i2c.writeto(self.addr, bytes([reg, value]))\n\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _temp(self, reg):\n        d = self._read(reg, 2)\n        upper, lower = d[0], d[1]\n        if upper & 0x80:  # negative: Equation 5-1, T < 0 degC\n            return (upper * 16 + lower / 16) - 4096\n        return upper * 16 + lower / 16\n\n    def temperature(self):\n        \"\"\"Thermocouple (hot-junction) temperature in degC, cold-junction compensated.\"\"\"\n        return self._temp(_TH)\n\n    def ambient(self):\n        \"\"\"Cold-junction (board) temperature in degC.\"\"\"\n        return self._temp(_TC)\n\n    def delta(self):\n        \"\"\"Hot-junction minus cold-junction temperature in degC.\"\"\"\n        return self._temp(_TDELTA)\n\n    def status(self):\n        return self._read(_STATUS, 1)[0]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mcp9600 import MCP9600\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = MCP9600(i2c, tc_type='K')\nwhile True:\n    print('TH=%.2fC TC=%.2fC' % (sensor.temperature(), sensor.ambient()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the thermocouple and cold-junction temperatures set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 350
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cold",
+          "value": 28
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TH=350.00C TC=28.00C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:21:17.071Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP960X-Data-Sheet-20005426.pdf",
+      "https://learn.adafruit.com/adafruit-mcp9600-i2c-thermocouple-amplifier/pinouts",
+      "https://www.adafruit.com/product/4101"
+    ]
+  }
+}

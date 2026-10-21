@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-4",
+  "board": "MQ-4 methane gas sensor module, common blue FC-22-style board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The check passed on the first run: ESP32 and Pico wiring, design checks, breadboard, simulator example (AO voltage slider plus an active-low DO toggle) and circuit board. AO is modelled as the datasheet's VRL across the load resistor, and the driver applies the datasheet formula Rs = (Vc/VRL - 1) x RL with R0 defined in 1000 ppm CH4. One caveat: the LCSC match the check reported (C2734687 D2MQ-4L-1) is an unrelated part.",
+  "datasheetUrl": "https://www.pololu.com/file/0J311/MQ4.pdf",
+  "breakoutPinoutSource": "https://components101.com/sites/default/files/component_pin/MQ-4-Module-and-Sensor-Pinout.jpg",
+  "checkRuns": 1
+}

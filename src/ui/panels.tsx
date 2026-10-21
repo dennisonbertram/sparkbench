@@ -606,7 +606,7 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
               <button key={s.type} className="lib-item" onClick={() => addCustomPart(s).then(onClose)}>
                 <span className="lib-name">
                   {s.name}{' '}
-                  <span className={`ds-badge${checked ? ' checked' : ''}`} title={checked ? (s as any).library.note : 'Read from the datasheet by Claude; not checked by the part check yet.'}>
+                  <span className={`ds-badge${checked ? ' checked' : ''}`} title={checked ? [(s as any).library.note, (s as any).library.simNote, (s as any).library.caveat].filter(Boolean).join(' ') : 'Read from the datasheet by Claude; not checked by the part check yet.'}>
                     {checked ? '✓ checked in simulation' : 'from a datasheet'}
                   </span>
                 </span>

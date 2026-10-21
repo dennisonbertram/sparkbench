@@ -1,0 +1,141 @@
+{
+  "type": "custom-max44009",
+  "name": "MAX44009 ambient light sensor",
+  "mpn": "MAX44009",
+  "category": "sensor",
+  "description": "Maxim ambient light sensor with a human-eye spectral response and automatic ranging over 0.045 to 188,000 lux (22-bit dynamic range, reported as a 4-bit exponent and 8-bit mantissa) over I2C. The chip runs on 1.7-3.6 V and its pins are rated to 4 V absolute maximum. Sold as: GY-49 MAX44009 module (purple, 4-pin header VIN, GND, SCL, SDA; two extra unlabelled pads for the address and INT), I2C address 0x4A (0x4B with A0 high).",
+  "eli5": "Measures how bright the light is, in lux, from moonlight to full sunshine. Give it 3.3 V.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply: use 3.3 V (the MAX44009 itself is rated 1.7-3.6 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, up to 400 kHz (needs a pull-up to 3.3 V)",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, open-drain (needs a pull-up to 3.3 V)",
+      "required": true,
+      "pullUp": 10000
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 0.002,
+  "i2cAddress": 74,
+  "datasheetUrl": "https://storage.googleapis.com/graviton-electric-symbols/document_assets/lcsc/1912111437_Analog-Devices-Inc--Maxim-Integrated-MAX44009EDT-T_C406724.pdf",
+  "sources": [
+    "https://storage.googleapis.com/graviton-electric-symbols/document_assets/lcsc/1912111437_Analog-Devices-Inc--Maxim-Integrated-MAX44009EDT-T_C406724.pdf",
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX44009.pdf",
+    "http://www.pibits.net/code/raspberry-pi-and-max44009-ambient-light-sensor-example.php",
+    "http://pibits.b-cdn.net/wp-content/uploads/2017/11/max44009-module.jpg",
+    "https://github.com/RobTillaart/Max44009"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "GY-49 MAX44009 ambient light sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order on the GY-49 is VIN, GND, SCL, SDA. The two unlabelled pads on the other edge are the address (A0) and INT pins.",
+    "Power it from 3.3 V: the MAX44009 operates at 1.7-3.6 V and every pin except INT is rated to only 4 V absolute maximum. Do not wire SDA/SCL to 5 V logic.",
+    "The datasheet requires pull-up resistors on SDA and SCL (10 kOhm in its application circuit); Sparkbench adds them. Extra pull-ups already on a board are harmless in parallel.",
+    "Address 0x4A with A0 low, 0x4B with A0 high. If the board leaves A0 floating the address can wander: tie the A0 pad to GND if readings come and go.",
+    "Lux = 2^E x M x 0.045, with E = bits 7..4 of register 0x03 and M = (bits 3..0 of 0x03) << 4 | (bits 3..0 of 0x04). Exponent 15 means overrange.",
+    "Read 0x03 and 0x04 with a Repeated START between them (no STOP), as the datasheet's Figure 8 shows, so both halves come from the same conversion.",
+    "In the default mode the chip measures once every 800 ms; the first result is ready about 800 ms after power-up.",
+    "The simulator reproduces the chip's register bytes for 368.64-734.4 lux, the range in which the automatic ranging uses exponent 6 (2.88 lux per count); the real chip covers 0.045-188,000 lux by changing the exponent itself."
+  ],
+  "keywords": [
+    "max44009",
+    "gy-49",
+    "light",
+    "lux",
+    "ambient light",
+    "illuminance",
+    "maxim"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Illuminance",
+    "unit": "lx",
+    "min": 368.64,
+    "max": 734.4,
+    "default": 500,
+    "registers": {
+      "0x00": 0,
+      "0x01": 0,
+      "0x02": 3,
+      "0x05": 255,
+      "0x06": 0,
+      "0x07": 255
+    },
+    "measure": {
+      "reg": "0x03",
+      "bytes": 2,
+      "scale": 2.88
+    },
+    "measures": [
+      {
+        "reg": "0x03",
+        "bytes": 1,
+        "scale": 46.08,
+        "offset": -4402.08
+      }
+    ]
+  },
+  "driver": {
+    "filename": "max44009.py",
+    "code": "# MAX44009 ambient light sensor (Maxim 19-5719 Rev 0), MicroPython driver.\n# 8-bit registers: 0x00 interrupt status, 0x01 interrupt enable, 0x02 configuration\n# (CONT bit 7, MANUAL bit 6, CDR bit 3, TIM[2:0]; power-on 0x03), 0x03 lux high byte\n# (E3..E0 M7..M4), 0x04 lux low byte (bits 3..0 = M3..M0), 0x05/0x06 upper/lower\n# threshold, 0x07 threshold timer.\n#   Full resolution:  lux = 2**E * M[7:0] * 0.045\n#   High byte only:   lux = 2**E * M[7:4] * 0.72\n# Exponent 15 (0b1111) means overrange.\n# The datasheet requires a Repeated START (no STOP) between reading 0x03 and 0x04 so\n# both bytes come from the same conversion (Figure 8).\nimport time\n\n_REG_INT_STATUS = 0x00\n_REG_INT_ENABLE = 0x01\n_REG_CONFIG = 0x02\n_REG_LUX_HIGH = 0x03\n_REG_LUX_LOW = 0x04\n_REG_THRESH_HIGH = 0x05\n_REG_THRESH_LOW = 0x06\n_REG_THRESH_TIMER = 0x07\n\n_CONT = 0x80    # continuous conversions (otherwise one every 800 ms)\n_MANUAL = 0x40  # manual CDR/TIM; 0 = automatic ranging (power-up default)\n_CDR = 0x08     # divide the photodiode current by 8 (manual mode)\n\nADDR_A0_GND = 0x4A\nADDR_A0_VCC = 0x4B\n\n# TIM[2:0] -> integration time in ms (Table 7)\n_TIM_MS = (800, 400, 200, 100, 50, 25, 12.5, 6.25)\n\n\nclass MAX44009:\n    def __init__(self, i2c, addr=ADDR_A0_GND, continuous=False, manual=None):\n        \"\"\"addr 0x4A (A0 to GND) or 0x4B (A0 to VCC).\n        continuous=False: default mode, one measurement every 800 ms (lowest current).\n        manual=None keeps automatic ranging; manual=(cdr, tim) with cdr 0/1 and tim 0-7\n        sets the current divider and integration time yourself (Table 9).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        cfg = _CONT if continuous else 0\n        if manual is not None:\n            cdr, tim = manual\n            if not (0 <= tim <= 7) or cdr not in (0, 1):\n                raise ValueError('manual=(cdr 0/1, tim 0-7)')\n            cfg |= _MANUAL | (_CDR if cdr else 0) | tim\n        self._write(_REG_CONFIG, cfg)\n        # The first result is ready after one measurement cycle (800 ms in default mode).\n        time.sleep_ms(820)\n\n    def _write(self, reg, value):\n        self.i2c.writeto(self.addr, bytes((reg, value & 0xFF)))\n\n    def _read(self, reg):\n        self.i2c.writeto(self.addr, bytes((reg,)), False)\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def raw(self):\n        \"\"\"(exponent, mantissa 0-255) from registers 0x03 and 0x04, read with a Repeated\n        START between them so the chip does not update the result in between.\"\"\"\n        self.i2c.writeto(self.addr, bytes((_REG_LUX_HIGH,)), False)\n        hi = self.i2c.readfrom(self.addr, 1, False)[0]\n        self.i2c.writeto(self.addr, bytes((_REG_LUX_LOW,)), False)\n        lo = self.i2c.readfrom(self.addr, 1)[0]\n        return hi >> 4, ((hi & 0x0F) << 4) | (lo & 0x0F)\n\n    def lux(self):\n        \"\"\"Ambient light in lux at full resolution (0.045 lux LSB at the lowest range).\"\"\"\n        e, m = self.raw()\n        if e == 0x0F:\n            raise OSError('MAX44009 overrange (exponent 15)')\n        return (1 << e) * m * 0.045\n\n    def lux_high_byte(self):\n        \"\"\"Coarser reading from register 0x03 only (0.72 lux LSB at the lowest range).\"\"\"\n        hi = self._read(_REG_LUX_HIGH)\n        e = hi >> 4\n        if e == 0x0F:\n            raise OSError('MAX44009 overrange (exponent 15)')\n        return (1 << e) * (hi & 0x0F) * 0.72\n\n    def config(self):\n        \"\"\"Configuration register; in automatic mode CDR and TIM show the chosen range.\"\"\"\n        return self._read(_REG_CONFIG)\n\n    def integration_ms(self):\n        return _TIM_MS[self.config() & 0x07]\n\n    def interrupt_status(self):\n        \"\"\"1 if the light stayed outside the threshold window (reading clears it).\"\"\"\n        return self._read(_REG_INT_STATUS) & 0x01\n\n    def set_interrupt(self, enable):\n        self._write(_REG_INT_ENABLE, 1 if enable else 0)\n\n    def set_thresholds(self, upper_byte, lower_byte, timer_100ms=0):\n        \"\"\"Threshold registers in the lux-high-byte format EEEE MMMM (datasheet\n        'Threshold Register Data Format'); timer in steps of 100 ms.\"\"\"\n        self._write(_REG_THRESH_HIGH, upper_byte)\n        self._write(_REG_THRESH_LOW, lower_byte)\n        self._write(_REG_THRESH_TIMER, timer_100ms)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom max44009 import MAX44009\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MAX44009(i2c)  # 0x4A, automatic ranging, one reading every 800 ms\nwhile True:\n    print('Lux=%.2f' % sensor.lux())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the illuminance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 600
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=599.04",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:28:37.205Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/max44009.pdf",
+      "https://github.com/RobTillaart/Max44009",
+      "https://michiel.vanderwulp.be/domotica/Modules/MAX44009-Light-Sensor/"
+    ],
+    "simNote": "The simulator slider covers 369–734 lux only: the chip reports light as exponent + mantissa, and the model fixes the exponent. The driver handles the full range on real hardware.",
+    "caveat": "The independent reading could not download the manufacturer PDF; register layout and scale were confirmed from library code and the author's reading, not the PDF."
+  }
+}

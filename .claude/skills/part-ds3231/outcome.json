@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ds3231",
+  "board": "ZS-042 DS3231 RTC module (with AT24C32 EEPROM and coin-cell holder)",
+  "reason": "Check PASS on esp32 and pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC). BCD time registers 00h-06h tick via the sim rtc model (set then read across New Year, weekday checked) and temperature 11h-12h is modelled as the datasheet's 10-bit two's complement at 0.25 C; driver handles 12/24-hour mode, century bit and OSF per datasheet 19-5170 Rev 10.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf",
+  "breakoutPinoutSource": "Last Minute Engineers DS3231 module pinout (32K, SQW, SCL, SDA, VCC, GND) and Fritzing core part rtc_ds3231_breakout.fzp (ZS-042: GND, VCC, SDA, SCL, SQW, 32K, i.e. the same header read from the other end)",
+  "checkRuns": 1
+}

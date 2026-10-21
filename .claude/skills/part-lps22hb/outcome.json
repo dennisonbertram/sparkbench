@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lps22hb",
+  "board": "Adafruit LPS22 Pressure Sensor - STEMMA QT / Qwiic (#4633)",
+  "reason": "Modelled from ST DocID027083 Rev 5 (WHO_AM_I 0xB1, 24-bit pressure at 0x28 / 4096 LSB/hPa, 16-bit temperature at 0x2B / 100 LSB/degC, continuous ODR via CTRL_REG1, STATUS data-ready) with header order VIN,3Vo,GND,SCK,SDO,SDI,CS,INT from Adafruit's Fritzing part; the check passed on ESP32 and Pico. SCK/SDI are modelled as pins SCL/SDA because the simulator finds I2C pins by those names.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lps22hb.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Fritzing-Library/raw/master/parts/Adafruit-LPS2X.fzpz (breadboard SVG pin positions) + https://learn.adafruit.com/adafruit-lps25-pressure-sensor/pinouts",
+  "checkRuns": 2
+}

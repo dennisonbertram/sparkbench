@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ccs811",
+  "board": "CJMCU-811 CCS811 air quality sensor module (8-pin: VCC, GND, SCL, SDA, WAK, INT, RST, ADD)",
+  "reason": "The check passed on its first run, on both esp32 and pico. The sim answers HW_ID 0x81, STATUS 0x98 and an 8-byte ALG_RESULT_DATA reply (eCO2 ppm, TVOC ppb, STATUS, ERROR_ID, RAW) laid out as in the datasheet, and the datasheet-based driver decodes it. Limitation: STATUS is fixed at application mode with data ready, so the sim never runs the boot-mode APP_START step.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/learn_tutorials/1/4/3/CCS811_Datasheet-DS000459.pdf",
+  "breakoutPinoutSource": "https://web.archive.org/web/2025/https://revspace.nl/CJMCU-811 (header order VCC GND SCL SDA WAK INT RST ADD, no regulator, ADD 10k pull-down = 0x5A); confirmed by http://lamaplc.com/doku.php?id=sensor%3Accs811",
+  "checkRuns": 1
+}

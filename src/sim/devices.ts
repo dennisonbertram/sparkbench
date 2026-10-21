@@ -570,6 +570,7 @@ export class GenericI2CDevice implements I2CDevice {
   private refresh() {
     this.rtcMaterialize();
     for (const m of this.measures) {
+      if (m.when && (this.byteAt(Number(m.when.reg), 0) & (m.when.mask ?? 0xff)) !== m.when.equals) continue;
       const reg = Number(m.reg);
       let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1)) * 2 ** (m.shift ?? 0);
       const bits = m.bytes * 8;

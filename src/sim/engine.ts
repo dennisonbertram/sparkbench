@@ -435,8 +435,26 @@ export class SimEngine {
     this.model.setPinMode(g, { kind: 'analog' });
     return 0;
   }
+  /** Waveform outputs (microphones, heartbeat sensors) follow simulated time at every sample. */
+  private updateWaves() {
+    const t = this.timeUs / 1e6;
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      const w = cs?.sim.wave;
+      if (!w || cs!.sim.kind !== 'analog-sensor') continue;
+      const st = this.model.states.get(part.id) as any;
+      const vcc = this.model.moduleSupply(part.id);
+      if (vcc < (cs!.vmin ?? 2.7) * 0.85) continue;
+      const f = w.freqControl ? (st?.[w.freqControl] ?? 0) * (w.freqScale ?? 1) : w.freqHz ?? 0;
+      const amp = ((st?.[w.ampControl] ?? 0) * w.voltsPerUnit) / 2;
+      const ph = (f * t) % 1;
+      const shape = w.shape === 'pulse' ? (ph < 0.12 ? Math.sin((ph / 0.12) * Math.PI) : 0) * 2 - 1 : Math.sin(2 * Math.PI * ph);
+      this.model.setModuleOutput(part.id, 'out', Math.max(0, Math.min(vcc, w.centerV + amp * shape)));
+    }
+  }
   adcRead(g: number, atten: number): number {
     this.tick();
+    this.updateWaves();
     const v = this.model.gpioVoltage(g);
     const full = this.board?.id === 'esp32' ? [1.1, 1.5, 2.2, 3.3][atten] ?? 3.3 : 3.3;
     if (v > 3.6) this.warn(`overv${g}`, 'error', `GPIO${g} (ADC) sees ${v.toFixed(1)} V — above 3.3 V. Use a divider.`);

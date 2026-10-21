@@ -1,0 +1,128 @@
+{
+  "type": "custom-tm1637-6-digit",
+  "name": "TM1637 6-digit 7-segment display (decimal points)",
+  "mpn": "TM1637",
+  "category": "display",
+  "description": "Titan Micro TM1637 LED driver on a 6-digit 0.36\" 7-segment display module (two 3-digit LED blocks, a decimal point on every digit, no colon), driven over a two-wire CLK/DIO bus (not I2C, no address) with 8 brightness steps. The digits are not wired in RAM order: left to right they are driven by C2H, C1H, C0H, C5H, C4H, C3H. The chip's datasheet characterises it at 4.5-5.5 V; the module is sold for 3.3-5 V. Sold as: diymore 6-Digit LED Display TM1637 (0.36\" red/blue/green/white/yellow), the common black-PCB 6-digit module with a 4-pin header VCC, GND, DIO, CLK.",
+  "eli5": "Six glowing digits with a dot after each one, so you can show long counts, readings with decimals or a time with seconds using only two wires.",
+  "refPrefix": "DS",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V or 5 V: use the same voltage as the microcontroller's logic (datasheet characterises the chip at 4.5-5.5 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "DIO",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Data in/out (LSB first; the chip pulls it low for each ACK clock). Pulled up to VCC on the module.",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Clock input from the microcontroller, under 250 kHz. Pulled up to VCC on the module.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 100,
+  "datasheetUrl": "https://akizukidenshi.com/goodsaffix/TM1637_V2.4_EN.PDF",
+  "priceUsd": 3,
+  "supplierQuery": "diymore TM1637 6 digit 0.36 inch 7 segment LED display module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order on this module is VCC, GND, DIO, CLK - the reverse of most 4-digit TM1637 boards, so check the silkscreen before wiring.",
+    "It is NOT I2C, even though it has two wires: there is no address, bytes go LSB first, start = DIO falls while CLK is high, stop = DIO rises while CLK is high.",
+    "The digits are scrambled in display RAM: left to right they are C2H, C1H, C0H, C5H, C4H, C3H. A 4-digit library that writes 123456 from C0H shows 321654; the driver's DIGIT_MAP fixes this.",
+    "To show digits send data command 0x40 (auto-increment), then 0xC0 followed by 6 segment bytes (C0H-C5H), then display control 0x88 | brightness 0-7.",
+    "Bit 7 (0x80) of each digit's byte lights that digit's decimal point; there is no colon.",
+    "Power VCC from the same voltage as your microcontroller (3V3 on ESP32/Pico): the module pulls CLK and DIO up to VCC, and at 5 V the datasheet needs 0.7 x VDD (3.5 V) for a logic high.",
+    "With all 48 segments lit at full brightness it can draw around 100 mA; lower the brightness on a weak supply."
+  ],
+  "keywords": [
+    "tm1637",
+    "7-segment",
+    "seven segment",
+    "6 digit",
+    "six digit",
+    "led display",
+    "decimal point",
+    "diymore"
+  ],
+  "sources": [
+    "https://akizukidenshi.com/goodsaffix/TM1637_V2.4_EN.PDF",
+    "https://domoticx.net/webshop/6-digit-7-segment-display-036-module-inch-met-tm1637-chip-blauw/",
+    "https://domoticx.net/wp-content/uploads/webshop/module/6-digit-7-segment-display-0.36-inch-met-tm1637-chip-02.jpg",
+    "https://github.com/jasonacox/TM1637TinyDisplay",
+    "https://forum.arduino.cc/t/tm1637-6-digit-led-display/702875"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "tm1637",
+    "digits": 6,
+    "digitMap": [
+      2,
+      1,
+      0,
+      5,
+      4,
+      3
+    ]
+  },
+  "driver": {
+    "filename": "tm1637_6.py",
+    "code": "# TM1637 6-digit 7-segment LED display module (Titan Micro TM1637), MicroPython driver.\n# Two-wire bus from the datasheet (not I2C, no address): start = DIO falls while CLK is high,\n# stop = DIO rises while CLK is high, DIO only changes while CLK is low, bytes go LSB first,\n# and the chip pulls DIO low for the 9th (ACK) clock of every byte.\n# Writes use auto-increment mode: data command 0x40, address command 0xC0 + 6 bytes (C0H-C5H),\n# then display control 0x88 | brightness (0-7 = 1/16 ... 14/16 pulse width).\n#\n# On the common 6-digit module (diymore \"6-Digit LED Display TM1637\") the two 3-digit LED blocks\n# are wired so the display RAM is not in left-to-right order: digit 1 (leftmost) is driven by\n# C2H, then C1H, C0H, C5H, C4H, C3H. DIGIT_MAP converts screen positions to RAM addresses.\nfrom machine import Pin\nimport time\n\n_DATA_CMD = 0x40   # write display registers, auto-increment address, normal mode\n_ADDR_CMD = 0xC0   # display register C0H (GRID1)\n_DISP_CTRL = 0x80  # display control; 0x08 = display on, low 3 bits = brightness\n_DELAY_US = 5      # half clock period: ~100 kHz, under the datasheet's 250 kHz limit\n\nDIGITS = 6\nDIGIT_MAP = (2, 1, 0, 5, 4, 3)  # RAM address (offset from C0H) for each digit, left to right\n\n# Segment bits: bit0 = a, bit1 = b ... bit6 = g, bit7 = DP (every digit has a dot on this module).\n_NUMS = (0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F)\n_CHARS = {\n    ' ': 0x00, '-': 0x40, '_': 0x08, '*': 0x63,  # '*' = degree sign\n    'A': 0x77, 'B': 0x7C, 'C': 0x39, 'D': 0x5E, 'E': 0x79, 'F': 0x71, 'G': 0x3D, 'H': 0x76,\n    'I': 0x30, 'J': 0x1E, 'L': 0x38, 'N': 0x54, 'O': 0x5C, 'P': 0x73, 'Q': 0x67, 'R': 0x50,\n    'S': 0x6D, 'T': 0x78, 'U': 0x3E, 'Y': 0x6E,\n}\n\n\ndef encode(ch):\n    \"\"\"Segment byte for one character (digits, a few letters, space, '-', '_', '*' = degree).\"\"\"\n    if '0' <= ch <= '9':\n        return _NUMS[ord(ch) - 48]\n    return _CHARS.get(ch.upper(), 0x00)\n\n\nclass TM1637:\n    def __init__(self, clk, dio, brightness=7):\n        # Push-pull outputs, idle high. DIO is driven low during each ACK clock (the chip also\n        # pulls it low then), so the pin never fights the chip.\n        self.clk = Pin(clk, Pin.OUT, value=1)\n        self.dio = Pin(dio, Pin.OUT, value=1)\n        if not 0 <= brightness <= 7:\n            raise ValueError('brightness 0-7')\n        self._bright = brightness\n        self._on = True\n        time.sleep_us(_DELAY_US)\n        self.clear()\n\n    # --- bus primitives (datasheet \"Interface interpretation\") ---\n    def _start(self):\n        # bus idle: CLK high, DIO high\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(0)\n        time.sleep_us(_DELAY_US)\n\n    def _stop(self):\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(1)\n        time.sleep_us(_DELAY_US)\n        self.dio(1)\n        time.sleep_us(_DELAY_US)\n\n    def _write_byte(self, b):\n        for i in range(8):  # LSB first, DIO changes only while CLK is low\n            self.dio((b >> i) & 1)\n            time.sleep_us(_DELAY_US)\n            self.clk(1)\n            time.sleep_us(_DELAY_US)\n            self.clk(0)\n        # 9th clock: the TM1637 holds DIO low as its ACK; drive low too so nothing contends\n        self.dio(0)\n        time.sleep_us(_DELAY_US)\n        self.clk(1)\n        time.sleep_us(_DELAY_US)\n        self.clk(0)\n        time.sleep_us(_DELAY_US)\n\n    def _command(self, c):\n        self._start()\n        self._write_byte(c)\n        self._stop()\n\n    def _control(self):\n        self._command(_DISP_CTRL | (0x08 if self._on else 0) | self._bright)\n\n    # --- display ---\n    def write_raw(self, ram):\n        \"\"\"Write 6 bytes straight into display RAM C0H-C5H (RAM order, not screen order).\"\"\"\n        if len(ram) != DIGITS:\n            raise ValueError('need 6 bytes')\n        self._command(_DATA_CMD)\n        self._start()\n        self._write_byte(_ADDR_CMD)\n        for s in ram:\n            self._write_byte(s & 0xFF)\n        self._stop()\n        self._control()\n\n    def write(self, segments):\n        \"\"\"Write up to 6 segment bytes in screen order (index 0 = leftmost digit).\"\"\"\n        segs = list(segments)[:DIGITS]\n        segs += [0] * (DIGITS - len(segs))\n        ram = [0] * DIGITS\n        for pos in range(DIGITS):\n            ram[DIGIT_MAP[pos]] = segs[pos]\n        self.write_raw(ram)\n\n    def brightness(self, value=None):\n        \"\"\"Get or set brightness 0-7 (1/16 to 14/16 pulse width).\"\"\"\n        if value is None:\n            return self._bright\n        if not 0 <= value <= 7:\n            raise ValueError('brightness 0-7')\n        self._bright = value\n        self._control()\n\n    def power(self, on):\n        self._on = bool(on)\n        self._control()\n\n    def clear(self):\n        self.write([0] * DIGITS)\n\n    def show(self, text):\n        \"\"\"Show text left aligned; a '.' lights the decimal point of the character before it.\"\"\"\n        segs = []\n        for ch in text:\n            if ch == '.' and segs and not segs[-1] & 0x80:\n                segs[-1] |= 0x80\n            else:\n                segs.append(encode(ch) | (0x80 if ch == '.' else 0))\n        if len(segs) > DIGITS:\n            raise ValueError('text too long for 6 digits')\n        self.write(segs)\n\n    def number(self, n):\n        \"\"\"Show an integer right aligned (-99999 to 999999).\"\"\"\n        n = int(n)\n        if not -99999 <= n <= 999999:\n            raise ValueError('number out of range')\n        self.show('%6d' % n)\n\n    def decimal(self, value, places=1):\n        \"\"\"Show a float right aligned with `places` digits after the decimal point.\"\"\"\n        s = ('%.' + str(int(places)) + 'f') % value\n        if len(s.replace('.', '')) > DIGITS:\n            raise ValueError('number out of range')\n        pad = DIGITS - len(s.replace('.', ''))\n        self.show(' ' * pad + s)\n"
+  },
+  "example": {
+    "code": "from tm1637_6 import TM1637\nimport time\n\ndisplay = TM1637({CLK}, {DIO}, brightness=4)\nwhile True:\n    display.number(123456)\n    print('showing 123456')\n    time.sleep(1)\n    display.number(-4096)\n    print('showing -4096')\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows",
+      "title": "Shows 123456 in the right digit order, then a negative number",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "123456",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "-4096",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "showing -4096",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:11:31.780Z",
+    "verifiedSources": [
+      "https://www.datasheetcafe.com/wp-content/uploads/2015/10/TM1637_datasheet.pdf",
+      "https://sigmanortec.ro/en/led-display-module-with-serial-interface-tm1637",
+      "https://forum.arduino.cc/t/tm1637-6-digit-led-display/702875"
+    ]
+  }
+}

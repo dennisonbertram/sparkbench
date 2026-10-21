@@ -303,7 +303,7 @@ export class ElectricalModel {
         const vcc = this.moduleSupply(partId);
         const powered = vcc >= (cs.vmin ?? 2.7) * 0.85;
         const s = cs.sim;
-        if (s.kind === 'analog-sensor') {
+        if (s.kind === 'analog-sensor' && !s.wave) {
           const lo = s.min ?? 0;
           const hi = s.max ?? 100;
           const f = hi === lo ? 0 : (st.value - lo) / (hi - lo);

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max44009",
+  "board": "GY-49 MAX44009 ambient light sensor module (purple, 4-pin header: VIN, GND, SCL, SDA)",
+  "reason": "Check PASS on esp32 and pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). The driver follows the Maxim datasheet: lux = 2^E x M x 0.045, with 0x03 and 0x04 read using a Repeated START, overrange at E=15, and config register 0x02. The sim's lux registers are bit-exact to the chip's auto-range encoding for 368.64-734.4 lux (exponent 6, 2.88 lx/count). It cannot follow the exponent changing outside that band, and it leaves the undefined upper nibble of 0x04 non-zero, which the driver masks off. Both limits are documented.",
+  "datasheetUrl": "https://storage.googleapis.com/graviton-electric-symbols/document_assets/lcsc/1912111437_Analog-Devices-Inc--Maxim-Integrated-MAX44009EDT-T_C406724.pdf",
+  "breakoutPinoutSource": "GY-49 product photo with silkscreen VIN, GND, SCL, SDA (http://pibits.b-cdn.net/wp-content/uploads/2017/11/max44009-module.jpg) and the RobTillaart/Max44009 README breakout diagram",
+  "checkRuns": 1
+}

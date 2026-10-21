@@ -1,0 +1,182 @@
+{
+  "type": "custom-tsl2561",
+  "name": "TSL2561 luminosity (lux) sensor",
+  "mpn": "TSL2561",
+  "category": "sensor",
+  "description": "TAOS/ams light-to-digital converter with a broadband (visible + IR) and an infrared-only photodiode, two 16-bit ADCs and an I2C interface; lux is computed from the two channels (about 0.1 to 40,000 lux). Chip runs on 2.7-3.6 V. Sold as: Adafruit TSL2561 Digital Luminosity/Lux/Light Sensor Breakout (#439, 7-pin header version: Vin, GND, 3vo, Addr, Int, SDA, SCL) with 3.3 V regulator and I2C level shifters, I2C address 0x39 (0x29 with Addr to GND, 0x49 with Addr to 3.3 V).",
+  "eli5": "Tells your board how bright the light is, in lux, like a camera's light meter.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Board supply, 3-5 V (on-board MIC5225 3.3 V regulator). The SDA/SCL pull-ups go to Vin, so power it from 3.3 V when using an ESP32 or Pico",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3vo",
+      "role": "nc",
+      "description": "3.3 V OUTPUT of the on-board regulator, not a supply input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "Addr",
+      "role": "io",
+      "description": "Address select straight to the chip (3.3 V max): floating = 0x39, GND = 0x29, 3vo = 0x49; also set by a solder jumper. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "Int",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low, straight from the chip (no pull-up on board, 3.3 V max); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (BSS138 level shifter with 10k pull-ups to Vin on board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (BSS138 level shifter with 10k pull-ups to Vin on board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.6,
+  "i2cAddress": 57,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "TSL2561 luminosity lux light sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every register access starts with a command byte 0x80 | register. Power up with 0x80, 0x03 and read 0x80 back: it returns 0x03 when the chip is answering.",
+    "Timing register (0x81): bit 4 = gain 16x, bits 1:0 = integration 00 13.7 ms, 01 101 ms, 10 402 ms (power-on default 0x02 = 1x, 402 ms). Wait one full integration after power-up or a change before reading.",
+    "Read channel 0 (broadband) with Read Word command 0xAC and channel 1 (infrared) with 0xAE; each is low byte first.",
+    "Lux comes from both channels with the datasheet's piecewise formula (CH1/CH0 ratio); channel 0 alone is not lux. Full scale is 65535 at 402 ms, 37177 at 101 ms, 5047 at 13.7 ms: a full-scale count means saturated, lower the gain or integration time.",
+    "Power the board's Vin from 3.3 V when the controller is an ESP32 or Pico: the level shifter pulls SDA/SCL up to Vin.",
+    "Addr and Int connect straight to the 3.3 V chip: never tie them to 5 V. Tie Addr to 3vo (not Vin) for address 0x49."
+  ],
+  "keywords": [
+    "tsl2561",
+    "tsl2560",
+    "lux",
+    "light",
+    "luminosity",
+    "ambient light",
+    "taos",
+    "ams"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf",
+    "https://github.com/adafruit/TSL2561-breakout-board-PCB (TSL2561_5V_REV-A.brd: JP1 pads 1-7 = VIN, GND, 3.3V, ADDR, INT, SDA_5V, SCL_5V; silkscreen Vin GND 3vo Addr Int SDA SCL)",
+    "https://www.adafruit.com/product/439",
+    "https://learn.adafruit.com/tsl2561"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Channel 0 broadband light (ADC counts)",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 1000,
+    "controls": [
+      {
+        "key": "ir",
+        "quantity": "Channel 1 infrared light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 200
+      }
+    ],
+    "registers": {
+      "0x8A": 80
+    },
+    "measures": [
+      {
+        "reg": "0xAC",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xAE",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      },
+      {
+        "reg": "0x8C",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x8E",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tsl2561.py",
+    "code": "# TSL2561 light-to-digital converter (TAOS/ams TSL2560/TSL2561), MicroPython driver.\n# Written from the TSL2561 datasheet (TAOS059N, March 2009):\n#  - every access starts with a COMMAND byte: bit 7 CMD = 1, bit 6 CLEAR (interrupt clear),\n#    bit 5 WORD (SMBus read/write word), bit 4 BLOCK, bits 3:0 register address;\n#  - CONTROL (0x0): write 0x03 to power up, 0x00 to power down; reads back 0x03 when powered;\n#  - TIMING (0x1): bit 4 GAIN (0 = 1x, 1 = 16x), bits 1:0 INTEG (00 13.7 ms, 01 101 ms, 10 402 ms);\n#  - DATA0 (0xC/0xD, broadband) and DATA1 (0xE/0xF, infrared) are 16-bit, low byte first,\n#    read with the recommended Read Word protocol: command 0xAC (channel 0) and 0xAE (channel 1);\n#  - lux from the datasheet's integer CalculateLux() routine for the T, FN and CL packages.\nimport time\n\n_CMD = 0x80\n_WORD = 0x20\n_CLEAR = 0x40\n_CONTROL = 0x00\n_TIMING = 0x01\n_ID = 0x0A\n_DATA0 = 0x0C\n_DATA1 = 0x0E\n\n_POWER_UP = 0x03\n_POWER_DOWN = 0x00\n\n# INTEG field -> (nominal integration time in ms, full-scale count)\n_INTEG = {0: (14, 5047), 1: (101, 37177), 2: (402, 65535)}\n_INTEG_BY_MS = {13: 0, 14: 0, 101: 1, 402: 2}\n\n# Datasheet CalculateLux() constants\n_LUX_SCALE = 14\n_RATIO_SCALE = 9\n_CH_SCALE = 10\n_CHSCALE_TINT0 = 0x7517  # 322/11 * 2^CH_SCALE\n_CHSCALE_TINT1 = 0x0FE7  # 322/81 * 2^CH_SCALE\n# (ratio break K, b, m) for the T, FN and CL packages\n_T_TABLE = (\n    (0x0040, 0x01F2, 0x01BE),\n    (0x0080, 0x0214, 0x02D1),\n    (0x00C0, 0x023F, 0x037B),\n    (0x0100, 0x0270, 0x03FE),\n    (0x0138, 0x016F, 0x01FC),\n    (0x019A, 0x00D2, 0x00FB),\n    (0x029A, 0x0018, 0x0012),\n)\n# same for the CS (chipscale) package\n_CS_TABLE = (\n    (0x0043, 0x0204, 0x01AD),\n    (0x0085, 0x0228, 0x02C1),\n    (0x00C8, 0x0253, 0x0363),\n    (0x010A, 0x0282, 0x03DF),\n    (0x014D, 0x0177, 0x01DD),\n    (0x019A, 0x0101, 0x0127),\n    (0x029A, 0x0037, 0x002B),\n)\n\n\ndef calculate_lux(ch0, ch1, gain16=False, integ=2, cs_package=False):\n    \"\"\"Datasheet CalculateLux(): approximate illuminance (integer lux) from raw counts.\"\"\"\n    if integ == 0:\n        ch_scale = _CHSCALE_TINT0\n    elif integ == 1:\n        ch_scale = _CHSCALE_TINT1\n    else:\n        ch_scale = 1 << _CH_SCALE\n    if not gain16:\n        ch_scale <<= 4  # scale 1x to 16x\n    channel0 = (ch0 * ch_scale) >> _CH_SCALE\n    channel1 = (ch1 * ch_scale) >> _CH_SCALE\n    ratio1 = 0\n    if channel0 != 0:\n        ratio1 = (channel1 << (_RATIO_SCALE + 1)) // channel0\n    ratio = (ratio1 + 1) >> 1\n    b = m = 0  # ratio > 1.30: lux = 0\n    for k, bb, mm in (_CS_TABLE if cs_package else _T_TABLE):\n        if ratio <= k:\n            b, m = bb, mm\n            break\n    temp = channel0 * b - channel1 * m\n    if temp < 0:\n        temp = 0\n    temp += 1 << (_LUX_SCALE - 1)\n    return temp >> _LUX_SCALE\n\n\nclass TSL2561:\n    def __init__(self, i2c, addr=0x39, gain=1, integration_ms=402, cs_package=False):\n        \"\"\"addr: 0x39 (ADDR floating), 0x29 (ADDR to GND) or 0x49 (ADDR to 3.3 V).\n        gain: 1 or 16. integration_ms: 13 (13.7 ms), 101 or 402.\n        cs_package: True only for the chipscale TSL2561CS (breakouts use the T/FN package).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.cs_package = cs_package\n        self._write8(_CONTROL, _POWER_UP)\n        if self._read8(_CONTROL) & 0x03 != 0x03:\n            raise OSError('TSL2561 not responding at 0x%02X: check the wiring and ADDR' % addr)\n        part = self._read8(_ID) >> 4\n        if part not in (0x0, 0x1, 0x4, 0x5):  # TSL2560/TSL2561 CS or T/FN/CL\n            raise OSError('Device at 0x%02X is not a TSL2561 (ID 0x%X)' % (addr, part))\n        self.configure(gain, integration_ms)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto_mem(self.addr, _CMD | reg, bytes((value & 0xFF,)))\n\n    def _read8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, _CMD | reg, 1)[0]\n\n    def _read_word(self, reg):\n        # SMBus Read Word: command with WORD bit, repeated start, low byte then high byte.\n        d = self.i2c.readfrom_mem(self.addr, _CMD | _WORD | reg, 2)\n        return d[0] | (d[1] << 8)\n\n    def configure(self, gain=1, integration_ms=402):\n        if gain not in (1, 16):\n            raise ValueError('gain must be 1 or 16')\n        if integration_ms not in _INTEG_BY_MS:\n            raise ValueError('integration_ms must be 13, 101 or 402')\n        self.gain = gain\n        self.integ = _INTEG_BY_MS[integration_ms]\n        self._write8(_TIMING, (0x10 if gain == 16 else 0x00) | self.integ)\n        # A new setting is only reflected after a full integration cycle.\n        self._ready_at = time.ticks_add(time.ticks_ms(), _INTEG[self.integ][0] + 10)\n\n    def _wait_ready(self):\n        wait = time.ticks_diff(self._ready_at, time.ticks_ms())\n        if wait > 0:\n            time.sleep_ms(wait)\n\n    def raw(self):\n        \"\"\"Return (channel 0 broadband counts, channel 1 infrared counts).\"\"\"\n        self._wait_ready()\n        return self._read_word(_DATA0), self._read_word(_DATA1)\n\n    def saturated(self, ch0, ch1):\n        full = _INTEG[self.integ][1]\n        return ch0 >= full or ch1 >= full\n\n    def lux(self):\n        \"\"\"Illuminance in lux (integer, datasheet algorithm), or None when a channel is saturated.\"\"\"\n        ch0, ch1 = self.raw()\n        if self.saturated(ch0, ch1):\n            return None\n        return calculate_lux(ch0, ch1, self.gain == 16, self.integ, self.cs_package)\n\n    def clear_interrupt(self):\n        self.i2c.writeto(self.addr, bytes((_CMD | _CLEAR,)))\n\n    def power_down(self):\n        self._write8(_CONTROL, _POWER_DOWN)\n\n    def power_up(self):\n        self._write8(_CONTROL, _POWER_UP)\n        self._ready_at = time.ticks_add(time.ticks_ms(), _INTEG[self.integ][0] + 10)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tsl2561 import TSL2561\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TSL2561(i2c)  # gain 1x, 402 ms\nwhile True:\n    ch0, ch1 = sensor.raw()\n    lux = sensor.lux()\n    print('CH0=%d CH1=%d Lux=%s' % (ch0, ch1, lux))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the channel counts set on the sliders and the datasheet lux",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1200
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 300
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=1200 CH1=300 Lux=412",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:18:25.869Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf",
+      "https://cdn-shop.adafruit.com/970x728/439-01.jpg",
+      "https://adafruit.com/product/439",
+      "https://learn.adafruit.com/tsl2561/wiring"
+    ]
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "type": "custom-ds1307",
+  "name": "DS1307 real-time clock module (Tiny RTC)",
+  "mpn": "DS1307",
+  "category": "ic",
+  "description": "Maxim/Analog Devices DS1307 battery-backed I2C real-time clock: seconds to year in BCD (leap years to 2100), 56 bytes of RAM and a programmable square-wave pin. The chip needs a 4.5-5.5 V supply. The module also carries an AT24C32 EEPROM at 0x50 and a coin-cell holder. Sold as: Tiny RTC I2C module (DS1307 + AT24C32), 7-pin header P1: SQ, DS, SCL, SDA, VCC, GND, BAT; I2C address 0x68.",
+  "eli5": "A little clock with its own battery that keeps the date and time even when your board is switched off.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SQ",
+      "role": "io",
+      "description": "SQW/OUT: open-drain square-wave (1 Hz-32 kHz) or logic output; needs a pull-up if used",
+      "required": false
+    },
+    {
+      "name": "DS",
+      "role": "io",
+      "description": "Data pin of the optional DS18B20 footprint (usually not fitted); not part of the clock",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 100 kHz max (pull-up to VCC fitted on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up to VCC fitted on the module)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 5 V (4.5-5.5 V); the DS1307 does not run from 3.3 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "BAT",
+      "role": "nc",
+      "description": "Backup cell + (from the on-board holder); leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/DS1307.pdf",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/DS1307.pdf",
+    "https://www.cp.eng.chula.ac.th/%7Epiak/teaching/embed/2022/DS1307.pdf",
+    "https://iarduino.ru/lib/758e34773ce55f85dcf04367a89b30d0.pdf",
+    "https://github.com/jimaobian/DFRobotWiki/wiki/Real_Time_Clock_Module_%28DS1307%29_V1.1_%28SKU_DFR0151%29"
+  ],
+  "priceUsd": 2,
+  "supplierQuery": "Tiny RTC DS1307 I2C module AT24C32",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (ESP32 VIN/5V, Pico VBUS): the DS1307 needs 4.5-5.5 V and below about 1.25 x the cell voltage it stops answering on I2C.",
+    "The module pulls SDA and SCL up to VCC (5 V). ESP32 and Pico pins are not 5 V tolerant: remove the module's two I2C pull-up resistors and use 3.3 V pull-ups (4.7 kOhm), or use a level shifter. The DS1307 reads 2.2 V as high, so 3.3 V logic works.",
+    "Use I2C at 100 kHz: the DS1307 is a standard-mode-only device.",
+    "After first power-up the clock is halted (CH bit 7 of register 0x00 = 1). Setting the time writes seconds with CH = 0, which starts it.",
+    "Time registers 0x00-0x06 are BCD: seconds, minutes, hours, weekday (1-7, user-defined), date, month, year (00-99). Hour bit 6 = 1 selects 12-hour mode.",
+    "The Tiny RTC charges its cell through a diode: fit a rechargeable LIR2032, or remove the charging parts before fitting a CR2032. Without a cell, VBAT must be grounded.",
+    "The AT24C32 EEPROM on the same bus answers at 0x50; it is not modelled here."
+  ],
+  "keywords": [
+    "ds1307",
+    "rtc",
+    "real-time clock",
+    "tiny rtc",
+    "clock",
+    "calendar",
+    "at24c32"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "rtc": {
+      "reg": "0x00",
+      "order": "ds1307"
+    },
+    "registers": {
+      "0x07": 3
+    }
+  },
+  "driver": {
+    "filename": "ds1307.py",
+    "code": "# DS1307 real-time clock (Analog Devices / Maxim DS1307), MicroPython driver.\n# Registers 0x00-0x06 hold seconds, minutes, hours, day-of-week, date, month, year in BCD;\n# 0x07 is the control register (SQW/OUT pin); 0x08-0x3F are 56 bytes of battery-backed RAM.\n# Bit 7 of 0x00 is CH (clock halt): it is 1 after first power-up, so the clock does not run\n# until the time is set. The chip is a standard-mode (100 kHz) I2C device only.\n\n_ADDR = 0x68\n\n\ndef _bcd2dec(b):\n    return (b >> 4) * 10 + (b & 0x0F)\n\n\ndef _dec2bcd(n):\n    return ((n // 10) << 4) | (n % 10)\n\n\nclass DS1307:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def datetime(self, dt=None):\n        \"\"\"Read or set the time.\n\n        Returns (year, month, day, weekday, hour, minute, second). weekday is 1-7 and\n        user-defined (the chip just counts it up at midnight); this library uses 1 = Monday.\n        Pass the same tuple to set the clock; setting also clears CH, starting the oscillator.\n        \"\"\"\n        if dt is None:\n            r = self.i2c.readfrom_mem(self.addr, 0x00, 7)\n            sec = _bcd2dec(r[0] & 0x7F)\n            minute = _bcd2dec(r[1] & 0x7F)\n            h = r[2]\n            if h & 0x40:  # 12-hour mode: bit 5 = PM, bits 4-0 = 1-12\n                hour = _bcd2dec(h & 0x1F) % 12\n                if h & 0x20:\n                    hour += 12\n            else:  # 24-hour mode\n                hour = _bcd2dec(h & 0x3F)\n            wday = r[3] & 0x07\n            day = _bcd2dec(r[4] & 0x3F)\n            month = _bcd2dec(r[5] & 0x1F)\n            year = 2000 + _bcd2dec(r[6])\n            return (year, month, day, wday, hour, minute, sec)\n        year, month, day, wday, hour, minute, sec = dt[:7]\n        # One write from 0x00: seconds first (resets the divider chain, CH = 0),\n        # then the rest within the same second. Hours written in 24-hour mode (bit 6 = 0).\n        buf = bytes([\n            _dec2bcd(sec) & 0x7F,\n            _dec2bcd(minute),\n            _dec2bcd(hour) & 0x3F,\n            wday & 0x07,\n            _dec2bcd(day),\n            _dec2bcd(month),\n            _dec2bcd(year % 100),\n        ])\n        self.i2c.writeto_mem(self.addr, 0x00, buf)\n\n    def halted(self):\n        \"\"\"True while the oscillator is stopped (CH = 1), e.g. after first power-up.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, 0x00, 1)[0] & 0x80)\n\n    def halt(self, stop=True):\n        \"\"\"Stop (True) or restart (False) the clock without changing the seconds.\"\"\"\n        s = self.i2c.readfrom_mem(self.addr, 0x00, 1)[0]\n        s = (s | 0x80) if stop else (s & 0x7F)\n        self.i2c.writeto_mem(self.addr, 0x00, bytes([s]))\n\n    def square_wave(self, freq=None, out=0):\n        \"\"\"SQW/OUT pin (open drain, needs a pull-up): freq 1, 4096, 8192 or 32768 Hz,\n        or None to disable it and drive the pin to `out` (0 or 1).\"\"\"\n        rates = {1: 0x00, 4096: 0x01, 8192: 0x02, 32768: 0x03}\n        if freq is None:\n            ctrl = 0x80 if out else 0x00\n        else:\n            ctrl = 0x10 | rates[freq]\n        self.i2c.writeto_mem(self.addr, 0x07, bytes([ctrl]))\n\n    def read_ram(self, offset, n):\n        \"\"\"Read n bytes of the 56-byte battery-backed RAM (offset 0-55).\"\"\"\n        if offset < 0 or offset + n > 56:\n            raise ValueError('DS1307 RAM is 56 bytes')\n        return self.i2c.readfrom_mem(self.addr, 0x08 + offset, n)\n\n    def write_ram(self, offset, data):\n        if offset < 0 or offset + len(data) > 56:\n            raise ValueError('DS1307 RAM is 56 bytes')\n        self.i2c.writeto_mem(self.addr, 0x08 + offset, bytes(data))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ds1307 import DS1307\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nrtc = DS1307(i2c)\nrtc.datetime((2027, 2, 28, 7, 23, 59, 57))  # Sunday 28 Feb 2027, 23:59:57 (weekday 1 = Monday)\nwhile True:\n    y, mo, d, wd, h, mi, s = rtc.datetime()\n    print('wd=%d %04d-%02d-%02d %02d:%02d:%02d' % (wd, y, mo, d, h, mi, s))\n    time.sleep(1)\n",
+    "test": {
+      "id": "rolls-over",
+      "title": "Keeps the time it was set to and rolls over to 1 March",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=7 2027-02-28 23:59:5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=1 2027-03-01 00:00:0",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:15:48.485Z",
+    "verifiedSources": [
+      "https://www.sparkfun.com/datasheets/Components/DS1307.pdf",
+      "https://lastminuteengineers.com/ds1307-rtc-arduino-tutorial/"
+    ]
+  }
+}

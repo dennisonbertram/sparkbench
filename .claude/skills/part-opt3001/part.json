@@ -1,0 +1,139 @@
+{
+  "type": "custom-opt3001",
+  "name": "OPT3001 ambient light sensor",
+  "mpn": "OPT3001",
+  "category": "sensor",
+  "description": "Texas Instruments ambient light sensor with a human-eye spectral response, measuring 0.01 to 83865.6 lux over I2C with automatic full-scale ranging (16-bit result: 4-bit exponent, 12-bit mantissa). Runs on 1.6–3.6 V only; I2C pins tolerate 5.5 V. Sold as: CJMCU-3001 OPT3001 module (purple, 6-pin header in order VCC, GND, SCL, SDA, INT, ADD), I2C address 0x44 (0x45–0x47 by wiring ADD to VCC, SDA or SCL).",
+  "eli5": "Measures how bright the light is, in lux, the way your eye sees it. Give it 3.3 V, never 5 V.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 1.6–3.6 V (use 3.3 V; no regulator on the board, 5 V is outside the chip's operating range)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (5.5 V tolerant; resistor network on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, open-drain (5.5 V tolerant; resistor network on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low by default; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "ADD",
+      "role": "io",
+      "description": "Address select (chip ADDR pin): GND = 0x44 (board default), VCC = 0x45, SDA = 0x46, SCL = 0x47",
+      "required": false
+    }
+  ],
+  "vmin": 1.6,
+  "vmax": 3.6,
+  "currentMa": 0.004,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/opt3001.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/opt3001.pdf",
+    "https://www.esp32learning.com/code/opt3001digital-ambient-light-sensor-and-esp32-example.php",
+    "https://www.esp32learning.com/wp-content/uploads/2018/05/OPT3001_.jpg",
+    "https://store.siqma.com/CJMCU-OPT3001-Module.html"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "CJMCU-3001 OPT3001 ambient light sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order on the CJMCU-3001 is VCC, GND, SCL, SDA, INT, ADD: SCL comes before SDA.",
+    "Power it from 3.3 V only: the OPT3001 operates at 1.6–3.6 V (absolute maximum 6 V). Its SDA, SCL and ADDR inputs tolerate up to 5.5 V.",
+    "The chip powers up shut down (configuration 0xC810, M = 00): write the configuration register before reading, e.g. 0xCE10 for auto range, 800 ms, continuous.",
+    "Result register 0x00: lux = 0.01 × 2^E × R, where E = bits 15–12 and R = bits 11–0. In auto range (RN = 1100b) the chip picks E itself; with RN 0–11 E equals RN.",
+    "A conversion takes up to 880 ms (800 ms mode) or 110 ms (100 ms mode); the result reads 0 until the first one ends.",
+    "Reading the configuration register clears the conversion-ready flag (CRF).",
+    "Check the IDs: register 0x7E reads 0x5449 ('TI') and 0x7F reads 0x3001.",
+    "The simulator models the chip with a fixed full-scale range of 10483.2 lux (RN = 1000b, 2.56 lux per count), which the example selects; in auto range the real chip reports finer steps at low light."
+  ],
+  "keywords": [
+    "opt3001",
+    "cjmcu-3001",
+    "light",
+    "lux",
+    "ambient light",
+    "illuminance",
+    "texas instruments"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Illuminance",
+    "unit": "lx",
+    "min": 0,
+    "max": 10483.2,
+    "default": 300,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 51216,
+      "0x02": 49152,
+      "0x03": 49151,
+      "0x7E": 21577,
+      "0x7F": 12289
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 2.56,
+      "offset": -83886.08
+    }
+  },
+  "driver": {
+    "filename": "opt3001.py",
+    "code": "# OPT3001 ambient light sensor (Texas Instruments SBOS681C), MicroPython driver.\n# 16-bit registers, MSB first; the pointer byte selects the register:\n#   0x00 result, 0x01 configuration, 0x02 low limit, 0x03 high limit,\n#   0x7E manufacturer ID (0x5449 = \"TI\"), 0x7F device ID (0x3001).\n# Result register: E[3:0] exponent in bits 15..12, R[11:0] mantissa in bits 11..0,\n#   lux = 0.01 * 2**E * R   (datasheet equation 3, Table 8).\nimport time\n\n_REG_RESULT = 0x00\n_REG_CONFIG = 0x01\n_REG_LOW = 0x02\n_REG_HIGH = 0x03\n_REG_MFR_ID = 0x7E\n_REG_DEV_ID = 0x7F\n\n# Configuration register fields (datasheet Table 10)\n_CT = 0x0800        # bit 11: 1 = 800 ms, 0 = 100 ms conversion\n_M_SHUTDOWN = 0x0000\n_M_SINGLE = 0x0200  # bits 10..9 = 01\n_M_CONT = 0x0400    # bits 10..9 = 10\n_M_MASK = 0x0600\n_OVF = 0x0100       # bit 8, read-only\n_CRF = 0x0080       # bit 7, read-only: conversion ready\n_L = 0x0010         # bit 4: latched window-style comparison (power-up value)\n\nRANGE_AUTO = 12     # RN = 1100b: automatic full-scale range (power-up default)\n# RN 0..11 = manual full-scale range: 40.95 lx * 2**RN, LSB 0.01 lx * 2**RN\n# (e.g. 6 = 2620.8 lx / 0.64 lx, 8 = 10483.2 lx / 2.56 lx, 11 = 83865.6 lx / 20.48 lx)\n\n\ndef decode(raw):\n    \"\"\"Result (or limit) register word -> lux (datasheet equation 3).\"\"\"\n    return 0.01 * (1 << ((raw >> 12) & 0x0F)) * (raw & 0x0FFF)\n\n\nclass OPT3001:\n    def __init__(self, i2c, addr=0x44, range_number=RANGE_AUTO, conversion_ms=800, continuous=True):\n        \"\"\"addr 0x44 (ADDR to GND), 0x45 (VDD), 0x46 (SDA), 0x47 (SCL).\n        conversion_ms: 800 (full resolution) or 100.\n        continuous=True starts continuous conversions and waits for the first result.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        if self._read16(_REG_MFR_ID) != 0x5449 or self._read16(_REG_DEV_ID) != 0x3001:\n            raise OSError('OPT3001 not found at 0x%02X' % addr)\n        if not (0 <= range_number <= 12):\n            raise ValueError('range_number must be 0-11 (manual) or 12 (auto)')\n        if conversion_ms not in (100, 800):\n            raise ValueError('conversion_ms must be 100 or 800')\n        self._base = (range_number << 12) | (_CT if conversion_ms == 800 else 0) | _L\n        # Worst-case time for one result: 880 ms / 110 ms max integration (Electrical\n        # Characteristics), plus the 10 ms range assessment in auto-range mode.\n        self._wait_ms = (880 if conversion_ms == 800 else 110) + (10 if range_number == RANGE_AUTO else 0)\n        if continuous:\n            self._write16(_REG_CONFIG, self._base | _M_CONT)\n            time.sleep_ms(self._wait_ms + 10)  # result register holds 0 until the first conversion ends\n        else:\n            self._write16(_REG_CONFIG, self._base | _M_SHUTDOWN)\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _write16(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes(((value >> 8) & 0xFF, value & 0xFF)))\n\n    def raw(self):\n        \"\"\"The result register word (exponent and mantissa).\"\"\"\n        return self._read16(_REG_RESULT)\n\n    def lux(self):\n        \"\"\"Latest conversion in lux (continuous mode).\"\"\"\n        return decode(self._read16(_REG_RESULT))\n\n    def config(self):\n        \"\"\"Configuration register. Note: reading it clears CRF (datasheet Table 10).\"\"\"\n        return self._read16(_REG_CONFIG)\n\n    def overflow(self):\n        return bool(self.config() & _OVF)\n\n    def single_shot(self, timeout_ms=2000):\n        \"\"\"Start one conversion (M = 01), wait until the chip returns to shutdown (M = 00)\n        with CRF set, and return lux. In auto range a light transient can lengthen it.\"\"\"\n        self._write16(_REG_CONFIG, self._base | _M_SINGLE)\n        t0 = time.ticks_ms()\n        time.sleep_ms(self._wait_ms)\n        while True:\n            cfg = self._read16(_REG_CONFIG)\n            if cfg & _CRF or not (cfg & _M_MASK):\n                break\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('OPT3001 single-shot conversion timed out')\n            time.sleep_ms(5)\n        return self.lux()\n\n    def shutdown(self):\n        \"\"\"Stop converting (about 0.3 uA).\"\"\"\n        self._write16(_REG_CONFIG, self._base | _M_SHUTDOWN)\n\n    def limits(self):\n        \"\"\"(low, high) interrupt limits in lux; power-up values 0 and 83865.6.\"\"\"\n        return decode(self._read16(_REG_LOW)), decode(self._read16(_REG_HIGH))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom opt3001 import OPT3001\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\n# 0x44 with ADD at GND; fixed 10483.2 lx full-scale range (RN = 8, 2.56 lx per count), 800 ms, continuous\nsensor = OPT3001(i2c, range_number=8)\nwhile True:\n    print('Lux=%.2f' % sensor.lux())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the illuminance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=1500.16",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:13:06.211Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/opt3001.pdf"
+    ]
+  }
+}

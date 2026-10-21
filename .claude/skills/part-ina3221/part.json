@@ -1,0 +1,315 @@
+{
+  "type": "custom-ina3221",
+  "name": "INA3221 3-channel current & voltage monitor",
+  "mpn": "INA3221",
+  "category": "sensor",
+  "description": "Texas Instruments three-channel current and voltage monitor with an I2C interface: for each channel it measures the voltage across a shunt resistor (±163.8 mV, 40 µV per count) and the bus voltage at the load (0–26 V, 8 mV per count). Runs on 2.7–5.5 V. Sold as: Adafruit INA3221 breakout (#6062, 15-pin header: VCC, GND, SCL, SDA, VIN3+, VIN3-, VIN2+, VIN2-, VIN1+, VIN1-, WRN, CRI, TC, VALID, VPU) with 0.05 Ω shunts (about ±3.2 A per channel), I2C address 0x40 (0x41 with the Addr jumper closed).",
+  "eli5": "Watches three power wires at once and tells your board how many volts and milliamps each one carries.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Chip supply, 2.7–5.5 V; also sets the I2C logic level (3.3 V recommended)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller and the measured supplies",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "VIN3+",
+      "role": "io",
+      "description": "Channel 3 shunt high side: from the supply being measured (0–26 V). Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "VIN3-",
+      "role": "io",
+      "description": "Channel 3 shunt low side: to the load's + lead (bus voltage is measured here, 0–26 V). Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "VIN2+",
+      "role": "io",
+      "description": "Channel 2 shunt high side: from the supply being measured (0–26 V). Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "VIN2-",
+      "role": "io",
+      "description": "Channel 2 shunt low side: to the load's + lead (bus voltage is measured here, 0–26 V). Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "VIN1+",
+      "role": "io",
+      "description": "Channel 1 shunt high side: from the supply being measured (0–26 V). Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "VIN1-",
+      "role": "io",
+      "description": "Channel 1 shunt low side: to the load's + lead (bus voltage is measured here, 0–26 V). Never to a GPIO.",
+      "required": false
+    },
+    {
+      "name": "WRN",
+      "role": "io",
+      "description": "Warning alert output (open-drain, active low, 10 kΩ pull-up to VCC), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "CRI",
+      "role": "io",
+      "description": "Critical alert output (open-drain, active low, 10 kΩ pull-up to VCC), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "TC",
+      "role": "io",
+      "description": "Timing-control alert output (open-drain, active low, 10 kΩ pull-up to VCC), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "VALID",
+      "role": "io",
+      "description": "Power-valid output (open-drain, 10 kΩ pull-up to VPU), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "VPU",
+      "role": "power",
+      "description": "Pull-up supply for VALID: link to VCC only if you use VALID",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.45,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina3221.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ina3221.pdf",
+    "https://www.adafruit.com/product/6062",
+    "https://learn.adafruit.com/adafruit-ina3221-breakout/pinouts",
+    "https://github.com/adafruit/Adafruit-INA3221-Breakout-PCB",
+    "https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/svg/contrib/breadboard/Adafruit-_c836bdae8eaf0cd0f8bcfd5c19706bd6_20_04_breadboard.svg"
+  ],
+  "priceUsd": 7,
+  "supplierQuery": "Adafruit INA3221 triple power monitor breakout 6062",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x15_P2.54mm_Vertical",
+  "buildNotes": [
+    "Each shunt goes in series with its load: supply + to VINn+, VINn- to the load's + lead, and every measured supply's ground to the same GND as the microcontroller.",
+    "VIN pins may carry up to 26 V: never connect them to a GPIO. With the 0.05 Ω shunts each channel reads up to about ±3.2 A (163.8 mV full scale); carry load current through the screw terminals, not the thin header pins or breadboard jumpers.",
+    "Shunt registers 01h/03h/05h and bus registers 02h/04h/06h hold a signed value in bits 15..3: shift right by 3, then 40 µV (shunt) or 8 mV (bus) per count. Current = shunt voltage / 0.05 Ω.",
+    "Manufacturer ID FEh reads 5449h and Die ID FFh reads 3220h: a quick wiring check. Default address 0x40; close the Addr jumper for 0x41.",
+    "An unused channel reads 0; VPU only needs wiring (to VCC) if you use the VALID output."
+  ],
+  "keywords": [
+    "ina3221",
+    "current",
+    "voltage",
+    "power",
+    "shunt",
+    "3 channel",
+    "triple",
+    "ammeter",
+    "power monitor",
+    "texas instruments",
+    "adafruit 6062"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Channel 1 bus voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 26,
+    "default": 12,
+    "registers": {
+      "0x00": 28967,
+      "0x07": 32760,
+      "0x08": 32760,
+      "0x09": 32760,
+      "0x0A": 32760,
+      "0x0B": 32760,
+      "0x0C": 32760,
+      "0x0D": 0,
+      "0x0E": 32766,
+      "0x0F": 2,
+      "0x10": 10000,
+      "0x11": 9000,
+      "0xFE": 21577,
+      "0xFF": 12832
+    },
+    "regWidth": 16,
+    "controls": [
+      {
+        "key": "current1",
+        "quantity": "Channel 1 load current",
+        "unit": "mA",
+        "min": -3200,
+        "max": 3200,
+        "default": 0
+      },
+      {
+        "key": "bus2",
+        "quantity": "Channel 2 bus voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 26,
+        "default": 5
+      },
+      {
+        "key": "current2",
+        "quantity": "Channel 2 load current",
+        "unit": "mA",
+        "min": -3200,
+        "max": 3200,
+        "default": 0
+      },
+      {
+        "key": "bus3",
+        "quantity": "Channel 3 bus voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 26,
+        "default": 3.3
+      },
+      {
+        "key": "current3",
+        "quantity": "Channel 3 load current",
+        "unit": "mA",
+        "min": -3200,
+        "max": 3200,
+        "default": 0
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x01",
+        "bytes": 2,
+        "scale": 0.8,
+        "shift": 3,
+        "signed": true,
+        "control": "current1"
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.008,
+        "shift": 3,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x03",
+        "bytes": 2,
+        "scale": 0.8,
+        "shift": 3,
+        "signed": true,
+        "control": "current2"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.008,
+        "shift": 3,
+        "signed": true,
+        "control": "bus2"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 0.8,
+        "shift": 3,
+        "signed": true,
+        "control": "current3"
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "scale": 0.008,
+        "shift": 3,
+        "signed": true,
+        "control": "bus3"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ina3221.py",
+    "code": "# INA3221 triple-channel current & voltage monitor (TI INA3221, SBOS576), MicroPython driver.\n# All registers are 16-bit, sent MSB first. Per channel n = 1..3:\n#   shunt voltage register 2n-1 (01h/03h/05h): signed two's complement in bits 15..3, LSB 40 uV\n#   bus voltage register   2n   (02h/04h/06h): signed two's complement in bits 15..3, LSB 8 mV\n#   (bits 2..0 always read 0). FEh Manufacturer ID = 5449h, FFh Die ID = 3220h.\n# Current = shunt voltage / shunt resistor (0.05 ohm on the Adafruit #6062 board).\nimport time\n\n_REG_CONFIG = 0x00\n_REG_MANUFACTURER_ID = 0xFE\n_REG_DIE_ID = 0xFF\n\n# CH1en, CH2en, CH3en = 1; AVG = 16 samples (010); VBUSCT = 1.1 ms (100);\n# VSHCT = 1.1 ms (100); MODE = shunt and bus, continuous (111).\n_CONFIG = 0x7527\n\n\nclass INA3221:\n    def __init__(self, i2c, addr=0x40, shunt_ohms=0.05):\n        self.i2c = i2c\n        self.addr = addr\n        self.shunt_ohms = shunt_ohms\n        if self._read(_REG_MANUFACTURER_ID) != 0x5449 or self._read(_REG_DIE_ID) != 0x3220:\n            raise OSError('INA3221 not found at 0x%02x: check the wiring' % addr)\n        self.i2c.writeto_mem(addr, _REG_CONFIG, bytes([_CONFIG >> 8, _CONFIG & 0xFF]))\n        # 3 channels x (1.1 ms shunt + 1.1 ms bus) x 16 averages = about 106 ms per full cycle.\n        time.sleep_ms(120)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _signed13(self, reg):\n        raw = self._read(reg)\n        if raw & 0x8000:\n            raw -= 0x10000\n        return raw >> 3  # 12 data bits + sign; the low 3 bits are unused\n\n    def shunt_mv(self, ch):\n        \"\"\"Voltage across channel ch's shunt (ch = 1..3) in mV, 40 uV per count.\"\"\"\n        return self._signed13(2 * ch - 1) * 0.04\n\n    def bus_voltage(self, ch):\n        \"\"\"Voltage on channel ch's VIN- pin (load side) relative to GND, in volts, 8 mV per count.\"\"\"\n        return self._signed13(2 * ch) * 0.008\n\n    def current_ma(self, ch):\n        \"\"\"Current from VINn+ to VINn- in mA (negative if it flows the other way).\"\"\"\n        return self.shunt_mv(ch) / self.shunt_ohms\n\n    def power_mw(self, ch):\n        return self.bus_voltage(ch) * self.current_ma(ch)\n\n    def read(self, ch=1):\n        \"\"\"Return (bus voltage in V, current in mA) for channel ch.\"\"\"\n        return self.bus_voltage(ch), self.current_ma(ch)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ina3221 import INA3221\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = INA3221(i2c)  # address 0x40, 0.05 ohm shunts\nwhile True:\n    for ch in (1, 2, 3):\n        v, i = sensor.read(ch)\n        print('CH%d V=%.3fV I=%.1fmA' % (ch, v, i))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the voltages and currents set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "current1",
+          "value": 400
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "bus2",
+          "value": 12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "current2",
+          "value": -120
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH1 V=5.000V I=400.0mA",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH2 V=12.000V I=-120.0mA",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:16:39.709Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ina3221.pdf",
+      "https://learn.adafruit.com/adafruit-ina3221-breakout/pinouts"
+    ]
+  }
+}

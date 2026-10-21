@@ -1,0 +1,107 @@
+{
+  "type": "custom-water-level-sensor",
+  "name": "Water level sensor module",
+  "mpn": "Water Level Sensor (S8050)",
+  "category": "sensor",
+  "description": "Resistive water level / rain sensor: ten interleaved exposed copper traces (five fed from + through 100 Ω, five to the base of an S8050 NPN transistor) and an emitter follower whose emitter, loaded by 100 Ω to ground, is the S output. Dry, S is 0 V; as more of the traces are covered by water, base current and the S voltage rise, up to about V(+) − 0.7 V. The output depends on how conductive the water is, so it is not calibrated in mm. Runs on 3.3–5 V, under about 25 mA. Sold as: common red \"Water Level Sensor\" module with an S8050 transistor (3-pin header: S, +, -, 40 x 16 mm trace area), as in Elegoo/Arduino starter kits.",
+  "eli5": "A strip of bare metal fingers you dip in water. The deeper the water, the higher the voltage on its S pin, so your board can tell how full a cup or tank is.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "adc",
+      "description": "Signal (pin 1): analog output, the S8050 emitter loaded by 100 Ω. 0 V dry, rising with water level up to about V(+) − 0.7 V. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply (pin 2), 3.3–5 V. On an ESP32 or Pico use 3.3 V so S stays below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 25,
+  "datasheetUrl": "https://components101.com/sites/default/files/component_datasheet/S8050%20Transistor%20Datasheet.pdf",
+  "priceUsd": 1,
+  "supplierQuery": "water level sensor module S + - red 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order, left to right with the traces pointing down and the parts facing you: S, +, - (printed on the board).",
+    "Power + from 3.3 V on an ESP32 or Pico. S can rise to about V(+) − 0.7 V, so on 5 V it can reach about 4.3 V, which is too much for a 3.3 V ADC pin.",
+    "Only the bare traces may touch water. Keep the header, transistor and LED end dry.",
+    "Constant power under water corrodes the traces quickly. To power it only while reading, switch + with a transistor; drive it straight from a GPIO only if the pin can source about 25 mA (fully wet at 3.3 V).",
+    "The reading depends on the water's conductivity (tap, rain, distilled water all differ) and is not linear in depth. Record S dry and at your 'full' mark and calibrate against those (driver: calibrate(), level()).",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) with 11 dB attenuation; ADC2 stops working while Wi-Fi is on."
+  ],
+  "keywords": [
+    "water level",
+    "water sensor",
+    "water depth",
+    "rain",
+    "liquid level",
+    "s8050",
+    "analog"
+  ],
+  "sources": [
+    "https://lastminuteengineers.com/water-level-sensor-arduino-tutorial/",
+    "https://lastminuteengineers.com/wp-content/uploads/arduino/Water-Level-Sensor-Pinout.png",
+    "https://lastminuteengineers.com/wp-content/uploads/arduino/v2/Water-Level-Sensor-Circuit-Diagram.png",
+    "https://components101.com/sites/default/files/component_datasheet/S8050%20Transistor%20Datasheet.pdf",
+    "https://wiki.keyestudio.com/Ks0048_keyestudio_Water_Sensor"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "S",
+    "quantity": "S voltage (rises with water level)",
+    "unit": "V",
+    "min": 0,
+    "max": 2.6,
+    "default": 0,
+    "vAtMin": 0,
+    "vAtMax": 2.6
+  },
+  "driver": {
+    "filename": "waterlevel.py",
+    "code": "# Water level sensor module (common red 3-pin \"Water Level Sensor\" board, header S + -), MicroPython driver.\n# Circuit (module schematic): one set of the exposed traces is fed from + through 100 ohm, the other set\n# goes to the base of an S8050 NPN transistor wired as an emitter follower; S is the emitter, loaded by\n# 100 ohm to ground. Dry: no base current, S = 0 V. Wetter (more trace covered, or more conductive water):\n# more base current, S rises. S can never exceed about V(+) - VBE (roughly V(+) - 0.7 V).\n# The output is NOT calibrated in mm: it depends on the water's conductivity, so calibrate dry/full\n# readings in your own tank and use level() for a 0-100 % estimate.\nfrom machine import ADC, Pin\nimport time\n\n\nclass WaterLevel:\n    def __init__(self, s, power=None, samples=16, vref=3.3, settle_ms=10):\n        \"\"\"s: GPIO number (or Pin) wired to S (an ADC pin). power: optional GPIO that feeds the module's\n        + pin so it is only powered while reading (slows the traces' corrosion). Only do this if the pin\n        can source the module's current (up to about 25 mA fully wet at 3.3 V); otherwise switch + with\n        a transistor. vref: ADC full scale used when read_uv() is not available (e.g. Pico).\"\"\"\n        self.adc = ADC(Pin(s) if isinstance(s, int) else s)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.power = None\n        if power is not None:\n            self.power = Pin(power, Pin.OUT, value=0) if isinstance(power, int) else power\n            self.power.value(0)\n        self.samples = samples\n        self.vref = vref\n        self.settle_ms = settle_ms\n        self.dry_v = 0.0\n        self.full_v = None\n\n    def voltage(self):\n        \"\"\"S voltage in volts, averaged over several ADC samples.\"\"\"\n        if self.power is not None:\n            self.power.value(1)\n            time.sleep_ms(self.settle_ms)\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        if self.power is not None:\n            self.power.value(0)\n        return total / self.samples\n\n    def calibrate(self, dry_v=None, full_v=None):\n        \"\"\"Store the S voltage with the sensor dry and at your 'full' mark. Call with no argument while\n        the sensor is at the full mark to take the current reading as full_v.\"\"\"\n        if dry_v is not None:\n            self.dry_v = dry_v\n        self.full_v = self.voltage() if full_v is None else full_v\n        return self.dry_v, self.full_v\n\n    def level(self):\n        \"\"\"Rough level in % between the calibrated dry and full readings (not linear in depth).\"\"\"\n        if not self.full_v or self.full_v <= self.dry_v:\n            raise ValueError('call calibrate() at the full mark first')\n        p = (self.voltage() - self.dry_v) * 100 / (self.full_v - self.dry_v)\n        return min(100.0, max(0.0, p))\n\n    def wet(self, threshold=0.2):\n        \"\"\"True when S is above threshold volts, i.e. water is touching the traces.\"\"\"\n        return self.voltage() > threshold\n"
+  },
+  "example": {
+    "code": "from waterlevel import WaterLevel\nimport time\n\nsensor = WaterLevel({S})\nwhile True:\n    v = sensor.voltage()\n    print('S=%.2fV %s' % (v, 'wet' if v > 0.2 else 'dry'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the S voltage set on the slider and that the sensor is wet",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "S=1.50V wet",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:27:49.407Z",
+    "verifiedSources": [
+      "https://wiki.keyestudio.com/Ks0048_keyestudio_Water_Sensor"
+    ]
+  }
+}

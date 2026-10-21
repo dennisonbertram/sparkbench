@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-opt3001",
+  "board": "CJMCU-3001 OPT3001 ambient light sensor module (purple, 6-pin: VCC, GND, SCL, SDA, INT, ADD)",
+  "reason": "Check PASS on esp32 and pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC). Result register 0x00 is modelled bit-exact per datasheet eq. 3 (lux = 0.01 x 2^E x R) with the chip in manual range RN=8 (E=8, 2.56 lx/count, 0-10483.2 lx), which the example configures; IDs 0x5449/0x3001 and reset values of config/limit registers are set. The driver supports auto range, single-shot and continuous modes per SBOS681C; the sim cannot follow auto-ranging, so it always reports exponent 8 (documented).",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/opt3001.pdf",
+  "breakoutPinoutSource": "CJMCU-3001 product photo with silkscreen VCC, GND, SCL, SDA, INT, ADD (https://www.esp32learning.com/wp-content/uploads/2018/05/OPT3001_.jpg, from the esp32learning.com OPT3001 ESP32 example page)",
+  "checkRuns": 1
+}

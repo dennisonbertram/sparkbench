@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ina3221",
+  "board": "Adafruit INA3221 breakout (#6062, 15-pin header: VCC, GND, SCL, SDA, VIN3+, VIN3-, VIN2+, VIN2-, VIN1+, VIN1-, WRN, CRI, TC, VALID, VPU; 0.05 ohm shunts)",
+  "reason": "Check passed on ESP32 and Pico: the sim encodes all three channels' signed shunt (40 uV/LSB, shown as mA through 0.05 ohm) and bus (8 mV/LSB) registers in bits 15..3 as the datasheet does, and the driver checks IDs 5449h/3220h, writes config 7527h and decodes them correctly.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina3221.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-INA3221-Breakout-PCB (Eagle .brd: JP3 1X15 pads 1-15 traced to nets; silkscreen labels) and https://learn.adafruit.com/adafruit-ina3221-breakout/pinouts",
+  "checkRuns": 1
+}

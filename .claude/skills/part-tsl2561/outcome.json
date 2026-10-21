@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tsl2561",
+  "board": "Adafruit TSL2561 Digital Luminosity/Lux/Light Sensor Breakout (#439, 7-pin header version)",
+  "reason": "Check printed PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test CH0=1200 CH1=300 Lux=412, PCB DRC clean). Driver follows TAOS059N: command byte 0x80|reg, power up with 0x03 and read it back, TIMING gain/integ, Read Word 0xAC/0xAE low byte first, and the datasheet's integer CalculateLux (T/FN/CL) with saturation detection. The sim keys registers on the same command bytes.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/TSL2561.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/TSL2561-breakout-board-PCB (TSL2561_5V_REV-A.brd: JP1 pads 1-7 = VIN, GND, 3.3V, ADDR, INT, SDA_5V, SCL_5V; silkscreen Vin GND 3vo Addr Int SDA SCL)",
+  "checkRuns": 1
+}

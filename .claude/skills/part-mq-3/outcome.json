@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-3",
+  "board": "MQ-3 alcohol sensor module, common blue FC-22-style board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The second check run passed for ESP32 and Pico: wiring, design checks, breadboard, simulator example (AO voltage slider plus an active-low DO toggle) and circuit board. The first run failed because DO was optional and so not wired. AO is modelled as the datasheet's VRL across the load resistor, and the driver applies Rs = (Vc/VRL - 1) x RL with the datasheet's 200 kOhm RL as default.",
+  "datasheetUrl": "https://www.sparkfun.com/datasheets/Sensors/MQ-3.pdf",
+  "breakoutPinoutSource": "https://lastminuteengineers.com/wp-content/uploads/arduino/MQ3-Alcohol-Sensor-Pinout.png",
+  "checkRuns": 2
+}

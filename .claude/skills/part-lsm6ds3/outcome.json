@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lsm6ds3",
+  "board": "SparkFun 6 Degrees of Freedom Breakout - LSM6DS3 (SEN-13339)",
+  "reason": "Check PASSED on esp32 and pico. The model is a byte-register map (WHO_AM_I 0x69, address 0x6B) with little-endian signed outputs at the datasheet sensitivities: 0.061 mg/LSB (±2 g), 8.75 mdps/LSB (±245 dps) and 25 + raw/16 °C. The driver configures CTRL3_C, CTRL1_XL and CTRL2_G per the datasheet. Only the 6-pin main header is modelled; the INT/aux header is not.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/learn_tutorials/4/1/6/DM00133076.pdf",
+  "breakoutPinoutSource": "SparkFun Eagle board file https://github.com/sparkfun/LSM6DS3_Breakout/blob/master/Hardware/LSM6DS3_Breakout.brd (JP1 1x06: GND, 3.3V, SDA, SCL, SDO/SA0, CS) plus https://learn.sparkfun.com/tutorials/lsm6ds3-breakout-hookup-guide/all",
+  "checkRuns": 2
+}

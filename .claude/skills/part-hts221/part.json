@@ -1,0 +1,224 @@
+{
+  "type": "custom-hts221",
+  "name": "HTS221 temperature & humidity sensor",
+  "mpn": "HTS221",
+  "category": "sensor",
+  "description": "STMicroelectronics capacitive relative humidity (0–100 % rH, ±3.5 % from 20–80 %) and temperature (-40 to 120 °C, ±0.5 °C from 15–40 °C) sensor with 16-bit outputs, per-chip factory calibration registers, I2C or 3-wire SPI and a data-ready pin. Chip supply 1.7–3.6 V. Sold as: Adafruit HTS221 Temperature & Humidity Sensor Breakout, STEMMA QT / Qwiic (#4535), 7-pin header VIN, 3Vo, GND, SCL, SDA, DRDY, CS (3.3 V regulator and level shifting, 3–5 V supply, I2C address 0x5F; CS left open selects I2C).",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board 3.3 V regulator feeds the chip; use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifting on the board); SPI clock in SPI mode",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifting on the board); 3-wire SPI data in SPI mode",
+      "required": true
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Data-ready output (enable with CTRL_REG3 DRDY_EN), optional",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Interface select: leave unconnected (internal pull-up) or high for I2C; low selects SPI",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 95,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/hts221.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "Adafruit HTS221 temperature humidity sensor breakout 4535",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/hts221.pdf",
+    "https://media.githubusercontent.com/media/cvilas/grape/fbc6c37069b352072927354c75e89c810e2a6181/modules/rpi/rpi_sense_hat/docs/hts221.pdf",
+    "https://github.com/STMicroelectronics/hts221-pid/blob/master/hts221_reg.h",
+    "https://www.adafruit.com/product/4535",
+    "https://learn.adafruit.com/adafruit-hts221-temperature-humidity-sensor/pinouts",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-hts221-temperature-humidity-sensor.pdf"
+  ],
+  "buildNotes": [
+    "The chip powers up in power-down mode: write CTRL_REG1 (0x20) = 0x85 (PD on, BDU on, 1 Hz) or use one-shot (CTRL_REG2 ONE_SHOT) before reading.",
+    "Every chip has its own calibration: read the 16 bytes at 0x30–0x3F once and convert by linear interpolation between the two calibration points (T0/T1, H0/H1). There is no fixed formula.",
+    "For multi-byte reads set bit 7 of the register address (0x28 | 0x80 = 0xA8) or the address will not auto-increment.",
+    "WHO_AM_I (0x0F) must read 0xBC; anything else means a wiring fault or the wrong address.",
+    "Leave CS unconnected for I2C (the chip has an internal pull-up); tying CS to GND switches it to SPI and it vanishes from the I2C bus.",
+    "Humidity results outside 0–100 % must be clipped in software. Keep the sensor away from the regulator and microcontroller, which warm the air nearby."
+  ],
+  "keywords": [
+    "hts221",
+    "humidity",
+    "temperature",
+    "hygrometer",
+    "stmicroelectronics",
+    "adafruit 4535",
+    "sense hat"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 120,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "registers": {
+      "0x0F": 188,
+      "0x10": 27,
+      "0x27": 3,
+      "0x30": 66,
+      "0xB0": 66,
+      "0x31": 154,
+      "0xB1": 154,
+      "0x32": 160,
+      "0xB2": 160,
+      "0x33": 24,
+      "0xB3": 24,
+      "0x34": 0,
+      "0xB4": 0,
+      "0x35": 4,
+      "0xB5": 4,
+      "0x36": 48,
+      "0xB6": 48,
+      "0x37": 248,
+      "0xB7": 248,
+      "0x38": 0,
+      "0xB8": 0,
+      "0x39": 0,
+      "0xB9": 0,
+      "0x3A": 48,
+      "0xBA": 48,
+      "0x3B": 36,
+      "0xBB": 36,
+      "0x3C": 100,
+      "0xBC": 100,
+      "0x3D": 0,
+      "0xBD": 0,
+      "0x3E": 36,
+      "0xBE": 36,
+      "0x3F": 4,
+      "0xBF": 4
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "offset": 40.8125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "humidity"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.015625,
+        "offset": 18.4375,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xA8",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "offset": 40.8125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "humidity"
+      },
+      {
+        "reg": "0xAA",
+        "bytes": 2,
+        "scale": 0.015625,
+        "offset": 18.4375,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hts221.py",
+    "code": "# HTS221 relative humidity & temperature sensor (STMicroelectronics), MicroPython driver for I2C.\n# From the HTS221 datasheet (DocID026333 Rev 5):\n#   I2C address 0x5F, WHO_AM_I 0x0F = 0xBC.\n#   CTRL_REG1 0x20: PD bit 7 (1 = active), BDU bit 2, ODR[1:0] (01 = 1 Hz).\n#   STATUS_REG 0x27: H_DA bit 1, T_DA bit 0.\n#   HUMIDITY_OUT 0x28/0x29, TEMP_OUT 0x2A/0x2B: signed 16-bit, low byte first.\n#   CALIB 0x30..0x3F: per-chip calibration points; values are found by linear interpolation.\n#   Setting bit 7 of the register address (e.g. 0x28 | 0x80) auto-increments for multi-byte reads.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x20\n_STATUS_REG = 0x27\n_HUMIDITY_OUT_L = 0x28\n_CALIB_0 = 0x30\n_AUTO_INC = 0x80\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass HTS221:\n    def __init__(self, i2c, addr=0x5F):\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0xBC:\n            raise OSError('HTS221 not found (WHO_AM_I 0x%02X, expected 0xBC): check wiring' % who)\n        # Read the 16 factory calibration bytes (Table 19) in one auto-increment burst.\n        c = self.i2c.readfrom_mem(addr, _CALIB_0 | _AUTO_INC, 16)\n        self._h0 = c[0] / 2                                   # H0_rH_x2 / 2  (% rH)\n        self._h1 = c[1] / 2                                   # H1_rH_x2 / 2\n        self._t0 = (((c[5] & 0x03) << 8) | c[2]) / 8          # T0_degC_x8 (10 bits) / 8  (deg C)\n        self._t1 = (((c[5] & 0x0C) << 6) | c[3]) / 8          # T1_degC_x8 (10 bits) / 8\n        self._h0_out = _s16(c[6], c[7])                       # H0_T0_OUT (0x36/0x37)\n        self._h1_out = _s16(c[10], c[11])                     # H1_T0_OUT (0x3A/0x3B)\n        self._t0_out = _s16(c[12], c[13])                     # T0_OUT (0x3C/0x3D)\n        self._t1_out = _s16(c[14], c[15])                     # T1_OUT (0x3E/0x3F)\n        if self._h1_out == self._h0_out or self._t1_out == self._t0_out:\n            raise OSError('HTS221 calibration data invalid')\n        # Power on, block data update, 1 Hz continuous conversion.\n        self.i2c.writeto_mem(addr, _CTRL_REG1, bytes([0x80 | 0x04 | 0x01]))\n        self._wait_ready(1500)  # first sample arrives within one 1 Hz period\n\n    def _wait_ready(self, timeout_ms):\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            if self.i2c.readfrom_mem(self.addr, _STATUS_REG, 1)[0] & 0x03 == 0x03:\n                return True\n            time.sleep_ms(20)\n        return False\n\n    def raw(self):\n        \"\"\"(H_OUT, T_OUT) signed 16-bit counts, read in one 4-byte burst from 0x28.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _HUMIDITY_OUT_L | _AUTO_INC, 4)\n        return _s16(d[0], d[1]), _s16(d[2], d[3])\n\n    def read(self):\n        \"\"\"Return (temperature in deg C, relative humidity in %).\"\"\"\n        h_out, t_out = self.raw()\n        t = self._t0 + (t_out - self._t0_out) * (self._t1 - self._t0) / (self._t1_out - self._t0_out)\n        h = self._h0 + (h_out - self._h0_out) * (self._h1 - self._h0) / (self._h1_out - self._h0_out)\n        h = min(100.0, max(0.0, h))  # datasheet: values outside 0-100 % rH must be clipped by software\n        return t, h\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom hts221 import HTS221\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = HTS221(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.1f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65.0%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:25:41.347Z",
+    "verifiedSources": [
+      "https://www.st.com/resource/en/datasheet/hts221.pdf",
+      "https://learn.adafruit.com/adafruit-hts221-temperature-humidity-sensor/pinouts",
+      "https://www.adafruit.com/product/4535"
+    ]
+  }
+}

@@ -1,0 +1,192 @@
+{
+  "type": "custom-ccs811",
+  "name": "CCS811 air quality sensor (eCO2 / TVOC)",
+  "mpn": "CCS811",
+  "category": "sensor",
+  "description": "ams metal-oxide gas sensor that reports equivalent CO2 (400–8192 ppm) and total volatile organic compounds (0–1187 ppb) over I2C, with its own microcontroller running the algorithm. Runs on 1.8–3.6 V. Sold as: CJMCU-811 CCS811 air quality sensor module (8-pin: VCC, GND, SCL, SDA, WAK, INT, RST, ADD; no regulator, 3.3 V only), I2C address 0x5A (0x5B with ADD high).",
+  "eli5": "Sniffs the air for fumes like paint, glue or stale breath and tells your board how stuffy the room is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 1.8–3.6 V, straight to the chip (no regulator): use 3.3 V, never 5 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10–400 kHz, the chip stretches the clock)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data",
+      "required": true
+    },
+    {
+      "name": "WAK",
+      "role": "io",
+      "fn": "enable",
+      "description": "nWAKE, active low: must be held low (GPIO driven low, or tied to GND) for the chip to answer on I2C",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "nINT, active-low interrupt output (data ready / threshold), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "nRESET, active-low reset input, pulled up inside the chip; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "ADD",
+      "role": "io",
+      "description": "Address select: 10 kΩ pull-down on the board, so unconnected/low = 0x5A, high = 0x5B",
+      "required": false
+    }
+  ],
+  "vmin": 1.8,
+  "vmax": 3.6,
+  "currentMa": 30,
+  "i2cAddress": 90,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/learn_tutorials/1/4/3/CCS811_Datasheet-DS000459.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "CJMCU-811 CCS811 air quality sensor module eCO2 TVOC I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the CJMCU-811 from 3.3 V only: VCC goes straight to the CCS811, whose maximum is 3.6 V.",
+    "WAK must be low before and during every I2C transaction: drive it low from a GPIO or tie it to GND, otherwise the chip sleeps and does not answer.",
+    "At power-up check HW_ID (0x20) = 0x81, then write the single byte 0xF4 (APP_START) to leave boot mode, then write MEAS_MODE (0x01) = 0x10 for a sample every second.",
+    "Read 8 bytes from ALG_RESULT_DATA (0x02): eCO2 in ppm and TVOC in ppb (16-bit, MSB first), then STATUS and ERROR_ID.",
+    "Leave ADD unconnected (10 kΩ pull-down on the board) for address 0x5A; tie it to VCC for 0x5B.",
+    "A new sensor needs 48 hours of burn-in and 20 minutes of run-in after each power-up before readings are meaningful.",
+    "The CCS811 stretches the I2C clock: use a hardware I2C bus at 100 kHz. Add 4.7–10 kΩ pull-ups on SDA/SCL to 3.3 V if your module has none."
+  ],
+  "keywords": [
+    "ccs811",
+    "cjmcu-811",
+    "eco2",
+    "tvoc",
+    "voc",
+    "air quality",
+    "gas",
+    "co2",
+    "ams"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "eCO2",
+    "unit": "ppm",
+    "min": 400,
+    "max": 8192,
+    "default": 400,
+    "controls": [
+      {
+        "key": "tvoc",
+        "quantity": "TVOC",
+        "unit": "ppb",
+        "min": 0,
+        "max": 1187,
+        "default": 0
+      }
+    ],
+    "registers": {
+      "0x00": 152,
+      "0x20": 129,
+      "0x21": 18,
+      "0xE0": 0
+    },
+    "responses": [
+      {
+        "match": "02",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "tvoc",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "const": 152,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 16
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ccs811.py",
+    "code": "# CCS811 eCO2 / TVOC gas sensor (ams CCS811), MicroPython driver.\n# Written from the ams CCS811 datasheet (DS000459): HW_ID 0x20 must read 0x81, the chip boots in\n# boot mode and is switched to the application by a single-byte write of 0xF4 (APP_START), then\n# MEAS_MODE (0x01) selects the drive mode. ALG_RESULT_DATA (0x02) returns eCO2 (ppm, 16 bit),\n# TVOC (ppb, 16 bit), STATUS, ERROR_ID and RAW_DATA, MSB first.\n# nWAKE (WAK on the board) must be low before and during every I2C transaction.\n# The CCS811 stretches the I2C clock; use a hardware I2C bus at 10-400 kHz (100 kHz recommended).\nimport time\n\nSTATUS = 0x00\nMEAS_MODE = 0x01\nALG_RESULT_DATA = 0x02\nENV_DATA = 0x05\nBASELINE = 0x11\nHW_ID = 0x20\nERROR_ID = 0xE0\nAPP_START = 0xF4\nSW_RESET = 0xFF\n\n_ERRORS = ('WRITE_REG_INVALID', 'READ_REG_INVALID', 'MEASMODE_INVALID', 'MAX_RESISTANCE', 'HEATER_FAULT', 'HEATER_SUPPLY')\n\n\nclass CCS811:\n    def __init__(self, i2c, addr=0x5A, mode=1, wake=None):\n        \"\"\"mode: 1 = every second, 2 = every 10 s, 3 = every 60 s (4 = raw only, no eCO2/TVOC).\n        wake: optional machine.Pin (set as Pin.OUT) wired to WAK; it is driven low to keep the chip awake.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        if wake is not None:\n            wake.value(0)\n            time.sleep_us(50)  # tAWAKE\n        time.sleep_ms(20)  # tSTART after power on\n        if self._read(HW_ID, 1)[0] != 0x81:\n            raise OSError('CCS811 not found (HW_ID is not 0x81): check wiring and that WAK is low')\n        st = self._read(STATUS, 1)[0]\n        if not st & 0x80:  # FW_MODE 0: still in boot mode\n            if not st & 0x10:\n                raise OSError('CCS811 has no valid application firmware (APP_VALID is 0)')\n            self.i2c.writeto(self.addr, bytes([APP_START]))  # single-byte write starts the application\n            time.sleep_ms(100)\n            st = self._read(STATUS, 1)[0]\n            if not st & 0x80:\n                raise OSError('CCS811 did not enter application mode')\n        if st & 0x01:\n            self._raise_error()\n        self.set_mode(mode)\n\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _raise_error(self):\n        e = self._read(ERROR_ID, 1)[0]\n        names = [n for i, n in enumerate(_ERRORS) if e & (1 << i)]\n        raise OSError('CCS811 error 0x%02X %s' % (e, ' '.join(names)))\n\n    def set_mode(self, mode):\n        \"\"\"DRIVE_MODE in bits 6:4 of MEAS_MODE; interrupts left disabled.\"\"\"\n        if mode not in (0, 1, 2, 3, 4):\n            raise ValueError('mode must be 0-4')\n        self.i2c.writeto(self.addr, bytes([MEAS_MODE, mode << 4]))\n\n    def status(self):\n        return self._read(STATUS, 1)[0]\n\n    def data_ready(self):\n        \"\"\"True when a new sample is waiting in ALG_RESULT_DATA (STATUS bit 3).\"\"\"\n        st = self.status()\n        if st & 0x01:\n            self._raise_error()\n        return bool(st & 0x08)\n\n    def read(self):\n        \"\"\"Return (eCO2 in ppm, TVOC in ppb) from ALG_RESULT_DATA.\"\"\"\n        d = self._read(ALG_RESULT_DATA, 8)\n        if d[4] & 0x01:  # STATUS byte: ERROR\n            names = [n for i, n in enumerate(_ERRORS) if d[5] & (1 << i)]\n            raise OSError('CCS811 error 0x%02X %s' % (d[5], ' '.join(names)))\n        eco2 = (d[0] << 8) | d[1]\n        tvoc = (d[2] << 8) | d[3]\n        return eco2, tvoc\n\n    def set_environment(self, humidity, temperature):\n        \"\"\"Give the chip the air's relative humidity (%) and temperature (°C) for compensation.\n        Both are unsigned 16-bit values in 1/512 units; temperature has a +25 °C offset.\"\"\"\n        h = max(0, min(0xFFFF, int(round(humidity * 512))))\n        t = max(0, min(0xFFFF, int(round((temperature + 25) * 512))))\n        self.i2c.writeto(self.addr, bytes([ENV_DATA, h >> 8, h & 0xFF, t >> 8, t & 0xFF]))\n\n    def get_baseline(self):\n        \"\"\"The encoded clean-air baseline (2 bytes), to save and restore later (ams AN000370).\"\"\"\n        d = self._read(BASELINE, 2)\n        return (d[0] << 8) | d[1]\n\n    def set_baseline(self, value):\n        self.i2c.writeto(self.addr, bytes([BASELINE, (value >> 8) & 0xFF, value & 0xFF]))\n\n    def reset(self):\n        \"\"\"Software reset: back to boot mode (create a new CCS811 object afterwards).\"\"\"\n        self.i2c.writeto(self.addr, bytes([SW_RESET, 0x11, 0xE5, 0x72, 0x8A]))\n        time.sleep_ms(20)\n"
+  },
+  "skill": "---\nname: part-ccs811\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the CCS811 eCO2 / TVOC air quality sensor (ams CCS811, CJMCU-811 module). Use when designing, wiring, simulating or writing code for a CCS811 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# CCS811 air quality sensor (CCS811)\n\n## Overview\nThe **ams CCS811** is a metal-oxide gas sensor with its own microcontroller. It reports **eCO2** (equivalent CO2, 400–8192 ppm) and **TVOC** (total volatile organic compounds, 0–1187 ppb), estimated from VOCs — it does not measure real CO2. It talks I2C. Hobbyists buy it on the purple **CJMCU-811** module, which has **no voltage regulator**: VCC goes straight to the chip, so power it from 3.3 V only.\n\n## Pinout (CJMCU-811 module, header order)\n| Pin | Function |\n|---|---|\n| VCC | Supply, 1.8–3.6 V (use 3.3 V; no regulator on the board, never 5 V) |\n| GND | Ground |\n| SCL | I2C clock |\n| SDA | I2C data |\n| WAK | nWAKE, active low: must be low for the chip to answer on I2C (tie to GND or drive low from a GPIO) |\n| INT | nINT, active-low interrupt output (optional) |\n| RST | nRESET, active-low reset input (optional) |\n| ADD | Address select: 10 kΩ pull-down on the board, so unconnected/low = 0x5A, high = 0x5B |\n\n## Electrical limits\n- Supply: 1.8–3.6 V absolute (3.3 V typical). The CJMCU-811 has no regulator.\n- Current: about 26 mA in mode 1 (46 mW at 1.8 V); about 0.7 mW average in mode 3.\n- I2C 10–400 kHz; the chip uses clock stretching (use 100 kHz on hardware I2C).\n- Power-on to ready: 20 ms.\n\n## Interface details\n- **I2C address 0x5A** (ADD low, default on the CJMCU-811), 0x5B (ADD high).\n- Read HW_ID (0x20): must be **0x81**.\n- STATUS (0x00): bit 7 FW_MODE, bit 4 APP_VALID, bit 3 DATA_READY, bit 0 ERROR (details in ERROR_ID 0xE0).\n- At power-up the chip is in boot mode: write the single byte **0xF4** (APP_START) to start the application.\n- MEAS_MODE (0x01): DRIVE_MODE in bits 6:4 — write **0x10** for mode 1 (a sample every second).\n- ALG_RESULT_DATA (0x02), up to 8 bytes: eCO2 MSB, LSB (ppm), TVOC MSB, LSB (ppb), STATUS, ERROR_ID, RAW_DATA (2).\n- ENV_DATA (0x05): humidity and temperature in 1/512 units (temperature offset +25 °C) for compensation.\n- BASELINE (0x11): 2 bytes to save and restore the clean-air baseline (AN000370).\n\n## Wiring\n- ESP32: VCC → 3V3, GND → GND, SDA → D21, SCL → D22, WAK → a GPIO driven low (or GND).\n- Pico: VCC → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5, WAK → a GPIO driven low (or GND).\n- Raspberry Pi 4: VCC → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5, WAK → pin 9 (GND).\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom ccs811 import CCS811\nwak = Pin(4, Pin.OUT)\nwak.value(0)\ni2c = I2C(0, sda=Pin(21), scl=Pin(22), freq=100000)\nsensor = CCS811(i2c, wake=wak)\nif sensor.data_ready():\n    eco2, tvoc = sensor.read()\n    print('eCO2=%dppm TVOC=%dppb' % (eco2, tvoc))\n```\n\n## Gotchas\n- WAK left floating or high: the chip sleeps and does not answer (OSError ENODEV / \"HW_ID is not 0x81\").\n- Never feed the CJMCU-811 5 V: VCC is wired straight to the chip (3.6 V maximum).\n- New sensors need a 48-hour burn-in, and 20 minutes of run-in after every power-up, before readings are meaningful; eCO2 sits at 400 ppm at first.\n- eCO2 is estimated from VOCs; it is not a real CO2 measurement (use an SCD4x or MH-Z19 for that).\n- Feed real humidity and temperature with set_environment() for better accuracy; the chip itself heats up.\n- If your module has no SDA/SCL pull-ups, add 4.7–10 kΩ to 3.3 V.\n\n## Datasheet\nhttps://cdn.sparkfun.com/assets/learn_tutorials/1/4/3/CCS811_Datasheet-DS000459.pdf\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ccs811 import CCS811\n\nwak = Pin({WAK}, Pin.OUT)\nwak.value(0)  # WAK low keeps the CCS811 awake\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = CCS811(i2c, wake=wak)\nwhile True:\n    if sensor.data_ready():\n        eco2, tvoc = sensor.read()\n        print('eCO2=%dppm TVOC=%dppb' % (eco2, tvoc))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the eCO2 and TVOC set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "tvoc",
+          "value": 87
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "eCO2=1234ppm TVOC=87ppb",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn.sparkfun.com/assets/learn_tutorials/1/4/3/CCS811_Datasheet-DS000459.pdf",
+    "https://web.archive.org/web/2025/https://revspace.nl/CJMCU-811",
+    "http://lamaplc.com/doku.php?id=sensor%3Accs811",
+    "https://github.com/maarten-pennings/CCS811"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:24:18.033Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/learn_tutorials/1/4/3/CCS811_Datasheet-DS000459.pdf",
+      "https://nettigo.eu/products/module-ccs811-voc-and-eco2-sensor"
+    ]
+  }
+}

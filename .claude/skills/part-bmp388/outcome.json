@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bmp388",
+  "board": "Adafruit BMP388 Precision Barometric Pressure and Altimeter breakout, STEMMA QT version (#3966), 8-pin header VIN, 3Vo, GND, SCL, SDO, SDA, CS, INT, I2C address 0x77",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test T=23.75C P=987.65hPa, PCB). The driver follows the datasheet's appendix 9 float compensation and its forced-mode sequence. The sim holds valid NVM calibration bytes in 0x31-0x45 (T3 and P2-P4, P6-P11 set to neutral) and little-endian 24-bit raw data at 0x04-0x09, so the full datasheet formula decodes the slider values.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp388-ds001.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-BMP3xx-PCB/blob/master/Adafruit%20BMP388%20QT.brd",
+  "checkRuns": 1
+}

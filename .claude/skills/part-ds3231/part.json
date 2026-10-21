@@ -1,0 +1,154 @@
+{
+  "type": "custom-ds3231",
+  "name": "DS3231 real-time clock module",
+  "mpn": "DS3231",
+  "category": "ic",
+  "description": "Maxim (Analog Devices) DS3231 temperature-compensated crystal real-time clock (±2 ppm, 0–40 °C) with seconds-to-year calendar, two alarms, a square-wave/interrupt output, a 32.768 kHz output and a 0.25 °C die thermometer, on I2C at 0x68. Runs on 2.3–5.5 V and keeps time from a coin cell when unpowered. Sold as: ZS-042 DS3231 RTC module (blue board with CR2032/LIR2032 holder and AT24C32 EEPROM at 0x57; 6-pin header 32K, SQW, SCL, SDA, VCC, GND with 4.7 kΩ pull-ups fitted).",
+  "eli5": "A tiny clock with its own battery that remembers the date and time even when your board is switched off.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "32K",
+      "role": "io",
+      "description": "32.768 kHz output (open-drain, 4.7 kΩ pull-up on the module); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SQW",
+      "role": "io",
+      "description": "INT/SQW: alarm interrupt or square-wave output (open-drain, active low, pulled up on the module); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to VCC on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to VCC on the module)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3–5.5 V (use 3.3 V with an ESP32 or Pico so the pull-ups stay at 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 3,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "DS3231 ZS-042 RTC module AT24C32",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V on an ESP32 or Pico: the module's SDA/SCL pull-ups go to VCC, and 5 V on those lines can damage a 3.3 V board.",
+    "The ZS-042 charges the coin cell through a 200 Ω resistor and diode meant for a rechargeable LIR2032. With a non-rechargeable CR2032 fitted, remove that resistor (or the diode) so the cell is not charged.",
+    "Time registers 00h–06h are BCD; read all 7 in one burst. Bit 6 of the hours register selects 12-hour mode, bit 7 of the month register is the century bit.",
+    "Status bit OSF (0Fh bit 7) is set at first power-up or when the battery is flat: the time is invalid until you set it; set_datetime() clears it.",
+    "The module's AT24C32 EEPROM also answers at 0x57 on the same bus; that is normal."
+  ],
+  "keywords": [
+    "ds3231",
+    "rtc",
+    "real-time clock",
+    "zs-042",
+    "clock",
+    "calendar",
+    "at24c32",
+    "tcxo"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf",
+    "https://cdn-shop.adafruit.com/product-files/3013/DS3231.pdf",
+    "https://lastminuteengineers.com/ds3231-rtc-arduino-tutorial/",
+    "https://github.com/fritzing/fritzing-parts/blob/develop/core/rtc_ds3231_breakout.fzp"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 25,
+    "registers": {
+      "0x0E": 28,
+      "0x0F": 136
+    },
+    "rtc": {
+      "reg": "0x00",
+      "order": "ds1307"
+    },
+    "measures": [
+      {
+        "reg": "0x11",
+        "bytes": 2,
+        "scale": 0.25,
+        "shift": 6,
+        "signed": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ds3231.py",
+    "code": "# DS3231 extremely accurate I2C real-time clock (Maxim/Analog Devices DS3231), MicroPython driver.\n# Register map from the datasheet (19-5170 Rev 10, Figure 1):\n#   00h-06h seconds, minutes, hours, day (1-7), date, month/century, year, all BCD\n#   0Eh control, 0Fh status (bit 7 = OSF, oscillator stopped), 11h-12h temperature\n# The time registers are read in one burst so the chip's shadow registers give a consistent time.\n\n_TIME = 0x00\n_CONTROL = 0x0E\n_STATUS = 0x0F\n_TEMP = 0x11\n\n\ndef _bcd2bin(b):\n    return (b >> 4) * 10 + (b & 0x0F)\n\n\ndef _bin2bcd(n):\n    return ((n // 10) << 4) | (n % 10)\n\n\ndef weekday(year, month, day):\n    \"\"\"Day of week, 1 = Monday ... 7 = Sunday (the DS3231 only needs it to be sequential).\"\"\"\n    t = (0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4)\n    y = year - 1 if month < 3 else year\n    d = (y + y // 4 - y // 100 + y // 400 + t[month - 1] + day) % 7  # 0 = Sunday\n    return 7 if d == 0 else d\n\n\nclass DS3231:\n    def __init__(self, i2c, addr=0x68):\n        self.i2c = i2c\n        self.addr = addr\n\n    def datetime(self):\n        \"\"\"Return (year, month, day, hour, minute, second, weekday) in 24-hour time.\"\"\"\n        r = self.i2c.readfrom_mem(self.addr, _TIME, 7)\n        second = _bcd2bin(r[0] & 0x7F)\n        minute = _bcd2bin(r[1] & 0x7F)\n        h = r[2]\n        if h & 0x40:  # 12-hour mode: bit 5 = PM, hours 1-12\n            hour = _bcd2bin(h & 0x1F) % 12 + (12 if h & 0x20 else 0)\n        else:  # 24-hour mode: bits 5-4 = tens of hours\n            hour = _bcd2bin(h & 0x3F)\n        wday = r[3] & 0x07\n        day = _bcd2bin(r[4] & 0x3F)\n        month = _bcd2bin(r[5] & 0x1F)\n        year = 2000 + _bcd2bin(r[6]) + (100 if r[5] & 0x80 else 0)  # bit 7 of month = century\n        return (year, month, day, hour, minute, second, wday)\n\n    def set_datetime(self, year, month, day, hour, minute, second, wday=None):\n        \"\"\"Set the clock (24-hour mode) and clear the oscillator-stop flag.\"\"\"\n        if not 2000 <= year <= 2199:\n            raise ValueError('year must be 2000-2199')\n        if wday is None:\n            wday = weekday(year, month, day)\n        century = 0x80 if year >= 2100 else 0\n        self.i2c.writeto_mem(self.addr, _TIME, bytes([\n            _bin2bcd(second), _bin2bcd(minute), _bin2bcd(hour),  # bit 6 = 0: 24-hour mode\n            wday, _bin2bcd(day), _bin2bcd(month) | century, _bin2bcd(year % 100)]))\n        st = self.i2c.readfrom_mem(self.addr, _STATUS, 1)[0]\n        self.i2c.writeto_mem(self.addr, _STATUS, bytes([st & 0x7F]))  # OSF can only be written to 0\n\n    def lost_power(self):\n        \"\"\"True if the oscillator has stopped since the time was last set (OSF, status bit 7):\n        first power-up, or a flat/missing backup battery. The time is then not valid.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _STATUS, 1)[0] & 0x80)\n\n    def temperature(self):\n        \"\"\"Die temperature in degrees C, 0.25 C resolution (updated every 64 s by the chip).\"\"\"\n        t = self.i2c.readfrom_mem(self.addr, _TEMP, 2)\n        msb = t[0] - 256 if t[0] & 0x80 else t[0]  # two's complement integer part\n        return msb + (t[1] >> 6) * 0.25  # bits 7-6 of 12h = quarter degrees\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ds3231 import DS3231\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nrtc = DS3231(i2c)\nrtc.set_datetime(2026, 12, 31, 23, 59, 58)\nwhile True:\n    y, mo, d, h, mi, s, wd = rtc.datetime()\n    print('day=%d %04d-%02d-%02d %02d:%02d:%02d' % (wd, y, mo, d, h, mi, s))\n    print('TEMP=%.2fC' % rtc.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "ticks-and-temp",
+      "title": "Keeps time across New Year and reports the temperature on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -7.75
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "2026-12-31 23:59:5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "day=5 2027-01-01 00:00:0",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TEMP=-7.75C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:14:10.947Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf",
+      "https://components101.com/modules/ds3231-rtc-module-pinout-circuit-datasheet"
+    ],
+    "caveat": "The independent reading could not download the manufacturer PDF; its pinout and register facts are from memory plus components101, which agreed with the author."
+  }
+}

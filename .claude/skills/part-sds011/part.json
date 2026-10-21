@@ -1,0 +1,317 @@
+{
+  "type": "custom-sds011",
+  "name": "SDS011 laser PM2.5/PM10 dust sensor",
+  "mpn": "SDS011",
+  "category": "sensor",
+  "description": "Nova Fitness laser-scattering particulate sensor with a built-in fan: reports PM2.5 and PM10 (0.0-999.9 µg/m³, 0.1 µg/m³ steps) once a second over a 9600-baud 3.3 V TTL UART. Needs a 4.7-5.3 V supply at about 70 mA (over 1 W peak). Sold as: Nova Fitness SDS011 sensor module (71×70×23 mm, 7-pin 2.54 mm header: NC, 1um, 5V, 2.5um, GND, R, T), usually bundled with a USB-serial adapter and cable.",
+  "eli5": "A little box with a fan that sucks in air and counts the dust and smoke particles in it with a laser.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected",
+      "required": false
+    },
+    {
+      "name": "1um",
+      "role": "io",
+      "description": "PM2.5 PWM output (0-999 µg/m³, 1004 ms cycle); not needed with the UART",
+      "required": false
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 4.7-5.3 V, about 70 mA (fan + laser)",
+      "required": true
+    },
+    {
+      "name": "2.5um",
+      "role": "io",
+      "description": "PM10 PWM output (0-999 µg/m³, 1004 ms cycle); not needed with the UART",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "R",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "UART RX of the sensor (3.3 V TTL): connect to the board's TX. Needed for sleep/query commands",
+      "required": true
+    },
+    {
+      "name": "T",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "UART TX of the sensor (3.3 V TTL): connect to the board's RX",
+      "required": true
+    }
+  ],
+  "vmin": 4.7,
+  "vmax": 5.3,
+  "currentMa": 80,
+  "datasheetUrl": "https://cdn-reichelt.de/documents/datenblatt/X200/SDS011-DATASHEET.pdf",
+  "priceUsd": 18,
+  "supplierQuery": "SDS011 PM2.5 laser dust sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the sensor from 5 V (VIN/VBUS), not 3V3: the fan and laser need 4.7-5.3 V and about 70 mA, more than 1 W at start-up.",
+    "The UART pins are 3.3 V TTL, so they connect straight to an ESP32 or Pico: sensor T -> board RX, sensor R -> board TX.",
+    "9600 baud, 8N1. In the default active mode it sends AA C0 PM25L PM25H PM10L PM10H ID1 ID2 SUM AB every second; check the sum (low byte of the six data bytes) and the AB tail.",
+    "Readings are stable about 30 s after power-up or wake. Use sleep() between readings to stretch the laser's ~8000 h life.",
+    "Keep the air inlet and outlet clear and out of direct light; operate at -10 to 50 °C and below 70 % RH."
+  ],
+  "keywords": [
+    "sds011",
+    "nova",
+    "pm2.5",
+    "pm10",
+    "particulate",
+    "dust",
+    "air quality",
+    "laser"
+  ],
+  "sources": [
+    "https://cdn-reichelt.de/documents/datenblatt/X200/SDS011-DATASHEET.pdf",
+    "https://cdn.sparkfun.com/assets/parts/1/2/2/7/5/Laser_Dust_Sensor_Control_Protocol_V1.3.pdf"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "PM2.5",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 999.9,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm10",
+        "quantity": "PM10",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 999.9,
+        "default": 20
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "bytes": [
+        {
+          "const": 170,
+          "bits": 8
+        },
+        {
+          "const": 192,
+          "bits": 8
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 0.1,
+          "littleEndian": true
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 0.1,
+          "littleEndian": true
+        },
+        {
+          "const": 161,
+          "bits": 8
+        },
+        {
+          "const": 96,
+          "bits": 8
+        },
+        {
+          "crc": "sum8",
+          "over": 6
+        },
+        {
+          "const": 171,
+          "bits": 8
+        }
+      ]
+    },
+    "uartReplies": [
+      {
+        "match": "aa b4 04 00 00 00 00 00 00 00 00 00 00 00 00 ff ff 02 ab",
+        "bytes": [
+          {
+            "const": 170,
+            "bits": 8
+          },
+          {
+            "const": 192,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.1,
+            "littleEndian": true
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 0.1,
+            "littleEndian": true
+          },
+          {
+            "const": 161,
+            "bits": 8
+          },
+          {
+            "const": 96,
+            "bits": 8
+          },
+          {
+            "crc": "sum8",
+            "over": 6
+          },
+          {
+            "const": 171,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "aa b4 06 01 00 00 00 00 00 00 00 00 00 00 00 ff ff 05 ab",
+        "bytes": [
+          {
+            "const": 170,
+            "bits": 8
+          },
+          {
+            "const": 197,
+            "bits": 8
+          },
+          {
+            "const": 6,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 161,
+            "bits": 8
+          },
+          {
+            "const": 96,
+            "bits": 8
+          },
+          {
+            "crc": "sum8",
+            "over": 6
+          },
+          {
+            "const": 171,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "aa b4 06 01 01 00 00 00 00 00 00 00 00 00 00 ff ff 06 ab",
+        "bytes": [
+          {
+            "const": 170,
+            "bits": 8
+          },
+          {
+            "const": 197,
+            "bits": 8
+          },
+          {
+            "const": 6,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 161,
+            "bits": 8
+          },
+          {
+            "const": 96,
+            "bits": 8
+          },
+          {
+            "crc": "sum8",
+            "over": 6
+          },
+          {
+            "const": 171,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sds011.py",
+    "code": "# Nova Fitness SDS011 laser PM2.5/PM10 sensor, MicroPython driver.\n# UART 9600 8N1. In the factory-default \"active\" mode the sensor sends a 10-byte frame\n# every second: AA C0 PM25_L PM25_H PM10_L PM10_H ID1 ID2 CHECKSUM AB,\n# checksum = low 8 bits of DATA1+...+DATA6, PM = (high*256 + low) / 10 ug/m3.\n# Commands (19 bytes: AA B4 <15 data bytes> <checksum> AB) follow the\n# \"Laser Dust Sensor Control Protocol V1.3\".\nimport time\n\n\nclass SDS011:\n    def __init__(self, uart):\n        self.uart = uart\n        self._buf = b''\n\n    def _poll(self):\n        n = self.uart.any()\n        if n:\n            d = self.uart.read(n)\n            if d:\n                self._buf = (self._buf + d)[-64:]\n\n    def read(self):\n        \"\"\"Return the newest (pm2_5, pm10) in ug/m3 from the stream, or None if no valid frame yet.\"\"\"\n        self._poll()\n        b = self._buf\n        result = None\n        i = 0\n        while i + 10 <= len(b):\n            if b[i] == 0xAA and b[i + 1] == 0xC0 and b[i + 9] == 0xAB:\n                if sum(b[i + 2:i + 8]) & 0xFF == b[i + 8]:\n                    pm25 = (b[i + 3] * 256 + b[i + 2]) / 10\n                    pm10 = (b[i + 5] * 256 + b[i + 4]) / 10\n                    result = (pm25, pm10)\n                    i += 10\n                    continue\n            i += 1\n        self._buf = b[i:]\n        return result\n\n    def _cmd(self, data, dev_id=0xFFFF):\n        # data: up to 13 data bytes (DATA1..DATA13); ID FF FF = every sensor answers.\n        d = bytearray(15)\n        d[0:len(data)] = bytes(data)\n        d[13] = (dev_id >> 8) & 0xFF\n        d[14] = dev_id & 0xFF\n        self.uart.write(b'\\xaa\\xb4' + d + bytes([sum(d) & 0xFF, 0xAB]))\n\n    def query(self):\n        \"\"\"Ask for one reading (needed in query mode; at least 3 s apart).\"\"\"\n        self._buf = b''\n        self._cmd([0x04])\n        t = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t) < 1500:\n            r = self.read()\n            if r:\n                return r\n            time.sleep_ms(20)\n        return None\n\n    def sleep(self):\n        \"\"\"Stop the fan and laser (lasts until wake() or power cycle).\"\"\"\n        self._cmd([0x06, 0x01, 0x00])\n\n    def wake(self):\n        \"\"\"Start the fan and laser again; readings are stable after about 30 s.\"\"\"\n        self._cmd([0x06, 0x01, 0x01])\n\n    def set_active_mode(self):\n        \"\"\"Factory default: the sensor reports by itself (stored in the sensor).\"\"\"\n        self._cmd([0x02, 0x01, 0x00])\n\n    def set_query_mode(self):\n        \"\"\"Report only when asked with query() (stored in the sensor).\"\"\"\n        self._cmd([0x02, 0x01, 0x01])\n\n    def set_period(self, minutes):\n        \"\"\"0 = continuous; 1-30 = work 30 s then sleep for the rest of each period (stored).\"\"\"\n        self._cmd([0x08, 0x01, max(0, min(30, int(minutes)))])\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom sds011 import SDS011\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({R}), rx=Pin({T}))\nsensor = SDS011(uart)\nwhile True:\n    r = sensor.read()\n    if r:\n        print('PM2.5=%.1f PM10=%.1f' % r)\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35.4
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 78.9
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM2.5=35.4 PM10=78.9",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:10:21.488Z",
+    "verifiedSources": [
+      "https://cdn-reichelt.de/documents/datenblatt/X200/SDS011-DATASHEET.pdf"
+    ]
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "type": "custom-mpu9250",
+  "name": "MPU-9250 9-axis IMU (accelerometer, gyroscope, magnetometer)",
+  "mpn": "MPU-9250",
+  "category": "sensor",
+  "description": "TDK InvenSense 9-axis motion sensor: 3-axis accelerometer (±2/4/8/16 g, 16384 LSB/g at ±2 g), 3-axis gyroscope (±250/500/1000/2000 °/s, 131 LSB/(°/s) at ±250 °/s), die temperature sensor and an AK8963 3-axis magnetometer (0.15 µT/LSB) reached through I2C bypass at 0x0C. Sold as: GY-9250 MPU-9250 module (10-pin: VCC, GND, SCL, SDA, EDA, ECL, AD0, INT, NCS, FSYNC) with a 3.3 V regulator, 3.3–5 V supply, I2C address 0x68 (AD0 pulled low; 0x69 with AD0 high).",
+  "eli5": "Feels tilt, shaking and turning on three axes, and also senses which way magnetic north is, like a phone's motion sensor.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Module supply, 3.3–5 V (on-board 3.3 V regulator feeds the chip)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCLK); pull-up to 3.3 V on the module",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI); pull-up to 3.3 V on the module",
+      "required": true
+    },
+    {
+      "name": "EDA",
+      "role": "io",
+      "description": "Auxiliary I2C data (master bus for external sensors); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "ECL",
+      "role": "io",
+      "description": "Auxiliary I2C clock (master bus for external sensors); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "AD0",
+      "role": "io",
+      "description": "Address select (SPI SDO): pulled low on the module = 0x68; tie to 3.3 V for 0x69",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (data ready, motion), optional",
+      "required": false
+    },
+    {
+      "name": "NCS",
+      "role": "io",
+      "description": "SPI chip select: leave unconnected or at 3.3 V for I2C; low selects SPI",
+      "required": false
+    },
+    {
+      "name": "FSYNC",
+      "role": "io",
+      "description": "Frame sync input, pulled to GND on the module; leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 3.7,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://invensense.tdk.com/wp-content/uploads/2015/02/PS-MPU-9250A-01-v1.1.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "GY-9250 MPU-9250 9-axis IMU module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/learn_tutorials/5/5/0/MPU9250REV1.0.pdf",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/5/5/0/MPU-9250-Register-Map.pdf",
+    "https://invensense.tdk.com/wp-content/uploads/2015/02/PS-MPU-9250A-01-v1.1.pdf",
+    "https://download.mikroe.com/documents/datasheets/ak8963c-datasheet.pdf",
+    "https://protosupplies.com/product/mpu-9250-3-axis-accel-gryo-mag-sensor-module/",
+    "https://mischianti.org/tdk-invensense-mpu-9250-module-high-resolution-pinout-datasheet-schema-and-specs/",
+    "https://components101.com/sensors/MPU9250-9-dof-mems-sensor-module-datasheet-pinout-features-working"
+  ],
+  "buildNotes": [
+    "WHO_AM_I (0x75) should read 0x71. Many cheap GY-9250 boards carry an MPU-6500 (0x70) or MPU-9255 (0x73); an MPU-6500 has no magnetometer.",
+    "The chip may power up asleep: write PWR_MGMT_1 (0x6B) = 0x01 to wake it and select the PLL clock, then wait about 35 ms for valid gyro data.",
+    "Read ACCEL_XOUT_H..GYRO_ZOUT_L (0x3B–0x48) in one 14-byte burst: seven big-endian signed words (accel X/Y/Z, temperature, gyro X/Y/Z). At ±2 g and ±250 °/s: 16384 LSB/g and 131 LSB/(°/s); temperature = raw / 333.87 + 21 °C.",
+    "For the magnetometer, set BYPASS_EN (INT_PIN_CFG 0x37 = 0x02); the AK8963 then answers at 0x0C. Its axes differ from the accelerometer's (X and Y swapped, Z inverted). The Sparkbench simulator models the accelerometer, gyroscope and temperature only, not the AK8963.",
+    "Leave AD0, NCS and FSYNC unconnected for I2C at 0x68; never pull NCS low, which switches the chip to SPI.",
+    "Mount the module flat and firmly: at rest Z reads about +1 g and the gyro about 0 °/s (each chip has a small gyro offset; average a few hundred readings at rest and subtract)."
+  ],
+  "keywords": [
+    "mpu9250",
+    "mpu-9250",
+    "gy-9250",
+    "mpu9255",
+    "imu",
+    "9-axis",
+    "9dof",
+    "accelerometer",
+    "gyroscope",
+    "magnetometer",
+    "compass",
+    "ak8963",
+    "invensense"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 1.99,
+    "default": 0,
+    "controls": [
+      {
+        "key": "ay",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 1.99,
+        "default": 0
+      },
+      {
+        "key": "az",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 1.99,
+        "default": 1
+      },
+      {
+        "key": "gx",
+        "quantity": "X rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Y rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Z rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x6B": 1,
+      "0x75": 113
+    },
+    "measures": [
+      {
+        "reg": "0x3B",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x3D",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x3F",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "az"
+      },
+      {
+        "reg": "0x41",
+        "bytes": 2,
+        "scale": 0.0029951777638002816,
+        "offset": 21,
+        "signed": true,
+        "control": "temp"
+      },
+      {
+        "reg": "0x43",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x45",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x47",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gz"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mpu9250.py",
+    "code": "# MPU-9250 9-axis IMU (TDK InvenSense), MicroPython driver for I2C.\n# From the MPU-9250 product specification (PS-MPU-9250A-01), register map (RM-MPU-9250A-00)\n# and the AK8963 magnetometer datasheet (MS1356-E-02):\n#   WHO_AM_I 0x75 = 0x71 (MPU-9255 reads 0x73; an MPU-6500 with no magnetometer reads 0x70)\n#   PWR_MGMT_1 0x6B (bit 7 H_RESET, bit 6 SLEEP, CLKSEL[2:0]); CONFIG 0x1A; GYRO_CONFIG 0x1B;\n#   ACCEL_CONFIG 0x1C; ACCEL_CONFIG2 0x1D; INT_PIN_CFG 0x37 (bit 1 BYPASS_EN)\n#   ACCEL_XOUT_H 0x3B .. GYRO_ZOUT_L 0x48: 7 big-endian two's-complement words\n#   (accel X, Y, Z, temperature, gyro X, Y, Z)\n#   Accel: 16384 / 8192 / 4096 / 2048 LSB/g for +-2/4/8/16 g\n#   Gyro: 131 / 65.5 / 32.8 / 16.4 LSB/(deg/s) for +-250/500/1000/2000 dps\n#   Temperature: TEMP_degC = (TEMP_OUT - RoomTemp_Offset) / 333.87 + 21, RoomTemp_Offset = 0\n# The AK8963 magnetometer sits behind the MPU-9250 at I2C address 0x0C once BYPASS_EN is set.\nimport time\n\n_SMPLRT_DIV = 0x19\n_CONFIG = 0x1A\n_GYRO_CONFIG = 0x1B\n_ACCEL_CONFIG = 0x1C\n_ACCEL_CONFIG2 = 0x1D\n_INT_PIN_CFG = 0x37\n_ACCEL_XOUT_H = 0x3B\n_PWR_MGMT_1 = 0x6B\n_PWR_MGMT_2 = 0x6C\n_WHO_AM_I = 0x75\n\n_ACCEL_RANGES = {2: (0, 16384.0), 4: (1, 8192.0), 8: (2, 4096.0), 16: (3, 2048.0)}\n_GYRO_RANGES = {250: (0, 131.0), 500: (1, 65.5), 1000: (2, 32.8), 2000: (3, 16.4)}\n\n# AK8963 magnetometer\n_AK_ADDR = 0x0C\n_AK_WIA = 0x00     # reads 0x48\n_AK_ST1 = 0x02     # bit 0 DRDY\n_AK_HXL = 0x03     # HXL..HZH, little-endian two's complement, then ST2 at 0x09\n_AK_CNTL1 = 0x0A   # bit 4 BIT (1 = 16-bit), MODE[3:0]\n_AK_ASAX = 0x10    # fuse ROM sensitivity adjustment, readable in fuse ROM access mode\n\n\ndef _s16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 65536 if v & 0x8000 else v\n\n\nclass MPU9250:\n    def __init__(self, i2c, addr=0x68, accel_range=2, gyro_range=250):\n        \"\"\"addr: 0x68 with AD0 low (module default), 0x69 with AD0 high.\n        accel_range: 2, 4, 8 or 16 g. gyro_range: 250, 500, 1000 or 2000 deg/s.\"\"\"\n        if accel_range not in _ACCEL_RANGES or gyro_range not in _GYRO_RANGES:\n            raise ValueError('bad accel_range or gyro_range')\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(100)  # start-up time for register read/write: up to 100 ms after power-up\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who not in (0x71, 0x73, 0x70):\n            raise OSError('MPU-9250 not found (WHO_AM_I 0x%02X, expected 0x71): check wiring, NCS high' % who)\n        self.who_am_i = who\n        self._w(_PWR_MGMT_1, 0x80)   # H_RESET: restore default register values\n        time.sleep_ms(100)\n        self._w(_PWR_MGMT_1, 0x01)   # wake (SLEEP = 0), CLKSEL = 1: PLL if ready, else internal oscillator\n        time.sleep_ms(10)\n        self._w(_PWR_MGMT_2, 0x00)   # all accel and gyro axes on\n        self._w(_CONFIG, 0x03)       # DLPF_CFG = 3: gyro 41 Hz bandwidth, 1 kHz internal rate\n        self._w(_SMPLRT_DIV, 0x04)   # 1 kHz / (1 + 4) = 200 Hz output rate\n        a_sel, self._a_lsb = _ACCEL_RANGES[accel_range]\n        g_sel, self._g_lsb = _GYRO_RANGES[gyro_range]\n        self._w(_GYRO_CONFIG, g_sel << 3)    # GYRO_FS_SEL, FCHOICE_B = 00 (DLPF in use)\n        self._w(_ACCEL_CONFIG, a_sel << 3)   # ACCEL_FS_SEL\n        self._w(_ACCEL_CONFIG2, 0x03)        # A_DLPFCFG = 3: accel 44.8 Hz bandwidth\n        time.sleep_ms(50)  # gyro data valid about 35 ms after start, accel about 30 ms\n        self._mag_adj = None\n\n    def _w(self, reg, val, addr=None):\n        self.i2c.writeto_mem(self.addr if addr is None else addr, reg, bytes([val]))\n\n    def raw(self):\n        \"\"\"(ax, ay, az, temp, gx, gy, gz) raw counts from one 14-byte burst (same sample).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _ACCEL_XOUT_H, 14)\n        return tuple(_s16(d[i], d[i + 1]) for i in range(0, 14, 2))\n\n    def read(self):\n        \"\"\"((ax, ay, az) in g, (gx, gy, gz) in deg/s, temperature in deg C).\"\"\"\n        r = self.raw()\n        a = (r[0] / self._a_lsb, r[1] / self._a_lsb, r[2] / self._a_lsb)\n        g = (r[4] / self._g_lsb, r[5] / self._g_lsb, r[6] / self._g_lsb)\n        return a, g, r[3] / 333.87 + 21.0\n\n    def acceleration(self):\n        return self.read()[0]\n\n    def gyro(self):\n        return self.read()[1]\n\n    def temperature(self):\n        return self.read()[2]\n\n    # ---- AK8963 magnetometer (MPU-9250 / MPU-9255 only, not on MPU-6500 clones) ----\n    def _mag_init(self):\n        self._w(_INT_PIN_CFG, 0x02)  # BYPASS_EN: host talks to the AK8963 directly at 0x0C\n        time.sleep_ms(10)\n        wia = self.i2c.readfrom_mem(_AK_ADDR, _AK_WIA, 1)[0]\n        if wia != 0x48:\n            raise OSError('AK8963 magnetometer not found (WIA 0x%02X): board may be an MPU-6500' % wia)\n        self._w(_AK_CNTL1, 0x00, _AK_ADDR)   # power-down before changing mode\n        time.sleep_ms(1)                     # at least 100 us\n        self._w(_AK_CNTL1, 0x0F, _AK_ADDR)   # fuse ROM access mode\n        time.sleep_ms(1)\n        asa = self.i2c.readfrom_mem(_AK_ADDR, _AK_ASAX, 3)\n        # Hadj = H * ((ASA - 128) * 0.5 / 128 + 1); 16-bit output = 0.15 uT/LSB\n        self._mag_adj = tuple(((a - 128) * 0.5 / 128 + 1) * 0.15 for a in asa)\n        self._w(_AK_CNTL1, 0x00, _AK_ADDR)   # power-down again\n        time.sleep_ms(1)\n        self._w(_AK_CNTL1, 0x16, _AK_ADDR)   # BIT = 1 (16-bit), continuous measurement mode 2 (100 Hz)\n        time.sleep_ms(10)\n\n    def magnetic(self):\n        \"\"\"(mx, my, mz) in microtesla, in the AK8963's own axes (X/Y swapped, Z inverted vs the accel).\"\"\"\n        if self._mag_adj is None:\n            self._mag_init()\n        for _ in range(20):\n            if self.i2c.readfrom_mem(_AK_ADDR, _AK_ST1, 1)[0] & 0x01:  # DRDY\n                break\n            time.sleep_ms(2)\n        d = self.i2c.readfrom_mem(_AK_ADDR, _AK_HXL, 7)  # HXL..HZH plus ST2 (reading ST2 is required)\n        if d[6] & 0x08:\n            raise OSError('AK8963 magnetic sensor overflow')\n        h = [_s16(d[i + 1], d[i]) for i in (0, 2, 4)]\n        return tuple(h[i] * self._mag_adj[i] for i in range(3))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mpu9250 import MPU9250\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = MPU9250(i2c)\nwhile True:\n    (ax, ay, az), (gx, gy, gz), t = imu.read()\n    print('A=%.2f,%.2f,%.2f g G=%.1f,%.1f,%.1f dps T=%.1fC' % (ax, ay, az, gx, gy, gz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation rate and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -0.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "az",
+          "value": 1.1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": 12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gy",
+          "value": -30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 45
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,-0.30,1.10 g G=12.0,-30.0,45.0 dps T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T06:34:24.773Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/learn_tutorials/5/5/0/MPU9250REV1.0.pdf",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/5/5/0/MPU-9250-Register-Map.pdf",
+      "https://components101.com/sensors/MPU9250-9-dof-mems-sensor-module-datasheet-pinout-features-working",
+      "https://shillehtek.com/blogs/shillehtek-product-manuals/mpu9250-authentic-gy-9250-pre-soldered-9-axis-9-dof-accelerometer-magnetometer"
+    ]
+  }
+}

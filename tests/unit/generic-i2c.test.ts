@@ -115,3 +115,19 @@ describe('little-endian fields', () => {
     expect(b).toEqual([1234 & 0xff, 1234 >> 8]);
   });
 });
+
+describe('command-selected results', () => {
+  it('serves temperature or pressure from the same register depending on the last command (BMP180-style)', () => {
+    const vals: Record<string, number> = { value: 27000, pressure: 23843 };
+    const dev = new GenericI2CDevice('u', 0x77, {}, [
+      { reg: '0xf6', bytes: 2, scale: 1, when: { reg: '0xf4', equals: 0x2e } },
+      { reg: '0xf6', bytes: 2, scale: 1, control: 'pressure', when: { reg: '0xf4', equals: 0x34 } },
+    ], (k) => vals[k]);
+    dev.write([0xf4, 0x2e]);
+    dev.write([0xf6]);
+    expect(dev.read(2)).toEqual([27000 >> 8, 27000 & 0xff]);
+    dev.write([0xf4, 0x34]);
+    dev.write([0xf6]);
+    expect(dev.read(2)).toEqual([23843 >> 8, 23843 & 0xff]);
+  });
+});

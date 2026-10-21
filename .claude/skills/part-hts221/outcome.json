@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hts221",
+  "board": "Adafruit HTS221 Temperature & Humidity Sensor Breakout, STEMMA QT / Qwiic (#4535), 7-pin header VIN, 3Vo, GND, SCL, SDA, DRDY, CS",
+  "reason": "Part check PASS on ESP32 and Pico on the first run (spec, wiring, design checks, breadboard, simulator test T=30.0C H=65.0%, circuit board DRC clean, footprint, LCSC C91142). The sim holds a fixed set of plausible per-chip calibration registers (0x30-0x3F, mirrored at 0xB0-0xBF for the 0x80 auto-increment address) and encodes H_OUT/T_OUT as signed 16-bit little-endian counts on that calibration line, so the driver's datasheet linear interpolation decodes them; WHO_AM_I 0xBC and STATUS_REG fixed at data-ready.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/hts221.pdf",
+  "breakoutPinoutSource": "Adafruit HTS221 learn guide PDF (https://cdn-learn.adafruit.com/downloads/pdf/adafruit-hts221-temperature-humidity-sensor.pdf): fab print and board photo show header order VIN, 3Vo, GND, SCL, SDA, DRDY, CS",
+  "checkRuns": 1
+}

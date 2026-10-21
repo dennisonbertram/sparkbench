@@ -81,6 +81,10 @@ export interface CustomSim {
   responses?: { match: string; bytes: ResponseSegment[] }[];
   /** More sliders besides the main one (e.g. humidity next to temperature), keyed for measures/outputs/tests. */
   controls?: { key: string; quantity: string; unit?: string; min: number; max: number; default?: number }[];
+  /** analog-sensor whose output is a waveform rather than a level (microphones, heartbeat/ECG sensors):
+   * V(t) = centerV + (value of ampControl × voltsPerUnit / 2) × shape(2π·f·t), with f = freqHz, or the value of
+   * freqControl × freqScale (e.g. BPM × 1/60). shape 'sine', or 'pulse' (a short peak once per period). */
+  wave?: { ampControl: string; voltsPerUnit: number; centerV: number; freqHz?: number; freqControl?: string; freqScale?: number; shape?: 'sine' | 'pulse' };
   /** analog-sensor with more than one output (e.g. a joystick's X and Y). */
   analogOutputs?: { pin: string; control: string; vAtMin: number; vAtMax: number }[];
   /** On/off outputs driven by toggles (a joystick's button, an encoder's A/B, a gas module's DO). */
@@ -118,6 +122,8 @@ export interface I2CMeasure {
   shift?: number;
   /** Which control supplies the value ('value' = the main slider). */
   control?: string;
+  /** Only while the last value written to this register matches (e.g. BMP180: 0xF4 = 0x2E → temperature in 0xF6). */
+  when?: { reg: string; equals: number; mask?: number };
 }
 
 /** One field of a command response, packed MSB-first into the reply's bit stream. */
@@ -303,6 +309,12 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   }
   for (const d of s.digitalOutputs ?? []) if (!names.has(d.pin)) errs.push(`digital output ${d.pin} is not a pin`);
   for (const p of s.inputPins ?? []) if (!names.has(p)) errs.push(`input ${p} is not a pin`);
+  if (s.wave) {
+    if (s.kind !== 'analog-sensor' || !s.outputPin) errs.push('wave needs an analog-sensor with outputPin');
+    if (!keys.has(s.wave.ampControl)) errs.push(`wave ampControl ${s.wave.ampControl} is not a control`);
+    if (s.wave.freqControl && !keys.has(s.wave.freqControl)) errs.push(`wave freqControl ${s.wave.freqControl} is not a control`);
+    if (!s.wave.freqHz && !s.wave.freqControl) errs.push('wave needs freqHz or freqControl');
+  }
   for (const o of s.analogOutputs ?? []) {
     if (!names.has(o.pin)) errs.push(`analog output ${o.pin} is not a pin`);
     if (!keys.has(o.control)) errs.push(`analog output control ${o.control} is not a control`);
