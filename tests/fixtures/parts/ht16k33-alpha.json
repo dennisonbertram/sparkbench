@@ -1,0 +1,69 @@
+{
+ "type": "custom-ht16k33-alpha-test",
+ "name": "HT16K33 alpha test",
+ "mpn": "HT16K33 alphanumeric",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "+",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "-",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "D",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "C",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  }
+ ],
+ "vmin": 4.5,
+ "vmax": 5.5,
+ "currentMa": 20,
+ "i2cAddress": 112,
+ "priceUsd": 10,
+ "supplierQuery": "HT16K33 7 segment backpack",
+ "sim": {
+  "kind": "segment-display",
+  "protocol": "ht16k33",
+  "digits": 4,
+  "digitMap": [
+   0,
+   2,
+   4,
+   6
+  ],
+  "segments": 14
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({D}), scl=Pin({C}))\nA = 0x70\nFONT = {'A': 0x00F7, 'B': 0x128F, '1': 0x0006, '2': 0x00DB, 'M': 0x0536, 'W': 0x2836}\ni2c.writeto(A, b'\\x21')\ni2c.writeto(A, b'\\x81')\ni2c.writeto(A, b'\\xEF')\nram = bytearray(16)\nfor i, ch in enumerate('MW12'):\n    g = FONT[ch]\n    ram[2 * i] = g & 0xFF\n    ram[2 * i + 1] = g >> 8\ni2c.writeto(A, b'\\x00' + ram)\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "shows MW12",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "MW12",
+     "within": 2000
+    }
+   ]
+  }
+ }
+}

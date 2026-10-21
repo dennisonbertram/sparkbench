@@ -32,19 +32,30 @@ export interface CustomSim {
    * stopUs ± deadbandUs/2 (and with no pulses), full speed at minUs and maxUs; pulses below stopUs turn it
    * `below` ('cw' or 'ccw', seen from the horn side), above it the other way. degrees is ignored. */
   servo?: { minUs: number; maxUs: number; degrees: number; continuous?: { stopUs: number; deadbandUs: number; below: 'cw' | 'ccw' } };
-  /** tft-display: an SPI colour TFT (ST7789/ST7735/ILI9341 command set: 0x2A/0x2B window, 0x2C RGB565 pixels).
+  /** tft-display: an SPI colour TFT (ST7789/ST7735/ILI9341/ILI9488 command set: 0x2A/0x2B window, 0x2C pixels, 0x3A COLMOD
+   * picks 16-bit RGB565 or 18-bit RGB666 = 3 bytes per pixel), or with controller 'ssd1351' the SSD1351 OLED command set
+   * (0x15/0x75 window, 0x5C write RAM, 0xA0 remap and colour depth, 0xAF/0xAE on/off).
    * Pins: fn spi.sck, spi.mosi, spi.cs, tft.dc (data/command) and optionally tft.reset. */
   width?: number;
   height?: number;
-  /** addressable-led: how many WS2812-type LEDs are chained; inputPin is DIN. Uses MicroPython's neopixel module. */
+  /** tft-display: the pixel format at reset before any COLMOD (16 = RGB565, default; 18 = RGB666). */
+  pixelBits?: 16 | 18;
+  /** addressable-led: how many WS2812-type LEDs are chained; inputPin is DIN. Uses MicroPython's neopixel module.
+   * segment-display max7219: how many MAX7219s are daisy-chained DOUT → DIN (e.g. 4 on an FC-16 32×8 matrix module;
+   * DIN enters the rightmost one). */
   count?: number;
   /** segment-display: TM1637 (pins CLK + DIO, fn digital-out) or MAX7219 (SPI: fn spi.sck, spi.mosi, spi.cs as LOAD);
-   * digits = how many digit positions the module shows; matrix = an 8×8 dot matrix instead of 7-segment digits. */
+   * or HT16K33 (I2C LED backpack); digits = how many digit positions the module shows; matrix = an 8×8 dot matrix
+   * instead of digits (MAX7219: row = digit register, bit 7 leftmost; HT16K33: Adafruit 8×8 backpack wiring, row y = RAM
+   * byte 2y, column x = bit (x + 7) % 8). Matrix text drawn with the 8×8 framebuf font is read back for tests. */
   protocol?: 'tm1637' | 'max7219' | 'ht16k33';
   digits?: number;
   matrix?: boolean;
   /** segment-display: which RAM position drives each digit, left to right (e.g. [2,1,0,5,4,3] on common 6-digit TM1637 modules). */
   digitMap?: number[];
+  /** segment-display ht16k33: 14 = 14-segment alphanumeric digits (each digitMap entry is the RAM byte of the digit's low
+   * byte, the next byte is its high byte; glyphs as the Adafruit LED Backpack font, bit 14 = DP). Default 7. */
+  segments?: 7 | 14;
   /** i2c-device answering at more addresses too: a read there returns the byte at `reg` (e.g. VEML6070's MSB at 0x39,
    * its alert-response address 0x0C). */
   i2cAliases?: { addr: number; reg: string }[];
@@ -66,8 +77,9 @@ export interface CustomSim {
   clockPin?: string;
   countsPerUnit?: number;
   offsetCounts?: number;
-  /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64). */
-  controller?: 'ssd1306' | 'sh1106';
+  /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64).
+   * tft-display: 'ssd1351' for the SSD1351 colour OLED command set. */
+  controller?: 'ssd1306' | 'sh1106' | 'ssd1351';
   rows?: 32 | 64;
   /** onewire-temp: 1-Wire family code (0x28 DS18B20, 0x10 DS18S20, 0x22 DS1822); outputPin is the DQ line. */
   family?: number;
@@ -152,8 +164,10 @@ export interface I2CMeasure {
   control?: string;
   /** Exponent + mantissa encodings that auto-range like the chip (scale = LSB at exponent 0):
    * 'max44009' — reg = E3..E0 M7..M4, reg+1 = 0000 M3..M0, value = 2^E × M × scale;
-   * 'opt3001' — 16-bit word E3..E0 R11..R0, value = 2^E × R × scale. */
-  format?: 'max44009' | 'opt3001';
+   * 'opt3001' — 16-bit word E3..E0 R11..R0, value = 2^E × R × scale.
+   * 'ens210' — 3 bytes (bytes: 3): the 16-bit value (value − offset) / scale low byte first, then VALID = 1 in bit 0 and the
+   * CRC-7 (poly 0x89, init 0x7F) of those 17 bits in bits 7:1, as the ENS210's T_VAL/H_VAL. */
+  format?: 'max44009' | 'opt3001' | 'ens210';
   /** Only while the last value written to this register matches (e.g. BMP180: 0xF4 = 0x2E → temperature in 0xF6). */
   when?: { reg: string; equals: number; mask?: number };
 }
@@ -177,6 +191,8 @@ export type ResponseSegment =
   /** Checksums of serial sensors over the previous `over` bytes: 'sum16' = 16-bit sum, big-endian (PMS5003);
    * 'mhz19' = 0xFF − (sum of bytes after the first) + 1 (MH-Z19, SDS011-style); 'neg16' = −sum as 16 bits, big-endian (DFPlayer); 'modbus16' = CRC-16/MODBUS, low byte first (Senseair S8, Modbus sensors). */
   | { crc: 'sum16' | 'mhz19' | 'sum8' | 'neg16' | 'modbus16'; over: number }
+  /** 'neg8' = 256 − (sum of ALL the previous `over` bytes, header included) mod 256, one byte (Cubic CM1106). */
+  | { crc: 'neg8'; over: number }
   /** XOR of the bytes spelled by the previous `over` ASCII hex characters, sent as 2 ASCII hex characters (RDM6300). */
   | { crc: 'xor8hex'; over: number };
 
@@ -299,7 +315,11 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.kind === 'tft-display') {
     if (!(['spi.sck', 'spi.mosi', 'tft.dc'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('a TFT needs pins with fn spi.sck, spi.mosi and tft.dc (plus spi.cs unless the board ties CS low)');
     if (!s.width || !s.height || s.width > 480 || s.height > 480) errs.push('a TFT needs width and height (up to 480)');
+    if (s.controller && s.controller !== 'ssd1351') errs.push(`controller ${s.controller} is an oled-display controller; a tft-display takes 'ssd1351' or nothing (MIPI DCS)`);
+    if (s.controller === 'ssd1351' && (s.width! > 128 || s.height! > 128)) errs.push('an SSD1351 drives at most 128×128');
   }
+  if (s.pixelBits !== undefined && (s.kind !== 'tft-display' || ![16, 18].includes(s.pixelBits))) errs.push('pixelBits (16 or 18) is for tft-display');
+  if (s.kind === 'oled-display' && s.controller === 'ssd1351') errs.push("controller 'ssd1351' is a colour OLED: use kind tft-display");
   if (s.kind === 'addressable-led' && (!s.inputPin || !s.count || s.count < 1 || s.count > 1024)) errs.push('addressable-led needs inputPin (DIN) and a count of 1-1024');
   if (s.kind === 'dht-sensor' && (!s.outputPin || !keys.has('humidity'))) errs.push('dht-sensor needs outputPin (DATA) and a "humidity" control');
   if (s.pointerlessBytes !== undefined && (!s.pointerless || ![1, 2].includes(s.pointerlessBytes))) errs.push('pointerlessBytes (1 or 2) needs pointerless: true');
@@ -354,7 +374,10 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.kind === 'segment-display') {
     if (s.protocol === 'tm1637' && !(names.has('CLK') && names.has('DIO'))) errs.push('a TM1637 display needs pins named CLK and DIO');
     if (s.protocol === 'max7219' && !(['spi.sck', 'spi.mosi', 'spi.cs'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('a MAX7219 display needs pins with fn spi.sck, spi.mosi and spi.cs');
-    if (s.protocol === 'ht16k33' && (spec.i2cAddress === undefined || !s.digitMap?.length)) errs.push('an HT16K33 display needs i2cAddress and digitMap (the RAM byte of each digit, e.g. [0,2,6,8])');
+    if (s.protocol === 'ht16k33' && (spec.i2cAddress === undefined || (!s.matrix && !s.digitMap?.length))) errs.push('an HT16K33 display needs i2cAddress and digitMap (the RAM byte of each digit, e.g. [0,2,6,8]), or matrix: true');
+    if (s.segments !== undefined && (s.protocol !== 'ht16k33' || ![7, 14].includes(s.segments) || s.matrix)) errs.push('segments (7 or 14) is for HT16K33 digit displays');
+    if (s.protocol === 'max7219' && s.count !== undefined && !(Number.isInteger(s.count) && s.count >= 1 && s.count <= 8)) errs.push('count (daisy-chained MAX7219s) must be 1-8');
+    if (s.protocol === 'max7219' && (s.count ?? 1) > 1 && !s.matrix) errs.push('daisy-chained MAX7219s (count > 1) are modelled as a dot matrix: set matrix: true');
     if (!s.protocol) errs.push('segment-display needs protocol tm1637, max7219 or ht16k33');
   }
   if (s.kind === 'hx711' && (!s.outputPin || !s.clockPin || !names.has(s.clockPin) || !s.countsPerUnit)) errs.push('hx711 needs outputPin (DOUT), clockPin (PD_SCK) and countsPerUnit');
@@ -363,6 +386,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!/^0x[0-9a-f]{1,2}$/i.test(m.reg)) errs.push(`measure reg ${m.reg} must be hex like 0x1A`);
     if (m.control && !keys.has(m.control)) errs.push(`measure control ${m.control} is not a control`);
     if (!(m.bytes >= 1 && m.bytes <= 4) || !m.scale) errs.push(`measure at ${m.reg} needs 1-4 bytes and a non-zero scale`);
+    if (m.format === 'ens210' && m.bytes !== 3) errs.push(`measure at ${m.reg}: format ens210 is 3 bytes`);
   }
   for (const d of s.subDevices ?? []) for (const m of d.measures ?? []) if (m.control && !keys.has(m.control)) errs.push(`sub-device measure control ${m.control} is not a control`);
   for (const r of s.responses ?? []) {

@@ -1,0 +1,96 @@
+{
+ "type": "custom-ssd1351-test",
+ "name": "SSD1351 test",
+ "mpn": "SSD1351",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "interface": "spi",
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "spi.sck",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "spi.mosi",
+   "required": true
+  },
+  {
+   "name": "RES",
+   "role": "io",
+   "fn": "tft.reset",
+   "required": true
+  },
+  {
+   "name": "DC",
+   "role": "io",
+   "fn": "tft.dc",
+   "required": true
+  },
+  {
+   "name": "CS",
+   "role": "io",
+   "fn": "spi.cs",
+   "required": true
+  },
+  {
+   "name": "BLK",
+   "role": "io",
+   "required": false
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 3.6,
+ "currentMa": 40,
+ "priceUsd": 6,
+ "supplierQuery": "ST7789 240x240",
+ "sim": {
+  "kind": "tft-display",
+  "width": 128,
+  "height": 128,
+  "controller": "ssd1351"
+ },
+ "driver": {
+  "filename": "ssd1351.py",
+  "code": "from machine import Pin\nimport framebuf\nimport time\n\n\nclass SSD1351:\n    def __init__(self, spi, dc, cs, rst):\n        self.spi = spi\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1)\n        self.rst(0)\n        time.sleep_ms(10)\n        self.rst(1)\n        time.sleep_ms(10)\n        for c, a in ((0xFD, b'\\x12'), (0xFD, b'\\xB1'), (0xAE, b''), (0xA0, b'\\x74'), (0xA1, b'\\x00'), (0xA2, b'\\x00'), (0xA6, b''), (0xAF, b'')):\n            self._cmd(c, a)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        self.cs(1)\n\n    def text(self, s, x, y, colour=0xFFFF):\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        fb.text(s, 0, 0, colour)\n        # framebuf stores RGB565 little-endian; the SSD1351 wants the high byte first.\n        for i in range(0, len(buf), 2):\n            buf[i], buf[i + 1] = buf[i + 1], buf[i]\n        self._cmd(0x15, bytes([x, x + w - 1]))\n        self._cmd(0x75, bytes([y, y + 7]))\n        self._cmd(0x5C, buf)\n"
+ },
+ "example": {
+  "code": "from machine import Pin, SPI\nfrom ssd1351 import SSD1351\nimport time\nspi = SPI(1, baudrate=20000000, sck=Pin({SCL}), mosi=Pin({SDA}))\ntft = SSD1351(spi, {DC}, {CS}, {RES})\ntime.sleep(1)\ntft.text('HELLO 42', 10, 40)\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "text",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": false,
+     "within": 800
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "HELLO 42",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

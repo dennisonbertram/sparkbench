@@ -1,0 +1,69 @@
+{
+ "type": "custom-ht16k33-matrix-test",
+ "name": "HT16K33 matrix test",
+ "mpn": "HT16K33 8x8 matrix",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "+",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "-",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "D",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "C",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  }
+ ],
+ "vmin": 4.5,
+ "vmax": 5.5,
+ "currentMa": 20,
+ "i2cAddress": 112,
+ "priceUsd": 10,
+ "supplierQuery": "HT16K33 7 segment backpack",
+ "sim": {
+  "kind": "segment-display",
+  "protocol": "ht16k33",
+  "matrix": true
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport framebuf\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({D}), scl=Pin({C}))\nA = 0x70\ntime.sleep(1)\ni2c.writeto(A, b'\\x21')\ni2c.writeto(A, b'\\x81')\ni2c.writeto(A, b'\\xEF')\nbuf = bytearray(8)\nfb = framebuf.FrameBuffer(buf, 8, 8, framebuf.MONO_HLSB)\nfb.text('K', 0, 0, 1)\nram = bytearray(16)\nfor y in range(8):\n    b = 0\n    for x in range(8):\n        if fb.pixel(x, y):\n            b |= 1 << ((x + 7) % 8)  # Adafruit 8x8 backpack column wiring\n    ram[2 * y] = b\ni2c.writeto(A, b'\\x00' + ram)\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "shows K",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": false,
+     "within": 300
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "K",
+     "within": 2000
+    }
+   ]
+  }
+ }
+}

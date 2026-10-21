@@ -1,0 +1,79 @@
+{
+ "type": "custom-max7219-chain-test",
+ "name": "MAX7219 chain test",
+ "mpn": "MAX7219 4-in-1 matrix",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "interface": "spi",
+ "pins": [
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "DIN",
+   "role": "io",
+   "fn": "spi.mosi",
+   "required": true
+  },
+  {
+   "name": "CS",
+   "role": "io",
+   "fn": "spi.cs",
+   "required": true
+  },
+  {
+   "name": "CLK",
+   "role": "io",
+   "fn": "spi.sck",
+   "required": true
+  }
+ ],
+ "vmin": 4.0,
+ "vmax": 5.5,
+ "currentMa": 100,
+ "priceUsd": 3,
+ "supplierQuery": "MAX7219 8 digit",
+ "sim": {
+  "kind": "segment-display",
+  "protocol": "max7219",
+  "matrix": true,
+  "count": 4
+ },
+ "driver": {
+  "filename": "max7219.py",
+  "code": "from machine import Pin\nimport framebuf\n\n\nclass Matrix8x8(framebuf.FrameBuffer):\n    # mcauser-style driver for chained 8x8 modules (FC-16).\n    def __init__(self, spi, cs, num):\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.num = num\n        self.buffer = bytearray(8 * num)\n        super().__init__(self.buffer, 8 * num, 8, framebuf.MONO_HLSB)\n        for c, d in ((0x0F, 0), (0x0C, 0), (0x0B, 7), (0x09, 0), (0x0A, 4), (0x0C, 1)):\n            self._write(c, d)\n\n    def _write(self, c, d):\n        self.cs(0)\n        for m in range(self.num):\n            self.spi.write(bytearray([c, d]))\n        self.cs(1)\n\n    def show(self):\n        for y in range(8):\n            self.cs(0)\n            for m in range(self.num):\n                self.spi.write(bytearray([1 + y, self.buffer[(y * self.num) + m]]))\n            self.cs(1)\n"
+ },
+ "example": {
+  "code": "from machine import Pin, SPI\nfrom max7219 import Matrix8x8\nimport time\nspi = SPI(1, baudrate=1000000, sck=Pin({CLK}), mosi=Pin({DIN}))\nd = Matrix8x8(spi, {CS}, 4)\ntime.sleep(1)\nd.text('HI42', 0, 0, 1)\nd.show()\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "scrolls text",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": false,
+     "within": 800
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "HI42",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

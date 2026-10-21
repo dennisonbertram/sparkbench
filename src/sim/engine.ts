@@ -5,7 +5,7 @@ import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
 import { ocr } from './ocr';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, TFTDevice, HT16K33Device, segText, packResponse, type I2CDevice } from './devices';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, TFTDevice, HT16K33Device, segText, alphaText, packResponse, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
 import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
@@ -145,7 +145,7 @@ export class SimEngine {
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
       const cs = customSpec(part.type);
       if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'ht16k33') this.devices.push({ dev: new HT16K33Device(part.id, cs.i2cAddress ?? 0x70), part });
-      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller, rows: cs.sim.rows }), part });
+      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller === 'sh1106' ? 'sh1106' : 'ssd1306', rows: cs.sim.rows }), part });
       if (cs?.sim.kind === 'i2c-device')
         for (const sd of cs.sim.subDevices ?? [])
           this.devices.push({ part, dev: new GenericI2CDevice(part.id, sd.i2cAddress, sd.registers ?? {}, sd.measures ?? [], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, [], { regWidth: sd.regWidth, autoIncrementBit7: sd.autoIncrementBit7 }) });
@@ -313,7 +313,7 @@ export class SimEngine {
   private tftDev(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): TFTDevice {
     let t = this.tfts.get(part.id);
     if (!t) {
-      t = { dev: new TFTDevice(part.id, cs.sim.width ?? 240, cs.sim.height ?? 240), ocrAt: -1, lines: [] };
+      t = { dev: new TFTDevice(part.id, cs.sim.width ?? 240, cs.sim.height ?? 240, cs.sim.controller === 'ssd1351' ? 'ssd1351' : 'dcs', cs.sim.pixelBits ?? 16), ocrAt: -1, lines: [] };
       this.tfts.set(part.id, t);
     }
     return t.dev;
@@ -325,7 +325,7 @@ export class SimEngine {
     if (cs?.sim.kind !== 'segment-display') return undefined;
     let d = this.segDevs.get(part.id);
     if (!d) {
-      d = cs.sim.protocol === 'max7219' ? new MAX7219Device(part.id) : new TM1637Device(part.id, cs.sim.digits ?? 4);
+      d = cs.sim.protocol === 'max7219' ? new MAX7219Device(part.id, cs.sim.count ?? 1) : new TM1637Device(part.id, cs.sim.digits ?? 4);
       this.segDevs.set(part.id, d);
     }
     return d;
@@ -1180,7 +1180,13 @@ export class SimEngine {
             v.powered = m.modulePowered(part.id);
             const d = this.devices.find((x) => x.part.id === part.id && x.dev instanceof HT16K33Device)?.dev as HT16K33Device | undefined;
             v.segOn = !!v.powered && !!d?.on;
-            v.segText = v.segOn && d ? segText((cs.sim.digitMap ?? []).map((i) => d.ram[i] ?? 0)) : '';
+            if (cs.sim.matrix) {
+              // Adafruit 8×8 backpack wiring: row y is RAM byte 2y, column x is bit (x + 7) % 8.
+              const lit = (x: number, y: number) => !!v.segOn && !!d && ((d.ram[2 * y] >> ((x + 7) % 8)) & 1) === 1;
+              v.pixels = v.powered ? Array.from({ length: 64 }, (_, i) => (lit(i % 8, i >> 3) ? 255 : 0)).flatMap((x) => [x, 0, 0]) : [];
+              v.textLines = v.segOn ? ocr(8, 8, (x, y) => x >= 0 && y >= 0 && x < 8 && y < 8 && lit(x, y)) : [];
+            } else if (cs.sim.segments === 14) v.segText = v.segOn && d ? alphaText((cs.sim.digitMap ?? []).map((i) => (d.ram[i] ?? 0) | ((d.ram[i + 1] ?? 0) << 8))) : '';
+            else v.segText = v.segOn && d ? segText((cs.sim.digitMap ?? []).map((i) => d.ram[i] ?? 0)) : '';
           } else if (cs?.sim.kind === 'segment-display') {
             v.powered = m.modulePowered(part.id);
             const d = this.segDev(part)!;
@@ -1190,7 +1196,10 @@ export class SimEngine {
               v.segText = v.segOn ? segText(order.map((i) => d.segs[i] ?? 0)) : '';
             } else if (cs.sim.matrix) {
               v.segOn = !!v.powered && !d.shutdown;
-              v.pixels = v.powered ? d.matrix().flatMap((x) => [x, 0, 0]) : [];
+              const px = v.powered ? d.matrix() : [];
+              const w = 8 * d.count;
+              v.pixels = px.flatMap((x) => [x, 0, 0]);
+              v.textLines = v.segOn ? ocr(w, 8, (x, y) => x >= 0 && y >= 0 && x < w && y < 8 && px[y * w + x] > 0) : [];
             } else {
               v.segOn = !!v.powered && !d.shutdown;
               v.segText = v.segOn ? segText(d.segments().slice(-(cs.sim.digits ?? 8))) : '';

@@ -120,7 +120,7 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
       {visual?.segText !== undefined && (
         <g>
           <rect x={w / 2 - 34} y={6} width={68} height={22} rx={2} fill="#1a0505" />
-          <text x={w / 2} y={23} fontSize={16} fontFamily="'DSEG7 Classic', 'Courier New', monospace" fontWeight={700} fill={visual.segOn ? '#ff3b30' : '#3a1010'} textAnchor="middle" letterSpacing={2}>
+          <text x={w / 2} y={23} fontSize={16} fontFamily={cs.sim.segments === 14 ? "'DSEG14 Classic', 'Courier New', monospace" : "'DSEG7 Classic', 'Courier New', monospace"} fontWeight={700} fill={visual.segOn ? '#ff3b30' : '#3a1010'} textAnchor="middle" letterSpacing={2}>
             {visual.segText || '    '}
           </text>
         </g>
@@ -130,12 +130,19 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
       ) : visual?.oled ? (
         <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} />
       ) : cs.sim.kind === 'segment-display' && cs.sim.matrix ? (
-        <g>
-          <rect x={w / 2 - 17} y={2} width={34} height={34} fill="#111" />
-          {Array.from({ length: 64 }, (_, i) => (
-            <circle key={i} cx={w / 2 - 14.5 + (i % 8) * 4.2} cy={4.5 + Math.floor(i / 8) * 4.2} r={1.6} fill={(visual?.pixels?.[i * 3] ?? 0) > 10 ? '#ff3b30' : '#3a1010'} />
-          ))}
-        </g>
+        // 8 rows × 8 columns per chained chip; dots shrink so a 32×8 strip still fits the module.
+        (() => {
+          const cols = 8 * (cs.sim.protocol === 'max7219' ? (cs.sim.count ?? 1) : 1);
+          const pitch = Math.min(4.2, (w - 8) / cols);
+          return (
+            <g>
+              <rect x={w / 2 - (cols * pitch) / 2 - 2} y={2} width={cols * pitch + 4} height={8 * pitch + 4} fill="#111" />
+              {Array.from({ length: cols * 8 }, (_, i) => (
+                <circle key={i} cx={w / 2 - (cols * pitch) / 2 + pitch / 2 + (i % cols) * pitch} cy={4 + pitch / 2 + Math.floor(i / cols) * pitch} r={pitch * 0.38} fill={(visual?.pixels?.[i * 3] ?? 0) > 10 ? '#ff3b30' : '#3a1010'} />
+              ))}
+            </g>
+          );
+        })()
       ) : cs.sim.kind === 'addressable-led' ? (
         <g>
           {Array.from({ length: Math.min(cs.sim.count ?? 1, 12) }, (_, i) => {

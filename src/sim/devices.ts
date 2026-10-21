@@ -577,6 +577,12 @@ export class GenericI2CDevice implements I2CDevice {
     for (const m of this.measures) {
       if (m.when && (this.byteAt(Number(m.when.reg), 0) & (m.when.mask ?? 0xff)) !== m.when.equals) continue;
       const reg = Number(m.reg);
+      if (m.format === 'ens210') {
+        // 16-bit value low byte first, then VALID (bit 0) and the CRC-7 of those 17 bits (bits 7:1).
+        const raw = Math.max(0, Math.min(0xffff, Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1))));
+        [raw & 0xff, raw >> 8, 1 | (crc7Ens210(raw | 0x10000) << 1)].forEach((x, i) => this.store.set(reg + i, [x]));
+        continue;
+      }
       if (m.format) {
         // Smallest exponent whose mantissa fits, as the chips' automatic ranging does.
         const v = Math.max(0, this.value(m.control ?? 'value'));
@@ -618,6 +624,23 @@ export class GenericI2CDevice implements I2CDevice {
 }
 
 /** Sensirion CRC-8 (poly 0x31, init 0xFF), used by SHT3x/SHT4x/SCD4x/SGP and AHT20. */
+/** ENS210 CRC-7 (polynomial 0x89, initial vector 0x7F) over a 17-bit value (16 data bits + the VALID bit), as the
+ * datasheet's reference code computes it. */
+export function crc7Ens210(val17: number): number {
+  const W = 7;
+  const D = 17;
+  let pol = 0x89 << (D - W - 1 + W);
+  let bit = (1 << (D - 1)) << W;
+  let val = ((val17 & 0x1ffff) << W) | 0x7f;
+  const mask = ((1 << D) - 1) << W;
+  while (bit & mask) {
+    if (bit & val) val ^= pol;
+    bit >>>= 1;
+    pol >>>= 1;
+  }
+  return val & 0x7f;
+}
+
 export function crc8Sensirion(bytes: number[], init = 0xff): number {
   let crc = init;
   for (const b of bytes) {
@@ -658,6 +681,7 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
         push(crc >> 8, 8);
       }
       else if (s.crc === 'sum8') push(sum & 0xff, 8);
+      else if (s.crc === 'neg8') push((256 - (sum & 0xff)) & 0xff, 8);
       else if (s.crc === 'xor8hex') {
         const txt = String.fromCharCode(...prev);
         let x = 0;
@@ -694,6 +718,25 @@ const SEG_CHARS: Record<number, string> = {
   0x54: 'n', 0x5c: 'o', 0x73: 'P', 0x67: 'q', 0x50: 'r', 0x78: 't', 0x3e: 'U', 0x1c: 'u', 0x6e: 'y', 0x40: '-', 0x08: '_', 0x63: '°', 0x00: ' ',
   0x7e: '0', 0x7b: '9', 0x27: '7', 0x7a: 'd',
 };
+/** 14-segment glyphs of the Adafruit LED Backpack font (bit 0 = A … bit 13 = N, bit 14 = DP), for reading
+ * an HT16K33 alphanumeric display in tests. Letters and digits win where two characters share a glyph. */
+const ALPHA_FONT: Record<string, number> = {
+  ' ': 0x0000, '!': 0x0006, '"': 0x0220, '#': 0x12ce, '$': 0x12ed, '%': 0x0c24, '&': 0x235d, "'": 0x0400, '(': 0x2400, ')': 0x0900,
+  '*': 0x3fc0, '+': 0x12c0, ',': 0x0800, '-': 0x00c0, '/': 0x0c00, '0': 0x0c3f, '1': 0x0006, '2': 0x00db, '3': 0x008f, '4': 0x00e6,
+  '5': 0x2069, '6': 0x00fd, '7': 0x0007, '8': 0x00ff, '9': 0x00ef, ':': 0x1200, ';': 0x0a00, '<': 0x2400, '=': 0x00c8, '>': 0x0900,
+  '?': 0x1083, '@': 0x02bb, A: 0x00f7, B: 0x128f, C: 0x0039, D: 0x120f, E: 0x00f9, F: 0x0071, G: 0x00bd, H: 0x00f6, I: 0x1209,
+  J: 0x001e, K: 0x2470, L: 0x0038, M: 0x0536, N: 0x2136, O: 0x003f, P: 0x00f3, Q: 0x203f, R: 0x20f3, S: 0x00ed, T: 0x1201,
+  U: 0x003e, V: 0x0c30, W: 0x2836, X: 0x2d00, Y: 0x1500, Z: 0x0c09, '[': 0x0039, '\\': 0x2100, ']': 0x000f, '^': 0x0c03, _: 0x0008,
+  '`': 0x0100, a: 0x1058, b: 0x2078, c: 0x00d8, d: 0x088e, e: 0x0858, f: 0x0071, g: 0x048e, h: 0x1070, i: 0x1000, j: 0x000e,
+  k: 0x3600, l: 0x0030, m: 0x10d4, n: 0x1050, o: 0x00dc, p: 0x0170, q: 0x0486, r: 0x0050, s: 0x2088, t: 0x0078, u: 0x001c,
+  v: 0x2004, w: 0x2814, x: 0x28c0, y: 0x200c, z: 0x0848, '{': 0x0949, '|': 0x1200, '}': 0x2489, '~': 0x0520,
+};
+const ALPHA_CHARS = new Map<number, string>();
+for (const c of '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -_=+*/%#$&@?!"\'()<>[]{}|^`~,;:\\') if (c in ALPHA_FONT && !ALPHA_CHARS.has(ALPHA_FONT[c])) ALPHA_CHARS.set(ALPHA_FONT[c], c);
+export function alphaText(glyphs: number[]): string {
+  return glyphs.map((g) => ALPHA_CHARS.get(g & 0x3fff) ?? '?').join('');
+}
+
 export function segText(segs: number[]): string {
   return segs.map((b) => SEG_CHARS[b & 0x7f] ?? '?').join('');
 }
@@ -752,23 +795,14 @@ export class TM1637Device {
 }
 
 /** MAX7219: 16-bit register frames latched by LOAD (CS) rising; digits 1–8, decode mode, shutdown, test. */
-export class MAX7219Device {
+/** One MAX7219's registers. */
+class MAX7219Chip {
   digitRegs = new Array(8).fill(0);
   decode = 0;
   shutdown = true;
   test = false;
   scanLimit = 7;
-  private shift: number[] = [];
-  constructor(public partId: string) {}
-  clockIn(bytes: number[]) {
-    this.shift.push(...bytes);
-    if (this.shift.length > 64) this.shift.splice(0, this.shift.length - 64);
-  }
-  /** LOAD rising: the last 16 bits shifted in are this chip's frame (cascaded chips pass earlier ones on). */
-  latch() {
-    if (this.shift.length < 2) return void (this.shift = []);
-    const [a, d] = this.shift.slice(-2);
-    this.shift = [];
+  exec(a: number, d: number) {
     const reg = a & 0x0f;
     if (reg >= 1 && reg <= 8) this.digitRegs[reg - 1] = d;
     else if (reg === 0x09) this.decode = d;
@@ -776,13 +810,39 @@ export class MAX7219Device {
     else if (reg === 0x0c) this.shutdown = (d & 1) === 0;
     else if (reg === 0x0f) this.test = (d & 1) === 1;
   }
+}
+
+/** MAX7219, or `count` of them daisy-chained DOUT → DIN. Every chip has a 16-bit shift register; bytes clocked in
+ * push the chain along, and on LOAD rising each chip runs the frame sitting in its own register (no-op 0x00 frames
+ * do nothing). Chip 0 is the one wired to the board. */
+export class MAX7219Device {
+  chips: MAX7219Chip[];
+  private shift: number[];
+  constructor(public partId: string, public count = 1) {
+    this.chips = Array.from({ length: count }, () => new MAX7219Chip());
+    this.shift = new Array(2 * count).fill(0);
+  }
+  get shutdown() {
+    return this.chips.every((c) => c.shutdown);
+  }
+  clockIn(bytes: number[]) {
+    // shift[0..1] is chip 0's register; older bytes move on to the next chip.
+    for (const b of bytes) {
+      this.shift.pop();
+      this.shift.unshift(b);
+    }
+  }
+  latch() {
+    this.chips.forEach((c, i) => c.exec(this.shift[2 * i + 1], this.shift[2 * i]));
+  }
   /** Segment bytes (bit0 = a … bit6 = g) for digit positions left to right (digit 7 is the leftmost on 8-digit modules). */
   segments(): number[] {
+    const c = this.chips[0];
     const CODE_B = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f, 0x40, 0x79, 0x76, 0x38, 0x73, 0x00];
     const out: number[] = [];
-    for (let i = this.scanLimit; i >= 0; i--) {
-      const v = this.digitRegs[i];
-      if (this.decode & (1 << i)) out.push(CODE_B[v & 0x0f] | (v & 0x80));
+    for (let i = c.scanLimit; i >= 0; i--) {
+      const v = c.digitRegs[i];
+      if (c.decode & (1 << i)) out.push(CODE_B[v & 0x0f] | (v & 0x80));
       else {
         // No-decode bit order: DP A B C D E F G (bit7 … bit0).
         let seg = 0;
@@ -792,18 +852,27 @@ export class MAX7219Device {
     }
     return out;
   }
-  /** 8×8 matrix brightness (row = digit register, column bit 7 … 0 left to right). */
+  /** Dot-matrix brightness, 8 rows × 8·count columns, row-major (row = digit register, column bit 7 … 0 left to right).
+   * FC-16 modules: DIN enters the rightmost chip, so chip 0 is the rightmost block. */
   matrix(): number[] {
     const px: number[] = [];
-    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) px.push(!this.shutdown && (this.test || (this.digitRegs[r] >> (7 - c)) & 1) ? 255 : 0);
+    for (let r = 0; r < 8; r++)
+      for (let b = 0; b < this.count; b++) {
+        const c = this.chips[this.count - 1 - b];
+        for (let x = 0; x < 8; x++) px.push(!c.shutdown && (c.test || (c.digitRegs[r] >> (7 - x)) & 1) ? 255 : 0);
+      }
     return px;
   }
 }
 
-/** SPI colour TFT (MIPI DCS: CASET 0x2A, RASET 0x2B, RAMWR 0x2C with RGB565, MADCTL 0x36 row/column swap). */
+/** SPI colour display. 'dcs' = MIPI DCS controllers (ST7789/ST7735/ILI9341/ILI9488): CASET 0x2A, RASET 0x2B, RAMWR 0x2C,
+ * MADCTL 0x36 row/column swap, COLMOD 0x3A pixel format (16-bit RGB565 or 18-bit RGB666 = 3 bytes per pixel),
+ * DISPOFF/DISPON 0x28/0x29. 'ssd1351' = Solomon SSD1351 OLED: 0x15 column / 0x75 row window (one byte each),
+ * 0x5C write RAM, 0xA0 remap (bit 0 vertical increment, bit 1 column remap, bit 2 colour order, bit 4 COM scan,
+ * bits 7:6 colour depth 65k/262k), 0xA4–0xA7 display mode, 0xAE/0xAF sleep on/off, 0xFD command lock. */
 export class TFTDevice {
   fb: Uint16Array;
-  on = true;
+  on: boolean;
   private cmd = -1;
   private args: number[] = [];
   private x0 = 0;
@@ -812,13 +881,21 @@ export class TFTDevice {
   private y1 = 0;
   private x = 0;
   private y = 0;
-  private hi = -1;
+  private part: number[] = [];
   private swap = false;
+  private bits: number;
+  // SSD1351 state
+  private remap = 0;
+  private mode = 0xa6; // A4 all off, A5 all on, A6 normal, A7 inverse
+  private locked = false;
   writes = 0;
-  constructor(public partId: string, public width: number, public height: number) {
+  constructor(public partId: string, public width: number, public height: number, public controller: 'dcs' | 'ssd1351' = 'dcs', pixelBits: 16 | 18 = 16) {
     this.fb = new Uint16Array(width * height);
     this.x1 = width - 1;
     this.y1 = height - 1;
+    this.bits = pixelBits;
+    // MIPI panels are usually woken by the driver; the SSD1351 starts in sleep mode (display off).
+    this.on = controller !== 'ssd1351';
   }
   private get w() {
     return this.swap ? this.height : this.width;
@@ -826,48 +903,103 @@ export class TFTDevice {
   private get h() {
     return this.swap ? this.width : this.height;
   }
+  private get ramCmd() {
+    return this.controller === 'ssd1351' ? 0x5c : 0x2c;
+  }
   command(c: number) {
+    if (this.controller === 'ssd1351' && this.locked && c !== 0xfd) return;
     this.cmd = c;
     this.args = [];
-    this.hi = -1;
-    if (c === 0x28) this.on = false;
-    if (c === 0x29) this.on = true;
-    if (c === 0x2c) {
+    this.part = [];
+    if (this.controller === 'ssd1351') {
+      if (c === 0xae) this.on = false;
+      if (c === 0xaf) this.on = true;
+      if (c >= 0xa4 && c <= 0xa7) this.mode = c;
+    } else {
+      if (c === 0x28) this.on = false;
+      if (c === 0x29) this.on = true;
+    }
+    if (c === this.ramCmd) {
       this.x = this.x0;
       this.y = this.y0;
     }
   }
+  private put(rgb565: number) {
+    if (this.controller === 'ssd1351') {
+      // Column remap mirrors x, COM scan (bit 4 clear) mirrors y; colour order bit 2 clear swaps red and blue.
+      const sx = this.remap & 0x02 ? this.width - 1 - this.x : this.x;
+      const sy = this.remap & 0x10 ? this.y : this.height - 1 - this.y;
+      const px = this.remap & 0x04 ? rgb565 : ((rgb565 & 0x1f) << 11) | (rgb565 & 0x07e0) | (rgb565 >> 11);
+      if (this.x < this.width && this.y < this.height) {
+        this.fb[sy * this.width + sx] = px;
+        this.writes++;
+      }
+      if (this.remap & 0x01) {
+        if (++this.y > this.y1) {
+          this.y = this.y0;
+          if (++this.x > this.x1) this.x = this.x0;
+        }
+      } else if (++this.x > this.x1) {
+        this.x = this.x0;
+        if (++this.y > this.y1) this.y = this.y0;
+      }
+      return;
+    }
+    if (this.x < this.w && this.y < this.h) {
+      // Store in panel orientation so thumbnails are stable.
+      const [px0, py0] = this.swap ? [this.y, this.x] : [this.x, this.y];
+      this.fb[py0 * this.width + px0] = rgb565;
+      this.writes++;
+    }
+    if (++this.x > this.x1) {
+      this.x = this.x0;
+      if (++this.y > this.y1) this.y = this.y0;
+    }
+  }
   data(bytes: number[]) {
-    if (this.cmd === 0x2c) {
+    if (this.controller === 'ssd1351' && this.locked && this.cmd !== 0xfd) return;
+    if (this.cmd === this.ramCmd) {
+      const per = this.bits === 18 ? 3 : 2;
       for (const b of bytes) {
-        if (this.hi < 0) {
-          this.hi = b;
-          continue;
-        }
-        const px = (this.hi << 8) | b;
-        this.hi = -1;
-        if (this.x < this.w && this.y < this.h) {
-          // Store in panel orientation so thumbnails are stable.
-          const [px0, py0] = this.swap ? [this.y, this.x] : [this.x, this.y];
-          this.fb[py0 * this.width + px0] = px;
-          this.writes++;
-        }
-        if (++this.x > this.x1) {
-          this.x = this.x0;
-          if (++this.y > this.y1) this.y = this.y0;
-        }
+        this.part.push(b);
+        if (this.part.length < per) continue;
+        const [p0, p1, p2] = this.part;
+        this.part = [];
+        if (per === 2) this.put((p0 << 8) | p1);
+        else if (this.controller === 'ssd1351') this.put(((p0 & 0x3f) >> 1 << 11) | ((p1 & 0x3f) << 5) | ((p2 & 0x3f) >> 1)); // 6-bit values in bits 5:0
+        else this.put(((p0 >> 3) << 11) | ((p1 >> 2) << 5) | (p2 >> 3)); // RGB666: 6 bits in bits 7:2 of each byte
       }
       return;
     }
     this.args.push(...bytes);
     const a = this.args;
+    if (this.controller === 'ssd1351') {
+      if (this.cmd === 0x15 && a.length >= 2) [this.x0, this.x1] = [a[0], a[1]];
+      if (this.cmd === 0x75 && a.length >= 2) [this.y0, this.y1] = [a[0], a[1]];
+      if (this.cmd === 0xa0 && a.length >= 1) {
+        this.remap = a[0];
+        this.bits = a[0] >> 6 >= 2 ? 18 : 16;
+      }
+      if (this.cmd === 0xfd && a.length >= 1) {
+        if (a[0] === 0x16) this.locked = true;
+        if (a[0] === 0x12) this.locked = false;
+      }
+      return;
+    }
     if (this.cmd === 0x2a && a.length >= 4) [this.x0, this.x1] = [(a[0] << 8) | a[1], (a[2] << 8) | a[3]];
     if (this.cmd === 0x2b && a.length >= 4) [this.y0, this.y1] = [(a[0] << 8) | a[1], (a[2] << 8) | a[3]];
     if (this.cmd === 0x36 && a.length >= 1) this.swap = (a[0] & 0x20) !== 0;
+    if (this.cmd === 0x3a && a.length >= 1) this.bits = (a[0] & 0x07) === 6 ? 18 : 16;
+  }
+  /** What the panel shows at (x, y) as RGB565, after the SSD1351 display mode. */
+  private shown(x: number, y: number): number {
+    const p = this.fb[y * this.width + x] ?? 0;
+    if (this.controller !== 'ssd1351' || this.mode === 0xa6) return p;
+    return this.mode === 0xa4 ? 0 : this.mode === 0xa5 ? 0xffff : ~p & 0xffff;
   }
   /** Lit = any colour brighter than near-black (for reading text and checking that something is drawn). */
   lit(x: number, y: number): boolean {
-    const p = this.fb[y * this.width + x] ?? 0;
+    const p = this.shown(x, y);
     return ((p >> 11) & 0x1f) + ((p >> 5) & 0x3f) / 2 + (p & 0x1f) > 12;
   }
   /** Downscaled RGB thumbnail (for the canvas), every `step` pixels. */
@@ -875,7 +1007,7 @@ export class TFTDevice {
     const out: number[] = [];
     for (let y = 0; y < this.height; y += step)
       for (let x = 0; x < this.width; x += step) {
-        const p = this.on ? this.fb[y * this.width + x] : 0;
+        const p = this.on ? this.shown(x, y) : 0;
         out.push(((p >> 11) & 0x1f) << 3, ((p >> 5) & 0x3f) << 2, (p & 0x1f) << 3);
       }
     return out;
