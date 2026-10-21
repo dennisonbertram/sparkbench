@@ -1,0 +1,165 @@
+{
+ "type": "custom-qwiic-keypad-test",
+ "name": "Qwiic Keypad test",
+ "mpn": "COM-15290",
+ "category": "input",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "3V3",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "INT",
+   "role": "io",
+   "required": false
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 3.6,
+ "currentMa": 5,
+ "i2cAddress": 75,
+ "priceUsd": 10,
+ "supplierQuery": "SparkFun Qwiic Keypad",
+ "sim": {
+  "kind": "i2c-device",
+  "registers": {
+   "0x00": 75,
+   "0x01": 1,
+   "0x02": 0,
+   "0x03": 0,
+   "0x04": 0,
+   "0x05": 0,
+   "0x06": 0,
+   "0x07": 75
+  },
+  "writable": {
+   "0x06": 1,
+   "0x07": 255
+  },
+  "controls": [
+   {
+    "key": "key",
+    "quantity": "Key pressed (1-9, 10 = *, 11 = 0, 12 = #; 0 = none)",
+    "min": 0,
+    "max": 12,
+    "default": 0
+   }
+  ],
+  "eventFifo": {
+   "depth": 15,
+   "sources": [
+    {
+     "control": "key",
+     "codes": [
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      42,
+      48,
+      35
+     ]
+    }
+   ],
+   "popReg": "0x06",
+   "popMask": 1,
+   "codeReg": "0x03",
+   "timeReg": "0x04"
+  }
+ },
+ "driver": {
+  "filename": "qwiic_keypad.py",
+  "code": "# Port of SparkFun_Qwiic_Keypad_Arduino_Library: ask the keypad to load its oldest event (UPDATE_FIFO = 1), then read\n# the button register (0 = no event) and the ms since it was pressed.\nclass QwiicKeypad:\n    def __init__(self, i2c, addr=0x4B):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _read(self, reg):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def update_fifo(self):\n        self.i2c.writeto(self.addr, bytes([0x06, 0x01]))\n\n    def button(self):\n        return self._read(0x03)\n\n    def time_since_pressed(self):\n        msb = self._read(0x04)\n        lsb = self._read(0x05)\n        return (msb << 8) | lsb\n\n    def version(self):\n        return 'v%d.%d' % (self._read(0x01), self._read(0x02))\n"
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_keypad import QwiicKeypad\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nkp = QwiicKeypad(i2c)\ni2c.writeto(0x4B, bytes([0x00, 0x99]))  # read-only id: ignored\nprint('ID=%02X %s' % (kp._read(0x00), kp.version()))\ntime.sleep(2)\nwhile True:\n    kp.update_fifo()\n    b = kp.button()\n    if b:\n        print('KEY=%s' % chr(b))\n    time.sleep_ms(100)\n",
+  "test": {
+   "id": "t",
+   "title": "key events come out in order",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "ID=4B v1.0",
+     "within": 2000
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "key",
+     "value": 1
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "key",
+     "value": 0
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "key",
+     "value": 10
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "key",
+     "value": 0
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "KEY=1",
+     "within": 4000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "KEY=*",
+     "within": 3000
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "key",
+     "value": 12
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "KEY=#",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

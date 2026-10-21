@@ -249,6 +249,18 @@ export interface CustomSim {
   /** i2c-device: register bits that clear themselves after a write (a soft-reset bit the driver polls until it reads 0).
    * reset: the write also restores every register to its power-on value (sim.registers) and empties the FIFO. */
   selfClearing?: { reg: string; mask: number; reset?: boolean }[];
+  /** i2c-device whose firmware reads written bytes as commands, not a register pointer (SparkFun Qwiic relay boards).
+   * Each written byte is taken in turn: a listed code may swallow up to `data` following bytes (if the write has them)
+   * and runs its actions on internal registers; any byte becomes the current command. A read returns the live value of
+   * the current command's `read` registers (0xFF past them, or when it has none), then the current command becomes `then`.
+   * Actions: op 'set' (value, or 'data' = the swallowed byte), 'xor', 'or', 'and' with value. */
+  commands?: { code: number; data?: number; actions?: CommandAction[]; read?: string[]; then?: number }[];
+  /** i2c-device: only these register bits can be written (Record<reg, mask>); others ignore writes (firmware protection maps). */
+  writable?: Record<string, number>;
+  /** i2c-device with an event FIFO (SparkFun Qwiic Keypad): a control edge records an event; the host sets popMask in
+   * popReg, and the next read first loads the oldest event's code into codeReg (and the ms since it into timeReg,
+   * timeReg+1, big-endian) and clears the bit; 0s when empty. see EventFifoSpec. */
+  eventFifo?: EventFifoSpec;
   /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
   pointerless?: boolean;
   /** pointerless i2c-device with a 16-bit port (PCF8575): every transfer is byte pairs, port 0 (register 0x00, P00–P07)
@@ -262,6 +274,24 @@ export interface CustomSim {
   outputBits?: { reg: string; bit: number; name: string }[];
   /** i2c-device: register bits that read input pins, driven by toggles (control key). activeLow: pressed reads 0. */
   inputBits?: { reg: string; bit: number; control: string; label?: string; activeLow?: boolean }[];
+}
+
+export interface CommandAction {
+  reg: string;
+  op: 'set' | 'xor' | 'or' | 'and';
+  value: number | 'data';
+}
+
+/** Event FIFO as a ring of `depth` slots with newest/oldest indexes: it holds depth − 1 events, and a new event when
+ * full drops the oldest (Qwiic Keypad firmware, BUTTON_STACK_SIZE 15). Sources: a toggle `control` records `code` when
+ * it turns on; a key slider `control` records codes[value − 1] each time it changes to a key (0 = none held). */
+export interface EventFifoSpec {
+  depth: number;
+  sources: { control: string; code?: number; codes?: number[] }[];
+  popReg: string;
+  popMask: number;
+  codeReg: string;
+  timeReg?: string;
 }
 
 /** A sample FIFO filled at the chip's configured sample rate (MAX3010x). Each sample holds one value per active channel,
@@ -702,6 +732,33 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (f.resolution && f.resolution.bits.some((b) => !(b >= 1 && b <= f.sampleBits))) errs.push('fifo.resolution.bits must be ≤ sampleBits');
     if (f.rollover && (!hexReg(f.rollover.reg) || !(f.rollover.bit >= 0 && f.rollover.bit <= 7))) errs.push('fifo.rollover needs reg (hex) and bit 0–7');
     if (f.status && !hexReg(f.status.reg)) errs.push('fifo.status.reg must be a register like 0x00');
+  }
+  if (s.commands?.length || s.writable || s.eventFifo) {
+    if (s.kind !== 'i2c-device') errs.push('commands, writable and eventFifo are for an i2c-device');
+    const codes = new Set<number>();
+    for (const c of s.commands ?? []) {
+      if (!(Number.isInteger(c.code) && c.code >= 0 && c.code <= 0xff) || codes.has(c.code)) errs.push(`command code ${c.code} must be a unique byte 0–0xFF`);
+      codes.add(c.code);
+      if (c.data !== undefined && !(Number.isInteger(c.data) && c.data >= 1 && c.data <= 4)) errs.push(`command 0x${c.code?.toString(16)}: data must be 1–4 bytes`);
+      for (const a of c.actions ?? []) {
+        if (!hexReg(a.reg) || !['set', 'xor', 'or', 'and'].includes(a.op)) errs.push(`command 0x${c.code?.toString(16)}: actions need a hex reg and op set|xor|or|and`);
+        if (a.value === 'data' ? !(a.op === 'set' && c.data) : !(Number.isInteger(a.value) && a.value >= 0 && a.value <= 0xff)) errs.push(`command 0x${c.code?.toString(16)}: value must be a byte, or 'data' on a set for a command with data`);
+      }
+      for (const r of c.read ?? []) if (!hexReg(r)) errs.push(`command 0x${c.code?.toString(16)}: read registers must be hex`);
+      if (c.then !== undefined && !(Number.isInteger(c.then) && c.then >= 0 && c.then <= 0xff)) errs.push(`command 0x${c.code?.toString(16)}: then must be a byte`);
+    }
+    if (s.commands?.length && (s.pointerless || s.readFromZero || s.responses?.length || s.measure || s.measures?.length)) errs.push('a command-driven device (commands) has no register pointer: drop pointerless, readFromZero, responses and measures');
+    for (const [r, m] of Object.entries(s.writable ?? {})) if (!hexReg(r) || !(Number.isInteger(m) && m >= 0 && m <= 0xff)) errs.push(`writable ${r}: needs a hex register and a mask 0–0xFF`);
+    const e = s.eventFifo;
+    if (e) {
+      if (!(Number.isInteger(e.depth) && e.depth >= 2 && e.depth <= 64)) errs.push('eventFifo.depth must be 2–64 slots');
+      if (!hexReg(e.popReg) || !hexReg(e.codeReg) || (e.timeReg !== undefined && !hexReg(e.timeReg)) || !(e.popMask > 0 && e.popMask <= 0xff)) errs.push('eventFifo needs hex popReg, codeReg (and timeReg) and a popMask 1–0xFF');
+      if (!e.sources?.length) errs.push('eventFifo needs sources');
+      for (const src of e.sources ?? []) {
+        if (!keys.has(src.control)) errs.push(`eventFifo source ${src.control} is not a control`);
+        if ((src.code === undefined) === !src.codes?.length) errs.push(`eventFifo source ${src.control}: give either code (a toggle) or codes (a key slider)`);
+      }
+    }
   }
   for (const c of s.selfClearing ?? []) if (s.kind !== 'i2c-device' || !hexReg(c.reg) || !(c.mask > 0 && c.mask <= 0xff)) errs.push('selfClearing entries need an i2c-device byte register (hex) and a mask 1–0xFF');
   for (const r of s.responses ?? []) {

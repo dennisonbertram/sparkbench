@@ -1,7 +1,7 @@
 // Register-level models of I2C peripherals. They receive exactly the bytes the real
 // MicroPython / Python drivers put on the bus, so driver bugs show up in simulation too.
 import { makeSolver, withPromCrc, type Solver } from '../core/calibration';
-import type { FifoSpec, I2CMeasure, ResponseSegment } from '../core/customParts';
+import type { CustomSim, EventFifoSpec, FifoSpec, I2CMeasure, ResponseSegment } from '../core/customParts';
 import { SampleFifo } from './fifo';
 
 export interface I2CDevice {
@@ -495,7 +495,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void; fifo?: FifoSpec; selfClearing?: { reg: string; mask: number; reset?: boolean }[]; wordOrder?: 'msb' | 'lsb'; pec?: boolean } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void; fifo?: FifoSpec; selfClearing?: { reg: string; mask: number; reset?: boolean }[]; wordOrder?: 'msb' | 'lsb'; pec?: boolean; commands?: CustomSim['commands']; writable?: Record<string, number>; eventFifo?: EventFifoSpec } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     // A declared PROM CRC-4 is filled in, so the driver's PROM check passes.
@@ -505,6 +505,72 @@ export class GenericI2CDevice implements I2CDevice {
     if (measures.some((m) => m.solve)) this.solver = makeSolver(layout.constants, measures, (a) => (this.wide ? (this.byteAt(a, 0) << 8) | this.byteAt(a, 1) : this.byteAt(a, 0)));
     const n = layout.dac?.protocol === 'mcp4728' ? 4 : layout.dac ? 1 : 0;
     this.dacs = Array.from({ length: n }, () => ({ code: 0, vref: 0, gain: 1, pd: 0 }));
+    for (const c of layout.commands ?? []) this.cmdMap.set(c.code, c);
+    for (const [k, m] of Object.entries(layout.writable ?? {})) this.writeMask.set(Number(k), m);
+    for (const src of layout.eventFifo?.sources ?? []) this.lastSrc.set(src.control, value(src.control));
+  }
+  /** Command-driven firmware (see CustomSim.commands): the current command byte, as the firmware's COMMAND variable. */
+  private cmd = -1;
+  private cmdMap = new Map<number, NonNullable<CustomSim['commands']>[number]>();
+  private writeMask = new Map<number, number>();
+  /** Event FIFO (see EventFifoSpec): oldest first. */
+  private events: { code: number; atMs: number }[] = [];
+  private lastSrc = new Map<string, number>();
+  /** A control changed (the engine calls this while the module is powered): edges become FIFO events. */
+  controlChanged(key: string, value: number) {
+    const e = this.layout.eventFifo;
+    if (!e) return;
+    for (const src of e.sources) {
+      if (src.control !== key) continue;
+      const prev = this.lastSrc.get(key) ?? 0;
+      this.lastSrc.set(key, value);
+      const k = Math.round(value);
+      const code = src.code !== undefined ? (prev <= 0 && value > 0 ? src.code : undefined) : k >= 1 && k !== Math.round(prev) ? src.codes?.[k - 1] : undefined;
+      if (code === undefined) continue;
+      this.events.push({ code, atMs: this.layout.nowMs?.() ?? 0 });
+      if (this.events.length > e.depth - 1) this.events.shift(); // full ring: the oldest event is lost
+    }
+  }
+  private commandWrite(bytes: number[]) {
+    let i = 0;
+    while (i < bytes.length) {
+      const b = bytes[i++];
+      this.cmd = b;
+      const c = this.cmdMap.get(b);
+      if (!c) continue;
+      const data = bytes.slice(i, i + (c.data ?? 0));
+      i += data.length;
+      for (const a of c.actions ?? []) {
+        const r = Number(a.reg);
+        const old = this.byteAt(r, 0);
+        if (a.value === 'data') {
+          if (data.length) this.setReg(r, data[0]);
+          continue;
+        }
+        this.setReg(r, (a.op === 'set' ? a.value : a.op === 'xor' ? old ^ a.value : a.op === 'or' ? old | a.value : old & a.value) & 0xff);
+      }
+    }
+  }
+  private commandRead(n: number) {
+    const c = this.cmdMap.get(this.cmd);
+    const regs = c?.read ?? [];
+    const out = Array.from({ length: n }, (_, i) => (i < regs.length ? this.byteAt(Number(regs[i]), 0) : 0xff));
+    if (c?.read?.length && c.then !== undefined) this.cmd = c.then;
+    return out;
+  }
+  /** Before a read: a pending pop request loads the oldest event into the code/time registers. */
+  private eventPop() {
+    const e = this.layout.eventFifo!;
+    const pr = Number(e.popReg);
+    if (!(this.byteAt(pr, 0) & e.popMask)) return;
+    this.setReg(pr, this.byteAt(pr, 0) & ~e.popMask);
+    const ev = this.events.shift();
+    const t = ev ? Math.max(0, Math.floor((this.layout.nowMs?.() ?? 0) - ev.atMs)) : 0;
+    this.setReg(Number(e.codeReg), ev?.code ?? 0);
+    if (e.timeReg) {
+      this.setReg(Number(e.timeReg), (t >> 8) & 0xff);
+      this.setReg(Number(e.timeReg) + 1, t & 0xff);
+    }
   }
   private solver?: Solver;
   private por: Record<string, number>;
@@ -624,6 +690,7 @@ export class GenericI2CDevice implements I2CDevice {
   write(bytes: number[]) {
     if (!bytes.length) return;
     if (this.layout.dac) return this.dacWrite(bytes);
+    if (this.cmdMap.size) return this.commandWrite(bytes);
     this.fifoTick();
     // A bare command byte in the latch range is remembered (MS5611: which conversion ran).
     const cl = this.layout.commandLatch;
@@ -664,6 +731,13 @@ export class GenericI2CDevice implements I2CDevice {
     if (this.wide) {
       const lsb = this.layout.wordOrder === 'lsb';
       for (let i = 0; i + 1 < data.length; i += 2) this.setReg(this.ptr + i / 2, lsb ? (data[i + 1] << 8) | data[i] : (data[i] << 8) | data[i + 1]);
+    } else if (this.layout.writable) {
+      // Firmware protection map: only the writable bits change.
+      data.forEach((b, i) => {
+        const a = this.ptr + i;
+        const m = this.writeMask.get(a) ?? 0;
+        if (m) this.setReg(a, (this.byteAt(a, 0) & ~m) | (b & m));
+      });
     } else data.forEach((b, i) => this.setReg(this.ptr + i, b));
     if (touchesRtc) this.rtcAdopt();
     if (!data.length || this.wide) return;
@@ -684,6 +758,8 @@ export class GenericI2CDevice implements I2CDevice {
   }
   read(n: number) {
     if (this.reply.length) return Array.from({ length: n }, (_, i) => this.reply[i] ?? 0);
+    if (this.cmdMap.size) return this.commandRead(n);
+    if (this.layout.eventFifo) this.eventPop();
     this.fifoTick();
     // FIFO_DATA does not auto-increment: the pointer stays while whole samples pop.
     if (this.fifo && !this.wide && this.fifo.isData(this.ptr)) return this.fifo.read(n);

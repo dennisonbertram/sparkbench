@@ -164,7 +164,7 @@ export class SimEngine {
           this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
         }
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, fifo: cs.sim.fifo, selfClearing: cs.sim.selfClearing, wordOrder: cs.sim.wordOrder, pec: cs.sim.pec, dac: cs.sim.dac, onDac: (ch, d) => {
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, fifo: cs.sim.fifo, selfClearing: cs.sim.selfClearing, wordOrder: cs.sim.wordOrder, pec: cs.sim.pec, commands: cs.sim.commands, writable: cs.sim.writable, eventFifo: cs.sim.eventFifo, dac: cs.sim.dac, onDac: (ch, d) => {
           // The circuit model turns each channel's settings into the voltage on its pin.
           const pin = cs.sim.dac?.pins[ch];
           if (!pin) return;
@@ -453,6 +453,8 @@ export class SimEngine {
       return;
     }
     this.model.setPartState(ch.part, ch.key, ch.value);
+    // Firmware that records control edges (a keypad's event FIFO) only sees them while it is powered.
+    for (const d of this.devices) if (d.part.id === part.id && d.dev instanceof GenericI2CDevice && this.model.modulePowered(part.id)) d.dev.controlChanged(ch.key, ch.value);
   }
   private checkIrqs() {
     for (const [g, last] of this.irqWatch) {

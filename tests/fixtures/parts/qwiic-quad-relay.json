@@ -1,0 +1,292 @@
+{
+ "type": "custom-qwiic-quad-relay-test",
+ "name": "Qwiic Quad Relay test",
+ "mpn": "COM-16566",
+ "category": "actuator",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "3V3",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 3.6,
+ "currentMa": 20,
+ "i2cAddress": 109,
+ "priceUsd": 30,
+ "supplierQuery": "SparkFun Qwiic Quad Relay",
+ "sim": {
+  "kind": "i2c-device",
+  "registers": {
+   "0x05": 0,
+   "0x06": 0,
+   "0x07": 0,
+   "0x08": 0
+  },
+  "commands": [
+   {
+    "code": 1,
+    "actions": [
+     {
+      "reg": "0x05",
+      "op": "xor",
+      "value": 15
+     }
+    ]
+   },
+   {
+    "code": 2,
+    "actions": [
+     {
+      "reg": "0x06",
+      "op": "xor",
+      "value": 15
+     }
+    ]
+   },
+   {
+    "code": 3,
+    "actions": [
+     {
+      "reg": "0x07",
+      "op": "xor",
+      "value": 15
+     }
+    ]
+   },
+   {
+    "code": 4,
+    "actions": [
+     {
+      "reg": "0x08",
+      "op": "xor",
+      "value": 15
+     }
+    ]
+   },
+   {
+    "code": 5,
+    "read": [
+     "0x05",
+     "0x06",
+     "0x07",
+     "0x08"
+    ],
+    "then": 5
+   },
+   {
+    "code": 6,
+    "read": [
+     "0x06",
+     "0x07",
+     "0x08"
+    ],
+    "then": 5
+   },
+   {
+    "code": 7,
+    "read": [
+     "0x07",
+     "0x08"
+    ],
+    "then": 5
+   },
+   {
+    "code": 8,
+    "read": [
+     "0x08"
+    ],
+    "then": 5
+   },
+   {
+    "code": 10,
+    "actions": [
+     {
+      "reg": "0x05",
+      "op": "set",
+      "value": 0
+     },
+     {
+      "reg": "0x06",
+      "op": "set",
+      "value": 0
+     },
+     {
+      "reg": "0x07",
+      "op": "set",
+      "value": 0
+     },
+     {
+      "reg": "0x08",
+      "op": "set",
+      "value": 0
+     }
+    ]
+   },
+   {
+    "code": 11,
+    "actions": [
+     {
+      "reg": "0x05",
+      "op": "set",
+      "value": 15
+     },
+     {
+      "reg": "0x06",
+      "op": "set",
+      "value": 15
+     },
+     {
+      "reg": "0x07",
+      "op": "set",
+      "value": 15
+     },
+     {
+      "reg": "0x08",
+      "op": "set",
+      "value": 15
+     }
+    ]
+   },
+   {
+    "code": 12,
+    "actions": [
+     {
+      "reg": "0x05",
+      "op": "xor",
+      "value": 15
+     },
+     {
+      "reg": "0x06",
+      "op": "xor",
+      "value": 15
+     },
+     {
+      "reg": "0x07",
+      "op": "xor",
+      "value": 15
+     },
+     {
+      "reg": "0x08",
+      "op": "xor",
+      "value": 15
+     }
+    ]
+   },
+   {
+    "code": 199,
+    "data": 1
+   }
+  ],
+  "outputBits": [
+   {
+    "reg": "0x05",
+    "bit": 0,
+    "name": "Relay 1"
+   },
+   {
+    "reg": "0x06",
+    "bit": 0,
+    "name": "Relay 2"
+   },
+   {
+    "reg": "0x07",
+    "bit": 0,
+    "name": "Relay 3"
+   },
+   {
+    "reg": "0x08",
+    "bit": 0,
+    "name": "Relay 4"
+   }
+  ]
+ },
+ "driver": {
+  "filename": "qwiic_relay.py",
+  "code": "# Port of SparkFun_Qwiic_Relay_Arduino_Library (quad/dual boards): commands are single bytes; a status read is the\n# status command followed by a 1-byte read (0x0F = on, 0x00 = off).\nclass QwiicRelay:\n    def __init__(self, i2c, addr):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _read(self, cmd):\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def state(self, relay):\n        return 1 if self._read(0x04 + relay) == 0x0F else 0\n\n    def toggle(self, relay):\n        self.i2c.writeto(self.addr, bytes([relay]))\n\n    def on(self, relay):\n        if not self.state(relay):\n            self.toggle(relay)\n\n    def off(self, relay):\n        if self.state(relay):\n            self.toggle(relay)\n\n    def all_off(self):\n        self.i2c.writeto(self.addr, bytes([0x0A]))\n\n    def all_on(self):\n        self.i2c.writeto(self.addr, bytes([0x0B]))\n\n    def toggle_all(self):\n        self.i2c.writeto(self.addr, bytes([0x0C]))\n\n    def set_slow_pwm(self, relay, value):\n        self.i2c.writeto(self.addr, bytes([0x0F + relay, value]))\n\n    def get_slow_pwm(self, relay):\n        return self._read(0x0F + relay)\n"
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_relay import QwiicRelay\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nr = QwiicRelay(i2c, 0x6D)\nr.all_off()\nr.on(1)\nr.on(3)\nr.on(3)  # already on: no change\nprint('R=' + ''.join(str(r.state(n)) for n in (1, 2, 3, 4)))\ni2c.writeto(0x6D, bytes([0x05]))\nprint('S=' + ''.join('%02X' % b for b in i2c.readfrom(0x6D, 4)))\nprint('NEXT=%02X' % i2c.readfrom(0x6D, 1)[0])\ntime.sleep(3)\nr.toggle_all()\nprint('T=' + ''.join(str(r.state(n)) for n in (1, 2, 3, 4)))\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "relays follow the toggle commands",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "R=1010",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "active",
+     "part": "{REF}",
+     "text": "Relay 1",
+     "on": true,
+     "within": 500
+    },
+    {
+     "kind": "expect",
+     "what": "active",
+     "part": "{REF}",
+     "text": "Relay 2",
+     "on": false,
+     "within": 500
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "S=0F000F00",
+     "within": 1000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "NEXT=0F",
+     "within": 1000
+    },
+    {
+     "kind": "wait",
+     "ms": 2500
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "T=0101",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "active",
+     "part": "{REF}",
+     "text": "Relay 2",
+     "on": true,
+     "within": 1000
+    }
+   ]
+  }
+ }
+}
