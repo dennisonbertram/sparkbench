@@ -14,6 +14,32 @@ Sparkbench is an AI-assisted hardware design studio for microcontroller and disc
 
 Follow-ups work conversationally: *"add a buzzer"*, *"use a Raspberry Pi Pico instead"*, *"move button A to GPIO 14"*, *"make it beep when it's too hot"*. In the **Code** tab, an AI pair-programmer edits the firmware on request ("show the temperature in Fahrenheit"), runs the new code in the simulator first (auto-fixing crashes), and shows you a diff to accept.
 
+## From idea to a manufactured device
+
+The full journey is specified (with how each story is tested) in [docs/PRODUCT-VISION.md](docs/PRODUCT-VISION.md). In short:
+
+- **Understand the idea.** Clarifying questions when a request is vague, a requirements card, design from a photo or sketch, and **acceptance tests written from your words**. These run in the simulator on every change: the Tests tab reads the screen, LEDs, buzzer and serial output.
+- **Build a prototype.**
+  - An exact **hole-by-hole breadboard layout**, verified against the schematic, with a step-by-step build mode;
+  - an illustrated tools list, and live LCSC stock and prices with a one-file cart.
+- **Check the real thing.** The **Your board** panel connects over Web Serial and installs MicroPython (esptool-js / Pico UF2). It also:
+  - copies the program and runs a **self-test** (compared with the simulator);
+  - shows the serial monitor, guided multimeter checks, and "Ask AI what is wrong";
+  - offers Wi-Fi (OTA) updates for the ESP32.
+  - Separately, the **photo wiring check** compares a photo of your breadboard with the design.
+- **Make it permanent.** The **Circuit board** tab:
+  - places and routes the board (KiCad + Freerouting), then checks DRC and schematic parity against JLCPCB / PCBWay / OSH Park rules;
+  - lets you drag parts and re-route, and prints pin names, a logo, the revision and a QR code on the silkscreen;
+  - offers a **Product** version (bare ESP32 module, USB, regulator, USB-serial, surface-mount parts);
+  - exports Gerbers, BOM with LCSC numbers, CPL, assembly drawing, TEST.md and COMPLIANCE.md, plus V-scored panels (KiKit);
+  - shows live parts cost at 5 / 50 / 500 boards, and a **3D-printable case** (STL + STEP, four styles, 3D preview);
+  - tracks revisions (Rev A → B with computed changes).
+- **Power and code.**
+  - Battery life from a simulated run of your firmware, with the regulator, charger and protection advice;
+  - plain-English explanations when you hover any line of code;
+  - an **Arduino/C++ version** compiled with arduino-cli.
+- **Together.** A gallery with remixes, classes graded in the simulator with a teacher dashboard, and live co-editing with comments, all on your own Sparkbench server.
+
 ## Run it
 
 ```bash
@@ -48,6 +74,23 @@ npm run dev & node tests/e2e/visual.mjs   # screenshot every view of every examp
 node tests/e2e/photo-check.mjs            # live: upload breadboard photos in the Build guide, check Claude's verdict
 node tests/e2e/build-mode.mjs             # step-by-step breadboard build mode
 node tests/e2e/pcb.mjs <example>          # Circuit board tab: design, check and download a PCB
+node tests/e2e/pcb-product.mjs            # product version (bare ESP32 module, SMD parts)
+node tests/e2e/pcb-panel.mjs              # V-scored panel
+node tests/e2e/case.mjs <example>         # printable case + 3D preview, all styles
+node tests/e2e/board-editor.mjs           # drag parts, re-route
+node tests/e2e/board.mjs [--ai]           # Your board with a simulated USB board (raw REPL)
+node tests/e2e/ota.mjs                    # Wi-Fi updates to real MicroPython (needs `micropython`)
+node tests/e2e/ai-intent.mjs              # live: idea → requirements → acceptance tests pass
+node tests/e2e/ai-clarify.mjs             # live: vague idea → questions → design
+node tests/e2e/sketch-design.mjs          # live: design from a hand sketch
+node tests/e2e/explain.mjs --ai           # hover explanations
+node tests/e2e/arduino.mjs                # live: Arduino version compiles (needs arduino-cli + cores)
+node tests/e2e/sourcing.mjs               # live LCSC prices + cart
+node tests/e2e/power.mjs                  # power card
+node tests/e2e/community.mjs              # two people: gallery, live editing, class + teacher dashboard
+npx tsx tests/e2e/grading.mts             # grading tells a right project from a wrong one
+npx tsx scripts/evals/design-eval.mts     # AI design eval
+npx tsx scripts/evals/code-eval.mts       # AI code-change eval
 npx tsx scripts/breadboard-all.ts         # plan + verify the breadboard layout of every example
 ```
 
@@ -70,7 +113,7 @@ The **Circuit board** tab (or `npx tsx scripts/make-pcb.ts <example|--all>`) mak
 3. [Freerouting](https://github.com/freerouting/freerouting) routes the board, offline with analytics disabled. `pcbnew` then pours ground on both layers.
 4. `kicad-cli` runs DRC with schematic parity against common factory limits (0.15 mm track and space, 0.3 mm drill). It then exports Gerbers, drill files, positions, a 3D render and STEP. Sparkbench adds a JLCPCB-style BOM and CPL.
 
-Needs KiCad 8+ and Java 21+ with `freerouting-2.5.0.jar` in `~/.cache/sparkbench/freerouting/`. The paths can be overridden with the `KICAD_APP`, `JAVA` and `FREEROUTING_JAR` environment variables. The native `freerouting-cli` build crashes in 2.5.0, so use the jar.
+Needs KiCad 8+ and Java 21+ with `freerouting-2.5.0.jar` in `~/.cache/sparkbench/freerouting/`; panels need KiKit (`python3 -m pip install --target ~/.cache/sparkbench/kikit-lib kikit` with KiCad's Python). Arduino builds need `arduino-cli` with the `esp32:esp32` and `rp2040:rp2040` cores. Live part prices use JLCPCB's public parts search (cached for a day). The paths can be overridden with the `KICAD_APP`, `JAVA` and `FREEROUTING_JAR` environment variables. The native `freerouting-cli` build crashes in 2.5.0, so use the jar.
 
 ## How it fits together
 

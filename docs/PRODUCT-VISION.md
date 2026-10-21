@@ -78,18 +78,27 @@ Status legend: ✅ built · 🟡 partly built · ⬜ not started
 
 ### A. Understanding what the user wants
 - ✅ A1 Describe a project in plain words and get a working design.
-- 🟡 A2 **Clarifying questions**: when the idea is ambiguous (power source, size, connectivity), ask up to 3 multiple-choice questions rather than guessing.
-- ⬜ A3 **Requirements card**: before designing, show "What it will do / How you'll power it / Roughly how big / Budget" for the user to confirm or edit.
-- ⬜ A4 **Acceptance tests from intent**: "when soil is dry the screen says Water me" becomes an executable test, run in the simulator and later on the real board.
+- ✅ A2 **Clarifying questions**: when the idea is ambiguous, up to 3 multiple-choice questions (suggested answer first) before designing. *Tested live: "a little gadget for my desk that keeps me company" asked about personality, internet and power, and the chosen answer shaped the design (`tests/e2e/ai-clarify.mjs`).*
+- ✅ A3 **Requirements card**: "What it will do / Power / Size / Budget" with every design, editable ("Not quite right? Change it" re-designs). Offline designs derive it from the circuit.
+- ✅ A4 **Acceptance tests from intent**: Claude turns the request into executable tests (set sensors, press buttons, read the screen by OCR, LEDs, buzzer, servo, serial). They run in the simulator, and if the code fails them Claude fixes it (two rounds). *Tested live: the plant-watering request produced "When the soil is dry, the screen says WATER ME and the red LED lights", 5/5 passing (`tests/e2e/ai-intent.mjs`).*
 - ✅ A5 Change the design by chatting ("add a buzzer", "use a Pico instead").
-- ⬜ A6 Start from a photo or sketch of an existing gadget ("make something like this").
+- ✅ A6 Start from a photo or sketch (📎 on the Welcome screen and in the chat). *Tested live: a hand sketch alone produced an ESP32 + OLED + DHT22 + 2 buttons + buzzer with the alarm behaviour (`tests/e2e/sketch-design.mjs`).*
 
 ### B. Design
 - ✅ B1 Automatic part choice, pin assignment, resistors, level shifting and I2C/SPI bus sharing.
 - ✅ B2 Any component via its datasheet: the AI extracts pins and limits, writes a driver, and saves a reusable skill.
-- 🟡 B3 Power design: power budget, battery-life estimate, regulator and charger selection, reverse-polarity and ESD protection.
-- ⬜ B4 **Two parts libraries**: prototyping modules (breakout boards) for the breadboard, and production parts (bare chips plus their support circuitry) for the PCB, with automatic mapping between them.
-- ⬜ B5 Safety rules: mains, LiPo and motor current are flagged; enforced fuses and isolation, or a refusal with an explanation.
+- ✅ B3 Power design (Power and batteries card):
+  - current measured by running the firmware in the simulator, per part;
+  - battery life for each battery type over the hours of use per day;
+  - the regulator or charger each battery needs (HT7333/MCP1700, TP4056+DW01), reverse-polarity and ESD/fuse protection, and a deep-sleep estimate.
+- ✅ B4 **Product version** ("Circuit board → Product"):
+  - the ESP32 DevKit becomes a bare ESP32-WROOM-32E with Micro-USB, an AMS1117, a CH340C, auto-reset transistors and RESET/BOOT buttons;
+  - the Pico is soldered by its castellated pads;
+  - passives and chips become 0805/SOIC parts the factory assembles;
+  - modules stay on connectors.
+
+  *Tested: all 19 examples pass design checks in the product version; the ESP32 weather station routes DRC-clean with the USB socket flush on the edge (`tests/e2e/pcb-product.mjs`).*
+- ✅ B5 Safety: mains wording in a request triggers a clear warning with safe alternatives, relay builds are told "low voltage only", a motor on a GPIO is an error, and the AI is instructed to refuse direct-mains and dangerous designs (`tests/unit/safety.test.ts`).
 - ✅ B6 Electrical rule checks with beginner explanations, plus KiCad ERC.
 
 ### C. Simulation
@@ -97,104 +106,103 @@ Status legend: ✅ built · 🟡 partly built · ⬜ not started
 - ✅ C2 Interactive inputs (sliders, buttons, tilt) and live outputs (screens, LEDs, sound, plots).
 - ✅ C3 Internet simulation (weather APIs, NTP).
 - ✅ C4 SPICE export with an ngspice cross-check.
-- ⬜ C5 Acceptance tests (A4) run automatically on every change, with a green/red badge.
-- ⬜ C6 Battery-life simulation over a day of use.
-- ⬜ C7 Arduino/C++ (and PlatformIO) firmware as well as MicroPython.
+- ✅ C5 Acceptance tests run after every change (Tests tab with a ✓/✗ badge), add a test in plain words, "Fix the code with AI".
+- ✅ C6 Battery life from a 30-second simulated run of the real firmware, scaled to hours of use per day.
+- ✅ C7 Arduino/C++ version: Claude translates the program, the real `arduino-cli` compiles it for the ESP32 / Pico, and compiler errors go back to Claude. A PlatformIO project is included. *Tested: the Pico traffic light, ESP32 weather station and ESP32 internet e-paper station all compile (`tests/e2e/arduino.mjs`).*
 
 ### D. Code
 - ✅ D1 The AI writes and edits firmware and verifies it in the simulator before proposing it.
 - ✅ D2 Code editor with an inline AI assistant ("Fix with AI" on errors).
-- ⬜ D3 Explain any line in plain words on hover.
-- ⬜ D4 OTA updates for Wi-Fi boards.
+- ✅ D3 Hover any line: a plain-English explanation that names the part on its pin ("pin 13 is Button A"), plus "Explain with AI" (`tests/unit/explain.test.ts`, `tests/e2e/explain.mjs`).
+- ✅ D4 Over-the-air updates for ESP32: `ota.py` (token-protected) and `boot.py` installed over USB once, then "Send the program over Wi-Fi". *Tested against the real MicroPython (`tests/unit/ota.test.ts`, `tests/e2e/ota.mjs`).*
 
 ### E. Prototype build (breadboard)
 - ✅ E1 Build guide, wiring table and blog post.
 - ✅ E2 **Exact breadboard layout** for every project: every leg and jumper in a named hole, verified net-for-net against the schematic.
 - ✅ E3 Step-by-step build mode: one step per screen, a picture of each step, progress saved.
-- ⬜ E4 One-click kit cart at a distributor (DigiKey, Mouser, Adafruit, AliExpress), with live price and stock.
-- ⬜ E5 A "what you'll need" tools list (USB cable type, wire strippers…) with pictures.
+- ✅ E4 Live stock and prices from LCSC/JLCPCB for every part they sell, a one-file LCSC cart (upload at lcsc.com/bom), and store links for boards and modules. *A true one-click cart at DigiKey or Mouser needs their partner APIs and an account.*
+- ✅ E5 An illustrated "What you'll need" list (breadboard size, number of male-male and male-female jumpers, the right USB cable, tools).
 
 ### F. Verify the real thing
 - ✅ F1 Photo wiring check: Claude compares a photo with the design, lists fixes, and says what it couldn't see.
 - ✅ F2 The photo check uses the exact hole-by-hole layout. In our eval this raised correct localisation from 52% to 86%.
-- ⬜ F3 **Flash from the browser** (WebSerial / esptool-js / Pico UF2) with no installs.
-- ⬜ F4 **Self-test firmware**: an I2C scan, "press each button", "watch the LED blink", sensor readings within plausible ranges, all compared with the simulator.
-- ⬜ F5 AI debugging that combines the serial log, photos, the self-test result and the schematic.
-- ⬜ F6 Measure with a multimeter, guided ("touch the red probe to hole j12: you should see about 3.3 V").
+- ✅ F3 **Your board**: connect over Web Serial, install MicroPython (esptool-js for ESP32; the Pico UF2 written onto its drive), copy the program, serial monitor. *The protocol is tested against the real MicroPython (`tests/unit/rawrepl.test.ts`) and the UI against a simulated USB board (`tests/e2e/board.mjs`). Flashing an actual chip still needs a person with a board to try it.*
+- ✅ F4 Self-test firmware (`selftest.py`): I2C scan, plausible sensor readings, "press each button", look-checks for outputs, with the simulator's output alongside for comparison. *It passes on all 16 board examples in the simulator, and pinpoints a swapped SDA/SCL (`tests/sim/selftest.test.ts`).*
+- ✅ F5 "Ask AI what is wrong": combines the symptom, live serial log, self-test output, the simulator's expected output, the layout and the code. *Live test: it correctly reasoned about a missing OLED from the layout.*
+- ✅ F6 Guided multimeter checks: the probe hole from the layout and the expected voltage from the circuit solver, including ranges for signals that swing (555).
 
 ### G. Product: PCB
 - ✅ G1 KiCad schematic, netlist and footprint library export, all verified with KiCad's own tools.
-- 🟡 G2 **Auto-placement** (built: compact wirelength-driven placement, outline, mounting holes; not yet: edge connectors, antenna keep-out, decoupling-cap proximity rules):
-  - board outline sized to the parts and the enclosure;
-  - connectors on the edges, mounting holes, antenna keep-out;
-  - decoupling capacitors placed next to their chips.
+- ✅ G2 **Auto-placement**:
+  - connectors for off-board parts pulled to the edge;
+  - the dev board's USB end at the board edge with a free corridor, and the ESP32 antenna keep-out;
+  - plug-in module bodies reserved (they overhang their sockets), USB sockets flush on the edge in the product version;
+  - mounting holes.
 - ✅ G3 **Auto-routing** (Freerouting) with sensible trace widths for power, plus a ground pour.
-- 🟡 G4 **DRC** with the chosen factory's rules (JLCPCB/PCBWay/OSH Park), explained in plain words.
+- ✅ G4 **DRC and schematic parity** against the chosen factory's rules (JLCPCB / PCBWay / OSH Park), explained in plain words.
 - ✅ G5 3D board view (KiCad render / STEP).
-- ⬜ G6 Manual nudge: drag parts on the board and the AI re-routes.
-- ⬜ G7 Silkscreen with labels, the logo, the project name and a QR code to the build page.
+- ✅ G6 "Arrange the parts myself": drag or rotate parts (overlaps shown in red), then re-route with exactly those positions (`tests/e2e/board-editor.mjs`).
+- ✅ G7 Silkscreen: pin names beside every socket, module outlines, the logo, project name, revision, and an optional QR code to your build page.
 
 ### H. Product: enclosure
-- ⬜ H1 A parametric case (OpenSCAD/CadQuery) generated from the board's 3D model: openings, standoffs, button caps, a screen window.
-- ⬜ H2 Style choices (rounded, minimal, wall-mount, desk-stand) and 3D preview.
-- ⬜ H3 STL/STEP export, and an order link for a 3D-printing service.
+- ✅ H1 A case generated from the routed board (JSCAD):
+  - standoffs on the mounting holes, the USB opening where the USB actually is;
+  - button holes with printed caps, LED windows, screen windows, sensor vents, ultrasonic eyes, cable slots.
+- ✅ H2 Styles (rounded, minimal, wall-mount with keyholes, desk stand) with a three.js 3D preview (open/closed lid).
+- ✅ H3 STL for printing and STEP for CAD (verified readable by OpenCascade, `tests/kicad/step.test.ts`), plus JLC3DP and Craftcloud print links.
 
 ### I. Manufacture and order
-- 🟡 I1 **Fab package** (built: Gerbers, drill, BOM, CPL, KiCad project, STEP; not yet: LCSC part numbers, assembly drawing, test procedure):
+- ✅ I1 **Fab package**:
   - Gerbers and drill files;
-  - BOM with LCSC/DigiKey part numbers;
-  - pick-and-place (CPL);
-  - assembly drawing;
-  - a test procedure.
-- ⬜ I2 Live quote for prototype and production quantities, with alternatives for out-of-stock parts.
-- ⬜ I3 Design-for-manufacture checks: parts available at the assembler, basic vs extended parts, panelisation.
-- ⬜ I4 Compliance pre-check list (FCC/CE/RoHS) and a labels/markings template.
-- ⬜ I5 Version and revision tracking (Rev A → Rev B, what changed and why).
+  - BOM with live LCSC part numbers, including the sockets for plug-in boards;
+  - CPL;
+  - assembly drawing PDF;
+  - TEST.md, a bring-up test procedure with the expected self-test output;
+  - the full KiCad project.
+- ✅ I2 Live part costs at 5 / 50 / 500 boards from LCSC prices, with in-stock alternatives picked automatically. The bare-board price comes from the maker's own quote page (linked), because PCB makers don't publish a quoting API.
+- ✅ I3 Design-for-manufacture notes:
+  - board size class, parts not at LCSC, low stock for 50 boards;
+  - basic vs extended parts, hand-solder vs factory assembly;
+  - V-scored 2×2 / 3×3 panels (KiKit), DRC-checked (`tests/e2e/pcb-panel.mjs`).
+- ✅ I4 COMPLIANCE.md: an FCC/CE/RoHS checklist tailored to the design (radio module, mains relay, batteries) and a labels/markings template.
+- ✅ I5 Revisions: release Rev A, B… with a note. The change list since the last release is computed (parts, values, wiring, program), and the revision is printed on the board (`tests/unit/revisions.test.ts`).
 
 ### J. Learning, sharing and teamwork
 - ✅ J1 Blog post, glossary tooltips and beginner explanations.
-- ⬜ J2 Gallery: publish, remix and fork other people's projects.
-- ⬜ J3 Classroom: assignments, rubric, photo and self-test submission, teacher dashboard.
-- ⬜ J4 Real-time collaboration and comments on parts or wires.
+- ✅ J2 Gallery on this Sparkbench server: publish, like, open a copy (remix) that credits the original.
+- ✅ J3 Classes:
+  - a teacher writes requirements in plain words; students join with a code and hand in;
+  - each requirement is graded by a test Claude writes for that student's design and the simulator runs. Grading is strict: a night light handed in for a traffic-light assignment scores 2/4;
+  - teacher dashboard (`tests/e2e/community.mjs`, `tests/e2e/grading.mts`).
+- ✅ J4 Live co-editing via a shared link (presence, last-writer-wins with notice, no echo loops) and comments on parts.
 
 ### K. Trust and quality (always on)
 - ✅ K1 Every example is built end to end in CI (simulation, KiCad ERC, ngspice).
-- 🟡 K2 Measured AI quality:
-  - done: the vision eval;
-  - planned: a design eval (does the AI's design meet the intent?);
-  - planned: a code eval (simulator-verified pass rate);
-  - planned: a PCB eval (DRC-clean rate).
-- ⬜ K3 A cost and time estimate before anything slow or paid.
+- ✅ K2 Measured AI quality (see "Evals" below): vision, design, code and PCB evals.
+- ✅ K3 Every slow or AI action says how long it takes and what it uses (your Claude Code plan or API key, or local and free).
 
 ## Manufacture-ready output package (definition of done for Journey 2)
 
+What Sparkbench produces today (Export → Everything, plus Circuit board → All board files):
+
 ```
 my-plant-monitor/
-  firmware/              main.py (or PlatformIO project) + drivers + self-test
-  hardware/
-    *.kicad_sch *.kicad_pcb *.kicad_pro     editable in KiCad
-    fab/gerbers/*.gbr  fab/drill.drl        → upload to the PCB fab
-    fab/bom-lcsc.csv   fab/cpl.csv          → PCB assembly (PCBA)
-    3d/board.step      3d/board.png
-    sim/*.cir                               ngspice
-  enclosure/  case.scad  case.stl  case.step
-  docs/  BUILD.md  TEST.md  BLOG.md  schematic.pdf  assembly.pdf  compliance-checklist.md
-  quote.json                                factory, quantity, price, lead time
+  firmware/      main.py + drivers, selftest.py, (ota.py, boot.py, secrets.py when Wi-Fi updates are on)
+  arduino/       <name>/<name>.ino, src/main.cpp, platformio.ini      (compiled for the board)
+  hardware/      KiCad schematic/project/netlist/footprints, SPICE netlist
+  schematic.svg  breadboard.svg  bom.csv  BUILD.md  BLOG.md  project.sparkbench.json
+  <name>-board/
+    <name>.kicad_pro/.kicad_sch/.kicad_pcb/.kicad_dru                 editable in KiCad
+    fab/gerbers/*  fab/bom-jlcpcb.csv  fab/cpl-jlcpcb.csv  fab/positions.csv  fab/assembly.pdf  fab/sourcing.json
+    fab/panel/     <name>-panel.kicad_pcb, gerbers/*, panel-top.png    (when a panel is chosen)
+    board.step  board-top.png  board-bottom.png  board.svg  drc.json
+    TEST.md  COMPLIANCE.md
+    enclosure/<style>/  case-base.stl/.step  case-lid.stl/.step  button-cap-*.stl  desk-stand.stl  CASE.md
 ```
 
-## Build order (each step stands on its own)
+## What still needs the real world
 
-1. ✅ **E2/F2:** exact breadboard layout, and the photo check using it.
-2. ✅ (first version) **G2–G5 + I1: the PCB.** Open-source tools do the heavy lifting:
-   - Sparkbench writes the `.kicad_pcb` with auto-placement and a ground pour;
-   - [Freerouting](https://github.com/freerouting/freerouting) routes the board;
-   - `kicad-cli` produces DRC, Gerbers, drill files, the 3D render and STEP;
-   - Sparkbench writes the JLCPCB BOM and CPL files.
-
-   This is the "lay out the chips" feature.
-3. **F3/F4:** browser flashing plus the self-test.
-4. **B4:** production parts (bare chips) for the PCB.
-5. **H1:** the enclosure.
-6. **A2–A4/C5:** clarifying questions and acceptance tests.
-7. **I2/E4:** live quotes and carts. These need distributor API keys.
-8. **J2/J3:** gallery and classroom.
+- Flashing and self-testing an actual ESP32/Pico through the browser: the protocol, installers and UI are tested against real MicroPython and a simulated USB board, but no physical chip has been flashed yet.
+- Ordering a real board and case: every file is checked by KiCad/OpenCascade/KiKit, but nobody has held the result.
+- Photo checks on real (not rendered) breadboard photos.
+- Live board-fabrication prices: makers don't offer a public quoting API; parts prices are live.
