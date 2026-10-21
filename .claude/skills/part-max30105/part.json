@@ -1,0 +1,337 @@
+{
+  "type": "custom-max30105",
+  "name": "MAX30105 particle / heart-rate sensor",
+  "mpn": "MAX30105",
+  "category": "sensor",
+  "description": "Maxim MAX30105 optical module with red, infrared and green LEDs, a photodetector and an 18-bit ADC feeding a 32-sample FIFO over I2C (address 0x57). Measures reflected light for smoke/particle detection, presence sensing and fingertip heart rate (PPG), plus a die temperature sensor. Sold as: SparkFun Particle Sensor Breakout - MAX30105 (SEN-14045), 5-pin header SCL, SDA, 5V, GND, INT; on-board 1.8 V regulator, I2C level shifters and 4.7 kOhm pull-ups to the 5V pin.",
+  "eli5": "Shines red, infrared and green light and measures how much bounces back, so it can see smoke in the air or the tiny colour change in your fingertip each time your heart beats.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, level-shifted; 4.7 kOhm pull-up to the 5V pin on the board (PU jumper)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, level-shifted; 4.7 kOhm pull-up to the 5V pin on the board (PU jumper)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply for the LEDs and the on-board 1.8 V regulator, 3.3-5 V. The I2C/INT pull-ups go to this pin, so it sets the logic level: feed it 3.3 V from an ESP32/Pico",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low (open-drain, 4.7 kOhm pull-up to the 5V pin via the INT jumper); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "i2cAddress": 87,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30105.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "SparkFun MAX30105 particle sensor breakout SEN-14045",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30105.pdf",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/5/7/7/MAX30105_3.pdf",
+    "https://learn.sparkfun.com/tutorials/max30105-particle-and-pulse-ox-sensor-hookup-guide/all",
+    "https://github.com/sparkfun/MAX30105_Particle_Sensor_Breakout/blob/master/Hardware/MAX30105_Breakout.brd",
+    "https://github.com/sparkfun/MAX30105_Particle_Sensor_Breakout/blob/master/Hardware/MAX30105_Breakout_Schematic.pdf",
+    "https://github.com/sparkfun/SparkFun_MAX3010x_Sensor_Library/blob/master/src/MAX30105.cpp"
+  ],
+  "buildNotes": [
+    "Power the 5V pin from 3V3 when using an ESP32 or Pico: the board's SDA/SCL/INT pull-ups go to that pin, so feeding it 5 V would put 5 V on the microcontroller's I2C pins. Red and IR are guaranteed at 3.3 V (VLED+ 3.1-5.25 V); the green LED may be dim below about 3.5 V.",
+    "Part ID register 0xFF reads 0x15. Soft reset: write 0x40 to MODE_CONFIG (0x09) and wait for the bit to clear.",
+    "Clear FIFO_WR_PTR (0x04), OVF_COUNTER (0x05) and FIFO_RD_PTR (0x06) before starting; unread samples = (WR - RD) & 0x1F. Burst-read FIFO_DATA (0x07): 3 bytes per active LED per sample, 18-bit left-justified.",
+    "Multi-LED mode (MODE 0b111) samples the LEDs set in SLOT1-SLOT4 (0x11/0x12) in slot order; the driver uses slot 1 = red, 2 = IR, 3 = green.",
+    "LED current 0x00-0xFF = 0-50 mA per LED. Readings near 262143 mean the ADC is saturated: lower the LED current or raise ADC_RGE.",
+    "Die temperature: set TEMP_EN (0x21 bit 0), wait about 29 ms, then T = TINT (0x1F, two's complement) + TFRAC (0x20) x 0.0625 C.",
+    "Cut the PU jumper if another board on the bus already has pull-ups; the INT jumper removes the INT pull-up."
+  ],
+  "keywords": [
+    "max30105",
+    "max3010x",
+    "particle sensor",
+    "smoke",
+    "heart rate",
+    "pulse",
+    "ppg",
+    "optical",
+    "sparkfun",
+    "sen-14045"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Heart rate",
+    "unit": "BPM",
+    "min": 40,
+    "max": 180,
+    "default": 72,
+    "controls": [
+      {
+        "key": "red",
+        "quantity": "Red light reflected (ADC counts)",
+        "min": 0,
+        "max": 262143,
+        "default": 100000
+      },
+      {
+        "key": "ir",
+        "quantity": "Infrared light reflected (ADC counts)",
+        "min": 0,
+        "max": 262143,
+        "default": 120000
+      },
+      {
+        "key": "green",
+        "quantity": "Green light reflected (ADC counts)",
+        "min": 0,
+        "max": 262143,
+        "default": 30000
+      },
+      {
+        "key": "redPulse",
+        "quantity": "Red pulse depth (fraction)",
+        "min": 0,
+        "max": 0.1,
+        "default": 0.01
+      },
+      {
+        "key": "irPulse",
+        "quantity": "Infrared pulse depth (fraction)",
+        "min": 0,
+        "max": 0.1,
+        "default": 0.02
+      },
+      {
+        "key": "greenPulse",
+        "quantity": "Green pulse depth (fraction)",
+        "min": 0,
+        "max": 0.1,
+        "default": 0.03
+      },
+      {
+        "key": "dieTemp",
+        "quantity": "Die temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0xFF": 21
+    },
+    "measures": [
+      {
+        "reg": "0x1F",
+        "bytes": 1,
+        "scale": 0.0625,
+        "signed": true,
+        "bits": 12,
+        "control": "dieTemp",
+        "fields": [
+          {
+            "reg": "0x20",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          },
+          {
+            "reg": "0x1F",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          }
+        ]
+      }
+    ],
+    "selfClearing": [
+      {
+        "reg": "0x09",
+        "mask": 64,
+        "reset": true
+      },
+      {
+        "reg": "0x21",
+        "mask": 1
+      }
+    ],
+    "fifo": {
+      "data": "0x07",
+      "writePtr": "0x04",
+      "readPtr": "0x06",
+      "overflow": "0x05",
+      "depth": 32,
+      "bytes": 3,
+      "sampleBits": 18,
+      "channels": [
+        {
+          "control": "red",
+          "depth": "redPulse"
+        },
+        {
+          "control": "ir",
+          "depth": "irPulse"
+        },
+        {
+          "control": "green",
+          "depth": "greenPulse"
+        }
+      ],
+      "bpmControl": "value",
+      "mode": {
+        "reg": "0x09",
+        "mask": 7,
+        "channels": {
+          "2": 1,
+          "3": 2,
+          "7": 3
+        },
+        "shutdownBit": 7
+      },
+      "rate": {
+        "reg": "0x0A",
+        "mask": 28,
+        "shift": 2,
+        "hz": [
+          50,
+          100,
+          200,
+          400,
+          800,
+          1000,
+          1600,
+          3200
+        ]
+      },
+      "average": {
+        "reg": "0x08",
+        "mask": 224,
+        "shift": 5,
+        "n": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          32,
+          32,
+          32
+        ]
+      },
+      "resolution": {
+        "reg": "0x0A",
+        "mask": 3,
+        "bits": [
+          15,
+          16,
+          17,
+          18
+        ]
+      },
+      "rollover": {
+        "reg": "0x08",
+        "bit": 4
+      },
+      "status": {
+        "reg": "0x00",
+        "readyBit": 6,
+        "almostFullBit": 7,
+        "almostFullSlots": {
+          "reg": "0x08",
+          "mask": 15
+        }
+      }
+    }
+  },
+  "driver": {
+    "filename": "max30105.py",
+    "code": "# MAX30105 particle / heart-rate sensor (Maxim MAX30105), MicroPython driver.\n# Register map, FIFO handling and die-temperature readout follow the Maxim MAX30105 datasheet (Rev 1):\n# 32-sample FIFO of 3-byte, left-justified 18-bit values per active LED, read by burst-reading FIFO_DATA (0x07).\nimport time\n\n_INT_STAT1 = 0x00\n_INT_STAT2 = 0x01\n_FIFO_WR_PTR = 0x04\n_OVF_COUNTER = 0x05\n_FIFO_RD_PTR = 0x06\n_FIFO_DATA = 0x07\n_FIFO_CONFIG = 0x08\n_MODE_CONFIG = 0x09\n_SPO2_CONFIG = 0x0A  # \"particle-sensing configuration\"\n_LED1_PA = 0x0C  # red\n_LED2_PA = 0x0D  # IR\n_LED3_PA = 0x0E  # green\n_PILOT_PA = 0x10\n_SLOT12 = 0x11\n_SLOT34 = 0x12\n_TINT = 0x1F\n_TFRAC = 0x20\n_TEMP_CONFIG = 0x21\n_REV_ID = 0xFE\n_PART_ID = 0xFF\n\nPART_ID = 0x15\n\n_RATES = (50, 100, 200, 400, 800, 1000, 1600, 3200)\n_PULSE_WIDTHS = (69, 118, 215, 411)  # us -> 15, 16, 17, 18-bit ADC\n_ADC_RANGES = (2048, 4096, 8192, 16384)  # nA full scale\n_AVERAGES = (1, 2, 4, 8, 16, 32)\n\n# MODE[2:0]: 0b010 red only, 0b011 red + IR, 0b111 multi-LED (slots below)\nMODE_RED = 0x02\nMODE_RED_IR = 0x03\nMODE_MULTI = 0x07\n\n\nclass MAX30105:\n    def __init__(self, i2c, addr=0x57):\n        self.i2c = i2c\n        self.addr = addr\n        pid = self._r8(_PART_ID)\n        if pid != PART_ID:\n            raise OSError('MAX30105 not found (part id 0x%02x, expected 0x15): check the wiring' % pid)\n        self.channels = 0\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def revision(self):\n        return self._r8(_REV_ID)\n\n    def reset(self):\n        \"\"\"Soft reset (MODE_CONFIG bit 6); the bit clears itself when the reset is done.\"\"\"\n        self._w8(_MODE_CONFIG, 0x40)\n        t0 = time.ticks_ms()\n        while self._r8(_MODE_CONFIG) & 0x40:\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                raise OSError('MAX30105 reset did not finish')\n            time.sleep_ms(1)\n        self.channels = 0\n\n    def setup(self, leds=3, led_current=0x1F, sample_rate=100, pulse_width=411, adc_range=4096, average=4):\n        \"\"\"Configure and start sampling.\n        leds: 1 = red only, 2 = red + IR, 3 = red + IR + green (multi-LED, slots 1-3 = red, IR, green).\n        led_current: LEDx_PA code, 0x00-0xFF = 0-50 mA (0x1F = 6.4 mA).\n        sample_rate (sps), pulse_width (us: 69/118/215/411 -> 15-18 bit), adc_range (nA), average (samples).\"\"\"\n        self.reset()\n        avg = _AVERAGES.index(average)\n        # SMP_AVE[7:5], FIFO_ROLLOVER_EN (bit 4) so the FIFO keeps the newest samples, FIFO_A_FULL = 0x0F (17 samples)\n        self._w8(_FIFO_CONFIG, (avg << 5) | 0x10 | 0x0F)\n        cfg = (_ADC_RANGES.index(adc_range) << 5) | (_RATES.index(sample_rate) << 2) | _PULSE_WIDTHS.index(pulse_width)\n        self._w8(_SPO2_CONFIG, cfg)\n        for reg in (_LED1_PA, _LED2_PA, _LED3_PA, _PILOT_PA):\n            self._w8(reg, led_current)\n        if leds == 3:\n            self._w8(_SLOT12, (0x02 << 4) | 0x01)  # SLOT1 = LED1 red, SLOT2 = LED2 IR\n            self._w8(_SLOT34, 0x03)  # SLOT3 = LED3 green, SLOT4 off\n            mode = MODE_MULTI\n        elif leds == 2:\n            mode = MODE_RED_IR\n        else:\n            leds = 1\n            mode = MODE_RED\n        self.clear_fifo()\n        self.channels = leds\n        self._w8(_MODE_CONFIG, mode)\n\n    def clear_fifo(self):\n        \"\"\"Datasheet: clear FIFO_WR_PTR, OVF_COUNTER and FIFO_RD_PTR before starting.\"\"\"\n        self._w8(_FIFO_WR_PTR, 0)\n        self._w8(_OVF_COUNTER, 0)\n        self._w8(_FIFO_RD_PTR, 0)\n\n    def shutdown(self, off=True):\n        m = self._r8(_MODE_CONFIG)\n        self._w8(_MODE_CONFIG, (m | 0x80) if off else (m & 0x7F))\n\n    def available(self):\n        \"\"\"Unread samples in the FIFO (pointer wrap-around taken into account).\"\"\"\n        n = (self._r8(_FIFO_WR_PTR) - self._r8(_FIFO_RD_PTR)) & 0x1F\n        if n == 0 and self._r8(_OVF_COUNTER):\n            n = 32  # full: pointers equal and samples were lost\n        return n\n\n    def read_fifo(self):\n        \"\"\"Pop every unread sample: a list of tuples (red[, ir[, green]]) in raw 18-bit ADC counts.\"\"\"\n        if not self.channels:\n            raise OSError('call setup() first')\n        n = self.available()\n        out = []\n        if not n:\n            return out\n        per = 3 * self.channels\n        d = self.i2c.readfrom_mem(self.addr, _FIFO_DATA, n * per)\n        for i in range(n):\n            s = []\n            for c in range(self.channels):\n                o = i * per + 3 * c\n                s.append(((d[o] << 16) | (d[o + 1] << 8) | d[o + 2]) & 0x3FFFF)\n            out.append(tuple(s))\n        return out\n\n    def read(self, timeout_ms=1000):\n        \"\"\"Wait for data and return the newest sample (red[, ir[, green]]).\"\"\"\n        t0 = time.ticks_ms()\n        while True:\n            s = self.read_fifo()\n            if s:\n                return s[-1]\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('MAX30105: no samples (is it set up and powered?)')\n            time.sleep_ms(5)\n\n    def temperature(self):\n        \"\"\"Die temperature in degC: TINT (two's complement) + TFRAC x 0.0625 (conversion about 29 ms).\"\"\"\n        self._w8(_TEMP_CONFIG, 0x01)  # TEMP_EN, self-clearing\n        t0 = time.ticks_ms()\n        while self._r8(_TEMP_CONFIG) & 0x01 and not (self._r8(_INT_STAT2) & 0x02):\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                break\n            time.sleep_ms(2)\n        ti = self._r8(_TINT)\n        if ti > 127:\n            ti -= 256\n        tf = self._r8(_TFRAC) & 0x0F  # reading TFRAC clears DIE_TEMP_RDY\n        return ti + tf * 0.0625\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom max30105 import MAX30105\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\nsensor = MAX30105(i2c)\nsensor.setup(leds=3, led_current=0x1F, sample_rate=100, pulse_width=411, adc_range=4096, average=1)\nwhile True:\n    time.sleep_ms(500)\n    red, ir, green = sensor.read()\n    t = sensor.temperature()\n    print('R=%d IR=%d G=%d T=%.2fC' % (red, ir, green, t))\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the red, IR and green light levels and the die temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "redPulse",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "irPulse",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "greenPulse",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 40000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 52000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "green",
+          "value": 12345
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "dieTemp",
+          "value": 31.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=40000 IR=52000 G=12345 T=31.25C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:29:57.070Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/learn_tutorials/5/7/7/MAX30105_3.pdf",
+      "https://learn.sparkfun.com/tutorials/max30105-particle-and-pulse-ox-sensor-hookup-guide/all"
+    ]
+  }
+}

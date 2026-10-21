@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lmt86",
+  "board": "Texas Instruments LMT86LP bare TO-92 sensor (straight leads; LMT86LPM formed-lead version has the same pinout)",
+  "reason": "Modelled as an analog-sensor whose slider is the OUT voltage (0.42-2.616 V, exact), because the LMT86 output is slightly parabolic and the simulator only maps linearly; the driver converts with the datasheet Transfer Table 7-1 (every degree from -50 to 150 C, interpolated). Check passed on ESP32 and Pico (1.668 V prints T=40C), plus footprint and LCSC stages.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lmt86.pdf",
+  "breakoutPinoutSource": "TI LMT86 datasheet SNIS169F Figure 5-3 and Table 5-1 (TO-92 LP: pin 1 VDD, pin 2 OUT, pin 3 GND; TO-92S LPG differs: OUT, GND, VDD)",
+  "checkRuns": 1
+}

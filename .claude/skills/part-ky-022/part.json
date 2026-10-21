@@ -1,0 +1,131 @@
+{
+  "type": "custom-ky-022",
+  "name": "KY-022 infrared receiver module",
+  "mpn": "KY-022",
+  "category": "sensor",
+  "description": "38 kHz infrared remote-control receiver module with a 1838-series (VS1838B) receiver: it demodulates the IR carrier and outputs the remote's pulse train on S, idling high and going low while IR is received; a red LED flickers with the signal. Decodes NEC remotes such as the kit's car-MP3 remote. Runs on 3.3-5 V. Sold as: Keyes / Joy-IT KY-022 infrared receiver module (black 3-pin sensor-kit board, also sold as HW-490, with 1838 receiver and indicator LED; header S, + (middle), -).",
+  "eli5": "An invisible-light ear for TV remotes. When you press a button on the remote, it hears the flashes and passes the button's code to your board.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "description": "Signal (pin 1): demodulated output, idles high, low while 38 kHz IR is received (active low). Idles at the module supply voltage.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Middle pin (often unlabelled): supply, 3.3-5 V. Use 3V3 with an ESP32 or Pico so S never exceeds 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 3.5,
+  "datasheetUrl": "https://www.elecrow.com/download/Infrared%20receiver%20vs1838b.pdf",
+  "sources": [
+    "https://www.elecrow.com/download/Infrared%20receiver%20vs1838b.pdf",
+    "https://eeshop.unl.edu/pdf/VS1838-Infrared-Receiver-datasheet.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-022",
+    "https://arduinomodules.info/ky-022-infrared-receiver-module/",
+    "https://github.com/peterhinch/micropython_ir"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-022 infrared receiver module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: S, + (middle), -. Some clones swap S and -; the middle pin is always the supply.",
+    "Power the module from 3V3 on an ESP32 or Pico: S idles at the supply voltage, so a 5 V supply puts 5 V on the GPIO.",
+    "S is active low: 9 ms low leader, 4.5 ms high, then 32 NEC bits (562.5 us mark, 562.5 us space = 0, 1687.5 us = 1, LSB first).",
+    "Decode with an edge interrupt (ir_rx.py, Peter Hinch's micropython_ir). Use NEC_16 for remotes with a 16-bit address.",
+    "Keep it out of direct sunlight and away from fluorescent lamps, which add noise."
+  ],
+  "keywords": [
+    "ky-022",
+    "ky022",
+    "hw-490",
+    "ir",
+    "infrared",
+    "receiver",
+    "remote",
+    "vs1838b",
+    "1838",
+    "nec",
+    "38khz"
+  ],
+  "sim": {
+    "kind": "ir-receiver",
+    "outputPin": "S",
+    "ir": {
+      "protocol": "nec"
+    }
+  },
+  "driver": {
+    "filename": "ir_rx.py",
+    "code": "# peterhinch/micropython_ir (MIT): ir_rx/__init__.py and ir_rx/nec.py merged into one module, otherwise unchanged.\n# Source: https://github.com/peterhinch/micropython_ir\n# ir_rx __init__.py Decoder for IR remote control using synchronous code\n# IR_RX abstract base class for IR receivers.\n\n# Author: Peter Hinch\n# Copyright Peter Hinch 2020-2024 Released under the MIT license\n\n# Thanks are due to @Pax-IT for diagnosing a problem with ESP32C3.\n\nfrom machine import Timer, Pin\nfrom array import array\nfrom utime import ticks_us\n\n# from micropython import alloc_emergency_exception_buf\n# alloc_emergency_exception_buf(100)\n\n\n# On 1st edge start a block timer. While the timer is running, record the time\n# of each edge. When the timer times out decode the data. Duration must exceed\n# the worst case block transmission time, but be less than the interval between\n# a block start and a repeat code start (~108ms depending on protocol)\n\n\nclass IR_RX:\n    Timer_id = -1  # Software timer but enable override\n    # Result/error codes\n    # Repeat button code\n    REPEAT = -1\n    # Error codes\n    BADSTART = -2\n    BADBLOCK = -3\n    BADREP = -4\n    OVERRUN = -5\n    BADDATA = -6\n    BADADDR = -7\n\n    def __init__(self, pin, nedges, tblock, callback, *args):  # Optional args for callback\n        self._pin = pin\n        self._nedges = nedges\n        self._tblock = tblock\n        self.callback = callback\n        self.args = args\n        self._errf = lambda _: None\n        self.verbose = False\n\n        self._times = array(\"i\", (0 for _ in range(nedges + 1)))  # +1 for overrun\n        pin.irq(handler=self._cb_pin, trigger=(Pin.IRQ_FALLING | Pin.IRQ_RISING))\n        self.edge = 0\n        self.tim = Timer(self.Timer_id)  # Defaul is sofware timer\n        self.cb = self.decode\n\n    # Pin interrupt. Save time of each edge for later decode.\n    def _cb_pin(self, line):\n        t = ticks_us()\n        # On overrun ignore pulses until software timer times out\n        if self.edge <= self._nedges:  # Allow 1 extra pulse to record overrun\n            if not self.edge:  # First edge received\n                self.tim.init(period=self._tblock, mode=Timer.ONE_SHOT, callback=self.cb)\n            self._times[self.edge] = t\n            self.edge += 1\n\n    def do_callback(self, cmd, addr, ext, thresh=0):\n        self.edge = 0\n        if cmd >= thresh:\n            self.callback(cmd, addr, ext, *self.args)\n        else:\n            self._errf(cmd)\n\n    def error_function(self, func):\n        self._errf = func\n\n    def close(self):\n        self._pin.irq(handler=None)\n        self.tim.deinit()\n\n\n# nec.py Decoder for IR remote control using synchronous code\n# Supports NEC and Samsung protocols.\n# With thanks to J.E. Tannenbaum for information re Samsung protocol\n\n# For a remote using NEC see https://www.adafruit.com/products/389\n\n# Author: Peter Hinch\n# Copyright Peter Hinch 2020-2022 Released under the MIT license\n\nfrom utime import ticks_us, ticks_diff\n\nclass NEC_ABC(IR_RX):\n    def __init__(self, pin, extended, samsung, callback, *args):\n        # Block lasts <= 80ms (extended mode) and has 68 edges\n        super().__init__(pin, 68, 80, callback, *args)\n        self._extended = extended\n        self._addr = 0\n        self._leader = 2500 if samsung else 4000  # 4.5ms for Samsung else 9ms\n\n    def decode(self, _):\n        try:\n            if self.edge > 68:\n                raise RuntimeError(self.OVERRUN)\n            width = ticks_diff(self._times[1], self._times[0])\n            if width < self._leader:  # 9ms leading mark for all valid data\n                raise RuntimeError(self.BADSTART)\n            width = ticks_diff(self._times[2], self._times[1])\n            if width > 3000:  # 4.5ms space for normal data\n                if self.edge < 68:  # Haven't received the correct number of edges\n                    raise RuntimeError(self.BADBLOCK)\n                # Time spaces only (marks are always 562.5µs)\n                # Space is 1.6875ms (1) or 562.5µs (0)\n                # Skip last bit which is always 1\n                val = 0\n                for edge in range(3, 68 - 2, 2):\n                    val >>= 1\n                    if ticks_diff(self._times[edge + 1], self._times[edge]) > 1120:\n                        val |= 0x80000000\n            elif width > 1700: # 2.5ms space for a repeat code. Should have exactly 4 edges.\n                raise RuntimeError(self.REPEAT if self.edge == 4 else self.BADREP)  # Treat REPEAT as error.\n            else:\n                raise RuntimeError(self.BADSTART)\n            addr = val & 0xff  # 8 bit addr\n            cmd = (val >> 16) & 0xff\n            if cmd != (val >> 24) ^ 0xff:\n                raise RuntimeError(self.BADDATA)\n            if addr != ((val >> 8) ^ 0xff) & 0xff:  # 8 bit addr doesn't match check\n                if not self._extended:\n                    raise RuntimeError(self.BADADDR)\n                addr |= val & 0xff00  # pass assumed 16 bit address to callback\n            self._addr = addr\n        except RuntimeError as e:\n            cmd = e.args[0]\n            addr = self._addr if cmd == self.REPEAT else 0  # REPEAT uses last address\n        # Set up for new data burst and run user callback\n        self.do_callback(cmd, addr, 0, self.REPEAT)\n\nclass NEC_8(NEC_ABC):\n    def __init__(self, pin, callback, *args):\n        super().__init__(pin, False, False, callback, *args)\n\nclass NEC_16(NEC_ABC):\n    def __init__(self, pin, callback, *args):\n        super().__init__(pin, True, False, callback, *args)\n\nclass SAMSUNG(NEC_ABC):\n    def __init__(self, pin, callback, *args):\n        super().__init__(pin, True, True, callback, *args)\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nfrom ir_rx import NEC_8\nimport time\n\ndef cb(cmd, addr, ctrl):\n    if cmd == NEC_8.REPEAT:\n        print('repeat')\n    elif cmd < 0:\n        print('error %d' % cmd)\n    else:\n        print('addr %02x cmd %02x' % (addr, cmd))\n\nir = NEC_8(Pin({S}, Pin.IN), cb)\nprint('listening')\nwhile True:\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "decodes",
+      "title": "Decodes the NEC address and button code of a held remote button, then repeat codes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "listening",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "address",
+          "value": 44
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "press",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "addr 2c cmd 18",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "repeat",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-ky-022\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-022 infrared receiver module (HW-490, 1838 / VS1838B 38 kHz IR receiver with indicator LED). Use when designing, wiring, simulating or writing code for a KY-022 IR receiver or decoding NEC remote-control buttons in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-022 infrared receiver module\n\n## Overview\nThe **KY-022** (also sold as **HW-490**) is the black 3-pin sensor-kit board carrying a **1838-series 38 kHz IR receiver** (VS1838B / TL1838), a 1 kΩ resistor and a red LED that flickers while a signal is received.\n- The receiver detects, amplifies, filters and **demodulates** the 38 kHz carrier from an IR remote; S outputs the envelope as a logic signal.\n- S **idles high and goes low while IR carrier is received** (active low).\n- Range about 18 m, ±45° acceptance angle; supply 3.3–5 V (chip 2.7–5.5 V), 0.4–1.5 mA quiescent.\n- The cheap kit remotes (the 17/21-key \"car MP3\" remotes) use the **NEC** protocol.\n\n## Pinout (3-pin header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | S | Demodulated signal output, active low |\n| 2 | + (middle, often unlabelled) | Supply, 3.3–5 V |\n| 3 | - | Ground |\n\nSome clones swap the outer S and - pins; the middle pin is always the supply. Wire by the labels printed on your board.\n\n## Electrical limits\n- Supply 2.7–5.5 V (VS1838B datasheet), 6.0 V absolute maximum; the module is specified for 3.3–5 V.\n- Output low ≤ 0.4 V; output high ≈ supply (≥ 4.5 V at 5 V). **Powered from 5 V, S idles at 5 V**: with an ESP32 or Pico power the module from 3V3.\n- Current 0.4–1.5 mA idle plus about 2 mA in the LED while S is low.\n\n## Interface details\nNEC frame as seen on S (low = carrier present):\n- 9 ms low (leader mark), 4.5 ms high (space)\n- 32 bits, LSB first: address, ~address, command, ~command. Each bit is a 562.5 µs mark followed by a 562.5 µs space (0) or 1687.5 µs space (1)\n- A final 562.5 µs mark. While the button is held, a repeat code (9 ms mark, 2.25 ms space, 562.5 µs mark) every 108 ms\n- Extended NEC sends a 16-bit address in place of address/~address (use `NEC_16`)\n\nThe driver (Peter Hinch's `micropython_ir`, MIT) timestamps every edge in a pin interrupt, then decodes the block 80 ms after the first edge.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| S | GPIO15 | GP16 | GPIO17 (pin 11) |\n| + | 3V3 | 3V3(OUT) (pin 36) | 3V3 (pin 1) |\n| - | GND | GND | GND |\n\n## Using the driver\n```python\nfrom machine import Pin\nfrom ir_rx import NEC_8\nimport time\n\ndef cb(cmd, addr, ctrl):\n    if cmd == NEC_8.REPEAT:\n        print('repeat')\n    elif cmd >= 0:\n        print('addr %02x cmd %02x' % (addr, cmd))\n\nir = NEC_8(Pin(15, Pin.IN), cb)\nwhile True:\n    time.sleep_ms(100)\n```\n`NEC_8` checks the 8-bit address and its inverse; use `NEC_16` for remotes with a 16-bit (extended) address. Negative codes are errors (BADSTART, BADBLOCK, BADDATA, BADADDR...); `ir.error_function(print)` shows them.\n\n## Gotchas\n- **No output at all** with correct code: the S and - pins may be swapped on your clone. Check the labels.\n- Keep the receiver out of direct sunlight and away from fluorescent/LED lamps; they cause noise bursts.\n- The callback runs in a (soft) timer context: keep it short, set a flag and act in the main loop.\n- On some ESP32 firmware a software timer `Timer(-1)` is not available: set `IR_RX.Timer_id = 0` (a hardware timer) before creating the decoder.\n- The receiver only works with 38 kHz carriers (most consumer remotes). 36/40 kHz remotes give shorter range.\n- Long button holds send repeat codes, not the command again: remember the last command if you need auto-repeat.\n\n## Datasheet\nhttps://www.elecrow.com/download/Infrared%20receiver%20vs1838b.pdf\n\n---\n*Generated by Sparkbench from the VS1838B datasheet and the KY-022 module pages: https://sensorkit.joy-it.net/en/sensors/ky-022, https://arduinomodules.info/ky-022-infrared-receiver-module/. Machine-readable definition: `part.json`.*\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:26:53.272Z",
+    "verifiedSources": [
+      "https://arduinomodules.info/ky-022-infrared-receiver-module/",
+      "https://www.vishay.com/docs/82491/tsop382.pdf"
+    ]
+  }
+}

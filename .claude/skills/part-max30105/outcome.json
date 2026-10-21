@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max30105",
+  "board": "SparkFun Particle Sensor Breakout - MAX30105 (SEN-14045)",
+  "reason": "Check passed on ESP32 and Pico in 1 run: wiring, design checks, breadboard, PCB (DRC clean) and the simulator test, which reads red/IR/green FIFO counts and the die temperature exactly. The model uses the datasheet's FIFO (32 samples, 3-byte left-justified 18-bit, mode/rate/average/pulse-width fields), TINT+TFRAC temperature and self-clearing RESET/TEMP_EN; it assumes multi-LED slots 1-3 = red, IR, green, as the driver sets them.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30105.pdf",
+  "breakoutPinoutSource": "https://github.com/sparkfun/MAX30105_Particle_Sensor_Breakout/blob/master/Hardware/MAX30105_Breakout.brd",
+  "checkRuns": 1
+}

@@ -1,0 +1,308 @@
+{
+  "type": "custom-sen54",
+  "name": "SEN54 environmental sensor node",
+  "mpn": "SEN54-SDN-T",
+  "category": "sensor",
+  "description": "Sensirion all-in-one air quality module: particulate matter PM1.0/PM2.5/PM4.0/PM10 (0–1000 µg/m³, laser scattering with a built-in fan), relative humidity, temperature and VOC Index (1–500), a new reading every second (no NOx sensor: that output always reads unknown). The sensor needs 5 V; the adapter's AP3602A charge pump makes 5 V from a 3–5 V supply and the adapter has 10 kΩ I2C pull-ups and ties SEL to GND. I2C address 0x69, 100 kHz. Sold as: Sensirion SEN54-SDN-T plugged into the Adafruit SEN54 or SEN55 Adapter Breakout - STEMMA QT / Qwiic (product 5964) with a 6-pin JST GH cable; 4-pin header VIN, GND, SCL, SDA.",
+  "eli5": "A small box with a fan that sniffs the air and tells you how much dust and smelly gases are in it, plus the temperature and humidity.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Adapter supply, 3–5 V (use the microcontroller's logic voltage); a charge pump makes the sensor's 5 V. Draws about 150 mA from 3.3 V while measuring",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground for power and logic",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 10 kΩ pull-up to VIN on the adapter, 3–5 V logic",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 10 kΩ pull-up to VIN on the adapter, 3–5 V logic",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 150,
+  "i2cAddress": 105,
+  "datasheetUrl": "https://sensirion.com/media/documents/6791EFA0/62A1F68F/Sensirion_Datasheet_Environmental_Node_SEN5x.pdf",
+  "sources": [
+    "https://sensirion.com/media/documents/6791EFA0/62A1F68F/Sensirion_Datasheet_Environmental_Node_SEN5x.pdf",
+    "https://www.adafruit.com/product/5964",
+    "https://learn.adafruit.com/adafruit-sen54-or-sen55-adapter-breakout/pinouts",
+    "https://github.com/adafruit/Adafruit-SEN5x-Adapter-Breakout-PCB",
+    "https://www.diodes.com/assets/Datasheets/AP3602A.pdf",
+    "https://github.com/Sensirion/embedded-i2c-sen5x/blob/master/sen5x_i2c.h"
+  ],
+  "priceUsd": 30,
+  "supplierQuery": "Sensirion SEN54-SDN-T environmental sensor node + Adafruit 5964 SEN5x adapter",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Plug the SEN54 into the adapter's JST GH socket with a 6-pin GH cable (1.25 mm pitch); the adapter wires sensor pin 5 (SEL) to GND so the sensor starts in I2C mode.",
+    "Power VIN from the board's 3.3 V (or 5 V on a 5 V board): the adapter's AP3602A charge pump makes the sensor's 5 V (4.5–5.5 V). From 3.3 V expect about 150 mA while the fan runs (roughly twice the sensor's 70 mA), more in the first 60 s.",
+    "The adapter has 10 kΩ pull-ups on SDA and SCL to VIN, so no extra resistors are needed. Keep the bus at 100 kHz (standard mode, the sensor's maximum).",
+    "Start Measurement is pointer 0x0021 (no data); poll 0x0202 for data ready, then write 0x03C4, wait 20 ms and read 24 bytes: eight big-endian 16-bit words, each followed by a CRC-8 (poly 0x31, init 0xFF). PM = uint16/10 µg/m³, RH = int16/100 %, T = int16/200 °C, VOC Index = int16/10.",
+    "The SEN54 has no NOx sensor: the 8th word is always unknown (0x7FFF; the datasheet says unknown values read 0xFFFF, the driver treats both as None).",
+    "PM readings settle after about 30 s and the VOC Index needs minutes to learn the baseline (it starts at 100).",
+    "Keep the metal shield floating: it is connected to GND inside the sensor."
+  ],
+  "keywords": [
+    "sen54",
+    "sen5x",
+    "particulate",
+    "pm2.5",
+    "voc",
+    "air quality",
+    "humidity",
+    "temperature",
+    "sensirion",
+    "adafruit 5964"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "PM2.5 mass concentration",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1_0",
+        "quantity": "PM1.0 mass concentration",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm4_0",
+        "quantity": "PM4.0 mass concentration",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 14
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10 mass concentration",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      },
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 45
+      },
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -10,
+        "max": 50,
+        "default": 22
+      },
+      {
+        "key": "voc_index",
+        "quantity": "VOC Index",
+        "min": 1,
+        "max": 500,
+        "default": 100
+      }
+    ],
+    "responses": [
+      {
+        "match": "02 02",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "03 C4",
+        "bytes": [
+          {
+            "control": "pm1_0",
+            "bits": 16,
+            "scale": 0.1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "pm4_0",
+            "bits": 16,
+            "scale": 0.1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 0.1
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.01,
+            "signed": true
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "temperature",
+            "bits": 16,
+            "scale": 0.005,
+            "signed": true
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "voc_index",
+            "bits": 16,
+            "scale": 0.1,
+            "signed": true
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "const": 32767,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sen54.py",
+    "code": "# Sensirion SEN54 environmental sensor node (PM / RH / T / VOC Index), MicroPython driver.\n# Written from the SEN5x datasheet (Version 2, March 2022), section 6: I2C address 0x69, max 100 kHz,\n# no clock stretching. Commands are 16-bit pointers sent MSB first without CRC; every 2 data bytes\n# are followed by a CRC-8 (poly 0x31, init 0xFF, CRC(0xBEEF) = 0x92).\n# The SEN54 has no NOx sensor: the NOx word of \"Read Measured Values\" is always \"unknown\".\nimport time\n\nFIELDS = ('pm1_0', 'pm2_5', 'pm4_0', 'pm10',   # mass concentration, ug/m3 (uint16, /10)\n          'humidity',                          # compensated ambient RH, % (int16, /100)\n          'temperature',                       # compensated ambient temperature, degC (int16, /200)\n          'voc_index',                         # VOC Index, 1..500 (int16, /10)\n          'nox_index')                         # NOx Index: always unknown (None) on the SEN54\n_SCALE = (10, 10, 10, 10, 100, 200, 10, 10)\n_SIGNED = (False, False, False, False, True, True, True, True)\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SEN54:\n    def __init__(self, i2c, addr=0x69):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(50)  # start-up time after power-on before I2C may be used (max 50 ms)\n\n    def _cmd(self, ptr, data=b''):\n        buf = bytearray([ptr >> 8, ptr & 0xFF])\n        for i in range(0, len(data), 2):\n            w = data[i:i + 2]\n            buf += w + bytes([_crc8(w)])\n        self.i2c.writeto(self.addr, buf)\n\n    def _read(self, ptr, n_words, wait_ms=20):\n        self._cmd(ptr)\n        time.sleep_ms(wait_ms)  # datasheet: wait 20 ms before the read header\n        d = self.i2c.readfrom(self.addr, n_words * 3)\n        out = []\n        for i in range(0, n_words * 3, 3):\n            if _crc8(d[i:i + 2]) != d[i + 2]:\n                raise OSError('SEN54 CRC mismatch: check wiring and 100 kHz bus speed')\n            out.append((d[i] << 8) | d[i + 1])\n        return out\n\n    def start(self):\n        \"\"\"Enter Measurement-Mode (PM, RH/T and VOC; fan and laser on).\"\"\"\n        self._cmd(0x0021)\n        time.sleep_ms(50)\n\n    def start_rht_gas_only(self):\n        \"\"\"Measure RH/T/VOC only (fan and laser off); PM values read as unknown.\"\"\"\n        self._cmd(0x0037)\n        time.sleep_ms(50)\n\n    def stop(self):\n        self._cmd(0x0104)\n        time.sleep_ms(200)\n\n    def reset(self):\n        self._cmd(0xD304)\n        time.sleep_ms(100)\n\n    def start_fan_cleaning(self):\n        self._cmd(0x5607)\n        time.sleep_ms(20)\n\n    def device_status(self):\n        w = self._read(0xD206, 2)\n        return (w[0] << 16) | w[1]\n\n    def data_ready(self):\n        return (self._read(0x0202, 1)[0] & 0xFF) == 0x01\n\n    def read(self, timeout_ms=3000):\n        \"\"\"Wait for a new measurement (one per second) and return a dict of the eight values.\n        A value the sensor does not know (always NOx on the SEN54) is None.\"\"\"\n        t0 = time.ticks_ms()\n        while not self.data_ready():\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('SEN54: no data (was start() called?)')\n            time.sleep_ms(100)\n        raw = self._read(0x03C4, 8)\n        out = {}\n        for name, r, scale, signed in zip(FIELDS, raw, _SCALE, _SIGNED):\n            # Unknown: 0xFFFF (datasheet), 0x7FFF for int16 fields (Sensirion driver docs)\n            if r == 0xFFFF or (signed and r == 0x7FFF):\n                out[name] = None\n                continue\n            if signed and r & 0x8000:\n                r -= 0x10000\n            out[name] = r / scale\n        return out\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sen54 import SEN54\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = SEN54(i2c)\nsensor.start()\n\ndef f(v, fmt):\n    return '--' if v is None else fmt % v\n\nwhile True:\n    m = sensor.read()\n    print('PM1.0=%s PM2.5=%s PM4.0=%s PM10=%s ug/m3' % (f(m['pm1_0'], '%.1f'), f(m['pm2_5'], '%.1f'), f(m['pm4_0'], '%.1f'), f(m['pm10'], '%.1f')))\n    print('RH=%s%% T=%sC VOC=%s NOx=%s' % (f(m['humidity'], '%.2f'), f(m['temperature'], '%.2f'), f(m['voc_index'], '%.0f'), f(m['nox_index'], '%.0f')))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM, humidity, temperature and VOC values set on the sliders (NOx unknown on the SEN54)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1_0",
+          "value": 20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm4_0",
+          "value": 42.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 80
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 61.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 27.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "voc_index",
+          "value": 250
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1.0=20.0 PM2.5=35.0 PM4.0=42.5 PM10=80.0 ug/m3",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RH=61.50% T=27.50C VOC=250 NOx=--",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:27:45.101Z",
+    "verifiedSources": [
+      "https://sensirion.com/media/documents/6791EFA0/62A1F68F/Sensirion_Datasheet_Environmental_Node_SEN5x.pdf",
+      "https://www.adafruit.com/product/5964",
+      "https://cdn-shop.adafruit.com/970x728/5964-01.jpg"
+    ]
+  }
+}

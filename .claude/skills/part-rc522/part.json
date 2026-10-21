@@ -1,0 +1,149 @@
+{
+  "type": "custom-rc522",
+  "name": "RC522 RFID reader (MFRC522)",
+  "mpn": "RC522",
+  "category": "sensor",
+  "description": "NXP MFRC522 13.56 MHz contactless reader/writer for ISO/IEC 14443-A cards and tags (MIFARE Classic, Ultralight, NTAG), read here over SPI. Reads a card's UID from up to about 3 cm. Runs on 3.3 V only (2.5–3.6 V, no regulator on the module). Sold as: generic blue MFRC522 RC522 RFID-RC522 module (8-pin header: SDA, SCK, MOSI, MISO, IRQ, GND, RST, 3.3V), usually bundled with a white MIFARE Classic 1K card and a blue key fob.",
+  "eli5": "Reads the ID number of a contactless card or key fob when you hold it close, like a door entry system.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "SPI chip select (NSS), active low. Labelled SDA because the chip can also run I2C.",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock, up to 10 MHz",
+      "required": true
+    },
+    {
+      "name": "MOSI",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (controller to reader)",
+      "required": true
+    },
+    {
+      "name": "MISO",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "SPI data out (reader to controller)",
+      "required": true
+    },
+    {
+      "name": "IRQ",
+      "role": "io",
+      "description": "Interrupt output, not needed for polling",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "fn": "reset",
+      "description": "NRSTPD: low = hard power-down/reset, high = run",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 3.3 V only (2.5–3.6 V). Never 5 V.",
+      "required": true
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 3.6,
+  "currentMa": 30,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "RC522 RFID module 13.56MHz MFRC522 SPI card key fob",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf",
+    "https://lastminuteengineers.com/how-rfid-works-rc522-arduino-tutorial/",
+    "https://components101.com/wireless/rc522-rfid-module"
+  ],
+  "buildNotes": [
+    "Power it from 3.3 V only: the module has no regulator and the MFRC522 is rated 2.5–3.6 V.",
+    "SPI mode 0, MSB first. Address byte = register << 1, with bit 7 set for a read (datasheet 8.1.2).",
+    "RST must be driven high to run; low holds the chip in hard power-down.",
+    "Read VersionReg (0x37) first: 0x91/0x92 is a genuine MFRC522 v1.0/v2.0; clones often read 0x88 or 0x12. 0x00 or 0xFF means a wiring problem.",
+    "Keep the antenna (the coil on the board) away from metal and other 13.56 MHz readers; range is only a few cm.",
+    "Read range drops sharply below 3 V supply and the antenna draws tens of mA, so use a solid 3.3 V rail."
+  ],
+  "keywords": [
+    "rc522",
+    "mfrc522",
+    "rfid",
+    "nfc",
+    "13.56mhz",
+    "mifare",
+    "card reader",
+    "key fob"
+  ],
+  "sim": {
+    "kind": "rfid-reader",
+    "rfid": {
+      "chip": "mfrc522",
+      "version": 146
+    }
+  },
+  "driver": {
+    "filename": "mfrc522.py",
+    "code": "# MFRC522 (RC522) 13.56 MHz RFID reader, MicroPython driver.\n# Register access over SPI as in the NXP MFRC522 datasheet (section 8.1.2): address byte = (reg << 1),\n# bit 7 set to read, MSB first, SPI mode 0. Card commands follow ISO/IEC 14443-3 type A:\n# REQA (7-bit short frame) -> ATQA, ANTICOLLISION (93 20) -> UID + BCC, SELECT (93 70 + UID + BCC + CRC_A) -> SAK,\n# HLTA (50 00 + CRC_A). Reads the 4-byte UID of MIFARE Classic / Ultralight-style cards (cascade level 1 only).\nimport time\n\n# Registers (datasheet table 20)\n_CommandReg = 0x01\n_ComIEnReg = 0x02\n_ComIrqReg = 0x04\n_DivIrqReg = 0x05\n_ErrorReg = 0x06\n_FIFODataReg = 0x09\n_FIFOLevelReg = 0x0A\n_ControlReg = 0x0C\n_BitFramingReg = 0x0D\n_CollReg = 0x0E\n_ModeReg = 0x11\n_TxModeReg = 0x12\n_RxModeReg = 0x13\n_TxControlReg = 0x14\n_TxASKReg = 0x15\n_TModeReg = 0x2A\n_TPrescalerReg = 0x2B\n_TReloadRegH = 0x2C\n_TReloadRegL = 0x2D\n_VersionReg = 0x37\n\n# Commands (datasheet table 149)\n_CMD_IDLE = 0x00\n_CMD_TRANSCEIVE = 0x0C\n_CMD_SOFTRESET = 0x0F\n\n\ndef crc_a(data):\n    \"\"\"ISO/IEC 14443-3 CRC_A (preset 0x6363), returned as [low byte, high byte] as it is sent.\"\"\"\n    crc = 0x6363\n    for b in data:\n        b = (b ^ crc) & 0xFF\n        b = (b ^ (b << 4)) & 0xFF\n        crc = ((crc >> 8) ^ (b << 8) ^ (b << 3) ^ (b >> 4)) & 0xFFFF\n    return [crc & 0xFF, crc >> 8]\n\n\nclass MFRC522:\n    def __init__(self, spi, cs, rst):\n        \"\"\"spi: a machine.SPI/SoftSPI in mode 0 (polarity=0, phase=0), up to 10 MHz.\n        cs: output Pin wired to SDA (NSS). rst: output Pin wired to RST (NRSTPD).\"\"\"\n        self.spi = spi\n        self.cs = cs\n        self.rst = rst\n        self.cs.value(1)\n        self.rst.value(0)\n        self._buf = bytearray(2)\n        time.sleep_ms(1)        # NRSTPD low >= 100 ns resets the chip (hard power-down)\n        self.rst.value(1)\n        time.sleep_ms(50)       # oscillator start-up (crystal) + 37.74 us internal delay\n        self.init()\n\n    # --- register access -------------------------------------------------\n    def _wreg(self, reg, val):\n        self.cs.value(0)\n        self.spi.write(bytes(((reg << 1) & 0x7E, val & 0xFF)))\n        self.cs.value(1)\n\n    def _rreg(self, reg):\n        self.cs.value(0)\n        self.spi.write_readinto(bytes((0x80 | ((reg << 1) & 0x7E), 0)), self._buf)\n        self.cs.value(1)\n        return self._buf[1]\n\n    def _set(self, reg, mask):\n        self._wreg(reg, self._rreg(reg) | mask)\n\n    def _clear(self, reg, mask):\n        self._wreg(reg, self._rreg(reg) & ~mask)\n\n    # --- set-up ----------------------------------------------------------\n    def init(self):\n        self._wreg(_CommandReg, _CMD_SOFTRESET)\n        t0 = time.ticks_ms()\n        while self._rreg(_CommandReg) & 0x10:          # PowerDown bit clears when the reset is done\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                raise OSError('MFRC522 does not come out of reset: check 3.3V, RST and the SPI wires')\n            time.sleep_ms(1)\n        # Timer: TAuto, f_timer = 13.56 MHz / (2*169+1) = 40 kHz, reload 1000 -> 25 ms receive timeout.\n        self._wreg(_TModeReg, 0x80)\n        self._wreg(_TPrescalerReg, 0xA9)\n        self._wreg(_TReloadRegH, 0x03)\n        self._wreg(_TReloadRegL, 0xE8)\n        self._wreg(_TxASKReg, 0x40)    # Force100ASK: ISO 14443-A 100 % ASK modulation\n        self._wreg(_ModeReg, 0x3D)     # CRC preset 6363h (CRC_A)\n        self._wreg(_TxModeReg, 0x00)   # 106 kBd, no TX CRC (the driver appends CRC_A itself)\n        self._wreg(_RxModeReg, 0x00)   # 106 kBd, no RX CRC check (the driver checks it)\n        self.antenna_on()\n\n    def version(self):\n        \"\"\"VersionReg: 0x91 = MFRC522 v1.0, 0x92 = v2.0 (clone chips often read 0x88 or 0x12).\"\"\"\n        return self._rreg(_VersionReg)\n\n    def antenna_on(self, on=True):\n        if on:\n            self._set(_TxControlReg, 0x03)   # Tx1RFEn | Tx2RFEn\n        else:\n            self._clear(_TxControlReg, 0x03)\n\n    # --- talking to a card -----------------------------------------------\n    def _transceive(self, data, last_bits=0):\n        \"\"\"Send data to the card and return (bytes received, valid bits in the last byte), or None on timeout/error.\"\"\"\n        self._wreg(_CommandReg, _CMD_IDLE)\n        self._wreg(_ComIrqReg, 0x7F)            # clear all interrupt request bits (Set1 = 0)\n        self._wreg(_FIFOLevelReg, 0x80)         # FlushBuffer\n        for b in data:\n            self._wreg(_FIFODataReg, b)\n        self._wreg(_BitFramingReg, last_bits & 0x07)\n        self._wreg(_CommandReg, _CMD_TRANSCEIVE)\n        self._set(_BitFramingReg, 0x80)         # StartSend\n        t0 = time.ticks_ms()\n        while True:\n            irq = self._rreg(_ComIrqReg)\n            if irq & 0x30:                      # RxIRq or IdleIRq: a reply has arrived\n                break\n            if irq & 0x01:                      # TimerIRq: no card answered within 25 ms\n                self._clear(_BitFramingReg, 0x80)\n                return None\n            if time.ticks_diff(time.ticks_ms(), t0) > 50:\n                self._clear(_BitFramingReg, 0x80)\n                return None\n        self._clear(_BitFramingReg, 0x80)\n        if self._rreg(_ErrorReg) & 0x1B:        # BufferOvfl, CollErr, ParityErr, ProtocolErr\n            return None\n        n = self._rreg(_FIFOLevelReg) & 0x7F\n        rx_last = self._rreg(_ControlReg) & 0x07\n        return bytes([self._rreg(_FIFODataReg) for _ in range(n)]), rx_last\n\n    def request(self, wake=False):\n        \"\"\"REQA (0x26) or WUPA (0x52, also wakes halted cards). Returns the 2-byte ATQA or None.\"\"\"\n        r = self._transceive([0x52 if wake else 0x26], 7)\n        if r is None or len(r[0]) != 2 or r[1] != 0:\n            return None\n        return r[0]\n\n    def anticoll(self):\n        \"\"\"Cascade level 1 anticollision. Returns the 5 bytes UID0..UID3 + BCC, or None.\"\"\"\n        self._clear(_CollReg, 0x80)          # ValuesAfterColl = 0\n        r = self._transceive([0x93, 0x20])\n        if r is None or len(r[0]) != 5:\n            return None\n        d = r[0]\n        if d[0] ^ d[1] ^ d[2] ^ d[3] != d[4]:\n            return None                      # BCC mismatch\n        return d\n\n    def select(self, uid_bcc):\n        \"\"\"SELECT cascade level 1. Returns the SAK byte or None.\"\"\"\n        frame = [0x93, 0x70] + list(uid_bcc)\n        r = self._transceive(frame + crc_a(frame))\n        if r is None or len(r[0]) != 3:\n            return None\n        d = r[0]\n        if list(d[1:3]) != crc_a(d[0:1]):\n            return None                      # CRC_A mismatch\n        return d[0]\n\n    def halt(self):\n        \"\"\"HLTA: the card goes to HALT and stays quiet until it leaves the field (or gets a WUPA).\"\"\"\n        frame = [0x50, 0x00]\n        self._transceive(frame + crc_a(frame))   # a card answers HLTA with silence\n\n    def read_uid(self):\n        \"\"\"Look for a card. Returns its UID as bytes (4 bytes), or None if there is no (new) card.\n        The card is halted afterwards, so the same card is reported once per tap.\"\"\"\n        if self.request() is None:\n            return None\n        uid_bcc = self.anticoll()\n        if uid_bcc is None:\n            return None\n        sak = self.select(uid_bcc)\n        if sak is None:\n            return None\n        if sak & 0x04:\n            # Cascade bit: a 7- or 10-byte UID (e.g. NTAG); only its first 3 bytes are known here.\n            self.halt()\n            return None\n        self.halt()\n        return bytes(uid_bcc[0:4])\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SoftSPI\nimport time\nfrom mfrc522 import MFRC522\n\nspi = SoftSPI(baudrate=1000000, polarity=0, phase=0, sck=Pin({SCK}), mosi=Pin({MOSI}), miso=Pin({MISO}))\nreader = MFRC522(spi, cs=Pin({SDA}, Pin.OUT, value=1), rst=Pin({RST}, Pin.OUT, value=0))\nprint('RC522 version 0x%02X' % reader.version())\nprint('Hold a card or key fob on the reader')\nwhile True:\n    uid = reader.read_uid()\n    if uid:\n        print('Card UID: ' + ''.join('%02X' % b for b in uid))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads-uid",
+      "title": "Reports the chip version, then the UID of a card put on the reader",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RC522 version 0x92",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1513922049
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "present",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Card UID: 5A3C9E01",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:24:04.196Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/MFRC522.pdf",
+      "https://lastminuteengineers.com/how-rfid-works-rc522-arduino-tutorial/"
+    ]
+  }
+}

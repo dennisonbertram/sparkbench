@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tmp235",
+  "board": "Adafruit TMP235 Plug-and-Play STEMMA Analog Temperature Sensor (product 4686)",
+  "reason": "Modelled as an analog-sensor with VOUT = 500 mV + 10 mV/°C over -40..100 °C (0.1 V to 1.5 V, the single-line segment of datasheet Table 1); the driver implements the full piecewise Equation 2 up to 150 °C. Pin order Gnd, +V, Out taken from the Adafruit Rev A Eagle schematic and back silkscreen. Check passed on ESP32 and Pico (simulator reads T=63C), footprint and LCSC OK.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/tmp235.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-TMP235-PCB (TMP235 Rev A.sch: JP1/JST pins GND, VIN, SIGNAL; back silkscreen 'Gnd +V Out')",
+  "checkRuns": 1
+}

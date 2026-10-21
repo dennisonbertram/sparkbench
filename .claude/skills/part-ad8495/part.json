@@ -1,0 +1,121 @@
+{
+  "type": "custom-ad8495",
+  "name": "AD8495 analog K-type thermocouple amplifier",
+  "mpn": "AD8495ARMZ",
+  "category": "sensor",
+  "description": "K-type thermocouple amplifier with built-in cold junction compensation from Analog Devices. Fixed gain of 122.4 gives 5 mV/°C; the board's 1.25 V reference on REF puts 0 °C at 1.25 V, so T = (Vout − 1.25 V) / 0.005 V. ±2 °C linearity from −25 °C to +400 °C, 180 µA supply current. Sold as: Adafruit Analog Output K-Type Thermocouple Amplifier - AD8495 Breakout (product #1778), header GND / OUT / GND / V+ plus a Ylw+ / Red− screw terminal for the thermocouple.",
+  "eli5": "A tiny amplifier for a K-type thermocouple probe: it turns the probe's very small signal into a voltage your board can read, 1.25 V at 0 °C plus 5 millivolts for every degree, so it can measure ovens and soldering irons.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (header pin 1).",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog temperature output: Vout = 1.25 V + 5 mV/°C × T. Swings 0.025 V to V+ − 0.1 V, so it stays under 3.3 V only when V+ is 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Second ground pin, printed GND on the board; same net as the first (header pin 3).",
+      "required": false
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Supply, 3–18 V (board). Use 3.3 V when OUT goes to a 3.3 V ADC.",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 18,
+  "currentMa": 0.25,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/AD8494_8495_8496_8497.pdf",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/AD8494_8495_8496_8497.pdf",
+    "https://www.adafruit.com/product/1778",
+    "https://learn.adafruit.com/ad8495-thermocouple-amplifier/pinouts",
+    "https://learn.adafruit.com/ad8495-thermocouple-amplifier/arduino",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20AD8495.fzpz",
+    "https://github.com/adafruit/Adafruit-AD8495-Breakout-PCB"
+  ],
+  "priceUsd": 11.95,
+  "supplierQuery": "Adafruit 1778 AD8495 K-type thermocouple amplifier breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order, silkscreen up, left to right: GND, OUT, GND, V+. The two GND pins are the same net; one is enough.",
+    "Power V+ from 3.3 V when OUT goes to a 3.3 V microcontroller ADC. The board accepts 3–18 V, but the output can rise to V+ − 0.1 V (and to the rail with an open thermocouple), which would overdrive a 3.3 V ADC pin.",
+    "Thermocouple: yellow (+) wire into Ylw+, red (−) wire into Red− on the screw terminal. K type only.",
+    "Temperature (°C) = (Vout − 1.25) / 0.005. 1.375 V = 25 °C, 1.75 V = 100 °C. At 3.3 V supply the range is about −245 °C to +390 °C.",
+    "One degree is only 5 mV: average many ADC samples and use an ESP32 ADC1 pin with 11 dB attenuation.",
+    "Keep the board at the same temperature as the screw terminal (the cold junction) and away from the heat being measured."
+  ],
+  "keywords": [
+    "ad8495",
+    "thermocouple",
+    "k-type",
+    "type k",
+    "analog",
+    "temperature",
+    "amplifier",
+    "adafruit 1778",
+    "cold junction"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Thermocouple temperature",
+    "unit": "°C",
+    "min": -25,
+    "max": 390,
+    "default": 25,
+    "vAtMin": 1.125,
+    "vAtMax": 3.2,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "ad8495.py",
+    "code": "# AD8495 K-type thermocouple amplifier with cold junction compensation (Analog Devices),\n# MicroPython driver for the Adafruit AD8495 breakout (#1778).\n# Datasheet AD8494/AD8495/AD8496/AD8497 Rev. D: VOUT = (TMJ x 5 mV/°C) + VREF, so\n# TMJ = (VOUT - VREF) / (5 mV/°C). The Adafruit board ties REF to a TLVH431 1.25 V\n# reference, so T(°C) = (Vout - 1.25 V) / 0.005 V. Linearity error < ±2 °C for a\n# K-type thermocouple from -25 °C to +400 °C (datasheet Table 7); beyond that see AN-1087.\n# Output swing is -VS + 0.025 V to +VS - 0.1 V (Table 2): at 3.3 V supply the usable\n# range is about -245 °C to +390 °C. An open thermocouple drives the output to the rail.\nfrom machine import ADC, Pin\n\n\nclass AD8495:\n    MV_PER_C = 5.0  # datasheet transfer function, 5 mV/°C\n\n    def __init__(self, pin, vref_out=1.25, samples=32, adc_vref=3.3):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vref_out = vref_out  # voltage on the AD8495 REF pin (1.25 V on the Adafruit board)\n        self.samples = samples\n        self.adc_vref = adc_vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n\n    def volts(self):\n        \"\"\"Average several ADC samples and return the OUT voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.adc_vref / 65535\n        return total / self.samples\n\n    def temperature(self):\n        \"\"\"Measurement-junction temperature in °C: (Vout - Vref) / 5 mV per °C.\"\"\"\n        return (self.volts() - self.vref_out) * 1000 / self.MV_PER_C\n"
+  },
+  "skill": "---\nname: part-ad8495\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit AD8495 analog K-type thermocouple amplifier breakout (#1778, Analog Devices AD8495ARMZ with 1.25 V reference). Use when designing, wiring, simulating or writing code for an AD8495 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# AD8495 analog K-type thermocouple amplifier (Adafruit #1778)\n\n## Overview\nThe **AD8495** (Analog Devices) is a fixed-gain (122.4) instrumentation amplifier with built-in cold junction compensation for **K-type thermocouples**. It turns the thermocouple's microvolt signal into **5 mV/°C** that you read with an ADC. No digital interface.\nThe **Adafruit AD8495 breakout (#1778)** uses the A-grade AD8495ARMZ and a TLVH431 **1.25 V reference on the REF pin**, so 0 °C reads 1.25 V and negative temperatures work on a single supply:\n```\nT(°C) = (Vout − 1.25 V) / 0.005 V\n```\nExamples: 1.25 V = 0 °C, 1.375 V = 25 °C, 1.75 V = 100 °C, 2.75 V = 300 °C.\n- Accuracy: ±1 °C around room temperature; ±2 °C linearity for −25 °C to +400 °C (datasheet Table 7). Outside that range the thermocouple's own nonlinearity grows; see Analog Devices AN-1087.\n- K type only. A J, T or other type thermocouple gives wrong readings.\n\n## Pinout (Adafruit #1778)\nHeader (bottom edge, left to right, silkscreen up):\n| Pin | Function |\n|---|---|\n| GND | Ground |\n| OUT | Analog output, 1.25 V + 5 mV/°C |\n| GND | Ground (second, same net) |\n| V+ | Supply, 3–18 V |\n\nScrew terminal (opposite edge): **Ylw+** (yellow, + lead of the thermocouple) and **Red−** (red, − lead).\n\n## Electrical limits\n- Supply: board 3–18 V (chip 2.7–36 V single supply). 180 µA typical, 250 µA max.\n- Output range: 0.025 V to V+ − 0.1 V. With 3.3 V supply the board covers about −245 °C to +390 °C; with 5 V about −245 °C to +730 °C.\n- **With V+ above 3.3 V the output can exceed 3.3 V** (open thermocouple drives it to the rail). Power it from 3.3 V when OUT goes to a 3.3 V ADC.\n- Specified ambient (cold junction) range 0–50 °C.\n\n## Wiring\n| Board | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| V+ | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| GND | GND | GND | GND |\n| OUT | GPIO34 (ADC1) | GP26 / ADC0 | External ADC (e.g. ADS1115 A0) |\n\nThermocouple yellow wire → Ylw+, red wire → Red−. The Raspberry Pi has no ADC.\n\n## Using the driver\n```python\nfrom ad8495 import AD8495\nimport time\ntc = AD8495(26)            # GPIO of the ADC pin OUT is wired to\nwhile True:\n    print('T=%.1fC' % tc.temperature())\n    time.sleep(1)\n```\nThe driver averages 32 samples, uses calibrated `read_uv()` where available (ESP32), otherwise `read_u16()` × 3.3 / 65535 (pass `adc_vref=`). Pass `vref_out=` if your REF voltage differs from 1.25 V.\n\n## Gotchas\n- 1 °C is only 5 mV: one 12-bit step on a 3.3 V ADC is about 0.16 °C, and ADC noise is larger. Average and keep wires short.\n- An open (unplugged) thermocouple makes the output float/rail high: a sudden reading of ~400 °C at 3.3 V means a loose wire.\n- Thermocouple polarity reversed reads temperature changes backwards.\n- Keep the board (cold junction) at the same temperature as the terminal; don't let it sit near the heat source.\n- ESP32 ADC is nonlinear near the top of its range; calibrate at two points if you need accuracy above ~300 °C.\n\n## Datasheet\nhttps://www.analog.com/media/en/technical-documentation/data-sheets/AD8494_8495_8496_8497.pdf\n",
+  "example": {
+    "code": "from ad8495 import AD8495\nimport time\n\ntc = AD8495({OUT})\nwhile True:\n    print('T=%.0fC' % tc.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the thermocouple temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 150
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=150C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:37:21.523Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/AD8494_8495_8496_8497.pdf",
+      "https://www.adafruit.com/product/1778",
+      "https://learn.adafruit.com/ad8495-thermocouple-amplifier/pinouts"
+    ]
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "type": "custom-ist8310",
+  "name": "IST8310 3-axis magnetometer",
+  "mpn": "IST8310",
+  "category": "sensor",
+  "description": "iSentek three-axis AMR magnetometer measuring the magnetic field on X, Y and Z (±1600 µT on X/Y, ±2500 µT on Z, 3.3 LSB/µT, up to 200 Hz) over I2C, used as a drone/robot compass. Sold as: Rotorama RR-IST8310 V1.0 external compass module (4 pins in one row: SCL, SDA, GND, VIN), 4.5–5.5 V supply via its onboard 3.3 V regulator, 3.3 V I2C, address 0x0E (ADDRSEL pads select 0x0E or 0x0F).",
+  "eli5": "A tiny compass chip: it feels the Earth's magnetic field in three directions so your board can work out which way is north.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 4.5–5.5 V (onboard regulator makes the 3.3 V the 3.6 V-max chip needs)",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 1.2,
+  "i2cAddress": 14,
+  "datasheetUrl": "https://assets.isentek.com/public/documents/datasheet/HFH0n8I7hQ-IST8310_Datasheet_V1.8_Web.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Rotorama RR-IST8310 external compass IST8310 magnetometer module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from 5 V (VBUS/VIN on the microcontroller board), not 3.3 V: the module is rated 4.5–5.5 V in. SDA/SCL are 3.3 V logic.",
+    "Address: ADDRSEL pads, left+centre bridged = 0x0E (14), centre+right = 0x0F (15). Never bridge all three. Run i2c.scan() to confirm.",
+    "Setup from the datasheet: soft reset (0x01 to 0x0B), check WHO_AM_I 0x00 = 0x10, write 0xC0 to 0x42 (pulse duration) and 0x24 to 0x41 (low-noise averaging).",
+    "Each reading: write 0x01 to 0x0A (single measurement), wait about 6 ms until bit 0 of 0x02 is set, read 6 bytes from 0x03: X, Y, Z, int16 LSB first. Field in µT = raw / 3.3.",
+    "Earth's field is about 25–65 µT. Keep the module away from motors, magnets, speakers and steel, and calibrate (min/max while rotating) before trusting a heading."
+  ],
+  "keywords": [
+    "ist8310",
+    "isentek",
+    "compass",
+    "magnetometer",
+    "magnetic field",
+    "heading",
+    "rr-ist8310"
+  ],
+  "sources": [
+    "https://assets.isentek.com/public/documents/datasheet/HFH0n8I7hQ-IST8310_Datasheet_V1.8_Web.pdf",
+    "https://datasheet.lcsc.com/datasheet/pdf/bb2cac5612aa16ed0d409b965b5d784f.pdf?productCode=C2683055",
+    "https://www.rotorama.com/product/rr-isc8310-external",
+    "https://www.rotorama.com/assets/docs/5763147124d7d63cc26bb651fa5e35e7/33080-1/ist8310en.pdf"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "µT",
+    "min": -1600,
+    "max": 1600,
+    "default": 20,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Magnetic field Y",
+        "unit": "µT",
+        "min": -1600,
+        "max": 1600,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Magnetic field Z",
+        "unit": "µT",
+        "min": -2500,
+        "max": 2500,
+        "default": -40
+      }
+    ],
+    "registers": {
+      "0x00": 16,
+      "0x02": 1,
+      "0x0B": 12
+    },
+    "selfClearing": [
+      {
+        "reg": "0x0B",
+        "mask": 1,
+        "reset": true
+      },
+      {
+        "reg": "0x0A",
+        "mask": 15
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x03",
+        "bytes": 2,
+        "scale": 0.30303030303030304,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 0.30303030303030304,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x07",
+        "bytes": 2,
+        "scale": 0.30303030303030304,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ist8310.py",
+    "code": "# IST8310 3-axis magnetometer (iSentek IST8310 datasheet v1.2 / v1.8), MicroPython driver.\n# Power-on mode is stand-by. Datasheet 3.1.1: set PDCNTL (0x42) = 0xC0 and, for low noise,\n# AVGCNTL (0x41) = 0x24. Each reading: write CNTL1 (0x0A) = 0x01 (single measurement), wait for\n# DRDY (STAT1 0x02 bit 0), then read 0x03..0x08: X, Y, Z as 16-bit two's complement, LSB first.\n# The chip returns to stand-by by itself. Sensitivity 3.3 LSB/uT (330 LSB/gauss).\nimport time\n\n_REG_WAI = 0x00\n_REG_STAT1 = 0x02\n_REG_DATA_X_L = 0x03\n_REG_STAT2 = 0x09\n_REG_CNTL1 = 0x0A\n_REG_CNTL2 = 0x0B\n_REG_STR = 0x0C\n_REG_AVGCNTL = 0x41\n_REG_PDCNTL = 0x42\n\n_DEVICE_ID = 0x10\n_LSB_PER_UT = 3.3\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass IST8310:\n    def __init__(self, i2c, addr=0x0E, low_noise=True):\n        self.i2c = i2c\n        self.addr = addr\n        self._write(_REG_CNTL2, 0x01)  # SRST: run the power-on-reset routine\n        time.sleep_ms(50)  # POR takes at most 50 ms\n        wai = self._read(_REG_WAI, 1)[0]\n        if wai != _DEVICE_ID:\n            raise OSError('IST8310: WHO_AM_I is 0x%02X, expected 0x10 (check address)' % wai)\n        self._write(_REG_PDCNTL, 0xC0)  # normal set/reset pulse duration (datasheet 3.1.1)\n        if low_noise:\n            self._write(_REG_AVGCNTL, 0x24)  # average 16x on X/Z and Y, >= 6 ms per sample\n\n    def _write(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def read_raw(self, timeout_ms=100):\n        \"\"\"Start one measurement, wait for DRDY, return raw (x, y, z) counts.\"\"\"\n        self._write(_REG_CNTL1, 0x01)  # single measurement mode\n        time.sleep_ms(6)\n        t0 = time.ticks_ms()\n        while not (self._read(_REG_STAT1, 1)[0] & 0x01):\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('IST8310: no data ready')\n            time.sleep_ms(1)\n        d = self._read(_REG_DATA_X_L, 6)  # reading the data clears DRDY and DOR\n        return _s16(d[0], d[1]), _s16(d[2], d[3]), _s16(d[4], d[5])\n\n    def read(self):\n        \"\"\"Return the field (x, y, z) in microtesla.\"\"\"\n        x, y, z = self.read_raw()\n        return x / _LSB_PER_UT, y / _LSB_PER_UT, z / _LSB_PER_UT\n\n    def strong_field(self):\n        \"\"\"STAT2 INT bit: |X|+|Y|+|Z| exceeded 1600 uT.\"\"\"\n        return bool(self._read(_REG_STAT2, 1)[0] & 0x08)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ist8310 import IST8310\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = IST8310(i2c)  # address 0x0E\nwhile True:\n    x, y, z = mag.read()\n    print('X=%.1fuT Y=%.1fuT Z=%.1fuT' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z field set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -15.15
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 48.48
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=30.3uT Y=-15.2uT Z=48.5uT",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:31:01.516Z",
+    "verifiedSources": [
+      "https://file01.andesource.com/dkpdf/IST8310.pdf",
+      "https://www.rotorama.com/assets/docs/5763147124d7d63cc26bb651fa5e35e7/33080-1/ist8310en.pdf",
+      "https://www.rotorama.com/product/rr-isc8310-external"
+    ]
+  }
+}

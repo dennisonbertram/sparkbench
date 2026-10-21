@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ad8495",
+  "board": "Adafruit Analog Output K-Type Thermocouple Amplifier - AD8495 Breakout (#1778)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB DRC, footprint, LCSC). Modelled as an analog-sensor using the datasheet transfer function VOUT = TMJ x 5 mV/°C + VREF with the board's 1.25 V REF (1.125 V at -25 °C to 3.2 V at 390 °C, the V+ - 0.1 V output limit at 3.3 V); the driver decodes T = (Vout - 1.25)/0.005. Datasheet Rev. D was read from a mirror copy because analog.com timed out.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/AD8494_8495_8496_8497.pdf",
+  "breakoutPinoutSource": "Adafruit Fritzing-Library 'Adafruit AD8495.fzpz' breadboard SVG (header left to right: GND, OUT, GND, V+; Ylw/Red terminal on the opposite edge) plus https://learn.adafruit.com/ad8495-thermocouple-amplifier/pinouts",
+  "checkRuns": 2
+}

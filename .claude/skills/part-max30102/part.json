@@ -1,0 +1,319 @@
+{
+  "type": "custom-max30102",
+  "name": "MAX30102 pulse oximeter & heart-rate sensor",
+  "mpn": "MAX30102",
+  "category": "sensor",
+  "description": "Analog Devices (Maxim) optical pulse oximeter and heart-rate sensor: red (660 nm) and IR (880 nm) LEDs, a photodetector and an 18-bit ADC with ambient light cancellation, 50-3200 samples/s into a 32-sample FIFO, plus a die temperature sensor (0.0625 °C). Talks I2C at address 0x57. Sold as: MH-ET LIVE MAX30102 module (8 pins on two edges: VIN, SDA, SCL, GND and GND, RD, IRD, INT; on-board 1.8 V and 3.3 V regulators, 4.7 kΩ pull-ups on SCL/SDA/INT to the logic level chosen by the 1V8/3V3 solder jumper), I2C address 0x57.",
+  "eli5": "Shines red and infrared light into your fingertip and measures how much bounces back; the tiny flicker with every heartbeat lets your board work out your pulse.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply into the on-board 1.8 V (chip) and 3.3 V (LED) regulators, 3.3–5 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up on the board to the jumper-selected logic level, 3.3 V by default)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, up to 400 kHz (4.7 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (second header, same net)",
+      "required": false
+    },
+    {
+      "name": "RD",
+      "role": "io",
+      "description": "Red LED cathode / driver pin. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "IRD",
+      "role": "io",
+      "description": "IR LED cathode / driver pin. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Active-low open-drain interrupt (pulled up on the board). Not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "i2cAddress": 87,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30102.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "MAX30102 heart rate pulse oximeter sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the 1V8/3V3 solder jumper on the back is on 3V3 for a 3.3 V board (ESP32, Pico). With the pull-ups on 1.8 V the I2C bus is unreliable or not seen at all.",
+    "Leave RD and IRD unconnected: they are the LED driver pins, the module already drives its LEDs.",
+    "After reset, set the mode first, then clear FIFO_WR_PTR, OVF_COUNTER and FIFO_RD_PTR (0x04-0x06); the write pointer only accepts writes in HR/SpO2 mode.",
+    "FIFO_DATA (0x07) does not auto-increment: read 6 bytes per sample (Red then IR, 3 bytes each, 18-bit left-justified) in one burst.",
+    "Light pressure only: press the fingertip too hard and the pulse disappears. Keep it out of direct sunlight and hold still.",
+    "Pulse and SpO2 readings from a hobby module are not medical measurements."
+  ],
+  "keywords": [
+    "max30102",
+    "max30100",
+    "pulse oximeter",
+    "heart rate",
+    "spo2",
+    "ppg",
+    "bpm",
+    "mh-et live"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30102.pdf",
+    "https://raw.githubusercontent.com/KYjoy/max30102/master/datasheet/MAX30102%20datasheet.pdf",
+    "https://lastminuteengineers.com/max30102-pulse-oximeter-heart-rate-sensor-arduino-tutorial/",
+    "https://lastminuteengineers.com/wp-content/uploads/arduino/MAX30102-Module-Pinout.png",
+    "https://lastminuteengineers.com/wp-content/uploads/arduino/MAX30102-Module-Hardware-Overview-Solder-Jumper.jpg",
+    "https://circuitdigest.com/microcontroller-projects/how-max30102-pulse-oximeter-and-heart-rate-sensor-works-and-how-to-interface-with-arduino"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Heart rate",
+    "unit": "BPM",
+    "min": 40,
+    "max": 180,
+    "default": 70,
+    "controls": [
+      {
+        "key": "red",
+        "quantity": "Red light reflected",
+        "unit": "ADC counts",
+        "min": 0,
+        "max": 262143,
+        "default": 90000
+      },
+      {
+        "key": "ir",
+        "quantity": "Infrared light reflected",
+        "unit": "ADC counts",
+        "min": 0,
+        "max": 262143,
+        "default": 110000
+      },
+      {
+        "key": "redPulse",
+        "quantity": "Red pulse depth (fraction of the light)",
+        "min": 0,
+        "max": 0.1,
+        "default": 0.01
+      },
+      {
+        "key": "irPulse",
+        "quantity": "Infrared pulse depth (fraction of the light)",
+        "min": 0,
+        "max": 0.1,
+        "default": 0.02
+      },
+      {
+        "key": "dieTemp",
+        "quantity": "Die temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0xFF": 21
+    },
+    "measures": [
+      {
+        "reg": "0x1F",
+        "bytes": 1,
+        "bits": 12,
+        "signed": true,
+        "scale": 0.0625,
+        "control": "dieTemp",
+        "fields": [
+          {
+            "reg": "0x1F",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x20",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ]
+      }
+    ],
+    "selfClearing": [
+      {
+        "reg": "0x09",
+        "mask": 64,
+        "reset": true
+      },
+      {
+        "reg": "0x21",
+        "mask": 1
+      }
+    ],
+    "fifo": {
+      "data": "0x07",
+      "writePtr": "0x04",
+      "readPtr": "0x06",
+      "overflow": "0x05",
+      "depth": 32,
+      "bytes": 3,
+      "sampleBits": 18,
+      "channels": [
+        {
+          "control": "red",
+          "depth": "redPulse"
+        },
+        {
+          "control": "ir",
+          "depth": "irPulse"
+        }
+      ],
+      "bpmControl": "value",
+      "mode": {
+        "reg": "0x09",
+        "mask": 7,
+        "channels": {
+          "2": 1,
+          "3": 2
+        },
+        "shutdownBit": 7
+      },
+      "rate": {
+        "reg": "0x0A",
+        "mask": 28,
+        "shift": 2,
+        "hz": [
+          50,
+          100,
+          200,
+          400,
+          800,
+          1000,
+          1600,
+          3200
+        ]
+      },
+      "average": {
+        "reg": "0x08",
+        "mask": 224,
+        "shift": 5,
+        "n": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          32,
+          32,
+          32
+        ]
+      },
+      "resolution": {
+        "reg": "0x0A",
+        "mask": 3,
+        "bits": [
+          15,
+          16,
+          17,
+          18
+        ]
+      },
+      "rollover": {
+        "reg": "0x08",
+        "bit": 4
+      },
+      "status": {
+        "reg": "0x00",
+        "readyBit": 6,
+        "almostFullBit": 7,
+        "almostFullSlots": {
+          "reg": "0x08",
+          "mask": 15
+        }
+      }
+    }
+  },
+  "driver": {
+    "filename": "max30102.py",
+    "code": "# MAX30102 pulse oximeter & heart-rate sensor (Analog Devices / Maxim MAX30102), MicroPython driver.\n# Written from the datasheet (19-7740 Rev 1): I2C address 0x57, PART_ID 0x15 at 0xFF, 32-sample FIFO with\n# 3 bytes per LED channel (18-bit, left-justified: MSB always at bit 17), Red first then IR in SpO2 mode.\nimport time\n\n_INT_STATUS1 = 0x00\n_FIFO_WR_PTR = 0x04\n_OVF_COUNTER = 0x05\n_FIFO_RD_PTR = 0x06\n_FIFO_DATA = 0x07\n_FIFO_CONFIG = 0x08\n_MODE_CONFIG = 0x09\n_SPO2_CONFIG = 0x0A\n_LED1_PA = 0x0C  # red\n_LED2_PA = 0x0D  # IR\n_TEMP_INT = 0x1F\n_TEMP_FRAC = 0x20\n_TEMP_CONFIG = 0x21\n_PART_ID = 0xFF\n\n_RATES = (50, 100, 200, 400, 800, 1000, 1600, 3200)  # SPO2_SR[2:0], samples per second\n_WIDTHS = (69, 118, 215, 411)  # LED_PW[1:0], us -> 15, 16, 17, 18-bit ADC\n_RANGES = (2048, 4096, 8192, 16384)  # SPO2_ADC_RGE[1:0], full scale in nA\n_AVERAGES = (1, 2, 4, 8, 16, 32)  # SMP_AVE[2:0]\n\n\nclass MAX30102:\n    def __init__(self, i2c, addr=0x57):\n        self.i2c = i2c\n        self.addr = addr\n        pid = self._r8(_PART_ID)\n        if pid != 0x15:\n            raise OSError('MAX30102 not found (part ID 0x%02x, expected 0x15)' % pid)\n        self.channels = 0\n        self.reset()\n\n    def _w8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def reset(self):\n        \"\"\"Soft reset: every register back to its power-on value; RESET clears itself when done.\"\"\"\n        self._w8(_MODE_CONFIG, 0x40)\n        t0 = time.ticks_ms()\n        while self._r8(_MODE_CONFIG) & 0x40:\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                raise OSError('MAX30102 reset did not complete')\n            time.sleep_ms(1)\n        self._r8(_INT_STATUS1)  # clear any pending interrupt (PWR_RDY)\n        self.channels = 0\n\n    def setup(self, mode='spo2', sample_rate=100, average=1, pulse_width=411, adc_range=4096,\n              red_ma=7.0, ir_ma=7.0, rollover=True):\n        \"\"\"Start sampling. mode 'spo2' = Red + IR, 'hr' = Red only.\n        The FIFO receives sample_rate / average samples per second. If the pulse width is too long for the\n        sample rate (datasheet Tables 11/12) the chip programs the highest rate it can instead.\"\"\"\n        sr = _RATES.index(sample_rate)\n        pw = _WIDTHS.index(pulse_width)\n        rg = _RANGES.index(adc_range)\n        av = _AVERAGES.index(average)\n        self._w8(_FIFO_CONFIG, (av << 5) | (0x10 if rollover else 0))\n        self._w8(_SPO2_CONFIG, (rg << 5) | (sr << 2) | pw)\n        # LED current: 0.2 mA per LSB (0x00 = off ... 0xFF = 51 mA)\n        self._w8(_LED1_PA, min(255, max(0, round(red_ma / 0.2))))\n        self._w8(_LED2_PA, min(255, max(0, round(ir_ma / 0.2))))\n        if mode == 'spo2':\n            self._w8(_MODE_CONFIG, 0x03)\n            self.channels = 2\n        elif mode == 'hr':\n            self._w8(_MODE_CONFIG, 0x02)\n            self.channels = 1\n        else:\n            raise ValueError(\"mode must be 'spo2' or 'hr'\")\n        # Datasheet: clear FIFO_WR_PTR, OVF_COUNTER and FIFO_RD_PTR when starting a conversion\n        # (the write pointer is only writable once MODE is 010/011/111).\n        self._w8(_FIFO_WR_PTR, 0)\n        self._w8(_OVF_COUNTER, 0)\n        self._w8(_FIFO_RD_PTR, 0)\n\n    def available(self):\n        \"\"\"Unread samples in the FIFO (0-32).\"\"\"\n        wr, ovf, rd = self.i2c.readfrom_mem(self.addr, _FIFO_WR_PTR, 3)\n        n = (wr - rd) & 0x1F\n        if n == 0 and ovf:\n            n = 32  # full: pointers are equal but samples were lost\n        return n\n\n    def read_fifo(self):\n        \"\"\"Read every unread sample. Returns a list of (red, ir) in SpO2 mode or (red,) in HR mode,\n        each an 18-bit ADC count (left-justified, so lower resolutions read with their low bits 0).\"\"\"\n        if not self.channels:\n            return []\n        n = self.available()\n        out = []\n        if not n:\n            return out\n        per = 3 * self.channels\n        d = self.i2c.readfrom_mem(self.addr, _FIFO_DATA, n * per)  # FIFO_DATA does not auto-increment\n        for i in range(n):\n            s = []\n            for c in range(self.channels):\n                j = i * per + 3 * c\n                s.append(((d[j] << 16) | (d[j + 1] << 8) | d[j + 2]) & 0x3FFFF)\n            out.append(tuple(s))\n        return out\n\n    def temperature(self):\n        \"\"\"Die temperature in degC (0.0625 degC resolution, about 29 ms per conversion).\"\"\"\n        self._w8(_TEMP_CONFIG, 0x01)  # TEMP_EN, clears itself when the conversion is done\n        t0 = time.ticks_ms()\n        while self._r8(_TEMP_CONFIG) & 0x01:\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                raise OSError('MAX30102 temperature conversion timed out')\n            time.sleep_ms(2)\n        tint = self._r8(_TEMP_INT)\n        if tint > 127:\n            tint -= 256  # two's complement, 1 degC per bit\n        tfrac = self._r8(_TEMP_FRAC) & 0x0F  # always adds, 0.0625 degC per bit\n        return tint + tfrac * 0.0625\n\n    def shutdown(self):\n        self._w8(_MODE_CONFIG, self._r8(_MODE_CONFIG) | 0x80)\n\n    def wake(self):\n        self._w8(_MODE_CONFIG, self._r8(_MODE_CONFIG) & 0x7F)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom max30102 import MAX30102\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\nsensor = MAX30102(i2c)\n# 400 samples/s averaged 4 at a time = 100 samples/s into the FIFO; 215 us pulses (17-bit ADC)\nsensor.setup(mode='spo2', sample_rate=400, average=4, pulse_width=215, adc_range=16384, red_ma=6.4, ir_ma=6.4)\nFS = 100\nir = []\nwhile len(ir) < 800:  # 8 s of IR samples\n    for red, v in sensor.read_fifo():\n        ir.append(v)\n    time.sleep_ms(40)\nir = ir[FS:]  # drop the first second while the finger and the light level settle\nprint('T=%.2fC' % sensor.temperature())\n# smooth, then find the dip in reflected light at each heartbeat\ns = [sum(ir[i:i + 5]) / 5 for i in range(len(ir) - 4)]\ncut = (sum(s) / len(s) + min(s)) / 2\nbeats = []\nfor i in range(1, len(s) - 1):\n    if s[i] < cut and s[i] <= s[i - 1] and s[i] < s[i + 1] and (not beats or i - beats[-1] > FS // 4):\n        beats.append(i)\nif len(beats) > 1:\n    print('BPM=%d' % round(60 * FS * (len(beats) - 1) / (beats[-1] - beats[0])))\nelse:\n    print('No pulse: place a fingertip on the sensor')\n",
+    "test": {
+      "id": "pulse",
+      "title": "Reports the heart rate and die temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 84
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "dieTemp",
+          "value": 31.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 140000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=31.50C",
+          "within": 15000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BPM=84",
+          "within": 15000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:36:41.210Z",
+    "verifiedSources": [
+      "https://www.analog.com/en/products/max30102.html",
+      "https://www.tokopedia.com/ashy04store/mh-et-live-max30102-max30100-heart-rate-sensor-module-puls-detection-blood-oxygen-concentration-test-for-arduino-ultra-low-power-1730888729950520795",
+      "https://circuitdigest.com/microcontroller-projects/how-max30102-pulse-oximeter-and-heart-rate-sensor-works-and-how-to-interface-with-arduino"
+    ]
+  }
+}

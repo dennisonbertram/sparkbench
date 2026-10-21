@@ -1,0 +1,79 @@
+{
+  "type": "custom-tsop38238",
+  "mpn": "TSOP38238",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.OUT → D25 (GPIO25). Added the ir_rx.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Decodes the NEC button code sent by the remote, then repeat codes while held: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "41.5×76 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.OUT → GP2 (GPIO2). Added the ir_rx.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Decodes the NEC button code sent by the remote, then repeat codes while held: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "OptoDevice:Vishay_MINICAST-3Pin"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C141632 TSOP38238 (28953 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T15:24:47.870Z"
+}

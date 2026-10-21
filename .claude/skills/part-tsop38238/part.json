@@ -1,0 +1,126 @@
+{
+  "type": "custom-tsop38238",
+  "name": "TSOP38238 38 kHz IR receiver",
+  "mpn": "TSOP38238",
+  "category": "sensor",
+  "description": "Vishay 38 kHz infrared remote-control receiver (photodiode, AGC, band-pass filter and demodulator in one 3-pin Minicast package). Its active-low OUT pin (internal 30 kOhm pull-up to VS) carries the demodulated remote-control code, ready for a microcontroller to decode (NEC, Sharp, Mitsubishi and other long-burst codes). Runs on 2.0-5.5 V at about 0.35 mA. Sold as: Adafruit IR (Infrared) Receiver Sensor - TSOP38238 (product 157), bare 3-lead part: OUT, GND, VS with the dome facing you.",
+  "eli5": "A tiny eye that sees the invisible flashes from a TV remote and turns them into on/off pulses your board can read to know which button was pressed.",
+  "refPrefix": "U",
+  "interface": "digital",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Demodulated output, active low (idles high through the internal 30 kOhm pull-up to VS). Max 5 mA.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VS",
+      "role": "power",
+      "description": "Supply, 2.0-5.5 V. Use 3.3 V with a 3.3 V board so OUT never exceeds the GPIO's voltage.",
+      "required": true
+    }
+  ],
+  "vmin": 2,
+  "vmax": 5.5,
+  "currentMa": 0.45,
+  "datasheetUrl": "https://www.vishay.com/docs/82491/tsop382.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "TSOP38238",
+  "footprint": "OptoDevice:Vishay_MINICAST-3Pin",
+  "buildNotes": [
+    "Pinout with the dome facing you, leads down, left to right: 1 OUT, 2 GND, 3 VS. Do not confuse it with the VS1838B clone, which shares this order, or with KY-022 boards, which do not.",
+    "Power VS from 3.3 V when using an ESP32 or Pico: OUT is pulled up to VS internally, so a 5 V supply would put 5 V on the GPIO.",
+    "No external pull-up is needed (30 kOhm inside). Vishay recommends 100 Ohm in series with VS and a 0.1 uF capacitor from VS to GND if the supply is noisy.",
+    "Use a 38 kHz remote with NEC-style long bursts (most cheap remotes, Adafruit 389). Decode the pulse widths in software: the ir_rx driver records edges in a pin interrupt.",
+    "Keep it out of direct sunlight and away from fluorescent lamps, which reduce its range (typ. 30 m in the dark with a strong emitter)."
+  ],
+  "keywords": [
+    "tsop38238",
+    "tsop382",
+    "ir receiver",
+    "infrared",
+    "remote control",
+    "38khz",
+    "nec",
+    "vishay"
+  ],
+  "sources": [
+    "https://www.vishay.com/docs/82491/tsop382.pdf",
+    "https://www.adafruit.com/product/157",
+    "https://learn.adafruit.com/ir-sensor",
+    "https://github.com/peterhinch/micropython_ir"
+  ],
+  "sim": {
+    "kind": "ir-receiver",
+    "outputPin": "OUT",
+    "ir": {
+      "protocol": "nec"
+    }
+  },
+  "driver": {
+    "filename": "ir_rx.py",
+    "code": "# peterhinch/micropython_ir (MIT): ir_rx/__init__.py and ir_rx/nec.py merged into one module, otherwise unchanged.\n# ir_rx __init__.py Decoder for IR remote control using synchronous code\n# IR_RX abstract base class for IR receivers.\n\n# Author: Peter Hinch\n# Copyright Peter Hinch 2020-2024 Released under the MIT license\n\n# Thanks are due to @Pax-IT for diagnosing a problem with ESP32C3.\n\nfrom machine import Timer, Pin\nfrom array import array\nfrom utime import ticks_us\n\n# from micropython import alloc_emergency_exception_buf\n# alloc_emergency_exception_buf(100)\n\n\n# On 1st edge start a block timer. While the timer is running, record the time\n# of each edge. When the timer times out decode the data. Duration must exceed\n# the worst case block transmission time, but be less than the interval between\n# a block start and a repeat code start (~108ms depending on protocol)\n\n\nclass IR_RX:\n    Timer_id = -1  # Software timer but enable override\n    # Result/error codes\n    # Repeat button code\n    REPEAT = -1\n    # Error codes\n    BADSTART = -2\n    BADBLOCK = -3\n    BADREP = -4\n    OVERRUN = -5\n    BADDATA = -6\n    BADADDR = -7\n\n    def __init__(self, pin, nedges, tblock, callback, *args):  # Optional args for callback\n        self._pin = pin\n        self._nedges = nedges\n        self._tblock = tblock\n        self.callback = callback\n        self.args = args\n        self._errf = lambda _: None\n        self.verbose = False\n\n        self._times = array(\"i\", (0 for _ in range(nedges + 1)))  # +1 for overrun\n        pin.irq(handler=self._cb_pin, trigger=(Pin.IRQ_FALLING | Pin.IRQ_RISING))\n        self.edge = 0\n        self.tim = Timer(self.Timer_id)  # Defaul is sofware timer\n        self.cb = self.decode\n\n    # Pin interrupt. Save time of each edge for later decode.\n    def _cb_pin(self, line):\n        t = ticks_us()\n        # On overrun ignore pulses until software timer times out\n        if self.edge <= self._nedges:  # Allow 1 extra pulse to record overrun\n            if not self.edge:  # First edge received\n                self.tim.init(period=self._tblock, mode=Timer.ONE_SHOT, callback=self.cb)\n            self._times[self.edge] = t\n            self.edge += 1\n\n    def do_callback(self, cmd, addr, ext, thresh=0):\n        self.edge = 0\n        if cmd >= thresh:\n            self.callback(cmd, addr, ext, *self.args)\n        else:\n            self._errf(cmd)\n\n    def error_function(self, func):\n        self._errf = func\n\n    def close(self):\n        self._pin.irq(handler=None)\n        self.tim.deinit()\n\n\n# nec.py Decoder for IR remote control using synchronous code\n# Supports NEC and Samsung protocols.\n# With thanks to J.E. Tannenbaum for information re Samsung protocol\n\n# For a remote using NEC see https://www.adafruit.com/products/389\n\n# Author: Peter Hinch\n# Copyright Peter Hinch 2020-2022 Released under the MIT license\n\nfrom utime import ticks_us, ticks_diff\n\nclass NEC_ABC(IR_RX):\n    def __init__(self, pin, extended, samsung, callback, *args):\n        # Block lasts <= 80ms (extended mode) and has 68 edges\n        super().__init__(pin, 68, 80, callback, *args)\n        self._extended = extended\n        self._addr = 0\n        self._leader = 2500 if samsung else 4000  # 4.5ms for Samsung else 9ms\n\n    def decode(self, _):\n        try:\n            if self.edge > 68:\n                raise RuntimeError(self.OVERRUN)\n            width = ticks_diff(self._times[1], self._times[0])\n            if width < self._leader:  # 9ms leading mark for all valid data\n                raise RuntimeError(self.BADSTART)\n            width = ticks_diff(self._times[2], self._times[1])\n            if width > 3000:  # 4.5ms space for normal data\n                if self.edge < 68:  # Haven't received the correct number of edges\n                    raise RuntimeError(self.BADBLOCK)\n                # Time spaces only (marks are always 562.5µs)\n                # Space is 1.6875ms (1) or 562.5µs (0)\n                # Skip last bit which is always 1\n                val = 0\n                for edge in range(3, 68 - 2, 2):\n                    val >>= 1\n                    if ticks_diff(self._times[edge + 1], self._times[edge]) > 1120:\n                        val |= 0x80000000\n            elif width > 1700: # 2.5ms space for a repeat code. Should have exactly 4 edges.\n                raise RuntimeError(self.REPEAT if self.edge == 4 else self.BADREP)  # Treat REPEAT as error.\n            else:\n                raise RuntimeError(self.BADSTART)\n            addr = val & 0xff  # 8 bit addr\n            cmd = (val >> 16) & 0xff\n            if cmd != (val >> 24) ^ 0xff:\n                raise RuntimeError(self.BADDATA)\n            if addr != ((val >> 8) ^ 0xff) & 0xff:  # 8 bit addr doesn't match check\n                if not self._extended:\n                    raise RuntimeError(self.BADADDR)\n                addr |= val & 0xff00  # pass assumed 16 bit address to callback\n            self._addr = addr\n        except RuntimeError as e:\n            cmd = e.args[0]\n            addr = self._addr if cmd == self.REPEAT else 0  # REPEAT uses last address\n        # Set up for new data burst and run user callback\n        self.do_callback(cmd, addr, 0, self.REPEAT)\n\nclass NEC_8(NEC_ABC):\n    def __init__(self, pin, callback, *args):\n        super().__init__(pin, False, False, callback, *args)\n\nclass NEC_16(NEC_ABC):\n    def __init__(self, pin, callback, *args):\n        super().__init__(pin, True, False, callback, *args)\n\nclass SAMSUNG(NEC_ABC):\n    def __init__(self, pin, callback, *args):\n        super().__init__(pin, True, True, callback, *args)\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nfrom ir_rx import NEC_16\nimport time\n\ndef cb(data, addr, ctrl):\n    if data == NEC_16.REPEAT:\n        print('repeat')\n    elif data < 0:\n        print('error %d' % data)\n    else:\n        print('addr %04x cmd %02x' % (addr, data))\n\nir = NEC_16(Pin({OUT}, Pin.IN), cb)\nprint('listening')\nwhile True:\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "decodes-nec",
+      "title": "Decodes the NEC button code sent by the remote, then repeat codes while held",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "listening",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "address",
+          "value": 7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "press",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "addr 0007 cmd 18",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "repeat",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:24:47.870Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/82491/tsop382.pdf",
+      "https://www.adafruit.com/product/157"
+    ]
+  }
+}

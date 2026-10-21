@@ -1,0 +1,126 @@
+{
+  "type": "custom-vs1838b",
+  "name": "VS1838B 38 kHz IR receiver",
+  "mpn": "VS1838B",
+  "category": "sensor",
+  "description": "Integrated 38 kHz infrared remote-control receiver (photodiode, amplifier, band-pass filter and demodulator in one 3-pin package). Its OUT pin idles high (internal pull-up) and goes low while a 38 kHz IR burst is received, so a GPIO interrupt can decode NEC remote frames. Runs on 2.7-5.5 V, 0.4 mA typical. Sold as: VS1838B bare 3-pin IR receiver (pins OUT, GND, VCC left to right facing the dome), usually bundled with a 21-key NEC 'Car MP3' remote.",
+  "eli5": "Lets your board hear the buttons on a TV-style remote control.",
+  "refPrefix": "U",
+  "interface": "digital",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Demodulated output, active low (low during each 38 kHz burst); internal pull-up to VCC",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V (use 3.3 V with an ESP32 or Pico so OUT never rises above 3.3 V)",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.datasheetcafe.com/wp-content/uploads/2015/11/VS1838B.pdf",
+  "priceUsd": 0.5,
+  "supplierQuery": "VS1838B 38kHz IR receiver with NEC remote",
+  "footprint": "OptoDevice:Vishay_MOLD-3Pin",
+  "buildNotes": [
+    "Pin order facing the dome (the bulge), left to right: OUT, GND, VCC. Swapping VCC and GND destroys it within seconds, so check before powering.",
+    "Power it from 3.3 V on an ESP32 or Pico: OUT is pulled up internally to VCC, and these boards' GPIOs are not 5 V tolerant.",
+    "The datasheet's application circuit adds 100 ohm in series with VCC and a 100 uF + 100 nF capacitor from VCC to GND; fit them if decoding is unreliable near a noisy supply.",
+    "Every remote button sends one NEC frame (address, command) and then a repeat code every 108 ms while held.",
+    "Sunlight, fluorescent lamps and LCD backlights add IR noise; keep the dome out of direct light."
+  ],
+  "keywords": [
+    "vs1838b",
+    "vs1838",
+    "ir receiver",
+    "infrared",
+    "remote",
+    "nec",
+    "38khz",
+    "hx1838",
+    "tsop38238"
+  ],
+  "sources": [
+    "https://www.datasheetcafe.com/wp-content/uploads/2015/11/VS1838B.pdf",
+    "https://ifuturetech.org/product/vs1838b-tsop-infrared-receiver-module/"
+  ],
+  "sim": {
+    "kind": "ir-receiver",
+    "outputPin": "OUT",
+    "ir": {
+      "protocol": "nec"
+    }
+  },
+  "driver": {
+    "filename": "nec_ir.py",
+    "code": "# NEC IR remote decoder for a 38 kHz demodulating IR receiver (VS1838B, TSOP38238, ...).\n# MicroPython. The receiver's OUT idles high and is low while a 38 kHz burst is seen.\n#\n# NEC frame (as sent by the common 21-key \"Car MP3\" remote): 9 ms mark, 4.5 ms space,\n# then 32 bits LSB first: address, ~address, command, ~command. Every bit starts with a\n# 562.5 us mark; the space after it is 562.5 us for 0 and 1687.5 us for 1. A final\n# 562.5 us mark ends the frame (67.5 ms in total). While the button is held, a repeat\n# code (9 ms mark, 2.25 ms space, 562.5 us mark) follows every 108 ms.\n#\n# A pin interrupt records the time of every edge; read() decodes once the line has\n# been quiet for QUIET_US. Call read() often (every 10-20 ms) from your main loop.\n\nfrom machine import Pin\nfrom array import array\nfrom utime import ticks_us, ticks_diff\n\nQUIET_US = 12000      # longest gap inside a frame is 4.5 ms; frames are >= 40 ms apart\nNEDGES = 68           # 2 leader edges + 32 bits x 2 + final mark (2)\n\n\nclass NEC:\n    REPEAT = -1       # read() result kinds\n    ERROR = -2\n\n    def __init__(self, pin, extended=False):\n        self._pin = pin\n        self._ext = extended\n        self._t = array('i', [0] * (NEDGES + 1))\n        self._n = 0\n        self._last = ticks_us()\n        self._busy = False\n        self.addr = 0\n        pin.irq(handler=self._edge, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING)\n\n    def _edge(self, _):\n        t = ticks_us()\n        if self._busy:\n            return\n        if self._n and ticks_diff(t, self._last) > QUIET_US:\n            self._n = 0   # stale partial burst: start again\n        if self._n <= NEDGES:\n            self._t[self._n] = t\n            self._n += 1\n        self._last = t\n\n    def close(self):\n        self._pin.irq(handler=None)\n\n    def read(self):\n        \"\"\"None if nothing new; (addr, cmd) for a frame; (addr, NEC.REPEAT) for a\n        held button; (0, NEC.ERROR) for a garbled burst. addr is 8-bit, or 16-bit\n        for extended-NEC remotes when extended=True.\"\"\"\n        n = self._n\n        if not n or ticks_diff(ticks_us(), self._last) < QUIET_US:\n            return None\n        self._busy = True\n        t = self._t\n        try:\n            res = self._decode(t, n)\n        finally:\n            self._n = 0\n            self._busy = False\n        return res\n\n    def _decode(self, t, n):\n        bad = (0, NEC.ERROR)\n        if n < 4 or ticks_diff(t[1], t[0]) < 7000:     # 9 ms leader mark\n            return bad\n        space = ticks_diff(t[2], t[1])\n        if 1700 < space < 3000:                          # 2.25 ms: repeat code\n            return (self.addr, NEC.REPEAT) if n == 4 else bad\n        if space < 3500 or n != NEDGES:                  # 4.5 ms: data frame\n            return bad\n        v = 0\n        for i in range(32):\n            sp = ticks_diff(t[3 + 2 * i + 1], t[3 + 2 * i])\n            if sp > 1120:                                # 1687.5 us = 1, 562.5 us = 0\n                v |= 1 << i\n        a, ai, c, ci = v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF\n        if c ^ ci != 0xFF:\n            return bad\n        if a ^ ai != 0xFF:\n            if not self._ext:\n                return bad\n            a = v & 0xFFFF\n        self.addr = a\n        return (a, c)\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom nec_ir import NEC\n\nir = NEC(Pin({OUT}, Pin.IN))\nprint('listening')\nwhile True:\n    r = ir.read()\n    if r:\n        addr, cmd = r\n        if cmd == NEC.REPEAT:\n            print('repeat')\n        elif cmd == NEC.ERROR:\n            print('bad frame')\n        else:\n            print('addr %02x cmd %02x' % (addr, cmd))\n    time.sleep_ms(10)\n",
+    "test": {
+      "id": "decodes",
+      "title": "Decodes the NEC button code and address sent by the remote",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "listening",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "address",
+          "value": 16
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "press",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "addr 10 cmd 18",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "repeat",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:24:51.131Z",
+    "verifiedSources": [
+      "https://www.alldatasheet.com/html-pdf/1132465/ETC2/VS1838B/229/2/VS1838B.html",
+      "https://www.datasheet-pdf.info/entry/VS1838B",
+      "https://protosupplies.com/product/ir-receiver-module/"
+    ]
+  }
+}

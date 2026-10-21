@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max30100",
+  "board": "MAX30100 pulse oximeter module RCWL-0530 (7-pin header VIN, SCL, SDA, INT, IRD, RD, GND)",
+  "reason": "Check passed on ESP32 and Pico on the first run. The sim follows the datasheet register map: a 16-deep FIFO with 4-byte IR/red samples at the SPO2_SR rate, left-justified LED_PW resolution, self-clearing RESET and TEMP_EN bits, and TINT + TFRAC/16 temperature. The test reads BPM=66 from the IR pulse and T=31.50C.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX30100.pdf",
+  "breakoutPinoutSource": "https://lastminuteengineers.com/max30100-pulse-oximeter-heart-rate-sensor-arduino-tutorial/",
+  "checkRuns": 1
+}
