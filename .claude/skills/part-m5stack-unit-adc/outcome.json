@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-adc",
+  "board": "M5Stack Unit ADC (SKU U013)",
+  "reason": "Check passed on ESP32 and Pico. The model follows the ADS1100 datasheet: one config byte is written (0x9C, single-shot, 8 SPS, PGA 1) and the reply is 3 bytes (16-bit two's-complement code, then config with ST/BSY=0). The M5 schematic's divide-by-4 input divider (300k/100k) and 3.3 V VDD reference give Vin = code x 13.2/32768.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ads1100.pdf",
+  "breakoutPinoutSource": "https://docs.m5stack.com/en/unit/adc (PinMap GND/5V/SDA/SCL) + U013 schematic https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/736/U013_UNIT_ADC_SCHE.pdf + unit label/terminal photos",
+  "checkRuns": 1
+}

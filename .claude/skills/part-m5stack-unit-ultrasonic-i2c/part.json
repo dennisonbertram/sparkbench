@@ -1,0 +1,129 @@
+{
+  "type": "custom-m5stack-unit-ultrasonic-i2c",
+  "name": "M5Stack Unit Ultrasonic-I2C distance sensor",
+  "mpn": "RCWL-9620",
+  "category": "sensor",
+  "description": "Ultrasonic distance sensor unit: an RCWL-9620 ranging chip driving a 16 mm open probe pair, read over I2C at address 0x57. Range 2-450 cm, ±2 %, 1 mm resolution, about 3 mA. Write 0x01 to start a measurement, wait at least 100 ms, then read 3 bytes: distance = 24-bit value / 1000 mm. The chip runs on 2.8-5.5 V straight from the Grove supply pin; its SDA/SCL are open-drain I2C lines and the chip's reference design has no pull-ups on them, so the host provides them. Sold as: M5Stack Unit Ultrasonic-I2C (SKU U098-B1, RCWL-9620), 4-pin HY2.0-4P Grove connector GND, 5V, SDA, SCL, supplied with a 20 cm Grove cable.",
+  "eli5": "Sends out a chirp too high to hear and times the echo, so it can tell how far away a wall or your hand is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1, black wire)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply (pin 2, red wire; labelled 5V on M5Stack's PORT.A). Goes straight to the RCWL-9620, which runs on 2.8-5.5 V. With an ESP32 / Pico / Raspberry Pi feed it 3.3 V so the chip and the I2C pull-ups share the board's 3.3 V logic level.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pin 3, yellow wire), open-drain; needs a pull-up to the supply (M5Stack controllers have one; add 4.7 kΩ otherwise)",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pin 4, white wire), open-drain; needs a pull-up to the supply (M5Stack controllers have one; add 4.7 kΩ otherwise)",
+      "required": true,
+      "pullUp": 4700
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 3.5,
+  "i2cAddress": 87,
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/697/RCWL-9620-V1.0.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "M5Stack Unit Ultrasonic I2C RCWL-9620 U098-B1",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Start a measurement by writing the single byte 0x01 to address 0x57, wait at least 100 ms (M5Stack's library waits 120 ms), then read 3 bytes. Distance in mm = ((b0 << 16) | (b1 << 8) | b2) / 1000.",
+    "Do not read faster than the 50 ms measurement cycle; one reading every 150 ms or slower is reliable. M5Stack notes replies can be slower beyond 3.5 m.",
+    "The chip's reference circuit has no I2C pull-ups: Sparkbench adds 4.7 kΩ from SDA and SCL to the supply. Run the unit from 3.3 V on 3.3 V boards so nothing on the bus is pulled above 3.3 V.",
+    "Readings under about 2 cm (the blind zone) are random; soft or angled surfaces (cloth, a slanted wall) may give no echo or a long reading. Readings above 4500 mm mean out of range.",
+    "Point the two probes squarely at the target; the beam is about 60° wide, so nearby edges and table tops can echo first."
+  ],
+  "keywords": [
+    "m5stack",
+    "ultrasonic",
+    "rcwl-9620",
+    "sonic",
+    "distance",
+    "rangefinder",
+    "i2c",
+    "u098-b1",
+    "grove"
+  ],
+  "sources": [
+    "https://shop.m5stack.com/products/ultrasonic-distance-unit-i2c-rcwl-9620",
+    "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/static/pdf/static/en/unit/ULTRASONIC%20I2C.pdf",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/697/RCWL-9620-V1.0.pdf",
+    "https://github.com/m5stack/M5Unit-Sonic/blob/master/src/Unit_Sonic.cpp",
+    "https://github.com/m5stack/uiflow-micropython/blob/master/m5stack/libs/unit/ultrasonic_i2c.py"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 20,
+    "max": 4500,
+    "default": 1000,
+    "responses": [
+      {
+        "match": "01",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 24,
+            "scale": 0.001
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "rcwl9620.py",
+    "code": "# M5Stack Unit Ultrasonic-I2C (RCWL-9620 ultrasonic ranging chip), MicroPython driver.\n# RCWL-9620 datasheet, I2C mode: address 0x57. Write command 0x01 to start a measurement,\n# wait at least 100 ms (the chip's longest measurement time), then read 3 bytes\n# BYTE_H, BYTE_M, BYTE_L: distance = ((BYTE_H << 16) + (BYTE_M << 8) + BYTE_L) / 1000 mm.\nimport time\n\nMAX_MM = 4500  # M5Stack's specified range is 20-4500 mm\n\n\nclass RCWL9620:\n    def __init__(self, i2c, addr=0x57):\n        self.i2c = i2c\n        self.addr = addr\n\n    def distance_mm(self):\n        \"\"\"Start one measurement and return the distance in millimetres (capped at 4500).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x01')\n        time.sleep_ms(120)  # datasheet: wait 100 ms or more before reading\n        d = self.i2c.readfrom(self.addr, 3)\n        mm = ((d[0] << 16) | (d[1] << 8) | d[2]) / 1000\n        return MAX_MM if mm > MAX_MM else mm\n\n    def distance_cm(self):\n        return self.distance_mm() / 10\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom rcwl9620 import RCWL9620\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsonic = RCWL9620(i2c)\nwhile True:\n    print('D=%.1fmm' % sonic.distance_mm())\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=1234.5mm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:45:27.439Z",
+    "verifiedSources": [
+      "https://shop.m5stack.com/products/ultrasonic-distance-unit-i2c-rcwl-9620",
+      "https://raw.githubusercontent.com/m5stack/M5Unit-Sonic/master/src/Unit_Sonic.cpp"
+    ]
+  }
+}

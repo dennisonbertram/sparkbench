@@ -1,0 +1,116 @@
+{
+  "type": "custom-grove-pir-motion-sensor",
+  "name": "Grove PIR Motion Sensor",
+  "mpn": "101020020",
+  "category": "sensor",
+  "description": "Seeed Grove passive-infrared motion sensor v1.2: an LHI778 pyroelectric element and a BISS0001-type PIR controller (TM2291 fitted) running from an on-board XC6206P332 3.3 V regulator, so SIG goes high (about 3.3 V, through 10 kOhm) for about 2.5-4 s whenever a warm body moves within about 3 m (up to 6 m) in a 120 degree cone. Jumper J2 selects non-retriggerable (default) or retriggerable mode. Works from 3-5 V, about 150 uA. Sold as: Seeed Grove - PIR Motion Sensor (SKU 101020020), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A heat-motion detector on a Grove cable: when a person or animal moves in front of it, it sets its yellow SIG wire high for a few seconds.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "required": true,
+      "levelV": 3.3,
+      "description": "Motion output (Grove pin 1, yellow wire): BISS0001 VO from the 3.3 V rail through a 10 kOhm resistor, about 3.3 V for Tx (~2.5-4 s) per trigger, 0 V otherwise. Safe for 3.3 V GPIOs."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 3-5 V into the XC6206P332 3.3 V regulator."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.15,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove_PIR_Motion_Sensor/resources/Twig_-_BISS0001.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-PIR_Motion_Sensor/",
+    "https://files.seeedstudio.com/wiki/Grove_PIR_Motion_Sensor/resources/Grove_PIR_Sensor_v1.2.pdf",
+    "https://files.seeedstudio.com/wiki/Grove_PIR_Motion_Sensor/resources/Twig_-_BISS0001.pdf"
+  ],
+  "priceUsd": 8,
+  "supplierQuery": "Seeed Grove PIR Motion Sensor 101020020",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order (Seeed v1.2 schematic J3, wiki wire colours): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Power VCC from 3.3 V or 5 V. The on-board XC6206 3.3 V LDO powers the PIR chip, so SIG is at most about 3.3 V and connects straight to a GPIO.",
+    "SIG is active high and has a 10 kOhm series resistor: read it with a GPIO input, do not drive an LED from it.",
+    "Default jumper J2 (A to GND) is non-retriggerable: continuous motion gives ~2.5-4 s pulses separated by a ~1 s inhibit time. Move the jumper to VCC for retriggerable mode.",
+    "Give it up to a minute after power-up to settle. It senses moving warm bodies, not still ones, and cannot see through glass."
+  ],
+  "keywords": [
+    "grove pir",
+    "grove",
+    "seeed",
+    "101020020",
+    "biss0001",
+    "pir",
+    "passive infrared",
+    "motion",
+    "presence",
+    "tm2291"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "SIG",
+    "quantity": "Motion detected",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "grove_pir.py",
+    "code": "# Seeed Grove - PIR Motion Sensor v1.2 (SKU 101020020), MicroPython driver.\n# The board carries a BISS0001-type PIR controller (TM2291 on the v1.2 schematic) and an\n# LHI778 pyroelectric element, powered from an on-board XC6206P332 3.3 V LDO fed by Grove VCC.\n# The controller's VO output (push-pull from its 3.3 V rail, active high) reaches the Grove\n# SIG pin (yellow wire) through a 10 kOhm series resistor (R1):\n#   HIGH (about 3.3 V) for Tx after motion (about 2.5-4 s with the fitted R14 = 10k, C1 = 10 nF)\n#   LOW  (0 V) otherwise; after Tx it ignores new triggers for Ti (about 1 s, 4.7 MOhm x 10 nF).\n# Jumper J2 selects non-retriggerable (default, A tied to GND) or retriggerable (A to VDD).\n# Safe for 3.3 V GPIOs even when VCC is 5 V. No pull-up/down needed.\n# Allow up to a minute after power-up for the detector to settle.\nfrom machine import Pin\n\n\nclass GrovePIR:\n    def __init__(self, sig_pin):\n        self.pin = Pin(sig_pin, Pin.IN) if isinstance(sig_pin, int) else sig_pin\n\n    def motion(self):\n        \"\"\"True while the sensor reports motion (SIG high).\"\"\"\n        return self.pin.value() == 1\n\n    def on_change(self, handler):\n        \"\"\"Call handler(motion: bool) on every edge of SIG. Pass None to stop.\"\"\"\n        if handler is None:\n            self.pin.irq(handler=None)\n            return\n        self.pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING,\n                     handler=lambda p: handler(p.value() == 1))\n"
+  },
+  "example": {
+    "code": "from grove_pir import GrovePIR\nimport time\n\npir = GrovePIR({SIG})\nwhile True:\n    print('MOTION=%d' % pir.motion())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports motion when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION=0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-pir-motion-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - PIR Motion Sensor v1.2 (SKU 101020020; BISS0001-type PIR controller with XC6206 3.3 V regulator, Grove SIG/NC/VCC/GND, active-high output). Use when designing, wiring, simulating or writing code for a Grove PIR motion sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Seeed Grove - PIR Motion Sensor (v1.2, BISS0001)\n\n## Overview\nThe **Grove - PIR Motion Sensor** (Seeed SKU 101020020) is a 20 x 40 mm Grove board with a white Fresnel dome over an **LHI778** pyroelectric element, a **BISS0001**-type PIR controller (the v1.2 schematic fits the pin-compatible TM2291) and an **XC6206P332** 3.3 V LDO.\n- **SIG goes high (about 3.3 V) when a warm body moves** in front, low otherwise (active high)\n- Hold time Tx is set by R14 = 10 kΩ and C1 = 10 nF: about 2.5 s by the BISS0001 formula (Tx ≈ 24576·R·C; Seeed's note gives 40000·R·C ≈ 4 s). Seeed quotes 1-25 s when the optional pot R6 is fitted.\n- Trigger-inhibit time after each pulse Ti ≈ 24 × 4.7 MΩ × 10 nF ≈ 1.1 s\n- Jumper **J2**: non-retriggerable (default, A to GND) or retriggerable (A to VCC, hold restarts while motion continues)\n- Range 0.1-6 m (3 m default), 120° cone, wavelength 7-14 µm\n\n## Pinout (Grove connector J3)\n| Pin | Wire | Name | Function |\n|---|---|---|---|\n| 1 | yellow | SIG | Motion output: ~3.3 V through 10 kΩ while triggered, 0 V otherwise |\n| 2 | white | NC | Not connected |\n| 3 | red | VCC | Supply 3-5 V |\n| 4 | black | GND | Ground |\n\n## Electrical limits\n- VCC 3-5 V (Seeed wiki); about 100 µA at 3 V, 150 µA at 5 V.\n- The BISS0001 runs from the on-board 3.3 V LDO (absolute max supply 5 V for the chip), so SIG is never above 3.3 V: safe for 3.3 V GPIOs even with VCC = 5 V.\n- SIG has a 10 kΩ series resistor: drive a high-impedance input only, not an LED.\n- Operating temperature -20 to +70 °C (BISS0001).\n\n## Interface details\nPlain digital output, active high, no pull resistor needed:\n```\nSIG = 1  -> motion (held Tx, ~2.5-4 s)\nSIG = 0  -> no motion (new triggers ignored for ~1 s after each pulse)\n```\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG (yellow) | GPIO25 | GP2 | GPIO17 (pin 11) |\n| NC (white) | - | - | - |\n| VCC (red) | 3V3 or 5V | 3V3(OUT) or VBUS | 3.3 V (pin 1) or 5 V (pin 2) |\n| GND (black) | GND | GND | GND (pin 6) |\n\nThe board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach a breadboard.\n\n## Using the driver\n```python\nfrom grove_pir import GrovePIR\nimport time\npir = GrovePIR(25)            # GPIO wired to SIG\nwhile True:\n    print('MOTION=%d' % pir.motion())\n    time.sleep(0.5)\n```\n`motion()` returns True while SIG is high; `on_change(handler)` calls `handler(True/False)` on each edge.\n\n## Gotchas\n- **Warm-up**: readings during the first minute after power-up are unreliable.\n- In the default non-retriggerable mode, continuous motion gives repeated ~3 s pulses with ~1 s gaps, not one long high: count rising edges or latch in software.\n- It senses **moving** warm bodies only; it does not see through glass. Heaters, sun and air drafts cause false triggers.\n- The 10 kΩ series resistor means SIG cannot drive an LED or relay directly.\n- Not the same as the **Grove - Digital PIR Sensor** or Grove mini PIR (different boards).\n\n## Datasheet\nBISS0001: https://files.seeedstudio.com/wiki/Grove_PIR_Motion_Sensor/resources/Twig_-_BISS0001.pdf\nSchematic v1.2: https://files.seeedstudio.com/wiki/Grove_PIR_Motion_Sensor/resources/Grove_PIR_Sensor_v1.2.pdf\nWiki (pin colours, specs): https://wiki.seeedstudio.com/Grove-PIR_Motion_Sensor/\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:35:06.502Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-PIR_Motion_Sensor/",
+      "https://files.seeedstudio.com/wiki/Grove_PIR_Motion_Sensor/resources/Twig_-_BISS0001.pdf"
+    ]
+  }
+}

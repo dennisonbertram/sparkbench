@@ -1,0 +1,79 @@
+{
+  "type": "custom-m5stack-unit-adc",
+  "mpn": "U013",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; M5Stack Unit ADC 0-12 V (ADS1100, I2C) needs at least 4.5 V, so it is powered from 5 V. It shares the I2C bus (SDA D21, SCL D22) at address 0x48. Added the m5_unit_adc.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the terminal voltage set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; M5Stack Unit ADC 0-12 V (ADS1100, I2C) needs at least 4.5 V, so it is powered from 5 V. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x48. Added the m5_unit_adc.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the terminal voltage set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C19193016 U0138 (1052 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T17:49:44.443Z"
+}

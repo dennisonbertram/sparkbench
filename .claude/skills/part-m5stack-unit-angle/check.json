@@ -1,0 +1,79 @@
+{
+  "type": "custom-m5stack-unit-angle",
+  "mpn": "U005",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; M5Stack Unit Angle (rotary potentiometer, analog) needs at least 4.5 V, so it is powered from 5 V. U2.AO → D32 (GPIO32) — an analog-capable pin. Added the m5_unit_angle.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the AO voltage and the knob position decoded from it: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; M5Stack Unit Angle (rotary potentiometer, analog) needs at least 4.5 V, so it is powered from 5 V. U2.AO → GP28 (GPIO28) — an analog-capable pin. Added the m5_unit_angle.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the AO voltage and the knob position decoded from it: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C19193017 U0058 (16 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T17:49:14.041Z"
+}

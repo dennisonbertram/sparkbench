@@ -1,0 +1,130 @@
+{
+  "type": "custom-m5stack-unit-button",
+  "name": "M5Stack Unit Button",
+  "mpn": "U027",
+  "category": "sensor",
+  "description": "Grove-connector single push button from M5Stack. No chip: the button shorts the signal to GND, which is otherwise held at about 3.3 V by an on-board 10 kOhm (to 5 V) / 20 kOhm (to GND) divider with a 100 nF debounce capacitor, so OUT reads 1 released and 0 pressed (active low) and is safe for 3.3 V GPIOs when the unit is fed 5 V. Sold as: M5Stack Unit Button (SKU U027), 32 x 24 mm unit with HY2.0-4P Grove socket OUT, NC, 5V, GND.",
+  "eli5": "A big push button on a Grove cable: its signal wire drops to 0 V while you press it.",
+  "refPrefix": "SW",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "required": true,
+      "levelV": 3.3,
+      "description": "Button signal (Grove pin 1, white wire): about 3.3 V released (5 V through the 10k/20k divider), 0 V pressed. Active low; no GPIO pull needed, never a pull-down."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, yellow wire)."
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 5 V feeding the 10 kOhm pull-up / 20 kOhm divider. Do not use 3.3 V (high level would be only ~2.2 V)."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.25,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf",
+  "sources": [
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf",
+    "https://docs.m5stack.com/en/unit/button"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "M5Stack Unit Button U027",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order (M5Stack schematic J1): pin 1 OUT (white), pin 2 NC (yellow), pin 3 5V (red), pin 4 GND (black). Use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Power it from 5 V (ESP32 5V/VIN, Pico VBUS): the 10k/20k divider then gives about 3.3 V on OUT when released, safe for a 3.3 V GPIO.",
+    "OUT is active low: 0 while pressed, 1 when released. No pull resistor needed; never enable a pull-down.",
+    "On an M5Stack Core use Port B (white wire = GPIO36)."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit button",
+    "u027",
+    "button",
+    "push button",
+    "pushbutton",
+    "grove",
+    "switch"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Button pressed",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "m5_button.py",
+    "code": "# M5Stack Unit Button (U027), MicroPython driver.\n# Schematic (UNIT_BUTTON V1.0): the push button S1 shorts the Grove signal (J1 pin 1,\n# white wire) to GND. The signal is held up by R1 10 kOhm to VCC (Grove 5 V) and loaded by\n# R2 20 kOhm to GND, with C1 100 nF to GND for hardware debounce. So:\n#   released -> 5 V x 20k / (10k + 20k) = about 3.3 V  (reads 1)\n#   pressed  -> 0 V                                   (reads 0)  -- active low\n# The 10k/20k divider keeps the high level about 3.3 V when the unit is fed 5 V, so the\n# signal is safe for 3.3 V GPIOs. Do NOT enable a GPIO pull-down (it would fight the divider);\n# no pull-up is needed either. Fed from 3.3 V the high level is only ~2.2 V (below the\n# ESP32 input-high threshold), so power the unit from 5 V.\nfrom machine import Pin\nimport time\n\n\nclass M5Button:\n    def __init__(self, pin, debounce_ms=10):\n        \"\"\"pin: GPIO number (or Pin) wired to the Grove signal (white wire).\"\"\"\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.debounce_ms = debounce_ms\n        self._last = 1\n\n    def value(self):\n        \"\"\"Raw level: 1 = released, 0 = pressed.\"\"\"\n        return self.pin.value()\n\n    def _stable(self):\n        v = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            n = self.pin.value()\n            if n != v:\n                v = n\n                t0 = time.ticks_ms()\n        return v\n\n    def is_pressed(self):\n        \"\"\"True while the button is held down (debounced).\"\"\"\n        return self._stable() == 0\n\n    def was_pressed(self):\n        \"\"\"True once for each new press; call it often in a loop.\"\"\"\n        v = self._stable()\n        edge = self._last == 1 and v == 0\n        self._last = v\n        return edge\n\n    def irq(self, handler, on_press=True):\n        \"\"\"Call handler(pin) on press (falling edge) or release (on_press=False).\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_press else Pin.IRQ_RISING)\n"
+  },
+  "example": {
+    "code": "from m5_button import M5Button\nimport time\n\nbtn = M5Button({OUT})  # white wire; 0 = pressed\nwhile True:\n    print('BUTTON=%s' % ('DOWN' if btn.is_pressed() else 'UP'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the button down while it is pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=UP",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=DOWN",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=UP",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (6 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:45:49.567Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/button"
+    ]
+  }
+}

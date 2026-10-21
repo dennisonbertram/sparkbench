@@ -1,0 +1,40 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says OUT, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "The M5Stack PinMap lists the HY2.0-4P wires as 'Black Red Yellow White PORT.B GND 5V NC Digital Output'; the UNIT_BUTTON V1.0 schematic (J1 'Grove') puts the button/R1 10k/R2 20k signal net on J1 pin 1, nothing on pin 2, VCC on pin 3 and GND on pin 4, and on HY2.0 cables white is pin 1 and black pin 4, so the second reading listed the wire-colour table (black first) as if it were pin 1 to 4; the model pin order (pin 1 OUT (white), 2 NC (yellow), 3 5V (red), 4 GND (black)) is correct.",
+      "source": "https://docs.m5stack.com/en/unit/button ; https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf"
+    },
+    {
+      "diff": "header pin 2: part says NC, datasheet reading says 5V",
+      "verdict": "part-correct",
+      "evidence": "The M5Stack PinMap lists the HY2.0-4P wires as 'Black Red Yellow White PORT.B GND 5V NC Digital Output'; the UNIT_BUTTON V1.0 schematic (J1 'Grove') puts the button/R1 10k/R2 20k signal net on J1 pin 1, nothing on pin 2, VCC on pin 3 and GND on pin 4, and on HY2.0 cables white is pin 1 and black pin 4, so the second reading listed the wire-colour table (black first) as if it were pin 1 to 4; the model pin order (pin 1 OUT (white), 2 NC (yellow), 3 5V (red), 4 GND (black)) is correct.",
+      "source": "https://docs.m5stack.com/en/unit/button ; https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf"
+    },
+    {
+      "diff": "header pin 3: part says 5V, datasheet reading says NC",
+      "verdict": "part-correct",
+      "evidence": "The M5Stack PinMap lists the HY2.0-4P wires as 'Black Red Yellow White PORT.B GND 5V NC Digital Output'; the UNIT_BUTTON V1.0 schematic (J1 'Grove') puts the button/R1 10k/R2 20k signal net on J1 pin 1, nothing on pin 2, VCC on pin 3 and GND on pin 4, and on HY2.0 cables white is pin 1 and black pin 4, so the second reading listed the wire-colour table (black first) as if it were pin 1 to 4; the model pin order (pin 1 OUT (white), 2 NC (yellow), 3 5V (red), 4 GND (black)) is correct.",
+      "source": "https://docs.m5stack.com/en/unit/button ; https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf"
+    },
+    {
+      "diff": "header pin 4: part says GND, datasheet reading says SIG",
+      "verdict": "part-correct",
+      "evidence": "The M5Stack PinMap lists the HY2.0-4P wires as 'Black Red Yellow White PORT.B GND 5V NC Digital Output'; the UNIT_BUTTON V1.0 schematic (J1 'Grove') puts the button/R1 10k/R2 20k signal net on J1 pin 1, nothing on pin 2, VCC on pin 3 and GND on pin 4, and on HY2.0 cables white is pin 1 and black pin 4, so the second reading listed the wire-colour table (black first) as if it were pin 1 to 4; the model pin order (pin 1 OUT (white), 2 NC (yellow), 3 5V (red), 4 GND (black)) is correct.",
+      "source": "https://docs.m5stack.com/en/unit/button ; https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf"
+    },
+    {
+      "diff": "minimum supply: part 4.5 V, datasheet reading 5 V",
+      "verdict": "part-correct",
+      "evidence": "The vendor page gives only the nominal port voltage ('PORT.B GND 5V NC Digital Output') with no minimum; the unit is passive (button, 10k/20k divider, 100 nF per the schematic), so 4.5 V is the model's tolerance for a sagging USB 5 V rail (high level still about 3.0 V), not a contradiction of the nominal 5 V.",
+      "source": "https://docs.m5stack.com/en/unit/button ; https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf"
+    },
+    {
+      "diff": "maximum supply: part 5.25 V, datasheet reading 5 V",
+      "verdict": "part-correct",
+      "evidence": "The vendor page gives only the nominal port voltage ('PORT.B GND 5V NC Digital Output') and no maximum; with the schematic's 10k/20k divider, 5.25 V gives a 3.5 V high level, which stays within a 3.3 V GPIO VDD+0.3 V limit, so 5.25 V is a conservative ceiling around the nominal 5 V rather than an error.",
+      "source": "https://docs.m5stack.com/en/unit/button ; https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/804/U027_UNIT_BUTTON_SCHE.pdf"
+    }
+  ]
+}

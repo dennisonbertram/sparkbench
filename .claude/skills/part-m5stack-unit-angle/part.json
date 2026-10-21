@@ -1,0 +1,119 @@
+{
+  "type": "custom-m5stack-unit-angle",
+  "name": "M5Stack Unit Angle (rotary potentiometer, analog)",
+  "mpn": "U005",
+  "category": "sensor",
+  "description": "M5Stack rotary knob unit: a 10 kΩ potentiometer in series with a 10 kΩ resistor from the 5V pin, with the pot's wiper as the analog output AO, so AO = 5 V × Rp / (Rp + 10 kΩ), 0 to 2.5 V (M5Stack spec 0–2500 mV) and not linear in knob angle. No regulator or buffer: the output scales with the supply. Sold as: M5Stack Unit Angle (SKU U005), 4-pin HY2.0-4P Grove connector GND (black), 5V (red), NC (yellow), Analog Output (white), supplied with a 20 cm Grove cable.",
+  "eli5": "A little knob in a block. Turn it and the voltage on the white wire goes up from 0 to about 2.5 volts, so your board can tell how far it is turned.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1, black wire); bottom of the potentiometer track.",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V nominal (pin 2, red wire). Feeds the 10 kΩ series resistor and the pot directly, so the output range is 0 to Vcc/2.",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (pin 3, yellow wire).",
+      "required": false
+    },
+    {
+      "name": "AO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 4, white wire): pot wiper, 0–2.5 V from a 5 V supply, AO = 5 V × Rp / (Rp + 10 kΩ). Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://static-cdn.m5stack.com/resource/docs/products/unit/angle/angle_sch_02.webp",
+  "sources": [
+    "https://docs.m5stack.com/en/unit/angle",
+    "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/static/pdf/static/en/unit/Unit_Angle.pdf",
+    "https://static-cdn.m5stack.com/resource/docs/products/unit/angle/angle_sch_02.webp",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/800/U005_Sche.jpg",
+    "https://raw.githubusercontent.com/m5stack/uiflow-micropython/master/m5stack/libs/unit/angle.py",
+    "https://raw.githubusercontent.com/m5stack/M5Stack/master/examples/Unit/ANGLE/ANGLE.ino"
+  ],
+  "priceUsd": 2.95,
+  "supplierQuery": "M5Stack Unit Angle U005 potentiometer",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove wire colours on M5Stack cables: black GND, red 5V, yellow NC, white AO. Use a Grove-to-jumper cable on a breadboard.",
+    "Feed 5 V: AO then spans 0–2.5 V, inside the 3.3 V ADC range of an ESP32 or Pico.",
+    "AO is not linear in knob angle: position = Rp / 10 kΩ with Rp = 10 kΩ × V / (5 − V). The driver does this.",
+    "On an ESP32 put AO on an ADC1 pin (GPIO32-39) with 11 dB attenuation; ADC2 does not work while Wi-Fi is on."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit angle",
+    "u005",
+    "potentiometer",
+    "knob",
+    "rotary",
+    "angle",
+    "dial",
+    "grove",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "AO",
+    "quantity": "AO voltage (knob)",
+    "unit": "V",
+    "min": 0,
+    "max": 2.5,
+    "default": 1.25,
+    "vAtMin": 0,
+    "vAtMax": 2.5,
+    "outputOhms": 5000
+  },
+  "driver": {
+    "filename": "m5_unit_angle.py",
+    "code": "# M5Stack Unit Angle (SKU U005), MicroPython driver.\n# Circuit (M5Stack docs, Unit Angle schematic + output-voltage diagram):\n#   5V --- R1 (10 kOhm) ---+--- R2 10 kOhm potentiometer track --- GND\n#                          the wiper of R2 goes straight to the Grove \"Analog Output\" pin (white wire).\n#   Uo = 5000 mV * Rp / (Rp + R1), Rp = wiper-to-GND resistance (0 .. 10 kOhm).\n#   So Uo runs from 0 V (knob at the GND end) to 2.5 V (knob at the top end), and the curve is\n#   NOT linear in knob angle: it bends over towards the top (half-way gives 1.67 V, not 1.25 V).\n# There is no regulator or buffer on the unit: Uo scales with the 5V supply.\n# Note: one revision of M5Stack's schematic shows R1 = 4.7 kOhm (Uo up to 3.4 V); pass r1=4700 if\n# your unit has that resistor. The published specification (0-2500 mV) matches R1 = 10 kOhm.\nfrom machine import ADC, Pin\n\nR1 = 10000      # fixed resistor from 5V to the top of the track, ohms\nR_POT = 10000   # potentiometer track, ohms\n\n\nclass UnitAngle:\n    def __init__(self, ao, vcc=5.0, r1=R1, r_pot=R_POT, samples=16, vref=3.3):\n        \"\"\"ao: GPIO wired to the Analog Output (white wire).\n        vcc: voltage on the unit's 5V pin. vref: ADC full scale when read_uv() is missing (Pico).\"\"\"\n        self.adc = ADC(Pin(ao) if isinstance(ao, int) else ao)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: needs the 0-3.3 V range for up to 2.5 V\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.r1 = r1\n        self.r_pot = r_pot\n        self.samples = samples\n        self.vref = vref\n\n    def _read_v(self):\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def voltage(self):\n        \"\"\"Wiper voltage Uo in volts (averaged), 0 to about 2.5 V.\"\"\"\n        total = 0\n        for _ in range(self.samples):\n            total += self._read_v()\n        return total / self.samples\n\n    def resistance(self):\n        \"\"\"Wiper-to-GND resistance Rp in ohms, from Uo = Vcc * Rp / (Rp + R1).\"\"\"\n        v = self.voltage()\n        if v >= self.vcc - 0.001:\n            return self.r_pot\n        rp = self.r1 * v / (self.vcc - v)\n        return 0.0 if rp < 0 else (self.r_pot if rp > self.r_pot else rp)\n\n    def fraction(self):\n        \"\"\"Knob position 0.0 (GND end) to 1.0 (top end) = Rp / R2 (linear track).\"\"\"\n        return self.resistance() / self.r_pot\n\n    def percent(self):\n        \"\"\"Knob position in % of travel (0-100).\"\"\"\n        return 100 * self.fraction()\n\n    def raw(self):\n        \"\"\"Single raw ADC reading, 0-65535.\"\"\"\n        return self.adc.read_u16()\n"
+  },
+  "example": {
+    "code": "from m5_unit_angle import UnitAngle\nimport time\n\nknob = UnitAngle({AO})\nwhile True:\n    print('V=%.2f P=%d%%' % (knob.voltage(), round(knob.percent())))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the AO voltage and the knob position decoded from it",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.8
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=1.80 P=56%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-m5stack-unit-angle\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the M5Stack Unit Angle (SKU U005, 10 kΩ rotary potentiometer knob with a 10 kΩ series resistor, analog output 0–2.5 V on a Grove HY2.0-4P port). Use when designing, wiring, simulating or writing code for an M5Stack Unit Angle in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit Angle (U005)\n\n## Overview\nThe **M5Stack Unit Angle** is a LEGO-compatible block with a rotary knob and a Grove (HY2.0-4P) socket. Inside (M5Stack schematic and output-voltage diagram):\n- a fixed resistor **R1 = 10 kΩ** from the 5V pin to the top of the track\n- a **10 kΩ potentiometer** (R2) from there to GND; its **wiper is the Analog Output** pin\n\nThere is no regulator, op-amp or ADC on the unit: it is a plain divider fed from the 5 V pin.\n\n```\nUo = 5000 mV × Rp / (Rp + R1)      Rp = wiper-to-GND resistance, 0 … 10 kΩ\n```\nSo the output runs **0 V to 2.5 V** (M5Stack spec: \"Output Voltage 0 ~ 2500 mV\"), and it is **not linear** in knob angle: the curve bends over towards the top (knob half-way gives about 1.67 V, not 1.25 V). The driver turns the voltage back into the knob position:\n```\nRp = R1 × Uo / (5 V − Uo)          position = Rp / 10 kΩ\n```\n\n## Pinout (Grove HY2.0-4P, as in M5Stack's PinMap)\n| Pin | Wire | Name | Function |\n|-----|------|------|----------|\n| 1 | Black | GND | Ground |\n| 2 | Red | 5V | Supply, 5 V (feeds R1 and the pot) |\n| 3 | Yellow | NC | Not connected |\n| 4 | White | AO | Analog output 0–2.5 V (pot wiper) |\n\nOn an M5Stack Core this is Port B (analog on G36).\n\n## Electrical limits\n- Supply: **5 V** (4.5–5.5 V). Current = 5 V / (10 kΩ + 10 kΩ) = 0.25 mA.\n- The output tracks the supply: Uo(max) = Vcc / 2. With 5 V that is 2.5 V, **safe for 3.3 V ADC pins** (ESP32, Pico).\n- Running it from 3.3 V also works, but the range shrinks to 0–1.65 V: pass `vcc=3.3` to the driver.\n- Source resistance of the output: up to 5 kΩ (R1 + pot top half in parallel with the bottom half), fine for a microcontroller ADC.\n\n## Wiring\n| Unit | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| GND (black) | GND | GND | GND (pin 6) |\n| 5V (red) | 5V / VIN | VBUS | 5 V (pin 2) |\n| NC (yellow) | — | — | — |\n| AO (white) | ADC1 pin, e.g. GPIO36 / GPIO34 | GP26–GP28 (ADC) | needs an external ADC (e.g. ADS1115) |\n\n## Using the driver\n```python\nfrom m5_unit_angle import UnitAngle\nimport time\nknob = UnitAngle(36)                 # GPIO wired to AO\nwhile True:\n    print('V=%.2f P=%d%%' % (knob.voltage(), round(knob.percent())))\n    time.sleep(0.5)\n```\n`resistance()` gives Rp in ohms, `fraction()` 0.0–1.0, `raw()` one raw ADC reading.\n\n## Gotchas\n- **Not linear**: do not scale 0–2.5 V straight to 0–100 %; use `percent()`, which inverts the divider formula.\n- **Reads 2.5 V at most**, not 3.3 V: mapping `read_u16()` 0–65535 to 0–100 % never reaches 100 %.\n- On an ESP32 use an **ADC1** pin with 11 dB attenuation (the driver sets it); ADC2 stops working while Wi-Fi is on.\n- One revision of M5Stack's schematic image shows R1 = **4.7 kΩ** instead of 10 kΩ; with that resistor the top of the range is 5 × 10/14.7 = 3.4 V (above 3.3 V, still under the ESP32's 3.6 V absolute maximum). If your unit reads more than 2.5 V at full turn, it has the 4.7 kΩ resistor: use `UnitAngle(pin, r1=4700)` and keep the knob off the end stop, or power it from 3.3 V.\n- The unit has a Grove socket, not header pins: use a Grove-to-jumper cable on a breadboard.\n\n## Datasheet\n- Product page / spec / PinMap: https://docs.m5stack.com/en/unit/angle\n- Schematic and output formula: https://static-cdn.m5stack.com/resource/docs/products/unit/angle/angle_sch_02.webp\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:49:14.041Z",
+    "verifiedSources": [
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/478/U005_Web.pdf",
+      "https://docs.m5stack.com/en/products/sku/U005"
+    ]
+  }
+}

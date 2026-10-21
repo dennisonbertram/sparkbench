@@ -1,0 +1,116 @@
+{
+  "type": "custom-grove-rotary-angle-sensor",
+  "name": "Grove Rotary Angle Sensor v1.2",
+  "mpn": "101020017",
+  "category": "sensor",
+  "description": "Seeed Grove analog rotary angle sensor, version 1.2: a single 10 kΩ linear potentiometer (WH09-2-103) with 300° of travel wired as a voltage divider, track ends to VCC and GND and the wiper straight to SIG, so V(SIG) = angle / 300° × VCC. No other components; works from 3.3 V or 5 V. Sold as: Seeed Grove - Rotary Angle Sensor v1.2 (SKU 101020017), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A knob on a Grove plug. Turn it one way and the voltage on the yellow SIG wire goes up, turn it back and it goes down, so your board can read how far it is turned (0 to 300 degrees).",
+  "refPrefix": "RV",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "description": "Potentiometer wiper (Grove pin 1, yellow wire): 0 V to VCC, linear over 300° of travel."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Top of the 10 kΩ track (Grove pin 3, red wire), 3.3 V or 5 V. Use 3.3 V with a 3.3 V board so SIG never exceeds the ADC range."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Bottom of the track, ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Rotary_Angle_Sensor/res/Grove%20-%20Rotary%20Angle%20Sensor%20v1.2.zip",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Rotary_Angle_Sensor/",
+    "https://files.seeedstudio.com/wiki/Grove-Rotary_Angle_Sensor/res/Grove%20-%20Rotary%20Angle%20Sensor%20v1.2.zip",
+    "https://www.digikey.com/en/products/detail/seeed-technology-co-ltd/101020017/5482577"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "Seeed Grove Rotary Angle Sensor 101020017",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic v1.2, J1): pin 1 SIG (yellow, wiper), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Angle (deg) = 300 × V(SIG) / VCC; the taper is linear (10 kΩ, WH09-2-103).",
+    "Seeed's spec table lists 4.75–5.25 V for use on a 5 V Seeeduino, but the board is a passive potentiometer: power it from 3.3 V on an ESP32 or Pico, because SIG equals VCC at full travel.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) with 11 dB attenuation and average a few samples."
+  ],
+  "keywords": [
+    "grove rotary angle sensor",
+    "grove",
+    "seeed",
+    "101020017",
+    "rotary angle",
+    "potentiometer",
+    "pot",
+    "knob",
+    "10k",
+    "wh09",
+    "angle",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "Knob angle",
+    "unit": "°",
+    "min": 0,
+    "max": 300,
+    "default": 150,
+    "vAtMin": 0,
+    "vAtMax": 3.3
+  },
+  "driver": {
+    "filename": "grove_rotary_angle.py",
+    "code": "# Seeed Grove - Rotary Angle Sensor v1.2 (SKU 101020017), MicroPython driver.\n# Circuit (Seeed schematic v1.2): a single 10 kOhm linear potentiometer (WH09-2-103).\n# One end of the track goes to VCC (Grove pin 3), the other to GND (Grove pin 4), and the\n# wiper goes straight to SIG (Grove pin 1). There are no other components, so\n#   V(SIG) = (angle / 300 deg) * VCC        (linear taper, 300 deg mechanical travel)\n#   angle(deg) = 300 * V(SIG) / VCC\n# This is the same formula as Seeed's own example: degrees = voltage * FULL_ANGLE / GROVE_VCC.\n# Power the module from the same 3.3 V rail as the ADC so SIG never exceeds the ADC range.\nfrom machine import ADC, Pin\n\n\nclass GroveRotaryAngle:\n    FULL_ANGLE = 300.0  # degrees of travel (Seeed spec)\n\n    def __init__(self, pin, vcc=3.3, vref=3.3, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc      # voltage on the module's VCC pin\n        self.vref = vref    # ADC full scale when read_uv() is not available (e.g. Pico)\n        self.samples = samples\n\n    def raw(self):\n        \"\"\"One 16-bit ADC reading (0-65535).\"\"\"\n        return self.adc.read_u16()\n\n    def volts(self):\n        \"\"\"Average several samples and return the SIG (wiper) voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def fraction(self):\n        \"\"\"Knob position as a fraction of travel, 0.0 (GND end) to 1.0 (VCC end).\"\"\"\n        f = self.volts() / self.vcc\n        return 0.0 if f < 0 else 1.0 if f > 1 else f\n\n    def degrees(self):\n        \"\"\"Knob angle in degrees from the GND end of travel, 0-300.\"\"\"\n        return self.FULL_ANGLE * self.fraction()\n\n    def percent(self):\n        \"\"\"Knob position in % of travel (0-100).\"\"\"\n        return 100 * self.fraction()\n\n    def scaled(self, lo, hi):\n        \"\"\"Map the position onto lo..hi (e.g. 0..65535 for PWM duty, 0..180 for a servo).\"\"\"\n        return lo + (hi - lo) * self.fraction()\n"
+  },
+  "skill": "---\nname: part-grove-rotary-angle-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Rotary Angle Sensor v1.2 (10 kΩ linear potentiometer, 300° travel, SKU 101020017). Use when designing, wiring, simulating or writing code for a Grove Rotary Angle Sensor / Grove potentiometer in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Rotary Angle Sensor v1.2 (10 kΩ potentiometer)\n\n## Overview\nThe **Seeed Grove - Rotary Angle Sensor v1.2 (SKU 101020017)** is a knob on a Grove board. Inside is a single **10 kΩ linear potentiometer (WH09-2-103)** with **300° of travel**. It is a plain voltage divider with no other parts:\n- One end of the track goes to VCC, the other to GND, and the wiper goes straight to **SIG**.\n- **V(SIG) = (angle / 300°) × VCC**: 0 V at one end of travel, VCC at the other, changing linearly.\n- The (P) \"panel mount\" version is the same circuit with the Grove socket on the back.\n\n## Pinout (Grove connector, pin 1 to 4)\n| Pin | Name | Wire colour | Function |\n|-----|------|-------------|----------|\n| 1 | SIG | yellow | Wiper output, 0 V to VCC (analog) |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Top of the track, 3.3 V or 5 V |\n| 4 | GND | black | Bottom of the track |\n\nSource: Seeed Eagle schematic v1.2 (J1: 1 = wiper / SIG, 2 = unconnected, 3 = VCC, 4 = GND) and the Seeed wiki wire table (yellow = A0, white = NC, red = 5V, black = GND).\n\n## Electrical limits\n- Seeed lists 4.75–5.25 V because the board is meant for a 5 V Seeeduino, but it is a passive potentiometer and works the same on 3.3 V (Seeed's example code covers the 3V3 setting too). **On an ESP32 or Pico, power it from 3.3 V**: SIG reaches VCC at full travel.\n- Current: VCC / 10 kΩ, 0.33 mA at 3.3 V (0.5 mA at 5 V).\n- Source resistance at SIG: up to 2.5 kΩ (mid-travel), fine for an MCU ADC.\n\n## Interface details\n```\nV(SIG)     = angle / 300° × VCC\nangle(deg) = 300 × V(SIG) / VCC\n```\nOn a 3.3 V supply: 0.55 V = 50°, 1.65 V = 150°, 2.2 V = 200°, 3.3 V = 300°.\n\n## Wiring\nUse a Grove-to-female-jumper cable, or a Grove shield/hat analog port.\n\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG (yellow) | GPIO34 (ADC1) | GP26 / ADC0 | External ADC (Grove Base Hat A0, ADS1115) |\n| NC (white) | not connected | not connected | not connected |\n| VCC (red) | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| GND (black) | GND | GND | GND |\n\nThe Raspberry Pi 4 has no built-in ADC.\n\n## Using the driver\n```python\nfrom grove_rotary_angle import GroveRotaryAngle\nimport time\nknob = GroveRotaryAngle(34)          # GPIO of the ADC pin SIG is wired to\nwhile True:\n    print('A=%ddeg' % round(knob.degrees()))\n    time.sleep(0.5)\n```\n`volts()`, `fraction()`, `percent()`, `raw()` and `scaled(lo, hi)` are also available. Pass `vcc=` if the module's VCC is not 3.3 V (only if your ADC can take that voltage).\n\n## Gotchas\n- **5 V on a 3.3 V board:** at full travel SIG equals VCC. On 5 V that can damage an ESP32/Pico ADC pin. Use 3V3.\n- **Wrong VCC in the formula:** the angle is relative to VCC. If you power from 5 V through a divider, or from another rail, tell the driver the real `vcc`.\n- **ESP32:** use ADC1 pins (GPIO32–39); ADC2 does not work while Wi-Fi is on. The ESP32 ADC is non-linear near 0 V and 3.3 V, so the ends read a few degrees off.\n- **Noise:** carbon tracks jitter a little; the driver averages 16 samples.\n- **Not an encoder:** it stops at both ends of its 300° travel and gives absolute position. For endless rotation use a rotary encoder (KY-040).\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Rotary_Angle_Sensor/res/Grove%20-%20Rotary%20Angle%20Sensor%20v1.2.zip (Seeed v1.2 schematic) and https://wiki.seeedstudio.com/Grove-Rotary_Angle_Sensor/ (specification).\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from grove_rotary_angle import GroveRotaryAngle\nimport time\n\nknob = GroveRotaryAngle({SIG})\nwhile True:\n    print('A=%ddeg' % round(knob.degrees()))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the knob angle set on the control",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 210
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=210deg",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:32:53.940Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Rotary_Angle_Sensor/"
+    ]
+  }
+}

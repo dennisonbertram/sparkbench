@@ -1,0 +1,165 @@
+{
+  "type": "custom-m5stack-unit-adc",
+  "name": "M5Stack Unit ADC 0-12 V (ADS1100, I2C)",
+  "mpn": "U013",
+  "category": "sensor",
+  "description": "16-bit I2C voltage meter for 0-12 V: the input terminal feeds a 300 kΩ / 100 kΩ divider (÷4), an LM358 voltage follower and a 1 kΩ resistor into a TI ADS1100 delta-sigma ADC (address 0x48, 8/16/32/128 SPS, PGA 1-8) whose reference is the unit's own 3.3 V rail (HT7533 regulator from the 5 V pin). The '-' terminal is ground. 4.7 kΩ SDA/SCL pull-ups go to the unit's 3.3 V, so the I2C lines stay at 3.3 V. Sold as: M5Stack Unit ADC (SKU U013), HY2.0-4P Grove socket (GND, 5V, SDA, SCL) plus a 2-pin HT3.96 screw terminal (+, -).",
+  "eli5": "Measures a voltage between 0 and 12 V on its two screw terminals very precisely and sends the number to your board over two I2C wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (black wire of the Grove cable)."
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "required": true,
+      "description": "Supply, 5 V (red wire). Feeds the LM358 buffer directly and the HT7533 3.3 V regulator that powers the ADS1100 and the I2C pull-ups. With only 3.3 V here the LM358 output tops out near 1.8 V, so readings above about 7 V are lost."
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "levelV": 3.3,
+      "required": true,
+      "description": "I2C data (yellow wire), 4.7 kΩ pull-up to the unit's 3.3 V rail."
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "levelV": 3.3,
+      "required": true,
+      "description": "I2C clock (white wire), 4.7 kΩ pull-up to the unit's 3.3 V rail."
+    },
+    {
+      "name": "IN+",
+      "role": "io",
+      "required": false,
+      "description": "'+' screw terminal: the voltage to measure, 0-12 V against '-'. Goes into a 300 kΩ / 100 kΩ divider (about 400 kΩ load)."
+    },
+    {
+      "name": "IN-",
+      "role": "gnd",
+      "required": false,
+      "description": "'-' screw terminal: tied to the unit's GND (through a 0 Ω link) and to the ADS1100 VIN-. Not a floating differential input."
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ads1100.pdf",
+  "sources": [
+    "https://docs.m5stack.com/en/unit/adc",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/736/U013_UNIT_ADC_SCHE.pdf",
+    "https://www.ti.com/lit/ds/symlink/ads1100.pdf",
+    "https://static-cdn.m5stack.com/resource/docs/products/unit/adc/adc_01.webp",
+    "https://static-cdn.m5stack.com/resource/docs/products/unit/adc/adc_02.webp"
+  ],
+  "priceUsd": 6.95,
+  "supplierQuery": "M5Stack Unit ADC U013 ADS1100",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Two connectors: the HY2.0-4P Grove socket (black GND, red 5V, yellow SDA, white SCL) and a 2-pin HT3.96 screw terminal (+, -) for the measured voltage. Use a Grove-to-jumper cable for a breadboard.",
+    "Feed 5 V: the LM358 buffer runs from the 5V pin, and needs it to pass the full 3 V (12 V / 4) to the ADC. The I2C pull-ups go to the unit's own 3.3 V, so SDA/SCL are safe for an ESP32 or Pico.",
+    "The '-' terminal is the unit's GND: measure voltages referenced to your circuit's ground only, never across a component floating above ground.",
+    "Volts at the terminal = code x 3.3 V x 4 / 32768 at 8 SPS, PGA 1 (about 0.4 mV per code). The reference is the 3.3 V regulator output (±2 %), so calibrate against a multimeter for better than 2 % accuracy.",
+    "Single conversion: write one configuration byte 0x9C (ST/BSY=1, SC=1, 8 SPS, PGA 1), wait about 154 ms, read 3 bytes (code high, code low, config) and accept when bit 7 of the config byte is 0.",
+    "The I2C address is fixed at 0x48 (ADS1100A0). It clashes with ADS1115/ADS1015 boards at their default address."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit adc",
+    "u013",
+    "ads1100",
+    "adc",
+    "16-bit",
+    "voltage",
+    "voltmeter",
+    "0-12v",
+    "i2c adc",
+    "grove",
+    "analog to digital"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Voltage on the + / - terminal",
+    "unit": "V",
+    "min": 0,
+    "max": 12,
+    "default": 0,
+    "responses": [
+      {
+        "match": "9C",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "signed": true,
+            "scale": 0.0004028320312
+          },
+          {
+            "const": 28,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "98",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "signed": true,
+            "scale": 0.0008056640625
+          },
+          {
+            "const": 24,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "m5_unit_adc.py",
+    "code": "# M5Stack Unit ADC (SKU U013): TI ADS1100 16-bit delta-sigma ADC behind a 300k/100k input divider.\n# ADS1100 (TI SBAS239B): no register pointer. A write is ONE configuration byte\n#   ST/BSY 0 0 SC DR1 DR0 PGA1 PGA0   (power-on default 0x8C: continuous, 8 SPS, PGA 1)\n# A read returns 3 bytes: output register high, low (two's complement, right-justified,\n# sign-extended) and the configuration byte. In single-conversion mode (SC=1) writing ST/BSY=1\n# starts one conversion; ST/BSY reads 1 while busy and 0 once the result is in the output register.\n# Output code = -MinCode x PGA x (VIN+ - VIN-) / VDD; the reference is the supply (3.3 V on the unit).\n# Unit circuit (U013 schematic V1.0): input \"+\" -> R4 300k -> node -> R5 100k -> GND (\"-\");\n# the node is buffered by an LM358 follower and fed through 1k to VIN+, VIN- is GND.\n# So VIN+ = Vin / 4 and Vin = code x VDD x 4 / (-MinCode x PGA).\nimport time\n\n# Data rate -> (DR bits, -MinCode, conversion time ms at the slowest specified rate)\n_RATES = {\n    8: (0b11, 32768, 154),    # 16 bits, 6.5-11.5 SPS\n    16: (0b10, 16384, 77),    # 15 bits, 13-23 SPS\n    32: (0b01, 8192, 39),     # 14 bits, 26-46 SPS\n    128: (0b00, 2048, 10),    # 12 bits, 104-184 SPS\n}\n_GAINS = {1: 0b00, 2: 0b01, 4: 0b10, 8: 0b11}\n\n\nclass UnitADC:\n    def __init__(self, i2c, addr=0x48, rate=8, gain=1, vdd=3.3, ratio=4.0):\n        \"\"\"rate: 8/16/32/128 SPS; gain: PGA 1/2/4/8 (full scale = VDD / PGA at the chip).\n        vdd: the unit's 3.3 V rail (the ADS1100 reference). ratio: input divider (300k+100k)/100k.\"\"\"\n        if rate not in _RATES:\n            raise ValueError('rate must be 8, 16, 32 or 128')\n        if gain not in _GAINS:\n            raise ValueError('gain must be 1, 2, 4 or 8')\n        self.i2c = i2c\n        self.addr = addr\n        self.rate = rate\n        self.gain = gain\n        self.vdd = vdd\n        self.ratio = ratio\n\n    def _config(self):\n        # ST/BSY=1 (start), bits 6-5 = 0, SC=1 (single conversion), DR, PGA\n        return 0x80 | 0x10 | (_RATES[self.rate][0] << 2) | _GAINS[self.gain]\n\n    def read_raw(self):\n        \"\"\"Run one conversion and return the signed output code.\"\"\"\n        conv_ms = _RATES[self.rate][2]\n        self.i2c.writeto(self.addr, bytes([self._config()]))\n        time.sleep_ms(conv_ms)\n        for _ in range(50):\n            d = self.i2c.readfrom(self.addr, 3)\n            if not d[2] & 0x80:  # ST/BSY = 0: conversion finished\n                break\n            time.sleep_ms(conv_ms // 10 + 1)\n        else:\n            raise OSError('ADS1100 conversion did not finish')\n        raw = (d[0] << 8) | d[1]\n        if raw & 0x8000:\n            raw -= 0x10000\n        return raw\n\n    def lsb(self):\n        \"\"\"Volts per code at the unit's input terminal.\"\"\"\n        return self.vdd * self.ratio / (_RATES[self.rate][1] * self.gain)\n\n    def adc_volts(self):\n        \"\"\"Voltage at the ADS1100 input (VIN+ minus VIN-).\"\"\"\n        return self.read_raw() * self.vdd / (_RATES[self.rate][1] * self.gain)\n\n    def read_volts(self):\n        \"\"\"Voltage at the unit's + / - terminal (0-12 V).\"\"\"\n        return self.read_raw() * self.lsb()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom m5_unit_adc import UnitADC\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nadc = UnitADC(i2c, addr=0x48, rate=8, gain=1)\nwhile True:\n    raw = adc.read_raw()\n    print('ADC=%d %.3fV' % (raw, raw * adc.lsb()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the terminal voltage set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 7.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ADC=18618 7.500V",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:49:44.443Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ads1100.pdf",
+      "https://docs.m5stack.com/en/unit/adc"
+    ]
+  }
+}

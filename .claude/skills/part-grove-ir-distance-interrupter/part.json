@@ -1,0 +1,126 @@
+{
+  "type": "custom-grove-ir-distance-interrupter",
+  "name": "Grove IR Distance Interrupter v1.2",
+  "mpn": "101020040",
+  "category": "sensor",
+  "description": "Seeed Grove reflective IR sensor: an Everlight ITR9909 (940 nm IR LED plus NPN phototransistor, side by side) with an LM393 comparator, sensitivity trimmer and red indicator LED. The phototransistor emitter (2.7 MOhm to GND) feeds the comparator; when reflected IR exceeds the trimmer threshold, SIG (LM393 open collector, 2.7 kOhm pull-up to VCC) goes LOW and the LED lights; with nothing in front SIG is HIGH. Runs on 3.3 or 5 V. Sold as: Seeed Grove - IR Distance Interrupter v1.2 (SKU 101020040), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "Shines invisible infrared light forward and tells your board when something (or a white surface) bounces it back, so you can count objects or spot an obstacle.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 2700,
+      "description": "Digital output (Grove pin 1, yellow wire): LM393 open collector with a 2.7 kOhm pull-up to VCC. LOW while reflected IR exceeds the trimmer threshold (red LED on), HIGH with nothing detected. Swings to VCC, so power the module from 3.3 V on a 3.3 V board."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 3.3 or 5 V. Use 3V3 with an ESP32 or Pico, because SIG is pulled up to VCC."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 50,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-IR_Distance_Interrupter_v1.2/res/ITR9909_datasheet.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-IR_Distance_Interrupter_v1.2/",
+    "https://files.seeedstudio.com/wiki/Grove-IR_Distance_Interrupter_v1.2/res/Eagle_files.zip",
+    "https://files.seeedstudio.com/wiki/Grove-IR_Distance_Interrupter_v1.2/res/ITR9909_datasheet.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-IR_Distance_Interrupter_v1.2/res/LM393.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-IR_Distance_Interrupter_v1.2/img/hardware_overview.png"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "Seeed Grove IR Distance Interrupter v1.2 101020040",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J1): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "SIG is LOW when reflection is detected (red LED on) and HIGH otherwise. The Seeed wiki text says the opposite, but the schematic and Seeed's own example code show active-low.",
+    "Power VCC from 3.3 V on an ESP32 or Pico: SIG is pulled up to VCC through 2.7 kOhm, so at 5 V it would put 5 V on the GPIO.",
+    "The IR LED is driven through about 73 Ohm (3 x 220 Ohm in parallel): about 29 mA at 3.3 V, up to about 50 mA at 5 V.",
+    "Turn the trimmer with a small screwdriver while holding a white surface in front until the LED just lights; clockwise is more sensitive. Do not force it.",
+    "Sunlight and incandescent light contain IR and disturb the sensor; dark matte objects may not be detected."
+  ],
+  "keywords": [
+    "grove",
+    "seeed",
+    "101020040",
+    "ir distance interrupter",
+    "infrared reflective sensor",
+    "itr9909",
+    "lm393",
+    "reflective",
+    "ir",
+    "infrared",
+    "object counter",
+    "line follower",
+    "encoder",
+    "obstacle"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "SIG",
+    "quantity": "Reflection detected (SIG low)",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "grove_ir_interrupter.py",
+    "code": "# Seeed Grove - IR Distance Interrupter v1.2 (Everlight ITR9909 reflective pair + LM393 comparator), MicroPython driver.\n# Board circuit (Seeed Eagle schematic):\n#   IR LED always on (anode to VCC, cathode through 3 x 220 ohm in parallel to GND).\n#   Phototransistor collector to VCC, emitter through 2.7 MOhm to GND -> LM393 -IN.\n#   10 k trimmer (wiper, 1 nF to GND) -> LM393 +IN sets the threshold.\n#   LM393 open-collector output = SIG, 2.7 kOhm pull-up to VCC; the red LED (4.7 k from VCC) lights when SIG is LOW.\n# So: IR reflected back (object / light surface in front) -> emitter voltage rises above the threshold\n#     -> SIG = LOW, LED on.  Nothing in front (or a dark surface) -> SIG = HIGH (pulled up to VCC).\n# SIG swings to VCC: on a 3.3 V board power the module from 3.3 V.\nfrom machine import Pin\n\n\nclass GroveIRInterrupter:\n    def __init__(self, sig_pin):\n        # SIG already has a 2.7 kOhm pull-up on the module.\n        self.sig = Pin(sig_pin, Pin.IN) if isinstance(sig_pin, int) else sig_pin\n\n    def raw(self):\n        \"\"\"Logic level on SIG: 0 = reflection detected, 1 = nothing detected.\"\"\"\n        return self.sig.value()\n\n    def detected(self):\n        \"\"\"True while reflected IR exceeds the trimmer threshold (object / light surface in front).\"\"\"\n        return self.sig.value() == 0\n\n    def irq(self, handler, on_detect=True):\n        \"\"\"Call handler(pin) when an object appears (falling edge) or, with on_detect=False,\n        when it goes away (rising edge).\"\"\"\n        trig = Pin.IRQ_FALLING if on_detect else Pin.IRQ_RISING\n        return self.sig.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from grove_ir_interrupter import GroveIRInterrupter\nimport time\n\nsensor = GroveIRInterrupter({SIG})\nwhile True:\n    print('Object: %s' % ('yes' if sensor.detected() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports an object when IR is reflected back",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Object: no",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Object: yes",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:36:05.343Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-IR_Distance_Interrupter_v1.2/",
+      "https://files.seeedstudio.com/wiki/Grove-IR_Distance_Interrupter_v1.2/res/ITR9909_datasheet.pdf",
+      "https://files.seeedstudio.com/wiki/Grove-IR_Distance_Interrupter_v1.2/res/LMV358_datasheet.pdf"
+    ]
+  }
+}

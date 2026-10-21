@@ -1,0 +1,22 @@
+{
+ "diffs": [
+  {
+   "diff": "minimum supply: part 4.5 V, datasheet reading 5 V",
+   "verdict": "part-correct",
+   "evidence": "M5Stack gives only the nominal port voltage in its PinMap ('PORT.B GND 5V NC Analog Output') with no minimum or tolerance; the unit is a passive potentiometer divider with no regulator or active chip (DigiKey U005 sheet: 'simply having a 10K potentiometer inside'), so 4.5 V is the model's tolerance band for a sagging USB 5 V rail (output just scales to 0-2.25 V), not a contradiction of the nominal 5 V.",
+   "source": "https://docs.m5stack.com/en/unit/angle ; https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/478/U005_Web.pdf"
+  },
+  {
+   "diff": "maximum supply: part 5.5 V, datasheet reading 5 V",
+   "verdict": "part-correct",
+   "evidence": "The vendor states only nominal 5 V ('PORT.B GND 5V NC Analog Output') and a 5 V-referenced output of 'Output voltage range: 0 ~ 2500mV' (i.e. Vcc/2 from the passive divider, 'simply having a 10K potentiometer inside'), so at 5.5 V (5 V +10%) the output tops out at 2.75 V, still inside a 3.3 V ADC range; 5.5 V is a conservative tolerance around the nominal value, not an error.",
+   "source": "https://docs.m5stack.com/en/unit/angle ; https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/478/U005_Web.pdf"
+  },
+  {
+   "diff": "output voltage (mV): datasheet reading gives 1000 per count, the part's model has 1",
+   "verdict": "part-correct",
+   "evidence": "Same quantity in different units: the vendor U005 sheet states 'Output voltage range: 0 ~ 2500mV' in millivolts (1000 mV per volt), while the model's sim and driver express the AO voltage in volts (0 to 2.5 V), which is exactly the equivalent range, so there is no scaling error.",
+   "source": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/478/U005_Web.pdf ; https://docs.m5stack.com/en/unit/angle"
+  }
+ ]
+}

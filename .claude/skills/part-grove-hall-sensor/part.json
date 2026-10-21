@@ -1,0 +1,123 @@
+{
+  "type": "custom-grove-hall-sensor",
+  "name": "Grove Hall Sensor",
+  "mpn": "101020046",
+  "category": "sensor",
+  "description": "Allegro A1101 unipolar Hall-effect switch on a Grove board: its open-drain output pulls SIG low while the south pole of a magnet is near the chip's branded face (operate point 50-160 G, release 10-130 G, ~55 G hysteresis) and SIG returns high when the magnet is removed. The board pulls SIG up to VCC through 1 kOhm and a red LED that lights on detection. Runs on 3.8-24 V (use 5 V). Sold as: Seeed Grove - Hall Sensor (SKU 101020046), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A magnet detector: bring the south pole of a magnet close and its little red light comes on and the yellow SIG wire drops to 0, so your board knows a magnet is there.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 1000,
+      "description": "Digital output (Grove pin 1, yellow wire): A1101 open-drain output, LOW while a magnet (south pole) is detected, HIGH otherwise. The board pulls it up to VCC through 1 kOhm in series with the red LED, so read it as a plain input."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 3.8-24 V per the A1101 datasheet. Use 5 V; 3.3 V is below the minimum."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3.8,
+  "vmax": 24,
+  "currentMa": 11,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Hall_Sensor/res/datasheet.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Hall_Sensor/",
+    "https://files.seeedstudio.com/wiki/Grove-Hall_Sensor/res/datasheet.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-Hall_Sensor/res/Twig_Hall_Sensor_v0.9b.zip",
+    "https://files.seeedstudio.com/wiki/Grove-Hall_Sensor/res/Grove-Hall_Sensor_Demo_Code.zip",
+    "https://www.seeedstudio.com/Grove-Hall-Sensor-p-965.html"
+  ],
+  "priceUsd": 4.9,
+  "supplierQuery": "Seeed Grove Hall Sensor 101020046",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order: pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Power VCC from 5 V: the A1101 needs 3.8-24 V and is out of spec at 3.3 V.",
+    "Circuit (Seeed schematic v0.9b): A1101 VOUT drives SIG; R1 1 kOhm and the red LED D1 in series pull SIG up to VCC, so the LED lights while a magnet is detected. C1 100 nF decouples VCC.",
+    "Active low: SIG reads 0 while a magnet is detected, 1 otherwise. Read it as a plain input (the board has its own pull-up).",
+    "On a 3.3 V board SIG idles a little above 3.3 V through the LED and 1 kOhm; the LED's forward drop keeps the current into the pin's protection diode to microamps. Use a level shifter if you need the pin strictly within 3.3 V.",
+    "Only the south pole facing the branded face of the A1101 switches it (unipolar)."
+  ],
+  "keywords": [
+    "grove hall sensor",
+    "grove",
+    "seeed",
+    "101020046",
+    "a1101",
+    "hall",
+    "hall effect",
+    "magnet",
+    "magnetic switch",
+    "rpm",
+    "tachometer"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "SIG",
+    "quantity": "Magnet present",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "grove_hall_sensor.py",
+    "code": "# Seeed Grove - Hall Sensor (SKU 101020046), MicroPython driver.\n# Chip: Allegro A1101 continuous-time unipolar Hall-effect switch (datasheet A1101-DS).\n#   B > BOP (south pole facing the branded face; A1101: 50-160 G at 25 C) -> NMOS output ON  -> SIG LOW\n#   B < BRP (field removed; A1101: 10-130 G at 25 C)                       -> output OFF      -> SIG HIGH\n# Hysteresis about 55 G, so the output does not chatter. The north pole does not switch it.\n# Board circuit (Seeed Twig Hall Sensor v0.9b): A1101 VOUT -> Grove SIG, pulled up to VCC through\n# R1 (1 kOhm) in series with the red LED D1, so the LED lights while a magnet is detected.\n# Because of that on-board pull-up, read SIG as a plain input (Seeed's demo uses INPUT, no pull).\n# Output switching is fast (rise/fall < 400 ns), so it can count RPM with interrupts.\nfrom machine import Pin\n\n\nclass GroveHallSensor:\n    def __init__(self, pin):\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n\n    def value(self):\n        \"\"\"Raw level on SIG: 0 = magnet detected (output transistor on), 1 = no magnet.\"\"\"\n        return self.pin.value()\n\n    def detected(self):\n        \"\"\"True while a strong enough south pole is at the sensor (the output is active low).\"\"\"\n        return self.pin.value() == 0\n\n    def irq(self, handler, on_detect=True):\n        \"\"\"Call handler(pin) when a magnet arrives (falling edge) or, with on_detect=False, leaves.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_detect else Pin.IRQ_RISING)\n"
+  },
+  "skill": "---\nname: part-grove-hall-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Hall Sensor (SKU 101020046, Allegro A1101 unipolar Hall-effect switch, active-low SIG output with LED). Use when designing, wiring, simulating or writing code for a Grove Hall Sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Hall Sensor (Allegro A1101)\n\n## Overview\nThe **Seeed Grove - Hall Sensor (SKU 101020046)** detects a magnet. It uses the **Allegro A1101**, a continuous-time unipolar Hall-effect switch: when the **south pole** of a magnet comes close to the chip's branded face, its NMOS output turns on and pulls **SIG LOW**; take the magnet away and SIG goes HIGH again. A Schmitt trigger gives about 55 G hysteresis, so the output is a clean on/off. A red LED on the board lights while a magnet is detected. Typical use: RPM counting, door/lid detection.\n\n## Pinout (Grove connector, pin 1 to 4)\n| Pin | Name | Wire colour | Function |\n|-----|------|-------------|----------|\n| 1 | SIG | yellow | Digital output: LOW = magnet, HIGH = no magnet |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Supply 3.8-24 V (use 5 V) |\n| 4 | GND | black | Ground |\n\nSource: Seeed wiki wiring table (yellow = D2, white = not connected, red = 5V, black = GND) and the Seeed schematic (Twig Hall Sensor v0.9b: U1 A1101, J1 TWIG connector, R1 1 kOhm, D1 red LED, C1 100 nF).\n\n## Electrical limits\n- Supply: **3.8-24 V** (A1101 datasheet, Seeed wiki). 3.3 V is below the minimum: power it from **5 V**. Absolute max 30 V, reverse-battery protected to -30 V.\n- Supply current: 3.8-4.1 mA typical, 7.5 mA max for the chip, plus about 3 mA for the LED while a magnet is present.\n- Output: open-drain NMOS, sinks up to 25 mA, 215 mV typical / 400 mV max at 20 mA. Rise/fall time max 400 ns. Power-on time max 4 us.\n- Magnetic switch points (A1101, 25 C): operate BOP 50-100-160 G, release BRP 10-45-130 G, hysteresis 20-55-80 G.\n- Operating temperature: -40 to +85 C.\n\n## Interface details\n- Plain digital output, no protocol. Active low: `0` = magnet, `1` = no magnet.\n- The board pulls SIG up to VCC through **R1 (1 kOhm) in series with the red LED**. So SIG idles HIGH without any pull-up from the microcontroller; Seeed's own demo uses `INPUT`. The driver configures SIG as a plain input.\n- With VCC at 5 V and SIG on a 3.3 V GPIO, the LED's forward drop (about 1.5-1.8 V) means SIG cannot pull the pin much above 3.3 V and only microamps flow into the pin's protection diode, but it is still above the 3.3 V rating: Sparkbench warns about it. If you want zero overvoltage, put a level shifter between SIG and the pin.\n- Only the south pole facing the branded face switches it (unipolar). The north pole does nothing.\n\n## Wiring\nUse a Grove-to-female-jumper cable, or a Grove base shield digital port (Seeed's example uses D2).\n\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG (yellow) | GPIO4 | GP15 (pin 20) | GPIO17 (pin 11) |\n| NC (white) | not connected | not connected | not connected |\n| VCC (red) | 5V / VIN | VBUS (pin 40) | 5 V (pin 2) |\n| GND (black) | GND | GND | GND |\n\n## Using the driver\n```python\nfrom grove_hall_sensor import GroveHallSensor\nimport time\nhall = GroveHallSensor(4)          # GPIO wired to SIG\nwhile True:\n    print('MAGNET=%d' % hall.detected())\n    time.sleep(0.2)\n```\n`hall.value()` gives the raw level (0 = magnet). `hall.irq(handler)` calls `handler(pin)` each time a magnet arrives (falling edge), handy for counting wheel turns.\n\n## Gotchas\n- Nothing happens? Flip the magnet: only the south pole works, on the printed face of the chip.\n- **Active LOW:** magnet reads 0, no magnet reads 1. The LED lights when a magnet is detected.\n- Powered from 3.3 V it is below the A1101's 3.8 V minimum and may not switch reliably: use 5 V.\n- Never add a stronger pull-up from SIG to 5 V when SIG goes to a 3.3 V board.\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Hall_Sensor/res/datasheet.pdf (Allegro A1101). Board: https://wiki.seeedstudio.com/Grove-Hall_Sensor/\n",
+  "example": {
+    "code": "from grove_hall_sensor import GroveHallSensor\nimport time\n\nhall = GroveHallSensor({SIG})  # SIG is low while a magnet is near\nwhile True:\n    print('MAGNET=%d' % hall.detected())\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a magnet when one is brought close",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MAGNET=0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MAGNET=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:37:16.639Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Hall_Sensor/",
+      "https://files.seeedstudio.com/wiki/Grove-Hall_Sensor/res/datasheet.pdf"
+    ]
+  }
+}

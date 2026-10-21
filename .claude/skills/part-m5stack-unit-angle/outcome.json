@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-unit-angle",
+  "board": "M5Stack Unit Angle (SKU U005), Grove HY2.0-4P: GND, 5V, NC (yellow), AO (white)",
+  "reason": "Check PASSED on ESP32 and Pico (run 1). Modelled from M5Stack's schematic/output diagram (10k series resistor + 10k pot from 5V, wiper = output, Uo = 5V*Rp/(Rp+10k), spec 0-2500 mV) and the docs PinMap; driver inverts that formula to knob position. Note: one M5Stack schematic image shows R1 = 4.7k (max 3.4 V); the spec and formula diagram both give 10k, documented as a gotcha.",
+  "datasheetUrl": "https://static-cdn.m5stack.com/resource/docs/products/unit/angle/angle_sch_02.webp",
+  "breakoutPinoutSource": "https://docs.m5stack.com/en/unit/angle (PinMap: Black GND, Red 5V, Yellow NC, White Analog Output)",
+  "checkRuns": 1
+}

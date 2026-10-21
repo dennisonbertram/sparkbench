@@ -1,0 +1,146 @@
+{
+  "type": "custom-m5stack-unit-dual-button",
+  "name": "M5Stack Unit Dual Button",
+  "mpn": "U025",
+  "category": "sensor",
+  "description": "Grove unit from M5Stack with two 12 mm push buttons (blue and red caps). Each button shorts its signal line to GND; at rest the line sits on a 10 kOhm / 20 kOhm divider from the 5 V Grove supply (with 100 nF filtering), so it reads about 3.3 V when released and 0 V when pressed (active low). No chip, no pull-up needed on the GPIO. Sold as: M5Stack Unit Dual Button (SKU U025), 48 x 24 mm unit with HY2.0-4P Grove socket BLUE (white), RED (yellow), 5V, GND.",
+  "eli5": "Two buttons, one blue and one red, on a Grove cable: each one pulls its own wire to 0 V while you press it.",
+  "refPrefix": "SW",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "BLUE",
+      "role": "io",
+      "required": true,
+      "levelV": 3.3,
+      "description": "Blue button (Grove pin 1, white wire, schematic net A): about 3.3 V (10k/20k divider from 5 V) while released, 0 V while pressed. Safe for 3.3 V GPIOs when the unit runs from 5 V."
+    },
+    {
+      "name": "RED",
+      "role": "io",
+      "required": true,
+      "levelV": 3.3,
+      "description": "Red button (Grove pin 2, yellow wire, schematic net B): about 3.3 V while released, 0 V while pressed."
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 5 V. It feeds the 10k/20k dividers that set the released level, so use 5 V, not 3.3 V."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 1,
+  "datasheetUrl": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/578/Sch_UNIT_DualButton_v1.1.pdf",
+  "sources": [
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/578/Sch_UNIT_DualButton_v1.1.pdf",
+    "https://docs.m5stack.com/en/unit/dual_button",
+    "https://uiflow-micropython.readthedocs.io/en/latest/unit/dualbutton.html"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "M5Stack Unit Dual Button U025",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order (M5Stack schematic J1): pin 1 A = BLUE button (white wire), pin 2 B = RED button (yellow wire), pin 3 VCC (red wire), pin 4 GND (black wire). The unit has a HY2.0-4P Grove socket: use a Grove-to-female-jumper cable for a breadboard.",
+    "Power it from 5 V (ESP32 5V/VIN, Pico VBUS). The released level is 5 V x 20k/30k = 3.33 V, so the lines connect straight to 3.3 V GPIOs. From 3.3 V the released level would be only ~2.2 V, too low for a reliable logic 1.",
+    "Both buttons are active LOW: 1 while released, 0 while pressed. No GPIO pull-up is needed (the divider sets the level); input-only pins such as ESP32 GPIO34-39 work.",
+    "On an M5Stack Core plug it into Port B: blue = GPIO36 (white), red = GPIO26 (yellow).",
+    "Contacts bounce for a few ms; the 100 nF + divider filter smooths it a little, and the driver debounces for 20 ms."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit dual button",
+    "dual button",
+    "u025",
+    "button",
+    "push button",
+    "grove",
+    "two buttons",
+    "red button",
+    "blue button",
+    "input"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "BLUE",
+    "quantity": "Blue button pressed",
+    "activeHigh": false,
+    "digitalOutputs": [
+      {
+        "pin": "RED",
+        "control": "red",
+        "label": "Red button pressed",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "m5_dual_button.py",
+    "code": "# M5Stack Unit Dual Button (U025), MicroPython driver.\n# Per the M5Stack schematic (Sch_UNIT_DualButton_v1.1) each button S1/S2 shorts its signal\n# line to GND. At rest the line sits on a 10 kOhm (to Grove VCC) / 20 kOhm (to GND)\n# divider with a 100 nF filter capacitor, so from the 5 V Grove supply:\n#   released -> about 3.3 V (5 V x 20k / 30k), logic 1\n#   pressed  -> 0 V, logic 0 (active low)\n# Grove pin 1 (white) = BLUE button (net A), pin 2 (yellow) = RED button (net B).\n# Power the unit from 5 V: from 3.3 V the released level is only ~2.2 V, below a\n# 3.3 V MCU's guaranteed logic-high threshold. No GPIO pull resistor is needed.\nfrom machine import Pin\nimport time\n\n\nclass _Button:\n    def __init__(self, pin, debounce_ms):\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.debounce_ms = debounce_ms\n\n    def raw(self):\n        \"\"\"Logic level on the line right now (1 released, 0 pressed).\"\"\"\n        return self.pin.value()\n\n    def is_down(self):\n        \"\"\"Undebounced: True while the button is held.\"\"\"\n        return self.pin.value() == 0\n\n    def pressed(self):\n        \"\"\"Debounced: True if the button is held and stable for debounce_ms.\"\"\"\n        state = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            v = self.pin.value()\n            if v != state:\n                state = v\n                t0 = time.ticks_ms()\n            time.sleep_ms(2)\n        return state == 0\n\n    def irq(self, handler, on_press=True):\n        \"\"\"Call handler(pin) on press (falling edge) or release (rising edge).\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_press else Pin.IRQ_RISING)\n\n\nclass M5DualButton:\n    def __init__(self, blue_pin, red_pin, debounce_ms=20):\n        self.blue = _Button(blue_pin, debounce_ms)\n        self.red = _Button(red_pin, debounce_ms)\n\n    def read(self):\n        \"\"\"Debounced (blue, red) states: 1 = pressed, 0 = released.\"\"\"\n        return int(self.blue.pressed()), int(self.red.pressed())\n"
+  },
+  "example": {
+    "code": "from m5_dual_button import M5DualButton\nimport time\n\nbuttons = M5DualButton({BLUE}, {RED})\nwhile True:\n    print('BLUE=%d RED=%d' % buttons.read())\n    time.sleep(0.3)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports which buttons are held",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BLUE=0 RED=0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BLUE=0 RED=1",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BLUE=1 RED=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:46:48.655Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/dual_button"
+    ]
+  }
+}

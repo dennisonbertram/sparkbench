@@ -1,0 +1,172 @@
+{
+  "type": "custom-m5stack-unit-joystick",
+  "name": "M5Stack Unit Joystick (I2C)",
+  "mpn": "U024",
+  "category": "input",
+  "description": "Analog 2-axis thumb joystick with push button, read over I2C: an ATmega328 running M5Stack's firmware reads both 10 kOhm pots and the button and returns three bytes at I2C address 0x52: X (0-255), Y (0-255, about 128 at rest) and button (0 released, 1 pressed). Powered from 5 V; the unit has no I2C pull-ups (only 470 Ohm series resistors), so the bus high level comes from the board's pull-ups to 3.3 V. Sold as: M5Stack Unit Joystick (SKU U024), HY2.0-4P Grove socket with GND, 5V, SDA, SCL, I2C address 0x52.",
+  "eli5": "A little thumb stick like on a game controller; it tells your board over two wires how far you push it left/right and up/down, and whether you press it down.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V (red wire, PORT.A); runs the ATmega328 directly (no regulator on the unit)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (yellow wire), 470 Ohm series resistor, no pull-up on the unit: use the board's pull-up to 3.3 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (white wire), 470 Ohm series resistor, no pull-up on the unit: use the board's pull-up to 3.3 V",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 10,
+  "i2cAddress": 82,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/ATmega48A-PA-88A-PA-168A-PA-328-P-DS-DS40002061A.pdf",
+  "sources": [
+    "https://docs.m5stack.com/en/unit/joystick",
+    "https://static-cdn.m5stack.com/resource/docs/products/unit/joystick/joystick_sch_01.webp",
+    "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/478/U024_Web.pdf",
+    "https://github.com/m5stack/M5Stack/blob/master/examples/Unit/JOYSTICK/JOYSTICK.ino",
+    "https://github.com/m5stack/uiflow-micropython/blob/master/m5stack/libs/unit/joystick.py",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/ATmega48A-PA-88A-PA-168A-PA-328-P-DS-DS40002061A.pdf"
+  ],
+  "priceUsd": 6.95,
+  "supplierQuery": "M5Stack Unit Joystick U024 I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "HY2.0-4P cable colours (M5Stack PinMap, PORT.A): black GND, red 5V, yellow SDA, white SCL. It is a Grove-style socket, not header pins: use a Grove-to-jumper cable on a breadboard.",
+    "Read 3 bytes from address 0x52 (M5Stack's MicroPython driver writes register byte 0x52 first): X, Y (0-255, about 128 at rest; 10-250 in practice per M5Stack's U024 sheet) and the button (0 released, 1 pressed).",
+    "The unit has no I2C pull-ups. Use the board's pull-ups to 3.3 V (add 4.7 kOhm to 3.3 V if it has none), never to 5 V.",
+    "The ATmega328 runs from the 5 V pin; its TWI input high is 0.7 x VCC (3.5 V), so a 3.3 V bus is slightly under spec, as on M5Stack's own controllers. Keep the bus at 100 kHz and the cable short if reads fail.",
+    "The rest position is rarely exactly 128: record the centre at start-up and use a dead band."
+  ],
+  "keywords": [
+    "m5stack",
+    "unit joystick",
+    "u024",
+    "joystick",
+    "thumb joystick",
+    "atmega328",
+    "i2c joystick",
+    "grove"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "readFromZero": true,
+    "quantity": "Horizontal position (X byte)",
+    "unit": "counts",
+    "min": 0,
+    "max": 255,
+    "default": 128,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Vertical position (Y byte)",
+        "unit": "counts",
+        "min": 0,
+        "max": 255,
+        "default": 128
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 1,
+        "scale": 1,
+        "control": "value"
+      },
+      {
+        "reg": "0x01",
+        "bytes": 1,
+        "scale": 1,
+        "control": "y"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x02",
+        "bit": 0,
+        "control": "button",
+        "label": "Button pressed"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "m5_joystick.py",
+    "code": "# M5Stack Unit Joystick (SKU U024, I2C), MicroPython driver.\n# An ATmega328 (M5Stack firmware) reads the thumb stick's two 10 kOhm pots on ADC0/ADC1 and the\n# push switch, and answers at I2C address 0x52 with 3 bytes (M5Stack protocol table, register 0x52):\n#   [0] X value  [1] Y value  (one byte each, 0-255; M5Stack's U024 sheet gives 10-250 in practice,\n#                              about 128 at rest)\n#   [2] button   (0 = released, 1 = pressed)\n# The firmware always returns these 3 bytes. M5Stack's own MicroPython driver (UiFlow2) writes\n# register byte 0x52 first and then reads 3 bytes; their Arduino example reads 3 bytes directly.\n# Both work. The unit has no I2C pull-ups of its own: your board needs them (to 3.3 V).\n\nADDR = 0x52\nREG = 0x52\n\n\nclass UnitJoystick:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        self._buf = bytearray(3)\n\n    def read(self):\n        \"\"\"Return (x, y, pressed): x and y are 0-255 (about 128 at rest), pressed is True/False.\"\"\"\n        self.i2c.readfrom_mem_into(self.addr, REG, self._buf)\n        b = self._buf\n        return b[0], b[1], b[2] != 0\n\n    def x(self):\n        return self.read()[0]\n\n    def y(self):\n        return self.read()[1]\n\n    def pressed(self):\n        return self.read()[2]\n\n    def centred(self):\n        \"\"\"(x, y) as signed offsets from the 128 mid-point, about -128..127 (as M5Stack's get_x/get_y).\"\"\"\n        x, y, _ = self.read()\n        return x - 128, y - 128\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom m5_joystick import UnitJoystick\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\njoy = UnitJoystick(i2c)\nwhile True:\n    x, y, pressed = joy.read()\n    print('X=%d Y=%d B=%d' % (x, y, 1 if pressed else 0))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the stick position and button set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 220
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": 40
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=220 Y=40 B=1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=220 Y=40 B=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-m5stack-unit-joystick\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the M5Stack Unit Joystick (SKU U024, ATmega328 I2C thumb joystick with push button, address 0x52, HY2.0-4P Grove port). Use when designing, wiring, simulating or writing code for an M5Stack Unit Joystick in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# M5Stack Unit Joystick (U024, I2C)\n\n## Overview\nThe **M5Stack Unit Joystick (SKU U024)** is a PS2-style analog thumb stick (two 10 kΩ pots plus a push switch) with an **ATmega328** running M5Stack's firmware. The ATmega reads X on ADC0, Y on ADC1 and the button, and answers on I2C at **0x52** with three bytes: X, Y, button. It plugs in with the supplied HY2.0-4P (Grove-style) cable. The newer Unit Joystick2 uses a different chip and protocol.\n\n## Pinout (HY2.0-4P cable, PORT.A order)\n| Wire | Pin | Function |\n|---|---|---|\n| Black | GND | Ground |\n| Red | 5V | Supply, 5 V |\n| Yellow | SDA | I2C data (470 Ω series resistor, no pull-up on the unit) |\n| White | SCL | I2C clock (470 Ω series resistor, no pull-up on the unit) |\n\n## Electrical limits\n- Supply: 5 V from the port (M5Stack PORT.A); the ATmega328 runs directly from it (no regulator on the unit). A few mA plus the power LED.\n- SDA/SCL: the unit has **no pull-up resistors** (schematic: only R7/R8 470 Ω in series). Your board's I2C pull-ups (to 3.3 V) provide the high level, which keeps the lines safe for an ESP32 or Pico.\n- ATmega328P TWI input high is 0.7 × VCC (3.5 V at 5 V). A 3.3 V bus is slightly below that, yet this is how M5Stack's own ESP32 controllers drive it; keep the cable short and the bus at 100 kHz if reads fail.\n\n## Interface details\n- **I2C address 0x52** (fixed).\n- Read 3 bytes: `[0]` X, `[1]` Y (0–255, about 128 at rest; M5Stack's U024 sheet gives 10–250 in practice), `[2]` button (**0 released, 1 pressed**).\n- M5Stack's protocol table calls it register 0x52 with length 3; their MicroPython driver uses `readfrom_mem(0x52, 0x52, 3)` and their Arduino example just reads 3 bytes. The firmware returns the same 3 bytes either way.\n- `x - 128` / `y - 128` gives a signed offset from the centre (what UiFlow2's `get_x()`/`get_y()` return).\n\n## Wiring\n| Unit | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| 5V (red) | 5V / VIN | VBUS (pin 40) | 5 V (pin 2) |\n| GND (black) | GND | GND | GND |\n| SDA (yellow) | GPIO21 | GP4 | GPIO2 (pin 3) |\n| SCL (white) | GPIO22 | GP5 | GPIO3 (pin 5) |\n\nAdd 4.7 kΩ pull-ups from SDA and SCL to **3.3 V** if your board has none (never to 5 V).\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom m5_joystick import UnitJoystick\ni2c = I2C(0, sda=Pin(21), scl=Pin(22), freq=100000)\njoy = UnitJoystick(i2c)\nx, y, pressed = joy.read()\nprint('X=%d Y=%d B=%d' % (x, y, 1 if pressed else 0))\n```\n\n## Gotchas\n- The rest position is rarely exactly 128: read the centre at start-up and use a dead band.\n- It is a Grove-style socket, not header pins: use a Grove-to-jumper cable on a breadboard.\n- Do not confuse it with Unit Joystick2 or the Faces joystick panel: the protocols differ.\n\n## Datasheet\nATmega328P: https://ww1.microchip.com/downloads/en/DeviceDoc/ATmega48A-PA-88A-PA-168A-PA-328-P-DS-DS40002061A.pdf\nProduct page and protocol: https://docs.m5stack.com/en/unit/joystick. Product sheet: https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/478/U024_Web.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:41:30.214Z",
+    "verifiedSources": [
+      "https://docs.m5stack.com/en/unit/Joystick"
+    ]
+  }
+}

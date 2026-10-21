@@ -1,0 +1,130 @@
+{
+  "type": "custom-grove-ultrasonic-ranger",
+  "name": "Grove - Ultrasonic Ranger (single-pin trigger/echo)",
+  "mpn": "Grove Ultrasonic Ranger v2.0",
+  "category": "sensor",
+  "description": "Ultrasonic distance sensor (2–350 cm, 1 cm resolution, 40 kHz, 15° beam). Trigger and echo share ONE pin (SIG): drive SIG high for at least 10 µs, release it, and the module drives SIG high for the sound's round-trip time; distance = high time × 340 m/s / 2 (µs / 58.8 = cm). Runs on 3.2–5.2 V (v2.0 is 3.3 V compatible); SIG swings to VCC, so power it from 3.3 V on 3.3 V boards. Sold as: Seeed Grove - Ultrasonic Distance Sensor / Ultrasonic Ranger v2.0 (SKU 101020010), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "Chirps a sound too high to hear and listens for the echo. The longer the echo takes to come back, the farther away the thing in front of it is.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Trigger AND echo (Grove pin 1, yellow wire): drive high ≥ 10 µs to start, then switch the GPIO to input and time the high pulse (µs / 58.8 = cm). 10 kΩ pull-down on the module; the echo swings to VCC",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (Grove pin 2, white wire).",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply (Grove pin 3, red wire): 3.2–5.2 V, about 8 mA. Use 3.3 V on ESP32/Pico so SIG stays at 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black wire)",
+      "required": true
+    }
+  ],
+  "vmin": 3.2,
+  "vmax": 5.2,
+  "currentMa": 8,
+  "datasheetUrl": "https://wiki.seeedstudio.com/Grove-Ultrasonic_Ranger/",
+  "priceUsd": 4,
+  "supplierQuery": "Seeed Grove Ultrasonic Ranger 101020010",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "One wire does both jobs: set SIG as an output, pulse it high for at least 10 µs, then switch it to an input and time how long it stays high.",
+    "Distance in cm = high time in µs / 58.8 (Seeed's formula: time × 340 m/s / 2). No echo within about 30 ms means nothing in range.",
+    "Power it from 3.3 V on ESP32 / Pico: SIG goes as high as VCC, and 5 V would overdrive a 3.3 V GPIO.",
+    "Do not hot-plug it (Seeed warns this can damage the sensor); wire it with the power off.",
+    "Leave about 60 ms between readings, and aim it at a flat target of at least 0.5 m² for reliable echoes."
+  ],
+  "keywords": [
+    "grove",
+    "ultrasonic",
+    "ranger",
+    "distance",
+    "sonar",
+    "seeed",
+    "101020010",
+    "single pin",
+    "hc-sr04"
+  ],
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Ultrasonic_Ranger/",
+    "https://files.seeedstudio.com/wiki/Grove_Ultrasonic_Ranger/res/Grove_Ultrasonic%20Ranger%20Schematic.pdf",
+    "https://raw.githubusercontent.com/Seeed-Studio/Grove_Ultrasonic_Ranger/master/Ultrasonic.cpp"
+  ],
+  "sim": {
+    "kind": "ultrasonic",
+    "outputPin": "SIG",
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 0,
+    "max": 400,
+    "default": 100,
+    "echo": {
+      "trigPin": "SIG",
+      "minCm": 2,
+      "maxCm": 350,
+      "usPerCm": 58.82,
+      "triggerUs": 10
+    }
+  },
+  "driver": {
+    "filename": "grove_ultrasonic.py",
+    "code": "# Seeed Grove - Ultrasonic Ranger (v2.0) MicroPython driver.\n# Trigger and echo share ONE pin (SIG). Per the Seeed wiki: drive SIG high for at\n# least 10 us; the module sends eight 40 kHz cycles, then drives SIG high for the\n# round-trip time of the sound. Distance = high time x 340 m/s / 2, i.e.\n# cm = high-time(us) / 58.82. Range 2-350 cm, 1 cm resolution.\n# SIG has a 10 kOhm pull-down on the module and swings to VCC (3.2-5.2 V):\n# power it from 3.3 V on ESP32 / Pico so SIG never exceeds 3.3 V.\n# Leave at least 60 ms between measurements so the previous echo has died away.\nfrom machine import Pin, time_pulse_us\nimport time\n\nUS_PER_CM = 2 / 0.034   # 58.82 us per cm (sound at 340 m/s, out and back)\nMIN_CM = 2\nMAX_CM = 350\n\n\nclass GroveUltrasonicRanger:\n    def __init__(self, pin, timeout_us=30000):\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.timeout_us = timeout_us\n        self._last = time.ticks_ms() - 60\n\n    def pulse_us(self):\n        \"\"\"Echo high time in us, or None if no echo arrived within the timeout.\"\"\"\n        wait = 60 - time.ticks_diff(time.ticks_ms(), self._last)\n        if wait > 0:\n            time.sleep_ms(wait)\n        p = self.pin\n        p.init(Pin.OUT, value=0)\n        time.sleep_us(2)\n        p.value(1)\n        time.sleep_us(10)          # trigger: at least 10 us high\n        p.value(0)\n        p.init(Pin.IN)             # release SIG so the module can drive the echo\n        t = time_pulse_us(p, 1, self.timeout_us)\n        self._last = time.ticks_ms()\n        if t < 0:                  # -1: echo never went high, -2: still high at timeout\n            return None\n        return t\n\n    def distance_cm(self):\n        \"\"\"Distance in cm (float), or None when there is no valid echo / out of range.\"\"\"\n        t = self.pulse_us()\n        if t is None:\n            return None\n        cm = t / US_PER_CM\n        if cm < MIN_CM or cm > MAX_CM + 50:\n            return None\n        return cm\n\n    def distance_mm(self):\n        cm = self.distance_cm()\n        return None if cm is None else cm * 10\n\n    def distance_inch(self):\n        cm = self.distance_cm()\n        return None if cm is None else cm / 2.54\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom grove_ultrasonic import GroveUltrasonicRanger\n\nsensor = GroveUltrasonicRanger({SIG})\nwhile True:\n    d = sensor.distance_cm()\n    if d is None:\n        print('out of range')\n    else:\n        print('D=%dcm' % round(d))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 123
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=123cm",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=37cm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:33:20.611Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Ultrasonic_Ranger/"
+    ]
+  }
+}

@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { quoteFound } from './publish';
 
+let unverified = 0;
+
 for (const slug of process.argv.slice(2)) {
   const f = join('parts-staging', `part-${slug}`, 'resolution.json');
   if (!existsSync(f)) {
@@ -12,6 +14,8 @@ for (const slug of process.argv.slice(2)) {
   }
   const r = JSON.parse(readFileSync(f, 'utf8'));
   const bad = r.diffs.filter((d: any) => d.verdict !== 'unresolved' && !quoteFound(d.evidence, d.source));
+  if (bad.length) unverified++;
   console.log(`${bad.length ? 'UNVERIFIED' : 'VERIFIED'} ${slug} (${r.diffs.length - bad.length}/${r.diffs.length})`);
   for (const d of bad) console.log(`  - ${d.diff}\n    source: ${d.source}`);
 }
+process.exit(unverified ? 1 : 0);

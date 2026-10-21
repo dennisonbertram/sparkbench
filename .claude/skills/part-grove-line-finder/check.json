@@ -1,0 +1,79 @@
+{
+  "type": "custom-grove-line-finder",
+  "mpn": "101020172",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Grove Line Finder v1.1 needs at least 4.75 V, so it is powered from 5 V. U2.SIG → D25 (GPIO25). Added a 10 kΩ / 15 kΩ divider on SIG: it swings to 5 V, and the D25 pin takes 3.3 V at most. Added the grove_line_finder.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports a black line when the sensor is over one: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Grove Line Finder v1.1 needs at least 4.75 V, so it is powered from 5 V. U2.SIG → GP2 (GPIO2). Added a 10 kΩ / 15 kΩ divider on SIG: it swings to 5 V, and the GP2 pin takes 3.3 V at most. Added the grove_line_finder.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports a black line when the sensor is over one: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T17:35:35.021Z"
+}

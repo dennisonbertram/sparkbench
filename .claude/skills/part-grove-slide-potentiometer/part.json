@@ -1,0 +1,118 @@
+{
+  "type": "custom-grove-slide-potentiometer",
+  "name": "Grove - Slide Potentiometer",
+  "mpn": "101020036",
+  "category": "sensor",
+  "description": "Seeed Grove 30 mm-travel linear slide potentiometer: a 10 kΩ B-taper fader (S3033N) wired as a voltage divider from GND to VCC, wiper straight to OUT (0 V to VCC in proportion to the slider position), plus a green indicator LED driven from the LED pin through a series resistor. Sold as: Seeed Grove - Slide Potentiometer (SKU 101020036), 4-pin Grove connector OUT, LED, VCC, GND.",
+  "eli5": "A slider like on a mixing desk, on a Grove plug. Push it towards VCC and the voltage on the yellow OUT wire goes up, push it back towards GND and it goes down, so your board can read how far along it is. It also has a little green light you can switch on from your board.",
+  "refPrefix": "RV",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "description": "Wiper output (Grove pin 1, yellow wire): 0 V at the GND end of travel to VCC at the VCC end, linear."
+    },
+    {
+      "name": "LED",
+      "role": "io",
+      "required": false,
+      "description": "Indicator LED input (Grove pin 2, white wire): drive high from a GPIO to light the on-board green LED (series resistor R2 to the LED, cathode to GND). Optional."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Top of the 10 kΩ track (Grove pin 3, red wire), 3.3–5 V. Use 3.3 V with a 3.3 V board so OUT never exceeds the ADC range."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Bottom of the track and LED cathode (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Slide_Potentiometer/res/Sliding_potentiometer_datasheet.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Slide_Potentiometer/",
+    "https://files.seeedstudio.com/wiki/Grove-Slide_Potentiometer/res/Sliding_protentiometer_sch.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-Slide_Potentiometer/res/Sliding_potentiometer_datasheet.pdf"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "Seeed Grove Slide Potentiometer 101020036",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J1): pin 1 OUT (yellow), pin 2 LED (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Position (%) = 100 × V(OUT) / VCC; the taper is linear (10 kΩ, B curve). The VCC and GND ends of travel are marked on the board.",
+    "Power VCC from 3.3 V on an ESP32 or Pico: at full travel OUT equals VCC, and 5 V would overdrive the ADC pin.",
+    "The LED pin is an input that lights the green LED when driven high; leave it unconnected if not needed.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) with 11 dB attenuation; average a few samples, as carbon tracks are slightly noisy."
+  ],
+  "keywords": [
+    "grove slide potentiometer",
+    "grove",
+    "seeed",
+    "101020036",
+    "slide potentiometer",
+    "slide pot",
+    "fader",
+    "slider",
+    "linear potentiometer",
+    "10k",
+    "potentiometer",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Slider position",
+    "unit": "%",
+    "min": 0,
+    "max": 100,
+    "default": 50,
+    "vAtMin": 0,
+    "vAtMax": 3.3,
+    "outputOhms": 2500
+  },
+  "driver": {
+    "filename": "grove_slide_pot.py",
+    "code": "# Seeed Grove - Slide Potentiometer (SKU 101020036), MicroPython driver.\n# Circuit (Seeed schematic \"Sliding_protentiometer_sch\"): a 10 kOhm linear (B taper) slide\n# potentiometer R1 with its track ends on GND (R1 pin 1) and VCC (R1 pin 3); the wiper goes\n# straight to Grove pin 1 (OUT). Grove pin 2 (LED) drives an on-board green LED through a\n# series resistor R2 to GND: drive it high to light the LED. No buffer, no other parts, so\n#   V(OUT)      = position * VCC          (0 at the GND end of travel, VCC at the VCC end)\n#   position(%) = 100 * V(OUT) / VCC\n# Power the module from the same 3.3 V rail as the ADC so OUT never exceeds the ADC range.\n# Track tolerance +/-20 %; residual resistance up to 20 ohm at the ends (S3033N spec), so the\n# ends of travel read within a fraction of a percent of 0 % / 100 %.\nfrom machine import ADC, Pin\n\n\nclass GroveSlidePot:\n    def __init__(self, pin, led=None, vcc=3.3, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.led_pin = None\n        if led is not None:\n            self.led_pin = Pin(led, Pin.OUT, value=0)\n        self.vcc = vcc  # voltage on the module's VCC pin\n        self.samples = samples\n\n    def volts(self):\n        \"\"\"Average several samples and return the wiper (OUT) voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            # Pico etc.: the ADC reference is the 3.3 V rail.\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * 3.3 / 65535\n        return total / self.samples\n\n    def fraction(self):\n        \"\"\"Slider position as a fraction of travel, 0.0 (GND end) to 1.0 (VCC end).\"\"\"\n        f = self.volts() / self.vcc\n        return 0.0 if f < 0 else 1.0 if f > 1 else f\n\n    def percent(self):\n        \"\"\"Slider position in % of the 30 mm travel (0-100).\"\"\"\n        return 100 * self.fraction()\n\n    def scaled(self, lo, hi):\n        \"\"\"Map the position onto lo..hi (e.g. 0..255 for PWM, 0..180 for a servo).\"\"\"\n        return lo + (hi - lo) * self.fraction()\n\n    def led(self, on):\n        \"\"\"Switch the on-board green LED (Grove pin 2) on or off; needs led= in the constructor.\"\"\"\n        if self.led_pin is not None:\n            self.led_pin.value(1 if on else 0)\n"
+  },
+  "skill": "---\nname: part-grove-slide-potentiometer\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Slide Potentiometer (SKU 101020036, 30 mm 10 kΩ linear fader with green indicator LED, OUT/LED/VCC/GND Grove connector). Use when designing, wiring, simulating or writing code for a Grove slide potentiometer in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Slide Potentiometer (10 kΩ linear, 30 mm)\n\n## Overview\nThe **Seeed Grove - Slide Potentiometer (SKU 101020036)** is a 30 mm-travel linear slide potentiometer (an S3033N-type 10 kΩ B-taper fader with a centre click) on a Grove board. It is a plain voltage divider:\n- R1's track runs from GND to VCC and the wiper goes straight to **OUT** (Grove pin 1): V(OUT) = position × VCC, 0 V at the GND end of travel and VCC at the VCC end (both ends are marked on the board).\n- Grove pin 2 (**LED**) drives an on-board green LED through a series resistor to GND. Drive it high from a GPIO to light it. It is an input to the module and is optional.\n- Total resistance 10 kΩ ±20 %; residual resistance at the ends ≤ 20 Ω, so the ends read essentially 0 % and 100 %.\n\n## Pinout (Grove connector, pin 1 to 4)\n| Pin | Name | Wire colour | Function |\n|---|---|---|---|\n| 1 | OUT | yellow | Wiper output, 0 V to VCC (analog) |\n| 2 | LED | white | Green indicator LED input, high = on (optional) |\n| 3 | VCC | red | Top of the track, 3.3–5 V |\n| 4 | GND | black | Bottom of the track, LED cathode |\n\nSource: Seeed schematic (J1: 1 OUT, 2 LED, 3 VCC, 4 GND) and the Seeed wiki (\"OUT (Pin 1), Vcc (Pin 3) and GND (Pin 4) ... Pin 2 is connected to an on-board green indicator LED\").\n\n## Electrical limits\n- Supply 3.3–5 V (Seeed). OUT reaches VCC at full travel, so on an ESP32 or Pico power it from **3.3 V**.\n- Track current VCC / 10 kΩ: 0.33 mA at 3.3 V. The LED draws a few mA from the LED pin when it is high.\n- Pot rating (S3033N, B curve): 0.2 W single gang, 200 V AC max; far beyond logic supplies.\n- Output source resistance up to 2.5 kΩ (slider in the middle); fine for MCU ADCs.\n\n## Interface details\n```\nV(OUT)      = position × VCC\nposition(%) = 100 × V(OUT) / VCC\n```\nOn 3.3 V: 0.33 V = 10 %, 1.155 V = 35 %, 1.65 V = 50 %, 3.3 V = 100 %.\n\n## Wiring\nUse a Grove-to-female-jumper cable, or a Grove shield analog port.\n\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| OUT (yellow) | GPIO34 (ADC1) | GP26 / ADC0 | External ADC (Grove Base Hat A0, ADS1115) |\n| LED (white) | any GPIO, optional | any GPIO, optional | any GPIO, optional |\n| VCC (red) | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| GND (black) | GND | GND | GND |\n\n## Using the driver\n```python\nfrom grove_slide_pot import GroveSlidePot\nimport time\npot = GroveSlidePot(34, led=25)   # ADC GPIO for OUT, optional GPIO for the LED\nwhile True:\n    p = pot.percent()\n    pot.led(p >= 50)\n    print('P=%d%%' % round(p))\n    time.sleep(0.5)\n```\n`volts()`, `fraction()` and `scaled(lo, hi)` are also available. Pass `vcc=` if the module is powered from something other than 3.3 V (and only if your ADC can take it).\n\n## Gotchas\n- **5 V on a 3.3 V board:** the wiper reaches VCC at the end of travel. Power it from 3V3.\n- **LED pin is an input:** it lights the LED, it does not report anything. Leave it unconnected if you don't need it.\n- **ESP32:** use ADC1 pins (GPIO32–39); ADC2 does not work while Wi-Fi is on. The ESP32 ADC is non-linear near 0 V and 3.3 V, so the ends may read a few % off.\n- **Grove socket:** the board has a 2 mm Grove socket, not breadboard pins: use a Grove-to-jumper cable.\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Slide_Potentiometer/res/Sliding_potentiometer_datasheet.pdf (S3033N slide potentiometer)\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from grove_slide_pot import GroveSlidePot\nimport time\n\npot = GroveSlidePot({OUT})\nwhile True:\n    print('P=%d%%' % round(pot.percent()))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the slider position set on the control",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=35%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:32:53.908Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Slide_Potentiometer/"
+    ]
+  }
+}

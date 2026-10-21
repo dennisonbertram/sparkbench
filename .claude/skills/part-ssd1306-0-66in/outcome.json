@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "oled-display",
+  "board": "WEMOS / LOLIN D1 mini OLED 0.66 Shield v2.1.0 (64x48 SSD1306, I2C)",
+  "reason": "Check passed on esp32 and pico: 16-pin D1 mini header order taken from the v2.1.0 schematic (only 3V3, G, D1 = SCL and D2 = SDA used, 4.7k board pull-ups, 3.3 V only). The datasheet-based driver writes GDDRAM columns 32-95 with mux 47 and COM pins 12h, and the sim uses rows 48, width 64, colOffset 32. The on-board I2C button MCU at 0x31 is not simulated.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf",
+  "breakoutPinoutSource": "https://www.wemos.cc/en/latest/_static/files/sch_oled_v2.1.0.pdf",
+  "checkRuns": 1
+}

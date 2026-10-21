@@ -1,0 +1,116 @@
+{
+  "type": "custom-grove-buzzer",
+  "name": "Grove Buzzer (v1.1b)",
+  "mpn": "107020000",
+  "category": "actuator",
+  "description": "Active 12 mm buzzer (built-in oscillator, resonant 2300 ± 300 Hz, at least 85 dB) on a Grove board with its own transistor driver: SIG goes through a 1 kΩ resistor to an S9013 NPN transistor, which switches the buzzer's - lead to GND while its + lead sits on VCC. SIG high = beep, low = silent; no tone generation needed. Works from 3.3 V or 5 V, and a 3.3 V GPIO only supplies the ~2.6 mA base current. Sold as: Seeed Studio Grove - Buzzer v1.1b (SKU 107020000), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A little beeper with its own tone inside: set the pin high and it beeps, set it low and it goes quiet.",
+  "refPrefix": "BZ",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Control input (Grove pin 1, yellow wire): high = beep, low = silent. Drives the S9013 base through 1 kΩ, about 2.6 mA from a 3.3 V GPIO. There is no pull-down on the board, so drive it low at start-up rather than leaving it floating."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Buzzer supply (Grove pin 3, red wire): 3.3 V or 5 V. The buzzer current flows from this pin through the buzzer and the transistor to GND, not through SIG. Louder on 5 V."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire), shared with the microcontroller."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 35,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove_Buzzer/resources/S9013.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "Seeed Grove Buzzer 107020000",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order (Seeed v1.1b Eagle schematic, J1, and the board silkscreen): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Circuit (Seeed v1.1b schematic): SIG → R1 1 kΩ → S9013 NPN base; emitter to GND; collector to the buzzer's - lead; buzzer + to VCC. SIG high = beep. There is no base pull-down resistor, so set the pin as an output driven low before anything else.",
+    "It is an active buzzer: it makes its own ~2.3 kHz tone from plain DC (Seeed spec: resonant frequency 2300 ± 300 Hz, at least 85 dB). Just switch SIG high and low. PWM on SIG only chops that tone on and off, so it cannot play clean melodies; use a passive buzzer for those.",
+    "VCC 3.3 V or 5 V both work (Seeed spec); it is louder on 5 V. The buzzer current (a few tens of mA) comes from VCC through the S9013 (500 mA max), never from the GPIO.",
+    "Version 1.0 boards (2010) had no transistor and drove the buzzer straight from SIG; this part models v1.1 and later (S9013 added May 2014)."
+  ],
+  "keywords": [
+    "buzzer",
+    "active buzzer",
+    "beeper",
+    "alarm",
+    "sound",
+    "piezo",
+    "grove",
+    "seeed",
+    "107020000"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "SIG"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nbuzzer = Pin({SIG}, Pin.OUT, value=0)  # SIG high = beep\nwhile True:\n    buzzer.value(1)\n    print('BEEP ON')\n    time.sleep(1)\n    buzzer.value(0)\n    print('BEEP OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "beeps",
+      "title": "The buzzer switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BEEP ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BEEP OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Buzzer/",
+    "https://www.seeedstudio.com/Grove-Buzzer.html",
+    "https://files.seeedstudio.com/wiki/Grove_Buzzer/resources/Grove-Buzzer_V1.1_eagle.zip",
+    "https://files.seeedstudio.com/wiki/Grove_Buzzer/resources/S9013.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:34:47.248Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Buzzer/"
+    ]
+  }
+}

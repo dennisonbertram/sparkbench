@@ -1,0 +1,121 @@
+{
+  "type": "custom-grove-line-finder",
+  "name": "Grove Line Finder v1.1",
+  "mpn": "101020172",
+  "category": "sensor",
+  "description": "Seeed Grove line finder: an RS-06WD reflective IR sensor (IR LED always on through 100 ohm, phototransistor against a 22 kOhm pull-up) feeding an LMV358 op-amp comparator with a 10 kOhm sensitivity trimmer. SIG is the rail-to-rail push-pull op-amp output: HIGH over a black line or with nothing in range, LOW over a white surface (red LED on). Runs on 5 V, so SIG swings to 5 V and needs a divider on a 3.3 V board. Sold as: Seeed Grove - Line Finder v1.1 (SKU 101020172), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "Shines invisible light at the floor and tells your board whether it sees a black line or a white surface, so a robot can follow a track.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 15000
+      },
+      "description": "Digital output (Grove pin 1, yellow wire): LMV358 push-pull output, HIGH (about VCC = 5 V) over a black line or nothing, LOW over a white surface. Feed a 3.3 V GPIO through the 10 k / 15 k divider (3.0 V high)."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 5 V per Seeed (LMV358 max 5.5 V). About 40 mA, mostly the IR LED."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 40,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove_Line_Finder/res/Lmv358.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Line_Finder/",
+    "https://files.seeedstudio.com/wiki/Grove_Line_Finder/res/202000932_Grove%20-%20Line%20Finder%20v1.1.zip",
+    "https://files.seeedstudio.com/wiki/Grove_Line_Finder/res/Lmv358.pdf",
+    "https://www.seeedstudio.com/Grove-Line-Finder-v1-1.html"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "Seeed Grove Line Finder v1.1 101020172",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J1): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket: use a Grove-to-female-jumper cable.",
+    "Power VCC from 5 V. SIG is a push-pull op-amp output that swings to 5 V: on an ESP32, Pico or Raspberry Pi put 10 kOhm from SIG to the GPIO and 15 kOhm from the GPIO to GND (3.0 V high).",
+    "SIG is HIGH over a black line or when nothing is in range, LOW over white (the red LED lights).",
+    "Turn the trimmer until the red LED is on over the white surface and off over the black line.",
+    "No pull-up or pull-down is needed on the GPIO: the op-amp drives SIG both ways."
+  ],
+  "keywords": [
+    "grove line finder",
+    "grove",
+    "seeed",
+    "101020172",
+    "line finder",
+    "line",
+    "tracking",
+    "follower",
+    "line follower",
+    "ir",
+    "infrared",
+    "reflective",
+    "rs-06wd",
+    "lmv358",
+    "robot"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "SIG",
+    "quantity": "Black line under sensor (SIG high)",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "grove_line_finder.py",
+    "code": "# Seeed Grove - Line Finder v1.1 (SKU 101020172), MicroPython driver.\n# Board circuit (Seeed schematic v1.1): RS-06WD reflective sensor. Its IR LED is always on (100 ohm\n# from VCC). The phototransistor pulls the LMV358 + input low against a 22 kOhm pull-up when IR is\n# reflected back; the R6 10 kOhm trimmer sets the - input. The LMV358 output (rail-to-rail push-pull)\n# is SIG, and a red LED (10 kOhm from VCC) lights when SIG is low.\n#   Black line (little reflection) or nothing in range: SIG HIGH, LED off.\n#   White / light surface:                              SIG LOW,  LED on.\n# The module runs on 5 V, so SIG swings to 5 V: on a 3.3 V board feed it through a divider\n# (e.g. 10 k top / 15 k bottom gives 3.0 V). The divider does not change the logic, only the level.\nfrom machine import Pin\n\n\nclass GroveLineFinder:\n    def __init__(self, sig_pin):\n        # SIG is actively driven both ways by the op-amp: no pull-up/pull-down needed.\n        self.sig = Pin(sig_pin, Pin.IN) if isinstance(sig_pin, int) else sig_pin\n\n    def raw(self):\n        \"\"\"Logic level on SIG: 1 = black line / nothing, 0 = white surface.\"\"\"\n        return self.sig.value()\n\n    def on_line(self):\n        \"\"\"True over a black line (or when nothing is within range).\"\"\"\n        return self.sig.value() == 1\n\n    def on_white(self):\n        \"\"\"True over a white / reflective surface (red LED on).\"\"\"\n        return self.sig.value() == 0\n\n    def irq(self, handler, on_line=True):\n        \"\"\"Call handler(pin) when the sensor moves onto a black line (rising edge) or,\n        with on_line=False, onto a white surface (falling edge).\"\"\"\n        trig = Pin.IRQ_RISING if on_line else Pin.IRQ_FALLING\n        return self.sig.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from grove_line_finder import GroveLineFinder\nimport time\n\nsensor = GroveLineFinder({SIG})\nwhile True:\n    print('Surface: %s' % ('black' if sensor.on_line() else 'white'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a black line when the sensor is over one",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Surface: black",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-line-finder\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Line Finder v1.1 (SKU 101020172; RS-06WD IR reflective sensor + LMV358 comparator, Grove SIG/NC/VCC/GND, SIG high over a black line). Use when designing, wiring, simulating or writing code for a Grove Line Finder in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build, e.g. a line-following robot.\n---\n\n# Seeed Grove - Line Finder v1.1\n\n## Overview\nA 20 x 20 mm Grove board with an **RS-06WD** reflective sensor (IR LED + phototransistor) and an **LMV358** op-amp used as a comparator, a sensitivity trimmer (R6) and a red indicator LED. Point it down at the floor to follow a black line on white (or the reverse). Hobbyists buy it as **Seeed Grove - Line Finder v1.1, SKU 101020172**.\n- **SIG HIGH over a black line** (or with nothing in range), **LOW over a white surface** (red LED on)\n- Supply: **5 V** (Seeed specification)\n- SIG is a push-pull op-amp output that swings to VCC, i.e. **5 V**\n\n## Pinout (Grove connector J1, schematic order)\n| Pin | Wire | Function |\n|---|---|---|\n| SIG | yellow | Digital output: 1 = black line / nothing, 0 = white |\n| NC | white | Not connected |\n| VCC | red | Supply 5 V |\n| GND | black | Ground |\n\nThe board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach a breadboard.\n\n## Board circuit (Seeed schematic v1.1)\n- IR LED: 100 Ω from VCC, always on (about 35-40 mA at 5 V).\n- Phototransistor pulls the LMV358 **+** input low against a 22 kΩ pull-up when IR comes back.\n- Trimmer R6 (10 kΩ) sets the **−** input.\n- LMV358 output = **SIG** (rail-to-rail push-pull). Red LED + 10 kΩ from VCC to SIG: lit when SIG is low.\nSo: white surface → strong reflection → + input below threshold → SIG low.\n\n## Electrical limits\n- VCC 5 V per Seeed (LMV358 absolute max 5.5 V; use 4.75-5.25 V).\n- About 40 mA, mostly the IR LED.\n- **SIG swings to 5 V**: on an ESP32 / Pico / Raspberry Pi put a divider in the line, e.g. **10 kΩ from SIG to the GPIO and 15 kΩ from the GPIO to GND** (3.0 V high). Sparkbench adds these resistors for you. The logic is unchanged.\n\n## Interface details\nPlain digital input, no protocol. No pull-up or pull-down needed (the op-amp drives both ways).\n```\nSIG = 1  -> black line, or nothing within range\nSIG = 0  -> white / light surface\n```\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 5V (VIN) | VBUS (pin 40) | 5V (pin 2) |\n| GND | GND | GND | GND (pin 6) |\n| SIG | via 10k/15k divider to GPIO27 | via divider to GP15 | via divider to GPIO17 (pin 11) |\n\n## Using the driver\n```python\nfrom grove_line_finder import GroveLineFinder\nimport time\nsensor = GroveLineFinder(27)   # GPIO wired (through the divider) to SIG\nwhile True:\n    print('Surface: %s' % ('black' if sensor.on_line() else 'white'))\n    time.sleep(0.5)\n```\n`on_line()` is True over black, `on_white()` True over white, `raw()` returns SIG, `irq(handler)` fires when the sensor moves onto the line (`on_line=False` for moving onto white).\n\n## Gotchas\n- **Never wire SIG straight to a 3.3 V GPIO** while the module runs on 5 V.\n- \"Black\" (SIG high) also means \"nothing there\", e.g. the robot was lifted off the floor.\n- Keep the sensor a few mm to about 1-2 cm above the surface and turn the trimmer until the red LED is on over white and off over the line.\n- Sunlight contains IR and can cause false readings; glossy black tape can reflect like white.\n\n## Datasheet\nLMV358: https://files.seeedstudio.com/wiki/Grove_Line_Finder/res/Lmv358.pdf\nSchematic and pin order: https://files.seeedstudio.com/wiki/Grove_Line_Finder/res/202000932_Grove%20-%20Line%20Finder%20v1.1.zip (J1: SIG, NC, VCC, GND); wiki https://wiki.seeedstudio.com/Grove-Line_Finder/\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:35:35.021Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Line_Finder/",
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf"
+    ]
+  }
+}

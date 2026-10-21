@@ -1,0 +1,16 @@
+{
+  "diffs": [
+    {
+      "diff": "minimum supply: part 4.5 V, datasheet reading 5 V",
+      "verdict": "part-correct",
+      "evidence": "M5Stack only states the nominal 5 V port supply (PinMap GND/5V/SDA/SCL), and the unit has no regulator, so the real limit is the ATmega328 on VCC, whose Microchip datasheet gives the full-speed operating band as '0 - 20MHz @ 4.5 - 5.5V'; 4.5 V is therefore the correct minimum around the 5 V nominal, not a different value.",
+      "source": "https://ww1.microchip.com/downloads/en/DeviceDoc/ATmega48A-PA-88A-PA-168A-PA-328-P-DS-DS40002061A.pdf"
+    },
+    {
+      "diff": "maximum supply: part 5.5 V, datasheet reading 5 V",
+      "verdict": "part-correct",
+      "evidence": "The second reading copied the M5Stack nominal 5 V port value; the unit feeds 5 V straight to the ATmega328 (no regulator), whose Microchip datasheet caps operation at 5.5 V ('0 - 20MHz @ 4.5 - 5.5V'), so 5.5 V is the correct maximum.",
+      "source": "https://ww1.microchip.com/downloads/en/DeviceDoc/ATmega48A-PA-88A-PA-168A-PA-328-P-DS-DS40002061A.pdf"
+    }
+  ]
+}

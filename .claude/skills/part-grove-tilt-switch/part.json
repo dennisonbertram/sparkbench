@@ -1,0 +1,116 @@
+{
+  "type": "custom-grove-tilt-switch",
+  "name": "Grove Tilt Switch",
+  "mpn": "101020025",
+  "category": "sensor",
+  "description": "Seeed Grove tilt switch: an SW-200D two-ball tilt switch from VCC to SIG with a 10 kOhm pull-down to GND (no comparator). SIG is HIGH (= VCC) while the module is upright and the balls close the switch, and LOW once it is tilted past about 10 degrees or turned over (connect angle 10-170 degrees, disconnect 190-350 degrees). Runs on 3.0-5.25 V; SIG swings to VCC, so power it from 3.3 V on a 3.3 V board. Sold as: Seeed Grove - Tilt Switch (SKU 101020025), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A tiny can with two metal balls inside: standing up, the balls touch the contacts and your board reads 1; tip it over and it reads 0.",
+  "refPrefix": "S",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "description": "Output (Grove pin 1, yellow wire): HIGH (= VCC through the closed switch) while upright, LOW (10 kOhm pull-down) while tilted."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 3.0-5.25 V. SIG is switched straight to VCC, so use 3V3 with an ESP32 or Pico."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.25,
+  "currentMa": 1,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Tilt_Switch/res/SW200D_datasheet.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Tilt_Switch/",
+    "https://files.seeedstudio.com/wiki/Grove-Tilt_Switch/res/Grove-Tilt_Switch_v1.1_PDF_File.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-Tilt_Switch/res/SW200D_datasheet.pdf"
+  ],
+  "priceUsd": 2,
+  "supplierQuery": "Seeed Grove Tilt Switch 101020025",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J2): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Power VCC from 3V3 on an ESP32 or Pico: the closed switch connects SIG directly to VCC, so a 5 V supply puts 5 V on the GPIO.",
+    "SIG is HIGH while upright (gold switch pins down) and LOW when tilted. This is the opposite polarity to the blue SW-520D/LM393 tilt modules.",
+    "The board already has a 10 kOhm pull-down on SIG; do not enable an internal pull-up.",
+    "The balls bounce for a few milliseconds; the driver waits 20 ms for a stable level."
+  ],
+  "keywords": [
+    "grove tilt switch",
+    "grove",
+    "seeed",
+    "101020025",
+    "tilt",
+    "sw-200d",
+    "sw200d",
+    "ball switch",
+    "orientation",
+    "tip-over"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "SIG",
+    "quantity": "Tilted",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "grove_tilt.py",
+    "code": "# Seeed Grove - Tilt Switch (SKU 101020025), MicroPython driver.\n# The board (Seeed schematic \"Grove - Tilt Switch v1.1\") is just an SW-200D\n# two-ball tilt switch from VCC to SIG plus a 10 kOhm pull-down (R1) from SIG\n# to GND. No comparator, no LED driver:\n#   switch closed (module upright, gold pins down)  -> SIG = VCC  -> 1\n#   switch open   (module tilted past ~10 deg / over) -> SIG = 0 V -> 0\n# So SIG swings to the module's VCC: power it from 3V3 on a 3.3 V board.\n# The balls bounce for about 2 ms when they roll (SW-200D \"conductive time\"),\n# so tilted() waits for the level to stay stable before reporting a change.\nfrom machine import Pin\nimport time\n\n\nclass GroveTilt:\n    def __init__(self, pin, settle_ms=20):\n        # The board has its own 10 k pull-down on SIG; no internal pull needed.\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.settle_ms = settle_ms\n        self._state = self.pin.value()\n\n    def raw(self):\n        \"\"\"Logic level on SIG right now: 1 = upright (switch closed), 0 = tilted.\"\"\"\n        return self.pin.value()\n\n    def upright(self):\n        \"\"\"Debounced state: True while upright (switch closed, SIG high).\"\"\"\n        v = self.pin.value()\n        if v != self._state:\n            t0 = time.ticks_ms()\n            while time.ticks_diff(time.ticks_ms(), t0) < self.settle_ms:\n                if self.pin.value() != v:\n                    return self._state == 1\n            self._state = v\n        return self._state == 1\n\n    def tilted(self):\n        \"\"\"Debounced state: True when tilted (switch open, SIG low).\"\"\"\n        return not self.upright()\n"
+  },
+  "example": {
+    "code": "from grove_tilt import GroveTilt\nimport time\n\nsensor = GroveTilt({SIG})\nwhile True:\n    print('Tilt: %s' % ('TILTED' if sensor.tilted() else 'upright'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects-tilt",
+      "title": "Reports a tilt when the switch is tipped over",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Tilt: upright",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Tilt: TILTED",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-tilt-switch\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Tilt Switch (SKU 101020025; SW-200D two-ball tilt switch from VCC to SIG with a 10 kOhm pull-down, Grove SIG/NC/VCC/GND). Use when designing, wiring, simulating or writing code for a Grove Tilt Switch in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Seeed Grove - Tilt Switch (SW-200D)\n\n## Overview\nThe **Seeed Grove - Tilt Switch (SKU 101020025)** is the simplest possible tilt sensor: an **SW-200D** two-ball tilt switch connected from **VCC to SIG**, and a **10 kΩ pull-down (R1)** from SIG to GND (Seeed schematic v1.1). There is no comparator, potentiometer or LED.\n- Upright (switch can with its gold pins down): the balls bridge the contacts, the switch is closed and **SIG = VCC (HIGH)**.\n- Tilted past about 10° the other way / turned over: the switch opens and the pull-down makes **SIG = 0 V (LOW)**.\n- Seeed specifies a connect angle of 10°–170° and a disconnect angle of 190°–350°: it tells you which way up it is, not an angle.\n- Supply: **3.0–5.25 V**; current is only VCC / 10 kΩ (0.33 mA at 3.3 V) while upright.\n\n## Pinout (Grove connector J2, schematic order)\n| Pin | Wire | Function |\n|---|---|---|\n| SIG | yellow | Output: 1 = upright, 0 = tilted |\n| NC | white | Not connected |\n| VCC | red | Supply 3.0–5.25 V |\n| GND | black | Ground |\n\nThe board has a 2 mm Grove socket, so it is wired with a Grove-to-female-jumper cable.\n\n## Electrical limits\n- VCC 3.0–5.25 V (Seeed wiki).\n- SIG is VCC through the closed switch (<1 Ω), so **the high level equals VCC**. At 5 V that is 5 V on the GPIO, which can damage an ESP32 or Pico: power VCC from 3V3.\n- SW-200D: < 12 V, < 25 mA, closed < 1 Ω, open > 10 MΩ, about 2 ms bounce, 100,000 cycles.\n\n## Interface details\nPlain digital input, no protocol:\n```\nSIG = 1  -> upright (switch closed)\nSIG = 0  -> tilted  (switch open, 10 k pull-down)\n```\nNo internal pull resistor is needed (the board has the pull-down). Debounce in software: the driver waits 20 ms for a stable level.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG | GPIO25 | GP2 | GPIO17 (pin 11) |\n| NC | – | – | – |\n| VCC | 3V3 | 3V3(OUT) (pin 36) | 3V3 (pin 1) |\n| GND | GND | GND | GND (pin 6) |\n\n## Using the driver\n```python\nfrom grove_tilt import GroveTilt\nimport time\nsensor = GroveTilt(25)          # GPIO wired to SIG\nwhile True:\n    print('Tilt: %s' % ('TILTED' if sensor.tilted() else 'upright'))\n    time.sleep(0.5)\n```\n`upright()` / `tilted()` return the debounced state; `raw()` is the instantaneous SIG level.\n\n## Gotchas\n- **Polarity is opposite to the blue SW-520D/LM393 modules**: here SIG is HIGH when upright. (The Seeed wiki text says \"LOW normally\", meaning when tipped; the schematic is authoritative.)\n- **Do not power from 5 V on a 3.3 V board**: SIG goes straight to VCC.\n- \"Upright\" means the switch's gold pins point down. Lying flat it sits near the switching angle and may flicker.\n- For an actual angle use an accelerometer (ADXL345, MPU6050).\n\n## Datasheet\nSW-200D: https://files.seeedstudio.com/wiki/Grove-Tilt_Switch/res/SW200D_datasheet.pdf\nSchematic: https://files.seeedstudio.com/wiki/Grove-Tilt_Switch/res/Grove-Tilt_Switch_v1.1_PDF_File.pdf\nWiki: https://wiki.seeedstudio.com/Grove-Tilt_Switch/\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:36:55.324Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Tilt_Switch/"
+    ]
+  }
+}
