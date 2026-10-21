@@ -33,13 +33,17 @@ export class SSD1306Device implements I2CDevice {
   private pendingCmd = -1;
   dirty = true;
   frames = 0;
-  constructor(public partId: string, opts: { addr?: number; controller?: 'ssd1306' | 'sh1106'; rows?: 32 | 64 } = {}) {
+  /** Visible columns: small panels (0.49" 64×32, 0.66" 64×48) only show GDDRAM columns colOffset..colOffset+width−1. */
+  width = 128;
+  constructor(public partId: string, opts: { addr?: number; controller?: 'ssd1306' | 'sh1106'; rows?: 32 | 48 | 64; width?: number; colOffset?: number } = {}) {
     if (opts.addr !== undefined) this.addr = opts.addr;
     if (opts.controller === 'sh1106') {
       this.ramWidth = 132;
       this.colOffset = 2;
     }
     if (opts.rows) this.rows = opts.rows;
+    if (opts.width) this.width = opts.width;
+    if (opts.colOffset !== undefined) this.colOffset = opts.colOffset;
     this.ram = new Uint8Array(this.ramWidth * 8);
     this.col1 = this.ramWidth - 1;
   }
@@ -135,10 +139,10 @@ export class SSD1306Device implements I2CDevice {
     }
     this.dirty = true;
   }
-  /** The visible picture as 128×64 page-format bytes (what the frame and the screen reader use). */
+  /** The visible picture as 128×64 page-format bytes, panel window at the top left (what the frame and the screen reader use). */
   visibleRam(): number[] {
     const out = new Array(1024).fill(0);
-    for (let page = 0; page < this.rows / 8; page++) for (let x = 0; x < 128; x++) out[page * 128 + x] = this.ram[page * this.ramWidth + x + this.colOffset];
+    for (let page = 0; page < this.rows / 8; page++) for (let x = 0; x < this.width; x++) out[page * 128 + x] = this.ram[page * this.ramWidth + x + this.colOffset];
     return out;
   }
   /** 128×64 pixel bitmap, one byte per pixel (0/1). */
