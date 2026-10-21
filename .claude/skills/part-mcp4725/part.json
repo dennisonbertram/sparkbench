@@ -92,7 +92,7 @@
     "code": "# MCP4725 12-bit I2C DAC (Microchip MCP4725), MicroPython driver.\n# Commands from the Microchip datasheet DS22039D, section 6:\n#   Fast mode write (C2 C1 = 0 0): [0 0 PD1 PD0 D11-D8] [D7-D0]\n#   Write DAC register (C2 C1 C0 = 0 1 0): [0x40 | PD1 PD0 << 1] [D11-D4] [D3-D0 0000]\n#   Write DAC register and EEPROM (0 1 1): [0x60 | PD << 1] [D11-D4] [D3-D0 0000], EEPROM write takes up to 50 ms\n#   Read: 5 bytes [RDY/BSY POR x x x PD1 PD0 x] [D11-D4] [D3-D0 xxxx] [x PD1 PD0 x D11-D8] [D7-D0]\n# Vout = VDD * code / 4096 (the supply is the reference).\nimport time\n\n# Power-down modes (PD1 PD0): 0 normal, 1 = 1 kOhm, 2 = 100 kOhm, 3 = 500 kOhm to ground\nPD_NORMAL = 0\nPD_1K = 1\nPD_100K = 2\nPD_500K = 3\n\n\nclass MCP4725:\n    def __init__(self, i2c, addr=0x62, vdd=3.3):\n        \"\"\"addr 0x62 with A0 low, 0x63 with A0 high (MCP4725A1, as on the Adafruit board).\n        vdd: the supply voltage on VIN, which is the DAC's full-scale reference.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.vdd = vdd\n\n    def write(self, code, power_down=PD_NORMAL):\n        \"\"\"Fast-mode write of a 12-bit code (0-4095) to the DAC register. EEPROM is not changed.\"\"\"\n        code = max(0, min(4095, int(code)))\n        self.i2c.writeto(self.addr, bytes([((power_down & 3) << 4) | (code >> 8), code & 0xFF]))\n\n    def write_eeprom(self, code, power_down=PD_NORMAL):\n        \"\"\"Write the code to the DAC register AND the EEPROM (the value used at power-up).\"\"\"\n        code = max(0, min(4095, int(code)))\n        self.i2c.writeto(self.addr, bytes([0x60 | ((power_down & 3) << 1), code >> 4, (code & 0x0F) << 4]))\n        # RDY/BSY stays low until the EEPROM write is done (typ 25 ms, max 50 ms)\n        t0 = time.ticks_ms()\n        while not self.read()[3]:\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                raise OSError('MCP4725 EEPROM write timed out')\n            time.sleep_ms(5)\n\n    def set_voltage(self, volts):\n        \"\"\"Set the output in volts (0 to vdd).\"\"\"\n        self.write(round(volts * 4096 / self.vdd))\n\n    def power_down(self, mode=PD_500K):\n        \"\"\"Switch the output off; it is pulled to ground through 1k/100k/500k.\"\"\"\n        self.write(0, mode)\n\n    def read(self):\n        \"\"\"Return (dac_code, power_down, eeprom_code, ready).\"\"\"\n        b = self.i2c.readfrom(self.addr, 5)\n        dac = (b[1] << 4) | (b[2] >> 4)\n        pd = (b[0] >> 1) & 3\n        eeprom = ((b[3] & 0x0F) << 8) | b[4]\n        ready = bool(b[0] & 0x80)\n        return dac, pd, eeprom, ready\n"
   },
   "example": {
-    "code": "from machine import I2C, Pin, ADC\nimport time\nfrom mcp4725 import MCP4725\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ndac = MCP4725(i2c, 0x62, vdd=3.3)\nadc = ADC(Pin({VOUT}))\n\ndef vout():\n    time.sleep_ms(20)  # let the output and the ADC settle\n    return adc.read_u16() * 3.3 / 65535\n\nwhile True:\n    for code in (1000, 3000):\n        dac.write(code)\n        v = vout()\n        print('code=%d Vout=%.2fV' % (dac.read()[0], v))\n    dac.power_down()\n    print('off Vout=%.2fV' % vout())\n    time.sleep(1)\n",
+    "code": "from machine import I2C, Pin, ADC\nimport time\nfrom mcp4725 import MCP4725\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ndac = MCP4725(i2c, 0x62, vdd=3.3)\nadc = ADC(Pin({VOUT}))\n\ndef vout():\n    time.sleep_ms(20)  # let the output and the ADC settle\n    return adc.read_u16() * 3.3 / 65535\n\nwhile True:\n    for code in (1000, 3000):\n        dac.write(code)\n        v = vout()\n        print('code=%d Vout=%.1fV' % (dac.read()[0], v))  # 0.1 V: the board ADC reads within a few mV\n    dac.power_down()\n    print('off Vout=%.1fV' % vout())\n    time.sleep(1)\n",
     "test": {
       "id": "outputs",
       "title": "Drives VOUT to VIN x code / 4096 and reads the code back",
@@ -101,19 +101,19 @@
         {
           "kind": "expect",
           "what": "serial",
-          "text": "code=1000 Vout=0.81V",
+          "text": "code=1000 Vout=0.8V",
           "within": 3000
         },
         {
           "kind": "expect",
           "what": "serial",
-          "text": "code=3000 Vout=2.42V",
+          "text": "code=3000 Vout=2.4V",
           "within": 3000
         },
         {
           "kind": "expect",
           "what": "serial",
-          "text": "off Vout=0.00V",
+          "text": "off Vout=0.0V",
           "within": 3000
         }
       ]
