@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 9 (B+): part says passive, datasheet reading says power",
+      "verdict": "part-correct",
+      "evidence": "Handson DRV-1012 guide, Motor Power Supply table: 'B+ Positive Motor Power Supply. 6 ~ 27VDC', a screw terminal for a separate battery/PSU; the module's logic supply is header pin 7 'Vcc +5V Power Supply microcontroller' (IBT-2 schematic: VCC feeds only the SN74AHC244 buffer). In this tool role 'power' means 'wire to the microcontroller's 3.3/5 V rail' (src/core/autowire.ts line 70 wires every power pin to the board supply; checks.ts demands it), which for B+ would put a 6-27 V motor supply on the board's rail. VCC is the part's power pin; B+ is correctly modelled as an externally-fed terminal (passive, 'NEVER connect to the microcontroller's pins').",
+      "source": "https://www.handsontec.com/dataspecs/module/BTS7960%20Motor%20Driver.pdf"
+    },
+    {
+      "diff": "minimum supply: part 3.3 V, datasheet reading 6 V",
+      "verdict": "part-correct",
+      "evidence": "The part's vmin/vmax (3.3-5.3 V) describe its power pin, the logic VCC on header pin 7, not the motor supply. Handson guide Brief Data: 'Input Voltage: 6 ~ 27Vdc' (motor terminal B+) and separately 'Control Input Level: 3.3~5V'. The 6 V figure is the B+ motor range, which the part states in its B+ pin description and notes (6-27 V). VCC feeds only the input buffer (74HC244 per the board photo, SN74AHC244 in the IBT-2 schematic), whose output at 3.3 V exceeds the BTS7960 VIN(H) max of 2 V / VINH(H) max 2.15 V (Infineon datasheet 4.4.1).",
+      "source": "https://www.handsontec.com/dataspecs/module/BTS7960%20Motor%20Driver.pdf"
+    },
+    {
+      "diff": "load current (A) from R_IS/L_IS: datasheet reading gives 8.5 per count, the part's model has none",
+      "verdict": "part-fixed",
+      "evidence": "Infineon BTS7960 datasheet 4.4.4: 'with the nominal value of 8500 for the current sense ratio kILIS = IL / IIS, a resistor value of RIS = 1kOhm leads to VIS = (IL / 8.5 A)V'; table 4.4.6 kILIS typ 8.5 x10^3 (3-14 at 5 A); 4.4.7 IIS(lim) 4-7 mA in fault. The IBT-2 module schematic (https://www.elecrow.com/download/IBT-2%20Schematic.pdf) shows each chip's IS pin (pin 6) with a 1K resistor to GND (R5, R6) routed to header pins 5/6, so the scale is 8.5 A per volt (per volt, not per ADC count). The model had no conversion: added AMPS_PER_VOLT = 8.5, optional r_is/l_is/is_divider ADC inputs and current() to the driver, and stated the 8.5 A/V scale plus the 4-7 V fault level (divider needed for a 3.3 V ADC) in the IS pin descriptions, build notes and SKILL.md. The simulator's actuator kind has no measure field, so the publish gate still reports 'none'.",
+      "source": "https://www.robotpower.com/downloads/BTS7960_v1.1_2004-12-07.pdf"
+    }
+  ]
+}

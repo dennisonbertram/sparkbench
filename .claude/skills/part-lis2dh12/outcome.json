@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lis2dh12",
+  "board": "SparkFun Triple Axis Accelerometer Breakout - LIS2DH12 (Qwiic), SPX-15760, 6-pin edge header GND, 3V3, SDA, SCL, INT2, INT1",
+  "reason": "Part check PASS on ESP32 and Pico on the first run (spec, wiring, design checks, breadboard, simulator test X=-0.750 Y=0.250 Z=0.900 g, circuit board DRC clean, footprint, LCSC C110926). The sim stores OUT_X/Y/Z as left-justified 12-bit two's complement, low byte first, 1 mg/digit (HR, +-2 g) with WHO_AM_I 0x33 and ST auto-increment (0xA8); address 0x19 because the SparkFun board pulls SA0 high (ADR jumper open). Note: SparkFun has retired this SKU, though retailers still stock it.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lis2dh12.pdf",
+  "breakoutPinoutSource": "SparkFun Eagle files https://github.com/sparkfunX/Qwiic_Accelerometer_LIS2DH12 (Hardware/Qwiic_Accelerometer_LIS2DH12.brd: J3 1x04 pads at x=6.35..13.97 labelled GND, 3V3, SDA, SCL; J5 1x02 rotated 180 with pad 2 INT2 at 16.51 and pad 1 INT1 at 19.05; .sch nets: SDO/SA0 100k to 3.3V with JP1 to GND = ADR)",
+  "checkRuns": 1
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-aht21",
+  "board": "ASAIR AHT21B temperature & humidity module (Aosong, 4-pin 2.54 mm: VDD, SDA, GND, SCL)",
+  "reason": "The part check passed on the first run on both ESP32 and Pico: spec, wiring with 4.7 kΩ SDA/SCL pull-ups, breadboard, simulator test (T=30.0C H=65%), circuit board with clean DRC, footprint and LCSC C3012624. The sim encodes the datasheet's 20-bit RH/T formulas and CRC-8, and the driver follows the AHT21 reading process, including the 0x18 status check.",
+  "datasheetUrl": "https://asairsensors.com/wp-content/uploads/2021/09/Data-Sheet-AHT21B-Humidity-and-Temperature-Module-ASAIR-V1.0.04.pdf",
+  "breakoutPinoutSource": "ASAIR AHT21B datasheet, Table 5 pin distribution (1 VDD, 2 SDA, 3 GND, 4 SCL); matches the LCSC C3012624 / Flux pin listing",
+  "checkRuns": 1
+}

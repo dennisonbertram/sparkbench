@@ -1,0 +1,110 @@
+{
+  "type": "custom-mg90s",
+  "name": "MG90S metal-gear micro servo",
+  "mpn": "MG90S",
+  "category": "actuator",
+  "description": "TowerPro MG90S micro servo with metal gears: turns about 180° (90° each way) to the angle set by a 50 Hz pulse of 1–2 ms (1.5 ms = middle). 1.8 kgf·cm stall torque at 4.8 V, 2.2 kgf·cm at 6 V; runs on 4.8–6.0 V. Sold as: TowerPro MG90S metal-gear micro servo with a 3-wire lead and female 2.54 mm connector (brown GND, red V+, orange PWM), with 3 horns and screws.",
+  "eli5": "A small, strong motor with metal gears that turns its arm to exactly the angle your board asks for.",
+  "refPrefix": "M",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (brown wire)",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Supply 4.8–6.0 V (red wire); use 5 V, not 3.3 V",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Control pulse (orange wire): 50 Hz, 1–2 ms high",
+      "required": true
+    }
+  ],
+  "vmin": 4.8,
+  "vmax": 6,
+  "currentMa": 250,
+  "datasheetUrl": "https://www.electronicoscaldas.com/datasheet/MG90S_Tower-Pro.pdf",
+  "sources": [
+    "https://www.electronicoscaldas.com/datasheet/MG90S_Tower-Pro.pdf",
+    "https://www.towerpro.com.tw/product/mg90s-3/"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "MG90S metal gear micro servo",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire colours: brown = GND, red = V+ (4.8–6.0 V), orange = PWM signal. The 3.3 V signal from an ESP32 or Pico drives it fine.",
+    "Power it from 5 V (VIN/VBUS or a separate 5 V supply), never from the 3.3 V pin. Join the supply ground to the board's GND.",
+    "It draws several hundred mA when it starts moving or is held against a load; add a 470 µF capacitor across V+ and GND if the board resets when it moves.",
+    "Datasheet range is 1 ms (left) to 2 ms (right) at 50 Hz. Many units go a little further with wider pulses: widen in small steps and stop if it buzzes against its end stop."
+  ],
+  "keywords": [
+    "mg90s",
+    "servo",
+    "micro servo",
+    "metal gear",
+    "towerpro",
+    "motor",
+    "angle",
+    "pwm"
+  ],
+  "sim": {
+    "kind": "servo",
+    "inputPin": "PWM",
+    "servo": {
+      "minUs": 1000,
+      "maxUs": 2000,
+      "degrees": 180
+    }
+  },
+  "driver": {
+    "filename": "mg90s.py",
+    "code": "# TowerPro MG90S metal-gear micro servo, MicroPython driver.\n# Datasheet: 50 Hz (20 ms) frame; 1.5 ms pulse = middle, ~1 ms = full left (-90),\n# ~2 ms = full right (+90). Dead band 5 us. Supply 4.8-6.0 V (signal is 3.3 V logic-compatible).\n# Angles here run 0..180 degrees: 0 = 1 ms (left), 90 = 1.5 ms (middle), 180 = 2 ms (right).\nfrom machine import Pin, PWM\n\nPERIOD_US = 20000  # 50 Hz frame\n\n\nclass MG90S:\n    def __init__(self, pin, min_us=1000, max_us=2000, degrees=180):\n        # Many units travel a little further with 0.5-2.5 ms pulses; widen min_us/max_us\n        # only in small steps and back off if the servo buzzes against its end stop.\n        self.min_us = min_us\n        self.max_us = max_us\n        self.degrees = degrees\n        self.pwm = PWM(pin if isinstance(pin, Pin) else Pin(pin), freq=50)\n        self.pwm.duty_u16(0)  # no pulse until an angle is set\n\n    def write_us(self, us):\n        us = max(self.min_us, min(self.max_us, us))\n        self.pwm.duty_u16(int(us * 65535 // PERIOD_US))\n\n    def angle(self, deg):\n        deg = max(0, min(self.degrees, deg))\n        self.write_us(self.min_us + (self.max_us - self.min_us) * deg / self.degrees)\n\n    def off(self):\n        \"\"\"Stop sending pulses: the servo goes limp and stops drawing holding current.\"\"\"\n        self.pwm.duty_u16(0)\n\n    def deinit(self):\n        self.pwm.deinit()\n"
+  },
+  "example": {
+    "code": "import time\nfrom mg90s import MG90S\n\nservo = MG90S({PWM})\nservo.angle(45)\ntime.sleep(1)\nservo.angle(150)\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "turns",
+      "title": "Turns to 45° then to 150°",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 40,
+          "max": 50,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 145,
+          "max": 155,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:03:48.452Z",
+    "verifiedSources": [
+      "https://www.electronicoscaldas.com/datasheet/MG90S_Tower-Pro.pdf",
+      "https://www.towerpro.com.tw/product/mg90s-3/"
+    ]
+  }
+}

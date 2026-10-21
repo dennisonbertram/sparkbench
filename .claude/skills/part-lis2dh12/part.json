@@ -1,0 +1,198 @@
+{
+  "type": "custom-lis2dh12",
+  "name": "LIS2DH12 3-axis accelerometer",
+  "mpn": "LIS2DH12",
+  "category": "sensor",
+  "description": "STMicroelectronics ultra-low-power 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, 12-bit high-resolution mode (1 mg/digit at ±2 g), I2C/SPI, 32-level FIFO and two interrupt outputs. Chip supply 1.71–3.6 V. Sold as: SparkFun Triple Axis Accelerometer Breakout - LIS2DH12 (Qwiic), SPX-15760, 6-pin header GND, 3V3, SDA, SCL, INT2, INT1 (no regulator: 3.3 V only; 2.2 kΩ I2C pull-ups; I2C address 0x19, 0x18 with the ADR jumper closed; two Qwiic sockets carry the same bus).",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, on three axes.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V (1.71–3.6 V; no regulator on the board, never connect 5 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kΩ pull-up to 3V3 on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kΩ pull-up to 3V3 on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Interrupt 2 output (push-pull by default, 100 kΩ pull-up on the board), optional",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Interrupt 1 output (push-pull by default, 100 kΩ pull-up on the board: data ready, motion, click, free-fall…), optional",
+      "required": false
+    }
+  ],
+  "vmin": 1.71,
+  "vmax": 3.6,
+  "currentMa": 1,
+  "i2cAddress": 25,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lis2dh12.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "SparkFun LIS2DH12 Qwiic triple axis accelerometer breakout 15760",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lis2dh12.pdf",
+    "https://github.com/sparkfunX/Qwiic_Accelerometer_LIS2DH12/blob/master/Documents/lis2dh12.pdf",
+    "https://github.com/sparkfunX/Qwiic_Accelerometer_LIS2DH12/blob/master/Hardware/Qwiic_Accelerometer_LIS2DH12.brd",
+    "https://github.com/sparkfunX/Qwiic_Accelerometer_LIS2DH12/blob/master/Hardware/Qwiic_Accelerometer_LIS2DH12.sch",
+    "https://www.sparkfun.com/triple-axis-accelerometer-breakout-lis2dh12-qwiic.html",
+    "https://github.com/sparkfun/SparkFun_LIS2DH12_Arduino_Library"
+  ],
+  "buildNotes": [
+    "Power from 3.3 V only: the board has no regulator and the LIS2DH12 is rated 1.71–3.6 V.",
+    "The chip powers up in power-down mode (CTRL_REG1 0x20 = 0x07): write an output data rate, e.g. 0x57 = 100 Hz with X/Y/Z on, before reading.",
+    "For 12-bit high-resolution data set HR (and BDU) in CTRL_REG4 0x23, e.g. 0x88 for ±2 g, keep LPen = 0, then wait 7/ODR (70 ms at 100 Hz) for the first valid sample.",
+    "Read OUT_X_L..OUT_Z_H in one 6-byte burst from 0xA8 (0x28 with the auto-increment bit 0x80). Each axis is two's complement, low byte first, left-justified: shift right by 4, then 1 mg/digit at ±2 g (2/4/12 mg at ±4/8/16 g).",
+    "WHO_AM_I (0x0F) must read 0x33; anything else means a wiring fault or the wrong address.",
+    "The SparkFun board answers at 0x19 (SA0 pulled up, ADR jumper open); close the ADR jumper for 0x18, e.g. for a second sensor.",
+    "Mount the board flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "lis2dh12",
+    "lis2dh",
+    "accelerometer",
+    "tilt",
+    "vibration",
+    "tap",
+    "free-fall",
+    "3-axis",
+    "stmicroelectronics",
+    "sparkfun 15760",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x0F": 51,
+      "0x1E": 16,
+      "0x20": 7,
+      "0x26": 0,
+      "0x27": 15
+    },
+    "autoIncrementBit7": true,
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.001,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lis2dh12.py",
+    "code": "# LIS2DH12 3-axis accelerometer (STMicroelectronics), MicroPython driver for I2C.\n# From the LIS2DH12 datasheet (DocID025056 Rev 6):\n#   I2C address 001100xb: 0x18 with SDO/SA0 low, 0x19 with SDO/SA0 high.\n#   WHO_AM_I 0x0F = 0x33, CTRL_REG1 0x20 (ODR[7:4], LPen bit 3, Z/Y/X enable bits 2:0; powers up 0x07 = power-down),\n#   CTRL_REG4 0x23 (BDU bit 7, BLE bit 6, FS[5:4], HR bit 3), STATUS_REG 0x27 (ZYXDA bit 3),\n#   OUT_X_L..OUT_Z_H 0x28-0x2D: two's complement, left-justified, low byte first (BLE = 0).\n#   The MSB of the register sub-address (0x28 | 0x80) enables auto-increment for burst reads.\n#   High-resolution (12-bit) sensitivity: 1 / 2 / 4 / 12 mg per digit at +-2/4/8/16 g (Table 4).\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x20\n_CTRL_REG4 = 0x23\n_REFERENCE = 0x26\n_STATUS_REG = 0x27\n_OUT_X_L = 0x28\n_AUTO_INC = 0x80\n\n_FS = {2: (0b00, 1), 4: (0b01, 2), 8: (0b10, 4), 16: (0b11, 12)}  # FS bits, mg/digit (HR mode)\n\n\nclass LIS2DH12:\n    def __init__(self, i2c, addr=0x19, g_range=2):\n        \"\"\"addr: 0x19 with SDO/SA0 high (SparkFun Qwiic board default, ADR jumper open),\n        0x18 with SDO/SA0 low (ADR jumper closed).\n        g_range: 2, 4, 8 or 16 g full scale (high-resolution 12-bit mode).\"\"\"\n        if g_range not in _FS:\n            raise ValueError('g_range must be 2, 4, 8 or 16')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x33:\n            raise OSError('LIS2DH12 not found (WHO_AM_I 0x%02X, expected 0x33): check wiring and address' % who)\n        fs, self._mg_per_digit = _FS[g_range]\n        # Datasheet: read REFERENCE to reset the filter block before (re)entering HR mode\n        self.i2c.readfrom_mem(addr, _REFERENCE, 1)\n        # BDU = 1 (MSB/LSB from the same sample), BLE = 0, FS, HR = 1 -> 12-bit high-resolution mode\n        self._w(_CTRL_REG4, 0x80 | (fs << 4) | 0x08)\n        # 100 Hz ODR (0101), LPen = 0 (LPen and HR must not both be 1), X/Y/Z enabled\n        self._w(_CTRL_REG1, 0x57)\n        time.sleep_ms(80)  # high-resolution turn-on time is 7/ODR = 70 ms at 100 Hz\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when STATUS_REG ZYXDA says a new X/Y/Z set is available.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _STATUS_REG, 1)[0] & 0x08)\n\n    def raw(self):\n        \"\"\"(x, y, z) 12-bit counts from one 6-byte auto-increment burst at OUT_X_L.\"\"\"\n        for _ in range(20):  # wait up to ~20 ms (two samples at 100 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _OUT_X_L | _AUTO_INC, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # OUT_x_L = low byte, OUT_x_H = high byte\n            if v & 0x8000:\n                v -= 65536\n            out.append(v >> 4)  # left-justified: the 12-bit value sits in bits 15:4\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._mg_per_digit / 1000\n        x, y, z = self.raw()\n        return x * k, y * k, z * k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lis2dh12 import LIS2DH12\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = LIS2DH12(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.3f Y=%.3f Z=%.3f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": 0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 0.9
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=-0.750 Y=0.250 Z=0.900 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:31:15.312Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/a/c/5/b/f/Datasheet.pdf",
+      "https://www.sparkfun.com/products/15760"
+    ]
+  }
+}

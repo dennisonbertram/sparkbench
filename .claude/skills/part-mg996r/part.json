@@ -1,0 +1,112 @@
+{
+  "type": "custom-mg996r",
+  "name": "MG996R high-torque metal-gear servo",
+  "mpn": "MG996R",
+  "category": "actuator",
+  "description": "TowerPro MG996R standard-size RC servo with metal gears and dual ball bearings: about 9.4 kgf·cm stall torque at 4.8 V (11 kgf·cm at 6 V), 0.17 s/60° at 4.8 V. Turns to a position set by a 50 Hz pulse train (1.5 ms = centre, about 120° of travel in all). Runs on 4.8–6.6 V and draws 0.5–0.9 A while moving, up to about 1.4–2.5 A when stalled, so it needs its own 5–6 V supply. Sold as: TowerPro MG996R servo with 3-wire lead and JR/Futaba 'S' female plug (brown GND, red V+, orange signal), arms and screws included.",
+  "eli5": "A strong little motor that turns its arm to whatever angle your code asks for and holds it there.",
+  "refPrefix": "M",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Brown wire: ground (join it to the microcontroller's GND)",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Red wire: servo supply, 4.8–6.6 V (5 V typical); needs up to 2.5 A when stalled",
+      "required": true
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Orange wire: control pulses, 50 Hz, 1.0–2.0 ms wide (3.3 V logic works)",
+      "required": true
+    }
+  ],
+  "vmin": 4.8,
+  "vmax": 6.6,
+  "currentMa": 900,
+  "datasheetUrl": "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "MG996R metal gear servo TowerPro",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the servo from a separate 5–6 V supply that can give at least 2.5 A (stall current), not from the microcontroller's 3V3 pin; join the grounds.",
+    "Put a 470–1000 µF electrolytic capacitor across V+ and GND near the servo to stop resets and jitter when it starts moving.",
+    "Signal is a pulse every 20 ms (50 Hz): 1.0 ms ≈ one end, 1.5 ms = centre, 2.0 ms ≈ the other end (about 120° in all). Units vary; widen the range only a little at a time and back off if the servo buzzes or stalls at an end.",
+    "The plug's wire order is brown (GND), red (V+), orange (signal). A 3.3 V signal from an ESP32 or Pico is enough to drive it.",
+    "Some sellers sell a 360° continuous-rotation version under the same name: on that one the pulse sets speed, not angle."
+  ],
+  "keywords": [
+    "mg996r",
+    "mg996",
+    "mg995",
+    "servo",
+    "towerpro",
+    "tower pro",
+    "metal gear",
+    "high torque",
+    "rc servo"
+  ],
+  "sources": [
+    "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf",
+    "https://www.towerpro.com.tw/product/mg996r/",
+    "https://projectgus.com/2009/07/servo-pulse-width-range-with-arduino/"
+  ],
+  "sim": {
+    "kind": "servo",
+    "inputPin": "SIG",
+    "servo": {
+      "minUs": 1000,
+      "maxUs": 2000,
+      "degrees": 120
+    }
+  },
+  "driver": {
+    "filename": "mg996r.py",
+    "code": "# TowerPro MG996R metal-gear RC servo, MicroPython driver.\n# Standard RC servo signal (datasheet): one positive pulse every 20 ms (50 Hz).\n# 1.5 ms = centre; the servo turns about 120 degrees in all (60 each way), so this\n# driver maps 1.0 ms -> 0 deg, 1.5 ms -> 60 deg, 2.0 ms -> 120 deg.\n# Units vary: widen min_us/max_us carefully only if yours has travel to spare and\n# does not buzz or stall at the ends.\nfrom machine import Pin, PWM\n\n\nclass MG996R:\n    def __init__(self, pin, min_us=1000, max_us=2000, degrees=120, freq=50):\n        self.min_us = min_us\n        self.max_us = max_us\n        self.degrees = degrees\n        self.period_us = 1000000 // freq\n        self.pwm = PWM(Pin(pin), freq=freq)\n        self.pwm.duty_u16(0)  # no pulses until an angle is set\n\n    def pulse_us(self, us):\n        \"\"\"Send pulses of `us` microseconds (clamped to min_us..max_us).\"\"\"\n        us = max(self.min_us, min(self.max_us, us))\n        self.pwm.duty_u16(int(us * 65535 // self.period_us))\n\n    def angle(self, deg):\n        \"\"\"Turn to `deg` degrees (0..degrees).\"\"\"\n        deg = max(0, min(self.degrees, deg))\n        self.pulse_us(self.min_us + deg * (self.max_us - self.min_us) / self.degrees)\n\n    def off(self):\n        \"\"\"Stop sending pulses: the servo goes limp and stops drawing much current.\"\"\"\n        self.pwm.duty_u16(0)\n\n    def deinit(self):\n        self.pwm.deinit()\n"
+  },
+  "example": {
+    "code": "from mg996r import MG996R\nimport time\n\nservo = MG996R({SIG})\nservo.angle(30)\nprint('angle 30')\ntime.sleep(1)\nservo.angle(90)\nprint('angle 90')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "turns",
+      "title": "Turns to 30 degrees, then to 90 degrees",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 27,
+          "max": 33,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1200
+        },
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 87,
+          "max": 93,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:04:12.068Z",
+    "verifiedSources": [
+      "https://www.electronicoscaldas.com/datasheet/MG996R_Tower-Pro.pdf"
+    ]
+  }
+}

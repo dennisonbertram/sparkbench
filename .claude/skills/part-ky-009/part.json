@@ -1,0 +1,169 @@
+{
+  "type": "custom-ky-009",
+  "name": "KY-009 RGB LED module (SMD 5050)",
+  "mpn": "KY-009",
+  "category": "actuator",
+  "description": "Full-colour SMD 5050 RGB LED on a small 4-pin board, common cathode. Drive R, G or B high to light that colour; PWM each pin to mix colours. Red Vf 1.8-2.4 V, green/blue Vf 2.8-3.6 V, 20 mA per colour. The board has NO current-limiting resistors, so every colour pin needs its own series resistor (5 V: 180 Ohm red, 100 Ohm green/blue; 3.3 V GPIO: 150 Ohm red, 47 Ohm green/blue). Sold as: Keyes KY-009 RGB full-colour LED SMD module from the 37-in-1 sensor kits (Joy-IT SEN-KY009RGB and clones), 4-pin header -, R, G, B.",
+  "eli5": "A tiny flat light with red, green and blue inside. Turn on each colour with its own pin (through a small resistor) and mix them to make any colour.",
+  "refPrefix": "LED",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Common cathode of the RGB LED: connect to GND",
+      "required": true
+    },
+    {
+      "name": "R",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Red LED anode. High = red on, PWM for brightness. Needs a series resistor (180 Ohm at 5 V, 150 Ohm from a 3.3 V GPIO); none is fitted on the board",
+      "required": true
+    },
+    {
+      "name": "G",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Green LED anode. High = green on, PWM for brightness. Needs a series resistor (100 Ohm at 5 V, 47 Ohm from a 3.3 V GPIO); none is fitted on the board",
+      "required": true
+    },
+    {
+      "name": "B",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Blue LED anode. High = blue on, PWM for brightness. Needs a series resistor (100 Ohm at 5 V, 47 Ohm from a 3.3 V GPIO); none is fitted on the board",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-009",
+  "priceUsd": 1,
+  "supplierQuery": "KY-009 RGB LED SMD 5050 module common cathode",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: - (GND, common cathode), R, G, B. Wire - to GND and each colour pin to its own GPIO through a series resistor.",
+    "The KY-009 has NO resistors on the board. Never wire a GPIO straight to R, G or B: the LED and the pin would be overloaded.",
+    "5 V Arduino-style drive: 180 Ohm on red, 100 Ohm on green and blue (Joy-IT values, about 18-20 mA each).",
+    "3.3 V GPIO (ESP32, Pico, Raspberry Pi): 150 Ohm on red (about 10 mA) and 47 Ohm on green and blue (about 10 mA at Vf 2.8 V). Green and blue have Vf up to 3.6 V, so on 3.3 V they can be dim; that is normal. Keep each pin under about 12 mA on a Pico or Raspberry Pi.",
+    "If unsure of the mapping, first power up with 220 Ohm on every pin: some clones print - R G B but are wired - G R B (green next to -). If colours come out swapped, swap the pin numbers in code.",
+    "Common cathode: a GPIO high turns a colour ON. PWM (e.g. 1 kHz) each pin to mix colours."
+  ],
+  "keywords": [
+    "ky-009",
+    "ky009",
+    "rgb led",
+    "smd rgb led",
+    "5050",
+    "rgb",
+    "led",
+    "common cathode",
+    "full colour led",
+    "pwm"
+  ],
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-009",
+    "https://arduinomodules.info/ky-009-rgb-full-color-led-smd-module/"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "R",
+      "G",
+      "B"
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# KY-009 is common cathode: a pin HIGH turns that colour ON.\n# Each colour pin goes through its own series resistor (none on the board).\nred = Pin({R}, Pin.OUT, value=0)\ngreen = Pin({G}, Pin.OUT, value=0)\nblue = Pin({B}, Pin.OUT, value=0)\n\ndef colour(r, g, b, name):\n    red.value(r)\n    green.value(g)\n    blue.value(b)\n    print(name)\n\nwhile True:\n    colour(1, 0, 0, 'RED')\n    time.sleep(1)\n    colour(0, 1, 0, 'GREEN')\n    time.sleep(1)\n    colour(0, 0, 1, 'BLUE')\n    time.sleep(1)\n    colour(0, 0, 0, 'OFF')\n    time.sleep(1)\n",
+    "test": {
+      "id": "colours",
+      "title": "Red, green and blue light in turn, then all go off",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RED",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "G",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "GREEN",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "G",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BLUE",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "B",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "B",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:57:56.339Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-009",
+      "https://www.espboards.dev/sensors/ky-009/",
+      "https://www.mikrocontroller.net/wikifiles/archive/f/f1/20100413081027%21SMD_RGB_PLCC-6_datasheet3.pdf"
+    ]
+  }
+}

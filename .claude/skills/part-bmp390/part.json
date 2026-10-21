@@ -1,0 +1,197 @@
+{
+  "type": "custom-bmp390",
+  "name": "BMP390 pressure & temperature sensor",
+  "mpn": "BMP390",
+  "category": "sensor",
+  "description": "Bosch high-precision digital barometric pressure (300–1250 hPa, ±0.03 hPa relative, ±0.5 hPa absolute) and temperature (-40 to +85 °C, ±0.5 °C at 25 °C) sensor with I2C and SPI interfaces. The chip runs on 1.65–3.6 V. Sold as: Adafruit BMP390 Precision Barometric Pressure and Altimeter breakout, STEMMA QT (#4816), 8-pin header VIN, 3Vo, GND, SCL, SDO, SDA, CS, INT (3.3 V regulator and level shifting, 3–5 V supply), I2C address 0x77 (0x76 with SDO tied to GND or the ADDR jumper shorted).",
+  "eli5": "A very sensitive barometer and thermometer: it feels tiny changes in air pressure, enough to notice you lifting it by a few centimetres, and also reads the temperature.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V into the on-board 3.3 V regulator (use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); 10 kΩ pull-up and level shifting on the board",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select (SPI data out): open = 0x77 (10 kΩ pull-up to 3.3 V), GND = 0x76. 3.3 V only, not level shifted: never tie it to 5 V",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI); 10 kΩ pull-up and level shifting on the board",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select; pulled up on the board so the chip uses I2C. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (3.3 V, data ready / FIFO), not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.8,
+  "i2cAddress": 119,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp390-ds002.pdf",
+  "priceUsd": 11,
+  "supplierQuery": "Adafruit BMP390 precision barometric pressure altimeter breakout 4816",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp390-ds002.pdf",
+    "https://learn.adafruit.com/adafruit-bmp388-bmp390-bmp3xx/pinouts",
+    "https://github.com/adafruit/Adafruit-BMP3xx-PCB/blob/master/Adafruit%20BMP390.brd"
+  ],
+  "buildNotes": [
+    "Power VIN from your board's 3.3 V (or 5 V on a 5 V board); the on-board regulator feeds the chip 3.3 V. 3Vo is an output: leave it unconnected.",
+    "The default I2C address is 0x77 (SDO pulled high on the board). Tie SDO to GND, or short the ADDR jumper, for 0x76, e.g. for a second sensor.",
+    "Check the chip ID: register 0x00 reads 0x60 on a BMP390 (0x50 on the older BMP388).",
+    "Raw readings mean nothing without the factory calibration in 0x31–0x45 and the datasheet section 8 formulas; compute temperature first, because pressure needs t_lin.",
+    "Data registers are little-endian (XLSB first) 24-bit values: read 0x04–0x09 in one burst after drdy_press and drdy_temp are set in STATUS (0x03).",
+    "Keep it out of drafts and direct sunlight, and away from the regulator: airflow shows up as pressure noise."
+  ],
+  "keywords": [
+    "bmp390",
+    "bmp3xx",
+    "barometer",
+    "pressure",
+    "altimeter",
+    "altitude",
+    "temperature",
+    "bosch",
+    "adafruit 4816"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "hPa",
+        "min": 300,
+        "max": 1250,
+        "default": 1013.25
+      }
+    ],
+    "registers": {
+      "0x00": 96,
+      "0x02": 0,
+      "0x03": 112,
+      "0x31": 102,
+      "0x32": 108,
+      "0x33": 0,
+      "0x34": 75,
+      "0x35": 0,
+      "0x36": 232,
+      "0x37": 3,
+      "0x38": 0,
+      "0x39": 64,
+      "0x3a": 0,
+      "0x3b": 0,
+      "0x3c": 0,
+      "0x3d": 100,
+      "0x3e": 0,
+      "0x3f": 0,
+      "0x40": 0,
+      "0x41": 0,
+      "0x42": 0,
+      "0x43": 0,
+      "0x44": 0,
+      "0x45": 0
+    },
+    "measures": [
+      {
+        "reg": "0x07",
+        "bytes": 3,
+        "littleEndian": true,
+        "scale": 0.000017881393432617188,
+        "offset": -127.0294189453125,
+        "control": "value"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 3,
+        "littleEndian": true,
+        "scale": -0.0001467132568359375,
+        "offset": 2048,
+        "control": "pressure"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmp390.py",
+    "code": "# MicroPython driver for the Bosch BMP390 pressure/temperature sensor (I2C)\n# Written from Bosch datasheet BST-BMP390-DS002-07 rev 1.7:\n#   register map sec. 4.2/4.3, trimming coefficients table 24 (sec. 3.11.1),\n#   coefficient scaling sec. 8.4, temperature 8.5, pressure 8.6 (float compensation),\n#   measurement time sec. 3.9.2.\nimport time\n\nREG_CHIP_ID = 0x00   # 0x60 on BMP390\nREG_ERR = 0x02       # bit0 fatal_err, bit1 cmd_err, bit2 conf_err\nREG_STATUS = 0x03    # bit4 cmd_rdy, bit5 drdy_press, bit6 drdy_temp\nREG_DATA = 0x04      # 0x04..0x09: press 7_0/15_8/23_16, temp 7_0/15_8/23_16 (24-bit unsigned, LSB first)\nREG_PWR_CTRL = 0x1B  # bit0 press_en, bit1 temp_en, bits5:4 mode (00 sleep, 01/10 forced, 11 normal)\nREG_OSR = 0x1C       # bits2:0 osr_p, bits5:3 osr_t (0=x1 ... 5=x32)\nREG_ODR = 0x1D\nREG_CONFIG = 0x1F    # bits3:1 IIR filter coefficient\nREG_CALIB = 0x31     # 0x31..0x45: NVM_PAR_T1 .. NVM_PAR_P11 (21 bytes)\nREG_CMD = 0x7E       # 0xB6 = softreset\n\nCHIP_ID = 0x60\n\n\ndef _u16(b, i):\n    return b[i] | (b[i + 1] << 8)\n\n\ndef _s16(b, i):\n    v = _u16(b, i)\n    return v - 65536 if v > 32767 else v\n\n\ndef _s8(b, i):\n    v = b[i]\n    return v - 256 if v > 127 else v\n\n\nclass BMP390:\n    def __init__(self, i2c, addr=0x77, osr_p=3, osr_t=0):\n        \"\"\"addr 0x77 (SDO high, Adafruit default) or 0x76 (SDO to GND / ADDR jumper).\n        osr codes: 0=x1, 1=x2, 2=x4, 3=x8, 4=x16, 5=x32 (table 43).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(2)  # start-up time 2 ms\n        cid = self._r(REG_CHIP_ID, 1)[0]\n        if cid != CHIP_ID:\n            raise OSError(\"BMP390 not found at 0x%02X (chip id 0x%02X, expected 0x60)\" % (addr, cid))\n        self._soft_reset()\n        self._load_calib()\n        self.osr_p = osr_p & 0x07\n        self.osr_t = osr_t & 0x07\n        self._w(REG_PWR_CTRL, 0x00)  # sleep while configuring\n        self._w(REG_CONFIG, 0x00)    # IIR filter off\n        self._w(REG_OSR, (self.osr_t << 3) | self.osr_p)\n        self._w(REG_ODR, 0x00)\n        self.t_lin = 0.0\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _wait_cmd_rdy(self):\n        for _ in range(20):\n            if self._r(REG_STATUS, 1)[0] & 0x10:\n                return\n            time.sleep_ms(1)\n\n    def _soft_reset(self):\n        # CMD 0xB6 = softreset (sec. 4.3.22); only accepted when cmd_rdy is set.\n        self._wait_cmd_rdy()\n        self._w(REG_CMD, 0xB6)\n        time.sleep_ms(3)\n        self._wait_cmd_rdy()\n        if self._r(REG_ERR, 1)[0] & 0x02:\n            raise OSError(\"BMP390 soft reset failed (cmd_err)\")\n\n    def _load_calib(self):\n        c = self._r(REG_CALIB, 21)\n        # Sec. 8.4: convert the NVM integers to floating-point coefficients.\n        self.par_t1 = _u16(c, 0) / 2.0 ** -8\n        self.par_t2 = _u16(c, 2) / 2.0 ** 30\n        self.par_t3 = _s8(c, 4) / 2.0 ** 48\n        self.par_p1 = (_s16(c, 5) - 2 ** 14) / 2.0 ** 20\n        self.par_p2 = (_s16(c, 7) - 2 ** 14) / 2.0 ** 29\n        self.par_p3 = _s8(c, 9) / 2.0 ** 32\n        self.par_p4 = _s8(c, 10) / 2.0 ** 37\n        self.par_p5 = _u16(c, 11) / 2.0 ** -3\n        self.par_p6 = _u16(c, 13) / 2.0 ** 6\n        self.par_p7 = _s8(c, 15) / 2.0 ** 8\n        self.par_p8 = _s8(c, 16) / 2.0 ** 15\n        self.par_p9 = _s16(c, 17) / 2.0 ** 48\n        self.par_p10 = _s8(c, 19) / 2.0 ** 48\n        self.par_p11 = _s8(c, 20) / 2.0 ** 65\n\n    def _measure(self):\n        # Forced mode, pressure and temperature enabled; the chip returns to sleep afterwards.\n        self._w(REG_PWR_CTRL, 0x13)\n        # Sec. 3.9.2: T_conv = 234 + (392 + 2^osr_p * 2020) + (163 + 2^osr_t * 2020) us\n        t_us = 234 + 392 + (1 << self.osr_p) * 2020 + 163 + (1 << self.osr_t) * 2020\n        time.sleep_ms(t_us // 1000 + 2)\n        for _ in range(100):\n            if (self._r(REG_STATUS, 1)[0] & 0x60) == 0x60:  # drdy_temp and drdy_press\n                break\n            time.sleep_ms(2)\n        else:\n            raise OSError(\"BMP390 measurement timed out\")\n        if self._r(REG_ERR, 1)[0] & 0x04:\n            raise OSError(\"BMP390 configuration error (conf_err)\")\n        d = self._r(REG_DATA, 6)  # one burst read press_xlsb..temp_msb (sec. 3.10)\n        adc_p = d[0] | (d[1] << 8) | (d[2] << 16)\n        adc_t = d[3] | (d[4] << 8) | (d[5] << 16)\n        return adc_t, adc_p\n\n    def _comp_t(self, uncomp_temp):\n        # Sec. 8.5; returns degC and keeps t_lin for the pressure formula.\n        pd1 = uncomp_temp - self.par_t1\n        pd2 = pd1 * self.par_t2\n        self.t_lin = pd2 + (pd1 * pd1) * self.par_t3\n        return self.t_lin\n\n    def _comp_p(self, uncomp_press):\n        # Sec. 8.6; returns Pa.\n        t = self.t_lin\n        out1 = self.par_p5 + self.par_p6 * t + self.par_p7 * (t * t) + self.par_p8 * (t * t * t)\n        out2 = uncomp_press * (self.par_p1 + self.par_p2 * t + self.par_p3 * (t * t) + self.par_p4 * (t * t * t))\n        up = float(uncomp_press)\n        pd4 = up * up * (self.par_p9 + self.par_p10 * t) + (up * up * up) * self.par_p11\n        return out1 + out2 + pd4\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure hPa).\"\"\"\n        adc_t, adc_p = self._measure()\n        t = self._comp_t(adc_t)  # must run first: sets t_lin\n        p = self._comp_p(adc_p) / 100.0\n        return t, p\n\n    def temperature(self):\n        return self.read()[0]\n\n    def pressure(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_hpa=1013.25):\n        \"\"\"Approximate altitude in metres from the international barometric formula.\"\"\"\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_hpa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmp390 import BMP390\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BMP390(i2c, addr=0x77)\nwhile True:\n    t, p = sensor.read()\n    print('T=%.2fC P=%.2fhPa' % (t, p))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 26.35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 948.7
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=26.35C P=948.70hPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:40:38.326Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp390-ds002.pdf",
+      "https://learn.adafruit.com/adafruit-bmp388-bmp390-bmp3xx/pinouts"
+    ]
+  }
+}

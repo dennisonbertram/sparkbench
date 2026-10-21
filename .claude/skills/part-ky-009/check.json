@@ -1,0 +1,79 @@
+{
+  "type": "custom-ky-009",
+  "mpn": "KY-009",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; LED1.R → D25 (GPIO25). LED1.G → D26 (GPIO26). LED1.B → D27 (GPIO27)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "9 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Red, green and blue light in turn, then all go off: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; LED1.R → GP2 (GPIO2). LED1.G → GP3 (GPIO3). LED1.B → GP6 (GPIO6)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "9 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Red, green and blue light in turn, then all go off: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T08:57:56.339Z"
+}

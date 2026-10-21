@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-006",
+  "board": "Common KY-006 passive buzzer module (Keyes / HW-508 clone, e.g. Electrokit 41015714), header S, middle (not used), -",
+  "reason": "Modelled as a PWM-driven actuator on S (passive piezo, 1.5-2.5 kHz, resonance ~2 kHz, signal pin powers it, middle pin unused) from the Electrokit datasheet, Joy-IT sensorkit page and Fritzing pins; part check PASS on ESP32 and Pico (PWM tone on/off sim test, PCB DRC clean). No driver needed (machine.PWM).",
+  "datasheetUrl": "https://www.electrokit.com/upload/product/41015/41015714/Passive_Piezo_Buzzer.pdf",
+  "breakoutPinoutSource": "https://www.electrokit.com/upload/product/41015/41015714/Passive_Piezo_Buzzer.pdf",
+  "checkRuns": 1
+}

@@ -1,0 +1,158 @@
+{
+  "type": "custom-us-100",
+  "name": "US-100 ultrasonic distance sensor (UART mode)",
+  "mpn": "US-100",
+  "category": "sensor",
+  "description": "Ultrasonic distance sensor (about 2–450 cm, ±(3 mm + 1 %)) with a built-in temperature sensor for speed-of-sound compensation. With the mode jumper on the back fitted it talks 9600-baud UART: send 0x55 to get the distance in mm (2 bytes, high first), 0x50 to get the temperature (1 byte, °C + 45). Runs on 2.4–5.5 V, so it works directly with 3.3 V boards. Sold as: Adafruit US-100 Ultrasonic Distance Sensor - 3V or 5V Logic (#4019), 5-pin header VCC, Trig/TX, Echo/RX, GND, GND, jumper fitted for UART mode.",
+  "eli5": "Chirps a sound too high to hear and times the echo to tell your board how far away things are, then sends the answer as numbers over a serial wire.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.4–5.5 V (3.3 V or 5 V); logic levels follow VCC",
+      "required": true
+    },
+    {
+      "name": "Trig/TX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "UART mode: the module's serial INPUT. Connect to the board's UART TX (TX to TX, as printed). Trigger input with the jumper removed",
+      "required": true
+    },
+    {
+      "name": "Echo/RX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "UART mode: the module's serial OUTPUT. Connect to the board's UART RX (RX to RX, as printed). Echo output with the jumper removed",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Second ground pin, joined to GND on the module",
+      "required": false
+    }
+  ],
+  "vmin": 2.4,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "datasheetUrl": "https://ocw.cs.pub.ro/courses/_media/pm/prj2023/alucaci/us_100.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "US-100 ultrasonic distance sensor UART 3V 5V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Fit the mode jumper on the back for UART mode; without it the module behaves like an HC-SR04 (trigger/echo pulses) and will not answer serial commands.",
+    "The pin labels are the reverse of usual UART practice: wire the board's TX to Trig/TX and the board's RX to Echo/RX.",
+    "9600 baud, 8-N-1. Send 0x55 and read 2 bytes: distance mm = high × 256 + low. Send 0x50 and read 1 byte: temperature °C = byte − 45.",
+    "Allow up to about 100–300 ms for the distance reply (longer for far objects); readings outside about 20–4500 mm are not reliable.",
+    "Powered from 3.3 V it outputs 3.3 V logic, so it is safe on ESP32 and Pico pins."
+  ],
+  "keywords": [
+    "us-100",
+    "us100",
+    "ultrasonic",
+    "distance",
+    "sonar",
+    "range finder",
+    "uart",
+    "hc-sr04"
+  ],
+  "sources": [
+    "https://www.adafruit.com/product/4019",
+    "https://ocw.cs.pub.ro/courses/_media/pm/prj2023/alucaci/us_100.pdf",
+    "https://learn.adafruit.com/ultrasonic-sonar-distance-sensors",
+    "https://raw.githubusercontent.com/adafruit/Adafruit_CircuitPython_US100/main/adafruit_us100.py",
+    "https://protosupplies.com/product/us-100-ultrasonic-range-finder-module/"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 20,
+    "max": 4500,
+    "default": 1000,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -20,
+        "max": 70,
+        "default": 25
+      }
+    ],
+    "uartReplies": [
+      {
+        "match": "55",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          }
+        ]
+      },
+      {
+        "match": "50",
+        "bytes": [
+          {
+            "control": "temperature",
+            "bits": 8,
+            "scale": 1,
+            "offset": -45
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "us100.py",
+    "code": "# US-100 ultrasonic distance sensor in serial (UART) mode, MicroPython driver.\n# Mode jumper fitted on the back of the module. 9600 baud, 8-N-1.\n# Send 0x55 -> 2 bytes back, high byte first: distance in mm.\n# Send 0x50 -> 1 byte back: temperature in degC = byte - 45.\n# Wiring note: the module's Trig/TX pin RECEIVES (connect it to the board's UART TX)\n# and Echo/RX SENDS (connect it to the board's UART RX).\nimport time\n\n\nclass US100:\n    def __init__(self, uart):\n        self.uart = uart\n        time.sleep_ms(100)\n        self._flush()\n\n    def _flush(self):\n        while self.uart.any():\n            self.uart.read()\n\n    def _ask(self, cmd, n, timeout_ms=300):\n        self._flush()\n        self.uart.write(bytes([cmd]))\n        t0 = time.ticks_ms()\n        while self.uart.any() < n:\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                return None\n            time.sleep_ms(10)\n        d = self.uart.read(n)\n        if not d or len(d) != n:\n            return None\n        return d\n\n    def distance_mm(self):\n        \"\"\"Distance to the nearest object in mm (about 20-4500), or None if no reply.\"\"\"\n        d = self._ask(0x55, 2)\n        if d is None:\n            return None\n        return (d[0] << 8) | d[1]\n\n    def distance_cm(self):\n        mm = self.distance_mm()\n        return None if mm is None else mm / 10\n\n    def temperature(self):\n        \"\"\"Module temperature in whole degC, or None if no reply.\"\"\"\n        d = self._ask(0x50, 1)\n        if d is None:\n            return None\n        return d[0] - 45\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom us100 import US100\n\n# US-100 quirk: board TX -> Trig/TX, board RX -> Echo/RX\nu = UART({UART_ID}, baudrate=9600, tx=Pin({TRIG_TX}), rx=Pin({ECHO_RX}))\nsensor = US100(u)\nwhile True:\n    d = sensor.distance_mm()\n    t = sensor.temperature()\n    if d is not None and t is not None:\n        print('D=%dmm T=%dC' % (d, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 31
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=1234mm T=31C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:12:20.897Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/4019",
+      "https://learn.adafruit.com/ultrasonic-sonar-distance-sensors/python-circuitpython"
+    ]
+  }
+}

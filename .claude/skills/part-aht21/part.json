@@ -1,0 +1,163 @@
+{
+  "type": "custom-aht21",
+  "name": "AHT21 temperature & humidity sensor",
+  "mpn": "AHT21",
+  "category": "sensor",
+  "description": "Aosong (ASAIR) digital temperature (-40 to 80 °C, ±0.5 °C typical) and relative humidity (0–100 %, ±3 % typical) module with an I2C interface and a CRC-checked 20-bit reading. Runs on 2.2–5.5 V; no pull-ups on the module. Sold as: ASAIR AHT21B temperature & humidity module (4-pin 2.54 mm: VDD, SDA, GND, SCL), fixed I2C address 0x38.",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 2.2–5.5 V; use the same voltage as your board's logic (3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; needs an external pull-up (e.g. 4.7 kΩ) to VDD",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock; needs an external pull-up (e.g. 4.7 kΩ) to VDD",
+      "required": true,
+      "pullUp": 4700
+    }
+  ],
+  "vmin": 2.2,
+  "vmax": 5.5,
+  "currentMa": 0.98,
+  "i2cAddress": 56,
+  "datasheetUrl": "https://asairsensors.com/wp-content/uploads/2021/09/Data-Sheet-AHT21B-Humidity-and-Temperature-Module-ASAIR-V1.0.04.pdf",
+  "sources": [
+    "https://asairsensors.com/wp-content/uploads/2021/09/Data-Sheet-AHT21B-Humidity-and-Temperature-Module-ASAIR-V1.0.04.pdf",
+    "https://raw.githubusercontent.com/libdriver/aht21/main/datasheet/aht21_datasheet.pdf",
+    "https://www.flux.ai/lcsc/aht21b~p5g0.md",
+    "https://www.lcsc.com/product-detail/C3012624.html",
+    "https://www.tinytronics.nl/shop/en/sensors/air/humidity/asair-aht21b-temperature-and-humidity-sensor-module-i2c",
+    "https://github.com/libdriver/aht21/blob/main/src/driver_aht21.c"
+  ],
+  "priceUsd": 2.5,
+  "supplierQuery": "ASAIR AHT21B temperature humidity sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Pin order is VDD, SDA, GND, SCL (not the usual VCC, GND, SCL, SDA): check before wiring.",
+    "The module has no I2C pull-ups: fit 4.7 kΩ from SDA and SCL to VDD (the microcontroller's weak internal pull-ups are not enough).",
+    "Power VDD from the microcontroller's logic voltage (3.3 V on ESP32/Pico): the SDA/SCL pull-ups go to VDD and the datasheet says MCU and sensor must share the supply voltage.",
+    "Put a 100 nF capacitor between VDD and GND close to the sensor.",
+    "Wait at least 100 ms after power-on, then read one status byte: (status & 0x18) must equal 0x18, otherwise run Aosong's 0x1B/0x1C/0x1E register initialisation.",
+    "Measure: send 0xAC 0x33 0x00, wait 80 ms, read until status bit 7 (busy) is clear, then read 7 bytes: status, 20-bit humidity, 20-bit temperature, CRC (poly 0x31, init 0xFF).",
+    "Measure no more often than every 2 s, or the sensor self-heats; keep it away from the regulator and the microcontroller.",
+    "The address is fixed at 0x38, so only one AHT21 per I2C bus. Do not reflow or wave-solder the AHT21B module; hand-solder under 5 s."
+  ],
+  "keywords": [
+    "aht21",
+    "aht21b",
+    "aht20",
+    "aosong",
+    "asair",
+    "temperature",
+    "humidity"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 80,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "registers": {
+      "0x00": 24
+    },
+    "responses": [
+      {
+        "match": "ac 33 00",
+        "bytes": [
+          {
+            "const": 24,
+            "bits": 8
+          },
+          {
+            "control": "humidity",
+            "bits": 20,
+            "scale": 0.000095367431640625
+          },
+          {
+            "control": "value",
+            "bits": 20,
+            "scale": 0.00019073486328125,
+            "offset": -50
+          },
+          {
+            "crc": "sensirion",
+            "over": 6
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "aht21.py",
+    "code": "# AHT21 / AHT21B temperature & humidity sensor (Aosong / ASAIR), MicroPython driver.\n# Follows the datasheet reading process (section 7.4):\n#  1. wait >= 100 ms after power-on, read one status byte; if (status & 0x18) != 0x18,\n#     re-initialise registers 0x1B, 0x1C and 0x1E with Aosong's routine;\n#  2. wait 10 ms, send 0xAC 0x33 0x00 (trigger measurement);\n#  3. wait 80 ms, poll status bit 7 (busy) until clear, read 7 bytes;\n#  4. check the CRC-8 (poly 0x31 = 1+x^4+x^5+x^8, init 0xFF) over the first 6 bytes;\n#  5. RH = S_RH / 2^20 * 100 %, T = S_T / 2^20 * 200 - 50 degC.\nimport time\n\n_ADDR = 0x38\n_CMD_MEASURE = b'\\xac\\x33\\x00'\n_BUSY = 0x80\n_READY = 0x18  # bit 4 and bit 3 (calibrated) must both be set\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass AHT21:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(100)  # datasheet: >= 100 ms after power-on before the first command\n        if (self.status() & _READY) != _READY:\n            for reg in (0x1B, 0x1C, 0x1E):\n                self._reset_reg(reg)\n            if (self.status() & _READY) != _READY:\n                raise OSError('AHT21 not ready (status 0x%02x): check the wiring' % self.status())\n        time.sleep_ms(10)  # datasheet: wait 10 ms before the first measurement command\n\n    def _reset_reg(self, reg):\n        # Aosong's initialisation routine for registers 0x1B/0x1C/0x1E.\n        self.i2c.writeto(self.addr, bytes((reg, 0x00, 0x00)))\n        time.sleep_ms(5)\n        r = self.i2c.readfrom(self.addr, 3)\n        time.sleep_ms(10)\n        self.i2c.writeto(self.addr, bytes((0xB0 | reg, r[1], r[2])))\n\n    def status(self):\n        \"\"\"The status byte: a plain one-byte read (bit 7 busy, bit 3 calibrated).\"\"\"\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in degC, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, _CMD_MEASURE)\n        time.sleep_ms(80)  # datasheet: wait 80 ms for the measurement\n        for _ in range(10):\n            if not self.status() & _BUSY:\n                break\n            time.sleep_ms(10)\n        else:\n            raise OSError('AHT21 stayed busy')\n        d = self.i2c.readfrom(self.addr, 7)\n        if d[0] & _BUSY:\n            raise OSError('AHT21 busy')\n        if _crc8(d[0:6]) != d[6]:\n            raise OSError('AHT21 CRC mismatch: check the wiring')\n        h_raw = (d[1] << 12) | (d[2] << 4) | (d[3] >> 4)\n        t_raw = ((d[3] & 0x0F) << 16) | (d[4] << 8) | d[5]\n        return t_raw * 200 / 1048576 - 50, h_raw * 100 / 1048576\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom aht21 import AHT21\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = AHT21(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65%",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:35:09.266Z",
+    "verifiedSources": [
+      "https://asairsensors.com/wp-content/uploads/2021/09/Data-Sheet-AHT21B-Humidity-and-Temperature-Module-ASAIR-V1.0.04.pdf",
+      "https://www.tinytronics.nl/en/sensors/air/humidity/asair-aht21b-temperature-and-humidity-sensor-module-i2c"
+    ]
+  }
+}

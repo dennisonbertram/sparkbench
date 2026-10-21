@@ -1,0 +1,113 @@
+{
+  "type": "custom-ds3218",
+  "name": "DS3218 20 kg digital servo (180°)",
+  "mpn": "DS3218",
+  "category": "actuator",
+  "description": "DSSERVO DS3218 high-torque digital metal-gear servo, 180° version: a 500-2500 µs pulse (1500 µs neutral, 3 µs dead band) at 50-330 Hz sets the angle 0-180°. Runs on 4.8-6.8 V; about 18 kg·cm and 1.8 A stall at 5 V (21.5 kg·cm, 2.6 A at 6.8 V), 4-5 mA idle; DSSERVO does not publish a running current, so about 0.9 A while moving under load is assumed for supply planning. Sold as: DSSERVO DS3218MG 20KG digital servo, 180° version (3-wire lead with a 2.54 mm female plug: white signal, red V+, black GND), also sold under DIYmall and other resellers' names.",
+  "eli5": "A strong little motor that turns its arm to whatever angle your board asks for, from 0 to 180 degrees.",
+  "refPrefix": "M",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Signal (white wire): 50 Hz PWM, 500-2500 µs pulse = 0-180°; 3.3 V logic works",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Motor supply (red wire), 4.8-6.8 V; needs up to 1.8 A at stall, so use a separate 5-6 V supply for anything beyond light loads",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire); must be shared with the microcontroller ground",
+      "required": true
+    }
+  ],
+  "vmin": 4.8,
+  "vmax": 6.8,
+  "currentMa": 900,
+  "datasheetUrl": "https://aifitlab.com/products/dsservo-ds3218-mg-servo-motor",
+  "sources": [
+    "https://aifitlab.com/products/dsservo-ds3218-mg-servo-motor",
+    "https://manuals.plus/asin/B07FMBBPD2"
+  ],
+  "priceUsd": 15,
+  "supplierQuery": "DS3218 20kg digital servo 180 degree",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Order is signal, V+, GND on the 3-pin plug: white = signal, red = V+, black = ground. Check the colours on your lead before powering it; a reversed supply can destroy the servo.",
+    "Do not power it from the 3.3 V pin. It needs 4.8-6.8 V and draws up to 1.8 A when stalled (2.6 A at 6.8 V), more than a USB port or the board's 5 V pin can safely give; use a separate 5-6 V supply (e.g. 4xAA NiMH or a 5 V 3 A adapter) and join its ground to the board's ground.",
+    "Supply planning: about 0.9 A while moving under load (estimate; not published), 1.8 A stalled at 5 V. Turn the PWM off (duty 0) when the arm need not hold position to save power.",
+    "Drive SIG with 50 Hz PWM: 500 µs = 0°, 1500 µs = 90° (neutral), 2500 µs = 180°. The 270° version uses the same pulse range for 0-270°.",
+    "Put a 470-1000 µF capacitor across V+ and GND near the servo to stop the board resetting when the motor starts."
+  ],
+  "keywords": [
+    "ds3218",
+    "ds3218mg",
+    "dsservo",
+    "servo",
+    "20kg",
+    "digital servo",
+    "metal gear",
+    "pwm"
+  ],
+  "sim": {
+    "kind": "servo",
+    "inputPin": "SIG",
+    "servo": {
+      "minUs": 500,
+      "maxUs": 2500,
+      "degrees": 180
+    }
+  },
+  "example": {
+    "code": "from machine import Pin, PWM\nimport time\n\n# DS3218 (180 deg version): 500 us = 0 deg, 1500 us = 90 deg, 2500 us = 180 deg, 50 Hz frame\nservo = PWM(Pin({SIG}), freq=50)\n\ndef angle(deg):\n    deg = max(0, min(180, deg))\n    us = 500 + deg * 2000 / 180\n    servo.duty_u16(int(us * 65535 / 20000))\n\nwhile True:\n    angle(30)\n    print('angle 30')\n    time.sleep(1.5)\n    angle(120)\n    print('angle 120')\n    time.sleep(1.5)\n",
+    "test": {
+      "id": "turns",
+      "title": "Swings between 30° and 120°",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 25,
+          "max": 35,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 800
+        },
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 115,
+          "max": 125,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "angle 120",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:05:37.647Z",
+    "verifiedSources": [
+      "https://m.media-amazon.com/images/I/81p5zAoqJ0L.pdf",
+      "https://www.dspowerservo.com/ds3218mg-20kg-digital-servo-high-torque-full-metal-gear-waterproof-servo-for-rc-model-diy-control-angle-280-product/"
+    ]
+  }
+}

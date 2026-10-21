@@ -1,0 +1,79 @@
+{
+  "type": "custom-bts7960",
+  "mpn": "BTS7960",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "12 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.RPWM → D25 (GPIO25). U2.LPWM → D26 (GPIO26). U2.R_EN → D27 (GPIO27). U2.L_EN → D13 (GPIO13). Added the bts7960.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor runs forward, then brakes: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×76 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "12 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.RPWM → GP2 (GPIO2). U2.LPWM → GP3 (GPIO3). U2.R_EN → GP6 (GPIO6). U2.L_EN → GP7 (GPIO7). Added the bts7960.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor runs forward, then brakes: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:41:33.201Z"
+}

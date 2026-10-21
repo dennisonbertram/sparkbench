@@ -1,0 +1,154 @@
+{
+  "type": "custom-sht85",
+  "name": "SHT85 humidity & temperature sensor",
+  "mpn": "SHT85",
+  "category": "sensor",
+  "description": "Sensirion high-accuracy relative humidity (0–100 %RH, ±1.5 %RH typical) and temperature (-40 to 105 °C, ±0.1 °C typical) sensor on a 4-pin 1.27 mm pin-type package with a PTFE membrane, I2C address 0x44 (fixed). Runs on 2.15–5.5 V; SDA and SCL need external 10 kΩ pull-ups. Sold as: Sensirion SHT85 (bare 4-pin 1.27 mm pitch pin-type sensor, pins SCL, VDD, VSS, SDA).",
+  "eli5": "A very accurate little probe that tells your board how warm and how damp the air is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "Pin 1: I2C clock (input only); needs a 10 kΩ pull-up to VDD",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Pin 2: supply, 2.15–5.5 V (3.3 V recommended); 100 nF decoupling is on the sensor",
+      "required": true
+    },
+    {
+      "name": "VSS",
+      "role": "gnd",
+      "description": "Pin 3: ground",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "Pin 4: I2C data (open-drain); needs a 10 kΩ pull-up to VDD",
+      "required": true,
+      "pullUp": 10000
+    }
+  ],
+  "vmin": 2.15,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://sensirion.com/media/documents/4B40CEF3/640B2346/Sensirion_Humidity_Sensors_SHT85_Datasheet.pdf",
+  "priceUsd": 30,
+  "supplierQuery": "Sensirion SHT85 humidity temperature sensor",
+  "footprint": "Connector_PinSocket_1.27mm:PinSocket_1x04_P1.27mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "The pins are 1.27 mm (0.05 in) pitch: they do not fit a breadboard. Plug the SHT85 into a 1.27 mm socket (e.g. Preci-Dip 851 series) and run jumper leads, or solder wires without melting the pin joints on the sensor board.",
+    "Pin 1 is SCL, then VDD, VSS (ground), SDA (transparent top view in the datasheet). Swapping VDD and VSS will destroy it, so check twice.",
+    "Fit 10 kΩ pull-ups from SDA and SCL to VDD: the sensor has none.",
+    "Single-shot command 0x24 0x00, wait at least 15.5 ms, then read 6 bytes: temperature MSB, LSB, CRC, humidity MSB, LSB, CRC. Check each CRC (poly 0x31, init 0xFF).",
+    "The address is fixed at 0x44: only one SHT85 per I2C bus.",
+    "Keep the sensor head away from the regulator and the microcontroller; measure no more than 10 % of the time to keep self-heating below 0.1 °C."
+  ],
+  "keywords": [
+    "sht85",
+    "sht35",
+    "sht3x",
+    "humidity",
+    "temperature",
+    "sensirion"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 105,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "24 00",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0015259021896696422
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sht85.py",
+    "code": "# Sensirion SHT85 humidity & temperature sensor, MicroPython driver.\n# Single-shot, high-repeatability measurement with clock stretching disabled (command 0x2400),\n# each 16-bit word checked with the datasheet CRC-8 (poly 0x31, init 0xFF, CRC(0xBEEF) = 0x92).\n# The SHT85 has no pull-ups of its own: fit 10 kOhm from SDA and SCL to VDD.\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SHT85:\n    def __init__(self, i2c, addr=0x44):\n        self.i2c = i2c\n        self.addr = addr  # fixed at 0x44 on the SHT85\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in degC, relative humidity in %RH).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x24\\x00')\n        time.sleep_ms(20)  # high repeatability takes up to 15.5 ms\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('SHT85 CRC mismatch: check the wiring and pull-ups')\n        t_raw = (d[0] << 8) | d[1]\n        h_raw = (d[3] << 8) | d[4]\n        return -45 + 175 * t_raw / 65535, 100 * h_raw / 65535\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sht85 import SHT85\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SHT85(i2c)\nwhile True:\n    t, h = sensor.read()\n    print(\"T=%.1fC H=%.0f%%\" % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 28
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 42
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=28.0C H=42%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensirion.com/media/documents/4B40CEF3/640B2346/Sensirion_Humidity_Sensors_SHT85_Datasheet.pdf",
+    "https://sensirion.com/products/catalog/SHT85",
+    "https://www.lcsc.com/product-detail/C779800.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:33:11.993Z",
+    "verifiedSources": [
+      "https://psl.noaa.gov/data/obs/instruments/SensirionSHT85.pdf"
+    ]
+  }
+}

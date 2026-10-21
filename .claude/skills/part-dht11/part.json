@@ -1,0 +1,116 @@
+{
+  "type": "custom-dht11",
+  "name": "DHT11 temperature & humidity module (KY-015)",
+  "mpn": "DHT11",
+  "category": "sensor",
+  "description": "Aosong DHT11 basic temperature (0 to 50 °C, ±2 °C) and relative humidity (20–90 %RH, ±5 %RH) sensor with a single-wire digital output, 1 °C / 1 %RH resolution, read at most every 1–2 s. Runs on 3.3–5.5 V. Sold as: KY-015 DHT11 temperature & humidity module (37-in-1 sensor kit board, 3-pin header S, +, - with the DATA pull-up resistor fitted on the board).",
+  "eli5": "A little blue box that tells your board roughly how warm the room is and how damp the air is, over one wire.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "DATA: single-wire bidirectional data line (pull-up fitted on the module)",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3–5.5 V",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 0.3,
+  "datasheetUrl": "https://components101.com/sites/default/files/component_datasheet/DHT11-Temperature-Sensor.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "KY-015 DHT11 temperature humidity sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire S to a GPIO that can output as well as input (not GPIO 34-39 on an ESP32), + to 3V3 (or 5 V) and - to GND. The module already has the pull-up on S, so no extra resistor is needed.",
+    "Use MicroPython's built-in dht module: dht.DHT11(Pin(n)), then measure() and temperature()/humidity(). It sends the 18 ms start pulse, reads the 40 bits and checks the checksum for you; a bad checksum or no answer raises OSError.",
+    "Read no more often than about every 2 s; each reading returns the result of the previous measurement, so after a long pause the first value can be stale.",
+    "On 3.3 V keep the wires short (under 1 m, per the datasheet). Wait about 1 s after power-up before the first reading.",
+    "Readings are whole numbers only (1 °C, 1 %RH steps) and only valid from 0 to 50 °C and 20 to 90 %RH. For better accuracy use a DHT22/AM2302.",
+    "Some KY-015 clones print the pins in a different order (e.g. - in the middle): always follow the labels printed on your board."
+  ],
+  "keywords": [
+    "dht11",
+    "ky-015",
+    "ky015",
+    "temperature",
+    "humidity",
+    "aosong",
+    "dht"
+  ],
+  "sources": [
+    "https://components101.com/sites/default/files/component_datasheet/DHT11-Temperature-Sensor.pdf",
+    "https://akizukidenshi.com/goodsaffix/DHT11_20180119.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-015"
+  ],
+  "sim": {
+    "kind": "dht-sensor",
+    "outputPin": "S",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": 0,
+    "max": 50,
+    "default": 22,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%RH",
+        "min": 20,
+        "max": 90,
+        "default": 50
+      }
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport dht, time\n\nsensor = dht.DHT11(Pin({S}))\nwhile True:\n    try:\n        sensor.measure()\n        print('T=%dC H=%d%%' % (sensor.temperature(), sensor.humidity()))\n    except OSError as e:\n        print('DHT11 read failed:', e)\n    time.sleep(2)  # DHT11: at most one reading every 1-2 s\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 31
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 67
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=31C H=67%",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:00:23.562Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/DHT11-chinese.pdf",
+      "https://sensorkit.joy-it.net/en/sensors/ky-015"
+    ]
+  }
+}

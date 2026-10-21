@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-adxl335",
+  "board": "GY-61 ADXL335 3-axis analog accelerometer module (5-pin: VCC, X_OUT, Y_OUT, Z_OUT, GND)",
+  "reason": "Check passed on ESP32 and Pico (X=0.5, Y=-1.2, Z=2 g prints 'X=0.50 Y=-1.20 Z=2.00 g'), and the footprint and LCSC stages passed too. Each axis is modelled from the datasheet's ratiometric formula (0 g = VS/2, VS/10 per g; 300 mV/g at 3 V) with VS = 3.3 V from the GY-61's regulator, and the driver decodes a = (V - VS/2)/(0.1 VS) and has optional flat calibration.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL335.pdf",
+  "breakoutPinoutSource": "https://web.pdx.edu/~i1kc/sensors/arduino/ALDX335/GY61.pdf (ThaiEasyElec GY-61 Quick Start Guide pin table: 1 VCC, 2 X_OUT, 3 Y_OUT, 4 Z_OUT, 5 GND)",
+  "checkRuns": 1
+}

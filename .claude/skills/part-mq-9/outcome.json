@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-9",
+  "board": "MQ-9 gas sensor module, common blue FC-22-style board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The first check run passed: ESP32 and Pico wiring, design checks, breadboard, the simulator example (AO voltage slider plus an active-low DO toggle) and the circuit board. AO is modelled as the datasheet's VRL across the load resistor, and the driver uses the datasheet formula Rs = (Vc/VRL - 1) x RL. The docs say the module holds the heater at a constant 5 V instead of the datasheet's 60 s / 90 s cycle, so it mostly senses combustible gas.",
+  "datasheetUrl": "https://www.pololu.com/file/0J314/MQ9.pdf",
+  "breakoutPinoutSource": "https://techiesms.com/product/mq-9-gas-sensor-module/",
+  "checkRuns": 1
+}

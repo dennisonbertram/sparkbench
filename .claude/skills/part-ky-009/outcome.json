@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-009",
+  "board": "Keyes KY-009 RGB full-colour LED SMD 5050 module (37-in-1 kit, Joy-IT SEN-KY009RGB and clones), header -, R, G, B, no onboard resistors",
+  "reason": "Modelled as a three-input actuator (R, G, B anodes, common cathode on -) from the Joy-IT KY-009 data and the arduinomodules.info pinout; no driver needed (plain GPIO/PWM). The board has no series resistors and the spec cannot add them, so the values (180/100 Ohm at 5 V, 150/47 Ohm at 3.3 V) are in the pin descriptions and build notes. Part check PASS on ESP32 and Pico.",
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-009",
+  "breakoutPinoutSource": "https://arduinomodules.info/ky-009-rgb-full-color-led-smd-module/",
+  "checkRuns": 1
+}

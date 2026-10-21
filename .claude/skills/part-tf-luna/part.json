@@ -1,0 +1,192 @@
+{
+  "type": "custom-tf-luna",
+  "name": "TF-Luna LiDAR distance sensor",
+  "mpn": "TF-Luna",
+  "category": "sensor",
+  "description": "Benewake single-point time-of-flight LiDAR: measures distance from 0.2 to 8 m (1 cm resolution, ±6 cm up to 3 m) and streams it over a 3.3 V UART at 115200 baud, 100 frames per second by default (I2C mode when pin 5 is grounded). Needs a 3.7–5.2 V supply. Sold as: Benewake TF-Luna LiDAR module with its 6-wire GH1.25 cable (+5V, RXD/SDA, TXD/SCL, GND, CONFIG, MUX), UART mode with CONFIG left open.",
+  "eli5": "Shines an invisible laser at whatever is in front of it and tells your board how far away it is, in centimetres.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "Supply, 3.7–5.2 V (use the 5 V / VBUS pin; 3.3 V is too low). Up to 150 mA peak.",
+      "required": true
+    },
+    {
+      "name": "RXD/SDA",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "UART receive (commands from the board's TX), 3.3 V logic. SDA in I2C mode.",
+      "required": false
+    },
+    {
+      "name": "TXD/SCL",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "UART transmit (distance frames to the board's RX), 3.3 V logic. SCL in I2C mode.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "CONFIG",
+      "role": "io",
+      "description": "Configuration input (pin 5): leave open or tie to 3.3 V for UART mode; ground selects I2C mode.",
+      "required": false
+    },
+    {
+      "name": "MUX",
+      "role": "io",
+      "description": "Multiplexing output (pin 6): on/off-mode output, or data-ready in I2C mode. Not used in UART mode.",
+      "required": false
+    }
+  ],
+  "vmin": 3.7,
+  "vmax": 5.2,
+  "currentMa": 70,
+  "datasheetUrl": "https://en.benewake.com/uploadfiles/2025/04/20250430174501874.pdf",
+  "sources": [
+    "https://en.benewake.com/uploadfiles/2025/04/20250430174501874.pdf",
+    "https://en.benewake.com/uploadfiles/2024/04/20240426135946148.pdf",
+    "https://files.waveshare.com/upload/c/c3/SJ-GU-TF-Luna_A05_Datasheet.pdf"
+  ],
+  "priceUsd": 20,
+  "supplierQuery": "Benewake TF-Luna LiDAR distance sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power it from 5 V (VBUS/VIN), not 3V3: the supply range is 3.7–5.2 V. Signals are 3.3 V LVTTL, so TXD/RXD connect straight to ESP32/Pico pins.",
+    "Leave pin 5 (CONFIG) unconnected for UART mode. Grounding it switches the sensor to I2C (address 0x10) and the serial frames stop.",
+    "Cross the serial lines: sensor TXD → board RX, sensor RXD → board TX. 115200 baud, 8N1.",
+    "Default output: 9-byte frame 59 59 DistL DistH AmpL AmpH TempL TempH Sum at 100 Hz. Sum = low byte of bytes 0..7; distance in cm; temperature = Temp/8 − 256 °C.",
+    "Distance is unreliable when Amp < 100 (too weak, reported as 0 cm) or Amp = 65535 (overexposed); readings under 20 cm are in the blind zone.",
+    "No reverse-polarity or over-voltage protection: check the +5V/GND wires before powering up."
+  ],
+  "keywords": [
+    "tf-luna",
+    "tfluna",
+    "lidar",
+    "tof",
+    "distance",
+    "range",
+    "benewake",
+    "laser"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 115200,
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 20,
+    "max": 800,
+    "default": 100,
+    "controls": [
+      {
+        "key": "amp",
+        "quantity": "Signal strength",
+        "unit": "",
+        "min": 0,
+        "max": 65535,
+        "default": 1000
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -10,
+        "max": 60,
+        "default": 35
+      }
+    ],
+    "uartStream": {
+      "everyMs": 10,
+      "bytes": [
+        {
+          "const": 89,
+          "bits": 8
+        },
+        {
+          "const": 89,
+          "bits": 8
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1,
+          "littleEndian": true
+        },
+        {
+          "control": "amp",
+          "bits": 16,
+          "scale": 1,
+          "littleEndian": true
+        },
+        {
+          "control": "temp",
+          "bits": 16,
+          "scale": 0.125,
+          "offset": -256,
+          "littleEndian": true
+        },
+        {
+          "crc": "sum8",
+          "over": 8
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "tfluna.py",
+    "code": "# Benewake TF-Luna LiDAR distance sensor, UART mode (pin 5 left open), MicroPython driver.\n# From the TF-Luna user manual (Benewake, REV 01/04/2024): 115200 baud 8N1; by default the\n# sensor streams the 9-byte/cm frame 100 times a second:\n#   0x59 0x59 Dist_L Dist_H Amp_L Amp_H Temp_L Temp_H Checksum\n# Checksum = low 8 bits of the sum of bytes 0..7. Dist in cm, Amp = signal strength,\n# chip temperature = Temp / 8 - 256 degC. Dist is unreliable when Amp < 100 or Amp == 65535.\nimport time\n\n\nclass TFLuna:\n    def __init__(self, uart):\n        self.uart = uart  # UART(id, baudrate=115200, tx=..., rx=...)\n\n    def read(self, timeout_ms=500):\n        \"\"\"Wait for the next valid frame; return (distance_cm, amp, temperature_C).\"\"\"\n        self.uart.read()  # drop stale frames queued since the last call\n        buf = b''\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            n = self.uart.any()\n            if n:\n                buf += self.uart.read(n)\n            while len(buf) >= 9:\n                if buf[0] == 0x59 and buf[1] == 0x59 and (sum(buf[0:8]) & 0xFF) == buf[8]:\n                    dist = buf[2] | (buf[3] << 8)\n                    amp = buf[4] | (buf[5] << 8)\n                    temp = (buf[6] | (buf[7] << 8)) / 8 - 256\n                    return dist, amp, temp\n                buf = buf[1:]  # not a frame start (or bad checksum): resync\n            time.sleep_ms(2)\n        raise OSError('TF-Luna: no valid frame (check TXD wiring, 115200 baud, pin 5 not grounded)')\n\n    def distance(self):\n        \"\"\"Distance in cm, or None when the signal is too weak or overexposed.\"\"\"\n        d, amp, _ = self.read()\n        return None if amp < 100 or amp == 0xFFFF else d\n\n    def _cmd(self, body):\n        frame = bytes([0x5A, len(body) + 3]) + bytes(body)\n        self.uart.write(frame + bytes([sum(frame) & 0xFF]))\n\n    def set_frame_rate(self, hz):\n        \"\"\"ID_SAMPLE_FREQ (0x03): 1..250 Hz, 0 = trigger mode. Not saved until save().\"\"\"\n        self._cmd([0x03, hz & 0xFF, hz >> 8])\n\n    def save(self):\n        \"\"\"ID_SAVE_SETTINGS (0x11).\"\"\"\n        self._cmd([0x11])\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom tfluna import TFLuna\n\nuart = UART({UART_ID}, baudrate=115200, tx=Pin({RXD_SDA}), rx=Pin({TXD_SCL}))\nlidar = TFLuna(uart)\nwhile True:\n    d, amp, t = lidar.read()\n    print('D=%dcm AMP=%d T=%.1fC' % (d, amp, t))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance, signal strength and chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 237
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "amp",
+          "value": 1500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 41.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=237cm AMP=1500 T=41.5C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:09:49.045Z",
+    "verifiedSources": [
+      "https://files.waveshare.com/upload/c/c3/SJ-GU-TF-Luna_A05_Datasheet.pdf",
+      "https://dronebotworkshop.com/tf-luna-lidar/",
+      "https://www.makerguides.com/tf-luna-distance-sensor-with-arduino/"
+    ]
+  }
+}

@@ -1,0 +1,199 @@
+{
+  "type": "custom-4-channel-relay-module",
+  "name": "4-channel 5 V relay module (active low)",
+  "mpn": "SRD-05VDC-SL-C",
+  "category": "actuator",
+  "description": "Four Songle SRD-05VDC-SL-C 5 V relays (SPDT, form C) on one board, each driven by a PC817 optocoupler and a transistor with a flyback diode and a status LED: a GPIO switches up to four separate loads such as lamps, pumps or fans. Inputs are active low (IN pulled low = relay on). Contacts rated 10 A 125 VAC / 10 A 28 VDC (form C, resistive). Module supply 5 V; each energised coil draws about 71 mA (about 290 mA with all four on). A JD-VCC jumper lets the coils run from a separate 5 V supply. Sold as: 4-channel 5V relay module with optocoupler, low level trigger (the common blue Songle board, input header GND, IN1, IN2, IN3, IN4, VCC plus a JD-VCC/VCC/GND jumper header; NO/COM/NC screw terminals per channel).",
+  "eli5": "Four electrically controlled switches: when your board pulls IN1, IN2, IN3 or IN4 low, that channel clicks and connects its own lamp, pump or fan to power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "IN1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 1 control input, active LOW: low = relay 1 on (NO1 connected to COM1), high = off. Drives the optocoupler LED from VCC (a few mA sunk by the GPIO); 3.3 V or 5 V logic.",
+      "required": true
+    },
+    {
+      "name": "IN2",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 2 control input, active LOW: low = relay 2 on (NO2 connected to COM2), high = off. Drives the optocoupler LED from VCC (a few mA sunk by the GPIO); 3.3 V or 5 V logic.",
+      "required": true
+    },
+    {
+      "name": "IN3",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 3 control input, active LOW: low = relay 3 on (NO3 connected to COM3), high = off. Drives the optocoupler LED from VCC (a few mA sunk by the GPIO); 3.3 V or 5 V logic.",
+      "required": true
+    },
+    {
+      "name": "IN4",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 4 control input, active LOW: low = relay 4 on (NO4 connected to COM4), high = off. Drives the optocoupler LED from VCC (a few mA sunk by the GPIO); 3.3 V or 5 V logic.",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Module supply, 5 V. With the JD-VCC jumper fitted (default) it powers the optocouplers and all four relay coils (about 71 mA per energised relay). Use the board's 5V/VIN/VBUS pin, not 3V3.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 300,
+  "datasheetUrl": "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "4 channel 5V relay module optocoupler low level trigger",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Inputs are ACTIVE LOW: a relay turns ON when its IN pin is low. Create the pins with Pin(n, Pin.OUT, value=1) so the relays stay off while the program starts; a relay is also on whenever its IN is left driven low.",
+    "Power VCC from 5 V, not 3.3 V: the SRD-05VDC coils need at least 3.75 V to pull in and draw about 71 mA each (about 290 mA with all four on). Leave the JD-VCC jumper fitted for a single 5 V supply, and share GND with the microcontroller.",
+    "With a 3.3 V board (ESP32, Pico) the input works because a high (3.3 V) leaves too little voltage across the optocoupler LED to light it; if a relay will not switch off, remove the JD-VCC jumper, feed 5 V to JD-VCC and 3.3 V to VCC.",
+    "Contacts (form C): 10 A 125 VAC, 10 A 28 VDC resistive; inductive loads (motors, pumps) 3 A. Use the NO terminal for a load that should be off by default.",
+    "The relays switch in up to 10 ms and release in up to 5 ms, and the datasheet allows only about 30 operations per minute under load: never PWM a relay.",
+    "Mains wiring on the screw terminals is dangerous: keep it in a closed insulated box, never touch the board while it is plugged in, and leave mains to an adult/qualified person. For a first project switch a low-voltage DC load (a 12 V lamp or a 5 V pump).",
+    "The signal header and the screw terminals are on opposite edges of a large board: wire it with jumper leads, don't plug it into the breadboard."
+  ],
+  "keywords": [
+    "relay",
+    "4 channel relay",
+    "quad relay",
+    "relay module",
+    "relay board",
+    "active low relay",
+    "srd-05vdc-sl-c",
+    "songle",
+    "optocoupler",
+    "jd-vcc",
+    "pump",
+    "fan",
+    "lamp",
+    "mains",
+    "switch load"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "IN1",
+      "IN2",
+      "IN3",
+      "IN4"
+    ],
+    "inputsActiveLow": true
+  },
+  "skill": "---\nname: part-4-channel-relay-module\ndescription: Pinout, electrical limits, wiring and MicroPython code for the 4-channel 5 V active-low relay module (Songle SRD-05VDC-SL-C relays, GND/IN1-IN4/VCC header, JD-VCC jumper). Use when designing, wiring, simulating or writing code for a 4-channel relay module in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# 4-channel 5 V relay module (SRD-05VDC-SL-C x4)\n\n## Overview\nFour **Songle SRD-05VDC-SL-C** relays (SPDT, form C) on one board, each driven through a PC817 optocoupler and a transistor, with flyback diodes and a status LED per channel. A GPIO switches up to four independent loads (lamps, pumps, fans). Hobbyists buy it as the **4-channel 5V relay module with optocoupler, low level trigger** (the common blue board): a 6-pin input header (GND, IN1, IN2, IN3, IN4, VCC), a 3-pin JD-VCC / VCC / GND jumper header, and a 3-way screw terminal (NO / COM / NC) per relay. The inputs are **active low**: IN low = relay on.\n\n## Pinout (input header order)\n| Pin | Function |\n|---|---|\n| GND | Ground (share with the microcontroller) |\n| IN1 | Relay 1 control: low = on, high = off |\n| IN2 | Relay 2 control: low = on, high = off |\n| IN3 | Relay 3 control: low = on, high = off |\n| IN4 | Relay 4 control: low = on, high = off |\n| VCC | Module supply, 5 V (optocoupler side; also the coils while the JD-VCC jumper is fitted) |\n\nJumper header: **JD-VCC** (relay coil supply), **VCC**, **GND**. The jumper cap on JD-VCC-VCC (default) runs everything from VCC. Output terminals per channel: **NO** (connected to COM while the relay is on), **COM**, **NC** (connected to COM while the relay is off).\n\n## Electrical limits\n- Supply 5 V. SRD-05VDC-SL-C coil: 70 Ω, 71.4 mA at 5 V, pull-in 3.75 V max, drop-out 0.5 V min, max 6 V. All four on: about 290 mA.\n- Inputs: optocoupler LED from VCC, about 5 mA sunk per active input (vendor figure); 3.3 V or 5 V logic.\n- Contacts (form C, resistive): 10 A 125 VAC, 10 A 28 VDC; inductive 3 A. Max 250 VAC / 110 VDC.\n- Operate 10 ms max, release 5 ms max; electrically about 30 operations/min.\n\n## Interface details\n- Plain digital inputs: no driver needed, just `machine.Pin`. Each IN is independent.\n- Active low: `value(0)` = relay on, `value(1)` = relay off. An input left floating reads as off, an input driven low (including a GPIO that boots low) turns its relay on.\n- Isolation: remove the JD-VCC jumper, feed a separate 5 V to JD-VCC (with its GND on the jumper header) and the logic supply to VCC.\n\n## Wiring\n- ESP32: VCC → 5V (VIN), GND → GND, IN1 → D25, IN2 → D26, IN3 → D27, IN4 → D13.\n- Pico: VCC → VBUS (5 V from USB), GND → GND, IN1 → GP2, IN2 → GP3, IN3 → GP4, IN4 → GP5.\n- Raspberry Pi 4: VCC → pin 2 (5 V), GND → pin 6, IN1 → pin 11 (GPIO17), IN2 → pin 13 (GPIO27), IN3 → pin 15 (GPIO22), IN4 → pin 16 (GPIO23).\n- Load: supply + → COM, NO → load → supply −. Mains only by an adult or qualified person, in a closed insulated enclosure.\n\n## Using it\n```python\nfrom machine import Pin\nimport time\nrelays = [Pin(n, Pin.OUT, value=1) for n in (25, 26, 27, 13)]  # value=1 = off\nrelays[0].value(0)   # load 1 on\ntime.sleep(2)\nrelays[0].value(1)   # load 1 off\n```\n\n## Gotchas\n- **Active low.** Always create the pins with `value=1`, otherwise a relay clicks on at start-up.\n- Power VCC from 5 V, never 3V3: four coils draw about 290 mA together. With a USB-powered board, several relays at once may brown it out; use a separate 5 V supply on JD-VCC.\n- If a relay will not switch off from a 3.3 V board, remove the JD-VCC jumper, power JD-VCC from 5 V and VCC from 3.3 V.\n- Relays are slow and wear out: don't PWM them. Use a MOSFET for speed control.\n- Motors and pumps are inductive loads: derate to 3 A, and add a snubber/diode across DC motors on the load side.\n\n## Datasheet\nhttps://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf\n",
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Low level trigger: IN low = relay on, IN high = relay off.\n# Start every input HIGH so no relay clicks on at boot.\nrelays = [Pin(n, Pin.OUT, value=1) for n in ({IN1}, {IN2}, {IN3}, {IN4})]\nwhile True:\n    relays[0].value(0)\n    relays[2].value(0)\n    relays[1].value(1)\n    relays[3].value(1)\n    print('relays 1+3 ON, 2+4 OFF')\n    time.sleep(2)\n    relays[0].value(1)\n    relays[2].value(1)\n    relays[1].value(0)\n    relays[3].value(0)\n    print('relays 1+3 OFF, 2+4 ON')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "Relays 1+3 and 2+4 take turns switching on (active low)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relays 1+3 ON, 2+4 OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN3",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN4",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relays 1+3 OFF, 2+4 ON",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN3",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN4",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+    "https://components101.com/switches/5v-four-channel-relay-module-pinout-features-applications-working-datasheet",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/4-channel-5v-relay-module-manual",
+    "https://makerselectronics.com/product/relay-module-5v-4-channel-low-trigger/",
+    "https://docs.cirkitdesigner.com/component/0fcff533-826a-4c3b-ad60-b7609b35abef/4-channel-relay-module-5v-jd-vcc"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:58:37.941Z",
+    "verifiedSources": [
+      "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+      "https://components101.com/switches/5v-four-channel-relay-module-pinout-features-applications-working-datasheet"
+    ]
+  }
+}

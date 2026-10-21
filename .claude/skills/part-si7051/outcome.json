@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-si7051",
+  "board": "ClosedCube Si7051 ±0.1°C Digital Temperature Sensor breakout (B001; 4-pin VDD, SCL, SDA, GND)",
+  "reason": "Check passed on ESP32 and Pico. No-hold command 0xF3 (and hold 0xE3) returns the 14-bit code with the datasheet's fixed 00 low bits plus CRC-8 (poly 0x31, init 0x00); the driver retries reads while the chip NACKs, checks the CRC and applies T = 175.72*code/65536 - 46.85. VDD limited to 1.9-3.6 V since the board has no regulator.",
+  "datasheetUrl": "https://web.archive.org/web/2020/https://www.silabs.com/documents/public/data-sheets/Si7050-1-3-4-5-A20.pdf",
+  "breakoutPinoutSource": "https://web.archive.org/web/20190717230129/https://www.tindie.com/products/closedcube/si7051-01c-max-digital-temperature-sensor/ (board photo: VDD SCL SDA GND silkscreen)",
+  "checkRuns": 1
+}

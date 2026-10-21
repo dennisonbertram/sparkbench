@@ -1,0 +1,79 @@
+{
+  "type": "custom-tmc2208",
+  "mpn": "TMC2208",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.EN → D25 (GPIO25). U2.STEP → D26 (GPIO26). U2.DIR → D27 (GPIO27). Added the tmc2208.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Drives EN low, steps 1600 forward (DIR high) and 1600 back (DIR low), then EN high: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×68.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.EN → GP2 (GPIO2). U2.STEP → GP3 (GPIO3). U2.DIR → GP6 (GPIO6). Added the tmc2208.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Drives EN low, steps 1600 forward (DIR high) and 1600 back (DIR low), then EN high: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C115944 TMC2208-LA-T (16560 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:09:04.058Z"
+}

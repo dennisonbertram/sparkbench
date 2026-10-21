@@ -1,0 +1,125 @@
+{
+  "type": "custom-dht11-bare",
+  "name": "DHT11 temperature & humidity sensor (bare 4-pin)",
+  "mpn": "DHT11",
+  "category": "sensor",
+  "description": "Aosong DHT11 basic temperature (±2 °C) and relative humidity (±5 %RH) sensor with a single-wire digital output, 1 °C / 1 %RH resolution, read at most every 2 s. Runs on 3.3–5.5 V; DATA needs an external pull-up resistor (10 kΩ, or 4.7 kΩ per the datasheet for long cables). Sold as: Adafruit DHT11 basic temperature-humidity sensor + extras (#386), bare blue 4-pin Aosong DHT11 (pins VCC, DATA, NC, GND) with a loose pull-up resistor.",
+  "eli5": "A little blue box with four legs that tells your board roughly how warm and how damp the air is, over one wire. It needs one resistor to help it talk.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Pin 1: supply, 3.3–5.5 V DC",
+      "required": true
+    },
+    {
+      "name": "DATA",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Pin 2: single-wire bidirectional data; needs a pull-up resistor to VCC",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Pin 3: not connected, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 4: ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "datasheetUrl": "https://akizukidenshi.com/goodsaffix/DHT11_20180119.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "DHT11 temperature humidity sensor 4-pin",
+  "footprint": "Sensor:Aosong_DHT11_5.5x12.0_P2.54mm",
+  "buildNotes": [
+    "Pins 1-4 from the left with the grille facing you: VCC, DATA, NC, GND. Leave pin 3 (NC) unconnected.",
+    "Fit a pull-up from DATA to VCC: 10 kΩ is fine on a breadboard; the Aosong datasheet recommends 4.7 kΩ for cables up to 5 m. Without it reads fail with OSError.",
+    "Wire DATA to a GPIO that can output as well as input (not GPIO 34-39 on an ESP32).",
+    "Use MicroPython's built-in dht module: dht.DHT11(Pin(n)), then measure() and temperature()/humidity(). It sends the 18 ms start pulse, reads the 40 bits and checks the checksum; a bad checksum or no answer raises OSError.",
+    "Wait 1 s after power-up, then read no more often than every 2 s. Each reading is the result of the previous measurement, so after a long pause the first value is stale.",
+    "On 3.3 V keep the wires short. Readings are whole numbers; use it for 0-50 °C (MicroPython's DHT11 class does not decode the sub-zero sign bit). For better accuracy use a DHT22/AM2302.",
+    "Hand-solder at no more than 300 °C for under 3 s; no wave soldering and no cleaning liquids."
+  ],
+  "keywords": [
+    "dht11",
+    "temperature",
+    "humidity",
+    "aosong",
+    "dht",
+    "4-pin",
+    "adafruit 386"
+  ],
+  "sources": [
+    "https://akizukidenshi.com/goodsaffix/DHT11_20180119.pdf",
+    "https://www.adafruit.com/product/386",
+    "https://learn.adafruit.com/dht/connecting-to-a-dhtxx-sensor"
+  ],
+  "sim": {
+    "kind": "dht-sensor",
+    "outputPin": "DATA",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": 0,
+    "max": 50,
+    "default": 22,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%RH",
+        "min": 20,
+        "max": 90,
+        "default": 50
+      }
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport dht, time\n\nsensor = dht.DHT11(Pin({DATA}))\ntime.sleep(1)  # DHT11 needs 1 s after power-up\nwhile True:\n    try:\n        sensor.measure()\n        print('T=%dC H=%d%%' % (sensor.temperature(), sensor.humidity()))\n    except OSError as e:\n        print('DHT11 read failed:', e)\n    time.sleep(2)  # DHT11: at most one reading every 2 s\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 34
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 72
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=34C H=72%",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:02:55.426Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/datasheets/DHT11-chinese.pdf",
+      "https://www.adafruit.com/product/386",
+      "https://learn.adafruit.com/dht/connecting-to-a-dhtxx-sensor"
+    ]
+  }
+}

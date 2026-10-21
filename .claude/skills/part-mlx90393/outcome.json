@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mlx90393",
+  "board": "Adafruit Wide-Range Triple-axis Magnetometer - MLX90393 (#4022)",
+  "reason": "Check passed on ESP32 and Pico on the first run. The model answers each MLX90393 command (EX, RT, RR, WR, SM, RM) with a status byte, then returns T/X/Y/Z encoded with the datasheet formulas (0.150/0.242 uT/LSB at GAIN_SEL=7, RES=0; T = 25 + (raw-46244)/45.2), and the driver decodes them the same way.",
+  "datasheetUrl": "https://www.melexis.com/-/media/files/documents/datasheets/mlx90393-datasheet-melexis.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/mlx90393-wide-range-3-axis-magnetometer/pinout",
+  "checkRuns": 1
+}

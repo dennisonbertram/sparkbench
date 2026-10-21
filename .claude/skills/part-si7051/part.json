@@ -1,0 +1,170 @@
+{
+  "type": "custom-si7051",
+  "name": "Si7051 ±0.1 °C temperature sensor",
+  "mpn": "SI7051",
+  "category": "sensor",
+  "description": "Silicon Labs Si7051-A20 digital temperature sensor (-40 to 125 °C, ±0.1 °C max accuracy) with an I2C interface at fixed address 0x40; 14-bit resolution by default. The chip runs on 1.9–3.6 V and is NOT 5 V tolerant. Sold as: ClosedCube Si7051 ±0.1°C Digital Temperature Sensor breakout (B001; 4-pin header VDD, SCL, SDA, GND; I2C pull-ups R1/R2 on the board, no regulator).",
+  "eli5": "A very accurate thermometer chip that tells your board the temperature to within a tenth of a degree.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 1.9–3.6 V (no regulator on the board: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up R1 on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up R2 on the board)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 1.9,
+  "vmax": 3.6,
+  "currentMa": 0.12,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://web.archive.org/web/2020/https://www.silabs.com/documents/public/data-sheets/Si7050-1-3-4-5-A20.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Si7051 temperature sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VDD from 3.3 V only: the board has no regulator and the Si7051 is rated 1.9–3.6 V (absolute max 4.2 V).",
+    "Header order on the ClosedCube board is VDD, SCL, SDA, GND — not the usual VIN/GND/SCL/SDA, so check before wiring.",
+    "Measure: write 0xF3 (no-hold), wait 10.8 ms (14-bit), then read 3 bytes MSB, LSB, CRC. The chip NACKs its address until the conversion is done.",
+    "Check the CRC (poly 0x31, init 0x00) and convert: T = 175.72 × code / 65536 − 46.85 °C. The two lowest bits are always 0.",
+    "Address is fixed at 0x40 (shared with Si7021/HTU21D/INA219), so one per I2C bus without a multiplexer.",
+    "Keep the sensor away from the microcontroller and regulators; for ±0.1 °C it must be in still, unheated air or good thermal contact with what it measures."
+  ],
+  "keywords": [
+    "si7051",
+    "si7050",
+    "si705x",
+    "si7051-a20",
+    "closedcube",
+    "temperature",
+    "precision",
+    "silicon labs"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "responses": [
+      {
+        "match": "f3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e7",
+        "bytes": [
+          {
+            "const": 58,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "84 b8",
+        "bytes": [
+          {
+            "const": 32,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "si7051.py",
+    "code": "# Si7051 +/-0.1 degC digital temperature sensor (Silicon Labs Si7050/1/3/4/5-A20), MicroPython driver.\n# Uses \"Measure Temperature, No Hold Master Mode\" (0xF3) at the default 14-bit resolution and\n# checks the CRC-8 checksum (x^8 + x^5 + x^4 + 1 = 0x31, initial value 0x00) from the datasheet.\nimport time\n\n_ADDR = 0x40\n_MEAS_T_NOHOLD = 0xF3\n_RESET = 0xFE\n_READ_USER_REG = 0xE7\n_WRITE_USER_REG = 0xE6\n\n# User Register 1 RES[1:0] = bits D7, D0 -> (bit pattern, max conversion time in ms)\n_RES = {14: (0x00, 11), 13: (0x80, 7), 12: (0x01, 4), 11: (0x81, 3)}\n\n\ndef _crc8(data):\n    crc = 0x00\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SI7051:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        self._conv_ms = 11  # 14-bit conversion: 10.8 ms max\n        time.sleep_ms(80)  # power-up: up to 80 ms over the full temperature range\n        self.i2c.writeto(self.addr, bytes([_RESET]))\n        time.sleep_ms(15)  # soft reset: up to 15 ms\n\n    def set_resolution(self, bits):\n        \"\"\"11, 12, 13 or 14 bits (default 14). Reserved bits are written back unchanged.\"\"\"\n        pattern, ms = _RES[bits]\n        self.i2c.writeto(self.addr, bytes([_READ_USER_REG]))\n        reg = self.i2c.readfrom(self.addr, 1)[0]\n        reg = (reg & 0x7E) | pattern\n        self.i2c.writeto(self.addr, bytes([_WRITE_USER_REG, reg]))\n        self._conv_ms = ms\n\n    def raw(self):\n        \"\"\"Start a conversion and return the 16-bit Temp_Code (CRC checked).\"\"\"\n        self.i2c.writeto(self.addr, bytes([_MEAS_T_NOHOLD]))\n        time.sleep_ms(self._conv_ms)\n        d = None\n        for _ in range(10):  # the chip NACKs its address until the conversion is complete\n            try:\n                d = self.i2c.readfrom(self.addr, 3)  # MSB, LSB, checksum\n                break\n            except OSError:\n                time.sleep_ms(2)\n        if d is None:\n            raise OSError('Si7051 not responding: check the wiring')\n        if _crc8(d[0:2]) != d[2]:\n            raise OSError('Si7051 CRC mismatch: check the wiring')\n        return (d[0] << 8) | d[1]\n\n    def temperature(self):\n        \"\"\"Temperature in degC: 175.72 * Temp_Code / 65536 - 46.85.\"\"\"\n        return 175.72 * self.raw() / 65536 - 46.85\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom si7051 import SI7051\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SI7051(i2c)\nwhile True:\n    print('T=%.2fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 23.45
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=23.45C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://web.archive.org/web/2020/https://www.silabs.com/documents/public/data-sheets/Si7050-1-3-4-5-A20.pdf",
+    "https://web.archive.org/web/20190717230129/https://www.tindie.com/products/closedcube/si7051-01c-max-digital-temperature-sensor/",
+    "https://web.archive.org/web/20190717230129im_/https://cdn.tindiemedia.com/images/resize/bJTf6uxrS6-k6cbMYFEn5nKuCs4=/p/688x460/smart/i/43604/products/2016-05-24T20%3A17%3A16.715Z-B001_SI7051.jpg"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:36:41.986Z",
+    "verifiedSources": [
+      "https://www.silabs.com/documents/public/data-sheets/Si7050-1-3-4-5-A20-1.pdf",
+      "https://tindie.com/products/closedcube/si7051-01c-max-digital-temperature-sensor"
+    ]
+  }
+}

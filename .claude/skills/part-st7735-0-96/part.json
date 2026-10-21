@@ -1,0 +1,157 @@
+{
+  "type": "custom-st7735-0-96",
+  "name": "ST7735S 0.96\" 80x160 IPS colour TFT",
+  "mpn": "ST7735S",
+  "category": "display",
+  "description": "Sitronix ST7735S driver with a 0.96-inch 80×160-pixel IPS colour TFT (65K colours, RGB565) on a 4-wire SPI bus (write-only, up to about 15 MHz). The glass sits in the middle of the chip's 132×162 RAM (visible area starts at column 26, row 1) and needs display inversion on. The board has no regulator: VCC feeds the chip and backlight directly, so power it from 3.3 V. Sold as: LCDwiki/QDtech MSP0961 0.96inch IPS Module (ST7735S, 80×160, 8-pin header GND, VCC, SCL, SDA, RES, DC, CS, BLK), the common blue-PCB 0.96\" IPS ST7735 module sold by many AliExpress/Amazon sellers.",
+  "eli5": "A tiny, bright colour screen (thumbnail-sized) you can draw text and shapes on.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V only (goes straight to the ST7735S and the backlight, no regulator)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (SCK), not I2C despite the label",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (MOSI), not I2C despite the label",
+      "required": true
+    },
+    {
+      "name": "RES",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select: low = command, high = data (the chip's D/CX)",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low",
+      "required": true
+    },
+    {
+      "name": "BLK",
+      "role": "io",
+      "description": "Backlight: high or unconnected = on (10 kΩ pull-up to 3.3 V and S8050 transistor on the board), low = off; PWM to dim",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 30,
+  "datasheetUrl": "https://www.lcdwiki.com/res/MSP0961/ST7735S_V1.1_20111121.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "0.96 inch IPS TFT LCD module ST7735 80x160 SPI 8 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V only (the maker's manual says so): there is no regulator, and the ST7735S I/O supply VDDI is rated to 3.7 V at most.",
+    "SCL and SDA are SPI pins (clock and MOSI), not I2C. Wire them to the SPI SCK and MOSI pins.",
+    "Init order: hardware reset (RES low ≥ 10 µs, then wait 120 ms), SWRESET 0x01 + 120 ms, SLPOUT 0x11 + 120 ms, INVON 0x21 (IPS glass), COLMOD 0x3A = 0x05 (16-bit), MADCTL 0x36 = 0xC8 portrait / 0xA8 landscape (BGR), DISPON 0x29.",
+    "The ST7735S RAM is 132×162 but the glass is 80×160, centred: the picture starts at RAM column 26, row 1 in portrait (column 1, row 26 in landscape). Without the offset you draw into invisible RAM.",
+    "Colours inverted (black shows white) means INVON 0x21 was not sent; red and blue swapped means MADCTL bit 3 (BGR) is wrong.",
+    "Pixels are RGB565 sent high byte first. MicroPython's framebuf.RGB565 stores the low byte first, so swap the colour bytes before drawing into a framebuf.",
+    "SPI mode 0, write-only (no MISO). 10 MHz is safe on breadboard wires; the datasheet minimum write clock period is 66 ns (about 15 MHz).",
+    "Leave BLK unconnected for a permanently lit backlight (on-board 10 kΩ pull-up), or drive it with PWM to dim it."
+  ],
+  "keywords": [
+    "st7735",
+    "st7735s",
+    "tft",
+    "ips",
+    "lcd",
+    "0.96 inch",
+    "80x160",
+    "160x80",
+    "color display",
+    "spi display",
+    "msp0961"
+  ],
+  "sources": [
+    "https://www.lcdwiki.com/0.96inch_IPS_Module",
+    "https://www.lcdwiki.com/res/MSP0961/ST7735S_V1.1_20111121.pdf",
+    "https://www.lcdwiki.com/res/MSP0961/0.96inch_IPS_Schematic.pdf",
+    "https://www.lcdwiki.com/res/MSP0961/0.96inch_4-line-SPI_IPS_Module_MSP0961_User_Manual_EN.pdf",
+    "https://www.lcdwiki.com/res/Program/Common_SPI/0.96inch/4-line-SPI_IPS_ST7735_MSP0961_V1.0/0.96inch_4-line-SPI_IPS_Module_ST7735S_MSP0961_V1.0.zip"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 80,
+    "height": 160
+  },
+  "driver": {
+    "filename": "st7735_096.py",
+    "code": "# ST7735S 0.96\" 80x160 IPS colour TFT (LCDwiki/QDtech MSP0961 module), MicroPython driver.\n# Written from the Sitronix ST7735S V1.1 datasheet and the module maker's init code:\n# 4-wire SPI (mode 0), D/C low = command, 16-bit RGB565 pixels (COLMOD 0x3A = 0x05),\n# sent most-significant byte first.\n# The IPS glass needs Display Inversion On (0x21) and is wired BGR (MADCTL bit 3).\n# The ST7735S RAM is 132x162 but the glass is 80x160, centred in it: the visible area starts at\n# RAM column 26, row 1 in portrait (column 1, row 26 in landscape). Because the glass is centred,\n# the offsets stay the same when the picture is mirrored (MX/MY).\nfrom machine import Pin\nimport framebuf\nimport time\n\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\nCYAN = 0x07FF\n\n\ndef rgb(r, g, b):\n    \"\"\"24-bit colour -> RGB565.\"\"\"\n    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)\n\n\nclass ST7735:\n    def __init__(self, spi, dc, cs, rst=None, landscape=False):\n        self.spi = spi\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1) if rst is not None else None\n        if landscape:\n            self.width, self.height = 160, 80\n            self.xoff, self.yoff = 1, 26\n            madctl = 0xA8  # MY + MV (row/column exchange) + BGR\n        else:\n            self.width, self.height = 80, 160\n            self.xoff, self.yoff = 26, 1\n            madctl = 0xC8  # MY + MX + BGR (maker's 0-degree orientation)\n        if self.rst:\n            # RESX low >= 10 us resets the chip; wait 120 ms before Sleep Out (datasheet 9.15).\n            self.rst(0)\n            time.sleep_ms(10)\n            self.rst(1)\n            time.sleep_ms(120)\n        self._cmd(0x01)  # SWRESET: wait 120 ms before the next command\n        time.sleep_ms(150)\n        self._cmd(0x11)  # SLPOUT: booster and oscillator start, wait 120 ms\n        time.sleep_ms(120)\n        self._cmd(0x21)  # INVON: the IPS panel needs inverted data\n        self._cmd(0xB1, b'\\x05\\x3A\\x3A')  # FRMCTR1 frame rate (normal mode)\n        self._cmd(0xB2, b'\\x05\\x3A\\x3A')  # FRMCTR2 (idle mode)\n        self._cmd(0xB3, b'\\x05\\x3A\\x3A\\x05\\x3A\\x3A')  # FRMCTR3 (partial mode)\n        self._cmd(0xB4, b'\\x03')  # INVCTR: dot inversion\n        self._cmd(0xC0, b'\\x62\\x02\\x04')  # PWCTR1\n        self._cmd(0xC1, b'\\xC0')  # PWCTR2\n        self._cmd(0xC2, b'\\x0D\\x00')  # PWCTR3 (normal mode)\n        self._cmd(0xC3, b'\\x8D\\x6A')  # PWCTR4 (idle mode)\n        self._cmd(0xC4, b'\\x8D\\xEE')  # PWCTR5 (partial mode)\n        self._cmd(0xC5, b'\\x0E')  # VMCTR1: VCOM\n        self._cmd(0xE0, b'\\x10\\x0E\\x02\\x03\\x0E\\x07\\x02\\x07\\x0A\\x12\\x27\\x37\\x00\\x0D\\x0E\\x10')  # gamma +\n        self._cmd(0xE1, b'\\x10\\x0E\\x03\\x03\\x0F\\x06\\x02\\x08\\x0A\\x13\\x26\\x36\\x00\\x0D\\x0E\\x10')  # gamma -\n        self._cmd(0x3A, b'\\x05')  # COLMOD: 16 bits per pixel\n        self._cmd(0x36, bytes([madctl]))  # MADCTL: scan direction, BGR order\n        self._cmd(0x13)  # NORON: normal display mode\n        self.fill(BLACK)\n        self._cmd(0x29)  # DISPON\n        time.sleep_ms(10)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        self.cs(1)\n\n    def _window(self, x, y, w, h):\n        x0, y0 = x + self.xoff, y + self.yoff\n        x1, y1 = x0 + w - 1, y0 + h - 1\n        self._cmd(0x2A, bytes([x0 >> 8, x0 & 255, x1 >> 8, x1 & 255]))  # CASET\n        self._cmd(0x2B, bytes([y0 >> 8, y0 & 255, y1 >> 8, y1 & 255]))  # RASET\n\n    def blit(self, buf, x, y, w, h):\n        \"\"\"Write w*h big-endian RGB565 pixels (2 bytes each) at (x, y).\"\"\"\n        self._window(x, y, w, h)\n        self._cmd(0x2C, buf)  # RAMWR\n\n    def fill_rect(self, x, y, w, h, colour):\n        x, y = max(0, x), max(0, y)\n        w, h = min(w, self.width - x), min(h, self.height - y)\n        if w <= 0 or h <= 0:\n            return\n        self._window(x, y, w, h)\n        line = bytes([colour >> 8, colour & 255]) * w\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(b'\\x2C')\n        self.dc(1)\n        for _ in range(h):\n            self.spi.write(line)\n        self.cs(1)\n\n    def fill(self, colour):\n        self.fill_rect(0, 0, self.width, self.height, colour)\n\n    def pixel(self, x, y, colour):\n        self.fill_rect(x, y, 1, 1, colour)\n\n    def text(self, s, x, y, colour=WHITE, bg=BLACK):\n        \"\"\"Draw text with MicroPython's built-in 8x8 font (10 characters per line in portrait).\"\"\"\n        s = s[:max(0, self.width - x) // 8]\n        if not s or y < 0 or y + 8 > self.height:\n            return\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        # framebuf stores RGB565 little-endian; the ST7735 wants the high byte first, so swap.\n        sw = lambda c: ((c & 0xFF) << 8) | (c >> 8)\n        fb.fill(sw(bg))\n        fb.text(s, 0, 0, sw(colour))\n        self.blit(buf, x, y, w, 8)\n\n    def display(self, on=True):\n        self._cmd(0x29 if on else 0x28)  # DISPON / DISPOFF\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport sys\nimport time\nfrom st7735_096 import ST7735, WHITE, YELLOW\n\n# Pico: GP18/GP19 belong to SPI0. ESP32: any pins work on SPI(2).\nspi_id = 0 if sys.platform == 'rp2' else 2\nspi = SPI(spi_id, baudrate=10000000, polarity=0, phase=0, sck=Pin({SCL}), mosi=Pin({SDA}))\ntft = ST7735(spi, dc={DC}, cs={CS}, rst={RES})\ntime.sleep(1)\ntft.text('HELLO', 4, 40, YELLOW)\ntft.text('ST7735', 4, 60, WHITE)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "text",
+      "title": "Draws two lines of text on the screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "HELLO",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "ST7735",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:30:20.509Z",
+    "verifiedSources": [
+      "https://www.displayfuture.com/Display/datasheet/controller/ST7735.pdf",
+      "http://www.lcdwiki.com/0.96inch_IPS_Module"
+    ]
+  }
+}

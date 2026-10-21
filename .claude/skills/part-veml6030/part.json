@@ -1,0 +1,156 @@
+{
+  "type": "custom-veml6030",
+  "name": "VEML6030 ambient light sensor",
+  "mpn": "VEML6030",
+  "category": "sensor",
+  "description": "Vishay 16-bit ambient light sensor with a human-eye-like response, measuring about 0.0042 lx to 140 klx over I2C (ALS and WHITE channels, programmable gain and integration time). Runs on 2.5–3.6 V. Sold as: SparkFun Ambient Light Sensor - VEML6030 (Qwiic) SEN-15436 (5-pin header: GND, 3V3, SDA, SCL, INT; two Qwiic connectors), I2C address 0x48 (0x10 with the ADR jumper closed).",
+  "eli5": "Tells your board how bright the light around it is, in lux, from a dark room to bright daylight.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 2.5–3.6 V (no regulator on the board: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 k pull-up on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 k pull-up on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Threshold interrupt output, open-drain active low (10 k pull-up on the board); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 3.6,
+  "currentMa": 0.05,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.vishay.com/docs/84366/veml6030.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "SparkFun VEML6030 ambient light sensor Qwiic",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "3.3 V only: the board has no regulator and the chip's absolute maximum is 4 V. Power it from 3V3, never 5 V.",
+    "Registers are 16 bits, sent and read LSB first. Write ALS_CONF (0x00) with ALS_SD = 0 to power on (it starts shut down), wait 4 ms plus one integration time, then read ALS counts from 0x04.",
+    "Lux = counts x resolution: 0.5376 lx/count at gain 1/8, 100 ms (the driver's default, up to about 35 klx); 0.0042 lx/count at gain 2, 800 ms. Each halving of integration time or gain step doubles it.",
+    "Start with gain 1/8 or 1/4; gains 1 and 2 saturate and turn non-linear above about 100 lx. Above about 1000 lx apply the app note's correction polynomial (lux_corrected()).",
+    "Address 0x48 as shipped (ADDR pulled high); close the ADR jumper on the back for 0x10. The ID register 0x07 reads 0x81 in its low byte.",
+    "The sensor looks up through the top of the board: keep it uncovered and away from the power LED (cut the LED jumper for dark measurements)."
+  ],
+  "keywords": [
+    "veml6030",
+    "ambient light",
+    "lux",
+    "light sensor",
+    "vishay",
+    "als",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Light level",
+    "unit": "lx",
+    "min": 0,
+    "max": 35232,
+    "default": 300,
+    "controls": [
+      {
+        "key": "white",
+        "quantity": "White channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      }
+    ],
+    "regWidth": 16,
+    "registers": {
+      "0x00": 256,
+      "0x07": 33236
+    },
+    "measures": [
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.5376,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "white"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "veml6030.py",
+    "code": "# VEML6030 ambient light sensor (Vishay, datasheet doc 84366 rev 1.8 + app note 84367), MicroPython driver.\n# 16-bit registers (\"command codes\"), sent and received LSB first:\n#   write: [command code, data LSB, data MSB]; read: command code, repeated start, LSB, MSB.\n# Lux = ALS counts x resolution; the resolution depends on gain and integration time\n# (0.0042 lx/count at gain x2 / 800 ms, doubling for each halving of either; app note table).\n# I2C address: 0x48 with ADDR high (SparkFun board default), 0x10 with ADDR low.\nimport time\n\n_ALS_CONF = 0x00\n_ALS_WH = 0x01\n_ALS_WL = 0x02\n_POWER_SAVING = 0x03\n_ALS = 0x04\n_WHITE = 0x05\n_ALS_INT = 0x06\n_ID = 0x07\n\n# ALS_GAIN, bits 12:11 of ALS_CONF_0\nGAIN_1 = 0b00\nGAIN_2 = 0b01\nGAIN_1_8 = 0b10\nGAIN_1_4 = 0b11\n\n# ALS_IT, bits 9:6 of ALS_CONF_0, keyed by integration time in ms\n_IT_BITS = {25: 0b1100, 50: 0b1000, 100: 0b0000, 200: 0b0001, 400: 0b0010, 800: 0b0011}\n# Resolution = 0.0042 lx/count x (800 / IT) x _GAIN_DIV[gain]\n_GAIN_DIV = {GAIN_2: 1, GAIN_1: 2, GAIN_1_4: 8, GAIN_1_8: 16}\n\n\nclass VEML6030:\n    def __init__(self, i2c, addr=0x48, gain=GAIN_1_8, it_ms=100):\n        self.i2c = i2c\n        self.addr = addr\n        ident = self._read(_ID)\n        if ident & 0xFF != 0x81:  # low byte of the ID register is always 0x81\n            raise OSError('VEML6030 not found at 0x%02X (ID 0x%04X)' % (addr, ident))\n        self._write(_POWER_SAVING, 0x0000)  # PSM off: a new result every integration time\n        self.configure(gain, it_ms)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)  # LSB first\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF, (value >> 8) & 0xFF]))\n\n    def configure(self, gain=GAIN_1_8, it_ms=100):\n        \"\"\"Set gain (GAIN_2, GAIN_1, GAIN_1_4, GAIN_1_8) and integration time (25..800 ms), power on.\n\n        The app note says to start with GAIN_1_8 or GAIN_1_4: x1 and x2 saturate and turn\n        non-linear above about 100 lx.\"\"\"\n        if it_ms not in _IT_BITS or gain not in _GAIN_DIV:\n            raise ValueError('it_ms must be 25, 50, 100, 200, 400 or 800 and gain a GAIN_ constant')\n        self.gain = gain\n        self.it_ms = it_ms\n        self.resolution = 0.0042 * (800 / it_ms) * _GAIN_DIV[gain]\n        # ALS_PERS = 1, ALS_INT_EN = 0, ALS_SD = 0 (power on)\n        self._write(_ALS_CONF, (gain << 11) | (_IT_BITS[it_ms] << 6))\n        time.sleep_ms(4)  # app note: wait 4 ms after ALS_SD = 0 before the first measurement\n        time.sleep_ms(it_ms + it_ms * 3 // 10 + 5)  # first complete integration (IT tolerance +-30 %)\n\n    def raw(self):\n        \"\"\"ALS channel output counts (0..65535).\"\"\"\n        return self._read(_ALS)\n\n    def white(self):\n        \"\"\"WHITE channel output counts (0..65535); no lux conversion is specified for it.\"\"\"\n        return self._read(_WHITE)\n\n    def lux(self):\n        \"\"\"Light level in lx: ALS counts x resolution (datasheet / app note formula, uncorrected).\"\"\"\n        return self.raw() * self.resolution\n\n    def lux_corrected(self):\n        \"\"\"Lux with the app note's polynomial correction, for gain 1/4 or 1/8 above about 1000 lx.\"\"\"\n        x = self.lux()\n        return ((6.0135e-13 * x - 9.3924e-9) * x + 8.1488e-5) * x * x + 1.0023 * x\n\n    def shutdown(self, off=True):\n        \"\"\"ALS_SD: stop measuring (about 0.5 uA); the last result stays readable. off=False powers on again.\"\"\"\n        cfg = self._read(_ALS_CONF)\n        if off:\n            self._write(_ALS_CONF, cfg | 0x0001)\n        else:\n            self._write(_ALS_CONF, cfg & ~0x0001)\n            time.sleep_ms(4 + self.it_ms + self.it_ms * 3 // 10 + 5)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom veml6030 import VEML6030, GAIN_1_8\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = VEML6030(i2c, addr=0x48, gain=GAIN_1_8, it_ms=100)  # 0.5376 lx per count, up to 35232 lx\nwhile True:\n    print('Lux=%.1f White=%d' % (sensor.lux(), sensor.white()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level and white counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "white",
+          "value": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=500.0 White=3000",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.vishay.com/docs/84366/veml6030.pdf",
+    "https://www.vishay.com/docs/84367/designingveml6030.pdf",
+    "https://learn.sparkfun.com/tutorials/qwiic-ambient-light-sensor-veml6030-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/a/f/c/5/5/SparkFun_Ambient_Light_Sensor_VEML6030_V10.zip",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/9/1/5/SparkFun_Ambient_Light_Sensor_VEML6030.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:31:58.401Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/84366/veml6030.pdf",
+      "https://raw.githubusercontent.com/sparkfun/SparkFun_Ambient_Sensor_VEML6030/master/Hardware/SparkFun_Ambient_Light_Sensor_VEML6030.brd",
+      "https://www.sparkfun.com/sparkfun-ambient-light-sensor-veml6030-qwiic.html"
+    ]
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "type": "custom-led-bar-graph-10",
+  "name": "10-segment LED bar graph with resistor network",
+  "mpn": "DC10EWA",
+  "category": "actuator",
+  "description": "Ten separate red LEDs (high-efficiency red, 627 nm, VF 1.9 V typ / 2.3 V max at 10 mA, 30 mA max per segment) in one DIP-20 bar: pins 1-10 are the anodes of segments 1-10 and pins 20-11 their cathodes. Each cathode goes through one resistor of an 11-pin bussed 330 Ω network whose common pin goes to GND, so each GPIO drives one segment directly (high = on, about 4 mA from 3.3 V, 9 mA from 5 V). No chip, no supply pin. Sold as: Kingbright DC10EWA 10-segment red LED bar graph (DIP-20, also sold by SparkFun/Adafruit as \"LED bar graph - red\") together with a Bourns 4611X-101-331LF 11-pin bussed 330 Ω SIP resistor network; the 11 nets are A1-A10 and GND.",
+  "eli5": "A row of ten little red lights in one block, like the volume meter on a stereo: switch on more pins and the bar grows longer.",
+  "refPrefix": "D",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "A1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 1 (DIP pin 1); its cathode (DIP pin 20) goes through a 330 Ω network resistor to GND. GPIO high = segment 1 on, about 4 mA at 3.3 V. Segment 1 is the end next to the anode mark (pin 1).",
+      "required": true
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 2 (DIP pin 2); its cathode (DIP pin 19) goes through a 330 Ω network resistor to GND. GPIO high = segment 2 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A3",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 3 (DIP pin 3); its cathode (DIP pin 18) goes through a 330 Ω network resistor to GND. GPIO high = segment 3 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A4",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 4 (DIP pin 4); its cathode (DIP pin 17) goes through a 330 Ω network resistor to GND. GPIO high = segment 4 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A5",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 5 (DIP pin 5); its cathode (DIP pin 16) goes through a 330 Ω network resistor to GND. GPIO high = segment 5 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A6",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 6 (DIP pin 6); its cathode (DIP pin 15) goes through a 330 Ω network resistor to GND. GPIO high = segment 6 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A7",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 7 (DIP pin 7); its cathode (DIP pin 14) goes through a 330 Ω network resistor to GND. GPIO high = segment 7 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A8",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 8 (DIP pin 8); its cathode (DIP pin 13) goes through a 330 Ω network resistor to GND. GPIO high = segment 8 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A9",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 9 (DIP pin 9); its cathode (DIP pin 12) goes through a 330 Ω network resistor to GND. GPIO high = segment 9 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "A10",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Anode of segment 10 (DIP pin 10); its cathode (DIP pin 11) goes through a 330 Ω network resistor to GND. GPIO high = segment 10 on, about 4 mA at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Common pin (pin 1, marked with the dot) of the 11-pin bussed resistor network: all ten cathode resistors join here. Connect to the microcontroller's GND.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 42,
+  "datasheetUrl": "https://www.kingbrightusa.com/images/catalog/spec/DC10EWA.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "10 segment LED bar graph DIP-20 red DC10EWA",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x11_P2.54mm_Vertical",
+  "buildNotes": [
+    "Bar graph pin 1 is at the anode mark (chamfered corner / printed '+'): pins 1-10 along that side are the anodes A1-A10, and the opposite side runs 11-20, so segment n's cathode is pin 21-n (segment 1: pins 1 and 20).",
+    "Put the bar graph across the breadboard's centre gap with the anodes on the GPIO side. Plug the 11-pin bussed resistor network into the cathode row so its pins 2-11 meet cathode pins 20-11, and run its pin 1 (the dot, the common bus) to GND.",
+    "Never wire a segment without its resistor: a 3.3 V GPIO straight into a 1.9 V LED far exceeds the 30 mA limit. With 330 Ω each segment draws about (3.3 - 1.9) / 330 = 4 mA, all ten about 42 mA, inside the ESP32's and the Pico's total GPIO budget.",
+    "Reverse voltage is only 5 V: if the bar stays dark, it is probably in backwards: rotate it 180°. 3.3 V the wrong way round does not harm it (5 V is the limit).",
+    "Create every pin with value=0 so the bar starts dark; light segments 1..n for a level meter or one segment for a dot display."
+  ],
+  "keywords": [
+    "led bar graph",
+    "bar graph",
+    "bargraph",
+    "10 segment",
+    "10-segment",
+    "dc10ewa",
+    "level meter",
+    "vu meter",
+    "led array",
+    "resistor network",
+    "dip-20"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "A8",
+      "A9",
+      "A10"
+    ]
+  },
+  "driver": {
+    "filename": "bargraph.py",
+    "code": "# 10-segment LED bar graph (Kingbright DC10EWA, DIP-20) with a bussed resistor network.\n# Each segment is a plain LED: anode n (DIP pin n) is driven by a GPIO, its cathode (DIP pin 21-n)\n# goes through one resistor of the network to the common pin, which is wired to GND.\n# GPIO high = segment on. No chip, no protocol: this helper only switches pins.\nfrom machine import Pin\n\n\nclass BarGraph:\n    def __init__(self, pins):\n        \"\"\"pins: GPIO numbers for A1..A10, bottom segment first.\"\"\"\n        self.leds = [Pin(p, Pin.OUT, value=0) for p in pins]\n\n    def __len__(self):\n        return len(self.leds)\n\n    def off(self):\n        for led in self.leds:\n            led.value(0)\n\n    def level(self, n):\n        \"\"\"Light segments 1..n (bar mode); n is clamped to 0..10.\"\"\"\n        n = max(0, min(len(self.leds), int(n)))\n        for i, led in enumerate(self.leds):\n            led.value(1 if i < n else 0)\n        return n\n\n    def dot(self, n):\n        \"\"\"Light only segment n (1..10); 0 = all off.\"\"\"\n        for i, led in enumerate(self.leds):\n            led.value(1 if i == n - 1 else 0)\n\n    def show_value(self, value, full_scale):\n        \"\"\"Bar proportional to value / full_scale, rounded to the nearest segment.\"\"\"\n        if full_scale <= 0:\n            return self.level(0)\n        return self.level(round(len(self.leds) * value / full_scale))\n\n    def bits(self, mask):\n        \"\"\"Set segments from a 10-bit mask (bit 0 = segment 1).\"\"\"\n        for i, led in enumerate(self.leds):\n            led.value((mask >> i) & 1)\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom bargraph import BarGraph\n\nbar = BarGraph([{A1}, {A2}, {A3}, {A4}, {A5}, {A6}, {A7}, {A8}, {A9}, {A10}])\nwhile True:\n    for n in (3, 8):\n        bar.level(n)\n        print('LEVEL %d' % n)\n        time.sleep(2)\n",
+    "test": {
+      "id": "levels",
+      "title": "The bar shows 3 then 8 segments in turn",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LEVEL 3",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A3",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A4",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A10",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LEVEL 8",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A8",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A9",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A5",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LEVEL 3",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A4",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A3",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.kingbrightusa.com/images/catalog/spec/DC10EWA.pdf",
+    "https://www.bourns.com/docs/Product-Datasheets/4600x.pdf",
+    "https://www.digikey.com/en/products/detail/kingbright/DC10EWA/1747575",
+    "https://au.element14.com/kingbright/dc-10ewa/array-10-led-9klv-0-75w/dp/2290323"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:38:48.888Z",
+    "verifiedSources": [
+      "https://www.kingbrightusa.com/images/catalog/SPEC/DC10EWA.pdf",
+      "https://docs.wokwi.com/parts/wokwi-led-bar-graph",
+      "https://www.bourns.com/docs/Product-Datasheets/4600X.pdf"
+    ]
+  }
+}

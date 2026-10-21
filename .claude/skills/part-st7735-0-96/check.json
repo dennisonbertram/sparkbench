@@ -1,0 +1,79 @@
+{
+  "type": "custom-st7735-0-96",
+  "mpn": "ST7735S",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; DS1.RES → D25 (GPIO25). DS1.DC → D26 (GPIO26). Added the st7735_096.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Draws two lines of text on the screen: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; DS1.RES → GP2 (GPIO2). DS1.DC → GP3 (GPIO3). Added the st7735_096.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Draws two lines of text on the screen: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C359940 1.8inch LCD Module (6 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:30:20.509Z"
+}

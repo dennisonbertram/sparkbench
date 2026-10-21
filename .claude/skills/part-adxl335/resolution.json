@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "acceleration_x_g: datasheet reading gives 3.3333 per count, the part's model has 3.03",
+      "verdict": "part-correct",
+      "evidence": "Both readings use the datasheet's ratiometric law; they differ only in the supply VS. ADXL335 datasheet Rev. 0 Table 1 (VS = 3 V): 'Sensitivity at XOUT, YOUT, ZOUT VS = 3 V 270 300 330 mV/g', '0 g Voltage at XOUT, YOUT VS = 3 V ... 1.5 V'; p.11: 'The ADXL335 output is ratiometric, therefore, the output sensitivity (or scale factor) varies proportionally to the supply voltage. At VS = 3.6 V, the output sensitivity is typically 360 mV/g' and 'the zero g output is nominally equal to VS/2 at all supply voltages.' The second reading's 3.3333 g/V (offset -5) is the bare-chip VS = 3 V test condition (1/0.300 V/g, 0 g at 1.5 V). The modelled product is the GY-61 module, whose VCC pin feeds an on-board 3.3 V regulator (ThaiEasyElec GY-61 Quick Start Guide pin table, pin 1 VCC: 'ขารับไฟ +5 โวลต์ไปที่ Regulate 3.3 โวลต์' = '+5 V supply input to the 3.3 V regulator'), so VS = 3.3 V: 0 g = 1.65 V, 330 mV/g -> 1/0.33 = 3.03 g/V, offset -1.65/0.33 = -5. The model's 3.03 is correct for this product.",
+      "source": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL335.pdf (mirror read: https://www.abelectronics.co.uk/viewpdf/adxl335); https://web.pdx.edu/~i1kc/sensors/arduino/ALDX335/GY61.pdf"
+    },
+    {
+      "diff": "acceleration_y_g: datasheet reading gives 3.3333 per count, the part's model has 3.03",
+      "verdict": "part-correct",
+      "evidence": "Both readings use the datasheet's ratiometric law; they differ only in the supply VS. ADXL335 datasheet Rev. 0 Table 1 (VS = 3 V): 'Sensitivity at XOUT, YOUT, ZOUT VS = 3 V 270 300 330 mV/g', '0 g Voltage at XOUT, YOUT VS = 3 V ... 1.5 V'; p.11: 'The ADXL335 output is ratiometric, therefore, the output sensitivity (or scale factor) varies proportionally to the supply voltage. At VS = 3.6 V, the output sensitivity is typically 360 mV/g' and 'the zero g output is nominally equal to VS/2 at all supply voltages.' The second reading's 3.3333 g/V (offset -5) is the bare-chip VS = 3 V test condition (1/0.300 V/g, 0 g at 1.5 V). The modelled product is the GY-61 module, whose VCC pin feeds an on-board 3.3 V regulator (ThaiEasyElec GY-61 Quick Start Guide pin table, pin 1 VCC: 'ขารับไฟ +5 โวลต์ไปที่ Regulate 3.3 โวลต์' = '+5 V supply input to the 3.3 V regulator'), so VS = 3.3 V: 0 g = 1.65 V, 330 mV/g -> 1/0.33 = 3.03 g/V, offset -1.65/0.33 = -5. The model's 3.03 is correct for this product.",
+      "source": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL335.pdf (mirror read: https://www.abelectronics.co.uk/viewpdf/adxl335); https://web.pdx.edu/~i1kc/sensors/arduino/ALDX335/GY61.pdf"
+    },
+    {
+      "diff": "acceleration_z_g: datasheet reading gives 3.3333 per count, the part's model has 3.03",
+      "verdict": "part-correct",
+      "evidence": "Both readings use the datasheet's ratiometric law; they differ only in the supply VS. ADXL335 datasheet Rev. 0 Table 1 (VS = 3 V): 'Sensitivity at XOUT, YOUT, ZOUT VS = 3 V 270 300 330 mV/g', '0 g Voltage at XOUT, YOUT VS = 3 V ... 1.5 V'; p.11: 'The ADXL335 output is ratiometric, therefore, the output sensitivity (or scale factor) varies proportionally to the supply voltage. At VS = 3.6 V, the output sensitivity is typically 360 mV/g' and 'the zero g output is nominally equal to VS/2 at all supply voltages.' The second reading's 3.3333 g/V (offset -5) is the bare-chip VS = 3 V test condition (1/0.300 V/g, 0 g at 1.5 V). The modelled product is the GY-61 module, whose VCC pin feeds an on-board 3.3 V regulator (ThaiEasyElec GY-61 Quick Start Guide pin table, pin 1 VCC: 'ขารับไฟ +5 โวลต์ไปที่ Regulate 3.3 โวลต์' = '+5 V supply input to the 3.3 V regulator'), so VS = 3.3 V: 0 g = 1.65 V, 330 mV/g -> 1/0.33 = 3.03 g/V, offset -1.65/0.33 = -5. The model's 3.03 is correct for this product.",
+      "source": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL335.pdf (mirror read: https://www.abelectronics.co.uk/viewpdf/adxl335); https://web.pdx.edu/~i1kc/sensors/arduino/ALDX335/GY61.pdf"
+    }
+  ]
+}

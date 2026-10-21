@@ -112,6 +112,14 @@ export function publish(slug: string, opts: { resolved?: boolean } = {}): { stat
   if (!existsSync(vf)) return { status: 'not-ready', detail: ['no independent datasheet reading yet'] };
   const spec: CustomPartSpec & { library?: unknown; sources?: string[] } = JSON.parse(readFileSync(specFile, 'utf8'));
   const facts: VerifyFacts = JSON.parse(readFileSync(vf, 'utf8'));
+  // The second reading must stay blind: the first version compared is kept, and a reading changed after seeing the
+  // differences (which name the part's own values) is not accepted.
+  const first = join('parts-staging', 'verify', `${slug}.first.json`);
+  if (!existsSync(first)) writeFileSync(first, readFileSync(vf, 'utf8'));
+  else if (readFileSync(first, 'utf8').trim() !== readFileSync(vf, 'utf8').trim()) {
+    writeFileSync(join(dir, 'review.json'), JSON.stringify({ diffs: ['the independent reading was edited after it was first compared with the part, so it is no longer blind'] }, null, 2));
+    return { status: 'review', detail: ['the independent reading was edited after it was first compared with the part; it needs a fresh blind reading'] };
+  }
   let diffs = compare(spec, facts);
   let resolvedNote = '';
   if (diffs.length && opts.resolved) {

@@ -1,0 +1,203 @@
+{
+  "type": "custom-bts7960",
+  "name": "BTS7960 43 A H-bridge motor driver",
+  "mpn": "BTS7960",
+  "category": "actuator",
+  "description": "Single high-current H-bridge built from two Infineon BTS7960B half bridges: runs one brushed DC motor forwards, backwards, braked or coasting with PWM up to 25 kHz, 43 A peak (current-limited), with over-temperature, over-current, under/over-voltage protection and current-sense outputs. Motor supply 6-27 V; logic VCC feeds the on-board 74HC244 input buffer. Sold as: BTS7960 43 A H-bridge motor driver module (IBT-2 type, e.g. Handson Technology DRV-1012; 2x4 header RPWM LPWM R_EN L_EN R_IS L_IS VCC GND, screw terminal B+ B- M+ M-).",
+  "eli5": "A heavy-duty switch box that lets your board run one big motor forwards or backwards, at any speed, from a large battery.",
+  "refPrefix": "U",
+  "interface": "pwm",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "RPWM",
+      "role": "io",
+      "description": "Header pin 1: forward input (IN of the R half bridge): high/PWM drives M+ to B+. PWM up to 25 kHz",
+      "required": true,
+      "fn": "pwm"
+    },
+    {
+      "name": "LPWM",
+      "role": "io",
+      "description": "Header pin 2: reverse input (IN of the L half bridge): high/PWM drives M- to B+",
+      "required": true,
+      "fn": "pwm"
+    },
+    {
+      "name": "R_EN",
+      "role": "io",
+      "description": "Header pin 3: R half-bridge enable (INH), high = on, low = off. Often tied to VCC",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "L_EN",
+      "role": "io",
+      "description": "Header pin 4: L half-bridge enable (INH), high = on, low = off. Often tied to VCC",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "R_IS",
+      "role": "io",
+      "description": "Header pin 5: R side current-sense / fault output (BTS7960 IS pin into the module's 1 kOhm resistor: load current = 8.5 A per volt, i.e. about 0.12 V/A; 4-7 V on a fault). Optional; never wire straight to a 3.3 V ADC, use a divider",
+      "required": false,
+      "fn": "adc"
+    },
+    {
+      "name": "L_IS",
+      "role": "io",
+      "description": "Header pin 6: L side current-sense / fault output, same scale as R_IS (8.5 A per volt). Optional",
+      "required": false,
+      "fn": "adc"
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Header pin 7: logic supply for the 74HC244 input buffer, 3.3-5 V. Use the microcontroller's 3.3 V with 3.3 V GPIOs",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Header pin 8: logic ground, joined on the board to B-; connect to the microcontroller GND",
+      "required": true
+    },
+    {
+      "name": "B+",
+      "role": "passive",
+      "description": "Screw terminal: motor supply +, 6-27 V from a battery/PSU able to supply the motor current. NEVER connect to the microcontroller's pins",
+      "required": false
+    },
+    {
+      "name": "B-",
+      "role": "gnd",
+      "description": "Screw terminal: motor supply - (ground, common with GND)",
+      "required": true
+    },
+    {
+      "name": "M+",
+      "role": "passive",
+      "description": "Screw terminal: motor output + (R half bridge); connect the motor, never the microcontroller",
+      "required": false
+    },
+    {
+      "name": "M-",
+      "role": "passive",
+      "description": "Screw terminal: motor output - (L half bridge)",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.3,
+  "currentMa": 5,
+  "datasheetUrl": "https://www.robotpower.com/downloads/BTS7960_v1.1_2004-12-07.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "BTS7960 43A H-bridge motor driver module IBT-2",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "Half-bridge truth table (Infineon datasheet 4.4.5): EN low = output off; EN high + PWM input low = output to GND; EN high + PWM input high = output to B+. So with R_EN = L_EN = high: RPWM = PWM, LPWM = 0 -> forward; RPWM = 0, LPWM = PWM -> reverse; both 0 -> brake. EN low -> coast.",
+    "Only one motor: the module's two half bridges together make ONE H-bridge.",
+    "Motor supply B+/B- is 6-27 V: the BTS7960 shuts down below about 5.5 V and above 27.6-30 V (absolute max 45 V). Use thick wires and a fuse sized for your motor.",
+    "Join the logic GND to the microcontroller GND (it is the same net as B- on the module).",
+    "VCC powers only the 74HC244 buffer. Feed it from 3.3 V when driving it with 3.3 V GPIOs (ESP32, Pico): at 5 V the 74HC244 needs about 3.5 V for a valid high, so 3.3 V signals are marginal. Do not exceed 5.3 V (the BTS7960 input absolute maximum).",
+    "PWM at most 25 kHz; 20 kHz is silent. Tie R_EN and L_EN to VCC if you don't need coasting.",
+    "R_IS/L_IS: the chip sources I_load / kILIS (kILIS typ. 8500, 3000-14000 at 5 A) into the module's 1 kOhm resistor to GND, so V_IS = I_load / 8.5 A (Infineon datasheet 4.4.4): load current = 8.5 A per volt at the pin. Only the side whose high side is on reports. On a fault IS sources 4-7 mA (4-7 V), and 28 A already gives 3.3 V: put a divider in front of a 3.3 V ADC and pass its ratio as is_divider.",
+    "Over-temperature and short-circuit shutdowns latch: pull the EN pins low for at least 3 us to reset."
+  ],
+  "keywords": [
+    "bts7960",
+    "bts7960b",
+    "ibt-2",
+    "ibt2",
+    "h-bridge",
+    "motor driver",
+    "high current",
+    "43a",
+    "dc motor"
+  ],
+  "sources": [
+    "https://www.robotpower.com/downloads/BTS7960_v1.1_2004-12-07.pdf",
+    "https://www.handsontec.com/dataspecs/module/BTS7960%20Motor%20Driver.pdf"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "RPWM",
+      "LPWM",
+      "R_EN",
+      "L_EN"
+    ]
+  },
+  "driver": {
+    "filename": "bts7960.py",
+    "code": "# BTS7960 43 A H-bridge motor driver module (IBT-2 type), MicroPython driver.\n# The module holds two Infineon BTS7960B half bridges (one per motor terminal) behind a 74HC244 buffer:\n#   RPWM -> IN of the \"R\" half bridge, R_EN -> its INH;  LPWM -> IN of the \"L\" half bridge, L_EN -> its INH.\n# Half-bridge truth table (Infineon BTS7960 datasheet, 4.4.5):\n#   INH = 0         -> both MOSFETs off (output floats, stand-by)\n#   INH = 1, IN = 0 -> low-side MOSFET on (output pulled to GND)\n#   INH = 1, IN = 1 -> high-side MOSFET on (output at the motor supply B+)\n# So with both enables high: RPWM = PWM, LPWM = 0 -> forward; RPWM = 0, LPWM = PWM -> reverse;\n# both low -> both low sides on = brake. Enables low -> both bridges off = coast.\n# PWM up to 25 kHz (datasheet); the default 20 kHz is inaudible and inside that limit.\n# RPWM and LPWM both high also brakes (both high sides on); this driver always brakes with both low.\n# Current sense (optional): each IS pin sources I_load / kILIS (kILIS = 8500 typ.) into the module's 1 kOhm\n# resistor to GND (IBT-2 schematic), so V_IS = I_load / 8.5 A, i.e. load current = 8.5 A per volt (datasheet 4.4.4).\n# Only the side whose high-side switch is on reports (forward -> R_IS, reverse -> L_IS). Accuracy is rough\n# (kILIS 3000-14000 at 5 A). In a fault IS sources 4-7 mA = 4-7 V: never wire IS straight to a 3.3 V ADC;\n# use a divider and pass its ratio as is_divider (e.g. 10k over 20k -> is_divider=1.5).\nfrom machine import Pin, PWM, ADC\n\nAMPS_PER_VOLT = 8.5  # kILIS 8500 x 1 kOhm on-board IS resistor\n\n\nclass BTS7960:\n    def __init__(self, rpwm, lpwm, r_en=None, l_en=None, freq=20000, r_is=None, l_is=None, is_divider=1.0, vref=3.3):\n        \"\"\"rpwm, lpwm: GPIO numbers wired to RPWM / LPWM.\n        r_en, l_en: GPIO numbers wired to R_EN / L_EN, or None when they are tied to VCC.\n        r_is, l_is: optional ADC GPIOs reading R_IS / L_IS through a divider (ratio is_divider = V_IS / V_ADC).\"\"\"\n        self.r_is = ADC(Pin(r_is)) if r_is is not None else None\n        self.l_is = ADC(Pin(l_is)) if l_is is not None else None\n        self.is_divider = is_divider\n        self.vref = vref\n        self.r = PWM(Pin(rpwm), freq=freq, duty_u16=0)\n        self.l = PWM(Pin(lpwm), freq=freq, duty_u16=0)\n        self.r_en = Pin(r_en, Pin.OUT, value=0) if r_en is not None else None\n        self.l_en = Pin(l_en, Pin.OUT, value=0) if l_en is not None else None\n\n    @staticmethod\n    def _duty(speed):\n        speed = max(0, min(100, speed))\n        return speed * 65535 // 100\n\n    def enable(self, on=True):\n        if self.r_en is not None:\n            self.r_en.value(1 if on else 0)\n        if self.l_en is not None:\n            self.l_en.value(1 if on else 0)\n\n    def forward(self, speed=100):\n        \"\"\"Spin one way: RPWM = speed %, LPWM = 0 (L side held to GND by its low-side MOSFET).\"\"\"\n        self.l.duty_u16(0)\n        self.r.duty_u16(self._duty(speed))\n        self.enable(True)\n\n    def reverse(self, speed=100):\n        \"\"\"Spin the other way: LPWM = speed %, RPWM = 0.\"\"\"\n        self.r.duty_u16(0)\n        self.l.duty_u16(self._duty(speed))\n        self.enable(True)\n\n    def drive(self, speed):\n        \"\"\"speed -100..100: positive = forward, negative = reverse, 0 = brake.\"\"\"\n        if speed > 0:\n            self.forward(speed)\n        elif speed < 0:\n            self.reverse(-speed)\n        else:\n            self.brake()\n\n    def brake(self):\n        \"\"\"Both inputs low with the bridges enabled: both low sides on, the motor is shorted and stops fast.\"\"\"\n        self.r.duty_u16(0)\n        self.l.duty_u16(0)\n        self.enable(True)\n\n    def coast(self):\n        \"\"\"Enables low: all MOSFETs off and the motor runs down freely. Needs R_EN/L_EN on GPIOs;\n        otherwise it falls back to brake().\"\"\"\n        self.r.duty_u16(0)\n        self.l.duty_u16(0)\n        if self.r_en is None and self.l_en is None:\n            return\n        self.enable(False)\n\n    def stop(self):\n        self.brake()\n\n    def current(self):\n        \"\"\"Approximate motor current in amps from R_IS + L_IS (8.5 A per volt at the IS pin), or None\n        when no IS pin was given. Rough: the sense ratio spreads widely at low current.\"\"\"\n        v = 0.0\n        if self.r_is is None and self.l_is is None:\n            return None\n        for a in (self.r_is, self.l_is):\n            if a is not None:\n                v += a.read_u16() * self.vref / 65535 * self.is_divider\n        return v * AMPS_PER_VOLT\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom bts7960 import BTS7960\n\nmotor = BTS7960({RPWM}, {LPWM}, r_en={R_EN}, l_en={L_EN})\nwhile True:\n    motor.forward(100)\n    print('forward')\n    time.sleep(1)\n    motor.brake()\n    print('brake')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor runs forward, then brakes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RPWM",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "LPWM",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R_EN",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RPWM",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "L_EN",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "brake",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:41:33.201Z",
+    "verifiedSources": [
+      "https://www.handsontec.com/dataspecs/module/BTS7960%20Motor%20Driver.pdf"
+    ]
+  }
+}

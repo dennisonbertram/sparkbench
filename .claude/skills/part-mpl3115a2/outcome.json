@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mpl3115a2",
+  "board": "Adafruit MPL3115A2 I2C Barometric Pressure/Altitude/Temperature Sensor breakout (#1893)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). The driver follows the datasheet: barometer one-shot at 128x oversampling, waits for the STATUS PTDR flag, then decodes Q18.2 pressure in Pa and signed Q8.4 temperature. The sim encodes OUT_P/OUT_T left-justified the same way, and pressure only while CTRL_REG1 ALT=0. Altitude is computed in software from the standard-atmosphere formula.",
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/MPL3115A2.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-MPL3115A2-PCB/blob/master/MPL3115A2_v0.2.brd (JP2 pads 1-7: Vin, GND, 3Vo, INT2, INT1, SCL, SDA, matching silkscreen order)",
+  "checkRuns": 1
+}

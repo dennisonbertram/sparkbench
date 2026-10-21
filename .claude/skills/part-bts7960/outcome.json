@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bts7960",
+  "board": "BTS7960 43 A H-bridge motor driver module, IBT-2 type (e.g. Handson Technology DRV-1012)",
+  "reason": "Modelled as an actuator with inputs RPWM, LPWM, R_EN and L_EN, with a driver that follows the Infineon half-bridge truth table (forward, reverse, brake, coast; PWM at 20 kHz, under the 25 kHz limit). The part check passed on ESP32 and Pico in all stages, including simulator, PCB DRC and footprint; LCSC was skipped because the module is not stocked there.",
+  "datasheetUrl": "https://www.robotpower.com/downloads/BTS7960_v1.1_2004-12-07.pdf",
+  "breakoutPinoutSource": "https://www.handsontec.com/dataspecs/module/BTS7960%20Motor%20Driver.pdf",
+  "checkRuns": 2
+}

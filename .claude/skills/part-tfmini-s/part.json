@@ -1,0 +1,181 @@
+{
+  "type": "custom-tfmini-s",
+  "name": "TFmini-S LiDAR distance sensor",
+  "mpn": "TFmini-S",
+  "category": "sensor",
+  "description": "Benewake single-point time-of-flight LiDAR measuring 0.1-12 m (1 cm resolution, +/-6 cm up to 6 m) at 100 frames/s, streaming 9-byte frames (distance, signal strength, chip temperature) over a 115200-baud 3.3 V UART. Needs 5 V +/-0.1 V, about 140 mA average and 200 mA peak. Sold as: SparkFun TFmini-S - Micro LiDAR Module (SEN-16977), the Benewake module with its GH1.25-4P cable: GND (black), +5V (red), RXD (white), TXD (green).",
+  "eli5": "Shines an invisible infrared light beam and times how long it takes to bounce back, so your board knows how far away the wall or object in front of it is, up to 12 metres.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1, black wire)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V +/-0.1 V (pin 2, red wire). No reverse-polarity or over-voltage protection",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Sensor serial input, 3.3 V LVTTL (pin 3, white wire): wire to the board's UART TX; only needed to send commands",
+      "required": false
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Sensor serial output, 3.3 V LVTTL, 115200 baud (pin 4, green wire): wire to the board's UART RX",
+      "required": true
+    }
+  ],
+  "vmin": 4.9,
+  "vmax": 5.1,
+  "currentMa": 140,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/8/a/f/a/c/16977-TFMini-S_-_Micro_LiDAR_Module-Product_Manual.pdf",
+  "priceUsd": 40,
+  "supplierQuery": "Benewake TFmini-S LiDAR module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power from a solid 5 V rail (5 V +/-0.1 V, up to 200 mA peak): the board's 5V/VBUS pin from USB is fine. The module has no reverse-polarity protection, so double-check black = GND and red = 5 V before plugging in.",
+    "The data wires are 3.3 V logic: safe straight into an ESP32 or Pico. Cross them: sensor TXD (green) -> board RX, sensor RXD (white) -> board TX (only needed to send commands).",
+    "115200 baud 8N1. The sensor streams 100 frames a second by itself: 0x59 0x59, distance (cm, low byte first), strength, temperature, then a checksum = low 8 bits of the sum of the first 8 bytes. Resync on 0x59 0x59 and drop frames with a bad checksum.",
+    "Flush the UART before each reading: frames pile up 900 bytes a second, so a program that reads slowly otherwise gets old distances (or overflows the receive buffer).",
+    "Distance 65535 (-1) means the signal strength is under 100 (target too far, too dark or absent); 65534 = strength saturated, 65532 = too much ambient light. Readings under 10 cm (the blind zone) are unreliable.",
+    "Glass, water and mirror-like surfaces give wrong distances. Keep the lens clean and do not touch the exposed circuit board.",
+    "The GH1.25 cable does not plug into a breadboard: use a GH1.25-to-Dupont lead or solder the wires to a 4-pin header."
+  ],
+  "keywords": [
+    "tfmini-s",
+    "tfmini",
+    "benewake",
+    "lidar",
+    "tof",
+    "time of flight",
+    "distance",
+    "range finder",
+    "laser"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 115200,
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 10,
+    "max": 1200,
+    "default": 100,
+    "controls": [
+      {
+        "key": "strength",
+        "quantity": "Signal strength",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": 0,
+        "max": 60,
+        "default": 30
+      }
+    ],
+    "uartStream": {
+      "everyMs": 10,
+      "bytes": [
+        {
+          "const": 89,
+          "bits": 8
+        },
+        {
+          "const": 89,
+          "bits": 8
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1,
+          "littleEndian": true
+        },
+        {
+          "control": "strength",
+          "bits": 16,
+          "scale": 1,
+          "littleEndian": true
+        },
+        {
+          "control": "temp",
+          "bits": 16,
+          "scale": 0.125,
+          "offset": -256,
+          "littleEndian": true
+        },
+        {
+          "crc": "sum8",
+          "over": 8
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "tfmini_s.py",
+    "code": "# Benewake TFmini-S LiDAR distance sensor (UART mode), MicroPython driver.\n# Written from the Benewake \"SJ-PM-TFmini-S A01 Product Manual\":\n# UART 115200 baud, 8N1 (Table 6). In the default standard format the sensor sends a 9-byte frame\n# by itself at the frame rate (100 Hz by default):\n#   0x59 0x59 Dist_L Dist_H Strength_L Strength_H Temp_L Temp_H Checksum\n#   checksum = low 8 bits of the sum of the first 8 bytes (Table 7).\n# Dist is in cm (0-2000 range of the field); 65535 (-1) = strength < 100, 65534 (-2) = strength\n# saturated, 65532 (-4) = ambient light saturated (Table 8). Chip temperature in C = Temp / 8 - 256.\n# Host commands (section 7.3): 0x5A, total length, ID, little-endian payload, then the low 8 bits\n# of the sum of all previous bytes.\nimport time\n\n_HEAD = 0x59\n_FRAME_LEN = 9\n_INVALID = {65535: 'weak signal (strength < 100)', 65534: 'signal saturated', 65532: 'ambient light saturated'}\n\n\ndef _command(cmd_id, payload=b''):\n    body = bytes((0x5A, len(payload) + 4, cmd_id)) + bytes(payload)\n    return body + bytes((sum(body) & 0xFF,))\n\n\nclass TFminiS:\n    def __init__(self, uart):\n        \"\"\"uart: a machine.UART at 115200 baud whose RX is wired to the sensor's TXD (green wire).\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.error = None\n\n    def flush(self):\n        \"\"\"Throw away buffered (stale) bytes so the next read returns a fresh frame.\"\"\"\n        n = self.uart.any()\n        while n:\n            self.uart.read(n)\n            n = self.uart.any()\n        self._buf = b''\n\n    def _frame(self, timeout_ms):\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while True:\n            # resync on 0x59 0x59 and check every candidate frame's checksum\n            while len(self._buf) >= 2:\n                if self._buf[0] != _HEAD or self._buf[1] != _HEAD:\n                    self._buf = self._buf[1:]\n                    continue\n                if len(self._buf) < _FRAME_LEN:\n                    break\n                f = self._buf[:_FRAME_LEN]\n                if sum(f[:8]) & 0xFF == f[8]:\n                    self._buf = self._buf[_FRAME_LEN:]\n                    return f\n                self._buf = self._buf[1:]  # corrupted or false header: resync\n            if time.ticks_diff(deadline, time.ticks_ms()) <= 0:\n                raise OSError('TFmini-S: no valid frame (check TXD -> board RX, 5 V supply, 115200 baud)')\n            n = self.uart.any()\n            if n:\n                got = self.uart.read(n)\n                if got:\n                    self._buf += got\n            else:\n                time.sleep_ms(2)\n\n    def read(self, timeout_ms=500, fresh=True):\n        \"\"\"Return (distance_cm, strength, temperature_c) from the next valid frame.\n        distance_cm is None when the sensor flags the reading as unreliable; self.error then says why.\n        fresh=True drops bytes that piled up while the program was busy elsewhere.\"\"\"\n        if fresh:\n            self.flush()\n        f = self._frame(timeout_ms)\n        dist = f[2] | (f[3] << 8)\n        strength = f[4] | (f[5] << 8)\n        temp_c = (f[6] | (f[7] << 8)) / 8 - 256\n        self.error = _INVALID.get(dist)\n        if self.error:\n            dist = None\n        return dist, strength, temp_c\n\n    def distance(self, timeout_ms=500):\n        \"\"\"Distance in cm, or None if unreliable.\"\"\"\n        return self.read(timeout_ms)[0]\n\n    # ---- configuration commands (Table 12); need the sensor's RXD (white wire) on the UART TX ----\n    def _send(self, cmd_id, payload=b'', reply_len=0, timeout_ms=200):\n        self.flush()\n        frame = _command(cmd_id, payload)\n        self.uart.write(frame)\n        if not reply_len:\n            return None\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        buf = b''\n        while time.ticks_diff(deadline, time.ticks_ms()) > 0:\n            n = self.uart.any()\n            if n:\n                buf += self.uart.read(n) or b''\n                i = buf.find(bytes((0x5A, reply_len, cmd_id)))\n                if i >= 0 and len(buf) >= i + reply_len:\n                    r = buf[i:i + reply_len]\n                    if sum(r[:-1]) & 0xFF == r[-1]:\n                        return r\n            else:\n                time.sleep_ms(2)\n        return None\n\n    def version(self):\n        \"\"\"Firmware version as (major, minor, revision), or None.\"\"\"\n        r = self._send(0x01, b'', 7)\n        return (r[5], r[4], r[3]) if r else None\n\n    def set_frame_rate(self, hz):\n        \"\"\"Frame rate in Hz: 0 (triggered with trigger()) or 1000/n for a whole n, up to 1000. Call save() after.\"\"\"\n        return self._send(0x03, bytes((hz & 0xFF, hz >> 8)), 6) is not None\n\n    def trigger(self):\n        \"\"\"With frame rate 0: ask for one measurement; then call read(fresh=False).\"\"\"\n        self.flush()\n        self.uart.write(_command(0x04))\n\n    def output(self, enable):\n        \"\"\"Enable or disable the frame stream.\"\"\"\n        return self._send(0x07, bytes((1 if enable else 0,)), 5) is not None\n\n    def save(self):\n        \"\"\"Store settings in flash (wait 1 s afterwards before power-off).\"\"\"\n        r = self._send(0x11, b'', 5, 1000)\n        time.sleep_ms(1000)\n        return bool(r) and r[3] == 0\n\n    def reset(self):\n        \"\"\"System reset (wait 1 s afterwards).\"\"\"\n        r = self._send(0x02, b'', 5, 1000)\n        time.sleep_ms(1000)\n        return bool(r) and r[3] == 0\n\n    def factory_reset(self):\n        r = self._send(0x10, b'', 5, 1000)\n        return bool(r) and r[3] == 0\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom tfmini_s import TFminiS\n\nuart = UART({UART_ID}, baudrate=115200, tx=Pin({RXD}), rx=Pin({TXD}))\nlidar = TFminiS(uart)\nwhile True:\n    d, s, t = lidar.read()\n    if d is None:\n        print('no reading:', lidar.error)\n    else:\n        print('D=%dcm S=%d T=%.1fC' % (d, s, t))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance, signal strength and chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 237
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "strength",
+          "value": 850
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 41.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=237cm S=850 T=41.5C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn.sparkfun.com/assets/8/a/f/a/c/16977-TFMini-S_-_Micro_LiDAR_Module-Product_Manual.pdf",
+    "https://www.sparkfun.com/products/16977",
+    "https://en.benewake.com/TFminiS/index.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:10:39.902Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/4/f/1/a/b/DS-16977-TFMini-S_-_Micro_LiDAR_Module.pdf",
+      "https://cdn.sparkfun.com/assets/8/a/f/a/c/16977-TFMini-S_-_Micro_LiDAR_Module-Product_Manual.pdf",
+      "https://www.sparkfun.com/tfmini-s-micro-lidar-module.html"
+    ]
+  }
+}

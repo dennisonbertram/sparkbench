@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-5",
+  "board": "MQ-5 LPG / natural gas sensor module, common blue board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The check passed on the first run for ESP32 and Pico: spec, wiring, design checks, breadboard, simulator (AO voltage slider plus an active-low DO toggle) and circuit board. AO is modelled as the datasheet's VRL across the load resistor, the driver uses Rs = (Vc/VRL - 1) x RL with R0 defined in 1000 ppm H2, and vmin/vmax is 4.9-5.1 V from the datasheet. Caveat: the header order comes from obniz's wired(vcc, gnd, do, ao) definition plus LCKFB/EasyEDA wikis, not a labelled photo.",
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Gas_Sensor-MQ5/res/MQ-5.pdf",
+  "breakoutPinoutSource": "https://docs.obniz.com/sdk/parts/MQ5/README.md",
+  "checkRuns": 1
+}

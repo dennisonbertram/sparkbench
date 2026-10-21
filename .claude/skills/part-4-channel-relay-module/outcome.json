@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-4-channel-relay-module",
+  "board": "4-channel 5V relay module with optocoupler, low level trigger (common blue Songle board, 4x SRD-05VDC-SL-C; input header GND, IN1, IN2, IN3, IN4, VCC plus JD-VCC/VCC/GND jumper header)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, DRC, footprint, LCSC C35449). IN1-IN4 modelled as actuator inputs with inputsActiveLow; the test confirms relays 1+3 and 2+4 alternate when their inputs are driven low. Marked cabled because the signal header and the screw terminals are on opposite edges.",
+  "datasheetUrl": "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+  "breakoutPinoutSource": "https://components101.com/switches/5v-four-channel-relay-module-pinout-features-applications-working-datasheet (GND, IN1-IN4, VCC, then VCC/JD-VCC jumper); https://shillehtek.com/blogs/shillehtek-product-manuals/4-channel-5v-relay-module-manual (header GND, IN1, IN2, IN3, IN4, VCC, active low)",
+  "checkRuns": 2
+}

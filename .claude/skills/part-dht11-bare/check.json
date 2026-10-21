@@ -1,0 +1,79 @@
+{
+  "type": "custom-dht11-bare",
+  "mpn": "DHT11",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.DATA → D25 (GPIO25). Added a 10 kΩ pull-up resistor from DATA to 3V3, as the datasheet requires."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the temperature and humidity set on the sliders: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "49×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.DATA → GP2 (GPIO2). Added a 10 kΩ pull-up resistor from DATA to 3V3, as the datasheet requires."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the temperature and humidity set on the sliders: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Sensor:Aosong_DHT11_5.5x12.0_P2.54mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C117051 DHT11 (8018 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:02:55.426Z"
+}

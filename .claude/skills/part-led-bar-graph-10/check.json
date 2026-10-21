@@ -1,0 +1,79 @@
+{
+  "type": "custom-led-bar-graph-10",
+  "mpn": "DC10EWA",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "11 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "11 pins wired; D1.A1 → D25 (GPIO25). D1.A2 → D26 (GPIO26). D1.A3 → D27 (GPIO27). D1.A4 → D13 (GPIO13). D1.A5 → D23 (GPIO23). D1.A6 → D19 (GPIO19). D1.A7 → D18 (GPIO18). D1.A8 → TX2 (GPIO17). D1.A9 → RX2 (GPIO16). D1.A10 → D4 (GPIO4). Added the bargraph.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "5 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The bar shows 3 then 8 segments in turn: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "11 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "11 pins wired; D1.A1 → GP2 (GPIO2). D1.A2 → GP3 (GPIO3). D1.A3 → GP6 (GPIO6). D1.A4 → GP7 (GPIO7). D1.A5 → GP8 (GPIO8). D1.A6 → GP9 (GPIO9). D1.A7 → GP10 (GPIO10). D1.A8 → GP11 (GPIO11). D1.A9 → GP12 (GPIO12). D1.A10 → GP13 (GPIO13). Added the bargraph.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "5 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The bar shows 3 then 8 segments in turn: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x11_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C17303975 DC10EWA (3 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T09:38:48.888Z"
+}

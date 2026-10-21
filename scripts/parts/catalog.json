@@ -1451,6 +1451,18 @@
   {
    "mpn": "VS1838B",
    "why": "IR receiver: protocol timing model"
+  },
+  {
+   "mpn": "DRV8871 / solenoid modules",
+   "why": "need a separate motor/solenoid supply (6.5\u201345 V, or 5 V at more than 0.5 A) that designs can't declare yet"
+  },
+  {
+   "mpn": "LM335",
+   "why": "2-terminal shunt sensor that needs an external bias resistor; the analog model would misreport it"
+  },
+  {
+   "mpn": "MS5611",
+   "why": "pressure result depends on temperature through calibration maths a linear model can't encode"
   }
  ]
 }

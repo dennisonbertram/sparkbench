@@ -1,0 +1,315 @@
+{
+  "type": "custom-mlx90393",
+  "name": "MLX90393 3-axis magnetometer",
+  "mpn": "MLX90393",
+  "category": "sensor",
+  "description": "Melexis Triaxis wide-range 3-axis magnetic field sensor (±5 to ±50 mT, 16-bit per axis) with an on-chip temperature sensor and an I2C interface. Chip runs on 2.2–3.6 V; the breakout adds a 3.3 V regulator and level shifting. Sold as: Adafruit Wide-Range Triple-axis Magnetometer - MLX90393 (product 4022; two 6-pin rows: bottom VIN, 3Vo, GND, SCL, SDA, INT; top A0, A1, CS, TR, MIS, G; plus STEMMA QT), I2C address 0x0C (A0/A1 pads select 0x0C–0x0F).",
+  "eli5": "Feels magnets: tells your board how strong a nearby magnet's pull is in each of three directions.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply input to the on-board 3.3 V regulator, 3–5 V; also sets the SDA/SCL logic level",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up and level shifter on the board, 5 V safe)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up and level shifter on the board, 5 V safe)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Data-ready interrupt output (3.3 V logic, not level shifted); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Top row: I2C address bit 0, pulled low on the board (0x0C); tie to 3.3 V to add 1 to the address. Normally left unsoldered",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Top row: I2C address bit 1, pulled low on the board; tie to 3.3 V to add 2 to the address. Normally left unsoldered",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "Top row: chip select / SENB (I2C vs SPI mode select); the board is wired for I2C, test pad only, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "TR",
+      "role": "io",
+      "description": "Top row: INT/TRG pin of the chip (optional trigger input or mirror of INT), 3.3 V logic; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "MIS",
+      "role": "nc",
+      "description": "Top row: SPI MISO pad; SPI is not supported on this breakout, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "G",
+      "role": "gnd",
+      "description": "Top row: extra ground pad, may be left unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3,
+  "i2cAddress": 12,
+  "datasheetUrl": "https://www.melexis.com/-/media/files/documents/datasheets/mlx90393-datasheet-melexis.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "Adafruit MLX90393 wide-range magnetometer breakout 4022",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_2x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every command is answered by a status byte: write the command, then read the status (and any data). Bit 4 (0x10) set means the command was rejected.",
+    "Single measurement: send SM 0x3F, wait for the conversion (about 8 ms with OSR=0, DIG_FILT=5), then RM 0x4F and read 9 bytes: status, T, X, Y, Z (16 bits each, MSB first).",
+    "The power-on filter settings (OSR=0, DIG_FILT=0) are not permitted with HALLCONF=0xC, so the driver writes register 0x02 before measuring.",
+    "At GAIN_SEL=7 and RES=0: X/Y = raw × 0.150 µT, Z = raw × 0.242 µT (signed). Temperature = 25 + (raw − 46244) / 45.2 °C.",
+    "The board has two 6-pin rows on opposite edges, 0.5\" (12.7 mm) apart: bottom VIN, 3Vo, GND, SCL, SDA, INT; top A0, A1, CS, TR, MIS, G. Only the bottom row is needed; the top row is normally left unsoldered (tie A0/A1 high to move the address to 0x0D–0x0F). The KiCad footprint is a 2×6 stand-in with the same 12 pads, not the real 12.7 mm row spacing.",
+    "Steel screws, the breadboard's metal clips and nearby wires carrying current all disturb the reading: keep magnets and iron away when you want a zero reading."
+  ],
+  "keywords": [
+    "mlx90393",
+    "magnetometer",
+    "magnetic",
+    "hall",
+    "compass",
+    "magnet",
+    "melexis",
+    "triaxis"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "µT",
+    "min": -4900,
+    "max": 4900,
+    "default": 0,
+    "controls": [
+      {
+        "key": "by",
+        "quantity": "Magnetic field Y",
+        "unit": "µT",
+        "min": -4900,
+        "max": 4900,
+        "default": 0
+      },
+      {
+        "key": "bz",
+        "quantity": "Magnetic field Z",
+        "unit": "µT",
+        "min": -4900,
+        "max": 4900,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "responses": [
+      {
+        "match": "80",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "F0",
+        "bytes": [
+          {
+            "const": 4,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "50 00",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 124,
+            "bits": 16
+          }
+        ]
+      },
+      {
+        "match": "50 04",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 16
+          }
+        ]
+      },
+      {
+        "match": "50 08",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 16
+          }
+        ]
+      },
+      {
+        "match": "60",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "3F",
+        "bytes": [
+          {
+            "const": 32,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "4F",
+        "bytes": [
+          {
+            "const": 3,
+            "bits": 8
+          },
+          {
+            "control": "temp",
+            "bits": 16,
+            "scale": 0.022123893805309734,
+            "offset": -998.0973451327433
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.15,
+            "signed": true
+          },
+          {
+            "control": "by",
+            "bits": 16,
+            "scale": 0.15,
+            "signed": true
+          },
+          {
+            "control": "bz",
+            "bits": 16,
+            "scale": 0.242,
+            "signed": true
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mlx90393.py",
+    "code": "# MLX90393 3-axis magnetometer (Melexis Triaxis Magnetic Node), MicroPython driver.\n# Written from the Melexis MLX90393 datasheet (rev 012):\n#  - every command is answered by a status byte; bit 4 (ERROR) set = command rejected\n#  - EX 0x80, RT 0xF0, SM 0x3F (single measurement of T, X, Y, Z), RM 0x4F (read T, X, Y, Z)\n#  - RR 0x50 <reg<<2> -> status, D15..D8, D7..D0 ; WR 0x60 <D15..D8> <D7..D0> <reg<<2> -> status\n#  - sensitivity: Table 17 (HALLCONF = 0xC, TC off), temperature: 45.2 LSB/degC, 46244 LSB at 25 degC\nimport time\n\n# Table 17, uT/LSB, HALLCONF = 0xC: _SENS[gain_sel][res] = (XY, Z)\n_SENS = (\n    ((0.751, 1.210), (1.502, 2.420), (3.004, 4.840), (6.009, 9.680)),\n    ((0.601, 0.968), (1.202, 1.936), (2.403, 3.872), (4.840, 7.744)),\n    ((0.451, 0.726), (0.901, 1.452), (1.803, 2.904), (3.605, 5.808)),\n    ((0.376, 0.605), (0.751, 1.210), (1.502, 2.420), (3.004, 4.840)),\n    ((0.300, 0.484), (0.601, 0.968), (1.202, 1.936), (2.403, 3.872)),\n    ((0.250, 0.403), (0.501, 0.807), (1.001, 1.613), (2.003, 3.227)),\n    ((0.200, 0.323), (0.401, 0.645), (0.801, 1.291), (1.602, 2.581)),\n    ((0.150, 0.242), (0.300, 0.484), (0.601, 0.968), (1.202, 1.936)),\n)\n\n_ERROR = 0x10\n\n\nclass MLX90393:\n    def __init__(self, i2c, addr=0x0C, gain=7, res=0, osr=0, dig_filt=5):\n        \"\"\"gain = GAIN_SEL 0..7 (7 = most sensitive), res = RES_XYZ 0..3 for all axes,\n        osr / dig_filt per datasheet Table 19 (OSR=0 with DIG_FILT 0/1 and OSR=1 with\n        DIG_FILT 0 are not permitted at HALLCONF = 0xC).\"\"\"\n        if (osr == 0 and dig_filt < 2) or (osr == 1 and dig_filt == 0):\n            raise ValueError('OSR/DIG_FILT combination not permitted with HALLCONF=0xC')\n        self.i2c = i2c\n        self.addr = addr\n        self.gain, self.res, self.osr, self.dig_filt = gain, res, osr, dig_filt\n        self._cmd(b'\\x80')  # EX: leave any burst/WOC mode\n        time.sleep_ms(1)\n        self._cmd(b'\\xF0', check=False)  # RT: warm reset (status shows RS)\n        time.sleep_ms(2)  # datasheet: wait 1.5 ms after RT\n        # Register 0x00: keep ANA_RESERVED_LOW/BIST/Z_SERIES, set GAIN_SEL and HALLCONF = 0xC\n        r0 = self.read_reg(0x00)\n        self.write_reg(0x00, (r0 & ~0x007F) | (gain << 4) | 0x0C)\n        # Register 0x01: clear TCMP_EN (bit 10) so X/Y/Z use the uncompensated format of Table 21\n        r1 = self.read_reg(0x01)\n        self.write_reg(0x01, r1 & ~0x0400)\n        # Register 0x02: OSR2 = 0, RES_Z = RES_Y = RES_X = res, DIG_FILT, OSR\n        self.write_reg(0x02, (res << 9) | (res << 7) | (res << 5) | (dig_filt << 2) | osr)\n        # Conversion time in single measurement mode (Section 12), +10 % oscillator margin\n        tconvm = 67 + 64 * (1 << osr) * (2 + (1 << dig_filt))\n        tconvt = 67 + 192\n        us = 264 + 432 + 3 * tconvm + tconvt + 120\n        self._wait_ms = us * 11 // 10000 + 1\n\n    def _cmd(self, cmd, n=0, check=True):\n        \"\"\"Send a command and read the status byte (plus n data bytes).\"\"\"\n        self.i2c.writeto(self.addr, cmd, False)  # repeated start, as in the datasheet figures\n        d = self.i2c.readfrom(self.addr, 1 + n)\n        if check and d[0] & _ERROR:\n            raise OSError('MLX90393 rejected command 0x%02X (status 0x%02X)' % (cmd[0], d[0]))\n        return d\n\n    def read_reg(self, reg):\n        d = self._cmd(bytes((0x50, reg << 2)), 2)\n        return (d[1] << 8) | d[2]\n\n    def write_reg(self, reg, value):\n        self._cmd(bytes((0x60, (value >> 8) & 0xFF, value & 0xFF, reg << 2)))\n\n    def read(self):\n        \"\"\"Single measurement. Returns (x, y, z) in microtesla and the chip temperature in degC.\"\"\"\n        self._cmd(b'\\x3F')  # SM, zyxt = 1111\n        time.sleep_ms(self._wait_ms)\n        d = self._cmd(b'\\x4F', 8)  # RM: status, T, X, Y, Z (MSB first)\n        t_raw = (d[1] << 8) | d[2]\n        raw = [(d[3] << 8) | d[4], (d[5] << 8) | d[6], (d[7] << 8) | d[8]]\n        for i in range(3):\n            if self.res == 0 or self.res == 1:\n                if raw[i] & 0x8000:\n                    raw[i] -= 0x10000  # two's complement\n            elif self.res == 2:\n                raw[i] -= 32768  # unsigned, 0 uT = 2^15\n            else:\n                raw[i] -= 16384  # unsigned, 0 uT = 2^14\n        sxy, sz = _SENS[self.gain][self.res]\n        temp = 25 + (t_raw - 46244) / 45.2\n        return raw[0] * sxy, raw[1] * sxy, raw[2] * sz, temp\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mlx90393 import MLX90393\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = MLX90393(i2c)\nwhile True:\n    x, y, z, t = mag.read()\n    print('X=%.1f Y=%.1f Z=%.1f uT T=%.1fC' % (x, y, z, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the magnetic field and chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 120
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "by",
+          "value": -45
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "bz",
+          "value": 242
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=120.0 Y=-45.0 Z=242.0 uT T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.melexis.com/-/media/files/documents/datasheets/mlx90393-datasheet-melexis.pdf",
+    "https://learn.adafruit.com/mlx90393-wide-range-3-axis-magnetometer/pinout",
+    "https://www.adafruit.com/product/4022"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T09:42:29.766Z",
+    "verifiedSources": [
+      "https://www.melexis.com/-/media/files/documents/datasheets/mlx90393-datasheet-melexis.pdf",
+      "https://www.adafruit.com/product/4022",
+      "https://learn.adafruit.com/mlx90393-wide-range-3-axis-magnetometer/pinout"
+    ]
+  }
+}

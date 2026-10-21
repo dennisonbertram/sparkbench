@@ -1,0 +1,77 @@
+---
+name: part-mq-5
+description: Pinout, electrical limits, wiring and MicroPython driver for the MQ-5 LPG / natural gas sensor module (MQ-5, AO + DO). Use when designing, wiring, simulating or writing code for an MQ-5 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.
+---
+
+# MQ-5 LPG / natural gas sensor module (MQ-5)
+
+## Overview
+The **MQ-5** (Hanwei) is a heated tin-dioxide (SnO2) gas sensor with **high sensitivity to LPG, natural gas and town gas** (also iso-butane, propane, H2) and small sensitivity to alcohol and smoke. Its resistance **Rs drops** as gas rises. Hobbyists buy it on a **4-pin module** (common blue board) that adds a load resistor, an **LM393 comparator**, a sensitivity trimmer, a power LED and a DO LED.
+- Detects LPG / LNG / natural gas from **200 to 10000 ppm**. Good for "more or less gas than before", **not a calibrated ppm meter**
+- Heater: **5 V ±0.1 V**, 31 Ω ±10 %, **less than 800 mW** (about **160 mA**). It gets hot
+- Sensing resistance: 10–60 kΩ in 5000 ppm methane; concentration slope ≤ 0.6 (5000 ppm / 1000 ppm CH4)
+- Preheat: **over 24 hours** for a new sensor (datasheet), then a few minutes after each power-on
+- **AO** = voltage across the load resistor, which **rises with gas**. **DO** goes **LOW** when AO passes the trimmer threshold
+
+## Pinout (module header, as printed on the board)
+| Pin | Name | Function |
+|-----|------|----------|
+| 1 | VCC | 5 V supply (heater + comparator) |
+| 2 | GND | Ground |
+| 3 | DO | Digital output: HIGH (5 V via pull-up) in clean air, **LOW when gas is above the threshold** |
+| 4 | AO | Analog output, 0 to about 5 V, rises with gas |
+
+Other MQ-5 boards differ: Waveshare's is DOUT, AOUT, GND, VCC (with a boost converter) and DFRobot's SEN0130 has 3 pins and no DO. Check the silkscreen on yours.
+
+## Electrical limits
+- VCC: **4.9–5.1 V** (datasheet Vc and VH 5 V ±0.1). 3.3 V under-heats the sensor and readings are meaningless.
+- Current: about 160 mA from 5 V. Budget for it on USB power.
+- AO and DO are **5 V signals**. AO can exceed 3.3 V in strong gas, and DO sits at 5 V through the module's pull-up. ESP32 and Pico pins are 3.3 V max: use a divider (10 kΩ in series, 20 kΩ to GND gives ×2/3) on each.
+- Operating temperature −10 to 50 °C, humidity below 95 % RH.
+
+## Interface details
+Datasheet basic measuring circuit (Fig. 2): Rs (sensor) and RL (load resistor) form a divider from Vc:
+```
+VRL (AO) = Vc × RL / (Rs + RL)
+Rs = (Vc / VRL − 1) × RL
+```
+Concentration is read from **Rs/R0** on the datasheet's log-log chart (Fig. 3). The datasheet defines **R0 as the sensor's resistance in 1000 ppm H2 in clean air** and recommends calibrating the detector at 1000 ppm H2 or LPG. The chart is typical only and every sensor differs, so **calibrate R0 on your own sensor** (or calibrate in clean air and use the chart's "Air" line). The driver gives the voltage, Rs and Rs/R0. It does not invent ppm.
+The datasheet recommends RL about 20 kΩ (10–47 kΩ); clone modules often fit a smaller one (e.g. 1 kΩ, marked 102). Read the SMD resistor on yours and pass `rl=`.
+DO comes from the LM393 comparing AO with the trimmer voltage: turn the trimmer until the DO LED just goes out in clean air.
+
+## Wiring
+| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |
+|---|---|---|---|
+| VCC | 5V / VIN (USB 5 V) | VBUS (pin 40) | 5V (pin 2) |
+| GND | GND | GND | GND |
+| DO | any GPIO, e.g. GPIO25 (through divider) | any GP, e.g. GP2 (through divider) | any GPIO (through divider) |
+| AO | GPIO32–39 (ADC1, through divider) | GP26/27/28 (ADC, through divider) | External ADC (MCP3008 / ADS1115) |
+
+On the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi 4 has no ADC, so use DO alone or add one.
+
+## Using the driver
+```python
+from mq5 import MQ5
+import time
+sensor = MQ5(32, 25, rl=1000, divider=1.0)   # AO GPIO, DO GPIO; divider=1.5 with a 10k/20k divider
+time.sleep(180)                               # warm-up
+sensor.calibrate()                            # R0 = Rs now (in your reference gas or air)
+while True:
+    print('AO=%.2fV Rs=%.0f ohm Rs/R0=%.2f gas=%s' % (sensor.voltage(), sensor.resistance(), sensor.ratio(), sensor.detected()))
+    time.sleep(1)
+```
+`voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V). `detected()` is True when DO is LOW.
+
+## Gotchas
+- **DO is active LOW**: "gas" = 0, "clear" = 1. Some tutorials have this backwards.
+- **Hot and hungry**: the can gets hot, and 160 mA can brown out a weak USB port. It is not a 3.3 V part.
+- **Warm-up drift**: readings creep for minutes after power-on and for a day on a new sensor.
+- **Temperature and humidity** change Rs/R0 noticeably (datasheet Fig. 4): set alarm points with that in mind.
+- **Oxygen**: the datasheet's figures assume 21 % O2; low oxygen changes sensitivity.
+- **Not a safety device**: do not use it as your only gas-leak alarm.
+
+## Datasheet
+https://files.seeedstudio.com/wiki/Grove-Gas_Sensor-MQ5/res/MQ-5.pdf
+
+---
+*Generated by Sparkbench from the datasheet: https://files.seeedstudio.com/wiki/Grove-Gas_Sensor-MQ5/res/MQ-5.pdf. Machine-readable definition: `part.json`.*

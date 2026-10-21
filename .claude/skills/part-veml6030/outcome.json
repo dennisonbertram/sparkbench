@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-veml6030",
+  "board": "SparkFun Ambient Light Sensor - VEML6030 (Qwiic) SEN-15436",
+  "reason": "Check passed on ESP32 and Pico: spec, wiring, design checks, breadboard, simulator, PCB, footprint and LCSC. The header order (GND, 3V3, SDA, SCL, INT) comes from SparkFun's Eagle board file. The driver uses gain 1/8 and 100 ms (0.5376 lx/count, from datasheet rev 1.8 and app note 84367), reads LSB first, and checks the ID register (0x81D4).",
+  "datasheetUrl": "https://www.vishay.com/docs/84366/veml6030.pdf",
+  "breakoutPinoutSource": "https://cdn.sparkfun.com/assets/a/f/c/5/5/SparkFun_Ambient_Light_Sensor_VEML6030_V10.zip (Eagle .brd: J3 pads 1-5 = GND, 3.3V, SDA, SCL, !INT; silkscreen labels GND 3V3 SDA SCL INT) and https://learn.sparkfun.com/tutorials/qwiic-ambient-light-sensor-veml6030-hookup-guide/all",
+  "checkRuns": 1
+}
