@@ -142,3 +142,7 @@ prompt ─▶ planner (offline) or Claude ─▶ DesignSpec ─▶ buildProject:
 - `server` — Vite middleware: Claude copilot, kicad-cli and ngspice endpoints
 
 Part artwork uses [@wokwi/elements](https://github.com/wokwi/wokwi-elements) (MIT). Simulation uses the [MicroPython](https://micropython.org) WebAssembly port (MIT). Internet examples use the free [Open-Meteo](https://open-meteo.com) API (the simulator makes real requests from the browser and falls back to sample data offline).
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party libraries and any driver code adapted from other projects keep their own licences. KiCad and Freerouting are installed separately and are not distributed here.
