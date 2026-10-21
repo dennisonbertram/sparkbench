@@ -55,5 +55,9 @@ print('TAG=%s CARD=%d' % (tag, card))
 - Expect the same tag many times while it is held near the coil; de-duplicate in your code.
 - Ignore frames with a bad checksum (noise or a tag moving out of range).
 
+
+## On a 3.3 V board
+- **TX** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 10 kΩ from TX to the pin, 20 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage.
+
 ## Datasheet
 https://files.seeedstudio.com/wiki/125Khz_RFID_module-UART/res/RDM630-Spec.pdf

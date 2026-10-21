@@ -1,0 +1,71 @@
+{
+ "type": "custom-gas5v-test",
+ "name": "MQ-style gas module test",
+ "mpn": "MQ-TEST",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "analog",
+ "pins": [
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "AO",
+   "role": "io",
+   "fn": "adc",
+   "required": true,
+   "divider": {
+    "top": 10000,
+    "bottom": 20000
+   }
+  }
+ ],
+ "vmin": 4.8,
+ "vmax": 5.2,
+ "currentMa": 150,
+ "priceUsd": 2,
+ "supplierQuery": "MQ-2",
+ "sim": {
+  "kind": "analog-sensor",
+  "outputPin": "AO",
+  "quantity": "AO voltage",
+  "unit": "V",
+  "min": 0,
+  "max": 5,
+  "default": 0.3,
+  "vAtMin": 0,
+  "vAtMax": 5,
+  "rl": 1000
+ },
+ "example": {
+  "code": "from machine import ADC, Pin\nimport time\nadc = ADC(Pin({AO}))\ntry:\n    adc.atten(ADC.ATTN_11DB)\nexcept AttributeError:\n    pass\nRL, T, B, VC = 1000, 10000, 20000, 5.0\nrl_eff = RL * (T + B) / (RL + T + B)  # the divider loads RL\nwhile True:\n    n = 32\n    v = 0\n    for _ in range(n):\n        v += adc.read_uv() / 1e6 if hasattr(adc, 'read_uv') else adc.read_u16() * 3.3 / 65535\n    vao = v / n * (T + B) / B\n    rs = (VC / vao - 1) * rl_eff\n    print('VRL=%.2fV' % (VC * RL / (rs + RL)))\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "reads VRL through the divider",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 4.2
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "VRL=4.20V",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

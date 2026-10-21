@@ -94,11 +94,39 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
       notes.push(`${part.ref ?? part.id}.${pin.name} → ${bp.name}${bp.gpio !== undefined ? ` (GPIO${bp.gpio})` : ''}${analog ? ' — an analog-capable pin' : ''}.`);
     }
   }
-  // External pull-ups the datasheet asks for: a real resistor from the pin to the part's supply.
   let extraParts: Project['parts'] = [];
-  for (const pin of def.pins.filter((p) => p.pullUp)) {
+  const nextWire = () => {
+    while (project.wires.some((w) => w.id === `w${n}`) || wires.some((w) => w.id === `w${n}`)) n++;
+    return `w${n++}`;
+  };
+  // Outputs that swing to a 5 V supply: a resistor divider between the output and the GPIO, so the pin sees ~3.3 V.
+  // (A part that runs from 3.3 V, or whose output level is already fixed below it, needs none.)
+  const divided = new Set<string>();
+  for (const pin of def.pins.filter((p) => p.divider)) {
     const sigWire = wires.find((w) => w.a.part === partId && w.a.pin === pin.name);
-    if (!sigWire) continue;
+    if (!sigWire || !(supply === board.supply5v || spec?.sim.selfPowered)) continue;
+    const { top, bottom } = pin.divider!;
+    let k = 1;
+    while ([...project.parts, ...extraParts].some((x) => x.id === `${partId}_dt${k}` || x.id === `${partId}_db${k}`)) k++;
+    const rt = `${partId}_dt${k}`;
+    const rb = `${partId}_db${k}`;
+    extraParts.push({ id: rt, type: 'resistor', label: `${pin.name} divider (top)`, props: { ohms: top }, x: part.x + 30 * k, y: part.y + 100 });
+    extraParts.push({ id: rb, type: 'resistor', label: `${pin.name} divider (bottom)`, props: { ohms: bottom }, x: part.x + 30 * k + 15, y: part.y + 130 });
+    const gpio = { ...sigWire.b };
+    sigWire.b = { part: rt, pin: '1' };
+    wires.push({ id: nextWire(), a: { part: rt, pin: '2' }, b: gpio, color: sigWire.color });
+    wires.push({ id: nextWire(), a: { part: rb, pin: '1' }, b: { ...gpio }, color: sigWire.color });
+    wires.push({ id: nextWire(), a: { part: rb, pin: '2' }, b: { part: bpart.id, pin: board.gnd }, color: '#1f2328' });
+    divided.add(pin.name);
+    const kohm = (o: number) => (o >= 1000 ? `${+(o / 1000).toFixed(2)} kΩ` : `${o} Ω`);
+    notes.push(`Added a ${kohm(top)} / ${kohm(bottom)} divider on ${pin.name}: it swings to 5 V, and the ${gpio.pin} pin takes 3.3 V at most.`);
+  }
+  // External pull-ups the datasheet asks for: a real resistor from the pin to the part's supply.
+  for (const pin of def.pins.filter((p) => p.pullUp)) {
+    const sigWire0 = wires.find((w) => w.a.part === partId && w.a.pin === pin.name);
+    if (!sigWire0) continue;
+    // Behind a divider the pull-up belongs on the part's side of it.
+    const sigWire = divided.has(pin.name) ? { ...sigWire0, b: { part: partId, pin: pin.name } } : sigWire0;
     let k = 1;
     while ([...project.parts, ...extraParts].some((x) => x.id === `${partId}_pu${k}`)) k++;
     const rid = `${partId}_pu${k}`;
@@ -176,8 +204,8 @@ export function withCustomPart(project: Project, spec: CustomPartSpec, opts: { w
 /** Remove a datasheet/library part (and its wires) from a design. */
 export function withoutCustomPart(project: Project, type: string): Project {
   const ids = new Set(project.parts.filter((p) => p.type === type).map((p) => p.id));
-  // The pull-up and load resistors autowire added for it go too.
-  for (const p of project.parts) if (p.type === 'resistor' && [...ids].some((id) => new RegExp(`^${id}_(pu|rl)\\d+$`).test(p.id))) ids.add(p.id);
+  // The pull-up, load and divider resistors autowire added for it go too.
+  for (const p of project.parts) if (p.type === 'resistor' && [...ids].some((id) => new RegExp(`^${id}_(pu|rl|dt|db)\\d+$`).test(p.id))) ids.add(p.id);
   const spec = project.customParts?.find((c) => c.type === type);
   const files = { ...project.files };
   if (spec?.driver) delete files[spec.driver.filename];

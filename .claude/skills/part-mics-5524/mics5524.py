@@ -15,7 +15,7 @@ from machine import ADC, Pin
 
 
 class MICS5524:
-    def __init__(self, ao, en=None, rl=10000, vc=5.0, divider=1.0, samples=32, vref=3.3):
+    def __init__(self, ao, en=None, rl=10000, vc=5.0, divider=1.0, samples=32, vref=3.3, div=None):
         """ao: GPIO number (or Pin) wired to Ao. en: optional Pin/GPIO for En, only through 5 V logic.
         rl: load resistor (10 kOhm on the Adafruit board). vc: supply voltage on 5V.
         divider: Ao / ADC-pin voltage ratio if you fitted a resistor divider, 1.0 if wired directly."""
@@ -31,6 +31,12 @@ class MICS5524:
         self.samples = samples
         self.vref = vref  # ADC full scale used when read_uv() is not available (e.g. Pico)
         self.r0 = None
+        # A (top, bottom) resistor divider between the output and the ADC pin scales the reading and also loads
+        # the load resistor: RL is then in parallel with top + bottom.
+        self.rl_eff = rl
+        if div:
+            self.divider = (div[0] + div[1]) / div[1]
+            self.rl_eff = rl * (div[0] + div[1]) / (rl + div[0] + div[1])
 
     def heater(self, on):
         """Switch the sensor on (En low) or off (En high). Wait at least a second after switching on."""
@@ -54,7 +60,12 @@ class MICS5524:
         v = self.voltage()
         if v <= 0.001:
             return float('inf')  # no reading: heater off, unpowered or Ao not wired
-        return (self.vc / v - 1) * self.rl
+        return (self.vc / v - 1) * self.rl_eff
+
+    def vrl(self):
+        """The output voltage the datasheet's formula uses, with nothing loading it: Vc * RL / (Rs + RL)."""
+        rs = self.resistance()
+        return 0.0 if rs == float('inf') else self.vc * self.rl / (rs + self.rl)
 
     def calibrate(self, r0=None):
         """Store R0. With no argument, take the current Rs as R0 (in clean air, after warm-up)."""

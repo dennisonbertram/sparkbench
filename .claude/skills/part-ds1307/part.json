@@ -25,14 +25,16 @@
       "role": "io",
       "fn": "i2c.scl",
       "description": "I2C clock, 100 kHz max (pull-up to VCC fitted on the module)",
-      "required": true
+      "required": true,
+      "boardPullUp": 3300
     },
     {
       "name": "SDA",
       "role": "io",
       "fn": "i2c.sda",
       "description": "I2C data (pull-up to VCC fitted on the module)",
-      "required": true
+      "required": true,
+      "boardPullUp": 3300
     },
     {
       "name": "VCC",

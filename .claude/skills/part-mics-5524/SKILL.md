@@ -67,6 +67,11 @@ while True:
 - **Sensitivity drift**: continuous exposure lowers sensitivity. Adafruit suggests running it in clean air for a while to recover.
 - **En polarity**: HIGH = off, LOW/open = on.
 
+
+## On a 3.3 V board
+- **Ao** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 33 kΩ from Ao to the pin, 68 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.49 (the driver's `divider` / `div` argument does this).
+- The divider also loads the board's 10 kΩ load resistor (RL ∥ 101 kΩ); pass `div=(top, bottom)` to the driver so Rs and VRL come out right.
+
 ## Datasheet
 https://cdn-shop.adafruit.com/product-files/3199/MiCS-5524.pdf
 

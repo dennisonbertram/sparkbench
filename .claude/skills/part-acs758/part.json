@@ -24,8 +24,12 @@
       "name": "OU1",
       "role": "io",
       "fn": "adc",
-      "description": "Analog output (the chip's VIOUT): Vout = VCC/2 + 0.040 V/A × I (2.5 V at 0 A with a 5 V supply, 0.5 V at −50 A, 4.5 V at +50 A). Connect to an ADC pin; it exceeds 3.3 V above about +20 A, so use a divider for larger currents.",
-      "required": true
+      "description": "Analog output (the chip's VIOUT): Vout = VCC/2 + 0.040 V/A × I (2.5 V at 0 A with a 5 V supply, 0.5 V at −50 A, 4.5 V at +50 A). Connect to an ADC pin; it exceeds 3.3 V above about +20 A, so use a divider for larger currents. On a 3.3 V board it goes to the ADC pin through a 10 kΩ / 20 kΩ divider (Sparkbench adds it).",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      }
     },
     {
       "name": "OU2",
@@ -78,14 +82,15 @@
     "default": 0,
     "vAtMin": 0.5,
     "vAtMax": 4.5,
-    "registers": {}
+    "registers": {},
+    "outputOhms": 1
   },
   "driver": {
     "filename": "acs758.py",
     "code": "# ACS758 Hall-effect current sensor (Allegro MicroSystems), MicroPython driver.\n# For the ACS758LCB-050B (+/-50 A) on the purple CJMCU-758 / MCU-758 module (header VCC, GND, OU1, OU2).\n# Datasheet (ACS758xCB): VCC 3.0-5.5 V, factory-trimmed at VCC = 5 V, output ratiometric to VCC:\n#   VIOUT(Q) = VCC / 2 at 0 A (bidirectional \"B\" parts), Sens = 40 mV/A (x050B) at VCC = 5 V,\n# so I(A) = (Vout - VCC/2) / (0.040 V/A x VCC/5 V).\n# Unidirectional \"U\" parts instead sit at VIOUT(QUNI) = 0.6 V (x VCC/5) at 0 A: pass zero_frac=0.12.\n# Positive current flows into IP+ and out of IP-.\nfrom machine import ADC, Pin\n\n\nclass ACS758:\n    SENS_050B = 0.040   # V/A at VCC = 5 V\n    SENS_050U = 0.060\n    SENS_100B = 0.020\n    SENS_100U = 0.040\n    SENS_150B = 0.0133\n    SENS_150U = 0.0267\n    SENS_200B = 0.010\n    SENS_200U = 0.020\n\n    def __init__(self, pin, vcc=5.0, sensitivity=SENS_050B, zero_frac=0.5, divider=1.0, samples=64, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to OU1. vcc: the module's supply voltage (ratiometric).\n        zero_frac: 0 A output as a fraction of VCC (0.5 bidirectional, 0.12 unidirectional).\n        divider: Vout / Vadc, e.g. 1.5 for a 10k (top) / 20k (bottom) divider; 1.0 if wired directly.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.sens = sensitivity * vcc / 5.0  # sensitivity scales with VCC (ratiometric)\n        self.zero = vcc * zero_frac          # VIOUT(Q) scales with VCC too\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Averaged sensor output voltage (V) at the OU1 pin.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with NO current flowing: stores the measured 0 A output instead of VCC/2.\"\"\"\n        self.zero = self.voltage()\n        return self.zero\n\n    def current(self):\n        \"\"\"Current in amperes (positive = IP+ to IP-).\"\"\"\n        return (self.voltage() - self.zero) / self.sens\n"
   },
   "example": {
-    "code": "from acs758 import ACS758\nimport time\n\nsensor = ACS758({OU1})\nwhile True:\n    print('I=%.1fA' % sensor.current())\n    time.sleep(1)\n",
+    "code": "from acs758 import ACS758\nimport time\n\nsensor = ACS758({OU1}, divider=1.5)  # 10k/20k divider: OU1 reaches 4.5 V\nwhile True:\n    print('I=%.1fA' % sensor.current())\n    time.sleep(1)\n",
     "test": {
       "id": "reads",
       "title": "Reports the current set on the slider",

@@ -70,6 +70,12 @@ while True:
 - **Hot and hungry**: the can gets hot and the heater draws close to 200 mA. Not a 3.3 V part.
 - **Ozone is toxic**: test with care and never rely on this as the only safety alarm.
 
+
+## On a 3.3 V board
+- **AO** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 33 kΩ from AO to the pin, 68 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.49 (the driver's `divider` / `div` argument does this).
+- The divider also loads the board's 10 kΩ load resistor (RL ∥ 101 kΩ); pass `div=(top, bottom)` to the driver so Rs and VRL come out right.
+- DO is pulled up to the module's 5 V, so Sparkbench leaves it unconnected and the example compares the AO reading in code. If you wire it, use a level shifter (or the divider above) and check it still reads high.
+
 ## Datasheet
 https://www.winsen-sensor.com/d/files/manual/mq131-h.pdf
 

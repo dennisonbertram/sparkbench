@@ -71,6 +71,10 @@ The driver averages 64 samples. It uses calibrated `read_uv()` where the port ha
 - **Magnetic fields:** keep magnets, motors and the return wire away from the chip.
 - **Wrong direction?** Swap the wires on IP+ / IP− (the sign flips).
 
+
+## On a 3.3 V board
+- **OU1** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 10 kΩ from OU1 to the pin, 20 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.5 (the driver's `divider` / `div` argument does this).
+
 ## Datasheet
 https://www.allegromicro.com/-/media/files/datasheets/acs758-datasheet.pdf
 

@@ -1,0 +1,121 @@
+{
+  "type": "custom-yf-s201",
+  "name": "YF-S201 water flow sensor",
+  "mpn": "YF-S201",
+  "category": "sensor",
+  "description": "1/2\" (G1/2) inline Hall-effect water flow meter: a magnetic turbine passes a Hall sensor, giving a pulse train on OUT whose frequency is F (Hz) = 7.5 x Q (L/min), about 450 pulses per litre, for 1-30 L/min (+-10 %), duty 50 % +-10 %. OUT only pulls low; with a pull-up to the 5 V supply its high level is > 4.5 V, so on a 3.3 V board it goes to the GPIO through a 10 kOhm / 20 kOhm divider (Sparkbench adds a 4.7 kOhm pull-up to 5 V and the divider, which keeps the pin at or below 3.3 V even if a sensor has its own pull-up or a push-pull output). Runs on 5-18 V (min 4.5 V), 15 mA. Sold as: YF-S201 1/2\" Hall-effect water flow sensor (black plastic body, 3-wire lead red VCC, black GND, yellow OUT), the generic part sold by Seeed Studio, Robu and many hobby shops.",
+  "eli5": "A little water wheel in a pipe: every time water pushes it round a bit, it sends a blip, so counting blips tells you how fast water flows and how much has passed.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Red wire: supply 4.5-18 V (use the board's 5 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black wire: ground",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Yellow wire: pulse output, 7.5 Hz per L/min; pulls low only. Pulled up to 5 V (4.7 kOhm) and fed to the GPIO through a 10 kOhm / 20 kOhm divider: about 2.9 V high at the pin",
+      "required": true,
+      "pullUp": 4700,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      }
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 18,
+  "currentMa": 15,
+  "datasheetUrl": "https://wiki.seeedstudio.com/G1_and_2_inch_Water_Flow_Sensor/",
+  "sources": [
+    "https://wiki.seeedstudio.com/G1_and_2_inch_Water_Flow_Sensor/",
+    "https://fabacademy.org/2025/labs/dilijan/students/zhirayr-ghukasyan/files/Week09/YF-S201.PDF",
+    "https://components101.com/sensors/yf-s201-water-flow-measurement-sensor",
+    "https://wiki.dfrobot.com/Water_Flow_Sensor_-_1_2__SKU__SEN0217"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "YF-S201 water flow sensor 1/2 inch hall effect",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Lead order: red VCC, black GND, yellow OUT.",
+    "Power it from 5 V (4.5-18 V); 3.3 V is below its minimum.",
+    "Pull OUT up to 5 V with 4.7 kOhm, then take it to the GPIO through a divider: 10 kOhm from OUT to the GPIO, 20 kOhm from the GPIO to GND (about 2.9 V high). Never wire OUT straight to a 3.3 V GPIO with a 5 V pull-up.",
+    "Fit it so water flows in the direction of the arrow on the body.",
+    "Q (L/min) = pulses per second / 7.5; volume (L) = pulses / 450. Calibrate for better than +-10 %."
+  ],
+  "keywords": [
+    "yf-s201",
+    "yfs201",
+    "water flow",
+    "flow meter",
+    "flow sensor",
+    "hall",
+    "turbine",
+    "litres",
+    "irrigation"
+  ],
+  "sim": {
+    "kind": "pulse-sensor",
+    "outputPin": "OUT",
+    "quantity": "Water flow",
+    "unit": "L/min",
+    "min": 0,
+    "max": 30,
+    "default": 0,
+    "pulse": {
+      "hzPerUnit": 7.5,
+      "duty": 0.5,
+      "openDrain": true
+    }
+  },
+  "driver": {
+    "filename": "yfs201.py",
+    "code": "# YF-S201 1/2\" Hall-effect water flow sensor, MicroPython driver.\n# A magnet on the turbine rotor passes a Hall sensor; the yellow OUT wire gives one\n# pulse per step of the rotor. Datasheet: F (Hz) = 7.5 x Q (L/min), i.e. 450 pulses\n# per litre, duty 50 % +-10 %. OUT only pulls low and needs a pull-up; Seeed specifies a high\n# level > 4.5 V with a 5 V pull-up. On a 3.3 V board pull it up to 5 V (4.7 kOhm) and take it to the\n# GPIO through a divider (10 kOhm OUT -> pin, 20 kOhm pin -> GND): about 2.9 V high, never above 3.3 V.\nfrom machine import Pin\nimport time\n\nHZ_PER_LPM = 7.5          # datasheet: F = 7.5 * Q\nPULSES_PER_LITRE = 450    # 7.5 Hz per L/min * 60 s\n\n\nclass YFS201:\n    def __init__(self, pin, pull_up=False, k=HZ_PER_LPM):\n        \"\"\"pin: GPIO number (or Pin) wired to OUT. pull_up: also enable the GPIO's\n        internal pull-up (only when OUT is wired straight to the pin with no pull-up of its own).\n        k: pulses per second per L/min (7.5 nominal, +-10 %; calibrate by filling\n        a known volume and set k = pulses / litres / 60).\"\"\"\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.k = k\n        self._count = 0\n        self.pin.irq(handler=self._edge, trigger=Pin.IRQ_RISING)\n\n    def _edge(self, pin):\n        self._count += 1\n\n    def pulses(self):\n        \"\"\"Pulses counted since start or the last reset().\"\"\"\n        return self._count\n\n    def reset(self):\n        self._count = 0\n\n    def litres(self):\n        \"\"\"Total volume since start / reset(), in litres.\"\"\"\n        return self._count / (self.k * 60)\n\n    def flow(self, window_ms=1000):\n        \"\"\"Count pulses for window_ms and return the flow rate in L/min (Q = F / 7.5).\"\"\"\n        start = self._count\n        t0 = time.ticks_ms()\n        time.sleep_ms(window_ms)\n        n = self._count - start\n        dt = time.ticks_diff(time.ticks_ms(), t0) / 1000\n        return n / dt / self.k\n"
+  },
+  "skill": "---\nname: part-yf-s201\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the YF-S201 1/2\" Hall-effect water flow sensor (pulse output, 7.5 Hz per L/min). Use when designing, wiring, simulating or writing code for a YF-S201 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# YF-S201 water flow sensor (YF-S201)\n\n## Overview\nThe **YF-S201** is a 1/2\" (G1/2) inline water flow meter: water spins a small turbine with a magnet, and a Hall-effect sensor gives one pulse per step of the rotor. The pulse frequency is proportional to flow: **F (Hz) = 7.5 × Q (L/min)**, about **450 pulses per litre**, for 1–30 L/min (±10 %). Hobbyists buy the black plastic YF-S201 body with a three-wire lead (red, black, yellow).\n\n## Pinout (lead order: red, black, yellow)\n| Pin | Wire | Function |\n|---|---|---|\n| VCC | Red | Supply, 4.5–18 V (use 5 V) |\n| GND | Black | Ground |\n| OUT | Yellow | Pulse output (open collector): pull-up to 5 V, then a divider to the GPIO |\n\n## Electrical limits\n- Supply: 5–18 V DC (tested down to 4.5 V); some sellers quote up to 24 V, stay at or below 18 V.\n- Current: 15 mA max at 5 V. Output load: 10 mA or less.\n- Output: high > 4.5 V and low < 0.5 V with a 5 V supply and pull-up; duty 50 % ±10 %; rise 0.04 µs, fall 0.18 µs.\n- Flow 1–30 L/min, water pressure ≤ 2.0 MPa, -25 to +80 °C.\n\n## Interface details\n- No protocol: count rising edges on OUT with an interrupt.\n- Q (L/min) = pulses per second / 7.5. Volume (L) = pulses / 450.\n- The Hall output only pulls low, and its rated high level (> 4.5 V) is measured with a pull-up to 5 V. On an ESP32/Pico pull OUT up to 5 V with **4.7 kΩ** and feed the GPIO through a **10 kΩ / 20 kΩ divider** (10 kΩ OUT → pin, 20 kΩ pin → GND): about 2.9 V high. The divider keeps the pin at or below 3.3 V even if your sensor has its own pull-up or a push-pull output, so never wire OUT straight to a 3.3 V GPIO.\n- The 7.5 factor is nominal (±10 %, varies with flow, pressure and orientation). Calibrate by filling a known volume.\n\n## Wiring\n- ESP32: red → 5V (VIN), black → GND, yellow → 4.7 kΩ to 5V and 10 kΩ to GPIO4, 20 kΩ from GPIO4 to GND.\n- Pico: red → VBUS (5 V), black → GND, yellow → 4.7 kΩ to VBUS and 10 kΩ to GP15, 20 kΩ from GP15 to GND.\n- Raspberry Pi 4: red → pin 2 (5 V), black → pin 6, yellow → 4.7 kΩ to pin 2 and 10 kΩ to GPIO17 (pin 11), 20 kΩ from GPIO17 to GND.\n\n## Using the driver\n```python\nfrom yfs201 import YFS201\nmeter = YFS201(4)\nwhile True:\n    print('FLOW=%.1f L/min TOTAL=%.2f L' % (meter.flow(1000), meter.litres()))\n```\n\n## Gotchas\n- Reads 0 with water flowing: check the arrow on the body (flow direction) and that the pull-up is fitted.\n- Below about 1 L/min the turbine may not turn at all.\n- Readings are only ±10 %: calibrate k = pulses / litres / 60 for your installation.\n- Do not run it from 3.3 V: the minimum supply is 4.5 V.\n\n## Datasheet\nhttps://wiki.seeedstudio.com/G1_and_2_inch_Water_Flow_Sensor/\n",
+  "example": {
+    "code": "from yfs201 import YFS201\n\nmeter = YFS201({OUT})  # OUT: 4.7 kOhm pull-up to 5 V, then a 10k/20k divider to the pin\nwhile True:\n    q = meter.flow(2000)  # count pulses for 2 s, Q = F / 7.5\n    print('FLOW=%d L/min' % round(q))\n",
+    "test": {
+      "id": "flow",
+      "title": "Reports 16 L/min of water flow",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 16
+        },
+        {
+          "kind": "wait",
+          "ms": 2500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "FLOW=16 L/min",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware. Output model revised after a signal-level review: open collector pulled up to 5 V, with a divider into the 3.3 V pin.",
+    "checkedAt": "2026-10-21T15:43:05.540Z",
+    "verifiedSources": [
+      "https://www.seeedstudio.com/G1-1-Water-Flow-Sensor-p-1345.html",
+      "https://www.adafruit.com/product/828"
+    ]
+  }
+}

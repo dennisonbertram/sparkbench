@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "4 pins wired; MQ-6 LPG / butane gas sensor module needs at least 4.8 V, so it is powered from 5 V. U2.DO → D25 (GPIO25). U2.AO → D32 (GPIO32) — an analog-capable pin. Added the mq6.py driver written from the datasheet."
+        "detail": "3 pins wired; MQ-6 LPG / butane gas sensor module needs at least 4.8 V, so it is powered from 5 V. U2.AO → D32 (GPIO32) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on AO: it swings to 5 V, and the D32 pin takes 3.3 V at most. Added the mq6.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,17 +22,17 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "11 build steps"
+        "detail": "15 build steps"
       },
       {
         "stage": "simulator",
         "status": "pass",
-        "detail": "Reports the AO voltage and the DO alarm set on the controls: passes"
+        "detail": "Reports the AO voltage set on the slider (through the divider): passes"
       },
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×66.5 mm, DRC clean"
+        "detail": "46×80 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "4 pins wired; MQ-6 LPG / butane gas sensor module needs at least 4.8 V, so it is powered from 5 V. U2.DO → GP2 (GPIO2). U2.AO → GP28 (GPIO28) — an analog-capable pin. Added the mq6.py driver written from the datasheet."
+        "detail": "3 pins wired; MQ-6 LPG / butane gas sensor module needs at least 4.8 V, so it is powered from 5 V. U2.AO → GP28 (GPIO28) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on AO: it swings to 5 V, and the GP28 pin takes 3.3 V at most. Added the mq6.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,12 +54,12 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "11 build steps"
+        "detail": "16 build steps"
       },
       {
         "stage": "simulator",
         "status": "pass",
-        "detail": "Reports the AO voltage and the DO alarm set on the controls: passes"
+        "detail": "Reports the AO voltage set on the slider (through the divider): passes"
       }
     ]
   },
@@ -75,5 +75,5 @@
       "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
     }
   ],
-  "checkedAt": "2026-10-21T09:06:21.007Z"
+  "checkedAt": "2026-10-21T16:26:03.102Z"
 }

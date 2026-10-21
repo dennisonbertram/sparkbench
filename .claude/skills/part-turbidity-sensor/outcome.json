@@ -1,9 +1,0 @@
-{
-  "status": "pass",
-  "type": "custom-turbidity-sensor",
-  "board": "DFRobot Gravity: Analog Turbidity Sensor (SEN0189) adapter board V1.0 with the TS-300B-style probe, 3-pin Gravity header (A/D, VCC, GND), and its common clones",
-  "reason": "The check passed on the first run: ESP32 and Pico wiring, design checks, breadboard, the simulator example (3.00 V reads as 2790 NTU) and the circuit board. A/D is modelled as the 0-4.5 V analog output, and the driver applies DFRobot's curve NTU = -1120.4V^2 + 5742.3V - 4352.9 over its valid 2.5-4.2 V range. The skill warns that the output is about 4.1 V in clear water, so a 3.3 V board needs a divider.",
-  "datasheetUrl": "https://wiki.dfrobot.com/sen0189/",
-  "breakoutPinoutSource": "https://dfimg.dfrobot.com/99f64da1591d41a88712e46e2feb7a6b/wikien/8bbafaaa236dbfdd65659663a8ca5815.png",
-  "checkRuns": 1
-}

@@ -51,7 +51,7 @@ On the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry
 ```python
 from mq3 import MQ3
 import time
-sensor = MQ3(32, 25, rl=200000, divider=1.0)  # AO GPIO, DO GPIO; divider=1.5 with a 10k/20k divider
+sensor = MQ3(32, 25, rl=200000, div=(100000, 200000))  # AO GPIO, DO GPIO; div = the 100k/200k divider on AO
 time.sleep(120)                                # warm-up
 sensor.calibrate()                             # R0 = Rs now (in your reference condition)
 while True:
@@ -67,6 +67,12 @@ while True:
 - **Temperature and humidity** shift Rs/R0 (datasheet Fig. 4): set alarm points with that in mind.
 - **Not a legal breathalyser**: do not use it to decide whether someone may drive.
 - Also responds to benzine/petrol vapour, hexane and, weakly, LPG and CO (datasheet Fig. 2).
+
+
+## On a 3.3 V board
+- **AO** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 100 kΩ from AO to the pin, 200 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.5 (the driver's `divider` / `div` argument does this).
+- The divider also loads the board's 200 kΩ load resistor (RL ∥ 300 kΩ); pass `div=(top, bottom)` to the driver so Rs and VRL come out right.
+- DO is pulled up to the module's 5 V, so Sparkbench leaves it unconnected and the example compares the AO reading in code. If you wire it, use a level shifter (or the divider above) and check it still reads high.
 
 ## Datasheet
 https://www.sparkfun.com/datasheets/Sensors/MQ-3.pdf

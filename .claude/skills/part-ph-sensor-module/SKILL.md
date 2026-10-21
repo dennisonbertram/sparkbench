@@ -64,5 +64,9 @@ probe.calibrate_two_point(7.00, 2.50, 4.00, 3.04)   # your measured buffer volta
 - To is not a calibrated temperature reading; use a waterproof DS18B20 for temperature compensation.
 - Probes wear out (about 1–3 years); a slope well below 0.15 V/pH after calibration means replace the probe.
 
+
+## On a 3.3 V board
+- **Po** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 10 kΩ from Po to the pin, 20 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.5 (the driver's `divider` / `div` argument does this).
+
 ## Datasheet
 https://thinkrobotics.com/products/ph4502c-ph-meter (vendor specification; no manufacturer datasheet is published for this board)

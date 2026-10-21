@@ -9,7 +9,7 @@ export type CustomInterface = 'i2c' | 'spi' | 'analog' | 'digital-in' | 'digital
 export interface CustomSim {
   /**
    * analog-sensor: drives `outputPin` with a voltage set by a slider
-   * digital-sensor: drives `outputPin` high/low with a toggle
+   * digital-sensor: drives `outputPin` high/low with a toggle (openDrain: pulls it low only)
    * actuator: shows "on" when `inputPin` is driven high
    * i2c-device: answers at its address with a register map
    * onewire-temp: a DS18x20-family thermometer on the 1-Wire bus (MicroPython's onewire + ds18x20 modules)
@@ -140,6 +140,9 @@ export interface CustomSim {
   vAtMax?: number;
   /** digital-sensor: output level when active. */
   activeHigh?: boolean;
+  /** digital-sensor: the output only pulls low (open collector / open drain), so its high level comes from a pull-up
+   * (the GPIO's internal one, pin pullUp, or the module's own pin boardPullUp). */
+  openDrain?: boolean;
   /** i2c-device: fixed register contents, e.g. { "0xD0": 96 } (chip id). */
   registers?: Record<string, number>;
   /** i2c-device: where the slider's measured value appears: raw = round((value - offset) / scale). */
@@ -158,6 +161,12 @@ export interface CustomSim {
   /** analog-sensor with no supply pin whose output comes from outside (a passive divider fed by the measured voltage,
    * a piezo disc): the output is referenced to GND and NOT clamped to any supply, so overvoltage on a pin shows up. */
   selfPowered?: boolean;
+  /** analog-sensor: the output's source resistance in ohms (default 1000): a few ohms for an op-amp or buffered output,
+   * the divider's Thevenin resistance for a passive divider (R1·R2/(R1+R2)). It matters once a divider or load hangs on it. */
+  outputOhms?: number;
+  /** analog-sensor whose output is the voltage across a load resistor rl under a sensing resistance Rs (MQ gas modules:
+   * Vout = Vcc·rl/(Rs + rl)): the output's source resistance is then rl·(1 − Vout/Vcc), exactly as on the board. */
+  rl?: number;
   /** analog-sensor with more than one output (e.g. a joystick's X and Y). */
   analogOutputs?: { pin: string; control: string; vAtMin: number; vAtMax: number }[];
   /** On/off outputs driven by toggles (a joystick's button, an encoder's A/B, a gas module's DO). */
@@ -483,9 +492,22 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (p.supply.currentMa !== undefined && !(p.supply.currentMa > 0 && p.supply.currentMa <= 20000)) errs.push(`supply.currentMa on ${p.name} must be 0–20000 mA`);
   }
   for (const p of spec.pins) if (p.pullUp !== undefined && !(p.pullUp >= 100 && p.pullUp <= 100000)) errs.push(`pull-up on ${p.name} must be 100 Ω – 100 kΩ`);
+  for (const p of spec.pins) {
+    if (p.boardPullUp !== undefined && !(p.boardPullUp >= 100 && p.boardPullUp <= 10e6)) errs.push(`boardPullUp on ${p.name} must be 100 Ω – 10 MΩ`);
+    if (p.levelV !== undefined && !(p.levelV > 0 && p.levelV <= 60)) errs.push(`levelV on ${p.name} must be a voltage (0–60 V)`);
+    if (!p.divider) continue;
+    const { top, bottom } = p.divider;
+    if (p.role !== 'io' && p.role !== 'passive') errs.push(`divider on ${p.name}: only a signal pin can have a divider`);
+    if (!(top >= 100 && top <= 1e6 && bottom >= 100 && bottom <= 1e6)) errs.push(`divider on ${p.name} needs top and bottom resistors of 100 Ω – 1 MΩ`);
+    else if (bottom / (top + bottom) > 0.75 || bottom / (top + bottom) < 0.5) errs.push(`divider on ${p.name} should bring 5 V down to about 3.3 V (bottom / (top + bottom) between 0.5 and 0.75)`);
+  }
   if (s.kind === 'oled-display' && s.bus !== 'spi' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress (or bus: "spi")');
   if (s.kind === 'oled-display' && s.bus === 'spi' && !(['spi.sck', 'spi.mosi', 'tft.dc'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('an SPI OLED needs pins with fn spi.sck (D0), spi.mosi (D1) and tft.dc (DC), plus spi.cs and tft.reset if the module has them');
   if (s.bus !== undefined && s.kind !== 'oled-display') errs.push('bus is for oled-display');
+  if ((s.outputOhms !== undefined || s.rl !== undefined) && s.kind !== 'analog-sensor') errs.push('outputOhms and rl are for analog-sensor');
+  if (s.outputOhms !== undefined && !(s.outputOhms >= 0.1 && s.outputOhms <= 1e6)) errs.push('outputOhms must be 0.1 Ω – 1 MΩ');
+  if (s.rl !== undefined && !(s.rl >= 10 && s.rl <= 1e7)) errs.push('rl must be 10 Ω – 10 MΩ');
+  if (s.openDrain && s.kind !== 'digital-sensor') errs.push('openDrain is for digital-sensor (pulse-sensor has pulse.openDrain)');
   if (s.kind === 'char-lcd') {
     if (spec.i2cAddress === undefined) errs.push('char-lcd needs i2cAddress (its backpack, e.g. 0x27)');
     if (!s.lcd || ![8, 16, 20, 24, 40].includes(s.lcd.cols) || ![1, 2, 4].includes(s.lcd.rows)) errs.push('char-lcd needs lcd: { cols: 16 or 20 (8/24/40), rows: 1, 2 or 4 }');

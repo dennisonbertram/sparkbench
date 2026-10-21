@@ -10,7 +10,7 @@ import time
 
 
 class PiezoVibration:
-    def __init__(self, pin, vref=3.3):
+    def __init__(self, pin, vref=3.3, divider=1.0):
         """pin: GPIO number (or Pin object) wired to the module's Analog pin.
         vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico)."""
         self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)
@@ -19,12 +19,13 @@ class PiezoVibration:
         except AttributeError:
             pass
         self.vref = vref
+        self.divider = divider  # Analog-pin voltage / ADC-pin voltage if a resistor divider is fitted
 
     def voltage(self):
         """One reading of the Analog pin in volts (0 V at rest)."""
         if hasattr(self.adc, 'read_uv'):
-            return self.adc.read_uv() / 1e6
-        return self.adc.read_u16() * self.vref / 65535
+            return self.adc.read_uv() / 1e6 * self.divider
+        return self.adc.read_u16() * self.vref / 65535 * self.divider
 
     def peak(self, window_ms=50):
         """Highest Analog voltage seen during window_ms: the strength of the latest knock/vibration."""

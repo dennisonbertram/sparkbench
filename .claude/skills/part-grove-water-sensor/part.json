@@ -13,7 +13,8 @@
       "role": "io",
       "fn": "digital-in",
       "required": true,
-      "description": "Digital output (Grove pin 1, yellow wire): HIGH while dry (1 MOhm pull-up to VCC), LOW when water bridges the traces. Read it as a plain input with no internal pull-up/pull-down."
+      "description": "Digital output (Grove pin 1, yellow wire): HIGH while dry (1 MOhm pull-up to VCC), LOW when water bridges the traces. Read it as a plain input with no internal pull-up/pull-down.",
+      "boardPullUp": 1000000
     },
     {
       "name": "NC",
@@ -73,7 +74,8 @@
     "kind": "digital-sensor",
     "outputPin": "SIG",
     "quantity": "Water on the traces",
-    "activeHigh": false
+    "activeHigh": false,
+    "openDrain": true
   },
   "driver": {
     "filename": "grove_water_sensor.py",

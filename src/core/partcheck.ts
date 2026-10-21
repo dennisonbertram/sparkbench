@@ -58,6 +58,15 @@ export function pinNumbers(project: Project): Record<string, number> {
     const g = boardPin(board, brd.pin)?.gpio;
     if (g !== undefined) out[dut.pin.toUpperCase().replace(/[^A-Z0-9]/g, '_')] = g;
   }
+  // A pin behind a level-shifting divider: part pin → top resistor → board pin.
+  const ends = (part: string, pin: string) => project.wires.flatMap((w) => (w.a.part === part && w.a.pin === pin ? [w.b] : w.b.part === part && w.b.pin === pin ? [w.a] : []));
+  for (const w of project.wires) {
+    const [dut, r] = w.a.part === 'dut' ? [w.a, w.b] : w.b.part === 'dut' ? [w.b, w.a] : [null, null];
+    if (!dut || !r || !/_dt\d+$/.test(r.part)) continue;
+    const brd = ends(r.part, r.pin === '1' ? '2' : '1').find((e) => e.part === 'board');
+    const g = brd && boardPin(board, brd.pin)?.gpio;
+    if (g !== undefined) out[dut.pin.toUpperCase().replace(/[^A-Z0-9]/g, '_')] ??= g;
+  }
   // The UART that owns the board RX pin wired to the part's TX (ESP32: UART2 can use any pins).
   const spec = project.customParts?.find((c) => project.parts.some((p) => p.id === 'dut' && p.type === c.type));
   const txName = spec?.pins.find((p) => p.fn === 'uart.tx')?.name.toUpperCase().replace(/[^A-Z0-9]/g, '_');

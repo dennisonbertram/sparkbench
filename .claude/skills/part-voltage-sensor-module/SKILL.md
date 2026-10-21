@@ -66,6 +66,10 @@ while True:
 - **ESP32 ADC:** non-linear near 0 V and above ~2.5 V; use ADC1 pins (ADC2 fails with Wi-Fi on). `read_uv()` is calibrated and preferred.
 - **High source impedance (6 kΩ at S):** fine for ESP32/Pico, but averaging several samples reduces noise.
 
+
+## On a 3.3 V board
+- **S** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 10 kΩ from S to the pin, 20 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.5 (the driver's `divider` / `div` argument does this).
+
 ## Datasheet
 No chip: a passive 30 kΩ / 7.5 kΩ divider. Reference: https://components101.com/sensors/voltage-sensor-module
 

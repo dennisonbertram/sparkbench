@@ -13,7 +13,8 @@
       "role": "io",
       "fn": "uart.tx",
       "description": "UART TX from the module (256000 baud 8N1, 3.3 V level): target and distance frames. Optional (pin 1)",
-      "required": false
+      "required": false,
+      "levelV": 3.3
     },
     {
       "name": "RX",
@@ -26,7 +27,8 @@
       "name": "OUT",
       "role": "io",
       "description": "Target state output: HIGH (3.3 V) when a human is present, LOW when not. Push-pull, safe for 3.3 V GPIOs, no pull-up needed (pin 3)",
-      "required": true
+      "required": true,
+      "levelV": 3.3
     },
     {
       "name": "GND",

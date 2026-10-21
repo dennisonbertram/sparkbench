@@ -72,6 +72,10 @@ The driver averages 32 samples. It uses calibrated `read_uv()` where the port ha
 - **ESP32 ADC** is nonlinear near the ends of its range; use ADC1 pins (ADC2 stops working with Wi-Fi on).
 - **Bending the leads** at the package body can crack the unibody seal; bend them a few mm away.
 
+
+## On a 3.3 V board
+- **VOUT** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 33 kΩ from VOUT to the pin, 68 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.49 (the driver's `divider` / `div` argument does this).
+
 ## Datasheet
 https://ece-classes.usc.edu/ee459/library/datasheets/MPX5010.pdf (NXP/Freescale MPX5010 Rev 13)
 

@@ -12,8 +12,12 @@
       "name": "S",
       "role": "io",
       "fn": "adc",
-      "description": "Analog output, Vin / 5 (header pin 1). Wire to an ADC pin.",
-      "required": true
+      "description": "Analog output, Vin / 5 (header pin 1). Wire to an ADC pin. On a 3.3 V board it goes to the ADC pin through a 10 kΩ / 20 kΩ divider (Sparkbench adds it).",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      }
     },
     {
       "name": "+",
@@ -64,14 +68,15 @@
     "max": 25,
     "default": 5,
     "vAtMin": 0,
-    "vAtMax": 5
+    "vAtMax": 5,
+    "outputOhms": 6000
   },
   "driver": {
     "filename": "voltsense.py",
-    "code": "# 0-25 V voltage sensor module (5:1 resistive divider), MicroPython driver.\n# The module is just two resistors: R1 = 30 kOhm from the VCC screw terminal to S and\n# R2 = 7.5 kOhm from S to GND. So\n#   V(S)  = Vin * R2 / (R1 + R2) = Vin / 5\n#   Vin   = V(S) * (R1 + R2) / R2 = 5 * V(S)\n# The \"+\" header pin is not connected; \"-\" is ground, shared by the measured source and the MCU.\n# On a 3.3 V board the ADC limits what you can measure: Vin max = 5 x the ADC's full scale\n# (about 15.5 V on an ESP32 with 11 dB attenuation, 16.5 V on a Pico). Above that S exceeds the\n# ADC range and can damage the pin.\nfrom machine import ADC, Pin\n\n\nclass VoltageSensor:\n    def __init__(self, pin, r1=30000, r2=7500, vref=3.3, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: widest input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.ratio = (r1 + r2) / r2  # 5.0 for 30k / 7.5k\n        self.vref = vref  # ADC reference for ports without read_uv() (Pico: the 3.3 V rail)\n        self.samples = samples\n\n    def sense_volts(self):\n        \"\"\"Average several samples and return the voltage on the S pin, in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def volts(self):\n        \"\"\"The measured voltage across the VCC/GND screw terminals, in volts.\"\"\"\n        return self.sense_volts() * self.ratio\n"
+    "code": "# 0-25 V voltage sensor module (5:1 resistive divider), MicroPython driver.\n# The module is just two resistors: R1 = 30 kOhm from the VCC screw terminal to S and\n# R2 = 7.5 kOhm from S to GND. So\n#   V(S)  = Vin * R2 / (R1 + R2) = Vin / 5\n#   Vin   = V(S) * (R1 + R2) / R2 = 5 * V(S)\n# The \"+\" header pin is not connected; \"-\" is ground, shared by the measured source and the MCU.\n# On a 3.3 V board the ADC limits what you can measure: Vin max = 5 x the ADC's full scale\n# (about 15.5 V on an ESP32 with 11 dB attenuation, 16.5 V on a Pico). Above that S exceeds the\n# ADC range and can damage the pin.\nfrom machine import ADC, Pin\n\n\nclass VoltageSensor:\n    def __init__(self, pin, r1=30000, r2=7500, vref=3.3, samples=16, div=None):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: widest input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.ratio = (r1 + r2) / r2  # 5.0 for 30k / 7.5k\n        if div:\n            # A (top, bottom) divider from S to the ADC pin sits in parallel with R2 and scales the ADC reading.\n            r2l = r2 * (div[0] + div[1]) / (r2 + div[0] + div[1])\n            self.ratio = (r1 + r2l) / r2l * (div[0] + div[1]) / div[1]\n        self.vref = vref  # ADC reference for ports without read_uv() (Pico: the 3.3 V rail)\n        self.samples = samples\n\n    def sense_volts(self):\n        \"\"\"Average several samples and return the voltage on the S pin, in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def volts(self):\n        \"\"\"The measured voltage across the VCC/GND screw terminals, in volts.\"\"\"\n        return self.sense_volts() * self.ratio\n"
   },
   "example": {
-    "code": "from voltsense import VoltageSensor\nimport time\n\nvs = VoltageSensor({S})\nwhile True:\n    print('V=%.1f' % vs.volts())\n    time.sleep(0.5)\n",
+    "code": "from voltsense import VoltageSensor\nimport time\n\nvs = VoltageSensor({S}, div=(10000, 20000))  # S reaches 5 V at 25 V in\nwhile True:\n    print('V=%.1f' % vs.volts())\n    time.sleep(0.5)\n",
     "test": {
       "id": "reads",
       "title": "Reports the voltage on the screw terminal",

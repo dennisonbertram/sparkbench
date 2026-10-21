@@ -13,7 +13,11 @@
       "role": "io",
       "fn": "uart.tx",
       "description": "P1 pin 1: UART data out, 9600 baud 8N1, 5 V TTL level (use a divider for 3.3 V GPIOs)",
-      "required": true
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      }
     },
     {
       "name": "RX",

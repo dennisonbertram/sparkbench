@@ -28,6 +28,13 @@ export interface PinDef {
   /** A power pin fed from a separate supply, not the board (a motor driver's VMOT, a solenoid's V+): the volts it
    * accepts and the current it draws. Sparkbench wires it to an external DC supply with its − joined to GND. */
   supply?: { vmin: number; vmax: number; currentMa?: number };
+  /** An output whose high level is fixed by the module (e.g. 3.3 V from its own regulator), not the part's supply. */
+  levelV?: number;
+  /** An output that swings above the board's 3.3 V when the part runs from 5 V: Sparkbench puts this resistor divider
+   * between the output and the GPIO (top: output → pin, bottom: pin → GND), so the pin sees about 3.3 V. */
+  divider?: { top: number; bottom: number };
+  /** The module itself pulls this line up to its own supply (ohms), e.g. the 4.7 kΩ I2C pull-ups on an LCD backpack. */
+  boardPullUp?: number;
 }
 
 export interface PropDef {

@@ -5,6 +5,7 @@ import { partDef } from './parts';
 import { boardFor, boardPin, type BoardDef, type BoardPin, type Cap } from './boards';
 import { buildNets, boardPart, pinKey } from './netlist';
 import { ElectricalModel } from './circuit';
+import { customSpec, type CustomPartSpec } from './customParts';
 
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 
@@ -767,46 +768,89 @@ function checkSignalLevels(c: Ctx) {
   if (!b || !c.boardId) return;
   const limit = b.logicV + 0.3;
   // Simulate module outputs at their "high" level with all GPIOs floating, then look at each GPIO's voltage.
-  const sources: { part: PartInstance; pin: string; push: boolean }[] = [];
+  // kind: 'push' = driven high (error), 'analog' = a voltage that can rise above the pin's limit (error),
+  // 'pullup' = a resistor to the module's supply (warning: weak, but still above the limit).
+  const sources: { part: PartInstance; pin: string; kind: 'push' | 'analog' | 'pullup'; custom?: boolean }[] = [];
   for (const part of c.project.parts) {
-    if (part.type === 'hcsr04') sources.push({ part, pin: 'ECHO', push: true });
-    if (['ssd1306', 'lcd1602', 'mpu6050'].includes(part.type)) sources.push({ part, pin: 'SDA', push: false }, { part, pin: 'SCL', push: false });
+    if (part.type === 'hcsr04') sources.push({ part, pin: 'ECHO', kind: 'push' });
+    if (['ssd1306', 'lcd1602', 'mpu6050'].includes(part.type)) sources.push({ part, pin: 'SDA', kind: 'pullup' }, { part, pin: 'SCL', kind: 'pullup' });
+    const cs = customSpec(part.type);
+    if (cs) for (const o of customOutputs(cs)) sources.push({ part, ...o, custom: true });
   }
   if (!sources.length) return;
   let volts = new Map<number, number>();
   if (m) {
-    try {
-      for (const s of sources) if (s.push) m.setModuleOutput(s.part.id, 'echo', Math.max(0, m.moduleSupply(s.part.id)));
+    const read = () => {
       for (const p of b.pins) if (p.gpio !== undefined) volts.set(p.gpio, m.gpioVoltage(p.gpio));
+    };
+    const hc = sources.filter((s) => s.part.type === 'hcsr04');
+    try {
+      for (const s of hc) m.setModuleOutput(s.part.id, 'echo', Math.max(0, m.moduleSupply(s.part.id)));
+      m.withOutputsHigh([...new Set(sources.filter((s) => s.custom).map((s) => s.part.id))], read);
     } catch {
       volts = new Map();
     } finally {
-      for (const s of sources) if (s.push) m.setModuleOutput(s.part.id, 'echo', 0);
+      for (const s of hc) m.setModuleOutput(s.part.id, 'echo', 0);
     }
   }
+  const warned = new Set<string>();
   for (const s of sources) {
-    const supplyNet = c.net({ part: s.part.id, pin: def(s.part).pins.find((p) => p.role === 'power')!.name });
-    const sv = c.supplyV(supplyNet);
-    if (!sv || sv <= limit) continue;
+    const power = def(s.part).pins.find((p) => p.role === 'power' && !p.supply);
+    const sv = power ? c.supplyV(c.net({ part: s.part.id, pin: power.name })) : undefined;
+    // Without the electrical model only a module on a supply above the limit can be judged.
+    if (!m && (!sv || sv <= limit)) continue;
+    if (!s.custom && (!sv || sv <= limit)) continue;
     const gpios = m ? m.gpiosReachable(s.part.id, s.pin, 1e6) : c.gpios(c.net({ part: s.part.id, pin: s.pin })).map((x) => x.gpio!);
     for (const g of gpios) {
       const bp = b.pins.find((p) => p.gpio === g)!;
-      const v = volts.get(g) ?? sv;
+      const v = volts.get(g) ?? sv ?? 0;
       if (v <= limit) continue;
       const net = c.net({ part: c.boardId, pin: bp.name });
       if (net && (c.supply.has(net) || c.gnd.has(net))) continue; // reported as a rail short
+      if (s.kind === 'pullup') {
+        if (warned.has(s.part.id)) continue; // one warning per module is enough for pull-ups
+        warned.add(s.part.id);
+      }
+      const name = def(s.part).name;
+      const i2c = /^i2c\./.test(def(s.part).pins.find((p) => p.name === s.pin)?.fn ?? '');
+      const fix = 'Add a voltage divider (10 kΩ from the output to the pin, 20 kΩ from the pin to GND) to bring it down to about 3.3 V.';
       c.add({
-        id: s.push ? `overvoltage:${bp.name}:${s.part.id}` : `i2c-pullup-5v:${s.part.id}`,
-        severity: s.push ? 'error' : 'warning',
-        title: s.push ? `${c.boardPinName(bp.name)} gets ${v.toFixed(1)} V from ${c.partName(s.part)}` : `${c.partName(s.part)} pulls the I2C lines up to ${sv} V`,
-        detail: s.push
-          ? `The ${b.name}'s pins are ${b.logicV} V only. ${def(s.part).name} runs on ${sv} V and its ${s.pin} output swings to ${sv} V, which can damage the pin over time. Add a voltage divider (1 kΩ from ${s.pin} to the pin, 2 kΩ from the pin to GND) to bring it down to about 3.3 V.`
-          : `This module has pull-up resistors to its own supply (${sv} V), so ${c.boardPinName(bp.name)} sees about ${v.toFixed(1)} V when idle — above the ${b.logicV} V the pin is designed for. The resistors are weak, so most boards survive it, but a small I2C level shifter (or powering the module from 3.3 V, if it supports it) is the safe option.`,
+        id: s.kind !== 'pullup' ? `overvoltage:${bp.name}:${s.part.id}` : `i2c-pullup-5v:${s.part.id}`,
+        severity: s.kind === 'pullup' ? 'warning' : 'error',
+        title: s.kind === 'pullup' ? (s.custom && !i2c ? `${c.partName(s.part)} pulls ${s.pin} up to ${v.toFixed(1)} V` : `${c.partName(s.part)} pulls the I2C lines up to ${s.custom ? v.toFixed(1) : sv} V`) : `${c.boardPinName(bp.name)} gets ${v.toFixed(1)} V from ${c.partName(s.part)}`,
+        detail:
+          s.kind === 'push'
+            ? s.custom
+              ? `The ${b.name}'s pins are ${b.logicV} V only. ${name}'s ${s.pin} output goes up to ${v.toFixed(1)} V, which can damage the pin over time. ${fix}`
+              : `The ${b.name}'s pins are ${b.logicV} V only. ${name} runs on ${sv} V and its ${s.pin} output swings to ${sv} V, which can damage the pin over time. Add a voltage divider (1 kΩ from ${s.pin} to the pin, 2 kΩ from the pin to GND) to bring it down to about 3.3 V.`
+            : s.kind === 'analog'
+              ? `The ${b.name}'s pins are ${b.logicV} V only, but ${name}'s ${s.pin} reaches ${v.toFixed(1)} V at the top of its range, which can damage the pin. ${fix} Then multiply the reading by 1.5 in the code.`
+              : s.custom && !i2c
+                ? `${name} has a pull-up resistor from ${s.pin} to its own supply, so ${c.boardPinName(bp.name)} sees about ${v.toFixed(1)} V when idle — above the ${b.logicV} V the pin is designed for. The resistor is weak, so most boards survive it, but a level shifter (or powering the module from 3.3 V, if it supports it) is the safe option.`
+                : `This module has pull-up resistors to its own supply (${sv} V), so ${c.boardPinName(bp.name)} sees about ${v.toFixed(1)} V when idle — above the ${b.logicV} V the pin is designed for. The resistors are weak, so most boards survive it, but a small I2C level shifter (or powering the module from 3.3 V, if it supports it) is the safe option.`,
         parts: [s.part.id],
       });
-      if (!s.push) break; // one warning per module is enough for pull-ups
+      if (s.kind === 'pullup') break;
     }
   }
+}
+
+/** The pins through which a datasheet part can put a voltage on a board pin, and how. */
+function customOutputs(cs: CustomPartSpec): { pin: string; kind: 'push' | 'analog' | 'pullup' }[] {
+  const s = cs.sim;
+  const out: { pin: string; kind: 'push' | 'analog' | 'pullup' }[] = [];
+  if (s.outputPin && s.kind === 'analog-sensor') out.push({ pin: s.outputPin, kind: 'analog' });
+  if (s.outputPin && ['digital-sensor', 'ir-receiver', 'ultrasonic', 'hx711'].includes(s.kind)) out.push({ pin: s.outputPin, kind: s.kind === 'digital-sensor' && s.openDrain ? 'pullup' : 'push' });
+  if (s.outputPin && s.kind === 'pulse-sensor') out.push({ pin: s.outputPin, kind: s.pulse?.openDrain ? 'pullup' : 'push' });
+  if (s.kind === 'analog-sensor') for (const o of s.analogOutputs ?? []) out.push({ pin: o.pin, kind: 'analog' });
+  for (const d of s.digitalOutputs ?? []) out.push({ pin: d.pin, kind: 'push' });
+  for (const pin of s.dac?.pins ?? []) out.push({ pin, kind: 'analog' });
+  if (s.kind === 'shift-register' && s.shift?.serialOut) out.push({ pin: s.shift.serialOut, kind: 'push' });
+  for (const p of cs.pins) {
+    if (p.fn === 'uart.tx' || p.fn === 'spi.miso') out.push({ pin: p.name, kind: 'push' });
+    if (p.boardPullUp || p.pullUp) out.push({ pin: p.name, kind: 'pullup' });
+  }
+  return out;
 }
 
 function checkAnalog(c: Ctx) {
