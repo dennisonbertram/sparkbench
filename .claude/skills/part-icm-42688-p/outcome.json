@@ -1,9 +1,0 @@
-{
-  "status": "pass",
-  "type": "custom-icm-42688-p",
-  "board": "\"ICM-42688 6-Axis IMU Accelerometer Gyroscope, I2C SPI Interface\" blue 8-pin module (Amazon B0F3JWY1XF, QUAINTBYTE)",
-  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB). The driver follows the TDK datasheet: WHO_AM_I 0x47, soft reset, PWR_MGMT0 0x0F, big-endian data from 0x1D, ±4 g and ±500 dps, T = raw/132.48 + 25. SDO is tied to GND (0x68) and CS to 3V3 as the datasheet requires for I2C, and 4.7 kΩ pull-ups are added because the board's pull-ups are behind an open solder jumper.",
-  "datasheetUrl": "https://product.tdk.com/system/files/dam/doc/product/sensor/mortion-inertial/imu/data_sheet/ds-000347-icm-42688-p-v1.6.pdf",
-  "breakoutPinoutSource": "Amazon B0F3JWY1XF product photos (https://m.media-amazon.com/images/I/71tIMEytkaL._SL1500_.jpg, back 71o-qaW7RfL / 71QXY6N4wyL): rows SDO, SDA/SDI, SCL, CS and INT, FSY, GND, 3V3; I2C pull-up solder jumper on the back",
-  "checkRuns": 1
-}

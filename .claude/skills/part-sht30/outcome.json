@@ -1,9 +1,0 @@
-{
-  "status": "pass",
-  "type": "custom-sht30",
-  "board": "DFRobot Fermion: SHT30 Digital Temperature & Humidity Sensor (SEN0330)",
-  "reason": "Modelled from the Sensirion SHT3x-DIS datasheet (cmd 0x2400, 6-byte reply with CRC-8 0x31/0xFF, T=-45+175*S/65535, RH=100*S/65535) at address 0x45 (board ties ADDR high via 1M per DFRobot schematic); header order VCC,GND,SCL,SDA,INT,RST from the DFRobot schematic P1 and silkscreen photo. Part check printed PASS on ESP32 and Pico (sim test T=18.5C H=73%, PCB DRC clean).",
-  "datasheetUrl": "https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf",
-  "breakoutPinoutSource": "https://dfimg.dfrobot.com/wiki/21160/SEN0330_sht30-digital-temperature-and-humidity-sensor_schematics_v1.pdf (P1 pins 1-6 = VDD/GND/SCL/SDA/INT/RST); https://wiki.dfrobot.com/sen0330/; product photo https://github.com/DFRobot/DFRobot_SHT3x/blob/master/resources/images/SEN0330.jpg",
-  "checkRuns": 1
-}
