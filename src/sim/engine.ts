@@ -47,7 +47,8 @@ export interface PartVisual {
   /** Text read off a colour TFT, and a small RGB thumbnail of it. */
   textLines?: string[];
   tft?: { w: number; h: number; thumb: number[]; on: boolean };
-  lcd?: { chars: number[]; backlight: boolean };
+  /** cols: characters per row (16 when absent; the built-in 16×2). */
+  lcd?: { chars: number[]; backlight: boolean; cols?: number };
   epaper?: { ram: number[]; refreshing: boolean; refreshes: number };
   angle?: number;
   tone?: number;
@@ -145,7 +146,9 @@ export class SimEngine {
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
       const cs = customSpec(part.type);
       if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'ht16k33') this.devices.push({ dev: new HT16K33Device(part.id, cs.i2cAddress ?? 0x70), part });
-      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller === 'sh1106' ? 'sh1106' : 'ssd1306', rows: cs.sim.rows }), part });
+      // An SPI OLED gets no I2C address (-1 never answers a scan); spiWrite feeds it.
+      if (cs?.sim.kind === 'char-lcd') this.devices.push({ dev: new Lcd1602Device(part.id, { addr: cs.i2cAddress ?? 0x27, cols: cs.sim.lcd?.cols, rows: cs.sim.lcd?.rows, pins: cs.sim.lcd?.pins }), part });
+      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.sim.bus === 'spi' ? -1 : (cs.i2cAddress ?? 0x3c), controller: cs.sim.controller === 'sh1106' ? 'sh1106' : 'ssd1306', rows: cs.sim.rows }), part });
       if (cs?.sim.kind === 'i2c-device')
         for (const sd of cs.sim.subDevices ?? [])
           this.devices.push({ part, dev: new GenericI2CDevice(part.id, sd.i2cAddress, sd.registers ?? {}, sd.measures ?? [], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, [], { regWidth: sd.regWidth, autoIncrementBit7: sd.autoIncrementBit7 }) });
@@ -155,7 +158,7 @@ export class SimEngine {
           this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
         }
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000 }), part });
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000 }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
@@ -761,7 +764,7 @@ export class SimEngine {
   i2cScan(bus: number): number[] {
     this.tick();
     this.sleepUs(2000);
-    return this.devicesOn(bus).map(({ dev }) => dev.addr);
+    return this.devicesOn(bus).map(({ dev }) => dev.addr).filter((a) => a >= 0); // SPI-only displays have no address
   }
 
   // ------------------------------------------------------------------ MCP3008 (Raspberry Pi)
@@ -818,6 +821,21 @@ export class SimEngine {
       const dcg = on('tft.dc')[0];
       if (dcg !== undefined && (this.outLevel.get(dcg) ?? 1) === 0) for (const c of bytes) dev.command(c);
       else dev.data(bytes);
+    }
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'oled-display' || cs.sim.bus !== 'spi') continue;
+      const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name;
+      const on = (fn: string) => (pin(fn) ? this.model.gpiosOnNet(part.id, pin(fn)!) : []);
+      if (!on('spi.sck').includes(b.sck) || !on('spi.mosi').includes(b.mosi)) continue;
+      const csg = on('spi.cs')[0];
+      if (csg !== undefined && (this.outLevel.get(csg) ?? 1) !== 0) continue;
+      const res = on('tft.reset')[0];
+      if (res !== undefined && (this.outLevel.get(res) ?? 1) === 0) continue; // held in reset
+      if (!this.model.modulePowered(part.id)) continue;
+      const dev = this.devices.find((x) => x.part.id === part.id)?.dev;
+      const dcg = on('tft.dc')[0];
+      if (dev instanceof SSD1306Device) dev.spi(dcg !== undefined && (this.outLevel.get(dcg) ?? 1) !== 0, bytes);
     }
     for (const part of this.project.parts) {
       const cs = customSpec(part.type);
@@ -1204,6 +1222,11 @@ export class SimEngine {
               v.segOn = !!v.powered && !d.shutdown;
               v.segText = v.segOn ? segText(d.segments().slice(-(cs.sim.digits ?? 8))) : '';
             }
+          }
+          if (cs?.sim.kind === 'char-lcd') {
+            const d = this.devices.find((x) => x.part.id === part.id)?.dev;
+            v.powered = m.modulePowered(part.id);
+            if (d instanceof Lcd1602Device) v.lcd = { chars: v.powered ? Array.from(d.characters()) : new Array(d.cols * d.rows).fill(32), backlight: !!v.powered && d.backlight, cols: d.cols };
           }
           if (cs?.sim.kind === 'oled-display') {
             const d = this.devices.find((x) => x.part.id === part.id)?.dev;

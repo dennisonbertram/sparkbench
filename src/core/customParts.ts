@@ -12,7 +12,8 @@ export interface CustomSim {
    * actuator: shows "on" when `inputPin` is driven high
    * i2c-device: answers at its address with a register map
    * onewire-temp: a DS18x20-family thermometer on the 1-Wire bus (MicroPython's onewire + ds18x20 modules)
-   * oled-display: a monochrome I2C OLED (SSD1306/SH1106 command set); tests can read its text
+   * oled-display: a monochrome OLED (SSD1306/SH1106 command set) on I2C, or on 4-wire SPI with bus 'spi'; tests can read its text
+   * char-lcd: an HD44780 character LCD behind a PCF8574 I2C backpack (see lcd); tests read its text
    * hx711: a 24-bit bridge ADC read by clocking PD_SCK and sampling DOUT (HX711/HX710 load-cell amplifiers)
    * spi-device: a chip read over SPI (thermocouple/RTD amplifiers, SPI ADCs); pins use fn spi.sck/spi.miso/spi.mosi/spi.cs
    * uart-device: a serial module (GPS, particulate, CO2); its TX pin has fn uart.tx, its RX pin fn uart.rx
@@ -21,7 +22,7 @@ export interface CustomSim {
    *   "value" = temperature, a "humidity" control); servo: an RC servo on a PWM pin (see servo)
    * segment-display: a 7-segment or 8×8 LED display driven by a TM1637 or MAX7219 (tests read the digits as text)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'char-lcd' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'none';
   /** shift-register: '595' = serial-in/parallel-out (data, clock, latch pins; outputs testable as expect what:"active"
    * text:<output pin name>), '165' = parallel-in/serial-out (inputs from toggles, load, clock, serial out). Pin names map
    * the roles: { data, clock, latch, outputs[] } or { load, clock, serialOut, inputs[] }, parallel pins listed A…H
@@ -81,6 +82,13 @@ export interface CustomSim {
    * tft-display: 'ssd1351' for the SSD1351 colour OLED command set. */
   controller?: 'ssd1306' | 'sh1106' | 'ssd1351';
   rows?: 32 | 64;
+  /** oled-display: 'spi' for 4-wire SPI modules (D0 = fn spi.sck, D1 = fn spi.mosi, CS = fn spi.cs, DC = fn tft.dc,
+   * RES = fn tft.reset); DC low = command byte, high = display data. Default 'i2c' (needs i2cAddress). */
+  bus?: 'i2c' | 'spi';
+  /** char-lcd: the HD44780 panel size and which PCF8574 port bit drives each line (default the common backpack:
+   * P0 = RS, P1 = RW, P2 = E, P3 = backlight, P4–P7 = D4–D7; d4 is the bit of D4, D5–D7 follow it). DDRAM rows start at
+   * 0x00, 0x40, then cols and 0x40 + cols on 4-row panels (0x14/0x54 on a 20×4). */
+  lcd?: { cols: 8 | 16 | 20 | 24 | 40; rows: 1 | 2 | 4; pins?: { rs: number; rw: number; e: number; backlight: number; d4: number } };
   /** onewire-temp: 1-Wire family code (0x28 DS18B20, 0x10 DS18S20, 0x22 DS1822); outputPin is the DQ line. */
   family?: number;
   outputPin?: string;
@@ -145,6 +153,9 @@ export interface CustomSim {
   /** pointerless i2c-device with a 16-bit port (PCF8575): every transfer is byte pairs, port 0 (register 0x00, P00–P07)
    * then port 1 (register 0x01, P10–P17); a write takes effect per complete pair, a read streams port 0, port 1, port 0… */
   pointerlessBytes?: 1 | 2;
+  /** i2c-device with no register pointer (TLV493D): every read starts at register 0, and written bytes go to a separate
+   * write-register map that reads never see. */
+  readFromZero?: boolean;
   /** i2c-device: register bits that are output pins (e.g. an expander's P0…P7), shown as on/off and testable
    * with expect what:"active" text:<name>. */
   outputBits?: { reg: string; bit: number; name: string }[];
@@ -154,6 +165,7 @@ export interface CustomSim {
 
 export interface I2CMeasure {
   reg: string;
+  /** Bytes from reg (ignored with fields). */
   bytes: number;
   scale: number;
   offset?: number;
@@ -168,6 +180,11 @@ export interface I2CMeasure {
    * 'ens210' — 3 bytes (bytes: 3): the 16-bit value (value − offset) / scale low byte first, then VALID = 1 in bit 0 and the
    * CRC-7 (poly 0x89, init 0x7F) of those 17 bits in bits 7:1, as the ENS210's T_VAL/H_VAL. */
   format?: 'max44009' | 'opt3001' | 'ens210';
+  /** Values whose bits are spread over several registers (e.g. TLV493D: Bx[11:4] in 0x00, Bx[3:0] in bits 7:4 of 0x04).
+   * The raw value round((value − offset) / scale), `bits` wide (two's complement if signed), is split into slices: raw bits
+   * from…from+width−1 go to bits at…at+width−1 of byte register reg; the register's other bits keep their value. */
+  bits?: number;
+  fields?: { reg: string; from: number; width: number; at?: number }[];
   /** Only while the last value written to this register matches (e.g. BMP180: 0xF4 = 0x2E → temperature in 0xF6). */
   when?: { reg: string; equals: number; mask?: number };
 }
@@ -186,6 +203,9 @@ export type ResponseSegment =
   /** An IEEE-754 single-precision float of (value − offset) / scale, big-endian: the whole float (bits 32), or its
    * high or low 16-bit half (bits 16) when the chip puts a CRC after every word (SCD30, SPS30). */
   | { control: string; float32: true | 'hi' | 'lo'; bits: 32 | 16; scale?: number; offset?: number }
+  /** A decimal reading sent as whole units and tenths in separate bytes (DHT12: 56.8 %RH → 56, 8): 'int' is the whole
+   * part of |value|, 'tenths' its first decimal; signBit sets that bit when the value is negative (DHT12 temperature tenths, bit 7). */
+  | { control: string; split: 'int' | 'tenths'; bits: number; signBit?: number }
   /** CRC-8 over the previous `over` bytes, poly 0x31: 'sensirion' starts at 0xFF (SHT3x/4x, SCD4x, AHT20), 'htu21d' at 0x00 (HTU21D, Si7021). */
   | { crc: 'sensirion' | 'htu21d'; over: number }
   /** Checksums of serial sensors over the previous `over` bytes: 'sum16' = 16-bit sum, big-endian (PMS5003);
@@ -344,7 +364,17 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (p.supply.currentMa !== undefined && !(p.supply.currentMa > 0 && p.supply.currentMa <= 20000)) errs.push(`supply.currentMa on ${p.name} must be 0–20000 mA`);
   }
   for (const p of spec.pins) if (p.pullUp !== undefined && !(p.pullUp >= 100 && p.pullUp <= 100000)) errs.push(`pull-up on ${p.name} must be 100 Ω – 100 kΩ`);
-  if (s.kind === 'oled-display' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress');
+  if (s.kind === 'oled-display' && s.bus !== 'spi' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress (or bus: "spi")');
+  if (s.kind === 'oled-display' && s.bus === 'spi' && !(['spi.sck', 'spi.mosi', 'tft.dc'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('an SPI OLED needs pins with fn spi.sck (D0), spi.mosi (D1) and tft.dc (DC), plus spi.cs and tft.reset if the module has them');
+  if (s.bus !== undefined && s.kind !== 'oled-display') errs.push('bus is for oled-display');
+  if (s.kind === 'char-lcd') {
+    if (spec.i2cAddress === undefined) errs.push('char-lcd needs i2cAddress (its backpack, e.g. 0x27)');
+    if (!s.lcd || ![8, 16, 20, 24, 40].includes(s.lcd.cols) || ![1, 2, 4].includes(s.lcd.rows)) errs.push('char-lcd needs lcd: { cols: 16 or 20 (8/24/40), rows: 1, 2 or 4 }');
+    const lp = s.lcd?.pins;
+    if (lp && ([lp.rs, lp.rw, lp.e, lp.backlight, lp.d4].some((b) => !Number.isInteger(b) || b < 0 || b > 7) || lp.d4 > 4 || new Set([lp.rs, lp.rw, lp.e, lp.backlight, lp.d4, lp.d4 + 1, lp.d4 + 2, lp.d4 + 3]).size !== 8)) errs.push('lcd.pins must give each line its own port bit 0–7, with D4–D7 on four consecutive bits from d4');
+  }
+  if (s.lcd && s.kind !== 'char-lcd') errs.push('lcd is for char-lcd');
+  if (s.readFromZero && (s.kind !== 'i2c-device' || s.pointerless || s.regWidth === 16)) errs.push('readFromZero is for byte-register i2c-devices (not pointerless or 16-bit)');
   if (s.kind === 'spi-device') {
     if (!spec.pins.some((p) => p.fn === 'spi.sck') || !spec.pins.some((p) => p.fn === 'spi.miso') || !spec.pins.some((p) => p.fn === 'spi.cs')) errs.push('spi-device needs pins with fn spi.sck, spi.miso and spi.cs');
     if (!s.spiReplies?.length) errs.push('spi-device needs spiReplies');
@@ -385,8 +415,17 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   for (const m of [...(s.measures ?? []), ...(s.measure ? [s.measure] : [])]) {
     if (!/^0x[0-9a-f]{1,2}$/i.test(m.reg)) errs.push(`measure reg ${m.reg} must be hex like 0x1A`);
     if (m.control && !keys.has(m.control)) errs.push(`measure control ${m.control} is not a control`);
-    if (!(m.bytes >= 1 && m.bytes <= 4) || !m.scale) errs.push(`measure at ${m.reg} needs 1-4 bytes and a non-zero scale`);
+    if ((!m.fields && !(m.bytes >= 1 && m.bytes <= 4)) || !m.scale) errs.push(`measure at ${m.reg} needs 1-4 bytes and a non-zero scale`);
     if (m.format === 'ens210' && m.bytes !== 3) errs.push(`measure at ${m.reg}: format ens210 is 3 bytes`);
+    if (m.fields) {
+      if (!(Number.isInteger(m.bits) && m.bits! >= 1 && m.bits! <= 32)) errs.push(`measure at ${m.reg}: fields need bits (the raw value's width, 1-32)`);
+      if (m.format || s.regWidth === 16) errs.push(`measure at ${m.reg}: fields work on plain byte registers only`);
+      for (const f of m.fields) {
+        const at = f.at ?? 0;
+        if (!/^0x[0-9a-f]{1,2}$/i.test(f.reg)) errs.push(`measure field reg ${f.reg} must be hex like 0x04`);
+        if (!(f.width >= 1 && at >= 0 && at + f.width <= 8 && f.from >= 0 && f.from + f.width <= (m.bits ?? 0))) errs.push(`measure field at ${f.reg}: bits ${f.from}+${f.width} must lie inside the value and bits ${at}+${f.width} inside one byte`);
+      }
+    } else if (m.bits !== undefined) errs.push(`measure at ${m.reg}: bits is only used with fields`);
   }
   for (const d of s.subDevices ?? []) for (const m of d.measures ?? []) if (m.control && !keys.has(m.control)) errs.push(`sub-device measure control ${m.control} is not a control`);
   for (const r of s.responses ?? []) {
@@ -394,6 +433,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     const bits = segBits(r.bytes);
     if (bits % 8) errs.push(`response "${r.match}" is ${bits} bits, not whole bytes`);
     for (const b of r.bytes) if ('control' in b && !keys.has(b.control)) errs.push(`response field control ${b.control} is not a control`);
+    for (const b of r.bytes) if ('split' in b && (b.bits < 4 || b.bits > 8 || (b.signBit !== undefined && b.signBit >= b.bits))) errs.push(`response "${r.match}": a split field is 4-8 bits with signBit inside it`);
   }
   for (const d of s.digitalOutputs ?? []) if (!names.has(d.pin)) errs.push(`digital output ${d.pin} is not a pin`);
   for (const p of s.inputPins ?? []) if (!names.has(p)) errs.push(`input ${p} is not a pin`);

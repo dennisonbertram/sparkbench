@@ -1,0 +1,75 @@
+{
+ "category": "display",
+ "description": "test",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "priceUsd": 5,
+ "vmin": 4.5,
+ "vmax": 5.5,
+ "currentMa": 30,
+ "type": "custom-lcd2004-test",
+ "name": "LCD2004 test",
+ "mpn": "LCD2004 I2C",
+ "interface": "i2c",
+ "supplierQuery": "LCD2004 I2C",
+ "i2cAddress": 39,
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  }
+ ],
+ "sim": {
+  "kind": "char-lcd",
+  "lcd": {
+   "cols": 20,
+   "rows": 4
+  }
+ },
+ "driver": {
+  "filename": "i2c_lcd.py",
+  "code": "# HD44780 over a PCF8574 backpack (P0 RS, P1 RW, P2 E, P3 backlight, P4-P7 D4-D7), 4-bit mode\nimport time\n\n\nclass I2cLcd:\n    def __init__(self, i2c, addr, rows, cols):\n        self.i2c = i2c\n        self.addr = addr\n        self.rows = rows\n        self.cols = cols\n        self.bl = 0x08\n        time.sleep_ms(50)\n        for _ in range(3):\n            self._nib(0x03, 0)\n            time.sleep_ms(5)\n        self._nib(0x02, 0)\n        self.cmd(0x28)  # 4-bit, 2 lines, 5x8\n        self.cmd(0x08)  # display off\n        self.clear()\n        self.cmd(0x06)  # entry: increment\n        self.cmd(0x0C)  # display on, cursor off\n\n    def _w(self, b):\n        self.i2c.writeto(self.addr, bytes([b | self.bl]))\n\n    def _nib(self, n, rs):\n        b = (n << 4) | rs\n        self._w(b | 0x04)\n        self._w(b)\n\n    def _byte(self, v, rs):\n        self._nib(v >> 4, rs)\n        self._nib(v & 0x0F, rs)\n\n    def cmd(self, c):\n        self._byte(c, 0)\n        if c <= 3:\n            time.sleep_ms(2)\n\n    def clear(self):\n        self.cmd(0x01)\n\n    def move_to(self, col, row):\n        base = (0x00, 0x40, self.cols, 0x40 + self.cols)[row]\n        self.cmd(0x80 | (base + col))\n\n    def putstr(self, s):\n        for ch in s:\n            self._byte(ord(ch), 1)\n"
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nfrom i2c_lcd import I2cLcd\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nlcd = I2cLcd(i2c, 0x27, 4, 20)\nlcd.move_to(0, 0)\nlcd.putstr('Row one')\nlcd.move_to(2, 3)\nlcd.putstr('Fourth row 42')\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "shows text on rows 1 and 4",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "Row one",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "Fourth row 42",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

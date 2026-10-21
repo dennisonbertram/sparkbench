@@ -81,6 +81,24 @@ function TftScreen({ x, y, tft }: { x: number; y: number; tft: { w: number; h: n
   return url ? <image href={url} x={x} y={y} width={tft.w * s} height={tft.h * s} style={{ imageRendering: 'pixelated' }} /> : null;
 }
 
+/** A character LCD's text, row by row, on a green or dark panel depending on the backlight. */
+function LcdScreen({ x, y, w, lcd }: { x: number; y: number; w: number; lcd: NonNullable<PartVisual['lcd']> }) {
+  const cols = lcd.cols ?? 16;
+  const rows = Math.max(1, Math.ceil(lcd.chars.length / cols));
+  const fs = Math.min(7, (w - 4) / (cols * 0.62));
+  const text = (r: number) => String.fromCharCode(...lcd.chars.slice(r * cols, (r + 1) * cols).map((c) => (c >= 32 && c < 127 ? c : 32)));
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={rows * fs * 1.25 + 4} rx={1.5} fill={lcd.backlight ? '#9fd24a' : '#3d4a2a'} />
+      {Array.from({ length: rows }, (_, r) => (
+        <text key={r} x={x + 2} y={y + 2 + (r + 1) * fs * 1.15} fontSize={fs} fontFamily="'Courier New', monospace" fill="#1c2a10" xmlSpace="preserve">
+          {text(r)}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 /** A datasheet OLED's picture (128×64, page format), drawn at half size. */
 function OledScreen({ x, y, ram, on }: { x: number; y: number; ram: number[]; on: boolean }) {
   const url = React.useMemo(() => {
@@ -125,7 +143,9 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
           </text>
         </g>
       )}
-      {visual?.tft ? (
+      {visual?.lcd ? (
+        <LcdScreen x={4} y={3} w={w - 8} lcd={visual.lcd} />
+      ) : visual?.tft ? (
         <TftScreen x={w / 2 - 17} y={2} tft={visual.tft} />
       ) : visual?.oled ? (
         <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} />

@@ -1,0 +1,84 @@
+{
+ "category": "display",
+ "description": "test",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "priceUsd": 5,
+ "vmin": 3.0,
+ "vmax": 5.5,
+ "currentMa": 20,
+ "type": "custom-ssd1306spi-test",
+ "name": "SSD1306 SPI test",
+ "mpn": "SSD1306 SPI",
+ "interface": "spi",
+ "supplierQuery": "SSD1306 SPI",
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "D0",
+   "role": "io",
+   "fn": "spi.sck",
+   "required": true
+  },
+  {
+   "name": "D1",
+   "role": "io",
+   "fn": "spi.mosi",
+   "required": true
+  },
+  {
+   "name": "RES",
+   "role": "io",
+   "fn": "tft.reset",
+   "required": true
+  },
+  {
+   "name": "DC",
+   "role": "io",
+   "fn": "tft.dc",
+   "required": true
+  },
+  {
+   "name": "CS",
+   "role": "io",
+   "fn": "spi.cs",
+   "required": true
+  }
+ ],
+ "sim": {
+  "kind": "oled-display",
+  "bus": "spi",
+  "controller": "ssd1306",
+  "rows": 64
+ },
+ "driver": {
+  "filename": "ssd1306.py",
+  "code": "# MicroPython SSD1306 OLED driver, I2C and SPI interfaces (micropython-lib, MIT)\nfrom micropython import const\nimport framebuf\n\nSET_CONTRAST = const(0x81)\nSET_ENTIRE_ON = const(0xA4)\nSET_NORM_INV = const(0xA6)\nSET_DISP = const(0xAE)\nSET_MEM_ADDR = const(0x20)\nSET_COL_ADDR = const(0x21)\nSET_PAGE_ADDR = const(0x22)\nSET_DISP_START_LINE = const(0x40)\nSET_SEG_REMAP = const(0xA0)\nSET_MUX_RATIO = const(0xA8)\nSET_IREF_SELECT = const(0xAD)\nSET_COM_OUT_DIR = const(0xC0)\nSET_DISP_OFFSET = const(0xD3)\nSET_COM_PIN_CFG = const(0xDA)\nSET_DISP_CLK_DIV = const(0xD5)\nSET_PRECHARGE = const(0xD9)\nSET_VCOM_DESEL = const(0xDB)\nSET_CHARGE_PUMP = const(0x8D)\n\n\nclass SSD1306(framebuf.FrameBuffer):\n    def __init__(self, width, height, external_vcc):\n        self.width = width\n        self.height = height\n        self.external_vcc = external_vcc\n        self.pages = self.height // 8\n        self.buffer = bytearray(self.pages * self.width)\n        super().__init__(self.buffer, self.width, self.height, framebuf.MONO_VLSB)\n        self.init_display()\n\n    def init_display(self):\n        for cmd in (\n            SET_DISP,\n            SET_MEM_ADDR, 0x00,\n            SET_DISP_START_LINE,\n            SET_SEG_REMAP | 0x01,\n            SET_MUX_RATIO, self.height - 1,\n            SET_COM_OUT_DIR | 0x08,\n            SET_DISP_OFFSET, 0x00,\n            SET_COM_PIN_CFG, 0x02 if self.width > 2 * self.height else 0x12,\n            SET_DISP_CLK_DIV, 0x80,\n            SET_PRECHARGE, 0x22 if self.external_vcc else 0xF1,\n            SET_VCOM_DESEL, 0x30,\n            SET_CONTRAST, 0xFF,\n            SET_ENTIRE_ON,\n            SET_NORM_INV,\n            SET_IREF_SELECT, 0x30,\n            SET_CHARGE_PUMP, 0x10 if self.external_vcc else 0x14,\n            SET_DISP | 0x01,\n        ):\n            self.write_cmd(cmd)\n        self.fill(0)\n        self.show()\n\n    def poweroff(self):\n        self.write_cmd(SET_DISP)\n\n    def poweron(self):\n        self.write_cmd(SET_DISP | 0x01)\n\n    def contrast(self, contrast):\n        self.write_cmd(SET_CONTRAST)\n        self.write_cmd(contrast)\n\n    def invert(self, invert):\n        self.write_cmd(SET_NORM_INV | (invert & 1))\n\n    def show(self):\n        x0 = 0\n        x1 = self.width - 1\n        if self.width != 128:\n            col_offset = (128 - self.width) // 2\n            x0 += col_offset\n            x1 += col_offset\n        self.write_cmd(SET_COL_ADDR)\n        self.write_cmd(x0)\n        self.write_cmd(x1)\n        self.write_cmd(SET_PAGE_ADDR)\n        self.write_cmd(0)\n        self.write_cmd(self.pages - 1)\n        self.write_data(self.buffer)\n\n\nclass SSD1306_SPI(SSD1306):\n    def __init__(self, width, height, spi, dc, res, cs, external_vcc=False):\n        self.rate = 10 * 1024 * 1024\n        dc.init(dc.OUT, value=0)\n        res.init(res.OUT, value=0)\n        cs.init(cs.OUT, value=1)\n        self.spi = spi\n        self.dc = dc\n        self.res = res\n        self.cs = cs\n        import time\n\n        self.res(1)\n        time.sleep_ms(1)\n        self.res(0)\n        time.sleep_ms(10)\n        self.res(1)\n        super().__init__(width, height, external_vcc)\n\n    def write_cmd(self, cmd):\n        self.spi.init(baudrate=self.rate, polarity=0, phase=0)\n        self.cs(1)\n        self.dc(0)\n        self.cs(0)\n        self.spi.write(bytearray([cmd]))\n        self.cs(1)\n\n    def write_data(self, buf):\n        self.spi.init(baudrate=self.rate, polarity=0, phase=0)\n        self.cs(1)\n        self.dc(1)\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)\n"
+ },
+ "example": {
+  "code": "from machine import Pin, SPI\nimport ssd1306\nimport time\nspi = SPI(1, baudrate=10000000, sck=Pin({D0}), mosi=Pin({D1}))\noled = ssd1306.SSD1306_SPI(128, 64, spi, Pin({DC}), Pin({RES}), Pin({CS}))\noled.fill(0)\noled.text('SPI OLED 42', 0, 0)\noled.show()\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "shows text",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "SPI OLED 42",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

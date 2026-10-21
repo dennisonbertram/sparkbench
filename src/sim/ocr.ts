@@ -71,7 +71,8 @@ export function screenText(v: PartVisual | undefined): string[] {
   if (v.textLines) return v.textLines;
   if (v.lcd) {
     const s = String.fromCharCode(...v.lcd.chars.map((c) => (c >= 32 && c < 127 ? c : 32)));
-    return [s.slice(0, 16).trimEnd(), s.slice(16).trimEnd()].filter(Boolean);
+    const cols = v.lcd.cols ?? 16;
+    return Array.from({ length: Math.ceil(s.length / cols) }, (_, r) => s.slice(r * cols, (r + 1) * cols).trimEnd()).filter(Boolean);
   }
   if (v.oled && v.oledOn !== false) {
     const buf = v.oled;
