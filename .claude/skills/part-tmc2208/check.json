@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "7 pins wired; U2.EN → D25 (GPIO25). U2.STEP → D26 (GPIO26). U2.DIR → D27 (GPIO27). Added the tmc2208.py driver written from the datasheet."
+        "detail": "7 pins wired; U2.EN → D25 (GPIO25). U2.STEP → D26 (GPIO26). U2.DIR → D27 (GPIO27). Added a separate 12 V supply for VM (it needs 5.5–35 V and up to 2 A, more than the board can give); its − joins the board's GND. Added the tmc2208.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×68.5 mm, DRC clean"
+        "detail": "54×68.5 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "7 pins wired; U2.EN → GP2 (GPIO2). U2.STEP → GP3 (GPIO3). U2.DIR → GP6 (GPIO6). Added the tmc2208.py driver written from the datasheet."
+        "detail": "7 pins wired; U2.EN → GP2 (GPIO2). U2.STEP → GP3 (GPIO3). U2.DIR → GP6 (GPIO6). Added a separate 12 V supply for VM (it needs 5.5–35 V and up to 2 A, more than the board can give); its − joins the board's GND. Added the tmc2208.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "C115944 TMC2208-LA-T (16560 in stock)"
     }
   ],
-  "checkedAt": "2026-10-21T09:09:04.058Z"
+  "checkedAt": "2026-10-21T10:57:49.768Z"
 }

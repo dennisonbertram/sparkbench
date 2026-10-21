@@ -611,6 +611,7 @@ const TROUBLE: Record<string, string[]> = {
   npn: ['**LED never lights:** check the transistor\'s legs. With the flat side facing you: E – B – C for a PN2222A (metal-can 2N2222s differ).'],
   electrolytic: ['**Capacitor gets warm:** it\'s in backwards — the striped (−) leg goes to GND. Replace it, as a reversed electrolytic can be damaged.'],
   'battery-9v': ['**Nothing happens at all:** check the battery (a half-dead 9 V battery can look fine but sag under load) and that the snap is pushed on firmly.'],
+  'dc-supply': ['**The motor side does nothing but the board runs:** check the adapter is plugged in, the screw terminals are tight and + / − aren\'t swapped, and that the supply\'s − is joined to the board\'s GND (no common ground = nothing works).'],
 };
 
 const BOARD_TROUBLE: Record<string, string[]> = {
@@ -847,6 +848,7 @@ function safetyNotes(c: Ctx): string[] {
   const out = [`Build with the power **${c.board ? 'unplugged' : 'disconnected'}**. Connect it only once everything is wired and double-checked.`, 'Check every red/orange (power) and black (GND) wire twice — swapping them is the most common way to kill a part.'];
   if (c.board) out.push(`The ${c.board.name}'s pins work at **${c.board.logicV} V**. Never connect 5 V straight to a GPIO pin.`);
   if (kinds.has('relay')) out.push('**Relays can switch mains electricity, which can kill.** For this build, only switch low-voltage things (a 5 V pump, fan or LED strip). Leave mains wiring to qualified people.');
+  if (kinds.has('dc-supply')) out.push('**The external supply is more than the board can take.** Never let its + touch the board\'s 3V3/5V/VIN pins or any GPIO: only its − joins the board\'s GND. Plug it in last and unplug it before changing wires. Use a certified wall adapter, not a home-made mains supply.');
   if (kinds.has('battery-9v')) out.push('Don\'t let the 9 V battery\'s terminals touch each other, or a coin or keys in your pocket — it can get hot.');
   if (kinds.has('neopixel-ring')) out.push('NeoPixels are *bright*. Don\'t stare into them at full brightness.');
   if (kinds.has('electrolytic')) out.push('Electrolytic capacitors have a + and a − leg. Put them in backwards and they can get hot or even pop.');
@@ -1154,6 +1156,7 @@ const DISCRETE_INTRO: Record<string, string> = {
 const ROLE_DISCRETE: Record<string, string> = {
   ne555: 'Here it\'s the heart of the circuit, wired as an *astable* — a free-running oscillator that never stops switching.',
   'battery-9v': 'Here it powers everything — there is no USB cable and no board.',
+  'dc-supply': 'Here it feeds only the parts that need more voltage or current than the board can give; the board still runs from USB.',
   led: 'Here it\'s the part you actually see doing something.',
   npn: 'Here it lets a tiny current from the button switch a much bigger current through the LED.',
   pushbutton: 'Here it feeds a small current into the transistor\'s base while you hold it down.',

@@ -1,6 +1,6 @@
 // Static electrical rule checks (ERC) written for beginners: every result explains the
 // problem in plain English and, where it can, offers a one-click fix.
-import type { CheckResult, FixAction, Net, PartDef, PartInstance, PinRef, Project, Severity, Wire } from './types';
+import type { CheckResult, FixAction, Net, PartDef, PartInstance, PinDef, PinRef, Project, Severity, Wire } from './types';
 import { partDef } from './parts';
 import { boardFor, boardPin, type BoardDef, type BoardPin, type Cap } from './boards';
 import { buildNets, boardPart, pinKey } from './netlist';
@@ -75,6 +75,7 @@ class Ctx {
           if (r.pin === '-') this.gnd.add(net);
           else this.addSupply(net, Number(part.props?.volts ?? 9));
         }
+        if (part?.type === 'dc-supply' && r.pin === '+') this.addSupply(net, Number(part.props?.volts ?? 12));
         // Product version: the USB socket and the 3.3 V regulator are the supplies.
         if (part?.type === 'usb-micro' && r.pin === 'VBUS') this.addSupply(net, 5);
         if (part?.type === 'ldo-3v3' && r.pin === 'VOUT') this.addSupply(net, 3.3);
@@ -236,7 +237,7 @@ function checkBoardPresence(c: Ctx) {
   if (c.project.board !== 'none' && !c.boardId) {
     c.add({ id: 'no-board', severity: 'error', title: 'There is no microcontroller board', detail: `This project is set up for the ${c.board?.name ?? 'board'}, but the board isn't in the design, so nothing can run the program or power the parts.` });
   }
-  if (c.project.board === 'none' && !c.project.parts.some((p) => p.type === 'battery-9v')) {
+  if (c.project.board === 'none' && !c.project.parts.some((p) => p.type === 'battery-9v' || p.type === 'dc-supply')) {
     c.add({ id: 'no-power-source', severity: 'warning', title: 'Nothing powers this circuit', detail: 'There is no battery or board in the design. Add a 9 V battery (or another supply) so current can flow.' });
   }
 }
@@ -268,7 +269,7 @@ function checkPowerShorts(c: Ctx): Set<Net> {
     const g = c.gnd.has(net);
     if (vs.length && g) {
       shorted.add(net);
-      const isSup = (r: PinRef) => c.boardPinOf(r)?.role === 'power' || (c.parts.get(r.part)?.type === 'battery-9v' && r.pin === '+');
+      const isSup = (r: PinRef) => c.boardPinOf(r)?.role === 'power' || (['battery-9v', 'dc-supply'].includes(c.parts.get(r.part)?.type ?? '') && r.pin === '+');
       const isGnd = (r: PinRef) => c.boardPinOf(r)?.role === 'gnd' || (c.parts.get(r.part)?.type === 'battery-9v' && r.pin === '-');
       const direct = c.project.wires.find((w) => (isSup(w.a) && isGnd(w.b)) || (isSup(w.b) && isGnd(w.a)));
       c.add({
@@ -285,7 +286,9 @@ function checkPowerShorts(c: Ctx): Set<Net> {
         id: `supply-clash:${net.id}`,
         severity: 'error',
         title: `Two different supplies are connected together (${vs.map((v) => `${v} V`).join(' and ')})`,
-        detail: 'The 3.3 V and 5 V pins are joined by a wire. They fight each other and can damage the regulator. Each part should connect to just one of them.',
+        detail: vs.every((v) => v === 3.3 || v === 5)
+          ? 'The 3.3 V and 5 V pins are joined by a wire. They fight each other and can damage the regulator. Each part should connect to just one of them.'
+          : 'A separate supply is wired to the board\'s 3.3 V or 5 V pin (or to another supply). They fight each other and can destroy the board\'s regulator or USB port. Only the grounds (−) should be joined.',
         parts: [...new Set(net.pins.map((r) => r.part))],
       });
     }
@@ -298,6 +301,19 @@ function checkModulePower(c: Ctx, floating: Set<string>) {
     const def = c.def(part);
     if (!def || def.category === 'board' || part.type === 'battery-9v' || floating.has(part.id)) continue;
     const name = c.partName(part);
+    if (part.type === 'dc-supply') {
+      const minus = c.net({ part: part.id, pin: '-' });
+      if (c.connected({ part: part.id, pin: '+' }) && !(minus && c.gnd.has(minus)))
+        c.add({
+          id: `ext-ground:${part.id}`,
+          severity: 'error',
+          title: `${name}'s − isn't joined to GND`,
+          detail: 'A separate supply only works together with the board when the two share a ground: without it the signals from the board have nothing to be measured against, and the parts it powers behave randomly. Wire its − to the board\'s GND.',
+          parts: [part.id],
+          fix: c.gndPin() ? fix('Wire − to GND', { kind: 'add-wire', a: { part: part.id, pin: '-' }, b: c.gndPin()! }) : undefined,
+        });
+      continue;
+    }
     for (const pin of def.pins) {
       const ref = { part: part.id, pin: pin.name };
       const net = c.net(ref);
@@ -312,6 +328,8 @@ function checkModulePower(c: Ctx, floating: Set<string>) {
           parts: [part.id],
           fix: to ? fix(`Wire ${pin.name} to GND`, { kind: 'add-wire', a: ref, b: to }) : undefined,
         });
+      } else if (pin.role === 'power' && pin.supply) {
+        checkExternalPin(c, part, pin, net);
       } else if (pin.role === 'power') {
         const v = c.supplyV(net);
         const want = def.vmin !== undefined && def.vmin > 3.6 ? 5 : 3.3;
@@ -365,6 +383,48 @@ function checkModulePower(c: Ctx, floating: Set<string>) {
       }
     }
   }
+}
+
+/** A power pin that needs a separate supply (a motor driver's VMOT): connected to one, never to the board's rails, in range. */
+function checkExternalPin(c: Ctx, part: PartInstance, pin: PinDef, net: Net | undefined) {
+  const name = c.partName(part);
+  const { vmin: lo, vmax: hi } = pin.supply!;
+  const ref = { part: part.id, pin: pin.name };
+  const range = `${lo}–${hi} V`;
+  const onBoardRail = !!net && !!c.boardId && net.pins.some((r) => c.boardPinOf(r)?.role === 'power');
+  if (onBoardRail) {
+    const w = c.wireFrom(ref, c.boardId);
+    c.add({
+      id: `ext-on-board:${part.id}:${pin.name}`,
+      severity: 'error',
+      title: `${name}: ${pin.name} needs its own supply, not the board's`,
+      detail: `${pin.name} powers the load side of ${c.def(part)!.name} and needs ${range}${pin.supply!.currentMa ? ` and up to ${pin.supply!.currentMa} mA` : ''}. The board's 3.3 V and 5 V pins can't give that: the voltage is too low or the current would brown the board out. Connect ${pin.name} to an external DC supply's + (and join that supply's − to GND).`,
+      parts: [part.id],
+      fix: w ? fix('Remove the wire to the board', { kind: 'remove-wire', wireId: w.wire.id }) : undefined,
+    });
+    return;
+  }
+  const v = c.supplyV(net);
+  if (v === undefined) {
+    const src = c.project.parts.find((x) => x.type === 'dc-supply' && Number(x.props?.volts ?? 12) >= lo && Number(x.props?.volts ?? 12) <= hi);
+    c.add({
+      id: `no-ext-supply:${part.id}:${pin.name}`,
+      severity: 'error',
+      title: `${name}: ${pin.name} has no supply`,
+      detail: `${pin.name} must connect to a separate DC supply of ${range} (a wall adapter, with its − joined to GND). Without it the ${pin.name.toLowerCase().includes('mot') || pin.name.startsWith('VM') ? 'motor side' : 'part'} stays off.`,
+      parts: [part.id],
+      fix: src && !c.connected(ref) ? fix(`Wire ${pin.name} to ${src.ref ?? src.id} +`, { kind: 'add-wire', a: ref, b: { part: src.id, pin: '+' } }) : undefined,
+    });
+    return;
+  }
+  if (v < lo - 0.05 || v > hi + 0.05)
+    c.add({
+      id: `supply-range:${part.id}:${pin.name}`,
+      severity: 'error',
+      title: v < lo ? `${name}: ${pin.name} needs at least ${lo} V but gets ${v} V` : `${name}: ${pin.name} gets ${v} V — more than its ${hi} V maximum`,
+      detail: v < lo ? `Below ${lo} V the chip's under-voltage protection keeps it switched off. Use a supply of ${range}.` : `${v} V can permanently damage it. Use a supply of ${range}.`,
+      parts: [part.id],
+    });
 }
 
 function checkRequiredPins(c: Ctx, floating: Set<string>) {
@@ -804,7 +864,7 @@ function railLoads(c: Ctx): RailLoad[] {
       // A pump/fan switched by a relay from the 5 V supply: count it while it runs.
       rail = c.project.board === 'none' ? undefined : 5;
     } else {
-      const pp = d.pins.find((p) => p.role === 'power');
+      const pp = d.pins.find((p) => p.role === 'power' && !p.supply);
       if (!pp) continue;
       const net = c.net({ part: part.id, pin: pp.name });
       rail = net && net === rail3 ? 3 : net && net === rail5 ? 5 : undefined;
@@ -849,7 +909,31 @@ export function supplyLoads(project: Project): RailLoad[] {
   return railLoads(new Ctx(project));
 }
 
+/** Each external supply against what the pins on it may draw. */
+function checkExternalBudget(c: Ctx) {
+  for (const src of c.project.parts.filter((p) => p.type === 'dc-supply')) {
+    const net = c.net({ part: src.id, pin: '+' });
+    if (!net) continue;
+    const loads = net.pins.flatMap((r) => {
+      const part = c.parts.get(r.part);
+      const pd = part && c.def(part)?.pins.find((p) => p.name === r.pin);
+      return part && pd?.supply?.currentMa ? [{ who: `${c.partName(part)} ${pd.name} up to ${pd.supply.currentMa} mA`, ma: pd.supply.currentMa }] : [];
+    });
+    const total = loads.reduce((a, l) => a + l.ma, 0);
+    const budget = Number(src.props?.amps ?? 2) * 1000;
+    if (total <= budget) continue;
+    c.add({
+      id: `budget:ext:${src.id}`,
+      severity: 'warning',
+      title: `${c.partName(src)} could need up to ${total} mA, more than its ${budget / 1000} A rating`,
+      detail: `${loads.map((l) => l.who).join(', ')}. When the supply runs out the voltage sags, motors stall and drivers shut off. Use a supply rated for at least ${Math.ceil(total / 1000)} A (set its current rating to match the adapter you buy).`,
+      parts: [src.id],
+    });
+  }
+}
+
 function checkPowerBudget(c: Ctx) {
+  checkExternalBudget(c);
   const b = c.board;
   if (!b) return;
   for (const { rail, name, budget, base, typ, worst, who } of railLoads(c)) {

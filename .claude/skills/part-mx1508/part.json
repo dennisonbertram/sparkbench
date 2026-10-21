@@ -12,7 +12,12 @@
       "name": "+",
       "role": "power",
       "description": "Supply +, 2.4-7.2 V: feeds the motor bridges (VDD1/VDD2) directly and the chip's logic supply (VCC1/VCC2) through R1/D1. Use a battery or supply that can deliver the motor current. Keep it at 5 V or less when driving the inputs from 3.3 V logic (input high needs 0.6 x VCC)",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 2.4,
+        "vmax": 5,
+        "currentMa": 3000
+      }
     },
     {
       "name": "-",

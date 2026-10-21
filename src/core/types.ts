@@ -21,6 +21,9 @@ export interface PinDef {
   required?: boolean;
   /** This pin needs an external pull-up resistor to the part's supply (ohms), e.g. a bare DS18B20's DQ (4700). */
   pullUp?: number;
+  /** A power pin fed from a separate supply, not the board (a motor driver's VMOT, a solenoid's V+): the volts it
+   * accepts and the current it draws. Sparkbench wires it to an external DC supply with its − joined to GND. */
+  supply?: { vmin: number; vmax: number; currentMa?: number };
 }
 
 export interface PropDef {

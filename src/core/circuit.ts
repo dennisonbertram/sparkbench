@@ -182,6 +182,10 @@ export class ElectricalModel {
         els.v = c.add(new VSource(id, n('+'), n('-'), Number(part.props.volts ?? 9), 1));
         this.supplies.push({ name: part.id, src: els.v as VSource, volts: Number(part.props.volts ?? 9) });
         break;
+      case 'dc-supply':
+        els.v = c.add(new VSource(id, n('+'), n('-'), Number(part.props.volts ?? 12), 0.05));
+        this.supplies.push({ name: part.id, src: els.v as VSource, volts: Number(part.props.volts ?? 12) });
+        break;
       case 'buzzer':
         els.r = c.add(new Resistor(id, n('+'), n('-'), 10000));
         break;
@@ -199,10 +203,13 @@ export class ElectricalModel {
         if (kp?.sim.kind === 'keypad-matrix')
           (kp.sim.rowPins ?? []).forEach((r, ri) => (kp.sim.colPins ?? []).forEach((col, ci) => (els[`key:${ri}:${ci}`] = c.add(new Switch(`${id}.k${ri}.${ci}`, n(r), n(col), false)))));
         // Modules: model their supply draw as a resistor, plus signal-pin behaviour.
-        const vccPin = def.pins.find((p) => p.role === 'power' && p.name !== 'VREF')?.name;
+        // The logic supply; a part powered only from a separate supply (a motor driver's VM) draws from that.
+        const power = def.pins.filter((p) => p.role === 'power' && p.name !== 'VREF');
+        const logic = power.find((p) => !p.supply) ?? power[0];
+        const vccPin = logic?.name;
         const gndPin = def.pins.find((p) => p.role === 'gnd')?.name;
         if (vccPin && gndPin && def.category !== 'board') {
-          const vnom = def.vmin && def.vmin > 4 ? 5 : 3.3;
+          const vnom = logic.supply ? logic.supply.vmin : def.vmin && def.vmin > 4 ? 5 : 3.3;
           const ma = MODULE_LOAD_MA[part.type] ?? 5;
           els.load = c.add(new Resistor(`${id}.load`, n(vccPin), n(gndPin), vnom / (ma / 1000)));
           if (I2C_PULLUPS.has(part.type)) {
@@ -412,12 +419,13 @@ export class ElectricalModel {
     this.solve();
     return this.supplies.map((s) => ({ name: s.name, volts: s.volts, ma: s.src.current(this.circuit.x) * 1000 }));
   }
-  /** Supply voltage seen by a module (VCC − GND). */
-  moduleSupply(partId: string): number {
+  /** Supply voltage seen by a module (VCC − GND): its logic supply, or (with no logic pin) its external supply. */
+  moduleSupply(partId: string, pin?: string): number {
     const part = this.project.parts.find((p) => p.id === partId);
     if (!part) return 0;
     const def = partDef(part.type);
-    const vccPin = def.pins.find((p) => p.role === 'power')?.name;
+    const power = def.pins.filter((p) => p.role === 'power');
+    const vccPin = pin ?? (power.find((p) => !p.supply) ?? power[0])?.name;
     const gndPin = def.pins.find((p) => p.role === 'gnd')?.name;
     if (!vccPin || !gndPin) return 0;
     if (this.dirty) {
@@ -434,6 +442,11 @@ export class ElectricalModel {
     if (!part) return false;
     const def = partDef(part.type);
     this.solve();
+    // Pins fed from a separate supply (a motor driver's VMOT) must be within their own range too;
+    // below it the chip's under-voltage lockout keeps it off.
+    const ext = def.pins.filter((p) => p.role === 'power' && p.supply);
+    if (ext.some((p) => this.moduleSupply(partId, p.name) < p.supply!.vmin * 0.95)) return false;
+    if (ext.length && ext.length === def.pins.filter((p) => p.role === 'power').length) return true;
     const v = this.moduleSupply(partId);
     return v >= (def.vmin ?? 2.7) * 0.85;
   }

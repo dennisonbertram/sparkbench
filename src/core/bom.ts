@@ -77,6 +77,8 @@ export function partValue(part: PartInstance): string {
       return cap(String(pr.color ?? 'red'));
     case 'battery-9v':
       return `${pr.volts ?? 9} V`;
+    case 'dc-supply':
+      return `${pr.volts ?? 12} V, ${pr.amps ?? 2} A`;
     case 'neopixel-ring':
       return `${pr.pixels ?? 12} LEDs`;
     default:
@@ -97,6 +99,8 @@ function searchQuery(part: PartInstance, def: PartDef): string {
       return `${formatFarads(Number(pr.farads ?? 1e-5)).replace('µ', 'u')} 25V electrolytic capacitor`;
     case 'led':
       return `5mm ${pr.color ?? 'red'} LED`;
+    case 'dc-supply':
+      return `${pr.volts ?? 12}V ${pr.amps ?? 2}A DC power adapter 5.5x2.1mm`;
     default:
       return def.bom.supplierQuery;
   }
@@ -174,6 +178,9 @@ function supplies(project: Project): BomLine[] {
   }
   if (project.parts.some((p) => p.type === 'battery-9v')) {
     out.push(supply('9v-snap', '9 V battery snap clip', 'PP3 battery snap with red/black wire leads that push into the breadboard.', 0.5, '9V battery snap connector wire leads'));
+  }
+  if (project.parts.some((p) => p.type === 'dc-supply')) {
+    out.push(supply('barrel-terminal', 'DC barrel jack to screw terminal adapter (5.5 × 2.1 mm, female)', 'Plugs onto the adapter\'s barrel plug; its + and − screw terminals take the jumper wires to the parts that need the separate supply.', 1, 'DC barrel jack female 5.5x2.1mm screw terminal adapter'));
   }
   // Recommended extras
   if (project.parts.some((p) => p.type === 'neopixel-ring')) {

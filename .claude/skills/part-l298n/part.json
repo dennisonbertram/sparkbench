@@ -24,7 +24,12 @@
       "name": "+12V",
       "role": "power",
       "description": "Motor supply VS, 5-35 V on this module (chip allows up to 46 V). Keep the 5V-EN jumper only when this is 7-12 V",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 5,
+        "vmax": 35,
+        "currentMa": 4000
+      }
     },
     {
       "name": "GND",
@@ -35,7 +40,7 @@
     {
       "name": "+5V",
       "role": "power",
-      "description": "Logic supply VSS (4.5-7 V). Output of the on-board 78M05 when the 5V-EN jumper is fitted; otherwise feed 5 V in here",
+      "description": "Logic supply VSS (4.5-7 V). Output of the on-board 78M05 when the 5V-EN jumper is fitted; otherwise feed 5 V in here. Sparkbench joins it to the board's 5 V, so remove the 5V-EN jumper and let the board supply the logic",
       "required": true
     },
     {

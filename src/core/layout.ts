@@ -37,6 +37,7 @@ export const PART_SIZE: Record<string, [number, number]> = {
   ne555: [90, 80],
   mcp3008: [150, 80],
   'battery-9v': [70, 120],
+  'dc-supply': [90, 70],
 };
 
 /** Generic drawing for datasheet-defined parts: a module with its pins along the bottom edge. */

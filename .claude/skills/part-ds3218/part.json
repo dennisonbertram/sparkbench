@@ -19,7 +19,12 @@
       "name": "V+",
       "role": "power",
       "description": "Motor supply (red wire), 4.8-6.8 V; needs up to 1.8 A at stall, so use a separate 5-6 V supply for anything beyond light loads",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 4.8,
+        "vmax": 6.8,
+        "currentMa": 1800
+      }
     },
     {
       "name": "GND",

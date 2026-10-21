@@ -80,6 +80,7 @@ const HEIGHT: Record<string, number> = {
   ldr: 5.0,
   ntc: 5.0,
   'battery-9v': 18.0,
+  'dc-supply': 10.0, // the screw terminal the adapter's leads go into
   'esp32-wroom': 3.2,
   'usb-micro': 3.0,
   'ldo-3v3': 1.8,

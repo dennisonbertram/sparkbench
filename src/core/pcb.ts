@@ -45,7 +45,7 @@ export const MODULE_BODY: Record<string, NonNullable<PcbPart['module']>> = {
 };
 
 /** Parts that connect to something off the board through a cable. */
-const EDGE_TYPES = new Set(['lcd1602', 'epaper29', 'neopixel-ring', 'servo', 'relay', 'dc-motor', 'battery-9v', 'hcsr04', 'pir', 'soil']);
+const EDGE_TYPES = new Set(['lcd1602', 'epaper29', 'neopixel-ring', 'servo', 'relay', 'dc-motor', 'battery-9v', 'dc-supply', 'hcsr04', 'pir', 'soil']);
 
 export interface PcbSpec {
   name: string;
@@ -117,7 +117,7 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       ...(p.type === 'led' && LED_MODEL[p.props?.color] ? { ledColor: LED_MODEL[p.props.color] } : {}),
     };
   });
-  const power = nets.filter((n) => n.pins.length > 1 && /^(GND|\+3V3|\+5V|VBAT)/.test(n.name)).map((n) => n.name);
+  const power = nets.filter((n) => n.pins.length > 1 && /^(GND|\+3V3|\+5V|VBAT|VEXT)/.test(n.name)).map((n) => n.name);
   return {
     name: kicadName(proj),
     title: proj.name,

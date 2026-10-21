@@ -18,7 +18,12 @@
       "name": "V+",
       "role": "power",
       "description": "Red wire: servo supply, 4.8–6.6 V (5 V typical); needs up to 2.5 A when stalled",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 4.8,
+        "vmax": 6.6,
+        "currentMa": 2500
+      }
     },
     {
       "name": "SIG",

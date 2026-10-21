@@ -65,7 +65,12 @@
       "name": "VM",
       "role": "power",
       "description": "Motor supply 5.5-35 V from a separate supply (not the microcontroller), with a >= 100 uF electrolytic capacitor across VM/GND at the board. The chip's logic and the VREF trimpot also run from VM",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 5.5,
+        "vmax": 35,
+        "currentMa": 2000
+      }
     },
     {
       "name": "GND",

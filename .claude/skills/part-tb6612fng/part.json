@@ -54,7 +54,12 @@
       "name": "VM",
       "role": "power",
       "description": "Motor supply 2.5-13.5 V (15 V absolute max); a 4xAA pack or 2S LiPo is typical. Use 4.5 V or more for the full 1.2 A per channel",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 2.5,
+        "vmax": 13.5,
+        "currentMa": 2400
+      }
     },
     {
       "name": "PWMA",

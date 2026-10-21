@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "5 pins wired; L298N dual H-bridge motor driver needs at least 5 V, so it is powered from 5 V. U2.IN1 → D25 (GPIO25). U2.IN2 → D26 (GPIO26). Added the l298n.py driver written from the datasheet."
+        "detail": "5 pins wired; L298N dual H-bridge motor driver needs at least 5 V, so it is powered from 5 V. U2.IN1 → D25 (GPIO25). U2.IN2 → D26 (GPIO26). Added a separate 12 V supply for +12V (it needs 5–35 V and up to 4 A, more than the board can give); its − joins the board's GND. Added the l298n.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×66.5 mm, DRC clean"
+        "detail": "54×66.5 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "5 pins wired; L298N dual H-bridge motor driver needs at least 5 V, so it is powered from 5 V. U2.IN1 → GP2 (GPIO2). U2.IN2 → GP3 (GPIO3). Added the l298n.py driver written from the datasheet."
+        "detail": "5 pins wired; L298N dual H-bridge motor driver needs at least 5 V, so it is powered from 5 V. U2.IN1 → GP2 (GPIO2). U2.IN2 → GP3 (GPIO3). Added a separate 12 V supply for +12V (it needs 5–35 V and up to 4 A, more than the board can give); its − joins the board's GND. Added the l298n.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "C19922 L298N (371 in stock)"
     }
   ],
-  "checkedAt": "2026-10-21T04:58:12.543Z"
+  "checkedAt": "2026-10-21T10:58:00.580Z"
 }

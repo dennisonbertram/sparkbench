@@ -32,7 +32,12 @@
       "name": "VCC",
       "role": "power",
       "description": "Chip and motor supply, 2.5-12 V (powers the motors, so use a supply that can deliver the motor current)",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 2.5,
+        "vmax": 12,
+        "currentMa": 1600
+      }
     },
     {
       "name": "A-IA",
