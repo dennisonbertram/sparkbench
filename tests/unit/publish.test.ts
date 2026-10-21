@@ -50,3 +50,13 @@ describe('publish: independent datasheet reading must agree', () => {
     expect(d).toMatch(/temperature/);
   });
 });
+
+describe('resolution evidence must quote its source', () => {
+  it('accepts a quote that appears on the page and rejects one that does not', async () => {
+    const { quoteFound } = await import('../../scripts/parts/publish');
+    const page = () => '<p>Flow pulse characteristics&nbsp; F = (98 * Q) ± 2%  Q = L / MIN</p>';
+    expect(quoteFound("Datasheet: 'F = (98 * Q) ± 2% Q = L / MIN'.", 'https://a.example/1', page)).toBe(true);
+    expect(quoteFound("Datasheet: 'Output pulse high level 4.7 V'.", 'https://a.example/2', page)).toBe(false);
+    expect(quoteFound('No quote at all, just a claim about the part.', 'https://a.example/3', page)).toBe(false);
+  });
+});

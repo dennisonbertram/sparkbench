@@ -3,7 +3,9 @@
 // it: header pin order and roles, I2C address, supply range, conversion constants and chip ID.
 // Anything else goes to the review queue with the differences listed.
 // Run: npx tsx scripts/parts/publish.ts <slug>   (reads parts-staging/part-<slug>/ and parts-staging/verify/<slug>.json)
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { CustomPartSpec, ResponseSegment } from '../../src/core/customParts';
 
@@ -128,7 +130,7 @@ export function publish(slug: string, opts: { resolved?: boolean } = {}): { stat
   let resolvedNote = '';
   if (diffs.length && opts.resolved) {
     const res: Resolution | null = existsSync(join(dir, 'resolution.json')) ? JSON.parse(readFileSync(join(dir, 'resolution.json'), 'utf8')) : null;
-    const ok = (d: string) => res?.diffs.some((r) => r.verdict !== 'unresolved' && r.evidence.trim().length > 20 && /^https?:\/\//.test(r.source) && normDiff(r.diff) === normDiff(d));
+    const ok = (d: string) => res?.diffs.some((r) => r.verdict !== 'unresolved' && r.evidence.trim().length > 20 && /^https?:\/\//.test(r.source) && normDiff(r.diff) === normDiff(d) && quoteFound(r.evidence, r.source));
     const left = diffs.filter((d) => !ok(d));
     if (!left.length) resolvedNote = `${diffs.length} difference(s) settled by a third reading with quoted evidence`;
     diffs = left;
@@ -148,6 +150,38 @@ export function publish(slug: string, opts: { resolved?: boolean } = {}): { stat
 }
 
 const normDiff = (d: string) => d.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** The evidence must quote its source: at least one quoted span (12+ characters, in '…' or "…") has to appear in the
+ * text fetched from that URL (HTML stripped, PDFs via pdftotext). Stops a resolver from settling a difference with a
+ * quote the page doesn't contain. */
+const sourceText = new Map<string, string>();
+export function quoteFound(evidence: string, url: string, fetchText: (u: string) => string = fetchSource): boolean {
+  const spans = [...evidence.matchAll(/'([^']{12,})'|"([^"]{12,})"|‘([^’]{12,})’|“([^”]{12,})”/g)].map((m) => m[1] ?? m[2] ?? m[3] ?? m[4]);
+  if (!spans.length) return false;
+  const urls = url.match(/https?:\/\/[^\s;,]+/g) ?? [];
+  return urls.some((u) => spans.some((q) => normQuote(q).length >= 8 && textOf(u, fetchText).includes(normQuote(q))));
+}
+function textOf(url: string, fetchText: (u: string) => string): string {
+  if (!sourceText.has(url)) {
+    let t = '';
+    try {
+      t = fetchText(url);
+    } catch {
+      t = '';
+    }
+    sourceText.set(url, normQuote(t));
+  }
+  return sourceText.get(url)!;
+}
+const normQuote = (t: string) => t.toLowerCase().replace(/&[a-z]+;|&#\d+;/g, ' ').replace(/[^a-z0-9]+/g, '');
+function fetchSource(url: string): string {
+  const dir = mkdtempSync(join(tmpdir(), 'src-'));
+  const f = join(dir, 'doc');
+  execFileSync('curl', ['-sL', '--max-time', '40', '-A', 'Mozilla/5.0', '-o', f, url]);
+  const head = readFileSync(f).subarray(0, 5).toString();
+  if (head.startsWith('%PDF')) return execFileSync('pdftotext', ['-layout', f, '-'], { maxBuffer: 64 << 20 }).toString();
+  return readFileSync(f, 'utf8').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');
+}
 
 if (process.argv[1]?.includes('publish')) {
   const resolved = process.argv.includes('--resolved');
