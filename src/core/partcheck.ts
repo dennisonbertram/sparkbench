@@ -63,8 +63,9 @@ export function pinNumbers(project: Project): Record<string, number> {
   const txName = spec?.pins.find((p) => p.fn === 'uart.tx')?.name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
   const rxg = txName ? out[txName] : undefined;
   out.UART_ID = project.board === 'pico' ? ([1, 13, 17, 29].includes(rxg ?? 1) ? 0 : 1) : 2;
-  out.SDA = boardPin(board, board.i2c.sda)!.gpio!;
-  out.SCL = boardPin(board, board.i2c.scl)!.gpio!;
+  // A part's own pin names win (some SPI displays label their pins SCL/SDA); the board's I2C pins fill in the rest.
+  out.SDA ??= boardPin(board, board.i2c.sda)!.gpio!;
+  out.SCL ??= boardPin(board, board.i2c.scl)!.gpio!;
   out.I2C_ID = board.i2c.id;
   return out;
 }

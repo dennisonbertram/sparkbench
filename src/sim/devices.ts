@@ -738,3 +738,85 @@ export class MAX7219Device {
     return px;
   }
 }
+
+/** SPI colour TFT (MIPI DCS: CASET 0x2A, RASET 0x2B, RAMWR 0x2C with RGB565, MADCTL 0x36 row/column swap). */
+export class TFTDevice {
+  fb: Uint16Array;
+  on = true;
+  private cmd = -1;
+  private args: number[] = [];
+  private x0 = 0;
+  private x1 = 0;
+  private y0 = 0;
+  private y1 = 0;
+  private x = 0;
+  private y = 0;
+  private hi = -1;
+  private swap = false;
+  writes = 0;
+  constructor(public partId: string, public width: number, public height: number) {
+    this.fb = new Uint16Array(width * height);
+    this.x1 = width - 1;
+    this.y1 = height - 1;
+  }
+  private get w() {
+    return this.swap ? this.height : this.width;
+  }
+  private get h() {
+    return this.swap ? this.width : this.height;
+  }
+  command(c: number) {
+    this.cmd = c;
+    this.args = [];
+    this.hi = -1;
+    if (c === 0x28) this.on = false;
+    if (c === 0x29) this.on = true;
+    if (c === 0x2c) {
+      this.x = this.x0;
+      this.y = this.y0;
+    }
+  }
+  data(bytes: number[]) {
+    if (this.cmd === 0x2c) {
+      for (const b of bytes) {
+        if (this.hi < 0) {
+          this.hi = b;
+          continue;
+        }
+        const px = (this.hi << 8) | b;
+        this.hi = -1;
+        if (this.x < this.w && this.y < this.h) {
+          // Store in panel orientation so thumbnails are stable.
+          const [px0, py0] = this.swap ? [this.y, this.x] : [this.x, this.y];
+          this.fb[py0 * this.width + px0] = px;
+          this.writes++;
+        }
+        if (++this.x > this.x1) {
+          this.x = this.x0;
+          if (++this.y > this.y1) this.y = this.y0;
+        }
+      }
+      return;
+    }
+    this.args.push(...bytes);
+    const a = this.args;
+    if (this.cmd === 0x2a && a.length >= 4) [this.x0, this.x1] = [(a[0] << 8) | a[1], (a[2] << 8) | a[3]];
+    if (this.cmd === 0x2b && a.length >= 4) [this.y0, this.y1] = [(a[0] << 8) | a[1], (a[2] << 8) | a[3]];
+    if (this.cmd === 0x36 && a.length >= 1) this.swap = (a[0] & 0x20) !== 0;
+  }
+  /** Lit = any colour brighter than near-black (for reading text and checking that something is drawn). */
+  lit(x: number, y: number): boolean {
+    const p = this.fb[y * this.width + x] ?? 0;
+    return ((p >> 11) & 0x1f) + ((p >> 5) & 0x3f) / 2 + (p & 0x1f) > 12;
+  }
+  /** Downscaled RGB thumbnail (for the canvas), every `step` pixels. */
+  thumb(step: number): number[] {
+    const out: number[] = [];
+    for (let y = 0; y < this.height; y += step)
+      for (let x = 0; x < this.width; x += step) {
+        const p = this.on ? this.fb[y * this.width + x] : 0;
+        out.push(((p >> 11) & 0x1f) << 3, ((p >> 5) & 0x3f) << 2, (p & 0x1f) << 3);
+      }
+    return out;
+  }
+}

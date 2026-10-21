@@ -57,6 +57,29 @@ export function genericPins(type: string): Pins {
   return Object.fromEntries(cs.pins.map((p, i) => [p.name, { x: 21 + i * 18, y: h - 4 }]));
 }
 
+/** A colour TFT's thumbnail. */
+function TftScreen({ x, y, tft }: { x: number; y: number; tft: { w: number; h: number; thumb: number[]; on: boolean } }) {
+  const url = React.useMemo(() => {
+    if (typeof document === 'undefined') return '';
+    const c = document.createElement('canvas');
+    c.width = tft.w;
+    c.height = tft.h;
+    const ctx = c.getContext('2d');
+    if (!ctx) return '';
+    const img = ctx.createImageData(tft.w, tft.h);
+    for (let i = 0; i < tft.w * tft.h; i++) {
+      img.data[i * 4] = tft.on ? tft.thumb[i * 3] : 0;
+      img.data[i * 4 + 1] = tft.on ? tft.thumb[i * 3 + 1] : 0;
+      img.data[i * 4 + 2] = tft.on ? tft.thumb[i * 3 + 2] : 0;
+      img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }, [tft]);
+  const s = 34 / Math.max(tft.w, tft.h);
+  return url ? <image href={url} x={x} y={y} width={tft.w * s} height={tft.h * s} style={{ imageRendering: 'pixelated' }} /> : null;
+}
+
 /** A datasheet OLED's picture (128×64, page format), drawn at half size. */
 function OledScreen({ x, y, ram, on }: { x: number; y: number; ram: number[]; on: boolean }) {
   const url = React.useMemo(() => {
@@ -101,7 +124,9 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
           </text>
         </g>
       )}
-      {visual?.oled ? (
+      {visual?.tft ? (
+        <TftScreen x={w / 2 - 17} y={2} tft={visual.tft} />
+      ) : visual?.oled ? (
         <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} />
       ) : cs.sim.kind === 'segment-display' && cs.sim.matrix ? (
         <g>

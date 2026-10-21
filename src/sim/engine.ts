@@ -4,7 +4,8 @@ import type { Project, PartInstance } from '../core/types';
 import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, segText, packResponse, type I2CDevice } from './devices';
+import { ocr } from './ocr';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, TFTDevice, segText, packResponse, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
 import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
@@ -43,6 +44,9 @@ export interface PartVisual {
   /** Segment displays (TM1637/MAX7219): the digits as text, and whether the display is on. */
   segText?: string;
   segOn?: boolean;
+  /** Text read off a colour TFT, and a small RGB thumbnail of it. */
+  textLines?: string[];
+  tft?: { w: number; h: number; thumb: number[]; on: boolean };
   lcd?: { chars: number[]; backlight: boolean };
   epaper?: { ram: number[]; refreshing: boolean; refreshes: number };
   angle?: number;
@@ -292,6 +296,15 @@ export class SimEngine {
       this.model.setPinMode(g, { kind: 'in', pull: pullKind });
     }
     return 0;
+  }
+  private tfts = new Map<string, { dev: TFTDevice; ocrAt: number; lines: string[] }>();
+  private tftDev(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): TFTDevice {
+    let t = this.tfts.get(part.id);
+    if (!t) {
+      t = { dev: new TFTDevice(part.id, cs.sim.width ?? 240, cs.sim.height ?? 240), ocrAt: -1, lines: [] };
+      this.tfts.set(part.id, t);
+    }
+    return t.dev;
   }
   /** Segment displays driven by datasheet parts (TM1637 by pin changes, MAX7219 over SPI). */
   private segDevs = new Map<string, TM1637Device | MAX7219Device>();
@@ -694,6 +707,20 @@ export class SimEngine {
     if (!b) return;
     for (const part of this.project.parts) {
       const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'tft-display') continue;
+      const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name;
+      const on = (fn: string) => (pin(fn) ? this.model.gpiosOnNet(part.id, pin(fn)!) : []);
+      if (!on('spi.sck').includes(b.sck) || !on('spi.mosi').includes(b.mosi)) continue;
+      const csg = on('spi.cs')[0];
+      if (csg !== undefined && (this.outLevel.get(csg) ?? 1) !== 0) continue;
+      if (!this.model.modulePowered(part.id)) continue;
+      const dev = this.tftDev(part, cs);
+      const dcg = on('tft.dc')[0];
+      if (dcg !== undefined && (this.outLevel.get(dcg) ?? 1) === 0) for (const c of bytes) dev.command(c);
+      else dev.data(bytes);
+    }
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
       if (cs?.sim.kind !== 'segment-display' || cs.sim.protocol !== 'max7219') continue;
       const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name ?? '';
       const on = (fn: string) => this.model.gpiosOnNet(part.id, pin(fn));
@@ -1010,6 +1037,20 @@ export class SimEngine {
               ]);
               v.active = Object.values(v.inputs).some(Boolean);
             }
+          }
+          if (cs?.sim.kind === 'tft-display') {
+            v.powered = m.modulePowered(part.id);
+            const t = this.tfts.get(part.id);
+            if (t && v.powered) {
+              if (t.ocrAt !== t.dev.writes) {
+                t.ocrAt = t.dev.writes;
+                t.lines = ocr(t.dev.width, t.dev.height, (x, y) => x >= 0 && y >= 0 && x < t.dev.width && y < t.dev.height && t.dev.lit(x, y));
+              }
+              const step = Math.max(1, Math.ceil(Math.max(t.dev.width, t.dev.height) / 64));
+              v.tft = { w: Math.ceil(t.dev.width / step), h: Math.ceil(t.dev.height / step), thumb: t.dev.thumb(step), on: t.dev.on };
+              v.pixels = t.dev.on ? v.tft.thumb : [];
+              v.textLines = t.dev.on ? t.lines : [];
+            } else v.pixels = [];
           }
           if (cs?.sim.kind === 'addressable-led') {
             v.powered = m.modulePowered(part.id);

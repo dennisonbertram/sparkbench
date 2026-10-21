@@ -68,6 +68,7 @@ export function ocr(w: number, h: number, on: Pixel): string[] {
 export function screenText(v: PartVisual | undefined): string[] {
   if (!v) return [];
   if (v.segText !== undefined) return v.segText.trim() ? [v.segText] : [];
+  if (v.textLines) return v.textLines;
   if (v.lcd) {
     const s = String.fromCharCode(...v.lcd.chars.map((c) => (c >= 32 && c < 127 ? c : 32)));
     return [s.slice(0, 16).trimEnd(), s.slice(16).trimEnd()].filter(Boolean);
