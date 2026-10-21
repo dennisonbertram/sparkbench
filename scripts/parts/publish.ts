@@ -180,7 +180,10 @@ function fetchSource(url: string): string {
   execFileSync('curl', ['-sL', '--max-time', '40', '-A', 'Mozilla/5.0', '-o', f, url]);
   const head = readFileSync(f).subarray(0, 5).toString();
   if (head.startsWith('%PDF')) return execFileSync('pdftotext', ['-layout', f, '-'], { maxBuffer: 64 << 20 }).toString();
-  return readFileSync(f, 'utf8').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');
+  const raw = readFileSync(f, 'utf8');
+  // Board and part files (Eagle .brd/.sch/.lbr, Fritzing .fzp, KiCad) keep their facts in tags and attributes: quote them raw.
+  if (/\.(brd|sch|lbr|fzp|xml|kicad_\w+)(\?|$)/i.test(url) || raw.trimStart().startsWith('<?xml')) return raw;
+  return raw.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');
 }
 
 if (process.argv[1]?.includes('publish')) {

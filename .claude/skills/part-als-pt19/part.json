@@ -1,0 +1,115 @@
+{
+  "type": "custom-als-pt19",
+  "name": "ALS-PT19 analog light sensor",
+  "mpn": "ALS-PT19-315C/L177/TR8",
+  "category": "sensor",
+  "description": "Everlight ALS-PT19-315C/L177/TR8 NPN phototransistor ambient light sensor with a human-eye spectral response (390-700 nm, high IR rejection). On the breakout a 10 kOhm emitter resistor turns its light current (typ 15 uA at 100 lx, 150 uA at 1000 lx under fluorescent light, 0.15 uA/lx) into an analog voltage of about 1.5 mV per lux, saturating near the supply (about 1900 lx at 3.3 V). Sold as: Adafruit ALS-PT19 Analog Light Sensor Breakout (product ID 2748), 3-pin header -, out, + (GND, OUT, VCC).",
+  "eli5": "A tiny light sensor that sees brightness like your eye does. The brighter the room, the higher the voltage on its OUT pin, about 1.5 volts at 1000 lux, so your board can read it with an analog input.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (header pin 1, silkscreen \"-\"); bottom of the on-board 10 kOhm load resistor.",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (header pin 2, silkscreen \"out\"): V = I_PH x 10 kOhm, about 1.5 mV per lux (lux = 667 x V). Rises to near VCC in bright light.",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply / collector (header pin 3, silkscreen \"+\"): 2.5 V to 5.5 V (6 V abs max). Use 3.3 V with a 3.3 V microcontroller so OUT cannot exceed its ADC range.",
+      "required": true
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 5.5,
+  "currentMa": 0.33,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/2748/2748%20datasheet.pdf",
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/2748/2748%20datasheet.pdf",
+    "https://www.adafruit.com/product/2748",
+    "https://github.com/adafruit/Adafruit-ALS-PT19-Sensor-Breakout-PCB",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-ALS-PT19-Sensor-Breakout-PCB/master/Adafruit%20ALS-PT19-315C%20Breakout.sch",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-ALS-PT19-Sensor-Breakout-PCB/master/Adafruit%20ALS-PT19-315C%20Breakout.brd",
+    "https://github.com/adafruit/Fritzing-Library"
+  ],
+  "priceUsd": 2.5,
+  "supplierQuery": "ALS-PT19 analog light sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (Adafruit EagleCAD JP2): pin 1 GND (silkscreen \"-\"), pin 2 OUT (\"out\"), pin 3 VCC (\"+\").",
+    "Power + from 3.3 V on an ESP32 or Pico: from 5 V the OUT pin reaches about 4.6 V in bright light, more than a 3.3 V ADC pin can take.",
+    "Illuminance (lux) = 667 x V(OUT): the board's 10 kOhm load gives 1.5 mV per lux at the datasheet's typical 0.15 uA/lx (15 uA at 100 lx, 150 uA at 1000 lx, fluorescent light).",
+    "Incandescent light reads about 3.5x higher than fluorescent/LED at the same lux; sensitivity also varies up to 3x between parts, so calibrate if you need real lux.",
+    "On the ESP32 wire OUT to an ADC1 pin (GPIO32-39) and use 11 dB attenuation; average a few samples to smooth lamp flicker."
+  ],
+  "keywords": [
+    "als-pt19",
+    "als-pt19-315c",
+    "alspt19",
+    "ambient light",
+    "light sensor",
+    "lux",
+    "phototransistor",
+    "analog",
+    "adafruit",
+    "everlight"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Illuminance",
+    "unit": "lx",
+    "min": 0,
+    "max": 2000,
+    "default": 300,
+    "vAtMin": 0,
+    "vAtMax": 3,
+    "outputOhms": 10000,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "alspt19.py",
+    "code": "# ALS-PT19 analog light sensor (Everlight ALS-PT19-315C/L177/TR8) on the Adafruit breakout (#2748), MicroPython driver.\n# The ALS-PT19 is an NPN phototransistor: collector on VCC (\"+\"), emitter to OUT, and the\n# Adafruit board has a 10 kOhm resistor (R1) from OUT to GND (\"-\"). So V(OUT) = I_PH x 10 kOhm.\n# Datasheet Rev.5, \"Electrical and Optical Characteristics\" (VCE = 5 V, white fluorescent 6500 K):\n#   I_PH1 = 15 uA typ at 100 lx, I_PH2 = 150 uA typ at 1000 lx  ->  0.15 uA per lux (Fig. 1 linear).\n# So V(OUT) = 1.5 mV per lux and  E(lx) = I_PH(uA) / 0.15 = V(OUT) / 10 kOhm / 0.15 uA.\n# Under incandescent light (CIE illuminant A) the current is ~3.5x higher (I_PH3 = 520 uA at 1000 lx).\n# The output saturates near VCC - VCE(sat) (about 1900 lx at 3.3 V). Part-to-part spread is\n# large (min 5 uA vs typ 15 uA at 100 lx), so treat lux as an estimate unless you calibrate `ua_per_lux`.\nfrom machine import ADC, Pin\n\n\nclass ALSPT19:\n    LOAD_OHMS = 10000.0  # Adafruit breakout R1 (10K, OUT to GND)\n    UA_PER_LUX = 0.15    # datasheet typ: 15 uA at 100 lx, 150 uA at 1000 lx (fluorescent)\n\n    def __init__(self, pin, samples=16, vref=3.3, ua_per_lux=UA_PER_LUX, load_ohms=LOAD_OHMS):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n        self.ua_per_lux = ua_per_lux\n        self.load_ohms = load_ohms\n\n    def volts(self):\n        \"\"\"Average several ADC samples and return the OUT voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def microamps(self):\n        \"\"\"Phototransistor light current I_PH in uA (voltage across the 10 kOhm load).\"\"\"\n        return self.volts() / self.load_ohms * 1000000\n\n    def lux(self):\n        \"\"\"Illuminance estimate in lux: E = I_PH / 0.15 uA per lx (about 667 lx per volt).\"\"\"\n        return self.microamps() / self.ua_per_lux\n"
+  },
+  "skill": "---\nname: part-als-pt19\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the ALS-PT19 analog light sensor breakout (Everlight ALS-PT19-315C/L177/TR8, Adafruit #2748). Use when designing, wiring, simulating or writing code for an ALS-PT19 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# ALS-PT19 analog light sensor (ALS-PT19-315C/L177/TR8)\n\n## Overview\nThe **ALS-PT19-315C/L177/TR8** (Everlight) is a tiny NPN phototransistor (1.7 × 0.8 mm SMD) with strong infrared rejection, so its spectral response is close to the human eye (390–700 nm, peak 630 nm). It has no digital interface. Hobbyists buy it as the **Adafruit ALS-PT19 Analog Light Sensor Breakout (product ID 2748)**: the collector goes to \"+\" and a **10 kΩ resistor** (R1) from the emitter to GND turns the light current into a voltage on OUT.\n- Light current (VCE = 5 V, white fluorescent 6500 K): **15 µA typ at 100 lx (min 5), 150 µA typ at 1000 lx (min 50)** → 0.15 µA/lx\n- Under incandescent light (CIE illuminant A) it is about 3.5× more sensitive: 520 µA typ at 1000 lx\n- On the breakout: **V(OUT) = I_PH × 10 kΩ ≈ 1.5 mV per lux**, so lux ≈ 667 × V(OUT)\n- Output saturates near VCC − VCE(sat) (0.4 V max): about **1900 lx at 3.3 V** (fluorescent)\n- Dark current 0.1 µA max (≤ 1 mV on the 10 kΩ)\n- Rise / fall time 0.11 / 0.22 ms\n\n## Pinout (Adafruit #2748, header pin 1 to 3)\n| Pin | Silkscreen | Name | Function |\n|-----|-----------|------|----------|\n| 1 | - | GND | Ground; bottom of the 10 kΩ load resistor |\n| 2 | out | OUT | Analog output, ≈ 1.5 mV per lux (emitter, 10 kΩ to GND) |\n| 3 | + | VCC | Supply / collector, 2.5 V to 5.5 V |\n\nSource: Adafruit EagleCAD files (Adafruit-ALS-PT19-Sensor-Breakout-PCB: JP2 pin 1 GND, pin 2 OUT, pin 3 VCC; silkscreen \"-\", \"out\", \"+\") and the Adafruit Fritzing part (GND, OUT, VCC).\n\n## Electrical limits\n- Supply 2.5–5.5 V recommended, 6.0 V absolute max. Operating temperature −40 to +85 °C.\n- Current draw is just the photocurrent: at most VCC / 10 kΩ (0.33 mA at 3.3 V, 0.5 mA at 5 V).\n- From 5 V the output reaches about 4.6 V in bright light: too much for a 3.3 V ADC pin.\n\n## Interface details\n```\nI_PH(µA) = V(OUT) / 10 kΩ × 10^6\nE(lx)    = I_PH(µA) / 0.15        (datasheet typ: 15 µA at 100 lx, 150 µA at 1000 lx)\n         ≈ 667 × V(OUT)\n```\nExamples: 0.15 V ≈ 100 lx, 0.75 V ≈ 500 lx, 1.5 V ≈ 1000 lx, 3.0 V ≈ 2000 lx.\nThe sensitivity spread is large (min is one third of typical) and it depends on the light source (×3.5 for incandescent), so the lux figure is an estimate. For accurate lux, calibrate `ua_per_lux` against a lux meter.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| - (GND) | GND | GND | GND |\n| OUT | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC input (e.g. MCP3008 CH0 or ADS1115 A0) |\n| + (VCC) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n\nPower it from **3.3 V** on 3.3 V boards so OUT can never exceed the ADC range. The Raspberry Pi 4 has no built-in ADC.\n\n## Using the driver\n```python\nfrom alspt19 import ALSPT19\nimport time\nsensor = ALSPT19(26)           # GPIO number of the ADC pin OUT is wired to\nwhile True:\n    print('L=%dlx' % round(sensor.lux(), -1))  # 1 mV of ADC jitter is ~0.7 lx, so round to 10 lx\n    time.sleep(1)\n```\nThe driver averages 16 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535 (pass `vref=` if your rail differs). `volts()` and `microamps()` give the raw quantities.\n\n## Gotchas\n- **Saturation:** with the 10 kΩ load it tops out around 1900 lx at 3.3 V (less under incandescent light). Direct sunlight reads full scale; replace R1 with a smaller resistor and pass `load_ohms=` for brighter scenes.\n- **5 V supply on a 3.3 V MCU:** OUT follows the light up to about 4.6 V; power it from 3.3 V.\n- **Light source matters:** incandescent / halogen light reads ~3.5× higher than fluorescent or white LED at the same lux.\n- **Flicker:** mains lighting flickers at 100/120 Hz and the sensor is fast (0.1 ms); averaging samples smooths it.\n- **ESP32:** use ADC1 pins (ADC2 does not work while Wi-Fi is on).\n\n## Datasheet\nhttps://cdn-shop.adafruit.com/product-files/2748/2748%20datasheet.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://cdn-shop.adafruit.com/product-files/2748/2748%20datasheet.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from alspt19 import ALSPT19\nimport time\n\nsensor = ALSPT19({OUT})\nwhile True:\n    print('L=%dlx' % round(sensor.lux(), -1))  # 1 mV of ADC jitter is ~0.7 lx, so round to 10 lx\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the illuminance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1200
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L=1200lx",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:00:05.865Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/2748/2748%20datasheet.pdf",
+      "https://www.adafruit.com/product/2748",
+      "https://cdn-shop.adafruit.com/970x728/2748-08.jpg"
+    ]
+  }
+}

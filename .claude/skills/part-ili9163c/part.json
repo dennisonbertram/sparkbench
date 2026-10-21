@@ -1,0 +1,148 @@
+{
+  "type": "custom-ili9163c",
+  "name": "ILI9163C 1.44\" 128x128 colour TFT",
+  "mpn": "ILI9163C",
+  "category": "display",
+  "description": "Ilitek ILI9163C driver with a 1.44-inch 128×128-pixel colour TFT (65K colours, RGB565) on a write-only 4-wire SPI bus with a separate A0 (data/command) line. VCC takes 3.3–5 V through an on-board 3.3 V LDO (jumper J1 bypasses it), but the signal pins are 3.3 V logic only. The LED pin feeds the backlight through a 10 Ω resistor, so tie it to 3.3 V. Sold as: red \"1.44' SPI 128*128 V1.1\" ILI9163C TFT module (the common clone, 8-pin header VCC, GND, CS, RESET, A0, SDA, SCK, LED).",
+  "eli5": "A small square colour screen you can draw text, shapes and pictures on.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3–5 V into the on-board 3.3 V LDO (short J1 only when feeding exactly 3.3 V; never short J1 at 5 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low (3.3 V logic)",
+      "required": true
+    },
+    {
+      "name": "RESET",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (or tie to 3.3 V and rely on the software reset)",
+      "required": true
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select (D/CX): low = command, high = parameter/pixel data",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (MOSI). Not I2C despite the name",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (write cycle ≥ 66 ns, about 15 MHz max)",
+      "required": true
+    },
+    {
+      "name": "LED",
+      "role": "power",
+      "description": "Backlight anode through a 10 Ω resistor on the board: connect to 3.3 V (not 5 V)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 50,
+  "datasheetUrl": "https://www.displayfuture.com/Display/datasheet/controller/ILI9163.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "1.44 inch TFT LCD module ILI9163C 128x128 SPI red",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Signal pins are 3.3 V logic: the ILI9163C's I/O supply VDDI is 1.65–3.3 V and the module has no level shifter. Wire them straight to an ESP32 or Pico, never to a 5 V Arduino without a level shifter.",
+    "VCC goes through an on-board 3.3 V LDO, so 3.3 V or 5 V both work. Jumper J1 bypasses the LDO: leave it open at 5 V.",
+    "LED is the backlight through only a 10 Ω resistor: connect it to 3.3 V. At 5 V add about 82–100 Ω in series.",
+    "Init order from the datasheet: RESET low ≥ 10 µs, wait 120 ms; SWRESET 0x01 + 120 ms; SLPOUT 0x11 + 120 ms; COLMOD 0x3A = 0x05 (the chip starts in 18-bit mode); MADCTL 0x36; DISPON 0x29.",
+    "The board leaves the controller in 128×160 memory mode while the glass is 128×128, so the picture is RAM rows 32–159. The driver defaults to MADCTL 0xC8 (rows mirrored, BGR), which needs no offset; with MADCTL 0x08 add 32 to every row address.",
+    "The panel is BGR: keep MADCTL bit 3 (0x08) set or red and blue swap.",
+    "SPI mode 0, write-only. 10 MHz is safe on jumper wires; the datasheet minimum write clock period is 66 ns."
+  ],
+  "keywords": [
+    "ili9163c",
+    "ili9163",
+    "tft",
+    "lcd",
+    "1.44 inch",
+    "128x128",
+    "color display",
+    "spi display"
+  ],
+  "sources": [
+    "https://www.displayfuture.com/Display/datasheet/controller/ILI9163.pdf",
+    "https://forum.arduino.cc/t/1-44-inch-tft-128x128-glcd-ili9163/251533",
+    "https://github.com/sumotoy/TFT_ILI9163C",
+    "https://raw.githubusercontent.com/sumotoy/TFT_ILI9163C/master/_settings/TFT_ILI9163C_settings.h",
+    "https://pocketmagic.net/?p=7246",
+    "https://elecrow.com/wiki/1442727-128x-128-tft-lcd-with-spi-interface.html"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 128,
+    "height": 128,
+    "pixelBits": 18
+  },
+  "driver": {
+    "filename": "ili9163c.py",
+    "code": "# ILI9163C 1.44\" 128x128 colour TFT (red \"1.44 SPI 128*128\" module, pins VCC GND CS RESET A0 SDA SCK LED),\n# MicroPython driver. Written from the Ilitek ILI9163 datasheet V0.18: 4-wire SPI (mode 0, MSB first),\n# A0 (D/CX) low = command, high = parameter/pixel data; 16-bit RGB565 pixels (COLMOD 0x3A = 0x05) sent\n# high byte first. The chip powers up in 18-bit mode (COLMOD default 0x66), so COLMOD must be sent.\n#\n# This module's GM pins leave the controller in its 128x160 memory mode while the glass is only 128x128,\n# so the visible picture is GRAM rows 32..159. Rotations (MADCTL bits MY MX MV ML BGR MH, the panel is BGR):\n#   rotation 0: MADCTL 0x08, rows need +32      rotation 1: MADCTL 0x68, columns need +32\n#   rotation 2: MADCTL 0xC8, no offset          rotation 3: MADCTL 0xA8, no offset\n# (offsets as measured on this board by the TFT_ILI9163C library, \"__144_RED_PCB__\" settings).\n# Rotation 2 is the default because it needs no offset; use rotation=0 to turn the picture 180 degrees.\nfrom machine import Pin\nimport framebuf\nimport time\n\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\nCYAN = 0x07FF\n\n_MADCTL = (0x08, 0x68, 0xC8, 0xA8)\n_OFFSET = ((0, 32), (32, 0), (0, 0), (0, 0))  # (x, y) offset per rotation\n\n\ndef rgb(r, g, b):\n    \"\"\"24-bit colour -> RGB565.\"\"\"\n    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)\n\n\nclass ILI9163C:\n    width = 128\n    height = 128\n\n    def __init__(self, spi, dc, cs, rst=None, rotation=2):\n        self.spi = spi\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1) if rst is not None else None\n        if self.rst:\n            # RESX low >= 10 us; wait 5 ms before commands and 120 ms before Sleep Out (datasheet reset timing).\n            self.rst(0)\n            time.sleep_ms(10)\n            self.rst(1)\n            time.sleep_ms(120)\n        self._cmd(0x01)  # SWRESET: wait 120 ms before Sleep Out\n        time.sleep_ms(150)\n        self._cmd(0x11)  # SLPOUT: booster and oscillator start, wait 120 ms\n        time.sleep_ms(120)\n        self._cmd(0x3A, b'\\x05')  # COLMOD: 16 bits per pixel (reset default 0x66 = 18-bit)\n        self._cmd(0x26, b'\\x04')  # GAMSET: gamma curve 3\n        self._cmd(0xB1, b'\\x08\\x02')  # FRMCTR1: frame rate (normal mode)\n        self._cmd(0xB4, b'\\x07')  # INVCTR: frame inversion in all modes\n        self._cmd(0xC0, b'\\x0A\\x02')  # PWCTR1: GVDD / VCI1\n        self._cmd(0xC1, b'\\x02')  # PWCTR2: AVDD, VCL, VGH, VGL step-up\n        self._cmd(0xC5, b'\\x50\\x63')  # VMCTR1: VCOMH / VCOML\n        self._cmd(0xC7, b'\\x00')  # VMOFCTR: VCOM offset\n        self.rotate(rotation)\n        self._cmd(0x13)  # NORON: normal display mode\n        self.fill(BLACK)\n        self._cmd(0x29)  # DISPON\n        time.sleep_ms(10)\n\n    def rotate(self, rotation):\n        r = rotation & 3\n        self.xoff, self.yoff = _OFFSET[r]\n        self._cmd(0x36, bytes([_MADCTL[r]]))  # MADCTL\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        self.cs(1)\n\n    def _window(self, x, y, w, h):\n        x0, y0 = x + self.xoff, y + self.yoff\n        x1, y1 = x0 + w - 1, y0 + h - 1\n        self._cmd(0x2A, bytes([x0 >> 8, x0 & 255, x1 >> 8, x1 & 255]))  # CASET\n        self._cmd(0x2B, bytes([y0 >> 8, y0 & 255, y1 >> 8, y1 & 255]))  # PASET\n\n    def blit(self, buf, x, y, w, h):\n        \"\"\"Write w*h big-endian RGB565 pixels (2 bytes each) at (x, y).\"\"\"\n        self._window(x, y, w, h)\n        self._cmd(0x2C, buf)  # RAMWR\n\n    def fill_rect(self, x, y, w, h, colour):\n        x, y = max(0, x), max(0, y)\n        w, h = min(w, self.width - x), min(h, self.height - y)\n        if w <= 0 or h <= 0:\n            return\n        self._window(x, y, w, h)\n        line = bytes([colour >> 8, colour & 255]) * w\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(b'\\x2C')\n        self.dc(1)\n        for _ in range(h):\n            self.spi.write(line)\n        self.cs(1)\n\n    def fill(self, colour):\n        self.fill_rect(0, 0, self.width, self.height, colour)\n\n    def pixel(self, x, y, colour):\n        self.fill_rect(x, y, 1, 1, colour)\n\n    def text(self, s, x, y, colour=WHITE, bg=BLACK):\n        \"\"\"Draw text with MicroPython's built-in 8x8 font.\"\"\"\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        # framebuf stores RGB565 low byte first; the ILI9163C wants the high byte first, so swap.\n        sw = lambda c: ((c & 0xFF) << 8) | (c >> 8)\n        fb.fill(sw(bg))\n        fb.text(s, 0, 0, sw(colour))\n        self.blit(buf, x, y, w, 8)\n\n    def display(self, on=True):\n        self._cmd(0x29 if on else 0x28)  # DISPON / DISPOFF\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport sys\nimport time\nfrom ili9163c import ILI9163C, WHITE, YELLOW\n\n# Pico: GP18/GP19 belong to SPI0. ESP32: any pins work on SPI(2).\nspi_id = 0 if sys.platform == 'rp2' else 2\nspi = SPI(spi_id, baudrate=10000000, polarity=0, phase=0, sck=Pin({SCK}), mosi=Pin({SDA}))\ntft = ILI9163C(spi, dc={A0}, cs={CS}, rst={RESET})\ntft.text('SPARKBENCH', 24, 40, YELLOW)\ntft.text('ILI9163C OK', 20, 60, WHITE)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "text",
+      "title": "Draws two lines of text on the screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SPARKBENCH",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "ILI9163C OK",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:50:51.253Z",
+    "verifiedSources": [
+      "https://www.displayfuture.com/Display/datasheet/controller/ILI9163.pdf",
+      "https://botland.com.pl/en/lcd-displays-are-tft-and-ips/2639-graphic-color-display-tft-lcd-144-128x128px-spi.html"
+    ]
+  }
+}

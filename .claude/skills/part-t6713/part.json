@@ -1,0 +1,168 @@
+{
+  "type": "custom-t6713",
+  "name": "T6713 CO2 sensor",
+  "mpn": "T6713",
+  "category": "sensor",
+  "description": "Amphenol Telaire NDIR carbon dioxide sensor module, 0-2000 ppm (T6713-5K: 0-5000 ppm), +/-30 ppm +/-3 % of reading, new reading every 5 s. Speaks Modbus over I2C (address 0x15, 100 kHz) when its CTRL pin is grounded, plus a PWM output. Needs a 4.5-5.5 V supply (about 25 mA average, 200 mA peaks). Sold as: Amphenol Telaire T6713 module (bare 30 x 20 mm board, 6-hole 2.54 mm header: SDA, SCL, VCC, GND, PWM, CTRL), I2C address 0x15.",
+  "eli5": "Measures how much carbon dioxide is in the room, so you can tell when it is stuffy and needs fresh air.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "Pin 1: I2C data (UART TX in UART mode). Has an internal 4.7 kOhm pull-up inside the sensor.",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "Pin 2: I2C clock (UART RX in UART mode). No internal pull-up: needs an external 4.7 kOhm pull-up, to 3.3 V on a 3.3 V board.",
+      "required": true,
+      "load": {
+        "ohms": 4700,
+        "to": "3v3"
+      }
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Pin 3 (V+): supply 4.5-5.5 V; peaks of 200 mA when the lamp fires",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 4: ground",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "description": "Pin 5: PWM output (25 kHz in I2C mode), needs its own pull-up; not needed for I2C use",
+      "required": false
+    },
+    {
+      "name": "CTRL",
+      "role": "gnd",
+      "description": "Pin 6: interface select. Tie to GND to select I2C (left open = UART). Max 3 V on this pin.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 25,
+  "i2cAddress": 21,
+  "datasheetUrl": "https://www.amphenol-sensors.com/hubfs/Documents/AAS-916-142A-Telaire-T67xx-CO2-Sensor-022719-web.pdf",
+  "sources": [
+    "https://www.amphenol-sensors.com/hubfs/Documents/AAS-916-142A-Telaire-T67xx-CO2-Sensor-022719-web.pdf",
+    "https://static.mercateo.com/66/ea39b8e9d7ca42e09eb5aa04295c38e1/pdf/1872051.pdf",
+    "https://amphenol-sensors.com/en/telaire/co2/525-co2-sensor-modules/3215-t6700",
+    "https://uk.farnell.com/amphenol-advanced-sensors/t6713/co2-module-1-ch-2000ppm/dp/2845668"
+  ],
+  "priceUsd": 40,
+  "supplierQuery": "Amphenol Telaire T6713 CO2 sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Tie pin 6 (CTRL) to GND before power-up: the sensor picks I2C or UART only at start-up from this pin.",
+    "Power it from 5 V (4.5-5.5 V), not 3.3 V. It draws 200 mA peaks, so put a 10-100 uF capacitor across VCC/GND near the sensor.",
+    "SCL needs an external 4.7 kOhm pull-up (SDA has one inside the sensor). The I2C pins work with 3.3 V logic.",
+    "Read CO2: write 04 13 8B 00 01, wait 5-10 ms, read 4 bytes 04 02 MSB LSB; ppm = MSB * 256 + LSB. No CRC on I2C.",
+    "The sensor uses I2C clock stretching and only runs at 100 kHz; use hardware I2C at 100 kHz.",
+    "Readings settle after 2 minutes (full accuracy after 10 minutes); status bit 0x0800 means it is still warming up.",
+    "ABC Logic self-calibrates assuming the room sees fresh air (400 ppm) at least once a week."
+  ],
+  "keywords": [
+    "t6713",
+    "t67xx",
+    "telaire",
+    "amphenol",
+    "co2",
+    "carbon dioxide",
+    "ndir",
+    "air quality",
+    "modbus"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "CO2",
+    "unit": "ppm",
+    "min": 0,
+    "max": 2000,
+    "default": 450,
+    "responses": [
+      {
+        "match": "04 13 8b 00 01",
+        "bytes": [
+          {
+            "const": 4,
+            "bits": 8
+          },
+          {
+            "const": 2,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          }
+        ]
+      },
+      {
+        "match": "04 13 8a 00 01",
+        "bytes": [
+          {
+            "const": 4,
+            "bits": 8
+          },
+          {
+            "const": 2,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 16
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "t6713.py",
+    "code": "# Amphenol Telaire T6713 NDIR CO2 sensor, MicroPython I2C driver.\n# Pin 6 (CTRL) must be tied to GND at power-up to select I2C (address 0x15, 100 kHz).\n# The T67xx speaks Modbus wrapped in I2C (no CRC on I2C): write a Modbus request,\n# wait 5-10 ms, then read the response. The sensor uses clock stretching.\nimport time\n\nADDR = 0x15\n_FN_READ_INPUT = 0x04\n_REG_FIRMWARE = 0x1389\n_REG_STATUS = 0x138A\n_REG_GAS_PPM = 0x138B\n\nSTATUS_ERROR = 0x0001\nSTATUS_FLASH_ERROR = 0x0002\nSTATUS_CAL_ERROR = 0x0004\nSTATUS_REBOOT = 0x0400\nSTATUS_WARMUP = 0x0800\nSTATUS_SINGLE_POINT_CAL = 0x8000\n\n\nclass T6713:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _read_input(self, reg):\n        # Modbus Read Input Registers (function 4), one register.\n        self.i2c.writeto(self.addr, bytes([_FN_READ_INPUT, reg >> 8, reg & 0xFF, 0x00, 0x01]))\n        time.sleep_ms(10)  # datasheet: wait 5-10 ms before reading the response\n        r = self.i2c.readfrom(self.addr, 4)\n        # Response: function code 0x04, byte count 0x02, MSB, LSB.\n        if r[0] != _FN_READ_INPUT or r[1] != 0x02:\n            raise OSError('T6713 bad response: check wiring and that CTRL is grounded')\n        return (r[2] << 8) | r[3]\n\n    def co2(self):\n        \"\"\"CO2 concentration in ppm (ppm = MSB * 256 + LSB).\"\"\"\n        return self._read_input(_REG_GAS_PPM)\n\n    def status(self):\n        \"\"\"Status bit-vector (0 = OK; 0x0800 = warming up).\"\"\"\n        return self._read_input(_REG_STATUS)\n\n    def firmware(self):\n        return self._read_input(_REG_FIRMWARE)\n\n    def warming_up(self):\n        return bool(self.status() & STATUS_WARMUP)\n\n    def reset(self):\n        # Modbus Write Single Coil 0x03E8 = 0xFF00; the sensor resets at once and sends no response.\n        self.i2c.writeto(self.addr, b'\\x05\\x03\\xe8\\xff\\x00')\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom t6713 import T6713\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = T6713(i2c)\nwhile True:\n    print('CO2=%d ppm' % sensor.co2())\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2 level set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1234 ppm",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:52:48.103Z",
+    "verifiedSources": [
+      "https://www.amphenol-sensors.com/hubfs/Documents/AAS-920-634F-Telaire-T6713-Series-100417-web.pdf",
+      "https://static.chipdip.ru/lib/343/DOC026343639.pdf"
+    ]
+  }
+}

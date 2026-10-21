@@ -1,0 +1,200 @@
+{
+  "type": "custom-ak09918",
+  "name": "AK09918 3-axis magnetometer",
+  "mpn": "AK09918C",
+  "category": "sensor",
+  "description": "Asahi Kasei (AKM) AK09918C 3-axis Hall-effect magnetometer (electronic compass): ±4912 µT range, 16-bit, 0.15 µT/LSB, single or continuous 10/20/50/100 Hz measurement, I2C address 0x0C. On the Grove board it shares the bus with an ICM-20600 6-axis accelerometer/gyro at 0x69 (0x68 with the AD pad changed). The board has a 1.8 V regulator and a MOSFET I2C level shifter with 4.7 kΩ pull-ups to VCC, so it runs on 3.3–5 V. Sold as: Seeed Studio Grove - IMU 9DOF (ICM20600 & AK09918), 4-pin Grove connector SCL, SDA, VCC, GND, magnetometer at I2C address 0x0C.",
+  "eli5": "A tiny compass chip: it feels the Earth's magnetic field in three directions so your board can work out which way is north.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "required": true,
+      "boardPullUp": 4700,
+      "description": "I2C clock (Grove pin 1, yellow wire); level shifted to 1.8 V on the board, 4.7 kΩ pull-up to VCC."
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "required": true,
+      "boardPullUp": 4700,
+      "description": "I2C data (Grove pin 2, white wire); level shifted to 1.8 V on the board, 4.7 kΩ pull-up to VCC."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire), 3.3–5 V; an XC6206 regulator makes the chips' 1.8 V. Use 3.3 V with a 3.3 V board, since the I2C pull-ups go to VCC."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 2,
+  "i2cAddress": 12,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-IMU_9DOF-lcm20600_AK09918/res/AK09918.pdf",
+  "priceUsd": 11.9,
+  "supplierQuery": "Seeed Grove IMU 9DOF ICM20600 AK09918",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "The magnetometer answers at 0x0C; i2c.scan() also shows the ICM-20600 accelerometer/gyro at 0x69 on the same board.",
+    "Check WIA1 (0x00) = 0x48 and WIA2 (0x01) = 0x0C. Single measurement: write 0x01 to CNTL2 (0x31), wait about 9 ms, poll ST1 (0x10) bit 0, then read 8 bytes from 0x11: X, Y, Z (16-bit two's complement, low byte first), TMPS, ST2.",
+    "Always read ST2 (0x18) after the data: it ends the read and unlocks the next sample. ST2 bit 3 (HOFL) set means the field overflowed and the sample is invalid.",
+    "Scale: 0.15 µT per LSB (1 gauss = 100 µT). Earth's field is about 25–65 µT.",
+    "Change mode only from power-down (CNTL2 = 0x00) and wait at least 100 µs first. Continuous modes: 0x02 10 Hz, 0x04 20 Hz, 0x06 50 Hz, 0x08 100 Hz.",
+    "Power the Grove board from 3.3 V when using an ESP32 or Pico: its 4.7 kΩ SDA/SCL pull-ups go to VCC.",
+    "Keep it away from motors, speakers, magnets and steel screws, and calibrate hard-iron offsets (min/max while turning) before trusting a heading."
+  ],
+  "keywords": [
+    "ak09918",
+    "ak09918c",
+    "magnetometer",
+    "compass",
+    "grove imu 9dof",
+    "icm20600",
+    "icm-20600",
+    "magnetic field",
+    "heading"
+  ],
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove-IMU_9DOF-lcm20600_AK09918/res/AK09918.pdf",
+    "https://wiki.seeedstudio.com/Grove-IMU_9DOF-lcm20600+AK09918/",
+    "https://files.seeedstudio.com/wiki/Grove-IMU_9DOF-lcm20600_AK09918/res/Grove%20-%20IMU%209DOF%20(ICM20600%20%26%20AK09918).zip",
+    "https://files.seeedstudio.com/wiki/Grove-IMU_9DOF-lcm20600_AK09918/res/ICM-20600.pdf",
+    "https://github.com/Seeed-Studio/Seeed_ICM20600_AK09918"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "µT",
+    "min": -4912,
+    "max": 4912,
+    "default": 20,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Magnetic field Y",
+        "unit": "µT",
+        "min": -4912,
+        "max": 4912,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Magnetic field Z",
+        "unit": "µT",
+        "min": -4912,
+        "max": 4912,
+        "default": -40
+      }
+    ],
+    "registers": {
+      "0x00": 72,
+      "0x01": 12,
+      "0x10": 1,
+      "0x17": 0,
+      "0x18": 0,
+      "0x30": 0,
+      "0x31": 0,
+      "0x32": 0
+    },
+    "selfClearing": [
+      {
+        "reg": "0x32",
+        "mask": 1,
+        "reset": true
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x11",
+        "bytes": 2,
+        "scale": 0.15,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x13",
+        "bytes": 2,
+        "scale": 0.15,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x15",
+        "bytes": 2,
+        "scale": 0.15,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ],
+    "subDevices": [
+      {
+        "i2cAddress": 105,
+        "registers": {
+          "0x75": 17
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ak09918.py",
+    "code": "# AK09918 3-axis magnetometer (AKM AK09918C datasheet 016014242-E-00), MicroPython driver.\n# I2C address 0x0C. WIA1 (0x00) = 0x48 (AKM), WIA2 (0x01) = 0x0C (AK09918).\n# Mode in CNTL2 (0x31): 0x00 power-down, 0x01 single, 0x02/0x04/0x06/0x08 continuous 10/20/50/100 Hz,\n# 0x10 self-test. Always go through power-down and wait >= 100 us (Twait) before a new mode.\n# Read: poll ST1 (0x10) DRDY bit 0, read HXL..HZH (0x11-0x16, 16-bit two's complement, little endian),\n# then ST2 (0x18) must be read to end the read (HOFL bit 3 = overflow). 0.15 uT per LSB.\nimport time\n\n_WIA1 = 0x00\n_WIA2 = 0x01\n_ST1 = 0x10\n_HXL = 0x11\n_ST2 = 0x18\n_CNTL2 = 0x31\n_CNTL3 = 0x32\n\nMODE_POWER_DOWN = 0x00\nMODE_SINGLE = 0x01\nMODE_10HZ = 0x02\nMODE_20HZ = 0x04\nMODE_50HZ = 0x06\nMODE_100HZ = 0x08\nMODE_SELF_TEST = 0x10\n\nUT_PER_LSB = 0.15\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass AK09918:\n    def __init__(self, i2c, addr=0x0C, mode=MODE_SINGLE):\n        self.i2c = i2c\n        self.addr = addr\n        self.overflow = False\n        self.overrun = False\n        wia = self.i2c.readfrom_mem(addr, _WIA1, 2)\n        if wia[0] != 0x48 or wia[1] != 0x0C:\n            raise OSError('AK09918 not found at 0x%02X (WIA %02X %02X)' % (addr, wia[0], wia[1]))\n        self._write(_CNTL3, 0x01)  # soft reset: registers to defaults, power-down mode\n        time.sleep_ms(1)\n        self.set_mode(mode)\n\n    def _write(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def set_mode(self, mode):\n        \"\"\"Select an operating mode (passes through power-down first, per datasheet 9.3).\"\"\"\n        self._write(_CNTL2, MODE_POWER_DOWN)\n        time.sleep_us(100)  # Twait\n        self.mode = mode\n        if mode != MODE_SINGLE and mode != MODE_POWER_DOWN:\n            self._write(_CNTL2, mode)\n\n    def read_raw(self, timeout_ms=100):\n        \"\"\"Return raw (x, y, z) counts. In single mode this triggers one measurement (7.2-8.2 ms).\"\"\"\n        if self.mode == MODE_SINGLE:\n            self._write(_CNTL2, MODE_SINGLE)\n            time.sleep_ms(9)\n        t0 = time.ticks_ms()\n        while True:\n            st1 = self.i2c.readfrom_mem(self.addr, _ST1, 1)[0]\n            if st1 & 0x01:\n                break\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('AK09918: data not ready')\n            time.sleep_ms(1)\n        self.overrun = bool(st1 & 0x02)\n        # HXL..HZH, TMPS, ST2 in one burst: reading ST2 releases the data protection.\n        d = self.i2c.readfrom_mem(self.addr, _HXL, 8)\n        self.overflow = bool(d[7] & 0x08)  # HOFL: |X|+|Y|+|Z| >= 4912 uT, data not valid\n        return _s16(d[0], d[1]), _s16(d[2], d[3]), _s16(d[4], d[5])\n\n    def read(self):\n        \"\"\"Return the field (x, y, z) in microtesla.\"\"\"\n        x, y, z = self.read_raw()\n        return x * UT_PER_LSB, y * UT_PER_LSB, z * UT_PER_LSB\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ak09918 import AK09918\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = AK09918(i2c)  # address 0x0C, single-measurement mode\nwhile True:\n    x, y, z = mag.read()\n    print('X=%.2fuT Y=%.2fuT Z=%.2fuT' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z field set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -15
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 45
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=30.00uT Y=-15.00uT Z=45.00uT",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:55:50.815Z",
+    "verifiedSources": [
+      "https://www.akm.com/content/dam/documents/products/electronic-compass/ak09918c/ak09918c-en-datasheet.pdf",
+      "https://wiki.seeedstudio.com/Grove-IMU_9DOF-lcm20600+AK09918/"
+    ]
+  }
+}

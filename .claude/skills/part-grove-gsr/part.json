@@ -1,0 +1,121 @@
+{
+  "type": "custom-grove-gsr",
+  "name": "Grove GSR Sensor",
+  "mpn": "Grove - GSR Sensor v1.2 (LM324)",
+  "category": "sensor",
+  "description": "Galvanic skin response sensor: two nickel finger straps measure skin resistance, and an LM324 op-amp bridge turns it into a voltage on SIG (SIG = VCC x (Rs/(200k+Rs) - trimmer term), so lower skin resistance gives lower SIG; about VCC/2 with the straps off after calibration). Runs on 3.3 V or 5 V. Sold as: Seeed Studio Grove - GSR Sensor v1.2 (SKU 101020052, Grove 4-pin connector SIG, NC, VCC, GND, with finger straps), sold by Seeed and its distributors.",
+  "eli5": "A lie-detector style sensor: two finger straps feel how sweaty your skin is. Its SIG voltage drops when you get excited or nervous.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (Grove pin 1, yellow wire) through a 1 MOhm resistor with 100 nF to GND. About VCC/2 with the straps off (calibrated), falling as skin resistance falls. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (Grove pin 2, white wire)",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V or 5 V (Grove pin 3, red wire). Use 3.3 V with 3.3 V ADCs.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black wire)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 2,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-GSR_Sensor/res/Lm324.pdf",
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove-GSR_Sensor/res/Lm324.pdf",
+    "https://wiki.seeedstudio.com/Grove-GSR_Sensor/",
+    "https://files.seeedstudio.com/wiki/Grove-GSR_Sensor/res/Grove-GSR_Eagle_File_V1.2.zip"
+  ],
+  "priceUsd": 12.9,
+  "supplierQuery": "Seeed Grove GSR Sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order from Seeed's v1.2 schematic (J3 pins 1-4): SIG (yellow), NC (white), VCC (red), GND (black). Use a Grove-to-female-jumper cable.",
+    "Plug the finger straps into the 2-pin JST socket on the other edge and wear them on two fingers of one hand.",
+    "Calibrate first: straps NOT worn, turn the trimmer until SIG is lowest (about VCC/2), then run calibrate().",
+    "SIG goes through 1 MOhm with 100 nF to GND: average slow readings and never put a divider on it.",
+    "On the ESP32 use an ADC1 pin (GPIO32-39); the Raspberry Pi has no ADC, so add one."
+  ],
+  "keywords": [
+    "grove",
+    "gsr",
+    "galvanic skin response",
+    "skin resistance",
+    "eda",
+    "electrodermal",
+    "sweat",
+    "stress",
+    "emotion",
+    "lie detector",
+    "lm324",
+    "seeed",
+    "analog",
+    "biometric"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "GSR output (SIG voltage; lower = lower skin resistance)",
+    "unit": "V",
+    "min": 0,
+    "max": 1.65,
+    "default": 1.65,
+    "vAtMin": 0,
+    "vAtMax": 1.65,
+    "outputOhms": 1000000
+  },
+  "driver": {
+    "filename": "grove_gsr.py",
+    "code": "# Seeed Grove - GSR Sensor (v1.2, Grove pins SIG, NC, VCC, GND), MicroPython driver.\n# No bus, no registers. From Seeed's v1.2 Eagle schematic (LM324 quad op-amp, TI datasheet):\n#   R2/R7 4.7k + 4.7k make Vh = VCC/2.\n#   Skin (finger electrodes, J1) Rs to GND under R6 200k:  V3 = Vh * Rs / (200k + Rs)   (buffered by U1C)\n#   Trimmer R1 (0-200k) to GND under R5 200k:            V1 = Vh * Rp / (200k + Rp)   (buffered by U1A)\n#   U1B difference amp, gain R4/R8 = R11/R10 = 2:         Vout = 2 * (V3 - V1)\n#   then R9 1M + C2 100 nF (0.1 s) to SIG.\n# So SIG = VCC * (Rs / (200k + Rs) - a), with a = Rp / (200k + Rp), clipped at 0 V by the single supply.\n# Calibration (Seeed's procedure): electrodes NOT worn (Rs = open), turn the trimmer until SIG is lowest\n# (trimmer at 200k): Vcal = VCC * (1 - a), about VCC/2. Solving both equations for Rs:\n#   Rs = 200k * (V + VCC - Vcal) / (Vcal - V)\n# SIG falls as skin resistance falls (more sweat = lower SIG). Output is ratiometric to VCC.\nfrom machine import ADC, Pin\nimport time\n\nR_BIAS = 200000  # R6, ohms\n\n\nclass GroveGSR:\n    def __init__(self, sig, vcc=3.3, vref=3.3):\n        \"\"\"sig: GPIO number (or Pin) wired to SIG. vcc: the module's supply in volts (3.3 or 5).\n        vref: ADC full scale in volts, used when read_uv() is not available (Pico: 3.3 V).\"\"\"\n        self.adc = ADC(Pin(sig) if isinstance(sig, int) else sig)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.vref = vref\n        self.vcal = vcc / 2  # ideal calibration point (trimmer fully up); replace with calibrate()\n\n    def _volts(self):\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def voltage(self, n=10, gap_ms=5):\n        \"\"\"SIG in volts, averaged over n readings gap_ms apart (Seeed's example averages 10 x 5 ms).\n        The 1 Mohm / 100 nF output filter makes SIG slow (0.1 s), so do not sample it faster than needed.\"\"\"\n        total = 0.0\n        for _ in range(n):\n            total += self._volts()\n            time.sleep_ms(gap_ms)\n        return total / n\n\n    def calibrate(self):\n        \"\"\"Call with the finger straps NOT worn, after turning the trimmer so SIG is lowest.\n        Stores and returns the calibration voltage (about VCC/2).\"\"\"\n        self.vcal = self.voltage(n=20)\n        return self.vcal\n\n    def resistance(self, v=None):\n        \"\"\"Skin resistance in ohms from SIG (schematic formula above), or None when SIG is at or above the\n        calibration level (electrodes open). Returns 0 when SIG is at the 0 V floor (Rs at or below the range).\"\"\"\n        if v is None:\n            v = self.voltage()\n        if v >= self.vcal:\n            return None\n        num = v + self.vcc - self.vcal\n        if num <= 0:\n            return 0\n        return R_BIAS * num / (self.vcal - v)\n\n    def conductance_us(self, v=None):\n        \"\"\"Skin conductance in microsiemens (1e6 / ohms), or None when open.\"\"\"\n        r = self.resistance(v)\n        if r is None:\n            return None\n        if r == 0:\n            return float('inf')\n        return 1e6 / r\n\n    def raw10(self, v=None):\n        \"\"\"SIG as the 0-1023 number Seeed's Arduino example prints (10-bit ADC, full scale = VCC).\"\"\"\n        if v is None:\n            v = self.voltage()\n        return max(0, min(1023, int(v * 1023 / self.vcc + 0.5)))\n"
+  },
+  "example": {
+    "code": "from grove_gsr import GroveGSR\nimport time\n\ngsr = GroveGSR({SIG}, vcc=3.3)\nwhile True:\n    print('GSR=%.1fV' % gsr.voltage())\n    time.sleep_ms(300)\n",
+    "test": {
+      "id": "gsr",
+      "title": "Reports the SIG voltage set on the GSR slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.8
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "GSR=0.8V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-gsr\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - GSR Sensor v1.2 (galvanic skin response, LM324 op-amp bridge, analog SIG output, Grove pins SIG/NC/VCC/GND). Use when designing, wiring, simulating or writing code for a Grove GSR sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - GSR Sensor (LM324)\n\n## Overview\nThe **Seeed Grove - GSR Sensor** (v1.2, SKU 101020052) measures the **resistance of the skin** between two nickel finger straps (plugged into the board's 2-pin JST socket). Sweat from strong emotion lowers skin resistance. The board turns it into a voltage with an **LM324** quad op-amp (circuit from Seeed's v1.2 schematic):\n- R2/R7 (4.7k + 4.7k) make a reference **Vh = VCC/2**.\n- Skin Rs to GND under **R6 200 kΩ** → V3 = Vh·Rs/(200k + Rs), buffered.\n- Trimmer R1 (0–200 kΩ) to GND under R5 200 kΩ → V1 = Vh·Rp/(200k + Rp), buffered.\n- Difference amplifier, gain 2 → **SIG = VCC·(Rs/(200k + Rs) − Rp/(200k + Rp))**, clipped at 0 V, then a **1 MΩ / 100 nF** filter (0.1 s).\n- **Lower skin resistance → lower SIG.** Electrodes open → highest SIG (≈ VCC/2 after calibration).\n\nCalibration (Seeed's procedure): with the straps **not worn**, turn the trimmer until SIG is lowest (trimmer fully up, SIG ≈ VCC/2). Call that Vcal. Then\n**Rs = 200 kΩ · (V + VCC − Vcal) / (Vcal − V)**.\n(Seeed's wiki prints `((1024 + 2·S)·10000)/(cal − S)`, the same shape for cal = 512 but scaled to a 20 kΩ bias; the board's schematic has R6 = 200 kΩ, so use 200 kΩ.)\n\n## Pinout (Grove connector J3, pin 1 to 4, from Seeed's schematic)\n| Pin | Name | Wire | Function |\n|-----|------|------|----------|\n| 1 | SIG | yellow | Analog output (through 1 MΩ) |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Supply, 3.3–5 V |\n| 4 | GND | black | Ground |\n\nThe finger straps go in the separate 2-pin JST 2.0 socket (J1) on the other edge.\n\n## Electrical limits\n- Supply: **3.3 V or 5 V** (Seeed spec; LM324 needs ≥ 3 V). On 3.3 V, SIG stays ≤ ~1.8 V (LM324 high limit VCC − 1.5 V), safe for any ADC.\n- Current: LM324 0.7 mA typ / 1.2 mA max + 4.7k/4.7k divider (0.35 mA at 3.3 V): about 2 mA.\n- On 5 V, SIG is ≈ 2.5 V when calibrated and can reach ~3.5 V if the trimmer is turned down; the 1 MΩ series resistor limits that to a few µA, so prefer 3.3 V with 3.3 V ADCs.\n- SIG source resistance is **1 MΩ** (R9) with 100 nF to GND: sample slowly and average; never load SIG with a divider.\n\n## Wiring\n| Board | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 3V3 | 3V3 (pin 36) | 3.3 V (pin 1) |\n| GND | GND | GND | GND (pin 6) |\n| SIG | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (e.g. ADS1115) |\n| NC | – | – | – |\n\nUse a Grove-to-female-jumper cable (the board has a 2 mm Grove socket). On the ESP32 use ADC1 pins (ADC2 stops working with Wi-Fi on).\n\n## Using the driver\n```python\nfrom grove_gsr import GroveGSR\nimport time\ngsr = GroveGSR(34, vcc=3.3)     # GPIO wired to SIG, module supply\ngsr.calibrate()                 # straps NOT worn, trimmer turned for lowest SIG\nwhile True:\n    v = gsr.voltage()\n    print('SIG=%.2fV R=%s' % (v, gsr.resistance(v)))\n    time.sleep(0.5)\n```\n`voltage()` averages 10 readings 5 ms apart (Seeed's example); `resistance()` returns ohms, None when open, 0 when SIG is at the 0 V floor; `conductance_us()` gives µS; `raw10()` gives Seeed's 0–1023 scale.\n\n## Gotchas\n- **It reports resistance, not conductance** (Seeed's own caution). Sweatier = lower SIG.\n- **Range**: with the trimmer at the calibration point, skin below ~200 kΩ drives SIG to 0 V. If SIG sits at 0 V when worn, turn the trimmer down slightly and calibrate again (Vcal then rises above VCC/2).\n- **Slow output**: the 0.1 s filter means fast sampling just repeats the same value; GSR changes over seconds anyway.\n- **Pass the real VCC** to the driver: the formula is ratiometric to the module supply.\n- Not a medical device; values vary with strap contact and pressure.\n\n## Datasheet\nLM324: https://files.seeedstudio.com/wiki/Grove-GSR_Sensor/res/Lm324.pdf. Board: https://wiki.seeedstudio.com/Grove-GSR_Sensor/ and schematic https://files.seeedstudio.com/wiki/Grove-GSR_Sensor/res/Grove-GSR_Eagle_File_V1.2.zip\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:02:14.825Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm324.pdf",
+      "https://wiki.seeedstudio.com/Grove-GSR_Sensor/"
+    ]
+  }
+}

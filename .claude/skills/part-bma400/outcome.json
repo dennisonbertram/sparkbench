@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bma400",
+  "board": "SparkFun Triple Axis Accelerometer Breakout - BMA400 (Qwiic), SEN-21208",
+  "reason": "Check passed on ESP32 and Pico: 12-bit two's-complement X/Y/Z split over LSB/MSB registers (1024 LSB/g at ±2 g) and TEMP_DATA (T = v*0.5+23) encoded per the Bosch datasheet; driver soft-resets, sets ±2 g/100 Hz, enters normal mode and burst-reads 0x04-0x09.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bma400-ds000.pdf",
+  "breakoutPinoutSource": "https://cdn.sparkfun.com/assets/learn_tutorials/2/7/5/9/Qwiic_BMA400_-_Interfaces.jpg (silkscreen: GND, 3V3, SDA/PICO, SCL/SCK, ADR/POCI, CS; INT2, INT1) cross-checked with SparkFun's Eagle schematic (J3/J4 nets)",
+  "checkRuns": 1
+}

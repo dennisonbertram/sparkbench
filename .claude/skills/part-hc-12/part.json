@@ -1,0 +1,750 @@
+{
+  "type": "custom-hc-12",
+  "name": "HC-12 433 MHz wireless serial module",
+  "mpn": "HC-12",
+  "category": "ic",
+  "description": "433.4-473.0 MHz half-duplex wireless serial (UART) link module (Silicon Labs Si4463 radio + STM8S003 MCU, up to 100 mW / 20 dBm, about 1 km line of sight at 5 kbps air rate). Two modules on the same channel, baud and FU mode act as a wireless serial cable. Factory 9600 8N1, channel 001 (433.4 MHz), FU3, +20 dBm. Pull SET low for AT commands. Supply 3.2-5.5 V into the module's LDO; RXD/TXD are 3.3 V TTL with 1k series resistors. Sold as: HC-12 433 MHz wireless serial module (HC-12 V2.x by hc01.com and its clones) with the 5-pin 2.54 mm header VCC, GND, RXD, TXD, SET and a spring antenna, the common module sold by most hobby shops.",
+  "eli5": "Two of these let your boards send text to each other by radio, up to hundreds of metres apart, like an invisible serial cable.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.2-5.5 V, able to give 200 mA (up to 100 mA while transmitting at 20 dBm). Datasheet: add a 1N4007 in series above 4.5 V for long transmit duty",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module's UART input, 3.3 V TTL (1k series, weak pull-up). Wire to the microcontroller's TX; use a divider from a 5 V board",
+      "required": true
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module's UART output, 3.3 V TTL (1k series). Wire to the microcontroller's RX",
+      "required": true,
+      "levelV": 3.3
+    },
+    {
+      "name": "SET",
+      "role": "io",
+      "description": "AT command mode when low (internal 10k pull-up to 3.3 V). Driven by a GPIO so the driver can read and change settings; held high for normal radio use",
+      "required": true
+    }
+  ],
+  "vmin": 3.2,
+  "vmax": 5.5,
+  "currentMa": 100,
+  "datasheetUrl": "https://statics3.seeedstudio.com/assets/file/bazaar/product/HC-12_english_datasheets.pdf",
+  "sources": [
+    "https://statics3.seeedstudio.com/assets/file/bazaar/product/HC-12_english_datasheets.pdf",
+    "https://www.elecrow.com/download/HC-12.pdf",
+    "https://howtomechatronics.com/tutorials/arduino/arduino-and-hc-12-long-range-wireless-communication-module/"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "HC-12 433MHz SI4463 wireless serial module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "You need two HC-12s (one per board). Both must use the same channel, baud and FU mode; factory settings already match (CH001, 9600 8N1, FU3).",
+    "Cross the serial lines: module TXD to the board's RX, module RXD to the board's TX. RXD/TXD are 3.3 V TTL; from a 5 V Arduino put a 1k/2k divider on RXD.",
+    "Power from 3.3 V or 5 V; the supply must handle about 100 mA bursts while transmitting. Add 10-100 uF across VCC/GND near the module if it resets while sending.",
+    "Solder the spring antenna (or use the IPEX socket). Without an antenna range drops to a few metres and the radio can be stressed.",
+    "AT mode: pull SET low, wait 40 ms, send commands with no line ending (replies end in CRLF). Release SET and wait 80 ms before sending data; wait 200 ms before entering AT mode again. New settings apply after leaving AT mode and survive power-off.",
+    "In FU3 the air rate follows the UART baud: 1200-2400 baud -> 5 kbps (longest range), 4800-9600 -> 15 kbps, 19200-38400 -> 58 kbps, 57600-115200 -> 236 kbps. Leave five channels between neighbouring links."
+  ],
+  "keywords": [
+    "hc-12",
+    "hc12",
+    "433mhz",
+    "radio",
+    "wireless",
+    "serial",
+    "uart",
+    "si4463",
+    "transceiver",
+    "long range"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Digit the other HC-12 sends (0-9)",
+    "unit": "",
+    "min": 0,
+    "max": 9,
+    "default": 0,
+    "controls": [
+      {
+        "key": "remote",
+        "quantity": "Other HC-12 transmitting (1 = yes)",
+        "min": 0,
+        "max": 1,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "when": "remote",
+      "bytes": [
+        {
+          "control": "value",
+          "bits": 8,
+          "scale": 1,
+          "offset": -48
+        },
+        {
+          "const": 13,
+          "bits": 8
+        },
+        {
+          "const": 10,
+          "bits": 8
+        }
+      ]
+    },
+    "uartReplies": [
+      {
+        "match": "41 54 2b 52 58",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 70,
+            "bits": 8
+          },
+          {
+            "const": 85,
+            "bits": 8
+          },
+          {
+            "const": 51,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 66,
+            "bits": 8
+          },
+          {
+            "const": 57,
+            "bits": 8
+          },
+          {
+            "const": 54,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 67,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 82,
+            "bits": 8
+          },
+          {
+            "const": 80,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 50,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 100,
+            "bits": 8
+          },
+          {
+            "const": 66,
+            "bits": 8
+          },
+          {
+            "const": 109,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 52 42",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 66,
+            "bits": 8
+          },
+          {
+            "const": 57,
+            "bits": 8
+          },
+          {
+            "const": 54,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 52 43",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 82,
+            "bits": 8
+          },
+          {
+            "const": 67,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 52 46",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 70,
+            "bits": 8
+          },
+          {
+            "const": 85,
+            "bits": 8
+          },
+          {
+            "const": 51,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 52 50",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 82,
+            "bits": 8
+          },
+          {
+            "const": 80,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 50,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 100,
+            "bits": 8
+          },
+          {
+            "const": 66,
+            "bits": 8
+          },
+          {
+            "const": 109,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 56",
+        "bytes": [
+          {
+            "const": 119,
+            "bits": 8
+          },
+          {
+            "const": 119,
+            "bits": 8
+          },
+          {
+            "const": 119,
+            "bits": 8
+          },
+          {
+            "const": 46,
+            "bits": 8
+          },
+          {
+            "const": 104,
+            "bits": 8
+          },
+          {
+            "const": 99,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 46,
+            "bits": 8
+          },
+          {
+            "const": 99,
+            "bits": 8
+          },
+          {
+            "const": 111,
+            "bits": 8
+          },
+          {
+            "const": 109,
+            "bits": 8
+          },
+          {
+            "const": 32,
+            "bits": 8
+          },
+          {
+            "const": 72,
+            "bits": 8
+          },
+          {
+            "const": 67,
+            "bits": 8
+          },
+          {
+            "const": 45,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 50,
+            "bits": 8
+          },
+          {
+            "const": 95,
+            "bits": 8
+          },
+          {
+            "const": 86,
+            "bits": 8
+          },
+          {
+            "const": 50,
+            "bits": 8
+          },
+          {
+            "const": 46,
+            "bits": 8
+          },
+          {
+            "const": 52,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 44 45 46 41 55 4c 54",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 68,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 70,
+            "bits": 8
+          },
+          {
+            "const": 65,
+            "bits": 8
+          },
+          {
+            "const": 85,
+            "bits": 8
+          },
+          {
+            "const": 76,
+            "bits": 8
+          },
+          {
+            "const": 84,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 53 4c 45 45 50",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 83,
+            "bits": 8
+          },
+          {
+            "const": 76,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 80,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hc12.py",
+    "code": "# HC-12 433 MHz wireless serial module (Si4463 radio + STM8S003 MCU, hc01.com firmware), MicroPython driver.\n# Datasheet (HC-12 V2.4 user manual, \"Module parameter setting AT command\"):\n#  - Pull pin 5 SET low to enter AT command mode; wait 40 ms before sending a command.\n#    Release SET (high / floating, internal 10k pull-up) and wait 80 ms before sending data again.\n#    After leaving AT mode the module resets: wait at least 200 ms before entering AT mode again.\n#  - In AT mode the module talks at its configured baud (factory 9600 8N1). If SET is held low\n#    while the module powers up, AT mode always runs at 9600 8N1.\n#  - Commands have no terminator; replies end with \\r\\n: AT -> OK, AT+RB -> OK+B9600, AT+RC -> OK+RC001,\n#    AT+RF -> OK+FU3, AT+RP -> OK+RP:+20dBm, AT+V -> www.hc01.com HC-12_V2.4, AT+RX -> all four.\n#  - New settings take effect after leaving AT mode and survive power-off.\n#  - With SET high every byte written to RXD is sent over the air; bytes received come out of TXD.\nimport time\n\n_BAUDS = (1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200)\n_POWER_DBM = (-1, 2, 5, 8, 11, 14, 17, 20)  # AT+P1 .. AT+P8\n\n\nclass HC12:\n    def __init__(self, uart, set_pin, timeout_ms=500, idle_ms=60):\n        \"\"\"set_pin: a machine.Pin already configured as Pin.OUT, wired to the module's SET.\"\"\"\n        self.uart = uart\n        self.set = set_pin\n        self.set.value(1)\n        self.timeout_ms = timeout_ms\n        self.idle_ms = idle_ms\n        self._at = False\n        self._left_at = time.ticks_ms() - 200\n        self._buf = b''\n\n    # --- AT command mode -------------------------------------------------\n    def enter_at(self):\n        if self._at:\n            return\n        wait = 200 - time.ticks_diff(time.ticks_ms(), self._left_at)\n        if wait > 0:\n            time.sleep_ms(wait)  # module resets after leaving AT mode\n        self.set.value(0)\n        time.sleep_ms(40)  # datasheet: wait 40 ms after SET low\n        self._at = True\n\n    def exit_at(self):\n        if not self._at:\n            return\n        self.set.value(1)\n        time.sleep_ms(80)  # datasheet: wait 80 ms before transparent mode works\n        self._at = False\n        self._left_at = time.ticks_ms()\n\n    def _drain(self):\n        while self.uart.any():\n            self.uart.read()\n\n    def command(self, cmd):\n        \"\"\"Send one AT command (enters AT mode if needed) and return the reply text, CRLF stripped.\"\"\"\n        self.enter_at()\n        self._drain()\n        self.uart.write(cmd.encode())\n        t0 = time.ticks_ms()\n        reply = b''\n        last_rx = None\n        while True:\n            now = time.ticks_ms()\n            if self.uart.any():\n                got = self.uart.read()\n                if got:\n                    reply += got\n                    last_rx = now\n            elif last_rx is not None and time.ticks_diff(now, last_rx) >= self.idle_ms:\n                break\n            elif last_rx is None and time.ticks_diff(now, t0) >= self.timeout_ms:\n                break\n            else:\n                time.sleep_ms(5)\n        if not reply:\n            raise OSError('HC-12: no reply to %s (SET not low, or wrong baud?)' % cmd)\n        return reply.decode().strip()\n\n    def _ok(self, cmd, expect):\n        r = self.command(cmd)\n        if not r.startswith(expect):\n            raise OSError('HC-12: %s -> %s' % (cmd, r))\n        return r\n\n    def ping(self):\n        self._ok('AT', 'OK')\n        return True\n\n    def version(self):\n        return self.command('AT+V')\n\n    def baud(self):\n        return int(self._ok('AT+RB', 'OK+B')[4:])\n\n    def channel(self):\n        return int(self._ok('AT+RC', 'OK+RC')[5:])\n\n    def mode(self):\n        return int(self._ok('AT+RF', 'OK+FU')[5:])\n\n    def power_dbm(self):\n        r = self._ok('AT+RP', 'OK+RP')\n        s = r[r.index(':') + 1:].replace('dBm', '').strip()\n        return int(s)\n\n    def set_baud(self, baud):\n        \"\"\"Applies after exit_at(); re-open the UART at the new rate then.\"\"\"\n        if baud not in _BAUDS:\n            raise ValueError('baud must be one of %s' % (_BAUDS,))\n        return self._ok('AT+B%d' % baud, 'OK+B')\n\n    def set_channel(self, ch):\n        \"\"\"Channel 1-127 (1 = 433.4 MHz, +400 kHz per channel; above 100 range is not guaranteed).\"\"\"\n        if not 1 <= ch <= 127:\n            raise ValueError('channel must be 1-127')\n        return self._ok('AT+C%03d' % ch, 'OK+C')\n\n    def set_mode(self, fu):\n        \"\"\"Transparent mode FU1/FU2/FU3 (FU2 only supports 1200-4800 baud). Both ends must match.\"\"\"\n        if fu not in (1, 2, 3, 4):\n            raise ValueError('mode must be 1-4')\n        return self._ok('AT+FU%d' % fu, 'OK+FU')\n\n    def set_power(self, level):\n        \"\"\"Transmit power level 1-8 (-1 to +20 dBm).\"\"\"\n        if not 1 <= level <= 8:\n            raise ValueError('power level must be 1-8')\n        return self._ok('AT+P%d' % level, 'OK+P')\n\n    def defaults(self):\n        return self._ok('AT+DEFAULT', 'OK+DEFAULT')\n\n    def sleep(self):\n        \"\"\"Module sleeps (about 22 uA) after exit_at(); entering AT mode again wakes it.\"\"\"\n        return self._ok('AT+SLEEP', 'OK+SLEEP')\n\n    # --- transparent mode (SET high) ---------------------------------------\n    def write(self, data):\n        self.exit_at()\n        return self.uart.write(data)\n\n    def readline(self):\n        \"\"\"Return one received line (without \\\\r\\\\n) as str, or None if no whole line yet.\"\"\"\n        if self.uart.any():\n            got = self.uart.read()\n            if got:\n                self._buf += got\n        if b'\\n' in self._buf:\n            line, self._buf = self._buf.split(b'\\n', 1)\n            return line.strip().decode()\n        return None\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom hc12 import HC12\n\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\nradio = HC12(u, Pin({SET}, Pin.OUT, value=1))\ntry:\n    radio.ping()\n    print('HC-12 channel %d, %d baud, FU%d, %d dBm' % (radio.channel(), radio.baud(), radio.mode(), radio.power_dbm()))\nexcept OSError as e:\n    print(e)\nradio.exit_at()  # SET high: transparent mode\nprint('Listening')\nwhile True:\n    line = radio.readline()\n    if line:\n        print('RECEIVED %s' % line)\n        radio.write(b'ack ' + line.encode() + b'\\r\\n')\n    time.sleep_ms(20)\n",
+    "test": {
+      "id": "at-then-radio-data",
+      "title": "Reads its settings over AT, then prints what the other HC-12 sends",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "HC-12 channel 1, 9600 baud, FU3, 20 dBm",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Listening",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "remote",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RECEIVED 7",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:01:09.682Z",
+    "verifiedSources": [
+      "https://www.elecrow.com/download/HC-12.pdf"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bme688",
+  "board": "Adafruit BME688 Temperature, Humidity, Pressure and Gas Sensor breakout, STEMMA QT (#5046)",
+  "reason": "Check PASSED on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test, PCB DRC, footprint, LCSC). Sim uses realistic calibration registers and inverts the datasheet's full float compensation formulas (solve) plus the BME688-specific gas formula in 0x2C/0x2D; driver verified end-to-end against a register-level harness.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme688-ds000.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-bme680-humidity-temperature-barometic-pressure-voc-gas/pinouts (shared BME680/BME688 guide) + https://github.com/adafruit/Adafruit-BME680-PCB board file (JP1 pads 4-7 SCK, SDO, SDI, CS)",
+  "checkRuns": 1
+}

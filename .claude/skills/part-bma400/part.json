@@ -1,0 +1,276 @@
+{
+  "type": "custom-bma400",
+  "name": "BMA400 ultra-low-power 3-axis accelerometer",
+  "mpn": "BMA400",
+  "category": "sensor",
+  "description": "Bosch Sensortec ultra-low-power 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, 12-bit output (1024 LSB/g at ±2 g), output data rate 12.5–800 Hz (25 Hz in low-power mode), 14.5 µA in normal mode, 850 nA in low-power mode, 160 nA asleep; I2C (up to 1 MHz) or SPI, 1 KB FIFO, step counter, activity/orientation/tap engines, 8-bit temperature sensor and two interrupt pins. Chip supply 1.72–3.6 V. Sold as: SparkFun Triple Axis Accelerometer Breakout - BMA400 (Qwiic), SEN-21208, 1\" x 1\" board with two Qwiic sockets, a 6-pin header GND, 3V3, SDA/PICO, SCL/SCK, ADR/POCI, CS (no regulator: 3.3 V only; 2.2 kΩ I2C pull-ups; ADR/SDO tied to GND through 10 kΩ by the ADR jumper = I2C address 0x14; CS pulled to 3.3 V through 10 kΩ = I2C mode), and a 2-pin header INT2, INT1 on the opposite edge, not needed for basic use. Because the pins are on two edges it is wired with jumper leads rather than plugged in as a single row.",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, on three axes, while using almost no battery.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V (feeds the chip's VDD and VDDIO directly, no regulator: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "SDA/PICO",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI PICO/SDI in SPI mode); 2.2 kΩ pull-up to 3.3 V on the board (I2C jumper)",
+      "required": true,
+      "boardPullUp": 2200
+    },
+    {
+      "name": "SCL/SCK",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK in SPI mode); 2.2 kΩ pull-up to 3.3 V on the board (I2C jumper)",
+      "required": true,
+      "boardPullUp": 2200
+    },
+    {
+      "name": "ADR/POCI",
+      "role": "io",
+      "description": "I2C address select / SPI POCI (SDO). Tied to GND through 10 kΩ by the default ADR jumper = address 0x14; pull to 3.3 V (or move the jumper) for 0x15. Leave unconnected for I2C at 0x14",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select, active low; pulled to 3.3 V through 10 kΩ on the board (I2C mode). Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Second header (opposite edge): interrupt output 2, push-pull at VDDIO = 3.3 V by default; not needed for basic use",
+      "required": false,
+      "levelV": 3.3
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Second header (opposite edge): interrupt output 1, push-pull at VDDIO = 3.3 V by default; not needed for basic use",
+      "required": false,
+      "levelV": 3.3
+    }
+  ],
+  "vmin": 1.72,
+  "vmax": 3.6,
+  "currentMa": 1,
+  "i2cAddress": 20,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bma400-ds000.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "SparkFun Triple Axis Accelerometer Breakout BMA400 Qwiic SEN-21208",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "cabled": true,
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bma400-ds000.pdf",
+    "https://www.sparkfun.com/products/21208",
+    "https://learn.sparkfun.com/tutorials/sparkfun-triple-axis-accelerometer-breakout---bma400-qwiic-hookup-guide",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/2/7/5/9/Qwiic_BMA400_-_Interfaces.jpg",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Accelerometer_BMA400/blob/main/Hardware/Qwiic%201x1/SparkFun_Qwiic_Accelerometer_BMA400.sch",
+    "https://github.com/sparkfun/SparkFun_BMA400_Arduino_Library/blob/main/src/SparkFun_BMA400_Arduino_Library.h"
+  ],
+  "buildNotes": [
+    "Power from 3.3 V only: the board has no regulator and the chip's absolute maximum supply is 3.6 V.",
+    "The chip boots into sleep mode (no conversions). Write ACC_CONFIG1 0x1A = 0x38 (±2 g, osr 3, 100 Hz), then ACC_CONFIG0 0x19 = 0x02 (normal mode) and wait 2/ODR (20 ms at 100 Hz) before reading.",
+    "Read ACC_X_LSB..ACC_Z_MSB (0x04-0x09) in one 6-byte burst. Each axis is 12-bit two's complement: v = LSB + 256 * (MSB & 0x0F); if v > 2047: v -= 4096. Divide by 1024 LSB/g at ±2 g (512/256/128 at ±4/8/16 g).",
+    "CHIPID (0x00) must read 0x90; anything else means a wiring fault or the wrong address.",
+    "Default I2C address is 0x14 (ADR/SDO to GND through the ADR jumper); move the jumper (or pull ADR to 3.3 V) for 0x15. Leave CS unconnected for I2C.",
+    "The power-on default range is ±4 g (ACC_CONFIG1 = 0x49): set the range explicitly or the readings are off by a factor of two.",
+    "TEMP_DATA (0x11) is signed: T = value * 0.5 + 23 °C.",
+    "Mount the board flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "bma400",
+    "bosch",
+    "accelerometer",
+    "ultra low power",
+    "tilt",
+    "step counter",
+    "3-axis",
+    "sparkfun 21208",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      },
+      {
+        "key": "temp",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x00": 144,
+      "0x01": 136,
+      "0x03": 148,
+      "0x19": 0,
+      "0x1A": 73,
+      "0x1B": 0
+    },
+    "measures": [
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "bits": 12,
+        "signed": true,
+        "scale": 0.0009765625,
+        "control": "value",
+        "fields": [
+          {
+            "reg": "0x04",
+            "from": 0,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x05",
+            "from": 8,
+            "width": 4,
+            "at": 0
+          }
+        ]
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "bits": 12,
+        "signed": true,
+        "scale": 0.0009765625,
+        "control": "y",
+        "fields": [
+          {
+            "reg": "0x06",
+            "from": 0,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x07",
+            "from": 8,
+            "width": 4,
+            "at": 0
+          }
+        ]
+      },
+      {
+        "reg": "0x08",
+        "bytes": 2,
+        "bits": 12,
+        "signed": true,
+        "scale": 0.0009765625,
+        "control": "z",
+        "fields": [
+          {
+            "reg": "0x08",
+            "from": 0,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x09",
+            "from": 8,
+            "width": 4,
+            "at": 0
+          }
+        ]
+      },
+      {
+        "reg": "0x11",
+        "bytes": 1,
+        "signed": true,
+        "scale": 0.5,
+        "offset": 23,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bma400.py",
+    "code": "# BMA400 ultra-low-power 3-axis accelerometer (Bosch Sensortec), MicroPython driver for I2C.\n# From the BMA400 data sheet BST-BMA400-DS000 (rev 2.3):\n#   CHIPID 0x00 = 0x90.\n#   STATUS 0x03: bit 7 drdy_stat (new data, cleared by reading the data), bit 4 cmd_rdy,\n#     bits 2:1 power_mode_stat (0 sleep, 1 low power, 2 normal).\n#   ACC_X_LSB..ACC_Z_MSB 0x04-0x09: 12-bit two's complement per axis,\n#     acc = LSB + 256 * (MSB & 0x0F); if acc > 2047: acc -= 4096.\n#     All six bytes must be read in ONE burst (the registers are locked during the read).\n#   TEMP_DATA 0x11: signed 8-bit, T = temp_data * 0.5 + 23.0 degC (updated every 160 ms).\n#   ACC_CONFIG0 0x19: bits 1:0 power_mode_conf (0 sleep, 1 low power, 2 normal).\n#   ACC_CONFIG1 0x1A: bits 7:6 acc_range (2/4/8/16 g), bits 5:4 osr, bits 3:0 acc_odr (0x08 = 100 Hz).\n#   ACC_CONFIG2 0x1B: bits 3:2 data_src_reg (0 = acc_filt1 at the ACC_CONFIG1 ODR).\n#   CMD 0x7E: 0xB6 = soft reset.\n#   Sensitivity: 1024 / 512 / 256 / 128 LSB per g at +-2 / 4 / 8 / 16 g.\n#   After power-up / reset the chip is in sleep mode (no conversions); wake-up time to normal mode is 2/ODR.\nimport time\n\n_CHIPID = 0x00\n_STATUS = 0x03\n_ACC_X_LSB = 0x04\n_TEMP_DATA = 0x11\n_ACC_CONFIG0 = 0x19\n_ACC_CONFIG1 = 0x1A\n_ACC_CONFIG2 = 0x1B\n_CMD = 0x7E\n\n_RANGE = {2: (0b00, 1024), 4: (0b01, 512), 8: (0b10, 256), 16: (0b11, 128)}\n\n\nclass BMA400:\n    def __init__(self, i2c, addr=0x14, g_range=2):\n        \"\"\"addr: 0x14 with SDO to GND (SparkFun board default), 0x15 with SDO to 3.3 V.\n        g_range: 2, 4, 8 or 16 g full scale.\"\"\"\n        if g_range not in _RANGE:\n            raise ValueError('g_range must be 2, 4, 8 or 16')\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(2)  # power-up time ts_up is at most 1 ms\n        cid = self._r(_CHIPID, 1)[0]\n        if cid != 0x90:\n            raise OSError('BMA400 not found (CHIPID 0x%02X, expected 0x90): check wiring/address' % cid)\n        self._w(_CMD, 0xB6)  # soft reset: all settings back to their defaults, chip in sleep mode\n        time.sleep_ms(5)\n        if self._r(_CHIPID, 1)[0] != 0x90:\n            raise OSError('BMA400 did not answer after soft reset')\n        bits, self._lsb_per_g = _RANGE[g_range]\n        # range, osr = 3 (lowest noise), acc_odr = 0x08 (100 Hz)\n        self._w(_ACC_CONFIG1, (bits << 6) | (0b11 << 4) | 0x08)\n        self._w(_ACC_CONFIG2, 0x00)  # data registers fed from acc_filt1 (the ODR above)\n        self._w(_ACC_CONFIG0, 0x02)  # normal mode, filt1 bandwidth 0.48 x ODR\n        time.sleep_ms(30)  # wake-up time 2/ODR = 20 ms at 100 Hz, with margin\n        for _ in range(20):\n            if (self._r(_STATUS, 1)[0] >> 1) & 0x03 == 0x02:\n                break\n            time.sleep_ms(2)\n        else:\n            raise OSError('BMA400 did not enter normal mode')\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def data_ready(self):\n        \"\"\"True when STATUS.drdy_stat says a new X/Y/Z sample is available.\"\"\"\n        return bool(self._r(_STATUS, 1)[0] & 0x80)\n\n    def raw(self):\n        \"\"\"(x, y, z) 12-bit counts, read in one 6-byte burst from ACC_X_LSB.\"\"\"\n        for _ in range(25):  # wait up to ~25 ms (over two samples at 100 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self._r(_ACC_X_LSB, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] + 256 * (d[i + 1] & 0x0F)\n            if v > 2047:\n                v -= 4096\n            out.append(v)\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._lsb_per_g\n        x, y, z = self.raw()\n        return x / k, y / k, z / k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n\n    def temperature(self):\n        \"\"\"Die temperature in degC (8-bit, 0.5 degC steps, updated every 160 ms).\"\"\"\n        t = self._r(_TEMP_DATA, 1)[0]\n        if t > 127:\n            t -= 256\n        return t * 0.5 + 23.0\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bma400 import BMA400\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = BMA400(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.3f Y=%.3f Z=%.3f g T=%.1f C' % (x, y, z, accel.temperature()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.500 Y=-0.750 Z=1.250 g T=30.5 C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:56:42.089Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bma400-ds000.pdf",
+      "https://learn.sparkfun.com/tutorials/sparkfun-triple-axis-accelerometer-breakout---bma400-qwiic-hookup-guide",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/2/7/5/9/Qwiic_BMA400_-_Interfaces.jpg"
+    ]
+  }
+}

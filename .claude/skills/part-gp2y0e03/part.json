@@ -1,0 +1,164 @@
+{
+  "type": "custom-gp2y0e03",
+  "name": "GP2Y0E03 I2C IR distance sensor",
+  "mpn": "GP2Y0E03",
+  "category": "sensor",
+  "description": "Sharp infrared triangulation distance sensor, 4-50 cm, with a 12-bit I2C distance output (1/64 cm steps at the default 64 cm full scale) and an analog voltage output. VDD 2.7-5.5 V; VIN(IO) sets the I2C/GPIO1 logic level and may share VDD only up to 3.3 V, so run both from 3.3 V. I2C address 0x40 (Sharp's 8-bit 0x80/0x81). GPIO1 high = measuring, low = stand-by. Sold as: Sharp GP2Y0E03 distance sensor module (bare Sharp/Socle board with 7-pin 1.25 mm JST cable: VDD, Vout(A), GND, VIN(IO), GPIO1, SCL, SDA), e.g. Robu.in / Switch Science / AliExpress listings.",
+  "eli5": "Shines invisible light at an object and tells your board how far away it is, from 4 to 50 cm.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Sensor supply, 2.7-5.5 V (3.3 V here, shared with VIN(IO))",
+      "required": true
+    },
+    {
+      "name": "Vout(A)",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog distance output, about 2.2 V at 4 cm to 0.55 V at 50 cm (nonlinear); not needed with I2C",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VIN(IO)",
+      "role": "power",
+      "description": "I/O supply that sets the SDA/SCL/GPIO1 logic level; tie to 3.3 V (must stay below 3.6 V)",
+      "required": true
+    },
+    {
+      "name": "GPIO1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Active/stand-by input: high = measuring, low = stand-by (20 uA). Drive high from a GPIO or tie to VIN(IO)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (open drain, no pull-up on the sensor board), up to 400 kHz",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (open drain, no pull-up on the sensor board)",
+      "required": true,
+      "pullUp": 4700
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.3,
+  "currentMa": 36,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0e02_03_appl_e.pdf",
+  "sources": [
+    "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0e02_03_appl_e.pdf",
+    "https://www.switch-science.com/products/10552",
+    "https://aws.robu.in/?p=2365047"
+  ],
+  "priceUsd": 12,
+  "supplierQuery": "Sharp GP2Y0E03 I2C IR distance sensor 4-50cm with cable",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "The sensor has a 7-pin 1.25 mm JST connector, not 0.1 in pins: use the matching cable and wire its leads to the header in datasheet order 1 VDD, 2 Vout(A), 3 GND, 4 VIN(IO), 5 GPIO1, 6 SCL, 7 SDA.",
+    "Feed VDD and VIN(IO) from 3.3 V. If VDD is ever run from 5 V, VIN(IO) must stay on a separate supply below 3.6 V.",
+    "GPIO1 must be high for the sensor to measure; wait at least 500 us after raising it before the first I2C access.",
+    "Read 2 bytes from register 0x5E: distance = ((b0 << 4) | (b1 & 0x0F)) / 16 / 2^n cm, where n is register 0x35 (2 by default, 64 cm full scale).",
+    "SDA and SCL are open drain with no pull-ups on the sensor: add 4.7 kOhm pull-ups to 3.3 V.",
+    "It draws 26 mA on average (36 mA max) in pulses from its IR LED; put a 10 uF capacitor across VDD/GND near the connector.",
+    "Readings beyond 50 cm are outside the specified range and are unreliable; avoid direct sunlight or lamp light on the detector."
+  ],
+  "keywords": [
+    "gp2y0e03",
+    "sharp",
+    "ir distance",
+    "infrared",
+    "proximity",
+    "rangefinder",
+    "tof alternative"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 4,
+    "max": 50,
+    "default": 20,
+    "registers": {
+      "0x03": 1,
+      "0x35": 2,
+      "0x3F": 48,
+      "0xA8": 3,
+      "0xEF": 0
+    },
+    "measures": [
+      {
+        "reg": "0x5E",
+        "bytes": 2,
+        "bits": 12,
+        "scale": 0.015625,
+        "fields": [
+          {
+            "reg": "0x5E",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x5F",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "gp2y0e03.py",
+    "code": "# Sharp GP2Y0E03 I2C/analog IR distance sensor (4-50 cm), MicroPython driver.\n# Written from the Sharp GP2Y0E02/03 application note (Table.11 register map, bank 0):\n#   0x35 Shift Bit [2:0]  (0x02 = 64 cm full scale, default; 0x01 = 128 cm)\n#   0x5E Distance[11:4], 0x5F Distance[3:0]\n#   distance (cm) = (Distance[11:4] * 16 + Distance[3:0]) / 16 / 2**n,  n = Shift Bit\n# 7-bit I2C address 0x40 (Sharp writes it as 0x80 write / 0x81 read). Max 400 kHz.\n# GPIO1 must be HIGH (active state); I2C access is allowed 500 us after GPIO1 goes high.\nimport time\nfrom machine import Pin\n\nGP2Y0E03_ADDR = 0x40\n\n_REG_SHIFT = 0x35\n_REG_DIST_HI = 0x5E\n_REG_BANK = 0xEF\n\n\nclass GP2Y0E03:\n    def __init__(self, i2c, addr=GP2Y0E03_ADDR, gpio1=None):\n        \"\"\"gpio1: GPIO number wired to the sensor's GPIO1 pin (driven high = active),\n        or None if GPIO1 is tied to VIN(IO) in hardware.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self._en = None\n        if gpio1 is not None:\n            self._en = Pin(gpio1, Pin.OUT, value=1)\n        time.sleep_ms(1)  # T6/T8: >= 500 us before the first I2C access\n        self.i2c.writeto_mem(self.addr, _REG_BANK, b'\\x00')  # select register bank 0\n        self.shift = self.i2c.readfrom_mem(self.addr, _REG_SHIFT, 1)[0] & 0x07\n\n    def active(self, on=True):\n        \"\"\"Switch between active (GPIO1 high) and stand-by (GPIO1 low, about 20 uA).\"\"\"\n        if self._en is None:\n            raise ValueError('GPIO1 is not connected to a pin')\n        self._en.value(1 if on else 0)\n        if on:\n            time.sleep_ms(1)\n\n    def set_max_range(self, cm=64):\n        \"\"\"Full-scale output: 64 cm (Shift Bit 2, default) or 128 cm (Shift Bit 1).\n        Accuracy is only specified up to 50 cm either way.\"\"\"\n        n = 2 if cm <= 64 else 1\n        self.i2c.writeto_mem(self.addr, _REG_SHIFT, bytes([n]))\n        self.shift = n\n\n    def raw(self):\n        \"\"\"12-bit distance value from registers 0x5E (bits 11:4) and 0x5F (bits 3:0).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _REG_DIST_HI, 2)\n        return (d[0] << 4) | (d[1] & 0x0F)\n\n    def distance_cm(self):\n        \"\"\"Distance in cm = raw / 16 / 2**shift (datasheet Table.11).\"\"\"\n        return self.raw() / 16 / (1 << self.shift)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom gp2y0e03 import GP2Y0E03\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = GP2Y0E03(i2c, gpio1={GPIO1})\nwhile True:\n    print('D=%.1f cm' % sensor.distance_cm())\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 33.6
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=33.6 cm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:50:51.683Z",
+    "verifiedSources": [
+      "https://akizukidenshi.com/goodsaffix/gp2y0e03_e.pdf",
+      "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0e02_03_appl_e.pdf"
+    ]
+  }
+}

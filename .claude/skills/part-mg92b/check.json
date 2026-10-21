@@ -1,0 +1,79 @@
+{
+  "type": "custom-mg92b",
+  "mpn": "MG92B",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; M1.PWM → D25 (GPIO25). Added a separate 6 V supply for V+ (it needs 5–6.6 V and up to 1 A, more than the board can give); its − joins the board's GND. Added the mg92b.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Turns to 60° then to 120°: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; M1.PWM → GP2 (GPIO2). Added a separate 6 V supply for V+ (it needs 5–6.6 V and up to 1 A, more than the board can give); its − joins the board's GND. Added the mg92b.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Turns to 60° then to 120°: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T17:07:36.282Z"
+}

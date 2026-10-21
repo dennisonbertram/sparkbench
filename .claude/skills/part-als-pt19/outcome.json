@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-als-pt19",
+  "board": "Adafruit ALS-PT19 Analog Light Sensor Breakout (product ID 2748)",
+  "reason": "Modelled as an analog-sensor: V(OUT) = I_PH x 10 kOhm on-board load (R1), with I_PH = 0.15 uA/lx typ (datasheet: 15 uA at 100 lx, 150 uA at 1000 lx, fluorescent), so 0-2000 lx gives 0-3.0 V; header order GND(-), OUT, VCC(+) from the Adafruit Eagle files. The check passed on ESP32 and Pico (simulator prints L=1200lx), and the footprint, DRC and LCSC stages also passed.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/2748/2748%20datasheet.pdf",
+  "breakoutPinoutSource": "Adafruit-ALS-PT19-Sensor-Breakout-PCB EagleCAD schematic/board (JP2 pin 1 GND, pin 2 OUT, pin 3 VCC; silkscreen -, out, +; R1 10K OUT to GND) and the Adafruit Fritzing part (GND, OUT, VCC)",
+  "checkRuns": 1
+}

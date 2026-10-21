@@ -1,0 +1,117 @@
+{
+  "type": "custom-mg92b",
+  "name": "MG92B metal-gear micro servo",
+  "mpn": "MG92B",
+  "category": "actuator",
+  "description": "TowerPro MG92B digital micro servo with metal gears, two ball bearings and an alloy middle case: turns about 180° (90° each way) to the angle set by a 50 Hz pulse of about 1–2 ms (1.5 ms = middle). 3.1 kgf·cm stall torque at 5 V (3.5 kgf·cm at 6 V), 0.13 s/60° at 5 V, 1 µs dead band; runs on 5.0–6.6 V. Sold as: Adafruit Micro Servo - MG92B - 3.5 kg-cm (product #2307), a bare TowerPro MG92B with a 25 cm 3-wire lead and female 2.54 mm JR/Futaba connector (brown GND, red V+, orange/yellow signal), with horns and screws.",
+  "eli5": "A small but strong motor with metal gears that turns its arm to exactly the angle your board asks for and holds it there.",
+  "refPrefix": "M",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (brown wire); join it to the microcontroller's GND",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Servo supply 5.0–6.6 V (red wire); use 5–6 V, never 3.3 V. Stall current is not published (plan for about 1 A)",
+      "required": true,
+      "supply": {
+        "vmin": 5,
+        "vmax": 6.6,
+        "currentMa": 1000
+      }
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Control pulse (orange/yellow wire): 50 Hz, 1–2 ms high. Adafruit says it wants 5 V logic; use a 3.3→5 V buffer if a 3.3 V pulse is ignored",
+      "required": true
+    }
+  ],
+  "vmin": 5,
+  "vmax": 6.6,
+  "currentMa": 250,
+  "datasheetUrl": "https://www.towerpro.com.tw/product/mg92b/",
+  "sources": [
+    "https://www.towerpro.com.tw/product/mg92b/",
+    "https://www.adafruit.com/product/2307"
+  ],
+  "priceUsd": 12,
+  "supplierQuery": "TowerPro MG92B metal gear micro servo",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire colours: brown = GND, red = V+ (5.0–6.6 V), orange (yellow on some leads) = PWM signal.",
+    "Power it from a 5–6 V supply, never from the 3.3 V pin. Its stall current is not published; a metal-gear servo of this torque can pull around 1 A when stalled, so use a separate supply for anything beyond a light load and join its ground to the board's GND.",
+    "Adafruit warns this servo needs 5 V signals. If it ignores a 3.3 V pulse from an ESP32 or Pico, drive PWM through a 3.3 V → 5 V buffer such as a 74AHCT125 powered from 5 V.",
+    "It has no mechanical end stops. 1–2 ms may not give the full 180°; Adafruit suggests trying 0.75–2.25 ms, widened in small steps.",
+    "Add a 470 µF capacitor across V+ and GND near the servo if the board resets when it moves."
+  ],
+  "keywords": [
+    "mg92b",
+    "servo",
+    "micro servo",
+    "metal gear",
+    "digital servo",
+    "towerpro",
+    "motor",
+    "angle",
+    "pwm"
+  ],
+  "sim": {
+    "kind": "servo",
+    "inputPin": "PWM",
+    "servo": {
+      "minUs": 1000,
+      "maxUs": 2000,
+      "degrees": 180
+    }
+  },
+  "driver": {
+    "filename": "mg92b.py",
+    "code": "# TowerPro MG92B metal-gear digital micro servo, MicroPython driver.\n# Vendor (Adafruit #2307 / TowerPro): 50 Hz (20 ms) frame; 1.5 ms pulse = middle (\"0\"),\n# ~1 ms = full left (\"-90\"), ~2 ms = full right (\"+90\"). Dead band 1 us.\n# Supply 5.0-6.6 V. Adafruit notes this servo wants 5 V signal levels: a 3.3 V pulse may\n# not be recognised, so drive PWM through a 3.3 V -> 5 V buffer (e.g. 74AHCT125) if it ignores you.\n# Angles here run 0..180 degrees: 0 = 1 ms (left), 90 = 1.5 ms (middle), 180 = 2 ms (right).\nfrom machine import Pin, PWM\n\nPERIOD_US = 20000  # 50 Hz frame\n\n\nclass MG92B:\n    def __init__(self, pin, min_us=1000, max_us=2000, degrees=180):\n        # 1-2 ms may not give the full 180 degrees; Adafruit suggests trying 750-2250 us.\n        # This servo has no mechanical end stops: widen in small steps only.\n        self.min_us = min_us\n        self.max_us = max_us\n        self.degrees = degrees\n        self.pwm = PWM(pin if isinstance(pin, Pin) else Pin(pin), freq=50)\n        self.pwm.duty_u16(0)  # no pulse until an angle is set\n\n    def write_us(self, us):\n        us = max(self.min_us, min(self.max_us, us))\n        self.pwm.duty_u16(int(us * 65535 // PERIOD_US))\n\n    def angle(self, deg):\n        deg = max(0, min(self.degrees, deg))\n        self.write_us(self.min_us + (self.max_us - self.min_us) * deg / self.degrees)\n\n    def off(self):\n        \"\"\"Stop sending pulses: the servo goes limp and stops drawing holding current.\"\"\"\n        self.pwm.duty_u16(0)\n\n    def deinit(self):\n        self.pwm.deinit()\n"
+  },
+  "example": {
+    "code": "import time\nfrom mg92b import MG92B\n\nservo = MG92B({PWM})\nservo.angle(60)\ntime.sleep(1)\nservo.angle(120)\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "turns",
+      "title": "Turns to 60° then to 120°",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 55,
+          "max": 65,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 115,
+          "max": 125,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:07:36.282Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/2307",
+      "https://towerpro.com.tw/product/mg92b/"
+    ]
+  }
+}

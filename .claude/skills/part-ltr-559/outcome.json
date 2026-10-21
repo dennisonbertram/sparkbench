@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ltr-559",
+  "board": "Pimoroni LTR-559 Light & Proximity Sensor Breakout (PIM413)",
+  "reason": "Modelled from the Lite-On LTR-559ALS-01 datasheet DS86-2013-0003 rev B: address 0x23, PART_ID 0x92, soft reset, ALS/PS control and rate registers, CH1-then-CH0 little-endian ALS data at 0x88-0x8B, 11-bit PS data split over 0x8D/0x8E bits 2:0, status bits, and the Lite-On Appendix A lux formula (as also used by Pimoroni's library); header order 3-6V, SDA, SCL, INT, GND from Pimoroni's product photo. Part check printed PASS on ESP32 and Pico on the first run (CH0=3000 CH1=800 Lux=1551.9 Prox=1234, DRC clean).",
+  "datasheetUrl": "https://web.archive.org/web/2020/http://optoelectronics.liteon.com/upload/download/ds86-2013-0003/ltr-559als-01_ds_v1.pdf",
+  "breakoutPinoutSource": "https://shop.pimoroni.com/products/ltr-559-light-proximity-sensor-breakout (product photo silkscreen 3-6V SDA SCL INT GND; page states Raspberry Pi pins 1, 3, 5, 7, 9)",
+  "checkRuns": 1
+}

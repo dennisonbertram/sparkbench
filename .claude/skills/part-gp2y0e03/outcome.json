@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-gp2y0e03",
+  "board": "Sharp GP2Y0E03 distance sensor module (bare Sharp/Socle board with 7-pin 1.25 mm JST cable: VDD, Vout(A), GND, VIN(IO), GPIO1, SCL, SDA)",
+  "reason": "Modelled from the Sharp GP2Y0E02/03 application note: I2C 0x40, 12-bit distance split over 0x5E[7:0]=D[11:4] and 0x5F[3:0]=D[3:0], cm = raw/16/2^shift (0x35 default 2); GPIO1 driven high, 4.7k pull-ups added, VDD/VIN(IO) on 3.3 V. Part check PASS on esp32 and pico.",
+  "datasheetUrl": "https://global.sharp/products/device/lineup/data/pdf/datasheet/gp2y0e02_03_appl_e.pdf",
+  "breakoutPinoutSource": "Sharp GP2Y0E02/03 application note Table.02 (GP2Y0E03 terminals 1-7: VDD, Vout(A), GND, VIN(IO), GPIO1, SCL, SDA)",
+  "checkRuns": 3
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tof10120",
+  "board": "TOF10120 laser range sensor module 10-180 cm UART/I2C (6-wire cable: GND, VDD, RXD, TXD, SDA, SCL)",
+  "reason": "Modelled over its I2C port (addr 0x52 = datasheet ID 0xA4; register 0x00 -> 2-byte big-endian distance in mm), since the UART side sends variable-length ASCII text the uart-device types cannot encode. Check passed on ESP32 and Pico with simulator test D=1234mm.",
+  "datasheetUrl": "https://github.com/SoyM/TOF10120/blob/master/TOF10120.pdf",
+  "breakoutPinoutSource": "TOF10120 datasheet section 2.2/2.8 pin table (1 GND, 2 VDD, 3 RXD, 4 TXD, 5 SDA, 6 SCL), confirmed by https://www.electroniclinic.com/tof10120-laser-rangefinder-arduino-display-interfacing-code/",
+  "checkRuns": 1
+}

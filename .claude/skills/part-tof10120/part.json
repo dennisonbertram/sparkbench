@@ -1,0 +1,135 @@
+{
+  "type": "custom-tof10120",
+  "name": "TOF10120 laser distance sensor (I2C)",
+  "mpn": "TOF10120",
+  "category": "sensor",
+  "description": "Laser (940 nm, class 1) time-of-flight distance sensor: 100–1800 mm indoors on a white target, about ±5 %, a new reading every ≤33 ms. Runs on 3–5 V, 35 mA. Has both a UART (9600 8-N-1, ASCII commands such as r6#) and an I2C port; this part uses I2C at address 0x52 (datasheet ID 0xA4 in 8-bit form): write register 0x00, read 2 bytes = distance in mm, high byte first. Sold as: TOF10120 laser range sensor module 10-180 cm UART/I2C with 6-wire cable (GND, VDD, RXD, TXD, SDA, SCL).",
+  "eli5": "Shines an invisible laser blip and times how long it takes to bounce back, then tells your board the distance in millimetres.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply 3–5 V, 35 mA (pin 2). Use 3.3 V on ESP32 / Pico so the TTL serial pins stay at 3.3 V",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "description": "UART input, 9600 baud TTL (pin 3): ASCII commands like s3-1# or s7-164#. Not needed for I2C use",
+      "required": false
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "description": "UART output, 9600 baud TTL (pin 4): ASCII replies / distance stream. Not needed for I2C use",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pin 5); add a 4.7 kΩ pull-up to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pin 6); add a 4.7 kΩ pull-up to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 35,
+  "i2cAddress": 82,
+  "datasheetUrl": "https://github.com/SoyM/TOF10120/blob/master/TOF10120.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "TOF10120 laser range sensor module UART I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "I2C address 0x52 (the datasheet writes it as 0xA4, the 8-bit write address). Write register 0x00, wait at least 30 µs, read 2 bytes: distance mm = byte0 × 256 + byte1.",
+    "The module measures continuously; readings are the filtered distance by default. Send s3-1# over its UART for the real-time distance instead.",
+    "Reliable range is about 100–1800 mm on a white target indoors (80 cm on grey, less in sunlight). Values outside that range are not trustworthy.",
+    "Power it from 3.3 V on an ESP32 or Pico; its serial pins are TTL at the supply level. Fit 4.7 kΩ pull-ups on SDA and SCL to 3.3 V.",
+    "The connector is a tiny 1.0 mm 6-pin socket: use the supplied cable. Wire colours vary between batches, so follow the pin order GND, VDD, RXD, TXD, SDA, SCL printed on the board.",
+    "Keep the cover glass clean; smudges cause cross-talk and short readings."
+  ],
+  "keywords": [
+    "tof10120",
+    "tof",
+    "time of flight",
+    "laser",
+    "lidar",
+    "distance",
+    "range",
+    "sharp",
+    "i2c",
+    "uart"
+  ],
+  "sources": [
+    "https://github.com/SoyM/TOF10120/blob/master/TOF10120.pdf",
+    "https://raw.githubusercontent.com/SoyM/TOF10120/master/TOF10120.pdf",
+    "https://www.electroniclinic.com/tof10120-laser-rangefinder-arduino-display-interfacing-code/",
+    "https://www.espboards.dev/sensors/tof10120",
+    "https://makerselectronics.com/product/tof10120-laser-range-sensor-module-10-180cm-uart-i2c-interface/"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 100,
+    "max": 1800,
+    "default": 500,
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 1
+    }
+  },
+  "driver": {
+    "filename": "tof10120.py",
+    "code": "# TOF10120 laser time-of-flight distance sensor (Sharp SPAD ranging module), MicroPython driver, I2C side.\n# Datasheet (Shenzhen Hongchengji TOF10120): VDD 3-5 V, 35 mA, range 100-1800 mm, ranging time max 33 ms,\n# I2C slave ID 0xA4 by default (8-bit form; 7-bit address 0x52), changeable over UART with \"s7-xxx#\".\n# Reading (vendor example code): write the register pointer 0x00, wait >= 30 us, then read 2 bytes:\n#   distance in mm = high byte * 256 + low byte.\n# Whether that value is the filtered or the real-time distance is set by the UART command \"s3-x#\"\n# (x=0 filtered, the default; x=1 real-time).\nimport time\n\nADDR = 0x52  # 0xA4 >> 1\n\n\nclass TOF10120:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def distance_mm(self):\n        \"\"\"Latest distance in millimetres (the module measures continuously, about every 30 ms).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x00')\n        time.sleep_ms(1)  # vendor code: at least 30 us between pointer write and read\n        d = self.i2c.readfrom(self.addr, 2)\n        return (d[0] << 8) | d[1]\n\n    def distance_cm(self):\n        return self.distance_mm() / 10\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tof10120 import TOF10120\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = TOF10120(i2c)\nwhile True:\n    print('D=%dmm' % sensor.distance_mm())\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=1234mm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:49:30.530Z",
+    "verifiedSources": [
+      "https://www.makerguides.com/wp-content/uploads/2024/09/TOF10120-Datasheet.pdf",
+      "https://makerselectronics.com/product/tof10120-laser-range-sensor-module-10-180cm-uart-i2c-interface/"
+    ]
+  }
+}

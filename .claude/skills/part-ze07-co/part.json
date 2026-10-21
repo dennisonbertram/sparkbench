@@ -1,0 +1,215 @@
+{
+  "type": "custom-ze07-co",
+  "name": "ZE07-CO carbon monoxide sensor",
+  "mpn": "ZE07-CO",
+  "category": "sensor",
+  "description": "Winsen electrochemical carbon monoxide (CO) detection module, 0-500 ppm, resolution 0.1 ppm, with temperature compensation. Sends the concentration once a second over a 9600-baud UART (3 V TTL) by default, in 0.1 ppm steps, and also has a 0.4-2 V DAC output. Runs on 5-12 V. Sold as: Winsen ZE07-CO module (bare 25.4 x 22.4 mm board with two pin rows: pins 1-5 and pins 6-15; pin 5/14 GND, 7 RXD, 8 TXD, 10 DAC, 15 VIN), wired with jumper leads.",
+  "eli5": "Smells the air for carbon monoxide, the invisible poisonous gas from engines, stoves and fires, and tells your board how much there is.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "RES1",
+      "role": "nc",
+      "description": "Pin 1 (5-pin row): reserved, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "NC2",
+      "role": "nc",
+      "description": "Pin 2: not connected",
+      "required": false
+    },
+    {
+      "name": "RES3",
+      "role": "nc",
+      "description": "Pin 3: reserved, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "RES4",
+      "role": "nc",
+      "description": "Pin 4: reserved, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 5: ground",
+      "required": true
+    },
+    {
+      "name": "NC6",
+      "role": "nc",
+      "description": "Pin 6 (10-pin row, square pad): not connected",
+      "required": false
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "description": "Pin 7: module serial input, 0-3.0 V: wire to the board's UART TX; only needed to send commands",
+      "required": false,
+      "fn": "uart.rx"
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "description": "Pin 8: module serial output, 0-3.0 V, 9600 baud: wire to the board's UART RX",
+      "required": true,
+      "fn": "uart.tx",
+      "levelV": 3
+    },
+    {
+      "name": "RES9",
+      "role": "nc",
+      "description": "Pin 9: reserved, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "DAC",
+      "role": "io",
+      "description": "Pin 10: analog output 0.4-2 V for 0-500 ppm (optional)",
+      "required": false,
+      "fn": "adc"
+    },
+    {
+      "name": "NC11",
+      "role": "nc",
+      "description": "Pin 11: not connected",
+      "required": false
+    },
+    {
+      "name": "NC12",
+      "role": "nc",
+      "description": "Pin 12: not connected",
+      "required": false
+    },
+    {
+      "name": "NC13",
+      "role": "nc",
+      "description": "Pin 13: not connected",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Pin 14: second ground (same as pin 5)",
+      "required": false
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Pin 15: supply 5-12 V. NO reverse-polarity protection",
+      "required": true
+    }
+  ],
+  "vmin": 5,
+  "vmax": 12,
+  "currentMa": 10,
+  "cabled": true,
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/manual/ze07-co.pdf",
+  "priceUsd": 25,
+  "supplierQuery": "Winsen ZE07-CO electrochemical CO sensor module UART",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x15_P2.54mm_Vertical",
+  "buildNotes": [
+    "The module has two rows of pins on its underside (pins 1-5 and 6-15), not a breadboard header: solder it to a carrier or use female jumper leads.",
+    "Power VIN (pin 15) from 5 V (5-12 V allowed); GND is pin 5 (pin 14 is a second ground). There is NO reverse-polarity protection: double-check VIN and GND before power-up.",
+    "The UART pins are 0-3.0 V, so TXD (pin 8) goes straight into an ESP32 or Pico RX pin. Cross the wires: module TXD -> board RX, module RXD (pin 7) -> board TX (RXD is only needed to switch modes).",
+    "9600 baud 8N1. By default the module sends FF 04 03 01 CH CL 13 88 SUM once a second: CO = (CH*256 + CL) x 0.1 ppm, full range 0x1388 = 500.0 ppm. SUM = (NOT(byte1+...+byte7)) + 1; drop frames that fail it.",
+    "Leave the reserved and NC pins (1, 2, 3, 4, 6, 9, 11, 12, 13) unconnected.",
+    "Let it warm up at least 3 minutes (5 minutes the first time) before trusting readings. Alcohol and some other gases also read as CO. Not a certified life-safety CO alarm."
+  ],
+  "keywords": [
+    "ze07",
+    "ze07-co",
+    "co",
+    "carbon monoxide",
+    "winsen",
+    "electrochemical",
+    "air quality",
+    "gas"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Carbon monoxide (CO)",
+    "unit": "ppm",
+    "min": 0,
+    "max": 500,
+    "default": 1.5,
+    "uartStream": {
+      "everyMs": 1000,
+      "bytes": [
+        {
+          "const": 255,
+          "bits": 8
+        },
+        {
+          "const": 4,
+          "bits": 8
+        },
+        {
+          "const": 3,
+          "bits": 8
+        },
+        {
+          "const": 1,
+          "bits": 8
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 0.1
+        },
+        {
+          "const": 5000,
+          "bits": 16
+        },
+        {
+          "crc": "mhz19",
+          "over": 8
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "ze07.py",
+    "code": "# Winsen ZE07-CO electrochemical carbon monoxide module, MicroPython driver.\n# From the Winsen ZE07-CO user's manual V1.7: UART 9600 8N1, 3 V TTL levels.\n# Default mode is initiative (active) upload: once a second the module sends\n#   FF 04 03 01 CH CL RH RL SUM\n#   0x04 = gas CO, 0x03 = unit ppm, 0x01 = one decimal place,\n#   concentration = (CH*256 + CL) x 0.1 ppm, full range = RH*256 + RL\n#   (0x1388 = 5000 -> 500.0 ppm).\n# SUM = (NOT (byte1 + ... + byte7)) + 1, 8 bits\n#   (manual example FF 04 03 01 00 25 13 88 38 -> 3.7 ppm).\n# Q&A mode (optional): send FF 01 86 00 00 00 00 00 79, reply\n#   FF 86 CH CL 00 00 CH CL SUM, concentration = (CH*256 + CL) x 0.1 ppm.\nimport time\n\nCMD_QA_MODE = b'\\xff\\x01\\x78\\x41\\x00\\x00\\x00\\x00\\x46'\nCMD_ACTIVE_MODE = b'\\xff\\x01\\x78\\x40\\x00\\x00\\x00\\x00\\x47'\nCMD_READ = b'\\xff\\x01\\x86\\x00\\x00\\x00\\x00\\x00\\x79'\n\n\ndef checksum(frame):\n    return (~sum(frame[1:8]) + 1) & 0xFF\n\n\nclass ZE07:\n    def __init__(self, uart):\n        self.uart = uart\n        self.full_range = None\n\n    def _frame(self, head, timeout_ms):\n        \"\"\"Wait for a valid 9-byte frame whose bytes 0-1 are FF, head.\"\"\"\n        t0 = time.ticks_ms()\n        buf = b''\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            n = self.uart.any()\n            if n:\n                buf += self.uart.read(n)\n                while len(buf) >= 9:\n                    if buf[0] == 0xFF and buf[1] == head and checksum(buf) == buf[8]:\n                        return buf[:9]\n                    buf = buf[1:]\n            else:\n                time.sleep_ms(10)\n        raise OSError('ZE07-CO: no valid frame (check TXD wiring, 9600 baud)')\n\n    def read_raw(self, timeout_ms=2500):\n        \"\"\"Active-upload mode (default): next concentration in 0.1 ppm counts.\"\"\"\n        f = self._frame(0x04, timeout_ms)\n        self.decimals = f[3]\n        self.full_range = (f[6] << 8) | f[7]\n        return (f[4] << 8) | f[5]\n\n    def read_ppm(self, timeout_ms=2500):\n        \"\"\"Active-upload mode (default): next CO concentration in ppm.\"\"\"\n        raw = self.read_raw(timeout_ms)\n        return raw / (10 ** self.decimals)\n\n    def set_qa_mode(self):\n        self.uart.write(CMD_QA_MODE)\n\n    def set_active_mode(self):\n        self.uart.write(CMD_ACTIVE_MODE)\n\n    def query_ppm(self, timeout_ms=1000):\n        \"\"\"Q&A mode only: ask for one reading, returns ppm.\"\"\"\n        while self.uart.any():\n            self.uart.read()\n        self.uart.write(CMD_READ)\n        f = self._frame(0x86, timeout_ms)\n        return ((f[2] << 8) | f[3]) * 0.1\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nfrom ze07 import ZE07\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\nsensor = ZE07(uart)\nwhile True:\n    raw = sensor.read_raw()\n    print('CO=%d.%d ppm' % (raw // 10, raw % 10))\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO level set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 123.4
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO=123.4 ppm",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.winsen-sensor.com/d/files/manual/ze07-co.pdf",
+    "https://www.winsen-sensor.com/d/files/PDF/Gas%20Sensor%20Module/CO%20Detection%20Module/ZE07%20CO%20Module%201.3V.pdf",
+    "https://www.winsen-sensor.com/sensors/co-sensor/ze07-co.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:51:47.970Z",
+    "verifiedSources": [
+      "https://www.winsen-sensor.com/d/files/manual/ze07-co.pdf",
+      "https://www.winsen-sensor.com/sensors/co-sensor/ze07-co.html"
+    ]
+  }
+}

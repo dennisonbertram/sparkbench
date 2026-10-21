@@ -1,0 +1,147 @@
+{
+  "type": "custom-ds04-nfc",
+  "name": "DS04-NFC continuous-rotation servo",
+  "mpn": "DS04-NFC",
+  "category": "actuator",
+  "description": "Standard-size 38 g servo built for continuous 360° rotation: the 50 Hz control pulse sets speed and direction instead of angle. 1.5 ms = stop, 1.0–1.5 ms turns counter-clockwise (full speed at 1.0 ms), 1.5–2.0 ms turns clockwise (full speed at 2.0 ms), speed roughly linear in between. 5.5 kg·cm torque and about 45 RPM at 4.8 V; runs on 4.8–6 V and draws up to about 1 A. Sold as: Luxorparts DS04-NFC 360° continuous rotation servo (Kjell & Company item 90770) with 290 mm 3-wire lead and JR/Futaba 2.54 mm female plug (black −, red +, white signal), horns and screws included.",
+  "eli5": "A strong motor that keeps spinning instead of stopping at an angle; your code picks which way it turns and how fast, handy for robot wheels.",
+  "refPrefix": "M",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black wire (−): ground (join it to the microcontroller's GND)",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Red wire (+): servo supply 4.8–6 V; up to about 1000 mA",
+      "required": true,
+      "supply": {
+        "vmin": 4.8,
+        "vmax": 6,
+        "currentMa": 1000
+      }
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "pwm",
+      "description": "White wire: 50 Hz control pulses, 1.0–2.0 ms (1.5 ms = stop); 3.3 V logic works",
+      "required": true
+    }
+  ],
+  "vmin": 4.8,
+  "vmax": 6,
+  "currentMa": 1000,
+  "datasheetUrl": "https://www.kjell.com/globalassets/mediaassets/701903_90770_datasheet_en.pdf",
+  "sources": [
+    "https://www.kjell.com/globalassets/mediaassets/701903_90770_datasheet_en.pdf",
+    "https://www.voltaat.com/products/ds04-nfc-servo",
+    "https://store.siqma.com/ds04-nfc-servo-motor.html",
+    "https://www.makerstore.com.au/product/elec-servo-ds04-nfc/"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "DS04-NFC 360 degree continuous rotation servo",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire colours on the Luxorparts unit: black = GND (−), red = V+ (4.8–6 V), white = signal. Some clones use brown/red/orange in the same order.",
+    "Power V+ from a separate 5–6 V supply that can give about 1 A per servo, not from the board's 3V3 pin; join that supply's ground to the board's GND.",
+    "1.5 ms stops it. Units have a slight offset, so if it creeps at 1.5 ms, nudge stop_us in the driver by a few µs.",
+    "Pulses shorter than 1.5 ms turn it counter-clockwise, longer pulses clockwise (the datasheet's 'full reverse' is 1.0 ms and 'full forward' is 2.0 ms).",
+    "A 470–1000 µF capacitor across V+ and GND near the servo helps stop board resets when it starts."
+  ],
+  "keywords": [
+    "ds04-nfc",
+    "ds04",
+    "continuous rotation servo",
+    "360 servo",
+    "servo",
+    "robot wheel",
+    "motor",
+    "pwm",
+    "luxorparts"
+  ],
+  "sim": {
+    "kind": "servo",
+    "inputPin": "SIG",
+    "servo": {
+      "minUs": 1000,
+      "maxUs": 2000,
+      "degrees": 0,
+      "continuous": {
+        "stopUs": 1500,
+        "deadbandUs": 20,
+        "below": "ccw"
+      }
+    }
+  },
+  "driver": {
+    "filename": "ds04_nfc.py",
+    "code": "# DS04-NFC 360-degree continuous-rotation servo, MicroPython driver.\n# Datasheet (Luxorparts / Kjell & Company 90770, model DS04-NFC):\n#   50 Hz (20 ms) frame. 1.5 ms = stop. 1.0-1.5 ms = counter-clockwise\n#   (full reverse at 1.0 ms), 1.5-2.0 ms = clockwise (full forward at 2.0 ms).\n#   Speed is roughly linear with the pulse (0-45 RPM at 4.8 V).\n#   Supply 4.8-6 V, current < 1000 mA. A 3.3 V signal works.\n# The pulse sets SPEED and DIRECTION, not an angle. If it creeps at stop(),\n# pass a slightly different stop_us (the axis has a small offset per unit).\nfrom machine import Pin, PWM\n\nPERIOD_US = 20000  # 50 Hz frame\n\n\nclass DS04NFC:\n    def __init__(self, pin, stop_us=1500, min_us=1000, max_us=2000):\n        self.stop_us = stop_us\n        self.min_us = min_us\n        self.max_us = max_us\n        self.pwm = PWM(pin if isinstance(pin, Pin) else Pin(pin), freq=50)\n        self.pwm.duty_u16(0)  # no pulses: motor off\n\n    def write_us(self, us):\n        us = max(self.min_us, min(self.max_us, us))\n        self.pwm.duty_u16(int(us * 65535 // PERIOD_US))\n\n    def speed(self, pct):\n        \"\"\"pct -100..100. Positive = clockwise / forward (pulse > 1.5 ms),\n        negative = counter-clockwise / reverse (pulse < 1.5 ms), 0 = stop.\n        |pct| 100 = 2.0 ms / 1.0 ms.\"\"\"\n        pct = max(-100, min(100, pct))\n        if pct < 0:\n            us = self.stop_us + (self.stop_us - self.min_us) * pct / 100\n        else:\n            us = self.stop_us + (self.max_us - self.stop_us) * pct / 100\n        self.write_us(int(us))\n\n    def cw(self, pct=100):\n        self.speed(abs(pct))\n\n    def ccw(self, pct=100):\n        self.speed(-abs(pct))\n\n    def stop(self):\n        \"\"\"Send the 1.5 ms stop pulse.\"\"\"\n        self.write_us(self.stop_us)\n\n    def off(self):\n        \"\"\"Stop sending pulses: the motor is unpowered and stops.\"\"\"\n        self.pwm.duty_u16(0)\n\n    def deinit(self):\n        self.pwm.deinit()\n"
+  },
+  "example": {
+    "code": "import time\nfrom ds04_nfc import DS04NFC\n\nservo = DS04NFC({SIG})\nservo.stop()\ntime.sleep(1)\nservo.cw(50)    # 1750 us: clockwise, half speed\ntime.sleep(2)\nservo.ccw(50)   # 1250 us: counter-clockwise, half speed\ntime.sleep(2)\nservo.stop()\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Stops, turns clockwise, then counter-clockwise, then stops",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "expect",
+          "what": "motor",
+          "part": "{REF}",
+          "within": 3000,
+          "on": false
+        },
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "expect",
+          "what": "motor",
+          "part": "{REF}",
+          "within": 3000,
+          "text": "cw"
+        },
+        {
+          "kind": "wait",
+          "ms": 2000
+        },
+        {
+          "kind": "expect",
+          "what": "motor",
+          "part": "{REF}",
+          "within": 3000,
+          "text": "ccw"
+        },
+        {
+          "kind": "wait",
+          "ms": 2000
+        },
+        {
+          "kind": "expect",
+          "what": "motor",
+          "part": "{REF}",
+          "within": 3000,
+          "on": false
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:58:22.298Z",
+    "verifiedSources": [
+      "https://www.kjell.com/globalassets/mediaassets/701903_90770_datasheet_en.pdf"
+    ]
+  }
+}

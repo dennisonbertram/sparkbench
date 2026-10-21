@@ -1,0 +1,188 @@
+{
+  "type": "custom-vcnl4200",
+  "name": "VCNL4200 long-range proximity & light sensor",
+  "mpn": "VCNL4200",
+  "category": "sensor",
+  "description": "Vishay long-distance proximity sensor (built-in 940 nm IR LED, 12- or 16-bit reading, up to about 1.5 m) plus 16-bit ambient light sensor (0.003 to 1573 lx) and white channel, with an I2C interface at fixed address 0x51 and an interrupt output. The chip runs on 2.5-3.6 V. Sold as: Adafruit VCNL4200 Long Distance IR Proximity and Light Sensor - STEMMA QT / Qwiic (#6064), 6-pin header VIN, 3Vo, GND, SCL, SDA, INT with a 3.3 V regulator, I2C level shifting for 3-5 V and a MOSFET driving the IR LED from VIN.",
+  "eli5": "Senses how close something is (up to about a metre) and how bright the room is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (regulated to 3.3 V for the chip; the IR LED pulses straight from VIN)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator; not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kOhm pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kOhm pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low, pulled up to VIN by 10 kOhm on the board (power from 3.3 V if you use it); not needed for basic use",
+      "required": false,
+      "boardPullUp": 10000
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 5,
+  "i2cAddress": 81,
+  "datasheetUrl": "https://www.vishay.com/docs/84430/vcnl4200.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "VCNL4200 long distance proximity light sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Both the ambient light sensor and the proximity sensor power up shut down (ALS_SD = 1, PS_SD = 1): write ALS_CONF (0x00) and PS_CONF1 (0x03) with the SD bit 0, then wait one integration time before the first reading.",
+    "The high byte of command 0x00 is reserved and must be kept at 0x01: write 0x00 as [0x00, ALS_CONF, 0x01].",
+    "Registers are 16-bit and travel LSB first: write [command, low byte, high byte]; read the command code with a repeated start and get low then high byte.",
+    "Lux = ALS counts x resolution: 0.024 lx/step at 50 ms (up to 1573 lx), 0.012 at 100 ms, 0.006 at 200 ms, 0.003 at 400 ms (up to 197 lx).",
+    "Set PS_HD (bit 3 of PS_CONF2, 0x03 high byte) for 16-bit proximity data; the default is 12-bit (0-4095).",
+    "Proximity is counts of reflected IR, bigger = closer; it is not a distance and depends on the target's colour, so pick thresholds by testing. Adafruit find 50-100 cm a realistic range.",
+    "The IR LED takes short high-current pulses straight from VIN through a MOSFET; keep VIN wiring short and well decoupled.",
+    "The INT pull-up on the board goes to VIN: if you use INT with a 3.3 V board, power the module from 3.3 V.",
+    "The address is fixed at 0x51, so only one VCNL4200 per I2C bus (use a multiplexer for more)."
+  ],
+  "keywords": [
+    "vcnl4200",
+    "proximity",
+    "long range",
+    "distance",
+    "lux",
+    "light",
+    "ambient light",
+    "als",
+    "ir",
+    "vishay"
+  ],
+  "sources": [
+    "https://www.vishay.com/docs/84430/vcnl4200.pdf",
+    "https://learn.adafruit.com/adafruit-vcnl4200-long-distance-ir-proximity-and-light-sensor/pinouts",
+    "https://www.adafruit.com/product/6064",
+    "https://github.com/adafruit/Adafruit-VCNL4200-Breakout-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Light level",
+    "unit": "lx",
+    "min": 0,
+    "max": 1572.8,
+    "default": 300,
+    "controls": [
+      {
+        "key": "proximity",
+        "quantity": "Proximity counts",
+        "min": 0,
+        "max": 65535,
+        "default": 10
+      },
+      {
+        "key": "white",
+        "quantity": "White channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      }
+    ],
+    "regWidth": 16,
+    "registers": {
+      "0x00": 257,
+      "0x03": 256,
+      "0x0E": 22544
+    },
+    "measures": [
+      {
+        "reg": "0x08",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "proximity"
+      },
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 0.024,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x0A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "white"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "vcnl4200.py",
+    "code": "# VCNL4200 long-distance proximity & ambient light sensor (Vishay, datasheet doc 84430), MicroPython driver.\n# I2C address 0x51 (fixed). 16-bit registers (\"command codes\"), sent and received LSB first:\n#   write: [command code, data byte low, data byte high]\n#   read:  command code, repeated start, data byte low, data byte high.\n# Lux = ALS counts x resolution: 0.024 / 0.012 / 0.006 / 0.003 lx per step at ALS_IT 50 / 100 / 200 / 400 ms\n# (datasheet table 14; maximum 1573 / 786 / 393 / 197 lx).\nimport time\n\n_ALS_CONF = 0x00    # L: ALS_CONF, H: reserved, must be kept at 0x01\n_ALS_THDH = 0x01\n_ALS_THDL = 0x02\n_PS_CONF12 = 0x03   # L: PS_CONF1, H: PS_CONF2\n_PS_CONF3MS = 0x04  # L: PS_CONF3, H: PS_MS\n_PS_CANC = 0x05\n_PS_THDL = 0x06\n_PS_THDH = 0x07\n_PS_DATA = 0x08\n_ALS_DATA = 0x09\n_WHITE_DATA = 0x0A\n_INT_FLAG = 0x0D    # H byte holds the flags; reading clears them\n_ID = 0x0E          # 0x1058 (ID_L = 0x58; ID_H bits 3:0 = version code)\n\n# ALS_IT (ALS_CONF bits 7:6) keyed by integration time in ms, and the datasheet's lux/step (table 14)\n_ALS_IT_BITS = {50: 0b00, 100: 0b01, 200: 0b10, 400: 0b11}\n_ALS_RES = {50: 0.024, 100: 0.012, 200: 0.006, 400: 0.003}\n\n# PS_IT (PS_CONF1 bits 3:1): 1T, 1.5T, 2T, 4T, 8T, 9T (110 and 111 are reserved)\nPS_IT_1T = 0b000\nPS_IT_1_5T = 0b001\nPS_IT_2T = 0b010\nPS_IT_4T = 0b011\nPS_IT_8T = 0b100\nPS_IT_9T = 0b101\n\n# PS_Duty (PS_CONF1 bits 7:6): IRED on/off ratio\nPS_DUTY_160 = 0b00\nPS_DUTY_320 = 0b01\nPS_DUTY_640 = 0b10\nPS_DUTY_1280 = 0b11\n\n# LED_I (PS_MS bits 2:0). On boards that drive the IRED through an external MOSFET (Adafruit #6064),\n# this only drives the FET gate and the datasheet says 50 mA is enough; the IRED current is set by RLED.\nLED_50MA = 0b000\nLED_75MA = 0b001\nLED_100MA = 0b010\nLED_120MA = 0b011\nLED_140MA = 0b100\nLED_160MA = 0b101\nLED_180MA = 0b110\nLED_200MA = 0b111\n\n\nclass VCNL4200:\n    def __init__(self, i2c, addr=0x51, als_it_ms=50, ps_it=PS_IT_8T, ps_duty=PS_DUTY_160, led_current=LED_50MA):\n        self.i2c = i2c\n        self.addr = addr\n        ident = self._read(_ID)\n        if ident & 0xFF != 0x58:\n            raise OSError('VCNL4200 not found at 0x%02X (ID 0x%04X)' % (addr, ident))\n        # PS_CONF1: duty, persistence 1, PS_IT, PS_SD = 0 (on); PS_CONF2: PS_HD = 1 (16-bit output), PS_INT off\n        self._write(_PS_CONF12, ((ps_duty & 0x03) << 6) | ((ps_it & 0x07) << 1) | (0x08 << 8))\n        # PS_CONF3 = 0 (1 pulse, normal mode, sunlight cancel off); PS_MS: normal (interrupt) mode, LED_I\n        self._write(_PS_CONF3MS, (led_current & 0x07) << 8)\n        self.configure_als(als_it_ms)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)  # data byte low first\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF, (value >> 8) & 0xFF]))\n\n    def configure_als(self, it_ms=50):\n        \"\"\"Set the ALS integration time (50, 100, 200 or 400 ms) and power the ALS on.\n\n        Longer times are more sensitive but saturate sooner: 50 ms = 0.024 lx/step up to 1573 lx,\n        400 ms = 0.003 lx/step up to 197 lx.\"\"\"\n        if it_ms not in _ALS_IT_BITS:\n            raise ValueError('it_ms must be 50, 100, 200 or 400')\n        self.als_it_ms = it_ms\n        self.resolution = _ALS_RES[it_ms]\n        # ALS_IT, ALS_INT_SWITCH = 0, ALS_PERS = 1, ALS_INT_EN = 0, ALS_SD = 0 (power on);\n        # high byte reserved, must stay 0x01 (table 3)\n        self._write(_ALS_CONF, (_ALS_IT_BITS[it_ms] << 6) | 0x0100)\n        time.sleep_ms(it_ms + it_ms // 10 + 10)  # let the first full integration finish\n\n    def als_raw(self):\n        \"\"\"ALS output counts (0..65535).\"\"\"\n        return self._read(_ALS_DATA)\n\n    def lux(self):\n        \"\"\"Ambient light in lx: ALS counts x lux/step for the integration time (datasheet table 14).\"\"\"\n        return self.als_raw() * self.resolution\n\n    def white(self):\n        \"\"\"White channel counts (0..65535); the datasheet gives no lux conversion for it.\"\"\"\n        return self._read(_WHITE_DATA)\n\n    def proximity(self):\n        \"\"\"Proximity counts (16-bit, 0..65535): bigger = closer. Not a distance in mm; it depends on\n        the target's colour and size and on the IRED drive, so calibrate thresholds in place.\"\"\"\n        return self._read(_PS_DATA)\n\n    def interrupt_flags(self):\n        \"\"\"Read and clear INT_Flag (high byte of 0x0D): bit 7 PS_UPFLAG (saturated), 6 PS_SPFLAG,\n        5 ALS_IF_L, 4 ALS_IF_H, 1 PS_IF_CLOSE, 0 PS_IF_AWAY. Reading releases the INT pin.\"\"\"\n        return (self._read(_INT_FLAG) >> 8) & 0xFF\n\n    def shutdown(self, off=True):\n        \"\"\"Shut down (ALS_SD = 1, PS_SD = 1; about 0.2 uA) or, with off=False, power both on again.\"\"\"\n        als = self._read(_ALS_CONF)\n        ps = self._read(_PS_CONF12)\n        if off:\n            self._write(_ALS_CONF, als | 0x0001)\n            self._write(_PS_CONF12, ps | 0x0001)\n        else:\n            self._write(_PS_CONF12, ps & ~0x0001)\n            self._write(_ALS_CONF, als & ~0x0001)\n            time.sleep_ms(self.als_it_ms + self.als_it_ms // 10 + 10)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom vcnl4200 import VCNL4200\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = VCNL4200(i2c, als_it_ms=50)  # 0.024 lx per step, up to 1573 lx\nwhile True:\n    print('Lux=%.1f Prox=%d White=%d' % (sensor.lux(), sensor.proximity(), sensor.white()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level, proximity and white counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "proximity",
+          "value": 1500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "white",
+          "value": 2345
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=1000.0 Prox=1500 White=2345",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:05:03.641Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/84430/vcnl4200.pdf",
+      "https://learn.adafruit.com/adafruit-vcnl4200-long-distance-ir-proximity-and-light-sensor/pinouts"
+    ]
+  }
+}

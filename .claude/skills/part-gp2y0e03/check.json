@@ -1,0 +1,79 @@
+{
+  "type": "custom-gp2y0e03",
+  "mpn": "GP2Y0E03",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; U2.GPIO1 → D25 (GPIO25). Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. It shares the I2C bus (SDA D21, SCL D22) at address 0x40. Added the gp2y0e03.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the distance set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; U2.GPIO1 → GP2 (GPIO2). Added a 4.7 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. Added a 4.7 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x40. Added the gp2y0e03.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the distance set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C920270 GP2Y0E03 (274 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T16:50:51.683Z"
+}

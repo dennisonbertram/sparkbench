@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hc-12",
+  "board": "HC-12 433 MHz wireless serial module (HC-12 V2.x by hc01.com and clones, 5-pin header VCC, GND, RXD, TXD, SET, spring antenna)",
+  "reason": "Modelled as a 9600-baud uart-device that answers the HC-12 V2.4 AT query commands with CRLF-terminated factory replies (AT, AT+RB/RC/RF/RP/RX, AT+V, AT+DEFAULT, AT+SLEEP), plus a 'remote' control that streams the other module's digit and CRLF once a second; the driver uses the datasheet's SET timing (40 ms low, 80 ms high, 200 ms re-entry). The check passed on ESP32 and Pico. Caveat: the simulator answers AT whatever the SET level, while the real module answers only when SET is low.",
+  "datasheetUrl": "https://statics3.seeedstudio.com/assets/file/bazaar/product/HC-12_english_datasheets.pdf",
+  "breakoutPinoutSource": "https://statics3.seeedstudio.com/assets/file/bazaar/product/HC-12_english_datasheets.pdf (pin table, pins 1-5 on the 2.54 mm header) and https://howtomechatronics.com/tutorials/arduino/arduino-and-hc-12-long-range-wireless-communication-module/",
+  "checkRuns": 2
+}

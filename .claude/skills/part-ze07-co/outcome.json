@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ze07-co",
+  "board": "Winsen ZE07-CO electrochemical CO module (bare 15-pin module, pins 1-5 and 6-15)",
+  "reason": "Modelled from the Winsen ZE07-CO manual V1.7: active-upload frame FF 04 03 01 CH CL 13 88 SUM (0.1 ppm per count, checksum NOT(sum bytes1-7)+1, verified against the manual example) streamed once a second at 9600 baud; the driver resyncs, checks the checksum and supports the Q&A commands. All 15 pins listed in datasheet order, cabled; supply 5-12 V. Part check printed PASS on ESP32 and Pico.",
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/manual/ze07-co.pdf",
+  "breakoutPinoutSource": "Winsen ZE07-CO user's manual V1.7, Pin Description table and Fig 2 Pins Diagram (https://www.winsen-sensor.com/d/files/manual/ze07-co.pdf)",
+  "checkRuns": 1
+}

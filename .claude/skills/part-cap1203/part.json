@@ -1,0 +1,207 @@
+{
+  "type": "custom-cap1203",
+  "name": "CAP1203 3-key capacitive touch slider",
+  "mpn": "CAP1203",
+  "category": "sensor",
+  "description": "Microchip CAP1203 capacitive touch controller: three sensor inputs (CS1-CS3) with automatic recalibration, programmable sensitivity and an open-drain ALERT# interrupt, read over I2C at the fixed address 0x28 (Sensor Input Status register 0x03). The board has no regulator: the chip runs straight from the 3.3 V Qwiic supply, with 2.2k I2C pull-ups and a 10k INT pull-up to that rail. Sold as: SparkFun Capacitive Touch Slider - CAP1203 (Qwiic), SEN-15344, three on-board touch pads (left = CS1, middle = CS2, right = CS3), two Qwiic connectors, a 5-pin side header GND/3V3/SDA/SCL/INT (J4) and a separate 3-pin top-edge header CS1/CS2/CS3 (J3) for your own pads; the two headers are on different edges, so wire it with jumper leads or a Qwiic cable.",
+  "eli5": "Three touch buttons in a row on a little board: tap the left, middle or right pad (or slide your finger across) and it tells your board which ones you are touching.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (J4 side header pin 1)",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "3.3 V supply, wired straight to the CAP1203 VDD (no regulator on the board); same rail as the Qwiic connectors",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 2200,
+      "description": "I2C data; 2.2k pull-up to 3V3 on the board (cut the I2C jumper to remove)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 2200,
+      "description": "I2C clock; 2.2k pull-up to 3V3 on the board (cut the I2C jumper to remove)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "boardPullUp": 10000,
+      "description": "ALERT# interrupt, open-drain active low with 10k pull-up to 3V3 (INT jumper) and a green LED that lights while it is low; goes low on a touch/release until the INT bit is cleared",
+      "required": false
+    },
+    {
+      "name": "CS1",
+      "role": "io",
+      "description": "Touch sensor input 1, same net as the left pad; J3 through-hole on the top edge (separate from the 5-pin side header), for wiring your own pad. Leave unconnected to use the on-board pad",
+      "required": false
+    },
+    {
+      "name": "CS2",
+      "role": "io",
+      "description": "Touch sensor input 2, same net as the middle pad; J3 through-hole on the top edge, for your own pad. Leave unconnected to use the on-board pad",
+      "required": false
+    },
+    {
+      "name": "CS3",
+      "role": "io",
+      "description": "Touch sensor input 3, same net as the right pad; J3 through-hole on the top edge, for your own pad. Leave unconnected to use the on-board pad",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 2,
+  "i2cAddress": 40,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/c/9/f/2/c/CAP1203_Data_Sheet.pdf",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/c/9/f/2/c/CAP1203_Data_Sheet.pdf",
+    "https://www.sparkfun.com/products/15344",
+    "https://learn.sparkfun.com/tutorials/capacitive-touch-slider-cap1203-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/6/8/c/6/9/SparkFun_Capacitive_Touch_Slider_Qwiic.pdf",
+    "https://cdn.sparkfun.com/assets/d/4/f/c/a/SparkFun_Capacitive_Touch_Slider_EagleFiles.zip",
+    "https://github.com/sparkfun/Qwiic_Capacitive_Touch_Slider_Arduino_Library"
+  ],
+  "priceUsd": 5.95,
+  "supplierQuery": "SparkFun SEN-15344 Capacitive Touch Slider CAP1203 Qwiic",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two headers on different edges (Eagle board file): J4 on the side = GND, 3V3, SDA, SCL, INT; J3 on the top edge = CS1, CS2, CS3. It does not plug into a breadboard as one row: use jumper leads or just a Qwiic cable.",
+    "Power it from 3.3 V only: there is no regulator and the I2C/INT pull-ups go to the same rail, so 5 V on 3V3 would put 5 V on SDA/SCL.",
+    "I2C address is fixed at 0x28; use an I2C mux for more than one board.",
+    "By default the chip blocks multiple touches (register 0x2A = 0x80, only the first pad in CS1-CS3 order is reported); the driver writes 0x2A = 0 so every touched pad is reported.",
+    "Status bits latch until the INT bit (register 0x00 bit 0) is cleared; the driver clears it after each read, so a released pad drops out one read later.",
+    "The chip ignores the bus for up to 15 ms after power-up and the first touch reading is ready after about 200 ms. Don't touch the pads while powering on: it calibrates against them.",
+    "CS1-CS3 through-holes on the top edge are the same nets as the left/middle/right pads, for wiring your own pads; keep the default sensitivity for the on-board pads.",
+    "Cut the I2C jumper on the back if the bus already has pull-ups; cut LED to disable the green INT LED."
+  ],
+  "keywords": [
+    "cap1203",
+    "capacitive touch",
+    "touch slider",
+    "3-key",
+    "sparkfun 15344",
+    "qwiic",
+    "i2c",
+    "microchip"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 0,
+      "0x02": 0,
+      "0x1F": 47,
+      "0x27": 7,
+      "0x2A": 128,
+      "0xFD": 109,
+      "0xFE": 93,
+      "0xFF": 0
+    },
+    "inputBits": [
+      {
+        "reg": "0x03",
+        "bit": 0,
+        "control": "cs1",
+        "label": "Left pad (CS1) touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 1,
+        "control": "cs2",
+        "label": "Middle pad (CS2) touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 2,
+        "control": "cs3",
+        "label": "Right pad (CS3) touched"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "cap1203.py",
+    "code": "# CAP1203 3-channel capacitive touch sensor (Microchip DS00001572B), MicroPython driver, I2C.\n# Fixed I2C address 0x28 (SMBus address 0101_000, not configurable).\n# Register map (datasheet Table 5-1):\n#   0x00 Main Control: STBY[5] DSLEEP[4] INT[0]; writing INT = 0 releases ALERT# (board pin INT) and clears\n#        the latched status bits of inputs that are no longer touched (Section 5.1 / 5.2.2)\n#   0x02 General Status (TOUCH bit 0, MTP bit 1, MULT bit 2)\n#   0x03 Sensor Input Status, bit 0 = CS1, bit 1 = CS2, bit 2 = CS3 (latched until INT is cleared)\n#   0x10-0x12 delta counts CS1-CS3 (signed 8-bit, capped at 0x7F / 0x80)\n#   0x1F Sensitivity Control: DELTA_SENSE[6:4] (default 010b = 32x), BASE_SHIFT[3:0]\n#   0x27 Interrupt Enable (default 0x07), 0x2A Multiple Touch Config (default 0x80: blocking ON, 1 touch)\n#   0xFD Product ID = 0x6D, 0xFE Manufacturer ID = 0x5D, 0xFF Revision = 0x00\n# Timing: tCOMM_DLY up to 15 ms after power-up, first conversion tCONV_DLY 170-200 ms.\nimport time\n\n_MAIN = 0x00\n_GEN_STATUS = 0x02\n_INPUT_STATUS = 0x03\n_DELTA = 0x10\n_SENSITIVITY = 0x1F\n_INT_ENABLE = 0x27\n_MTBLK = 0x2A\n_PRODUCT_ID = 0xFD\n_MFR_ID = 0xFE\n_REVISION = 0xFF\n\n\nclass CAP1203:\n    def __init__(self, i2c, addr=0x28, multi_touch=True):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(15)               # tCOMM_DLY\n        pid = self._r(_PRODUCT_ID)\n        mid = self._r(_MFR_ID)\n        if pid != 0x6D or mid != 0x5D:\n            raise OSError('CAP1203 not found at 0x%02X (product 0x%02X, maker 0x%02X)' % (addr, pid, mid))\n        self.revision = self._r(_REVISION)\n        if multi_touch:\n            self._w(_MTBLK, 0x00)       # MULT_BLK_EN = 0: report every touched pad, not just the first\n        self.clear_interrupt()\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def clear_interrupt(self):\n        \"\"\"Write INT = 0, keeping STBY/DSLEEP: releases the INT pin and clears released pads' status bits.\"\"\"\n        self._w(_MAIN, self._r(_MAIN) & ~0x01)\n\n    def touched(self):\n        \"\"\"3-bit mask, bit 0 = CS1 (left pad), bit 1 = CS2 (middle), bit 2 = CS3 (right).\n        Bits latch until INT is cleared, so a released pad drops out on the next read.\"\"\"\n        t = self._r(_INPUT_STATUS) & 0x07\n        if t:\n            self.clear_interrupt()\n        return t\n\n    def touched_pads(self):\n        \"\"\"List of touched pad numbers 1-3 (CS1-CS3).\"\"\"\n        t = self.touched()\n        return [n + 1 for n in range(3) if t & (1 << n)]\n\n    def is_left(self):\n        return bool(self.touched() & 0x01)\n\n    def is_middle(self):\n        return bool(self.touched() & 0x02)\n\n    def is_right(self):\n        return bool(self.touched() & 0x04)\n\n    def delta(self, pad):\n        \"\"\"Signed delta count of pad 1-3 (two's complement).\"\"\"\n        v = self._r(_DELTA + pad - 1)\n        return v - 256 if v & 0x80 else v\n\n    def set_sensitivity(self, level):\n        \"\"\"level 0 (128x, most sensitive) ... 7 (1x); default 2 (32x). BASE_SHIFT bits kept.\n        SparkFun calibrated the on-board pads for the default; change it only for your own pads.\"\"\"\n        cur = self._r(_SENSITIVITY)\n        self._w(_SENSITIVITY, (cur & 0x8F) | ((level & 0x07) << 4))\n\n    def set_interrupts(self, enabled=True):\n        \"\"\"Enable/disable ALERT# (INT pin) for all three inputs (register 0x27).\"\"\"\n        self._w(_INT_ENABLE, 0x07 if enabled else 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom cap1203 import CAP1203\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ncap = CAP1203(i2c)          # fixed address 0x28\nwhile True:\n    pads = cap.touched_pads()\n    print('TOUCH ' + (' '.join('CS%d' % p for p in pads) if pads else 'none'))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "touch-pads",
+      "title": "Touched pads are reported from the Sensor Input Status register",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH none",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs1",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs3",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH CS1 CS3",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs1",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH CS3",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs2",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH CS2 CS3",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "cabled": true,
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:07:45.515Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/c/9/f/2/c/CAP1203_Data_Sheet.pdf",
+      "https://learn.sparkfun.com/tutorials/capacitive-touch-slider-cap1203-hookup-guide",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/8/9/8/I2C.png"
+    ]
+  }
+}

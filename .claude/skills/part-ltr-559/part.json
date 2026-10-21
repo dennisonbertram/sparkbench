@@ -1,0 +1,214 @@
+{
+  "type": "custom-ltr-559",
+  "name": "LTR-559 light & proximity sensor",
+  "mpn": "LTR-559ALS-01",
+  "category": "sensor",
+  "description": "Lite-On digital ambient light sensor (two 16-bit channels, visible+infrared and infrared, 0.01 to 64k lux) combined with an 11-bit infrared proximity sensor with built-in LED (about 5 cm range), I2C at fixed address 0x23; the chip runs on 2.4-3.6 V. Sold as: Pimoroni LTR-559 Light & Proximity Sensor Breakout (PIM413), 5-pin header 3-6V (silkscreen label; Pimoroni rates it 3.3 V or 5 V compatible), SDA, SCL, INT, GND with a 3.3 V regulator and I2C level shifting, Raspberry Pi pins 1-3-5-7-9 compatible.",
+  "eli5": "Tells your board how bright the light is and whether something (like your hand) is close in front of it.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "3-6V",
+      "role": "power",
+      "description": "Supply: use 3.3 V or 5 V (Pimoroni: '3.3V or 5V compatible'; silkscreen reads 3-6V; on-board 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (level-shifted, pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (level-shifted, pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low by default (configured in register 0x8F); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 35,
+  "datasheetUrl": "https://web.archive.org/web/2020/http://optoelectronics.liteon.com/upload/download/ds86-2013-0003/ltr-559als-01_ds_v1.pdf",
+  "priceUsd": 9,
+  "supplierQuery": "Pimoroni LTR-559 light proximity sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wait at least 100 ms after power-up. Optionally software-reset with ALS_CONTR (0x80) = 0x02 and wait until bit 1 reads 0.",
+    "Write INTERRUPT (0x8F) before switching to active mode if you use the INT pin; leave it 0 otherwise.",
+    "ALS on: ALS_CONTR (0x80) = (gain << 2) | 1. PS on: PS_CONTR (0x81) = 0x03 (| 0x20 for the saturation flag). Wake-up takes up to 10 ms.",
+    "ALS_MEAS_RATE (0x85) = (integration code << 3) | repeat code (default 0x03: 100 ms every 500 ms); PS_MEAS_RATE (0x84) default 0x02 = 100 ms.",
+    "PS_LED (0x82): bits 7:5 pulse frequency, 4:3 duty, 2:0 peak current (default 0x7F = 60 kHz, 100 %, 100 mA); PS_N_PULSES (0x83) 1-15.",
+    "Read ALS as 4 bytes from 0x88: CH1 low, high, CH0 low, high (CH1 first; the block stays locked until 0x8B is read).",
+    "Read PS as 2 bytes from 0x8D: count = byte0 | (byte1 & 0x07) << 8 (0-2047, higher = closer); byte1 bit 7 = saturated.",
+    "ALS_PS_STATUS (0x8C): bit 7 = ALS data invalid, bits 6:4 = gain of the data, bit 2 = new ALS data, bit 0 = new PS data.",
+    "Lux (Lite-On Appendix A): ratio = CH1/(CH0+CH1); below 0.45: 1.7743*CH0 + 1.1059*CH1; below 0.64: 4.2785*CH0 - 1.9548*CH1; below 0.85: 0.5926*CH0 + 0.1185*CH1; else 0. Divide by gain and by integration time in units of 100 ms.",
+    "Address 0x23 is fixed and is shared with the BH1750 (ADDR low): one of them per I2C bus."
+  ],
+  "keywords": [
+    "ltr-559",
+    "ltr559",
+    "ltr-559als",
+    "pimoroni",
+    "lux",
+    "light",
+    "ambient light",
+    "proximity",
+    "lite-on",
+    "pim413"
+  ],
+  "sources": [
+    "https://web.archive.org/web/2020/http://optoelectronics.liteon.com/upload/download/ds86-2013-0003/ltr-559als-01_ds_v1.pdf",
+    "https://shop.pimoroni.com/products/ltr-559-light-proximity-sensor-breakout",
+    "https://shop.pimoroni.com/cdn/shop/products/LTR-559_1_of_4.JPG",
+    "https://github.com/pimoroni/ltr559-python",
+    "https://raw.githubusercontent.com/pimoroni/ltr559-python/main/library/ltr559/__init__.py"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Visible + infrared light (CH0)",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 1000,
+    "controls": [
+      {
+        "key": "ir",
+        "quantity": "Infrared light (CH1)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 250
+      },
+      {
+        "key": "prox",
+        "quantity": "Proximity (higher = closer)",
+        "unit": "counts",
+        "min": 0,
+        "max": 2047,
+        "default": 0
+      }
+    ],
+    "registers": {
+      "0x82": 127,
+      "0x83": 1,
+      "0x84": 2,
+      "0x85": 3,
+      "0x86": 146,
+      "0x87": 5,
+      "0x8C": 5,
+      "0x90": 255,
+      "0x91": 7,
+      "0x97": 255,
+      "0x98": 255
+    },
+    "selfClearing": [
+      {
+        "reg": "0x80",
+        "mask": 2,
+        "reset": true
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x88",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      },
+      {
+        "reg": "0x8A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x8D",
+        "bytes": 2,
+        "scale": 1,
+        "control": "prox",
+        "bits": 11,
+        "fields": [
+          {
+            "reg": "0x8D",
+            "from": 0,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x8E",
+            "from": 8,
+            "width": 3,
+            "at": 0
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ltr559.py",
+    "code": "# LTR-559 ambient light + proximity sensor (Lite-On LTR-559ALS-01, datasheet DS86-2013-0003), MicroPython driver.\n# I2C address 0x23 (fixed), 8-bit registers. PART_ID 0x86 = 0x92, MANUFAC_ID 0x87 = 0x05.\n# ALS: two 16-bit channels, LSB first: CH1 (infrared) at 0x88/0x89, CH0 (visible + infrared) at 0x8A/0x8B.\n#   Read 0x88..0x8B in that order (CH1 first): the four registers stay locked until 0x8B is read.\n# PS: 11-bit count, PS_DATA_0 0x8D = bits 7:0, PS_DATA_1 0x8E bits 2:0 = bits 10:8, bit 7 = saturated.\n# Lux: Lite-On Appendix A formula (ratio = CH1 / (CH0 + CH1)), divided by gain and integration time / 100 ms.\nimport time\n\n_ALS_CONTR = 0x80\n_PS_CONTR = 0x81\n_PS_LED = 0x82\n_PS_N_PULSES = 0x83\n_PS_MEAS_RATE = 0x84\n_ALS_MEAS_RATE = 0x85\n_PART_ID = 0x86\n_MANUFAC_ID = 0x87\n_ALS_DATA_CH1_0 = 0x88\n_STATUS = 0x8C\n_PS_DATA_0 = 0x8D\n\n# ALS gain codes (ALS_CONTR bits 4:2); 4 and 5 are reserved\nGAIN_1X = 0\nGAIN_2X = 1\nGAIN_4X = 2\nGAIN_8X = 3\nGAIN_48X = 6\nGAIN_96X = 7\n_GAIN_X = {0: 1, 1: 2, 2: 4, 3: 8, 6: 48, 7: 96}\n\n# ALS integration time codes (ALS_MEAS_RATE bits 5:3) -> ms\nINT_100MS = 0\nINT_50MS = 1\nINT_200MS = 2\nINT_400MS = 3\nINT_150MS = 4\nINT_250MS = 5\nINT_300MS = 6\nINT_350MS = 7\n_INT_MS = (100, 50, 200, 400, 150, 250, 300, 350)\n\n# ALS repeat rate codes (ALS_MEAS_RATE bits 2:0) -> ms\nRATE_50MS = 0\nRATE_100MS = 1\nRATE_200MS = 2\nRATE_500MS = 3\nRATE_1000MS = 4\nRATE_2000MS = 5\n_RATE_MS = (50, 100, 200, 500, 1000, 2000)\n\n# PS LED peak current codes (PS_LED bits 2:0)\nLED_5MA = 0\nLED_10MA = 1\nLED_20MA = 2\nLED_50MA = 3\nLED_100MA = 4\n\n# PS repeat rate codes (PS_MEAS_RATE bits 3:0) -> ms\nPS_RATE_MS = {0: 50, 1: 70, 2: 100, 3: 200, 4: 500, 5: 1000, 6: 2000, 8: 10}\n\n\nclass LTR559:\n    def __init__(self, i2c, addr=0x23, gain=GAIN_1X, integration=INT_100MS, rate=RATE_500MS,\n                 led_current=LED_50MA, pulses=1, ps_rate=2):\n        if gain not in _GAIN_X or integration not in range(8) or rate not in range(6):\n            raise ValueError('use the GAIN_, INT_ and RATE_ constants')\n        if led_current not in range(5) or not 1 <= pulses <= 15 or ps_rate not in PS_RATE_MS:\n            raise ValueError('bad proximity settings')\n        self.i2c = i2c\n        self.addr = addr\n        self.gain = gain\n        self.integration = integration\n        time.sleep_ms(100)  # initial start-up time after power is applied (datasheet: 100 ms)\n        if self._r8(_PART_ID) != 0x92 or self._r8(_MANUFAC_ID) != 0x05:\n            raise OSError('LTR-559 not found at 0x%02X (check the wiring)' % addr)\n        # Software reset (ALS_CONTR bit 1); the bit reads back 0 once the start-up procedure is done.\n        self._w8(_ALS_CONTR, 0x02)\n        t0 = time.ticks_ms()\n        while self._r8(_ALS_CONTR) & 0x02:\n            if time.ticks_diff(time.ticks_ms(), t0) > 1000:\n                raise OSError('LTR-559: software reset timed out')\n            time.sleep_ms(10)\n        # (An INTERRUPT 0x8F setting would have to be written here, before active mode; default 0 = INT off.)\n        # PS LED: 60 kHz, 100 % duty (bits 7:3 = 0b01111, datasheet default) with the chosen peak current.\n        self._w8(_PS_LED, 0x78 | led_current)\n        self._w8(_PS_N_PULSES, pulses)\n        self._w8(_PS_MEAS_RATE, ps_rate)\n        # Integration time must not exceed the repeat rate, or the chip raises the rate to match.\n        self._w8(_ALS_MEAS_RATE, (integration << 3) | rate)\n        self._w8(_ALS_CONTR, (gain << 2) | 0x01)  # gain + ALS active\n        self._w8(_PS_CONTR, 0x23)  # saturation indicator enable + PS active\n        time.sleep_ms(10)  # wake-up time from standby (max 10 ms)\n        self._als_wait = 10 + max(_INT_MS[integration], _RATE_MS[rate])\n        self._ps_wait = 10 + PS_RATE_MS[ps_rate]\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _wait(self, mask, ms):\n        t0 = time.ticks_ms()\n        while True:\n            st = self._r8(_STATUS)\n            if st & mask and not st & 0x80:  # new data, and bit 7 (ALS data invalid) clear\n                return\n            if time.ticks_diff(time.ticks_ms(), t0) > 2 * ms + 500:\n                raise OSError('LTR-559: no new data (check the wiring)')\n            time.sleep_ms(10)\n\n    def channels(self):\n        \"\"\"Wait for a fresh ALS result and return (ch0, ch1): ch0 = visible + IR, ch1 = IR only.\"\"\"\n        self._wait(0x04, self._als_wait)\n        d = self.i2c.readfrom_mem(self.addr, _ALS_DATA_CH1_0, 4)  # 0x88, 0x89, 0x8A, 0x8B in order\n        return d[2] | (d[3] << 8), d[0] | (d[1] << 8)\n\n    def lux(self, ch0=None, ch1=None):\n        \"\"\"Illuminance in lux (Lite-On Appendix A). 0 in the dark or for IR-dominated light,\n        None if a channel is saturated (65535: lower the gain or integration time).\"\"\"\n        if ch0 is None:\n            ch0, ch1 = self.channels()\n        if ch0 >= 65535 or ch1 >= 65535:\n            return None\n        if ch0 + ch1 == 0:\n            return 0.0\n        ratio = ch1 / (ch0 + ch1)\n        if ratio < 0.45:\n            lux = 1.7743 * ch0 + 1.1059 * ch1\n        elif ratio < 0.64:\n            lux = 4.2785 * ch0 - 1.9548 * ch1\n        elif ratio < 0.85:\n            lux = 0.5926 * ch0 + 0.1185 * ch1\n        else:\n            return 0.0\n        return lux / _GAIN_X[self.gain] / (_INT_MS[self.integration] / 100)\n\n    def proximity(self):\n        \"\"\"Wait for a fresh PS result and return the 11-bit count (0-2047, higher = closer),\n        or None if the PS saturation flag is set.\"\"\"\n        self._wait(0x01, self._ps_wait)\n        d = self.i2c.readfrom_mem(self.addr, _PS_DATA_0, 2)\n        if d[1] & 0x80:\n            return None\n        return d[0] | ((d[1] & 0x07) << 8)\n\n    def standby(self):\n        \"\"\"Stop both measurements (about 5 uA).\"\"\"\n        self._w8(_ALS_CONTR, self.gain << 2)\n        self._w8(_PS_CONTR, 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ltr559 import LTR559, GAIN_4X, INT_100MS, RATE_500MS\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = LTR559(i2c, gain=GAIN_4X, integration=INT_100MS, rate=RATE_500MS)\nwhile True:\n    ch0, ch1 = sensor.channels()\n    print('CH0=%d CH1=%d Lux=%.1f Prox=%d' % (ch0, ch1, sensor.lux(ch0, ch1), sensor.proximity()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the channel counts, lux and proximity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 800
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "prox",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=3000 CH1=800 Lux=1551.9 Prox=1234",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:06:43.751Z",
+    "verifiedSources": [
+      "https://static.chipdip.ru/lib/311/DOC011311766.pdf",
+      "https://shop.pimoroni.com/products/ltr-559-light-proximity-sensor-breakout",
+      "https://pinout.xyz/pinout/ltr_559"
+    ]
+  }
+}
