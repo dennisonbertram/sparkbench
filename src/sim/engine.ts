@@ -4,7 +4,7 @@ import type { Project, PartInstance } from '../core/types';
 import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, type I2CDevice } from './devices';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, packResponse, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
 import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
@@ -337,6 +337,7 @@ export class SimEngine {
   pinWrite(g: number, v: number) {
     this.tick();
     if (v && !(this.outLevel.get(g) ?? 0)) this.hxClock(g);
+    if (v !== (this.outLevel.get(g) ?? 1)) this.spiDeselect(g);
     if (this.board?.id === 'pico' && g === 25) {
       this.outLevel.set(25, v);
       return;
@@ -671,6 +672,53 @@ export class SimEngine {
     }
   }
 
+  /** Full-duplex transfer: e-paper still gets the bytes; a selected datasheet SPI chip answers on MISO. */
+  private spiTx = new Map<string, { written: number[]; reply: number[] | null; start: number }>();
+  spiXfer(bus: number, hex: string): string {
+    this.spiWrite(bus, hex);
+    const out = hexToBytes(hex).map(() => 0xff);
+    const b = this.spiBuses[bus];
+    if (!b) return bytesToHex(out);
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'spi-device') continue;
+      const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name;
+      const on = (fn: string) => (pin(fn) ? this.model.gpiosOnNet(part.id, pin(fn)!) : []);
+      if (!on('spi.sck').includes(b.sck) || !on('spi.miso').includes(b.miso)) continue;
+      const csg = on('spi.cs')[0];
+      if (csg === undefined || (this.outLevel.get(csg) ?? 1) !== 0) continue; // not selected
+      if (!this.model.modulePowered(part.id)) continue;
+      const tx = this.spiTx.get(part.id) ?? { written: [], reply: null, start: 0 };
+      this.spiTx.set(part.id, tx);
+      const value = (k: string) => (this.model.states.get(part.id) as any)?.[k] ?? 0;
+      hexToBytes(hex).forEach((w, i) => {
+        const pos = tx.written.length;
+        tx.written.push(w);
+        if (!tx.reply) {
+          const hit = (cs.sim.spiReplies ?? []).find((r) => {
+            const m = r.match ? r.match.split(' ').map((h) => parseInt(h, 16)) : [];
+            return m.length <= tx.written.length && m.every((x, j) => x === tx.written[j]);
+          });
+          if (hit) {
+            const m = hit.match ? hit.match.split(' ').length : 0;
+            tx.reply = packResponse(hit.bytes, value);
+            tx.start = hit.at ?? m;
+          }
+        }
+        if (tx.reply && pos >= tx.start) out[i] = tx.reply[pos - tx.start] ?? 0;
+      });
+    }
+    return bytesToHex(out);
+  }
+  /** CS rising ends an SPI transaction for chips selected by that pin. */
+  private spiDeselect(g: number) {
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      const csPin = cs?.sim.kind === 'spi-device' ? cs.pins.find((p) => p.fn === 'spi.cs')?.name : undefined;
+      if (csPin && this.model.gpiosOnNet(part.id, csPin).includes(g)) this.spiTx.delete(part.id);
+    }
+  }
+
   // ------------------------------------------------------------------ Wi-Fi, HTTP, time
   private wifiAvailable() {
     if (this.board?.id === 'pico' || !this.boardPartId()) return false;
@@ -891,6 +939,7 @@ export class SimEngine {
       spi_default: (id: number) => this.spiDefault(id),
       spi_open: (sck: number, mosi: number, miso: number) => this.spiOpen(sck, mosi, miso),
       spi_write: (b: number, hex: string) => this.spiWrite(b, hex),
+      spi_xfer: (b: number, hex: string) => this.spiXfer(b, hex),
       wifi_connect: (ssid: string) => this.wifiConnect(ssid),
       wifi_status: () => this.wifiStatus(),
       wifi_disconnect: () => {

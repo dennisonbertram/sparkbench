@@ -357,14 +357,17 @@ class SPI:
         _hw.spi_write(self._bus, bytes(buf).hex())
 
     def read(self, n, write=0):
-        _hw.spi_write(self._bus, bytes([write] * n).hex())
-        return bytes(n)
+        return bytes.fromhex(_hw.spi_xfer(self._bus, bytes([write] * n).hex()))
 
     def readinto(self, buf, write=0):
-        _hw.spi_write(self._bus, bytes([write] * len(buf)).hex())
+        r = bytes.fromhex(_hw.spi_xfer(self._bus, bytes([write] * len(buf)).hex()))
+        for i in range(len(buf)):
+            buf[i] = r[i]
 
     def write_readinto(self, w, r):
-        _hw.spi_write(self._bus, bytes(w).hex())
+        got = bytes.fromhex(_hw.spi_xfer(self._bus, bytes(w).hex()))
+        for i in range(len(r)):
+            r[i] = got[i]
 
 
 SoftSPI = SPI
