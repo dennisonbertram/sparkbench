@@ -672,6 +672,100 @@ export class SimEngine {
     }
   }
 
+  // ------------------------------------------------------------------ UART (datasheet serial modules)
+  private uarts: { id: number; tx: number; rx: number; baud: number; rxbuf: number[]; written: number[]; last: Map<string, number> }[] = [];
+  /** Pico UART pin mux (TX, RX) per UART; ESP32 routes UARTs to any pin. */
+  static PICO_UART: Record<number, { tx: number[]; rx: number[] }> = { 0: { tx: [0, 12, 16, 28], rx: [1, 13, 17, 29] }, 1: { tx: [4, 8, 20, 24], rx: [5, 9, 21, 25] } };
+  uartOpen(id: number, tx: number, rx: number, baud: number): number {
+    this.tick();
+    const b = this.board?.id;
+    const dflt: Record<number, [number, number]> = b === 'pico' ? { 0: [0, 1], 1: [4, 5] } : { 0: [1, 3], 1: [10, 9], 2: [17, 16] };
+    const [dtx, drx] = dflt[id] ?? [-1, -1];
+    const t = tx >= 0 ? tx : dtx;
+    const r = rx >= 0 ? rx : drx;
+    if (b === 'pico') {
+      const mux = SimEngine.PICO_UART[id];
+      if (!mux || (tx >= 0 && !mux.tx.includes(t)) || (rx >= 0 && !mux.rx.includes(r))) return -1;
+    }
+    this.uarts.push({ id, tx: t, rx: r, baud, rxbuf: [], written: [], last: new Map() });
+    return this.uarts.length - 1;
+  }
+  /** Serial modules whose TX reaches this UART's RX pin (they talk to us) / whose RX hears our TX. */
+  private uartParts(u: { tx: number; rx: number; baud: number }) {
+    return this.project.parts.flatMap((part) => {
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'uart-device' || !this.model.modulePowered(part.id)) return [];
+      const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name;
+      const talks = !!pin('uart.tx') && this.model.gpiosOnNet(part.id, pin('uart.tx')!).includes(u.rx);
+      const hears = !!pin('uart.rx') && this.model.gpiosOnNet(part.id, pin('uart.rx')!).includes(u.tx);
+      if (!talks && !hears) return [];
+      if (cs.sim.uartBaud && cs.sim.uartBaud !== u.baud) {
+        this.warn(`uart-baud-${part.id}`, 'warning', `${part.ref}: the ${cs.mpn} talks at ${cs.sim.uartBaud} baud, but the UART is set to ${u.baud}. The bytes come out as garbage.`, [part.id]);
+        return [];
+      }
+      return [{ part, cs, talks, hears }];
+    });
+  }
+  private uartPump(u: (typeof this.uarts)[number]) {
+    const t = this.timeUs / 1000;
+    for (const { part, cs, talks } of this.uartParts(u)) {
+      const st = cs.sim.uartStream;
+      if (!talks || !st) continue;
+      const last = u.last.get(part.id) ?? -st.everyMs / 2;
+      const n = Math.floor((t - last) / st.everyMs);
+      if (n < 1) continue;
+      u.last.set(part.id, last + n * st.everyMs);
+      const value = (k: string) => (this.model.states.get(part.id) as any)?.[k] ?? 0;
+      const one = st.nmea ? [...new TextEncoder().encode(nmeaSentences(value, t))] : packResponse(st.bytes ?? [], value);
+      u.rxbuf.push(...one);
+      if (u.rxbuf.length > 4096) u.rxbuf.splice(0, u.rxbuf.length - 4096);
+    }
+  }
+  private uartAt(h: number) {
+    const u = this.uarts[h];
+    if (u) this.uartPump(u);
+    return u;
+  }
+  uartAny(h: number): number {
+    this.tick();
+    return this.uartAt(h)?.rxbuf.length ?? 0;
+  }
+  uartRead(h: number, n: number): string {
+    this.tick();
+    const u = this.uartAt(h);
+    if (!u || !u.rxbuf.length) return '';
+    const got = u.rxbuf.splice(0, n < 0 ? u.rxbuf.length : n);
+    this.timeUs += (got.length * 10 * 1e6) / (u.baud || 9600);
+    return bytesToHex(got);
+  }
+  uartReadline(h: number): string {
+    this.tick();
+    const u = this.uartAt(h);
+    const nl = u ? u.rxbuf.indexOf(10) : -1;
+    if (!u || nl < 0) return '';
+    return this.uartRead(h, nl + 1);
+  }
+  uartWrite(h: number, hex: string) {
+    this.tick();
+    const u = this.uartAt(h);
+    if (!u) return;
+    const bytes = hexToBytes(hex);
+    this.timeUs += (bytes.length * 10 * 1e6) / (u.baud || 9600);
+    u.written.push(...bytes);
+    for (const { part, cs, hears } of this.uartParts(u)) {
+      if (!hears) continue;
+      const value = (k: string) => (this.model.states.get(part.id) as any)?.[k] ?? 0;
+      for (const r of cs.sim.uartReplies ?? []) {
+        const m = r.match.split(' ').map((x) => parseInt(x, 16));
+        const at = u.written.findIndex((_, i) => m.every((x, j) => u.written[i + j] === x));
+        if (at < 0) continue;
+        u.written.splice(0, at + m.length);
+        u.rxbuf.push(...packResponse(r.bytes, value));
+      }
+    }
+    if (u.written.length > 64) u.written.splice(0, u.written.length - 64);
+  }
+
   /** Full-duplex transfer: e-paper still gets the bytes; a selected datasheet SPI chip answers on MISO. */
   private spiTx = new Map<string, { written: number[]; reply: number[] | null; start: number }>();
   spiXfer(bus: number, hex: string): string {
@@ -940,6 +1034,11 @@ export class SimEngine {
       spi_open: (sck: number, mosi: number, miso: number) => this.spiOpen(sck, mosi, miso),
       spi_write: (b: number, hex: string) => this.spiWrite(b, hex),
       spi_xfer: (b: number, hex: string) => this.spiXfer(b, hex),
+      uart_open: (id: number, tx: number, rx: number, baud: number) => this.uartOpen(id, tx, rx, baud),
+      uart_any: (h: number) => this.uartAny(h),
+      uart_read: (h: number, n: number) => this.uartRead(h, n),
+      uart_readline: (h: number) => this.uartReadline(h),
+      uart_write: (h: number, hex: string) => this.uartWrite(h, hex),
       wifi_connect: (ssid: string) => this.wifiConnect(ssid),
       wifi_status: () => this.wifiStatus(),
       wifi_disconnect: () => {
@@ -1130,4 +1229,24 @@ export function sampleResponse(url: string): { status: number; text: string } {
   }
   if (/worldtimeapi|timeapi/.test(url)) return { status: 200, text: JSON.stringify({ datetime: '2026-10-20T10:30:00-04:00', unixtime: 1792506600, utc_offset: '-04:00' }) };
   return { status: 404, text: 'Not found (the simulator only has sample data for api.open-meteo.com)' };
+}
+
+/** GGA + RMC sentences for a simulated GPS fix (controls lat, lon, optional speed [knots] and alt [m]). */
+export function nmeaSentences(value: (k: string) => number, tMs: number): string {
+  const secs = 12 * 3600 + Math.floor(tMs / 1000);
+  const hh = String(Math.floor(secs / 3600) % 24).padStart(2, '0');
+  const mm = String(Math.floor(secs / 60) % 60).padStart(2, '0');
+  const ss = String(secs % 60).padStart(2, '0');
+  const time = `${hh}${mm}${ss}.00`;
+  const dm = (deg: number, w: number) => {
+    const a = Math.abs(deg);
+    const d = Math.floor(a);
+    return `${String(d).padStart(w, '0')}${((a - d) * 60).toFixed(5).padStart(8, '0')}`;
+  };
+  const lat = value('lat');
+  const lon = value('lon');
+  const la = `${dm(lat, 2)},${lat < 0 ? 'S' : 'N'}`;
+  const lo = `${dm(lon, 3)},${lon < 0 ? 'W' : 'E'}`;
+  const cs = (body: string) => `$${body}*${[...body].reduce((x, c) => x ^ c.charCodeAt(0), 0).toString(16).toUpperCase().padStart(2, '0')}\r\n`;
+  return cs(`GPGGA,${time},${la},${lo},1,08,0.9,${value('alt').toFixed(1)},M,0.0,M,,`) + cs(`GPRMC,${time},A,${la},${lo},${value('speed').toFixed(2)},0.00,201026,,,A`);
 }

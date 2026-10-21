@@ -42,6 +42,27 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
   const supply = vmin <= 3.3 && vmax >= 3.3 ? board.supply3v3 : board.supply5v;
   if (supply === board.supply5v && vmin > 3.6) notes.push(`${def.name} needs at least ${vmin} V, so it is powered from 5 V.`);
   let sig = 0;
+  // Serial modules: the part's TX goes to a board RX and vice versa. On the Pico only some pin pairs
+  // belong to a UART (GP0/1 = UART0, GP4/5 and GP8/9 = UART1, GP12/13 and GP16/17 = UART0).
+  const ptx = def.pins.find((p) => p.fn === 'uart.tx' && !already.has(p.name));
+  const prx = def.pins.find((p) => p.fn === 'uart.rx' && !already.has(p.name));
+  if (ptx) {
+    const pairs: [number, number][] = project.board === 'pico' ? [[0, 1], [8, 9], [4, 5], [12, 13], [16, 17]] : [[17, 16], [27, 26], [33, 32], [25, 14]];
+    const byGpio = (g: number) => board.pins.find((p) => p.gpio === g && p.role === 'gpio');
+    const pair = pairs.map(([t, r]) => [byGpio(t), byGpio(r)] as const).find(([t, r]) => t && r && !used.has(t.name) && !used.has(r.name) && ![board.i2c.sda, board.i2c.scl].includes(t.name) && ![board.i2c.sda, board.i2c.scl].includes(r.name));
+    if (pair) {
+      const [btx, brx] = pair as [BoardPin, BoardPin];
+      used.add(brx.name);
+      wire(ptx.name, brx.name, '#00838f');
+      already.add(ptx.name);
+      if (prx) {
+        used.add(btx.name);
+        wire(prx.name, btx.name, '#8e24aa');
+        already.add(prx.name);
+      }
+      notes.push(`${part.ref ?? part.id}.${ptx.name} → ${brx.name} (the board's RX)${prx ? `, ${prx.name} → ${btx.name} (the board's TX)` : ''}.`);
+    } else notes.push(`No free UART pin pair was left for ${def.name}; wire TX/RX by hand.`);
+  }
   for (const pin of def.pins) {
     if (already.has(pin.name) || pin.role === 'nc') continue;
     const fn = pin.fn ?? '';

@@ -546,7 +546,14 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
     }
   };
   for (const s of segs) {
-    if ('crc' in s) push(crc8Sensirion(out.slice(-s.over), s.crc === 'htu21d' ? 0 : 0xff), 8);
+    if ('crc' in s) {
+      const prev = out.slice(-s.over);
+      const sum = prev.reduce((a, b) => a + b, 0);
+      if (s.crc === 'sum16') push(sum & 0xffff, 16);
+      else if (s.crc === 'sum8') push(sum & 0xff, 8);
+      else if (s.crc === 'mhz19') push((0xff - (prev.slice(1).reduce((a, b) => a + b, 0) & 0xff) + 1) & 0xff, 8);
+      else push(crc8Sensirion(prev, s.crc === 'htu21d' ? 0 : 0xff), 8);
+    }
     else if ('const' in s) push(s.const, s.bits);
     else {
       let raw = Math.round((value(s.control) - (s.offset ?? 0)) / (s.scale || 1));

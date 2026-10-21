@@ -15,8 +15,14 @@ export interface CustomSim {
    * oled-display: a monochrome I2C OLED (SSD1306/SH1106 command set); tests can read its text
    * hx711: a 24-bit bridge ADC read by clocking PD_SCK and sampling DOUT (HX711/HX710 load-cell amplifiers)
    * spi-device: a chip read over SPI (thermocouple/RTD amplifiers, SPI ADCs); pins use fn spi.sck/spi.miso/spi.mosi/spi.cs
+   * uart-device: a serial module (GPS, particulate, CO2); its TX pin has fn uart.tx, its RX pin fn uart.rx
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'none';
+  /** uart-device: what the module sends by itself every `everyMs` (binary fields, or NMEA sentences built from
+   * the controls "lat", "lon" and optionally "speed" [knots] and "alt" [m]), and replies to commands it receives. */
+  uartBaud?: number;
+  uartStream?: { everyMs: number; nmea?: boolean; bytes?: ResponseSegment[] };
+  uartReplies?: { match: string; bytes: ResponseSegment[] }[];
   /** spi-device: what the chip clocks out on MISO while CS is low. Each reply may require the
    * transaction to start with `match` (hex bytes, '' = any) and starts `at` bytes into it (default: after match). */
   spiReplies?: { match: string; at?: number; bytes: ResponseSegment[] }[];
@@ -77,11 +83,19 @@ export interface I2CMeasure {
 }
 
 /** One field of a command response, packed MSB-first into the reply's bit stream. */
+/** Bits a reply occupies (checksums are 8 bits except sum16). */
+export function segBits(segs: ResponseSegment[]): number {
+  return segs.reduce((n, b) => n + ('crc' in b ? (b.crc === 'sum16' ? 16 : 8) : b.bits), 0);
+}
+
 export type ResponseSegment =
   | { const: number; bits: number }
   | { control: string; bits: number; scale: number; offset?: number; signed?: boolean }
   /** CRC-8 over the previous `over` bytes, poly 0x31: 'sensirion' starts at 0xFF (SHT3x/4x, SCD4x, AHT20), 'htu21d' at 0x00 (HTU21D, Si7021). */
-  | { crc: 'sensirion' | 'htu21d'; over: number };
+  | { crc: 'sensirion' | 'htu21d'; over: number }
+  /** Checksums of serial sensors over the previous `over` bytes: 'sum16' = 16-bit sum, big-endian (PMS5003);
+   * 'mhz19' = 0xFF − (sum of bytes after the first) + 1 (MH-Z19, SDS011-style). */
+  | { crc: 'sum16' | 'mhz19' | 'sum8'; over: number };
 
 export interface CustomPartSpec {
   type: string; // "custom-bme280"
@@ -121,7 +135,7 @@ const REGISTRY = new Map<string, { spec: CustomPartSpec; def: PartDef }>();
 export function specToDef(spec: CustomPartSpec): PartDef {
   const controls: SimControl[] = [];
   const s = spec.sim;
-  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'hx711' || s.kind === 'spi-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
+  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'hx711' || s.kind === 'spi-device' || s.kind === 'uart-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
     const min = s.min ?? 0;
     const max = s.max ?? 100;
     controls.push({ key: 'value', label: s.quantity ?? 'Value', kind: 'slider', min, max, step: (max - min) / 200 >= 1 ? 1 : +((max - min) / 200).toPrecision(1), default: s.default ?? (min + max) / 2, unit: s.unit ? ` ${s.unit}`.replace(/^ (°|%)/, '$1') : '' });
@@ -199,9 +213,19 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!s.spiReplies?.length) errs.push('spi-device needs spiReplies');
     for (const r of s.spiReplies ?? []) {
       if (r.match && !/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`spi reply match "${r.match}" must be hex bytes like "01" or ""`);
-      const bits = r.bytes.reduce((n, b) => n + ('crc' in b ? 8 : b.bits), 0);
+      const bits = segBits(r.bytes);
       if (bits % 8) errs.push(`spi reply "${r.match}" is ${bits} bits, not whole bytes`);
       for (const b of r.bytes) if ('control' in b && !keys.has(b.control)) errs.push(`spi reply field control ${b.control} is not a control`);
+    }
+  }
+  if (s.kind === 'uart-device') {
+    if (!spec.pins.some((p) => p.fn === 'uart.tx')) errs.push('uart-device needs its TX pin marked fn uart.tx');
+    if (!s.uartStream && !s.uartReplies?.length) errs.push('uart-device needs uartStream or uartReplies');
+    if (s.uartStream?.nmea && !(keys.has('lat') && keys.has('lon'))) errs.push('an NMEA stream needs controls "lat" and "lon"');
+    for (const r of [...(s.uartReplies ?? []), ...(s.uartStream?.bytes ? [{ match: '', bytes: s.uartStream.bytes }] : [])]) {
+      if (r.match && !/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`uart reply match "${r.match}" must be hex bytes`);
+      if (segBits(r.bytes) % 8) errs.push(`uart reply "${r.match}" is not whole bytes`);
+      for (const b of r.bytes) if ('control' in b && !keys.has(b.control)) errs.push(`uart field control ${b.control} is not a control`);
     }
   }
   if (s.kind === 'hx711' && (!s.outputPin || !s.clockPin || !names.has(s.clockPin) || !s.countsPerUnit)) errs.push('hx711 needs outputPin (DOUT), clockPin (PD_SCK) and countsPerUnit');
@@ -213,7 +237,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   }
   for (const r of s.responses ?? []) {
     if (!/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`response match "${r.match}" must be hex bytes like "24 00"`);
-    const bits = r.bytes.reduce((n, b) => n + ('crc' in b ? 8 : b.bits), 0);
+    const bits = segBits(r.bytes);
     if (bits % 8) errs.push(`response "${r.match}" is ${bits} bits, not whole bytes`);
     for (const b of r.bytes) if ('control' in b && !keys.has(b.control)) errs.push(`response field control ${b.control} is not a control`);
   }

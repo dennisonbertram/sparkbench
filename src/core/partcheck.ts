@@ -58,6 +58,11 @@ export function pinNumbers(project: Project): Record<string, number> {
     const g = boardPin(board, brd.pin)?.gpio;
     if (g !== undefined) out[dut.pin.toUpperCase().replace(/[^A-Z0-9]/g, '_')] = g;
   }
+  // The UART that owns the board RX pin wired to the part's TX (ESP32: UART2 can use any pins).
+  const spec = project.customParts?.find((c) => project.parts.some((p) => p.id === 'dut' && p.type === c.type));
+  const txName = spec?.pins.find((p) => p.fn === 'uart.tx')?.name.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+  const rxg = txName ? out[txName] : undefined;
+  out.UART_ID = project.board === 'pico' ? ([1, 13, 17, 29].includes(rxg ?? 1) ? 0 : 1) : 2;
   out.SDA = boardPin(board, board.i2c.sda)!.gpio!;
   out.SCL = boardPin(board, board.i2c.scl)!.gpio!;
   out.I2C_ID = board.i2c.id;

@@ -374,17 +374,41 @@ SoftSPI = SPI
 
 
 class UART:
-    def __init__(self, id, baudrate=9600, **kw):
+    def __init__(self, id, baudrate=9600, tx=None, rx=None, **kw):
+        self._h = _hw.uart_open(id, tx._id if tx is not None else -1, rx._id if rx is not None else -1, baudrate)
+        if self._h < 0:
+            raise ValueError('bad TX/RX pin for UART(%d)' % id)
+
+    def init(self, *a, **kw):
+        pass
+
+    def deinit(self):
         pass
 
     def write(self, b):
-        print(bytes(b).decode())
+        if isinstance(b, str):
+            b = b.encode()
+        _hw.uart_write(self._h, bytes(b).hex())
+        return len(b)
 
     def any(self):
-        return 0
+        return _hw.uart_any(self._h)
 
-    def read(self, n=-1):
-        return None
+    def read(self, n=None):
+        h = _hw.uart_read(self._h, -1 if n is None else n)
+        return bytes.fromhex(h) if h else None
+
+    def readline(self):
+        h = _hw.uart_readline(self._h)
+        return bytes.fromhex(h) if h else None
+
+    def readinto(self, buf, n=None):
+        d = self.read(len(buf) if n is None else n)
+        if not d:
+            return None
+        for i in range(len(d)):
+            buf[i] = d[i]
+        return len(d)
 
 
 class Timer:
