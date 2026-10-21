@@ -105,50 +105,82 @@ describe('index-addressed command blocks (SparkFun Qwiic LED Stick firmware)', (
   });
 });
 
-describe('SH1107 OLED (128×128 RAM, 16 pages)', () => {
+describe('SH1107 OLED (datasheet Fig. 10 / Table 8: page bits drive SEG, the column address drives COM)', () => {
   const dev = (o: any = {}) => new SSD1306Device('u', { controller: 'sh1107', ...o });
   const cmd = (d: SSD1306Device, ...b: number[]) => d.write([0x00, ...b]);
   const lit = (d: SSD1306Device, x: number, y: number) => ((d.visibleRam()[(y >> 3) * 128 + x] >> (y & 7)) & 1) === 1;
-  it('writes all 16 pages in page mode: B0–BF, 7-bit column, wrap 127 → 0 on the same page', () => {
+  const at = (d: SSD1306Device, page: number, col: number, byte: number) => {
+    cmd(d, 0xb0 | page, col & 0x0f, 0x10 | (col >> 4));
+    d.write([0x40, byte]);
+  };
+  it('a RAM byte at (page p, column c) lights SEG 8p+bit on the line showing display address c', () => {
     const d = dev();
-    cmd(d, 0xaf, 0xbf, 0x0f, 0x17); // page 15, column 127
-    d.write([0x40, 0x80, 0x01]);
-    expect(lit(d, 127, 127)).toBe(true); // bit 7 of page 15
-    expect(lit(d, 0, 120)).toBe(true); // wrapped to column 0, same page
+    at(d, 0, 5, 0x01);
+    expect(lit(d, 0, 5)).toBe(true);
+    at(d, 15, 127, 0x80);
+    expect(lit(d, 127, 127)).toBe(true);
   });
-  it('20H/21H take no argument; vertical mode steps the page, then wraps 15 → 0', () => {
+  it('segment remap A1 reverses the SEG order', () => {
     const d = dev();
-    cmd(d, 0x21, 0xb0, 0x05, 0x10); // vertical, page 0, column 5
-    d.write([0x40, ...new Array(17).fill(0x01)]);
-    for (let p = 0; p < 16; p++) expect(lit(d, 5, p * 8)).toBe(true);
-    expect(lit(d, 6, 0)).toBe(false); // column unchanged
+    at(d, 0, 5, 0x01);
+    cmd(d, 0xa1);
+    expect(lit(d, 127, 5)).toBe(true);
+    expect(lit(d, 0, 5)).toBe(false);
   });
-  it('COM k shows RAM row (start line + k − offset) mod 128; only COM0…mux are on', () => {
-    const d = dev({ rows: 64 });
-    cmd(d, 0xb4, 0x00, 0x10); // page 4 = rows 32–39
-    d.write([0x40, 0x01]); // RAM row 32, column 0
-    expect(lit(d, 0, 32)).toBe(true);
-    cmd(d, 0xd3, 0x60); // display offset 96 (Adafruit 128×64 FeatherWing style)
-    expect(lit(d, 0, 0)).toBe(true); // COM0 now shows row (0 + 0 − 96) mod 128 = 32
-    cmd(d, 0xd3, 0x00, 0xdc, 32);
-    expect(lit(d, 0, 0)).toBe(true); // start line 32 at the top
-    cmd(d, 0xdc, 0, 0xa8, 15);
-    d.write([0x00, 0xb2, 0x00, 0x10, 0x40, 0xff]); // rows 16–23: past a 16-line mux
-    expect(lit(d, 0, 16)).toBe(false);
+  it('vertical addressing (21h) steps the page within one column, then wraps 15 → 0', () => {
+    const d = dev();
+    cmd(d, 0x21, 0xb0, 0x05, 0x10);
+    d.write([0x40, ...new Array(16).fill(0x01)]);
+    for (let p = 0; p < 16; p++) expect(lit(d, p * 8, 5)).toBe(true);
+    expect(lit(d, 0, 6)).toBe(false);
   });
-  it('a 64-wide window at column 32 hides a driver that forgets the offset', () => {
-    const d = dev({ width: 64, colOffset: 32 });
-    cmd(d, 0xb0, 0x00, 0x10);
-    d.write([0x40, 0xff]); // column 0: off the glass
-    expect(d.visibleRam().some((b) => b)).toBe(false);
-    cmd(d, 0xb0, 0x00, 0x12); // column 32 = left edge
-    d.write([0x40, 0xff]);
+  it('128×64 FeatherWing (#4650): mux 63 and offset 0x60 put display address 0 on the glass row wired to COM96', () => {
+    const d = dev({ rows: 64, com0: 96 });
+    cmd(d, 0xa8, 0x3f, 0xd3, 0x60);
+    at(d, 0, 0, 0x01);
+    at(d, 0, 63, 0x02);
     expect(lit(d, 0, 0)).toBe(true);
+    expect(lit(d, 1, 63)).toBe(true);
+    cmd(d, 0xd3, 0x00); // the wrong offset: line 0 lands on COM0 = glass row 32, lines 32–63 fall off the glass
+    expect(lit(d, 0, 0)).toBe(false);
+    expect(lit(d, 0, 32)).toBe(true);
+    expect(lit(d, 1, 63)).toBe(false);
   });
-  it('validates rows', () => {
-    const f = fixture('sh1107-128.json');
+  it('reverse scan (C8) runs the lines down from COM offset−1 (peter-l5 flip: offset 0x20, A0, C8 = 180°)', () => {
+    const d = dev({ rows: 64, com0: 96 });
+    cmd(d, 0xa8, 0x3f, 0xd3, 0x20, 0xc8);
+    at(d, 0, 0, 0x01);
+    expect(lit(d, 0, 63)).toBe(true); // line 0 → COM31 → the glass's last row
+  });
+  it('start line (DCh) picks the display address on line 0; only lines 0…mux are driven', () => {
+    const d = dev();
+    at(d, 0, 10, 0x01);
+    cmd(d, 0xdc, 10);
+    expect(lit(d, 0, 0)).toBe(true);
+    cmd(d, 0xdc, 0, 0xa8, 15);
+    at(d, 0, 20, 0x01);
+    expect(lit(d, 0, 20)).toBe(false);
+  });
+  it('flip mirrors the glass as mounted; a colOffset window crops the SEG axis', () => {
+    const d = dev({ flip: 'xy' });
+    at(d, 0, 0, 0x01);
+    expect(lit(d, 127, 127)).toBe(true);
+    const w = dev({ width: 64, colOffset: 32 });
+    at(w, 0, 0, 0x01); // SEG0: off the glass
+    expect(w.visibleRam().some((b) => b)).toBe(false);
+    at(w, 4, 0, 0x01); // SEG32 = left edge
+    expect(lit(w, 0, 0)).toBe(true);
+  });
+  it('validates rows, com0 and flip', () => {
+    const f = fixture('sh1107-featherwing.json');
     expect(validateSpec(f)).toEqual([]);
-    f.sim.controller = 'ssd1306';
-    expect(validateSpec(f).join(' ')).toMatch(/128 needs controller sh1107/);
+    expect(validateSpec({ ...f, sim: { ...f.sim, com0: 200 } }).join(' ')).toMatch(/com0 must be/);
+    expect(validateSpec({ ...f, sim: { ...f.sim, flip: 'z' as any } }).join(' ')).toMatch(/flip must be/);
+    expect(validateSpec({ ...f, sim: { ...f.sim, controller: 'ssd1306' } }).join(' ')).toMatch(/com0 and flip are for controller sh1107/);
+    const g = fixture('sh1107-128.json');
+    g.sim.controller = 'ssd1306';
+    delete g.sim.com0;
+    delete g.sim.flip;
+    expect(validateSpec(g).join(' ')).toMatch(/128 needs controller sh1107/);
   });
 });

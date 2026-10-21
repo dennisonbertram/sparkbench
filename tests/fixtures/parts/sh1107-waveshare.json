@@ -1,0 +1,78 @@
+{
+ "type": "custom-sh1107-ws-test",
+ "name": "SH1107 Waveshare test",
+ "mpn": "SH1107 1.3in 64x128",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "interface": "i2c",
+ "i2cAddress": 60,
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 5.5,
+ "currentMa": 20,
+ "priceUsd": 8,
+ "supplierQuery": "SH1107 OLED",
+ "sim": {
+  "kind": "oled-display",
+  "controller": "sh1107",
+  "rows": 64,
+  "width": 128,
+  "com0": 96,
+  "flip": "y"
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport framebuf, time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nADDR = 0x3c\ndef command(c):\n    i2c.writeto(ADDR, bytes([0x00, c]))\nfor c in (0xae, 0x00, 0x10, 0xb0, 0xdc, 0x00, 0x81, 0x6f, 0x21, 0xa0, 0xc0, 0xa4, 0xa6, 0xa8, 0x3f, 0xd3, 0x60,\n          0xd5, 0x80, 0xd9, 0x1d, 0xdb, 0x35, 0xad, 0x80):\n    command(c)\ntime.sleep_ms(200)\ncommand(0xaf)\nbuf = bytearray(128 * 64 // 8)\nfb = framebuf.FrameBuffer(buf, 128, 64, framebuf.MONO_HMSB)  # Waveshare getbuffer: bit (x % 8) of byte y*16 + x//8\ndef show():\n    command(0xb0)\n    for y in range(64):\n        column = 63 - y\n        command(0x00 + (column & 0x0f))\n        command(0x10 + (column >> 4))\n        i2c.writeto(ADDR, b'\\x40' + buf[y * 16:(y + 1) * 16])\nfb.fill(0)\nfb.text('TOP', 0, 0, 1)\nfb.text('BOTTOM', 0, 56, 1)\nshow()\nprint('drawn')\n",
+  "test": {
+   "id": "t",
+   "title": "screen",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "drawn",
+     "within": 4000
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "TOP",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "BOTTOM",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

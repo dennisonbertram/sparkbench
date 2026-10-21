@@ -143,7 +143,8 @@ export interface CustomSim {
   countsPerUnit?: number;
   offsetCounts?: number;
   /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64; SH1107 128×128
-   * RAM in 16 pages, its own command set, for 128×128 panels or a width/colOffset window such as 64×128, rows up to 128).
+   * RAM in 16 pages with its own command set: its page bits drive the SEG lines (the glass's width, colOffset window) and
+   * its column address drives the COM lines (rows = COM lines on the glass, see com0/flip)).
    * tft-display: 'ssd1351' for the SSD1351 colour OLED command set; 'pcd8544' for the Nokia 5110 84×48 mono LCD (pins
    * fn spi.sck, spi.mosi, spi.cs = CE, tft.dc = DC, tft.reset = RST; width/height are fixed at 84×48). */
   controller?: 'ssd1306' | 'sh1106' | 'sh1107' | 'ssd1351' | 'pcd8544';
@@ -152,6 +153,12 @@ export interface CustomSim {
    * width (the visible columns, default 128) only columns colOffset…colOffset+width−1 and the first rows COM lines are
    * on the glass, so a driver that forgets the offset draws off-screen just as on the real module. */
   colOffset?: number;
+  /** oled-display, SH1107 only: the COM pad wired to the glass's first row (0x60 on Adafruit's 128×64 FeatherWing #4650
+   * and Waveshare's 1.3" (C), 0 on 128×128 panels) — the value the vendor's driver sends as display offset (D3h). */
+  com0?: number;
+  /** oled-display, SH1107 only: how the glass is mounted, relative to SEG0 at the left and the com0 row at the top:
+   * 'x' mirrors left-right, 'y' top-bottom, 'xy' both. Taken from the vendor driver that draws upright on that board. */
+  flip?: 'x' | 'y' | 'xy';
   /** oled-display: 'spi' for 4-wire SPI modules (D0 = fn spi.sck, D1 = fn spi.mosi, CS = fn spi.cs, DC = fn tft.dc,
    * RES = fn tft.reset); DC low = command byte, high = display data. Default 'i2c' (needs i2cAddress). */
   bus?: 'i2c' | 'spi';
@@ -569,6 +576,9 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!(Number.isInteger(w) && w >= 8 && w <= 128)) errs.push('oled-display width (visible columns) must be 8-128');
     if (s.colOffset !== undefined && !(Number.isInteger(s.colOffset) && s.colOffset >= 0 && s.colOffset + w <= ram)) errs.push(`oled-display colOffset + width must fit the controller's ${ram} RAM columns`);
     if (s.height !== undefined) errs.push('oled-display sets its visible height with rows, not height');
+    if ((s.com0 !== undefined || s.flip !== undefined) && s.controller !== 'sh1107') errs.push('com0 and flip are for controller sh1107');
+    if (s.com0 !== undefined && !(Number.isInteger(s.com0) && s.com0 >= 0 && s.com0 <= 127)) errs.push('com0 must be a COM pad 0-127');
+    if (s.flip !== undefined && !['x', 'y', 'xy'].includes(s.flip)) errs.push("flip must be 'x', 'y' or 'xy'");
   }
   if (s.kind === 'oled-display' && s.controller === 'pcd8544') errs.push("controller 'pcd8544' (Nokia 5110 LCD) uses kind tft-display");
   if (s.ledProtocol && !['ws2812', 'sk6812-rgbw', 'apa102'].includes(s.ledProtocol)) errs.push(`ledProtocol ${s.ledProtocol} must be ws2812, sk6812-rgbw or apa102`);

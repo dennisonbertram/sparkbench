@@ -154,7 +154,7 @@ export class SimEngine {
       if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'ht16k33') this.devices.push({ dev: new HT16K33Device(part.id, cs.i2cAddress ?? 0x70), part });
       // An SPI OLED gets no I2C address (-1 never answers a scan); spiWrite feeds it.
       if (cs?.sim.kind === 'char-lcd') this.devices.push({ dev: new Lcd1602Device(part.id, { addr: cs.i2cAddress ?? 0x27, cols: cs.sim.lcd?.cols, rows: cs.sim.lcd?.rows, pins: cs.sim.lcd?.pins }), part });
-      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.sim.bus === 'spi' ? -1 : (cs.i2cAddress ?? 0x3c), controller: cs.sim.controller === 'sh1106' || cs.sim.controller === 'sh1107' ? cs.sim.controller : 'ssd1306', rows: cs.sim.rows, width: cs.sim.width, colOffset: cs.sim.colOffset }), part });
+      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.sim.bus === 'spi' ? -1 : (cs.i2cAddress ?? 0x3c), controller: cs.sim.controller === 'sh1106' || cs.sim.controller === 'sh1107' ? cs.sim.controller : 'ssd1306', rows: cs.sim.rows, width: cs.sim.width, colOffset: cs.sim.colOffset, com0: cs.sim.com0, flip: cs.sim.flip }), part });
       if (cs?.sim.kind === 'i2c-device')
         for (const sd of cs.sim.subDevices ?? [])
           this.devices.push({ part, dev: new GenericI2CDevice(part.id, sd.i2cAddress, sd.registers ?? {}, sd.measures ?? [], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, sd.responses ?? [], { regWidth: sd.regWidth, autoIncrementBit7: sd.autoIncrementBit7, constants: sd.constants, commandLatch: sd.commandLatch, promCrc4: sd.promCrc4 }) });

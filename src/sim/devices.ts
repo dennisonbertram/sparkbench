@@ -43,7 +43,13 @@ export class SSD1306Device implements I2CDevice {
   private startLine = 0;
   private offset = 0;
   private mux = 127;
-  constructor(public partId: string, opts: { addr?: number; controller?: 'ssd1306' | 'sh1106' | 'sh1107'; rows?: 32 | 48 | 64 | 96 | 128; width?: number; colOffset?: number } = {}) {
+  private segRemap = false;
+  private comReverse = false;
+  /** SH1107 glass: the COM pad wired to the panel's first row, and how the glass is mounted (see sh1107Picture). */
+  private com0 = 0;
+  private flipX = false;
+  private flipY = false;
+  constructor(public partId: string, opts: { addr?: number; controller?: 'ssd1306' | 'sh1106' | 'sh1107'; rows?: 32 | 48 | 64 | 96 | 128; width?: number; colOffset?: number; com0?: number; flip?: 'x' | 'y' | 'xy' } = {}) {
     if (opts.addr !== undefined) this.addr = opts.addr;
     if (opts.controller === 'sh1106') {
       this.ramWidth = 132;
@@ -56,6 +62,9 @@ export class SSD1306Device implements I2CDevice {
     if (opts.rows) this.rows = opts.rows;
     if (opts.width) this.width = opts.width;
     if (opts.colOffset !== undefined) this.colOffset = opts.colOffset;
+    this.com0 = (opts.com0 ?? 0) & 0x7f;
+    this.flipX = !!opts.flip?.includes('x');
+    this.flipY = !!opts.flip?.includes('y');
     this.ram = new Uint8Array(this.ramWidth * (this.sh1107 ? 16 : 8));
     this.col1 = this.ramWidth - 1;
   }
@@ -143,13 +152,15 @@ export class SSD1306Device implements I2CDevice {
     this.dirty = true;
   }
   /** SH1107 commands (datasheet command table): 00–0F/10–17 column (7 bits), 20/21 page/vertical addressing, B0–BF page,
-   * DC start line, D3 display offset, A8 multiplex ratio, AE/AF, A6/A7, A4/A5, 81 contrast. Segment remap (A0/A1) and
-   * COM scan direction (C0/C8) only flip the picture, so like the SSD1306 model they are taken as upright. */
+   * A0/A1 segment remap, C0/C8 common scan direction, DC start line, D3 display offset, A8 multiplex ratio, AE/AF,
+   * A6/A7, A4/A5, 81 contrast. */
   private sh1107Exec(cmd: number, args: number[]) {
     if (cmd < 0x10) this.col = (this.col & 0x70) | cmd;
     else if (cmd < 0x18) this.col = (this.col & 0x0f) | ((cmd & 0x07) << 4);
     else if (cmd === 0x20 || cmd === 0x21) this.vertical = cmd === 0x21;
     else if (cmd >= 0xb0 && cmd <= 0xbf) this.page = cmd & 0x0f;
+    else if (cmd === 0xa0 || cmd === 0xa1) this.segRemap = cmd === 0xa1;
+    else if (cmd >= 0xc0 && cmd <= 0xcf) this.comReverse = (cmd & 0x08) !== 0;
     else if (cmd === 0xdc) this.startLine = args[0] & 0x7f;
     else if (cmd === 0xd3) this.offset = args[0] & 0x7f;
     else if (cmd === 0xa8) this.mux = args[0] & 0x7f;
@@ -158,6 +169,31 @@ export class SSD1306Device implements I2CDevice {
     else if (cmd === 0xa4 || cmd === 0xa5) this.allOn = cmd === 0xa5;
     else if (cmd === 0x81) this.contrast = args[0];
     this.dirty = true;
+  }
+  /** What the SH1107 glass shows, as page-format bytes (16 pages × 128), the panel at the top left.
+   * Datasheet (Fig. 10, Table 8, commands 5/6/9/13/17): a RAM byte at (page p, column c) holds data bits 8p…8p+7, which
+   * drive SEG0…SEG127 (reversed by segment remap A1); the column address is the display address that drives a COM line.
+   * The display shows mux+1 lines: line i is display address (start line + i), output on COM (offset + i) in normal scan
+   * (C0) or COM (offset − 1 − i) in reverse scan (C8). The glass is wired to `rows` COM pads starting at com0 (Adafruit's
+   * "offset the first column is wired to": 0x60 on the 128×64 FeatherWing #4650), across `width` SEG lines from colOffset;
+   * flip says how the glass is mounted relative to SEG → x, COM → y. */
+  private sh1107Picture(): number[] {
+    const out = new Array(16 * 128).fill(0);
+    for (let i = 0; i <= this.mux; i++) {
+      const addr = (this.startLine + i) & 0x7f;
+      const com = (this.comReverse ? this.offset - 1 - i : this.offset + i) & 0x7f;
+      const gy = (com - this.com0) & 0x7f;
+      if (gy >= this.rows) continue;
+      const y = this.flipY ? this.rows - 1 - gy : gy;
+      for (let seg = this.colOffset; seg < this.colOffset + this.width && seg < 128; seg++) {
+        const d = this.segRemap ? 127 - seg : seg;
+        if (!this.allOn && !((this.ram[(d >> 3) * 128 + addr] >> (d & 7)) & 1)) continue;
+        const gx = seg - this.colOffset;
+        const x = this.flipX ? this.width - 1 - gx : gx;
+        out[(y >> 3) * 128 + x] |= 1 << (y & 7);
+      }
+    }
+    return out;
   }
   allOn = false;
   private data(b: number) {
@@ -180,18 +216,7 @@ export class SSD1306Device implements I2CDevice {
   }
   /** The visible picture as 128×64 page-format bytes, panel window at the top left (what the frame and the screen reader use). */
   visibleRam(): number[] {
-    if (this.sh1107) {
-      // COM k shows RAM row (start line + k − display offset) mod 128; only COM0…mux are driven.
-      const out = new Array(16 * 128).fill(0);
-      for (let r = 0; r < Math.min(this.rows, this.mux + 1); r++) {
-        const row = (this.startLine + r - this.offset + 256) & 0x7f;
-        for (let x = 0; x < this.width; x++) {
-          const bit = this.allOn ? 1 : (this.ram[(row >> 3) * 128 + x + this.colOffset] >> (row & 7)) & 1;
-          if (bit) out[(r >> 3) * 128 + x] |= 1 << (r & 7);
-        }
-      }
-      return out;
-    }
+    if (this.sh1107) return this.sh1107Picture();
     const out = new Array(1024).fill(0);
     for (let page = 0; page < this.rows / 8; page++) for (let x = 0; x < this.width; x++) out[page * 128 + x] = this.ram[page * this.ramWidth + x + this.colOffset];
     return out;
