@@ -90,16 +90,19 @@ export function multimeterChecks(project: Project, samples: Record<string, numbe
     const strips = [...new Set(net.pins.map((r) => stripOfPin.get(`${r.part}:${r.pin}`)).filter((s): s is string => !!s))];
     const hole = strips.map(freeIn).find(Boolean);
     if (!hole) continue;
-    const supply = /^(\+3V3|\+5V|VBAT)/.test(net.name);
+    const supply = /^(\+3V3|\+5V|VBAT|VEXT)/.test(net.name);
+    const ext = project.parts.find((p) => p.type === 'dc-supply' && net.pins.some((r) => r.part === p.id));
     const gpio = board && net.pins.some((r) => project.parts.find((p) => p.id === r.part && partDef(p.type).category === 'board') && /^(GPIO|D\d|GP\d)/.test(r.pin.replace(/\.\d+$/, '')) === true);
     const members = [...new Set(net.pins.filter((r) => partDef(project.parts.find((p) => p.id === r.part)!.type).category !== 'board').map((r) => pinName(project, r.part, r.pin)))].slice(0, 3);
-    const supplyName = net.name.startsWith('+3V3') ? '3.3 V supply' : net.name.startsWith('+5V') ? '5 V supply' : battery ? `battery's + (${battery.props.volts ?? 9} V)` : `${net.name} supply`;
+    const supplyName = net.name.startsWith('+3V3') ? '3.3 V supply' : net.name.startsWith('+5V') ? '5 V supply' : ext ? `external supply's + (${ext.props.volts ?? 12} V)` : battery ? `battery's + (${battery.props.volts ?? 9} V)` : `${net.name} supply`;
     const what = supply ? `the ${supplyName}${members.length ? ` (feeds ${listWords(members)})` : ''}` : members.length ? `${members.length > 1 ? 'the point joining ' : ''}${listWords(members)}` : net.name;
     const level = swings ? Math.max(...vs) : v;
     // Reads the full supply when it is right (a pull-up line, an idle input, a switched-off output…).
     const atSupply = !swings && supplyV > 0 && Math.abs(level - supplyV) < 0.2;
     const ifWrong = supply
-      ? `If you read 0 V, power isn’t reaching this point: check the red jumper to the + rail${battery ? ', and that the battery is clipped on with its leads in the + and − rails' : board ? ` and that the ${board.short} is plugged in` : ''}. Much lower than expected means something is drawing too much — feel for a hot part.`
+      ? ext
+        ? `If you read 0 V, the external supply isn’t reaching this point: check the adapter is plugged in, the screw terminals are tight, and its − goes to GND. Much lower than expected means the adapter is overloaded.`
+        : `If you read 0 V, power isn’t reaching this point: check the red jumper to the + rail${battery ? ', and that the battery is clipped on with its leads in the + and − rails' : board ? ` and that the ${board.short} is plugged in` : ''}. Much lower than expected means something is drawing too much — feel for a hot part.`
       : v < 0.2
         ? 'This should be near 0 V. A reading near the supply voltage means it is connected to + somewhere it shouldn’t be.'
         : atSupply

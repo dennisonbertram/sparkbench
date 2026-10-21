@@ -71,8 +71,9 @@ export function toolkit(project: Project): ToolItem[] {
     out.push({ id: 'computer', name: 'A computer on the same Wi-Fi', why: 'To copy the program to the Pi over the network.', required: true });
   }
   if (project.parts.some((p) => p.type === 'battery-9v')) out.push({ id: 'battery-snap', name: '9 V battery snap with wire leads', why: 'Its two leads plug straight into the power rails.', required: true });
+  if (project.parts.some((p) => p.type === 'dc-supply')) out.push({ id: 'screwdriver', name: 'Small screwdriver', why: 'For the screw terminals on the external supply\'s barrel-jack adapter.', required: true });
   if (project.parts.some((p) => p.type === 'neopixel-ring')) out.push({ id: 'soldering', name: 'Soldering iron and solder', why: 'The NeoPixel ring has bare pads: three short wires need soldering on.', required: true });
-  if (project.parts.some((p) => p.type === 'lcd1602' || p.type === 'pir')) out.push({ id: 'screwdriver', name: 'Small screwdriver', why: 'For the adjustment screw on the screen or sensor module.', required: true });
+  if (project.parts.some((p) => p.type === 'lcd1602' || p.type === 'pir') && !out.some((t) => t.id === 'screwdriver')) out.push({ id: 'screwdriver', name: 'Small screwdriver', why: 'For the adjustment screw on the screen or sensor module.', required: true });
   out.push({ id: 'multimeter', name: 'Multimeter (optional)', why: 'For the guided voltage checks if something doesn’t work. A basic one is fine.', required: false });
   out.push({ id: 'tweezers', name: 'Small pliers or tweezers (optional)', why: 'Make it easier to push short legs into the right hole.', required: false });
   return out;

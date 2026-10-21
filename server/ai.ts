@@ -188,7 +188,10 @@ function libraryParts(): CustomPartSpec[] {
 
 function libraryPrompt(lib: CustomPartSpec[]): string {
   if (!lib.length) return '';
-  return `\nParts library (sensors and modules beyond the feature kinds; add them with library_parts by MPN — Sparkbench wires them and adds their driver; they work on esp32 and pico, not rpi4 or none):\n${lib.map((p) => `- ${p.mpn}: ${p.name} (${p.interface}${p.i2cAddress !== undefined ? ` 0x${p.i2cAddress.toString(16)}` : ''})`).join('\n')}\nTwo I2C parts can't share an address.`;
+  return `\nParts library (sensors and modules beyond the feature kinds; add them with library_parts by MPN — Sparkbench wires them and adds their driver; they work on esp32 and pico, not rpi4 or none):\n${lib.map((p) => {
+    const ext = p.pins.find((x) => x.supply)?.supply;
+    return `- ${p.mpn}: ${p.name} (${p.interface}${p.i2cAddress !== undefined ? ` 0x${p.i2cAddress.toString(16)}` : ''}${ext ? `; needs a separate ${ext.vmin}–${ext.vmax} V supply` : ''})`;
+  }).join('\n')}\nTwo I2C parts can't share an address. Parts that need a separate supply get an external DC supply (wall adapter, − joined to GND) added automatically; mention it in the reply and the power requirement.`;
 }
 
 /** Make the design's library parts match the requested list: add missing ones (wired), drop ones no longer wanted. */

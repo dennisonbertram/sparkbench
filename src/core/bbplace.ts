@@ -75,6 +75,7 @@ const FOOTPRINTS: Record<string, Footprint> = {
   relay: { kind: 'offboard', label: 'Relay module', body: '#1f5fa8', w: 150, h: 70 },
   'dc-motor': { kind: 'offboard', label: 'DC motor', body: '#9aa0a6', w: 90, h: 60 },
   'battery-9v': { kind: 'offboard', label: '9 V battery', body: '#333' },
+  'dc-supply': { kind: 'offboard', label: 'External DC supply', body: '#2b2b2b', w: 110, h: 60 },
   rpi4: { kind: 'offboard', label: 'Raspberry Pi 4 (GPIO header)', body: '#2d7a3e', w: 300, h: 110 },
 };
 
@@ -497,6 +498,13 @@ export function planBreadboard(project: Project): BreadboardPlan {
     bbParts.push(bp);
     const part = project.parts.find((p) => refOf(p) === bp.ref)!;
     for (const [pin, h] of Object.entries(bp.legs)) legs.push({ part, pin, hole: h });
+    if (part.type === 'dc-supply') {
+      // Like the battery: wired up first, powered last.
+      const plug = () => step(`Power last! Push the barrel-jack adapter onto the ${part.props?.volts ?? 12} V supply's plug and run jumper wires from its screw terminals: + → ${bp.legs['+'] ?? '(not wired)'}, − → ${bp.legs['-'] ?? '(not wired)'}. Plug the adapter into the wall only when everything else is in place (USB cable first), and unplug it before you change any wiring.`, [bp.ref], Object.values(bp.legs));
+      const prev = batteryStep;
+      batteryStep = () => (prev(), plug());
+      continue;
+    }
     step(`${bp.ref} ${bp.label} sits off the board. Connect its leads: ${Object.entries(bp.legs).map(([pin, h]) => `${bp.pinLabels![pin] ?? pin} → ${h}`).join(', ')}.${part.type === 'rpi4' ? ' Use female-to-male jumper wires and count header pins from pin 1 (the square pad, next to the SD-card end).' : ''}`, [bp.ref], Object.values(bp.legs));
   }
 

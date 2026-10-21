@@ -68,7 +68,12 @@
       "name": "VMOT",
       "role": "power",
       "description": "Motor supply 8-35 V from a separate supply (not the microcontroller), with a >= 47 uF electrolytic capacitor across VMOT/GND close to the board",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 8,
+        "vmax": 35,
+        "currentMa": 2000
+      }
     },
     {
       "name": "GND",

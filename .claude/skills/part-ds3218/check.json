@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "3 pins wired; DS3218 20 kg digital servo (180°) needs at least 4.8 V, so it is powered from 5 V. M1.SIG → D25 (GPIO25)."
+        "detail": "3 pins wired; M1.SIG → D25 (GPIO25). Added a separate 6 V supply for V+ (it needs 4.8–6.8 V and up to 1.8 A, more than the board can give); its − joins the board's GND."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "10 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×66.5 mm, DRC clean"
+        "detail": "54×66.5 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "3 pins wired; DS3218 20 kg digital servo (180°) needs at least 4.8 V, so it is powered from 5 V. M1.SIG → GP2 (GPIO2)."
+        "detail": "3 pins wired; M1.SIG → GP2 (GPIO2). Added a separate 6 V supply for V+ (it needs 4.8–6.8 V and up to 1.8 A, more than the board can give); its − joins the board's GND."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "10 build steps"
+        "detail": "8 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
     }
   ],
-  "checkedAt": "2026-10-21T09:05:37.647Z"
+  "checkedAt": "2026-10-21T10:59:38.716Z"
 }

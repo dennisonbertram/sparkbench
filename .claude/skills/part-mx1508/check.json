@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "4 pins wired; U2.IN1 → D25 (GPIO25). U2.IN2 → D26 (GPIO26). Added the mx1508.py driver written from the datasheet."
+        "detail": "4 pins wired; U2.IN1 → D25 (GPIO25). U2.IN2 → D26 (GPIO26). Added a separate 5 V supply for + (it needs 2.4–5 V and up to 3 A, more than the board can give); its − joins the board's GND. Added the mx1508.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "6 build steps"
       },
       {
         "stage": "simulator",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×66.5 mm, DRC clean"
+        "detail": "54×66.5 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "4 pins wired; U2.IN1 → GP2 (GPIO2). U2.IN2 → GP3 (GPIO3). Added the mx1508.py driver written from the datasheet."
+        "detail": "4 pins wired; U2.IN1 → GP2 (GPIO2). U2.IN2 → GP3 (GPIO3). Added a separate 5 V supply for + (it needs 2.4–5 V and up to 3 A, more than the board can give); its − joins the board's GND. Added the mx1508.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "6 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
     }
   ],
-  "checkedAt": "2026-10-21T09:01:27.596Z"
+  "checkedAt": "2026-10-21T10:58:37.622Z"
 }

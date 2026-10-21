@@ -42,6 +42,7 @@ export const CUSTOM_PINS: Record<string, Pins> = {
     ...['VDD', 'VREF', 'AGND', 'CLK', 'DOUT', 'DIN', 'CS', 'DGND'].map((n, i) => [n, { x: 12 + i * 18, y: 2 }]),
   ]),
   'battery-9v': { '+': { x: 22, y: 6 }, '-': { x: 48, y: 6 } },
+  'dc-supply': { '+': { x: 30, y: 66 }, '-': { x: 60, y: 66 } },
   'dc-motor': { '+': { x: 26, y: 68 }, '-': { x: 44, y: 68 } },
   'level-shifter': { LV: { x: 5, y: 12 }, GND: { x: 5, y: 26 }, LV1: { x: 5, y: 40 }, LV2: { x: 5, y: 52 }, HV: { x: 75, y: 12 }, HV1: { x: 75, y: 40 }, HV2: { x: 75, y: 52 } },
   epaper29: Object.fromEntries(['VCC', 'GND', 'DIN', 'CLK', 'CS', 'DC', 'RST', 'BUSY'].map((n, i) => [n, { x: 58 + i * 32, y: 184 }])),
@@ -362,6 +363,22 @@ export function CustomPart({ type, props, visual }: { type: string; props: Recor
               {n}
             </text>
           ))}
+        </>
+      );
+      break;
+    case 'dc-supply':
+      body = (
+        <>
+          <rect x={4} y={4} width={50} height={34} rx={4} fill="#2b2b2b" />
+          <rect x={14} y={12} width={6} height={14} rx={1} fill="#777" />
+          <rect x={38} y={12} width={6} height={14} rx={1} fill="#777" />
+          <path d="M54 21 C 66 21, 70 36, 70 46" stroke="#1a1a1a" strokeWidth={3} fill="none" />
+          <rect x={20} y={46} width={50} height={18} rx={2} fill="#2f7d32" />
+          <circle cx={30} cy={55} r={4} fill="#ccc" stroke="#666" />
+          <circle cx={60} cy={55} r={4} fill="#ccc" stroke="#666" />
+          <text x={29} y={34} fontSize={8} fill="#eee" textAnchor="middle" fontWeight={700}>{`${props.volts ?? 12}V`}</text>
+          <text x={30} y={44} fontSize={7} fill="#f55" textAnchor="middle">+</text>
+          <text x={60} y={44} fontSize={7} fill="#aaa" textAnchor="middle">−</text>
         </>
       );
       break;

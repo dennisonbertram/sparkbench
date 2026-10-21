@@ -223,6 +223,16 @@ const DISCRETE: Record<string, () => Discrete> = {
     ],
     pins: twoPin('+', '-', 2.54),
   }),
+  'dc-supply': () => ({
+    graphics: [
+      { kind: 'circle', cx: 0, cy: 0, r: 2.032 },
+      line([-0.762, -0.508], [0.762, -0.508]),
+      line([-0.762, 0.508], [-0.254, 0.508]),
+      line([0.254, 0.508], [0.762, 0.508]),
+      { kind: 'text', x: -3.302, y: -2.286, text: '+', size: 1.27 },
+    ],
+    pins: twoPin('+', '-', 2.032),
+  }),
   'battery-9v': () => ({
     graphics: [
       line([-1.27, -2.032], [-1.27, 2.032]),

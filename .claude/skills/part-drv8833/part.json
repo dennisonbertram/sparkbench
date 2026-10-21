@@ -12,7 +12,12 @@
       "name": "VM",
       "role": "power",
       "description": "Motor supply VM, 2.7-10.8 V (also powers the chip; no separate logic supply). Header pin is not reverse-polarity protected; the VMotor screw terminal is",
-      "required": true
+      "required": true,
+      "supply": {
+        "vmin": 2.7,
+        "vmax": 10.8,
+        "currentMa": 2000
+      }
     },
     {
       "name": "GND",

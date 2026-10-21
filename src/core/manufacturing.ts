@@ -79,6 +79,7 @@ export function complianceChecklist(project: Project): string {
   else L.push(`- [ ] No radio on board${board ? ` (${board.name})` : ''}: only the unintentional-radiator rules apply.`);
   L.push('- [ ] **RoHS:** order RoHS parts (Sparkbench’s LCSC picks are RoHS) and lead-free solder, and keep the part datasheets.');
   if (mains) L.push('- [ ] **The relay can switch mains or high current.** Keep mains wiring off this board: use an enclosed, certified relay module or a certified smart plug, with fuse, strain relief, earthing and creepage distances checked by a professional. Selling mains-switching products needs electrical-safety testing (UL/IEC 62368-1).');
+  if (project.parts.some((p) => p.type === 'dc-supply')) L.push('- [ ] **External DC supply:** ship a certified adapter (FCC/CE/UL marks, the right voltage and current) and fit a fuse or polyfuse on its input, plus reverse-polarity protection (a P-MOSFET or Schottky diode).');
   if (battery) L.push('- [ ] **Battery powered:** a 9 V alkaline battery is fine to ship separately. Lithium batteries need UN38.3 transport documents.');
   L.push(
     '- [ ] **Power supply:** if you include a USB charger or adapter, buy a certified one (with its own FCC/CE/UL marks); don’t design your own mains supply.',

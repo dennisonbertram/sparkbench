@@ -546,6 +546,22 @@ export const PARTS: PartDef[] = [
     kicad: { symbol: 'Sparkbench:Battery', footprint: 'Battery:BatteryHolder_MPD_BA9VPC_1xPP3', value: (pr) => `${pr.volts ?? 9}V` },
     keywords: ['9v', 'battery', 'battery powered'],
   },
+  {
+    type: 'dc-supply',
+    name: 'External DC supply',
+    category: 'power',
+    description: 'A plug-in DC wall adapter with a barrel-jack-to-screw-terminal adapter, for parts that need more voltage or current than the board can give (motor drivers, solenoids, 12 V loads). Its − joins the board GND.',
+    eli5: 'A separate power brick for the hungry parts, so the motors don\'t steal power from the board.',
+    refPrefix: 'PS',
+    pins: [p('+', 'power'), p('-', 'gnd')],
+    props: [
+      { key: 'volts', label: 'Voltage', type: 'number', default: 12, unit: 'V' },
+      { key: 'amps', label: 'Current rating', type: 'number', default: 2, unit: 'A' },
+    ],
+    bom: { mpn: 'DC wall adapter', description: 'DC wall adapter, 5.5 × 2.1 mm barrel plug', priceUsd: 9, supplierQuery: '12V 2A DC power adapter 5.5x2.1mm' },
+    kicad: { symbol: 'Sparkbench:DC_Supply', footprint: 'TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal', value: (pr) => `${pr.volts ?? 12}V ${pr.amps ?? 2}A` },
+    keywords: ['power supply', 'wall adapter', 'dc supply', 'external supply', '12v', 'barrel jack', 'motor supply'],
+  },
 
   // ------------------------------------------------------------------ product version (bare chips on the board)
   {

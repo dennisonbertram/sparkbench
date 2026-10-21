@@ -307,6 +307,12 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     }
   }
   if (s.kind === 'onewire-temp' && !s.outputPin) errs.push('onewire-temp needs outputPin (the DQ line)');
+  for (const p of spec.pins) {
+    if (!p.supply) continue;
+    if (p.role !== 'power') errs.push(`supply on ${p.name}: only a power pin can take an external supply`);
+    if (!(p.supply.vmin > 0 && p.supply.vmax >= p.supply.vmin && p.supply.vmax <= 60)) errs.push(`supply on ${p.name} needs 0 < vmin ≤ vmax ≤ 60 V`);
+    if (p.supply.currentMa !== undefined && !(p.supply.currentMa > 0 && p.supply.currentMa <= 20000)) errs.push(`supply.currentMa on ${p.name} must be 0–20000 mA`);
+  }
   for (const p of spec.pins) if (p.pullUp !== undefined && !(p.pullUp >= 100 && p.pullUp <= 100000)) errs.push(`pull-up on ${p.name} must be 100 Ω – 100 kΩ`);
   if (s.kind === 'oled-display' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress');
   if (s.kind === 'spi-device') {

@@ -108,12 +108,13 @@ export function buildNets(project: Project): { nets: Net[]; netOf: Map<string, N
         const part = project.parts.find((x) => x.id === r.part)!;
         const pd = partDef(part.type).pins.find((x) => x.name === r.pin)!;
         if (part.type === 'battery-9v') name = r.pin === '+' ? 'VBAT' : 'GND';
+        else if (part.type === 'dc-supply' && r.pin === '+') name = 'VEXT';
         else if (pd.role === 'gnd' && pins.length > 1 && !board) name = 'GND';
         if (name) break;
       }
     }
     if (!name || used.has(name)) {
-      if (name === 'GND' || name === '+3V3' || name === '+5V' || name === 'VBAT') {
+      if (name === 'GND' || name === '+3V3' || name === '+5V' || name === 'VBAT' || name === 'VEXT') {
         // Merge-by-name is the caller's job; keep unique names.
         name = `${name}_${i}`;
       } else name = pins.length > 1 ? `N${i}` : `NC_${pins[0].part}_${pins[0].pin}`;

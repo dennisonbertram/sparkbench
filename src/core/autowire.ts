@@ -40,7 +40,8 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
   const vmin = def.vmin ?? 3.3;
   const vmax = def.vmax ?? 5.5;
   const supply = vmin <= 3.3 && vmax >= 3.3 ? board.supply3v3 : board.supply5v;
-  if (supply === board.supply5v && vmin > 3.6) notes.push(`${def.name} needs at least ${vmin} V, so it is powered from 5 V.`);
+  const logicPins = def.pins.filter((p) => p.role === 'power' && !p.supply);
+  if (logicPins.length && supply === board.supply5v && vmin > 3.6) notes.push(`${def.name} needs at least ${vmin} V, so it is powered from 5 V.`);
   let sig = 0;
   // Serial modules: the part's TX goes to a board RX and vice versa. On the Pico only some pin pairs
   // belong to a UART (GP0/1 = UART0, GP4/5 and GP8/9 = UART1, GP12/13 and GP16/17 = UART0).
@@ -67,6 +68,7 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
     if (already.has(pin.name) || pin.role === 'nc') continue;
     const fn = pin.fn ?? '';
     if (pin.role === 'gnd') wire(pin.name, board.gnd, '#1f2328');
+    else if (pin.role === 'power' && pin.supply) continue; // a separate supply, below
     else if (pin.role === 'power') wire(pin.name, supply, supply === board.supply3v3 ? '#d32f2f' : '#ef6c00');
     else if (fn === 'i2c.sda') wire(pin.name, board.i2c.sda, '#1e88e5');
     else if (fn === 'i2c.scl') wire(pin.name, board.i2c.scl, '#f9a825');
@@ -108,6 +110,26 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
     const ohms = pin.pullUp!;
     notes.push(`Added a ${ohms >= 1000 ? `${ohms / 1000} kΩ` : `${ohms} Ω`} pull-up resistor from ${pin.name} to ${supply}, as the datasheet requires.`);
   }
+  // Pins fed from a separate supply: an external DC supply that fits (one already in the design, or a new one),
+  // its − joined to the board's GND. Never the board's 3V3/5V.
+  for (const pin of def.pins.filter((p) => p.role === 'power' && p.supply && !already.has(p.name))) {
+    const { vmin: lo, vmax: hi, currentMa } = pin.supply!;
+    const fits = (v: number) => v >= lo && v <= hi;
+    let src = [...project.parts, ...extraParts].find((x) => x.type === 'dc-supply' && fits(Number(x.props.volts ?? 12)));
+    if (!src) {
+      const volts = [12, 24, 9, 6, 5].find(fits) ?? Math.ceil(lo);
+      const amps = [1, 2, 3, 5, 10].find((a) => a * 1000 >= (currentMa ?? 1000) * 1.25) ?? 10;
+      let k = 1;
+      while ([...project.parts, ...extraParts].some((x) => x.id === `extsupply${k}`)) k++;
+      src = { id: `extsupply${k}`, type: 'dc-supply', label: `${volts} V supply`, props: { volts, amps: Math.max(2, amps) }, x: part.x, y: part.y + 150 };
+      extraParts.push(src);
+      while (project.wires.some((w) => w.id === `w${n}`) || wires.some((w) => w.id === `w${n}`)) n++;
+      wires.push({ id: `w${n}`, a: { part: src.id, pin: '-' }, b: { part: bpart.id, pin: board.gnd }, color: '#1f2328' });
+      notes.push(`Added a separate ${volts} V supply for ${pin.name} (it needs ${lo}–${hi} V${currentMa ? ` and up to ${currentMa >= 1000 ? `${+(currentMa / 1000).toFixed(1)} A` : `${currentMa} mA`}` : ''}, more than the board can give); its − joins the board's GND.`);
+    } else notes.push(`${pin.name} goes to the ${src.props.volts ?? 12} V supply already in the design.`);
+    while (project.wires.some((w) => w.id === `w${n}`) || wires.some((w) => w.id === `w${n}`)) n++;
+    wires.push({ id: `w${n}`, a: { part: partId, pin: pin.name }, b: { part: src.id, pin: '+' }, color: '#b71c1c' });
+  }
   if (spec?.interface === 'i2c' && spec.i2cAddress !== undefined) notes.push(`It shares the I2C bus (SDA ${board.i2c.sda}, SCL ${board.i2c.scl}) at address 0x${spec.i2cAddress.toString(16)}.`);
   const files = { ...project.files };
   if (spec?.driver && board.language === 'micropython' && !files[spec.driver.filename]) {
@@ -139,5 +161,12 @@ export function withoutCustomPart(project: Project, type: string): Project {
   const spec = project.customParts?.find((c) => c.type === type);
   const files = { ...project.files };
   if (spec?.driver) delete files[spec.driver.filename];
-  return { ...project, parts: project.parts.filter((p) => !ids.has(p.id)), wires: project.wires.filter((w) => !ids.has(w.a.part) && !ids.has(w.b.part)), customParts: project.customParts?.filter((c) => c.type !== type), files };
+  let wires = project.wires.filter((w) => !ids.has(w.a.part) && !ids.has(w.b.part));
+  // An external supply that fed only the removed part goes too.
+  for (const s of project.parts.filter((p) => p.type === 'dc-supply')) {
+    const fedOnly = project.wires.some((w) => [w.a, w.b].some((r) => r.part === s.id && r.pin === '+')) && !wires.some((w) => [w.a, w.b].some((r) => r.part === s.id && r.pin === '+'));
+    if (fedOnly) ids.add(s.id);
+  }
+  wires = wires.filter((w) => !ids.has(w.a.part) && !ids.has(w.b.part));
+  return { ...project, parts: project.parts.filter((p) => !ids.has(p.id)), wires, customParts: project.customParts?.filter((c) => c.type !== type), files };
 }
