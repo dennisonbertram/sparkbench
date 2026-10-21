@@ -1,0 +1,79 @@
+{
+  "type": "custom-mcp3002",
+  "mpn": "MCP3002",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; Added the mcp3002.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the CH0 and CH1 voltages set on the sliders: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; Added the mcp3002.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the CH0 and CH1 voltages set on the sliders: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-8_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C219561 MCP3002-I/SN (11 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T12:22:47.281Z"
+}

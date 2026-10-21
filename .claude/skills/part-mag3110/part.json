@@ -1,0 +1,201 @@
+{
+  "type": "custom-mag3110",
+  "name": "MAG3110 3-axis magnetometer",
+  "mpn": "MAG3110",
+  "category": "sensor",
+  "description": "NXP (Freescale) 3-axis digital magnetometer: ±1000 µT full scale, 0.1 µT/LSB signed 16-bit output, output data rates 0.08–80 Hz with selectable over-sampling, die temperature sensor, I2C up to 400 kHz. Runs on 1.95–3.6 V only (not 5 V tolerant). Sold as: SparkFun Triple Axis Magnetometer Breakout - MAG3110 (SEN-12670, 5-pin: GND, VCC, SDA, SCL, INT), no regulator, 4.7 kΩ pull-ups on SDA/SCL, I2C address 0x0E.",
+  "eli5": "Feels the Earth's magnetic field (and nearby magnets) on three axes, so your project can work out which way is north.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 1.95–3.6 V (no regulator: never connect 5 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to VCC on the board); max VCC + 0.3 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to VCC on the board); max VCC + 0.3 V",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Data-ready output, active high (push-pull), cleared when OUT_X_MSB is read; optional",
+      "required": false
+    }
+  ],
+  "vmin": 1.95,
+  "vmax": 3.6,
+  "currentMa": 0.9,
+  "i2cAddress": 14,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/MAG3110.pdf",
+  "priceUsd": 16,
+  "supplierQuery": "MAG3110 3-axis magnetometer breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/MAG3110.pdf",
+    "https://learn.sparkfun.com/tutorials/mag3110-magnetometer-hookup-guide-/all",
+    "https://github.com/sparkfun/MAG3110_Breakout_Board/blob/master/Hardware/MAG3110_Breakout.brd",
+    "https://www.sparkfun.com/products/12670"
+  ],
+  "buildNotes": [
+    "3.3 V only: VCC and the I2C pins must stay at or below 3.6 V. Power it from the 3V3 pin, never 5 V (use a level shifter with 5 V boards).",
+    "The chip powers up in STANDBY and does not measure: write CTRL_REG2 (0x11) = 0xA0 (automatic magnetic reset + raw output), then CTRL_REG1 (0x10) with AC = 1, e.g. 0x19 for 10 Hz with 128x over-sampling. Other CTRL_REG1 fields can only change in STANDBY.",
+    "Burst-read OUT_X_MSB..OUT_Z_LSB (0x01–0x06) starting at 0x01: each axis is signed 16-bit, MSB first, 0.1 µT per count. The data registers only refresh when 0x01 is read first.",
+    "WHO_AM_I (0x07) must read 0xC4; anything else means a wiring or address problem.",
+    "The Earth's field is only 25–65 µT, and the readings include a large fixed offset from the sensor and nearby iron: rotate the board through every direction and subtract the centre of each axis's min/max (driver calibrate()).",
+    "DIE_TEMP (0x0F) is 1 °C per count but its offset is not trimmed; use it only for relative changes.",
+    "Keep it away from motors, speakers, magnets and steel screws; the SparkFun board's X/Z silkscreen arrows are known to be wrong, so trust the datasheet axes."
+  ],
+  "keywords": [
+    "mag3110",
+    "magnetometer",
+    "compass",
+    "heading",
+    "magnetic field",
+    "3-axis",
+    "nxp",
+    "freescale",
+    "sparkfun",
+    "e-compass"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X magnetic field",
+    "unit": "µT",
+    "min": -1000,
+    "max": 1000,
+    "default": 20,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y magnetic field",
+        "unit": "µT",
+        "min": -1000,
+        "max": 1000,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z magnetic field",
+        "unit": "µT",
+        "min": -1000,
+        "max": 1000,
+        "default": -40
+      },
+      {
+        "key": "temp",
+        "quantity": "Die temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x00": 15,
+      "0x07": 196
+    },
+    "measures": [
+      {
+        "reg": "0x01",
+        "bytes": 2,
+        "scale": 0.1,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x03",
+        "bytes": 2,
+        "scale": 0.1,
+        "signed": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 0.1,
+        "signed": true,
+        "control": "z"
+      },
+      {
+        "reg": "0x0F",
+        "bytes": 1,
+        "scale": 1,
+        "signed": true,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mag3110.py",
+    "code": "# MAG3110 3-axis digital magnetometer (NXP/Freescale), MicroPython driver for I2C.\n# From the MAG3110 datasheet (Rev. 9.2):\n#   I2C address 0x0E. DR_STATUS 0x00 (bit 3 ZYXDR = new X/Y/Z set ready),\n#   OUT_X_MSB..OUT_Z_LSB 0x01-0x06: signed 16-bit two's complement, MSB first, 0.1 uT/LSB,\n#   WHO_AM_I 0x07 = 0xC4, DIE_TEMP 0x0F: signed 8-bit, 1 degC/LSB (offset NOT factory trimmed),\n#   CTRL_REG1 0x10: DR[2:0] bits 7:5, OS[1:0] bits 4:3, FR bit 2, TM bit 1, AC bit 0,\n#   CTRL_REG2 0x11: AUTO_MRST_EN bit 7, RAW bit 5, Mag_RST bit 4.\n# CTRL_REG1 fields other than AC/TM can only be changed in STANDBY (AC = 0).\n# Burst-read from 0x01: the data registers are only refreshed when OUT_X_MSB is read first.\nimport time\nimport math\n\n_DR_STATUS = 0x00\n_OUT_X_MSB = 0x01\n_WHO_AM_I = 0x07\n_DIE_TEMP = 0x0F\n_CTRL_REG1 = 0x10\n_CTRL_REG2 = 0x11\n\n# Output data rate in Hz for each (DR, OS) pair, datasheet Table 32: ODR = 1280 / 16 / 2^(DR) / 2^(OS),\n# except DR = 4..7 where the ADC rate stays at 80 Hz.\n_ADC = (1280, 640, 320, 160, 80, 80, 80, 80)\n_DIV = (1, 1, 1, 1, 1, 2, 4, 8)\n\n\nclass MAG3110:\n    def __init__(self, i2c, addr=0x0E, dr=0, os=3):\n        \"\"\"dr: CTRL_REG1 DR[2:0] (0..7), os: OS[1:0] over-sampling (0..3 = 16/32/64/128 samples).\n        Default dr=0, os=3: 10 Hz output, 128x over-sampling, lowest noise (0.25 uT rms).\"\"\"\n        if not 0 <= dr <= 7 or not 0 <= os <= 3:\n            raise ValueError('dr must be 0..7 and os 0..3')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0xC4:\n            raise OSError('MAG3110 not found (WHO_AM_I 0x%02X, expected 0xC4): check wiring and address' % who)\n        self.odr = _ADC[dr] / 16 / _DIV[dr] / (1 << os)\n        self._w(_CTRL_REG1, 0x00)                          # STANDBY before changing settings\n        self._w(_CTRL_REG2, 0xA0)                          # AUTO_MRST_EN + RAW (offsets done in software)\n        self._w(_CTRL_REG1, (dr << 5) | (os << 3) | 0x01)  # data rate, over-sampling, ACTIVE\n        self.offset = [0.0, 0.0, 0.0]                      # hard-iron offset in uT, see calibrate()\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when a new X/Y/Z set is ready (DR_STATUS bit 3, ZYXDR).\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _DR_STATUS, 1)[0] & 0x08)\n\n    def raw(self):\n        \"\"\"(x, y, z) signed counts (0.1 uT each). Waits for a fresh sample, then reads 0x01-0x06 in one burst.\"\"\"\n        t0 = time.ticks_ms()\n        timeout = int(2500 / self.odr) + 50\n        while not self.data_ready():\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout:\n                raise OSError('MAG3110: no new data (is it in ACTIVE mode?)')\n            time.sleep_ms(2)\n        d = self.i2c.readfrom_mem(self.addr, _OUT_X_MSB, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = (d[i] << 8) | d[i + 1]\n            if v & 0x8000:\n                v -= 65536\n            out.append(v)\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) magnetic field in microtesla (0.1 uT/LSB), minus any calibration offset.\"\"\"\n        x, y, z = self.raw()\n        o = self.offset\n        return x * 0.1 - o[0], y * 0.1 - o[1], z * 0.1 - o[2]\n\n    def temperature(self):\n        \"\"\"Die temperature in degC (1 degC/LSB). Its offset is not trimmed: calibrate against a thermometer.\"\"\"\n        t = self.i2c.readfrom_mem(self.addr, _DIE_TEMP, 1)[0]\n        return t - 256 if t & 0x80 else t\n\n    def heading(self):\n        \"\"\"Compass heading in degrees (0-360) from X and Y; only valid with the board held level.\"\"\"\n        x, y, _ = self.read()\n        h = math.degrees(math.atan2(y, x))\n        return h + 360 if h < 0 else h\n\n    def calibrate(self, seconds=10):\n        \"\"\"Turn the board slowly through every direction; stores the hard-iron offset (centre of min/max).\"\"\"\n        lo = [1e9] * 3\n        hi = [-1e9] * 3\n        self.offset = [0.0, 0.0, 0.0]\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < seconds * 1000:\n            v = self.read()\n            for i in range(3):\n                lo[i] = min(lo[i], v[i])\n                hi[i] = max(hi[i], v[i])\n        self.offset = [(lo[i] + hi[i]) / 2 for i in range(3)]\n        return self.offset\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mag3110 import MAG3110\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = MAG3110(i2c)\nwhile True:\n    x, y, z = mag.read()\n    print('X=%.1f Y=%.1f Z=%.1f uT T=%dC' % (x, y, z, mag.temperature()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y, Z field and die temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 123.4
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -45.6
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": -500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 31
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=123.4 Y=-45.6 Z=-500.0 uT T=31C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:11:40.820Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/MAG3110.pdf",
+      "https://learn.sparkfun.com/tutorials/mag3110-magnetometer-hookup-guide",
+      "https://www.sparkfun.com/products/12670"
+    ]
+  }
+}

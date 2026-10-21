@@ -1,0 +1,226 @@
+{
+  "type": "custom-veml6035",
+  "name": "VEML6035 low-lux ambient light sensor",
+  "mpn": "VEML6035",
+  "category": "sensor",
+  "description": "Vishay 16-bit low-power, high-sensitivity ambient light sensor with a human-eye-like response, resolving down to 0.0004 lx/count and reading up to about 6.7 klx over I2C (ALS and WHITE channels, programmable gain, sensitivity and integration time). Chip runs on 1.7–3.6 V; the board is 3.3 V only. Sold as: MikroElektronika Ambient 11 Click (MIKROE-3990), a mikroBUS board with two 8-pin headers (AN, RST, CS, SCK, MISO, MOSI, 3V3, GND / PWM, INT, RX, TX, SCL, SDA, 5V, GND; only 3V3, GND, SCL, SDA and INT are connected), 2.2 k I2C pull-ups and fixed I2C address 0x29.",
+  "eli5": "Tells your board how bright the light is, in lux, and is sensitive enough to measure a very dim room.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "AN",
+      "role": "nc",
+      "description": "mikroBUS analog pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "nc",
+      "description": "mikroBUS reset pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "mikroBUS SPI chip select (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "SCK",
+      "role": "nc",
+      "description": "mikroBUS SPI clock (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "MISO",
+      "role": "nc",
+      "description": "mikroBUS SPI MISO (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "MOSI",
+      "role": "nc",
+      "description": "mikroBUS SPI MOSI (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 1.7–3.6 V, normally 3.3 V (no regulator on the board: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "nc",
+      "description": "mikroBUS PWM pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Threshold interrupt output, open-drain active low (47 k pull-up on the board); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "RX",
+      "role": "nc",
+      "description": "mikroBUS UART RX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "nc",
+      "description": "mikroBUS UART TX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 k pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 k pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "nc",
+      "description": "mikroBUS 5 V rail: do not use (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (second GND pin, same net as GND)",
+      "required": false
+    }
+  ],
+  "vmin": 1.7,
+  "vmax": 3.6,
+  "currentMa": 0.3,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://www.vishay.com/docs/84889/veml6035.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "MikroElektronika Ambient 11 Click MIKROE-3990 VEML6035",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "3.3 V only: the board has no regulator and its 5V pin is not connected; the chip's absolute maximum is 4 V. Power it from 3V3.",
+    "The Click has two 8-pin mikroBUS headers; only 3V3, GND, SCL, SDA and (optionally) INT are used. Wire those with jumper leads.",
+    "Fixed I2C address 0x29. There is no ID register, so check for the device with i2c.scan().",
+    "Registers are 16 bits, sent and read LSB first. ALS_CONF (0x00) powers up as 0x0001 (shut down): write it with SD = 0, then wait one integration time before reading ALS counts from 0x04.",
+    "Lux = counts x resolution, resolution = 0.0004 x (800/IT) x (2 if DG=0) x (2 if GAIN=0) x (8 if SENS=1). The driver's default (GAIN=0, DG=0, SENS=1, 100 ms) gives 0.1024 lx/count, up to about 6711 lx.",
+    "For very dim light switch to SENS=0 and longer IT (down to 0.0004 lx/count at GAIN=1, DG=1, 800 ms, max about 26 lx).",
+    "The WHITE channel (0x05) only updates when CHANNEL_EN (bit 2) is set; the driver sets it by default.",
+    "The board's power LED can light the sensor; shade it for dark-room readings."
+  ],
+  "keywords": [
+    "veml6035",
+    "ambient light",
+    "lux",
+    "light sensor",
+    "low lux",
+    "vishay",
+    "als",
+    "ambient 11 click",
+    "mikroe"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Light level",
+    "unit": "lx",
+    "min": 0,
+    "max": 6710,
+    "default": 300,
+    "controls": [
+      {
+        "key": "white",
+        "quantity": "White channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      }
+    ],
+    "regWidth": 16,
+    "registers": {
+      "0x00": 1,
+      "0x03": 0,
+      "0x06": 0
+    },
+    "measures": [
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.1024,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "white"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "veml6035.py",
+    "code": "# VEML6035 low-lux ambient light sensor (Vishay, datasheet doc 84889 rev 1.3 + app note 84944), MicroPython driver.\n# Fixed 7-bit I2C address 0x29. 16-bit registers (\"command codes\"), sent and received LSB first:\n#   write: [command code, data LSB, data MSB]; read: command code, repeated start, LSB, MSB.\n# Lux = ALS counts x resolution, where (app note formula)\n#   resolution = 0.0004 lx/count x (800 / IT) x (2 if DG = 0) x (2 if GAIN = 0) x (8 if SENS = 1).\n# Driver default GAIN = 0, DG = 0, SENS = 1, IT = 100 ms: 0.1024 lx/count, up to about 6711 lx.\nimport time\n\n_ALS_CONF = 0x00\n_ALS_WH = 0x01\n_ALS_WL = 0x02\n_PSM = 0x03\n_ALS = 0x04\n_WHITE = 0x05\n_ALS_INT = 0x06\n\n# ALS_IT, bits 9:6 of ALS_CONF, keyed by integration time in ms\n_IT_BITS = {25: 0b1100, 50: 0b1000, 100: 0b0000, 200: 0b0001, 400: 0b0010, 800: 0b0011}\n\n\nclass VEML6035:\n    def __init__(self, i2c, addr=0x29, gain=0, dg=0, sens=1, it_ms=100, white=True):\n        self.i2c = i2c\n        self.addr = addr\n        if addr not in i2c.scan():\n            raise OSError('VEML6035 not found at 0x%02X' % addr)\n        self._write(_PSM, 0x0000)  # power save mode off: a new result every integration time\n        self.configure(gain, dg, sens, it_ms, white)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)  # LSB first\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF, (value >> 8) & 0xFF]))\n\n    def configure(self, gain=0, dg=0, sens=1, it_ms=100, white=True):\n        \"\"\"gain: 0 normal / 1 double; dg: 0 normal / 1 double; sens: 0 high (1x) / 1 low (1/8x);\n        it_ms: 25, 50, 100, 200, 400 or 800. white=True also enables the WHITE channel (CHANNEL_EN).\n        Powers the sensor on (SD = 0) and waits for the first complete measurement.\"\"\"\n        if it_ms not in _IT_BITS or gain not in (0, 1) or dg not in (0, 1) or sens not in (0, 1):\n            raise ValueError('gain, dg, sens must be 0 or 1 and it_ms 25, 50, 100, 200, 400 or 800')\n        self.it_ms = it_ms\n        self.resolution = 0.0004 * (800 / it_ms) * (2 if dg == 0 else 1) * (2 if gain == 0 else 1) * (8 if sens else 1)\n        # ALS_PERS = 1 (00), INT_CHANNEL = ALS, INT_EN = 0, SD = 0 (power on)\n        cfg = (sens << 12) | (dg << 11) | (gain << 10) | (_IT_BITS[it_ms] << 6) | ((1 if white else 0) << 2)\n        self._write(_ALS_CONF, cfg)\n        time.sleep_ms(4)\n        time.sleep_ms(it_ms + it_ms * 3 // 10 + 5)  # first complete integration (IT tolerance +-30 %)\n\n    def raw(self):\n        \"\"\"ALS channel output counts (0..65535).\"\"\"\n        return self._read(_ALS)\n\n    def white(self):\n        \"\"\"WHITE channel output counts (0..65535); only updated when CHANNEL_EN = 1. No lux formula is given for it.\"\"\"\n        return self._read(_WHITE)\n\n    def lux(self):\n        \"\"\"Light level in lx: ALS counts x resolution (datasheet / app note formula).\"\"\"\n        return self.raw() * self.resolution\n\n    def interrupt_status(self):\n        \"\"\"(low_crossed, high_crossed) flags from register 0x06 (bits 15 and 14).\"\"\"\n        v = self._read(_ALS_INT)\n        return bool(v & 0x8000), bool(v & 0x4000)\n\n    def shutdown(self, off=True):\n        \"\"\"SD bit: off=True stops measuring (about 0.5 uA, last result stays readable); off=False powers on again.\"\"\"\n        cfg = self._read(_ALS_CONF)\n        if off:\n            self._write(_ALS_CONF, cfg | 0x0001)\n        else:\n            self._write(_ALS_CONF, cfg & ~0x0001)\n            time.sleep_ms(4 + self.it_ms + self.it_ms * 3 // 10 + 5)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom veml6035 import VEML6035\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\n# GAIN=0, DG=0, SENS=1, 100 ms: 0.1024 lx per count, up to about 6711 lx\nsensor = VEML6035(i2c, gain=0, dg=0, sens=1, it_ms=100)\nwhile True:\n    print('Lux=%.1f White=%d' % (sensor.lux(), sensor.white()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level and white counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "white",
+          "value": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=500.0 White=3000",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.vishay.com/docs/84889/veml6035.pdf",
+    "https://www.vishay.com/docs/84944/designingveml6035.pdf",
+    "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/421/MIKROE-3990_Web.pdf",
+    "https://cdn.sparkfun.com/assets/3/e/4/7/9/Schematic-19505-MIKROE_Ambient_11_Click.pdf",
+    "https://www.mikroe.com/ambient-11-click"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:09:11.335Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/84889/veml6035.pdf",
+      "https://raw.githubusercontent.com/MikroElektronika/mikrosdk_click_v2/master/clicks/ambient11/README.md"
+    ]
+  }
+}

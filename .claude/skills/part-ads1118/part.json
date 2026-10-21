@@ -1,0 +1,268 @@
+{
+  "type": "custom-ads1118",
+  "name": "ADS1118 16-bit SPI ADC with temperature sensor",
+  "mpn": "ADS1118",
+  "category": "sensor",
+  "description": "Texas Instruments 16-bit delta-sigma ADC with 4 single-ended / 2 differential inputs, programmable gain (+/-0.256 to +/-6.144 V full scale), 8-860 samples/s, internal reference and a built-in temperature sensor (0.03125 degC/LSB), read over SPI (mode 1). Runs on 2-5.5 V. Sold as: ADS1118 16-bit ADC Breakout Board (PMD Way, red 17 x 16 mm board marked HW-420), two 6-pin headers: GND, VIN, SCK, CS, OUT, DIN and GND, VIN, A0, A1, A2, A3.",
+  "eli5": "Measures up to four voltages very precisely (much finer than the ESP32's own ADC) and also tells you its own temperature.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (SPI header)",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply to the chip's VDD, 2-5.5 V. Use 3.3 V with an ESP32/Pico: OUT swings to VIN",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (SCLK), up to 4 MHz, SPI mode 1",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "DOUT/DRDY: conversion data out; also goes low (with CS low) when a new result is ready",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Data in: the 16-bit Config word, latched on SCLK falling edges",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (printed GND on the analog header, same net as GND)",
+      "required": false
+    },
+    {
+      "name": "VIN2",
+      "role": "power",
+      "description": "Supply (printed VIN on the analog header, same net as VIN)",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Analog input AIN0, GND to VIN (never above VIN + 0.3 V or below GND - 0.3 V)",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Analog input AIN1, GND to VIN",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Analog input AIN2, GND to VIN",
+      "required": false
+    },
+    {
+      "name": "A3",
+      "role": "io",
+      "description": "Analog input AIN3, GND to VIN",
+      "required": false
+    }
+  ],
+  "vmin": 2,
+  "vmax": 5.5,
+  "currentMa": 0.3,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ads1118.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ads1118.pdf",
+    "https://pmdway.com/products/ads1118-16-bit-adc-breakout-board",
+    "https://pmdway.com/cdn/shop/products/ads1118-adc-breakout-board-pmdway-3_697x601.jpg?v=1571143410",
+    "https://pmdway.com/cdn/shop/products/ads1118-adc-breakout-board-pmdway-1_700x700.jpg?v=1571143416"
+  ],
+  "priceUsd": 13,
+  "supplierQuery": "ADS1118 16-bit ADC breakout board SPI",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "SPI mode 1 (polarity=0, phase=1), at most 4 MHz. Mode 0 shifts every bit and gives garbage.",
+    "Each 16-bit transfer writes the Config register on DIN while the PREVIOUS conversion result comes out on OUT. Single-shot: write config with SS=1, wait 1/data-rate (+10 %), then write the same config again and read the result.",
+    "Config bits NOP[1:0] must be 01 or the write is ignored. Single-ended AIN0 at +/-4.096 V, 128 SPS = 0xC38B; temperature mode = 0x859B.",
+    "Inputs must stay between GND and VIN (+/-0.3 V) whatever full-scale range is chosen; at 3.3 V the +/-4.096 V range reads 0-3.3 V.",
+    "The board has two 6-pin headers on opposite edges; both GND pins and both VIN pins are joined on the board."
+  ],
+  "keywords": [
+    "ads1118",
+    "adc",
+    "16-bit",
+    "spi adc",
+    "analog to digital",
+    "temperature",
+    "thermocouple",
+    "texas instruments"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "A0 voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.65,
+    "controls": [
+      {
+        "key": "a1",
+        "quantity": "A1 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a2",
+        "quantity": "A2 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "a3",
+        "quantity": "A3 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      },
+      {
+        "key": "temperature",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "spiReplies": [
+      {
+        "match": "C3",
+        "at": 0,
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.000125,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "D3",
+        "at": 0,
+        "bytes": [
+          {
+            "control": "a1",
+            "bits": 16,
+            "scale": 0.000125,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "E3",
+        "at": 0,
+        "bytes": [
+          {
+            "control": "a2",
+            "bits": 16,
+            "scale": 0.000125,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "F3",
+        "at": 0,
+        "bytes": [
+          {
+            "control": "a3",
+            "bits": 16,
+            "scale": 0.000125,
+            "signed": true
+          }
+        ]
+      },
+      {
+        "match": "85",
+        "at": 0,
+        "bytes": [
+          {
+            "control": "temperature",
+            "bits": 14,
+            "scale": 0.03125,
+            "signed": true
+          },
+          {
+            "const": 0,
+            "bits": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ads1118.py",
+    "code": "# ADS1118 16-bit SPI ADC with internal temperature sensor (Texas Instruments SBAS457F), MicroPython driver.\n# SPI mode 1 (CPOL = 0, CPHA = 1), SCLK up to 4 MHz (tSCLK >= 250 ns).\n# Every 16-bit transfer clocks the 16-bit Config register in on DIN while the last conversion\n# result is clocked out on DOUT (Figure 42). Single-shot use, as in the datasheet:\n#   1. write the Config word with SS = 1 -> starts one conversion (device is in power-down)\n#   2. wait one conversion period (1 / data rate, +10 % oscillator tolerance)\n#   3. write the same Config word again and read the 16-bit result in the same transfer\n# Config word (Table 7): SS | MUX[2:0] | PGA[2:0] | MODE | DR[2:0] | TS_MODE | PULL_UP_EN | NOP[1:0]=01 | 1\n# ADC result: 16-bit two's complement, LSB = FSR / 2^15 (Table 3; 125 uV at +/-4.096 V).\n# Temperature: 14-bit two's complement, left-justified, 0.03125 degC per LSB (Table 4).\nfrom machine import Pin\nimport time\n\n_FSR = {6.144: 0, 4.096: 1, 2.048: 2, 1.024: 3, 0.512: 4, 0.256: 5}\n_DR = {8: 0, 16: 1, 32: 2, 64: 3, 128: 4, 250: 5, 475: 6, 860: 7}\n\n\nclass ADS1118:\n    def __init__(self, spi, cs, fsr=4.096, data_rate=128):\n        \"\"\"spi: machine.SPI with polarity=0, phase=1 (SPI mode 1), <= 4 MHz.\n        cs: GPIO number of CS. fsr: full-scale range in volts (6.144, 4.096, 2.048,\n        1.024, 0.512 or 0.256). Inputs must still stay between GND and VDD.\"\"\"\n        if fsr not in _FSR:\n            raise ValueError('fsr must be one of 6.144, 4.096, 2.048, 1.024, 0.512, 0.256')\n        if data_rate not in _DR:\n            raise ValueError('data_rate must be 8, 16, 32, 64, 128, 250, 475 or 860')\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.fsr = fsr\n        self._pga = _FSR[fsr]\n        self._dr = _DR[data_rate]\n        self._wait_ms = 1100 // data_rate + 2  # one conversion, +10 % data-rate tolerance\n        self._tx = bytearray(2)\n        self._rx = bytearray(2)\n\n    def _xfer(self, cfg):\n        self._tx[0] = cfg >> 8\n        self._tx[1] = cfg & 0xFF\n        self.cs.value(0)\n        self.spi.write_readinto(self._tx, self._rx)\n        self.cs.value(1)  # CS high resets the serial interface (16-bit cycle)\n        return (self._rx[0] << 8) | self._rx[1]\n\n    def _convert(self, cfg):\n        self._xfer(cfg)               # SS = 1: start a single-shot conversion\n        time.sleep_ms(self._wait_ms)  # wait for it to finish\n        return self._xfer(cfg)        # read the result (same config written again)\n\n    def _cfg(self, mux, ts):\n        # SS=1, MUX, PGA, MODE=1 (single-shot), DR, TS_MODE, PULL_UP_EN=1, NOP=01, reserved=1\n        return (0x8000 | (mux << 12) | (self._pga << 9) | 0x0100 |\n                (self._dr << 5) | (0x10 if ts else 0) | 0x08 | 0x02 | 0x01)\n\n    def read_raw(self, channel):\n        \"\"\"Single-ended reading of AIN<channel> against GND (MUX 100..111); signed 16-bit code.\"\"\"\n        if not 0 <= channel <= 3:\n            raise ValueError('ADS1118 channel must be 0-3')\n        raw = self._convert(self._cfg(4 + channel, False))\n        return raw - 0x10000 if raw & 0x8000 else raw\n\n    def raw_to_volts(self, raw):\n        return raw * self.fsr / 32768\n\n    def read_volts(self, channel):\n        return self.raw_to_volts(self.read_raw(channel))\n\n    def temperature(self):\n        \"\"\"Internal temperature sensor in degC (TS_MODE = 1). MUX/PGA keep their reset values.\"\"\"\n        raw = self._convert(0x8000 | (0 << 12) | (2 << 9) | 0x0100 | (self._dr << 5) | 0x10 | 0x08 | 0x02 | 0x01) >> 2\n        if raw & 0x2000:\n            raw -= 0x4000\n        return raw * 0.03125\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom ads1118 import ADS1118\n\n# SPI mode 1 (polarity=0, phase=1) as the ADS1118 datasheet requires\nspi = SPI(1, baudrate=1000000, polarity=0, phase=1, sck=Pin({SCK}), mosi=Pin({DIN}), miso=Pin({OUT}))\nadc = ADS1118(spi, {CS}, fsr=4.096)  # +/-4.096 V range: 125 uV per count\nwhile True:\n    raw = adc.read_raw(0)\n    t = adc.temperature()\n    print('A0 raw=%d V=%.4f T=%.2fC' % (raw, adc.raw_to_volts(raw), t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the A0 voltage and chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 31.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A0 raw=20000 V=2.5000 T=31.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:25:06.531Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ads1118.pdf",
+      "https://www.pmdway.com/products/ads1118-16-bit-adc-breakout-board"
+    ]
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "type": "custom-max31856",
+  "name": "MAX31856 universal thermocouple amplifier",
+  "mpn": "MAX31856",
+  "category": "sensor",
+  "description": "Analog Devices (Maxim) MAX31856 thermocouple-to-digital converter for B, E, J, K, N, R, S and T thermocouples: cold-junction compensation and linearization on chip, 19-bit thermocouple temperature (0.0078125 C/LSB), 14-bit cold-junction temperature (0.015625 C/LSB), 50/60 Hz filtering and fault detection over SPI (CPHA = 1). Chip runs on 3.0-3.6 V; the breakout has a regulator and level shifting for 3-5 V. Sold as: Adafruit Universal Thermocouple Amplifier MAX31856 Breakout (product 3263), 9-pin header VIN, 3Vo, GND, SCK, SDO, SDI, CS, FLT, DRDY, 2-pin screw terminal for the thermocouple (+/-).",
+  "eli5": "Reads almost any kind of thermocouple probe, from freezer cold to kiln hot, and reports the temperature in degrees.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V into the on-board 3.3 V regulator; use the same voltage as your logic (3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground for power and logic",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock into the MAX31856 (up to 5 MHz, CPHA = 1: SPI mode 1 or 3)",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "SPI data out of the MAX31856 (to the board's MISO)",
+      "required": true
+    },
+    {
+      "name": "SDI",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data into the MAX31856 (from the board's MOSI); needed to set the thermocouple type and start conversions",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low; a 1-shot conversion starts when CS goes high after setting 1SHOT",
+      "required": true
+    },
+    {
+      "name": "FLT",
+      "role": "io",
+      "description": "FAULT output, active low (open thermocouple, over/undervoltage, threshold faults); optional",
+      "required": false
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Data-ready output, active low when a new conversion result is available; optional (the driver waits the conversion time instead)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 2,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31856.pdf",
+  "priceUsd": 17.5,
+  "supplierQuery": "MAX31856 universal thermocouple amplifier breakout SPI",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "buildNotes": [
+    "SPI with CPHA = 1 (mode 1 or 3), MSB first, up to 5 MHz; registers are read at 0Xh and written at 8Xh, and the address auto-increments in a multibyte transfer.",
+    "Set the thermocouple type in CR1 (01h) bits 3:0: B=0, E=1, J=2, K=3 (default), N=4, R=5, S=6, T=7; bits 6:4 select 1-16 averaged samples.",
+    "1-shot reading: write CR0 (80h) with 1SHOT (bit 6) set; the conversion starts when CS goes high and takes up to 155 ms (60 Hz filter) or 185 ms (50 Hz) plus open-circuit test time.",
+    "Thermocouple temperature: 19-bit two's complement in 0Ch-0Eh (bits 23..5), 0.0078125 C/LSB; read all three bytes in one transfer.",
+    "Cold-junction temperature: 14-bit two's complement in 0Ah-0Bh (bits 15..2), 0.015625 C/LSB.",
+    "Fault Status (0Fh): bit 0 open thermocouple, bit 1 input over/undervoltage, bits 2-7 range and threshold faults.",
+    "Leave 3Vo unconnected: it is the regulator's output, not an input. The thermocouple goes in the screw terminal; with K-type (US colours) yellow to +, red to -."
+  ],
+  "keywords": [
+    "max31856",
+    "thermocouple",
+    "k-type",
+    "j-type",
+    "t-type",
+    "temperature",
+    "adafruit 3263",
+    "spi"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "Thermocouple (hot junction) temperature",
+    "unit": "°C",
+    "min": -200,
+    "max": 1372,
+    "default": 25,
+    "controls": [
+      {
+        "key": "cj",
+        "quantity": "Cold-junction (board) temperature",
+        "unit": "°C",
+        "min": -55,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "spiReplies": [
+      {
+        "match": "0c",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 19,
+            "scale": 0.0078125,
+            "signed": true
+          },
+          {
+            "const": 0,
+            "bits": 5
+          },
+          {
+            "const": 0,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "0a",
+        "bytes": [
+          {
+            "control": "cj",
+            "bits": 14,
+            "scale": 0.015625,
+            "signed": true
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "control": "value",
+            "bits": 19,
+            "scale": 0.0078125,
+            "signed": true
+          },
+          {
+            "const": 0,
+            "bits": 5
+          },
+          {
+            "const": 0,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "0f",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "max31856.py",
+    "code": "# MAX31856 precision thermocouple-to-digital converter (Analog Devices / Maxim), MicroPython driver.\n# Written from datasheet 19-7534: SPI with CPHA = 1 (mode 1 or 3), registers read at 0Xh and written at 8Xh,\n# address auto-increments during a multibyte transfer. Normally-off mode with 1-shot conversions.\n# Thermocouple temperature: 19-bit signed in 0Ch..0Eh (bits 23..5), 0.0078125 C/LSB.\n# Cold-junction temperature: 14-bit signed in 0Ah..0Bh (bits 15..2), 0.015625 C/LSB.\nfrom machine import Pin\nimport time\n\n_CR0 = 0x00\n_CR1 = 0x01\n_MASK = 0x02\n_CJTH = 0x0A\n_LTCBH = 0x0C\n_SR = 0x0F\n\n# CR0 bits\n_ONE_SHOT = 0x40\n_OCFAULT_01 = 0x10  # open-circuit detection, RS < 5 kohm\n_FILTER_50HZ = 0x01\n\nTYPES = {'B': 0, 'E': 1, 'J': 2, 'K': 3, 'N': 4, 'R': 5, 'S': 6, 'T': 7}\n_AVG = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4}\n\n_FAULTS = ((0x80, 'cold junction out of range'), (0x40, 'thermocouple out of range'),\n           (0x20, 'cold junction high'), (0x10, 'cold junction low'),\n           (0x08, 'thermocouple high'), (0x04, 'thermocouple low'),\n           (0x02, 'input over/undervoltage'), (0x01, 'thermocouple open'))\n\n\nclass MAX31856:\n    def __init__(self, spi, cs, tc_type='K', filter_hz=60, samples=1):\n        \"\"\"spi: machine.SPI with phase=1 (mode 1 or 3), up to 5 MHz. cs: GPIO number of CS.\n        tc_type: 'B', 'E', 'J', 'K', 'N', 'R', 'S' or 'T'. filter_hz: 50 or 60 (mains notch).\n        samples: 1, 2, 4, 8 or 16 thermocouple samples averaged per conversion.\"\"\"\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self._cr0 = _OCFAULT_01 | (_FILTER_50HZ if filter_hz == 50 else 0)  # normally-off, CJ sensor on\n        self._write(_CR0, self._cr0)\n        self._write(_CR1, (_AVG[samples] << 4) | TYPES[tc_type.upper()])\n        self._write(_MASK, 0x00)  # let every fault assert the FLT pin\n        # tCONV max 155 ms (60 Hz) / 185 ms (50 Hz), + open-circuit test (15 ms max),\n        # + (samples - 1) x 33.33 ms (60 Hz) or 40 ms (50 Hz) when averaging\n        per = 40 if filter_hz == 50 else 34\n        self._conv_ms = (185 if filter_hz == 50 else 155) + 15 + (samples - 1) * per + 10\n\n    def _write(self, reg, val):\n        self.cs.value(0)\n        self.spi.write(bytes([0x80 | reg, val & 0xFF]))\n        self.cs.value(1)\n\n    def _read(self, reg, n):\n        buf = bytearray(n + 1)\n        self.cs.value(0)\n        self.spi.write_readinto(bytes([reg & 0x7F]) + bytes(n), buf)\n        self.cs.value(1)\n        return buf[1:]\n\n    def fault(self):\n        \"\"\"Fault Status register (0Fh); 0 = no fault.\"\"\"\n        return self._read(_SR, 1)[0]\n\n    def convert(self):\n        \"\"\"Start a 1-shot conversion (it begins when CS goes high) and wait for it to finish.\"\"\"\n        self._write(_CR0, self._cr0 | _ONE_SHOT)\n        time.sleep_ms(self._conv_ms)\n\n    def thermocouple(self):\n        \"\"\"Linearized, cold-junction-compensated thermocouple temperature in C from the last conversion.\n        Raises OSError on an open thermocouple or an input over/undervoltage.\"\"\"\n        d = self._read(_LTCBH, 4)  # 0Ch, 0Dh, 0Eh, then 0Fh (fault status) in one transfer\n        sr = d[3]\n        if sr & 0x03:\n            raise OSError('MAX31856 fault: ' + ', '.join(n for b, n in _FAULTS if sr & b))\n        raw = ((d[0] << 16) | (d[1] << 8) | d[2]) >> 5\n        if raw & 0x40000:\n            raw -= 0x80000\n        return raw * 0.0078125\n\n    def cold_junction(self):\n        \"\"\"Cold-junction (chip) temperature in C.\"\"\"\n        d = self._read(_CJTH, 2)\n        raw = ((d[0] << 8) | d[1]) >> 2\n        if raw & 0x2000:\n            raw -= 0x4000\n        return raw * 0.015625\n\n    def read(self):\n        \"\"\"Run one conversion and return (thermocouple C, cold junction C).\"\"\"\n        self.convert()\n        return self.thermocouple(), self.cold_junction()\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SoftSPI\nimport time\nfrom max31856 import MAX31856\n\n# SoftSPI works on any pins of an ESP32 or Pico; the MAX31856 needs CPHA = 1 (phase=1)\nspi = SoftSPI(baudrate=1000000, polarity=0, phase=1, sck=Pin({SCK}), mosi=Pin({SDI}), miso=Pin({SDO}))\ntc = MAX31856(spi, {CS}, tc_type='K', filter_hz=60)\nwhile True:\n    t, cj = tc.read()\n    print('TC=%.2fC CJ=%.2fC' % (t, cj))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the thermocouple and cold-junction temperatures set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 250.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cj",
+          "value": 27.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TC=250.50C CJ=27.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31856.pdf",
+    "https://cdn-learn.adafruit.com/assets/assets/000/035/948/original/MAX31856.pdf",
+    "https://www.adafruit.com/product/3263",
+    "https://learn.adafruit.com/adafruit-max31856-thermocouple-amplifier/pinouts",
+    "https://github.com/adafruit/Adafruit-MAX31856-PCB"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:37:41.896Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/035/948/original/MAX31856.pdf",
+      "https://learn.adafruit.com/adafruit-max31856-thermocouple-amplifier/pinouts"
+    ]
+  }
+}

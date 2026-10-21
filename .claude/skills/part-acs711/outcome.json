@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-acs711",
+  "board": "Pololu ACS711EX Current Sensor Carrier -15.5A to +15.5A, #2452 (ACS711KEXLT-15AB-T, header GND/GND/Vcc/OUT/FAULT)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring at 3.3 V, design checks, breadboard, simulator test I=5.0A, DRC-clean PCB, footprint, LCSC C150824). Model follows the datasheet x15AB figures at VCC = 3.3 V: VIOUT = VCC/2 + 90 mV/A x I (0.255-3.045 V over +/-15.5 A); the latching FAULT output (10k pull-up on board) is a pin but is not simulated.",
+  "datasheetUrl": "https://www.allegromicro.com/-/media/files/datasheets/acs711-datasheet.pdf",
+  "breakoutPinoutSource": "Pololu #2452 pinout image https://a.pololu-files.com/picture/0J4599.1200.jpg and schematic https://a.pololu-files.com/picture/0J3673.1200.jpg (J2 pin 1-5: GND, GND, Vcc, VIOUT, FAULT)",
+  "checkRuns": 1
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lsm303dlhc",
+  "board": "GY-511 LSM303DLHC accelerometer + magnetometer module (8-pin: VIN, 3V3, GND, SCL, SDA, INT2, INT1, DRDY)",
+  "reason": "Modelled as accelerometer at 0x19 (ST bit-7 auto-increment, 12-bit HR left-justified little-endian, 1 mg/LSB at ±2 g) plus magnetometer sub-device at 0x1E (big-endian X,Z,Y at 0x03, 1100/980 LSB/gauss at ±1.3 gauss, IRA-IRC 'H43') per ST Doc ID 018771; header order from the Electropeak GY-511 pinout image. Part check PASS on ESP32 and Pico.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lsm303dlhc.pdf",
+  "breakoutPinoutSource": "https://electropeak.com/learn/interfacing-gy-511-lsm303-3d-compass-and-accelerometer-with-arduino/ (pinout image https://electropeak.com/learn/wp-content/uploads/2020/09/GY511-Arduino-Pinout.jpg)",
+  "checkRuns": 1
+}

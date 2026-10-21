@@ -1,0 +1,125 @@
+{
+  "type": "custom-ina169",
+  "name": "INA169 analog DC current sensor breakout",
+  "mpn": "INA169",
+  "category": "sensor",
+  "description": "High-side DC current-shunt monitor from Texas Instruments: it measures current in the positive line of a 2.7-60 V supply through a 0.1 ohm shunt and gives a ground-referenced analog output of 1 V per amp (output current 1000 uA/V of shunt voltage into a 10 kohm load resistor). Sold as: Adafruit INA169 Analog DC Current Sensor Breakout - 60V 5A Max (product 1164), 5-pin header VCC, GND, VIN-, VIN+, OUT plus a 2-way terminal block for the measured wire.",
+  "eli5": "Put it in the + wire between a power supply and a load and its OUT pin tells you the current: 1 volt for every amp flowing.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Chip supply, 2.7-60 V. Use 3.3 V so OUT stays inside a 3.3 V ADC's range.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the measured supply's ground.",
+      "required": true
+    },
+    {
+      "name": "VIN-",
+      "role": "io",
+      "description": "Shunt, load side: connect to the load's + terminal (also on the terminal block).",
+      "required": false
+    },
+    {
+      "name": "VIN+",
+      "role": "io",
+      "description": "Shunt, supply side: connect to the + of the measured supply, 2.7-60 V (also on the terminal block).",
+      "required": false
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output, 1 V/A (I = Vout / (0.1 ohm x 1000 uA/V x 10 kohm)). Swings up to about VCC - 0.9 V. Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 60,
+  "currentMa": 0.125,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina169.pdf",
+  "priceUsd": 9.95,
+  "supplierQuery": "Adafruit INA169 analog DC current sensor breakout 1164",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: VCC, GND, VIN-, VIN+, OUT (Adafruit EAGLE layout, JP1 pins 1-5). Power VCC from 3.3 V.",
+    "Put the board in the + wire of the load: measured supply + to VIN+, VIN- to the load +. Join the load supply's ground to the microcontroller's GND. The measured supply must be 2.7-60 V.",
+    "Current (A) = Vout / 1.0 V/A with the stock 0.1 ohm shunt and 10 kohm load resistor (datasheet: Vout = Is x Rs x 1000 uA/V x RL).",
+    "With VCC = 3.3 V the output tops out near 2.4 V (VCC - 0.9 V), so about 2.4 A is the most it reads. For more, use a higher VCC and a divider on OUT.",
+    "Above about 1 A use the terminal block, not breadboard contacts, for VIN+/VIN-. The shunt dissipates 2.5 W at 5 A.",
+    "DC only, one direction: reversed wires read 0."
+  ],
+  "keywords": [
+    "ina169",
+    "current",
+    "ammeter",
+    "high-side",
+    "shunt",
+    "analog",
+    "sensor",
+    "adafruit 1164"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ina169.pdf",
+    "https://www.adafruit.com/product/1164",
+    "https://github.com/adafruit/Adafruit-INA169-Breakout-PCB",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-INA169-Breakout-PCB/master/Adafruit%20INA169%20CurPowerMonitor.brd",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-INA169-Breakout-PCB/master/Adafruit%20INA169%20CurPowerMonitor.sch",
+    "https://learn.sparkfun.com/tutorials/ina169-breakout-board-hookup-guide/all"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Current",
+    "unit": "A",
+    "min": 0,
+    "max": 2.4,
+    "default": 0.5,
+    "vAtMin": 0,
+    "vAtMax": 2.4,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "ina169.py",
+    "code": "# INA169 high-side DC current sensor (Texas Instruments), MicroPython driver.\n# For the Adafruit INA169 Analog DC Current Sensor Breakout (product 1164):\n#   RS = 0.1 ohm 1 % shunt between VIN+ and VIN-, RL = 10 kohm from OUT to GND.\n# Datasheet (SBOS181F) equation 3: VOUT = IS x RS x 1000 uA/V x RL\n#   so IS = VOUT / (RS x 0.001 A/V x RL) = VOUT / 1.0 V/A with the stock parts.\n# Current flows in at VIN+ (supply side) and out at VIN- (load side); DC, one direction only.\nfrom machine import ADC, Pin\n\nGM = 0.001  # transconductance, 1000 uA/V (990-1010)\n\n\nclass INA169:\n    def __init__(self, pin, rshunt=0.1, rload=10000, samples=32, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to OUT. rshunt / rload: the board's shunt and load resistors (ohms).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.v_per_a = rshunt * GM * rload  # 1.0 V/A on the stock board\n        self.samples = samples\n        self.vref = vref  # ADC full scale when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Averaged OUT voltage (V).\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def current(self):\n        \"\"\"Current through the shunt in amperes (VIN+ to VIN-).\"\"\"\n        return self.voltage() / self.v_per_a\n"
+  },
+  "skill": "---\nname: part-ina169\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the INA169 analog high-side DC current sensor (Texas Instruments INA169, Adafruit INA169 Analog DC Current Sensor Breakout, product 1164). Use when designing, wiring, simulating or writing code for an INA169 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# INA169 analog DC current sensor (Adafruit 1164)\n\n## Overview\nThe **INA169** (Texas Instruments) is a high-side current-shunt monitor. It measures the small voltage across a shunt resistor in the positive supply line of a load and turns it into an output **current** (1000 µA per volt of shunt voltage), which a load resistor turns into a voltage referenced to ground. Hobbyists buy it on the **Adafruit INA169 Analog DC Current Sensor Breakout (product 1164)**: 0.1 Ω 1 % shunt, 10 kΩ load resistor, 5-pin header and a 2-way terminal block for the measured wire.\n- Output: **1 V per amp** on the stock board (Vout = I × 0.1 Ω × 1000 µA/V × 10 kΩ)\n- Range: 0 to 5 A continuous (board rating), DC, **one direction only**\n- Measured line (common mode): **2.7–60 V**\n- Supply VCC: **2.7–60 V**, 60 µA typical (125 µA max)\n- Transconductance 990–1010 µA/V; total output error ±0.5 % typ, ±2 % max at 100 mV shunt voltage\n\n## Pinout (Adafruit 1164, 5-pin header, left to right)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | VCC | Chip supply, 2.7–60 V (3.3 V from the microcontroller is fine) |\n| 2 | GND | Ground (common with the measured supply's ground) |\n| 3 | VIN- | Shunt, load side: goes to the load's + terminal |\n| 4 | VIN+ | Shunt, supply side: goes to the measured supply's + terminal |\n| 5 | OUT | Analog output, 1 V/A (10 kΩ to GND on board) |\n\nThe terminal block on the opposite edge carries the same VIN- / VIN+ nets; use it for currents above about 1 A.\n\n## Electrical limits\n- VCC and VIN+ 2.7–60 V (recommended operating conditions). The measured line must be **at least 2.7 V**: the chip cannot measure a supply lower than that.\n- Shunt voltage full scale 100 mV typ, 500 mV max (5 A on 0.1 Ω). The shunt dissipates I²×0.1 Ω: 2.5 W at 5 A.\n- Output swing: up to **VCC − 0.9 V** (typ, VCC − 1.2 V worst case) and up to **VIN − 0.5 V**, whichever is lower. With VCC = 3.3 V that is about 2.4 V, i.e. **about 2.4 A**; for more, power VCC higher (it is a current output, so OUT never rises above the clamp) but then OUT can exceed 3.3 V: keep VCC at 3.3 V for a 3.3 V ADC, or add a divider.\n- OUT has a high output impedance (the 10 kΩ sets the gain): an ADC input or divider loads it. Keep extra loading ≫ 10 kΩ.\n\n## Interface details\nTransfer function (datasheet equation 3):\n```\nVout = Is × Rs × 1000 µA/V × RL      →   Is (A) = Vout / (0.1 × 0.001 × 10000) = Vout / 1.0\n```\n0.5 V = 0.5 A, 1.2 V = 1.2 A. Replace RL (the 10 kΩ through-hole resistor) to change the gain: 20 kΩ gives 2 V/A.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| GND | GND | GND | GND |\n| OUT | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. ADS1115 A0) |\n| VIN+ | + of the load's supply (2.7–60 V) | same | same |\n| VIN- | + of the load | same | same |\n\nThe load supply's ground must be connected to the microcontroller's GND.\n\n## Using the driver\n```python\nfrom ina169 import INA169\nimport time\nsensor = INA169(34)          # GPIO of the ADC pin OUT is wired to\nwhile True:\n    print('I=%.2fA' % sensor.current())\n    time.sleep(1)\n```\nThe driver averages 32 samples, using calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535. Pass `rload=` if you changed the 10 kΩ resistor.\n\n## Gotchas\n- **High side only:** VIN+ to the supply, VIN- to the load. Swapped, it reads 0 (it cannot show negative current).\n- **Reads 0 with current flowing?** The measured supply is below 2.7 V, or its ground is not joined to the board's GND.\n- **Small currents:** the offset (±1 mV max referred to the shunt) is ±10 mA on 0.1 Ω; below about 20 mA the reading is mostly offset. Fit a larger shunt for small loads.\n- **ESP32 ADC** is non-linear near 0 V and above about 3.1 V; use ADC1 pins (ADC2 stops working with Wi-Fi).\n- It measures DC only, not mains.\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/ina169.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://www.ti.com/lit/ds/symlink/ina169.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from ina169 import INA169\nimport time\n\nsensor = INA169({OUT})\nwhile True:\n    print('I=%.2fA' % sensor.current())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the current set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "I=1.20A",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:20:39.540Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ina169.pdf",
+      "https://www.adafruit.com/product/1164",
+      "https://github.com/adafruit/Adafruit-INA169-Breakout-PCB"
+    ]
+  }
+}

@@ -1,0 +1,336 @@
+{
+  "type": "custom-hc-06",
+  "name": "HC-06 Bluetooth serial module (slave)",
+  "mpn": "HC-06",
+  "category": "ic",
+  "description": "Classic Bluetooth 2.0 serial-port (SPP) slave module (CSR BC417, linvor firmware): a phone or PC pairs with it (name linvor or HC-06, PIN 1234) and the bytes it sends appear on the module's UART, and back. Default 9600 8N1; while nothing is connected it answers a few AT commands (no line ending, one per second). Supply 3.6-6 V into the board's 3.3 V regulator; RXD/TXD are 3.3 V logic. Sold as: HC-06 4-pin slave module on the blue JY-MCU-style backplate (header VCC, GND, TXD, RXD; no button), the common clone sold by most hobby shops.",
+  "eli5": "Lets your phone send messages to your board over Bluetooth, like an invisible serial cable.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.6-6 V into the board's 3.3 V regulator (use 5 V, not 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module's UART output (3.3 V). Wire to the microcontroller's RX",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module's UART input, 3.3 V logic only. Wire to the microcontroller's TX (1k/2k divider from a 5 V board)",
+      "required": true
+    }
+  ],
+  "vmin": 3.6,
+  "vmax": 6,
+  "currentMa": 40,
+  "datasheetUrl": "https://www.martyncurrey.com/?wpdmdl=3421",
+  "sources": [
+    "https://www.martyncurrey.com/?wpdmdl=3421",
+    "https://components101.com/sites/default/files/component_datasheet/HC06%20Bluetooth%20Module%20Datasheet.pdf",
+    "https://www.martyncurrey.com/arduino-and-hc-06-zs-040/",
+    "https://www.martyncurrey.com/hc-05-and-hc-06-zs-040-bluetooth-modules-first-look/",
+    "https://www.etechnophiles.com/hc06-pinout-specifications-datasheet/",
+    "https://www.etechnophiles.com/wp-content/uploads/2020/10/HC-06-pinout-1.jpg",
+    "https://components101.com/wireless/hc-06-bluetooth-module-pinout-datasheet"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "HC-06 Bluetooth serial module slave 4 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (VIN/VBUS): the backplate's regulator needs at least 3.6 V.",
+    "Cross the serial lines: module TXD to the board's RX, module RXD to the board's TX. RXD is 3.3 V only; from a 5 V Arduino use a 1k/2k divider.",
+    "Factory settings: 9600 8N1, name linvor (newer firmware: HC-06), PIN 1234. It is slave only: the phone or PC starts the connection.",
+    "AT commands work only while nothing is connected (LED blinking). Send them in capitals with NO \\r\\n and at most one per second: the module ends a command by the pause after it.",
+    "Replies have no line ending either: AT -> OK, AT+VERSION -> OKlinvorV1.8, AT+NAMExxx -> OKsetname, AT+PINxxxx -> OKsetPIN, AT+BAUD4 -> OK9600. Settings survive power-off.",
+    "Once a phone connects (LED steady) every byte is passed straight through; AT commands are not answered."
+  ],
+  "keywords": [
+    "hc-06",
+    "hc06",
+    "bluetooth",
+    "spp",
+    "serial",
+    "linvor",
+    "jy-mcu",
+    "wireless",
+    "bc417"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Digit the phone app sends (0-9)",
+    "unit": "",
+    "min": 0,
+    "max": 9,
+    "default": 0,
+    "controls": [
+      {
+        "key": "connected",
+        "quantity": "Phone connected and sending (1 = yes)",
+        "min": 0,
+        "max": 1,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "when": "connected",
+      "bytes": [
+        {
+          "control": "value",
+          "bits": 8,
+          "scale": 1,
+          "offset": -48
+        },
+        {
+          "const": 13,
+          "bits": 8
+        },
+        {
+          "const": 10,
+          "bits": 8
+        }
+      ]
+    },
+    "uartReplies": [
+      {
+        "match": "41 54 2b 56 45 52 53 49 4f 4e",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 108,
+            "bits": 8
+          },
+          {
+            "const": 105,
+            "bits": 8
+          },
+          {
+            "const": 110,
+            "bits": 8
+          },
+          {
+            "const": 118,
+            "bits": 8
+          },
+          {
+            "const": 111,
+            "bits": 8
+          },
+          {
+            "const": 114,
+            "bits": 8
+          },
+          {
+            "const": 86,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 46,
+            "bits": 8
+          },
+          {
+            "const": 56,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 42 41 55 44 34",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 57,
+            "bits": 8
+          },
+          {
+            "const": 54,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 4e 41 4d 45",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 115,
+            "bits": 8
+          },
+          {
+            "const": 101,
+            "bits": 8
+          },
+          {
+            "const": 116,
+            "bits": 8
+          },
+          {
+            "const": 110,
+            "bits": 8
+          },
+          {
+            "const": 97,
+            "bits": 8
+          },
+          {
+            "const": 109,
+            "bits": 8
+          },
+          {
+            "const": 101,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 50 49 4e",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 115,
+            "bits": 8
+          },
+          {
+            "const": 101,
+            "bits": 8
+          },
+          {
+            "const": 116,
+            "bits": 8
+          },
+          {
+            "const": 80,
+            "bits": 8
+          },
+          {
+            "const": 73,
+            "bits": 8
+          },
+          {
+            "const": 78,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hc06.py",
+    "code": "# HC-06 Bluetooth SPP slave module (CSR BC417/BC04, linvor / hc01.com firmware), MicroPython driver.\n# Datasheet (Guangzhou HC / wavesen HC-06 data sheet, section 9 \"AT command set\"):\n#  - The module answers AT commands whenever no Bluetooth device is connected, at its data baud\n#    (factory default 9600 8N1).\n#  - Commands have NO terminator (no \\r\\n): the module decides a command has ended from the pause\n#    after it, so send at most one command per second.\n#  - Replies have no terminator either: AT -> \"OK\", AT+VERSION -> \"linvorV1.8\" (sent as \"OKlinvorV1.8\"\n#    by most units), AT+NAMExxx -> \"OKsetname\", AT+PINxxxx -> \"OKsetPIN\", AT+BAUDn -> \"OK<baud>\".\n#  - While a phone is connected everything you write goes to the phone and AT commands are not answered.\nimport time\n\n_BAUDS = {1200: '1', 2400: '2', 4800: '3', 9600: '4', 19200: '5', 38400: '6', 57600: '7',\n          115200: '8', 230400: '9', 460800: 'A', 921600: 'B', 1382400: 'C'}\n\n\nclass HC06:\n    CMD_GAP_MS = 1000  # datasheet: \"The interval of command is about 1 second\"\n\n    def __init__(self, uart, timeout_ms=1500, idle_ms=100):\n        self.uart = uart\n        self.timeout_ms = timeout_ms\n        self.idle_ms = idle_ms\n        self._last_cmd = None\n        self._buf = b''\n\n    def _drain(self):\n        while self.uart.any():\n            self.uart.read()\n\n    def command(self, cmd):\n        \"\"\"Send one AT command (no line ending) and return the module's reply text.\"\"\"\n        if self._last_cmd is not None:\n            wait = self.CMD_GAP_MS - time.ticks_diff(time.ticks_ms(), self._last_cmd)\n            if wait > 0:\n                time.sleep_ms(wait)\n        self._drain()\n        self.uart.write(cmd.encode())\n        t0 = time.ticks_ms()\n        reply = b''\n        last_rx = None\n        while True:\n            now = time.ticks_ms()\n            if self.uart.any():\n                got = self.uart.read()\n                if got:\n                    reply += got\n                    last_rx = now\n            elif last_rx is not None and time.ticks_diff(now, last_rx) >= self.idle_ms:\n                break  # replies have no terminator: a pause ends them\n            elif last_rx is None and time.ticks_diff(now, t0) >= self.timeout_ms:\n                break\n            else:\n                time.sleep_ms(5)\n        self._last_cmd = time.ticks_ms()\n        if not reply:\n            raise OSError('HC-06: no reply to %s (module connected to a phone, or wrong baud?)' % cmd)\n        return reply.decode().strip()\n\n    def ping(self):\n        r = self.command('AT')\n        if not r.startswith('OK'):\n            raise OSError('HC-06: AT -> %s' % r)\n        return True\n\n    def version(self):\n        r = self.command('AT+VERSION')\n        return r[2:] if r.startswith('OK') else r\n\n    def set_name(self, name):\n        \"\"\"Bluetooth name, up to 20 characters. Some units only show it after a power cycle.\"\"\"\n        if not 0 < len(name) <= 20:\n            raise ValueError('name must be 1-20 characters')\n        return self.command('AT+NAME' + name)\n\n    def set_pin(self, pin):\n        \"\"\"4-digit pairing PIN (default 1234).\"\"\"\n        pin = '%s' % pin\n        if len(pin) != 4 or not pin.isdigit():\n            raise ValueError('PIN must be 4 digits')\n        return self.command('AT+PIN' + pin)\n\n    def set_baud(self, baud):\n        \"\"\"Data baud, kept after power-off. Re-open the UART at the new rate afterwards.\"\"\"\n        return self.command('AT+BAUD' + _BAUDS[baud])\n\n    # Data mode (a phone is connected): plain serial bytes.\n    def write(self, data):\n        return self.uart.write(data)\n\n    def readline(self):\n        \"\"\"Return one received line (without \\\\r\\\\n) as str, or None if no whole line yet.\"\"\"\n        if self.uart.any():\n            got = self.uart.read()\n            if got:\n                self._buf += got\n        if b'\\n' in self._buf:\n            line, self._buf = self._buf.split(b'\\n', 1)\n            return line.strip().decode()\n        return None\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom hc06 import HC06\n\n# No phone connected yet, so the HC-06 answers AT commands (9600 baud, no line ending).\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\nbt = HC06(u)\ntry:\n    bt.ping()\n    print('HC-06 %s' % bt.version())\nexcept OSError as e:\n    print(e)\nprint('Waiting for the phone')\nwhile True:\n    line = bt.readline()\n    if line:\n        print('PHONE SENT %s' % line)\n        bt.write(b'got ' + line.encode() + b'\\r\\n')\n    time.sleep_ms(20)\n",
+    "test": {
+      "id": "at-then-phone-data",
+      "title": "Answers AT with its firmware version, then prints what the connected phone sends",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "HC-06 linvorV1.8",
+          "within": 4000
+        },
+        {
+          "kind": "wait",
+          "ms": 2500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "connected",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PHONE SENT 7",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:27:30.370Z",
+    "verifiedSources": [
+      "https://www.olimex.com/Products/Components/RF/BLUETOOTH-SERIAL-HC-06/resources/hc06.pdf"
+    ]
+  }
+}

@@ -1,0 +1,330 @@
+{
+  "type": "custom-tca9534",
+  "name": "TCA9534 8-bit I/O expander",
+  "mpn": "TCA9534",
+  "category": "ic",
+  "description": "Texas Instruments 8-bit I2C/SMBus I/O expander: P0-P7, each a high-impedance input (no internal pull-ups) or a push-pull output (25 mA sink / 10 mA source per pin), plus an open-drain interrupt output. Runs on 1.65-5.5 V with 5 V tolerant I/O. Sold as: SparkFun Qwiic GPIO (DEV-17047; two Qwiic connectors, PTH row GND/3.3V/SDA/SCL plus an INT pad, four 4-pin latch terminals J5: INT/0/1/GND, J8: GND/2/3/3.3V, J1: 3.3V/4/5/GND, J6: GND/6/7/3.3V; I2C and INT pull-ups, ADR0-ADR2 jumpers closed), I2C address 0x27 (0x20-0x27 by cutting ADR jumpers).",
+  "eli5": "Gives your board 8 extra pins to switch LEDs or read buttons, using only the two I2C wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "PTH row (J9-1): ground"
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "PTH row (J9-2): 3.3 V supply (chip accepts 1.65-5.5 V; board pull-ups and LED run from this rail)"
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "description": "PTH row (J9-3): I2C data, pulled up to 3V3 on the board (I2C jumper closed)",
+      "fn": "i2c.sda"
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "description": "PTH row (J9-4): I2C clock, pulled up to 3V3 on the board (I2C jumper closed)",
+      "fn": "i2c.scl"
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "INT pad (J7): active-low open-drain interrupt, 10k pull-up to 3V3 (INT jumper closed); low when an input changes, cleared by reading the Input Port",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Latch terminal J5-1: same INT net as the INT pad",
+      "required": false
+    },
+    {
+      "name": "P0",
+      "role": "io",
+      "description": "J5-2: GPIO 0 (silk \"0\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "P1",
+      "role": "io",
+      "description": "J5-3: GPIO 1 (silk \"1\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Latch terminal J5-4: ground",
+      "required": false
+    },
+    {
+      "name": "GND3",
+      "role": "gnd",
+      "description": "Latch terminal J8-1: ground",
+      "required": false
+    },
+    {
+      "name": "P2",
+      "role": "io",
+      "description": "J8-2: GPIO 2 (silk \"2\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "P3",
+      "role": "io",
+      "description": "J8-3: GPIO 3 (silk \"3\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "3V3_2",
+      "role": "power",
+      "description": "Latch terminal J8-4: 3.3 V rail (same net as 3V3), for pull-ups or sensors",
+      "required": false
+    },
+    {
+      "name": "3V3_3",
+      "role": "power",
+      "description": "Latch terminal J1-1: 3.3 V rail (same net as 3V3)",
+      "required": false
+    },
+    {
+      "name": "P4",
+      "role": "io",
+      "description": "J1-2: GPIO 4 (silk \"4\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "P5",
+      "role": "io",
+      "description": "J1-3: GPIO 5 (silk \"5\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "GND4",
+      "role": "gnd",
+      "description": "Latch terminal J1-4: ground",
+      "required": false
+    },
+    {
+      "name": "GND5",
+      "role": "gnd",
+      "description": "Latch terminal J6-1: ground",
+      "required": false
+    },
+    {
+      "name": "P6",
+      "role": "io",
+      "description": "J6-2: GPIO 6 (silk \"6\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "P7",
+      "role": "io",
+      "description": "J6-3: GPIO 7 (silk \"7\"), high-impedance input (NO internal pull-up) or push-pull output, 25 mA sink / 10 mA source max",
+      "required": false
+    },
+    {
+      "name": "3V3_4",
+      "role": "power",
+      "description": "Latch terminal J6-4: 3.3 V rail (same net as 3V3)",
+      "required": false
+    }
+  ],
+  "vmin": 1.65,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "i2cAddress": 39,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/tca9534.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "SparkFun Qwiic GPIO TCA9534 DEV-17047",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x21_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "I2C address is 0x20 + (A2 A1 A0). The SparkFun board ships with ADR0-ADR2 jumpers closed (tied to 3.3V), so it answers at 0x27; cut a jumper to clear that bit (2.2k pull-downs).",
+    "The TCA9534 has NO internal pull-ups: every input needs an external pull-up (e.g. 10k from the pin to a 3.3V terminal for a button to GND) or pull-down, or it floats.",
+    "All pins power up as inputs (Configuration 0x03 = 0xFF) and the Output Port latch 0x01 powers up at 0xFF: write the level first, then clear the Configuration bit, or the pin starts by driving high.",
+    "Read pin levels from Input Port 0x00; reading it also clears INT. Reading Output Port 0x01 gives the latch, not the pin.",
+    "Each pin sinks up to 25 mA but sources only 10 mA; chip total 200 mA through GND and 80 mA through VCC: always put a resistor in series with an LED.",
+    "The board's SDA/SCL/INT pull-ups go to its 3.3V rail: power it from 3.3 V (Qwiic) with an ESP32 or Pico.",
+    "Connectors sit on several edges (PTH row, INT pad, four latch terminals), so Sparkbench wires it with jumper leads."
+  ],
+  "keywords": [
+    "tca9534",
+    "pca9534",
+    "io expander",
+    "gpio expander",
+    "port expander",
+    "i2c",
+    "8-bit",
+    "qwiic gpio",
+    "sparkfun"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/tca9534.pdf",
+    "https://www.sparkfun.com/products/17047",
+    "https://learn.sparkfun.com/tutorials/sparkfun-qwiic-gpio-hookup-guide/all",
+    "https://github.com/sparkfun/Qwiic_GPIO/blob/master/Hardware/Qwiic_GPIO.brd",
+    "https://github.com/sparkfun/Qwiic_GPIO/blob/master/Hardware/Qwiic_GPIO.sch"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 255,
+      "0x01": 255,
+      "0x02": 0,
+      "0x03": 255
+    },
+    "outputBits": [
+      {
+        "reg": "0x01",
+        "bit": 0,
+        "name": "P0"
+      },
+      {
+        "reg": "0x01",
+        "bit": 1,
+        "name": "P1"
+      },
+      {
+        "reg": "0x01",
+        "bit": 2,
+        "name": "P2"
+      },
+      {
+        "reg": "0x01",
+        "bit": 3,
+        "name": "P3"
+      },
+      {
+        "reg": "0x01",
+        "bit": 4,
+        "name": "P4"
+      },
+      {
+        "reg": "0x01",
+        "bit": 5,
+        "name": "P5"
+      },
+      {
+        "reg": "0x01",
+        "bit": 6,
+        "name": "P6"
+      },
+      {
+        "reg": "0x01",
+        "bit": 7,
+        "name": "P7"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x00",
+        "bit": 4,
+        "control": "p4",
+        "label": "Button P4 to GND (with external pull-up)",
+        "activeLow": true
+      },
+      {
+        "reg": "0x00",
+        "bit": 5,
+        "control": "p5",
+        "label": "Button P5 to GND (with external pull-up)",
+        "activeLow": true
+      },
+      {
+        "reg": "0x00",
+        "bit": 6,
+        "control": "p6",
+        "label": "Button P6 to GND (with external pull-up)",
+        "activeLow": true
+      },
+      {
+        "reg": "0x00",
+        "bit": 7,
+        "control": "p7",
+        "label": "Button P7 to GND (with external pull-up)",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tca9534.py",
+    "code": "# TCA9534 8-bit I2C I/O expander (TI SCPS197D), MicroPython driver.\n# Register map (command byte, datasheet Table 3):\n#   0x00  Input Port          read-only, the levels on the pins (inputs and outputs)\n#   0x01  Output Port         output latches (power-up 0xFF); reads back the latch\n#   0x02  Polarity Inversion  1 = invert that input (power-up 0x00)\n#   0x03  Configuration       1 = input (power-up 0xFF), 0 = push-pull output\n# Address 0x20 + A2A1A0 (0x20-0x27). The SparkFun Qwiic GPIO ties A0-A2 high\n# through closed jumpers, so it answers at 0x27 out of the box.\n# The TCA9534 has NO internal pull-ups (unlike the TCA9554): an input pin\n# left unconnected floats. Give every input an external pull-up or pull-down.\n\n_INPUT = 0x00\n_OUTPUT = 0x01\n_POLARITY = 0x02\n_CONFIG = 0x03\n\nINPUT = 1\nOUTPUT = 0\n\n\nclass TCA9534:\n    def __init__(self, i2c, addr=0x27):\n        \"\"\"addr = 0x20 + A2A1A0 (0x27 on the SparkFun board with all ADR jumpers closed).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _bit(self, reg, pin, on):\n        if not 0 <= pin <= 7:\n            raise ValueError('pin must be 0-7')\n        v = self._r(reg)\n        v = v | (1 << pin) if on else v & ~(1 << pin)\n        self._w(reg, v)\n\n    def pin_mode(self, pin, mode):\n        \"\"\"mode INPUT or OUTPUT. Set the output level with value() first:\n        the latch powers up at 1, so a pin made an output drives high.\"\"\"\n        self._bit(_CONFIG, pin, mode == INPUT)\n\n    def invert(self, pin, on=True):\n        \"\"\"Polarity inversion of an input pin (Input Port reads the opposite level).\"\"\"\n        self._bit(_POLARITY, pin, on)\n\n    def value(self, pin, val=None):\n        \"\"\"Read a pin's level (Input Port), or set its output latch (Output Port).\"\"\"\n        if val is None:\n            if not 0 <= pin <= 7:\n                raise ValueError('pin must be 0-7')\n            return (self._r(_INPUT) >> pin) & 1\n        self._bit(_OUTPUT, pin, val)\n\n    def read_port(self):\n        \"\"\"All 8 pin levels, bit n = Pn.\"\"\"\n        return self._r(_INPUT)\n\n    def write_port(self, val):\n        \"\"\"Set all 8 output latches, bit n = Pn.\"\"\"\n        self._w(_OUTPUT, val)\n\n    def config_port(self, inputs):\n        \"\"\"8-bit direction mask in one go (1 = input, 0 = output).\"\"\"\n        self._w(_CONFIG, inputs)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tca9534 import TCA9534, INPUT, OUTPUT\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nio = TCA9534(i2c)          # address 0x27 (ADR0-ADR2 jumpers closed on the board)\nio.value(0, 0)             # latch P0 low first (it powers up at 1)...\nio.pin_mode(0, OUTPUT)     # ...then make P0 an output for an LED (through a resistor)\nio.pin_mode(4, INPUT)      # P4 reads a button to GND (add a 10k pull-up to 3.3V)\nwhile True:\n    pressed = 1 if io.value(4) == 0 else 0\n    io.value(0, pressed)   # LED on while the button is held\n    print('BTN=%d LED=%d' % (pressed, pressed))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "button-led",
+      "title": "P4 button switches the P0 output",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": false,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "p4",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=1 LED=1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": true,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "p4",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": false,
+          "within": 1000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:38:04.081Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/tca9534.pdf",
+      "https://www.sparkfun.com/sparkfun-qwiic-gpio.html"
+    ]
+  }
+}

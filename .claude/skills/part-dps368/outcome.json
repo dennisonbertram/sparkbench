@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-dps368",
+  "board": "Infineon XENSIV DPS368 Pressure Shield2Go (S2GO PRESSURE DPS368)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test T=23.70C P=962.45hPa, DRC-clean board, footprint, LCSC). The driver uses command mode, the datasheet's table 18 coefficient decoding, table 9 scale factors and the sec. 4.9 compensation formulas; the sim encodes the raw 24-bit results with the same formulas from its own coefficient registers. The 17 pins are listed header by header (1-9, 10-17) as on Infineon's Shield2Go pinout.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/6/1/9/3/DPS368-DataSheet.pdf",
+  "breakoutPinoutSource": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png (Infineon DPS3xx Pressure Shield2Go pinout, from https://github.com/Infineon/arduino-xensiv-dps3xx/wiki)",
+  "checkRuns": 1
+}

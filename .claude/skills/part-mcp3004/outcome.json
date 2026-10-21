@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mcp3004",
+  "board": "MCP3004-I/P bare chip, DIP-14 (Microchip)",
+  "reason": "Part check PASS on ESP32 and Pico: spec, wiring, breadboard, simulator (CH0=512 1.650V CH2=776 2.501V), DIP-14 footprint, DRC-clean board and LCSC stock. Sim encodes the datasheet Figure 6-1 3-byte SPI frame (0x01, 0x80|ch<<4, 0x00; reply null bit + 10-bit code = 1024*VIN/VREF, VREF 3.3 V).",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/21295d.pdf",
+  "breakoutPinoutSource": "Microchip DS21295D Table 3-1 (MCP3004 PDIP-14 pin function table: 1-4 CH0-CH3, 5-6 NC, 7 DGND, 8 CS/SHDN, 9 DIN, 10 DOUT, 11 CLK, 12 AGND, 13 VREF, 14 VDD): https://ww1.microchip.com/downloads/en/DeviceDoc/21295d.pdf",
+  "checkRuns": 1
+}

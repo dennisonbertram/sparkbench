@@ -1,0 +1,186 @@
+{
+  "type": "custom-mcp9601",
+  "name": "MCP9601 I2C thermocouple amplifier",
+  "mpn": "MCP9601",
+  "category": "sensor",
+  "description": "Microchip thermocouple EMF-to-temperature converter with built-in cold-junction compensation and thermocouple open-circuit / short-circuit detection, reporting the thermocouple (hot-junction) temperature in 0.0625 °C steps over I2C; supports type K, J, T, N, S, E, B and R thermocouples (type K: -200 to 1372 °C). Runs on 2.7–5.5 V (chip). Sold as: Adafruit MCP9601 (MCP96L01) I2C Thermocouple Amplifier - STEMMA QT / Qwiic (product 5165; 9-pin header VIN, GND, SCL, SDA, A1, A2, A3, A4, ADDR, plus a 2-pin screw terminal for the thermocouple and two STEMMA QT sockets; MCP96L01 grade, ±2 °C typ / ±4 °C max), I2C address 0x67 (ADDR unconnected; 0x60 with ADDR to GND).",
+  "eli5": "Plug a thermocouple wire into it and it tells your board how hot the tip is, even inside an oven or a flame, and warns you if the wire comes loose.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (use the same voltage as your board's logic, 3.3 V on ESP32/Pico); feeds the chip directly",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up to VIN on the board), 100 kHz",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Alert 1 output (push-pull, programmable), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Alert 2 output, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A3",
+      "role": "io",
+      "description": "Alert 3 output, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A4",
+      "role": "io",
+      "description": "Alert 4 output, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "ADDR",
+      "role": "io",
+      "description": "Address select: left unconnected = 0x67 (default); to GND = 0x60; back jumpers 43k = 0x66, 22k = 0x65",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1.5,
+  "i2cAddress": 103,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP960X-Data-Sheet-20005426.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "Adafruit MCP9601 I2C thermocouple amplifier 5165",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "buildNotes": [
+    "The thermocouple goes into the 2-pin screw terminal marked + and -, not the header (type K: yellow +, red -). If the reading falls when you heat the tip, swap the wires.",
+    "Read a temperature by writing the register pointer (0x00 = thermocouple, 0x02 = cold junction), then reading 2 bytes in a separate transaction; value = signed 16-bit × 0.0625 °C.",
+    "Set the thermocouple type in register 0x05 (bits 6-4: 0 = K, 1 = J, 2 = T, 3 = N, 4 = S, 5 = E, 6 = B, 7 = R) to match your probe, or the reading will be wrong.",
+    "STATUS register 0x04: bit 4 = thermocouple open (disconnected), bit 5 = thermocouple shorted to VDD/GND. The board already has the VSENSE resistors these need; ignore the temperature while either bit is set.",
+    "The chip stretches the I2C clock for up to 60 µs; use 100 kHz. Raspberry Pi (Linux) I2C does not handle clock stretching well, so lower its bus speed or use a microcontroller.",
+    "Default address 0x67 with ADDR unconnected; tie ADDR to GND for 0x60 when using two boards."
+  ],
+  "keywords": [
+    "mcp9601",
+    "mcp96l01",
+    "thermocouple",
+    "type k",
+    "k-type",
+    "temperature",
+    "oven",
+    "kiln",
+    "amplifier",
+    "open circuit",
+    "microchip",
+    "adafruit 5165"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP960X-Data-Sheet-20005426.pdf",
+    "https://learn.adafruit.com/adafruit-mcp9601/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/103/821/large1024/adafruit_products_MCP9601_pinouts.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/103/983/large1024/adafruit_products_MCP9601_sch.png",
+    "https://www.adafruit.com/product/5165"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Thermocouple temperature",
+    "unit": "°C",
+    "min": -200,
+    "max": 1372,
+    "default": 25,
+    "regWidth": 16,
+    "registers": {
+      "0x04": 16384,
+      "0x20": 16656
+    },
+    "controls": [
+      {
+        "key": "cold",
+        "quantity": "Cold-junction (board) temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "control": "cold"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp9601.py",
+    "code": "# MCP9601 / MCP96L01 thermocouple EMF-to-temperature converter with open/short detection\n# (Microchip MCP960X/L0X/RL0X datasheet DS20005426), MicroPython driver.\n# Register pointer write, STOP, then a separate read (Figure 4-3); the chip keeps the pointer between reads.\n# Temperatures are 16-bit two's complement, 0.0625 degC/LSB (Equations 5-1 and 5-3).\n# The chip stretches SCL for up to 60 us per byte read (tSTRETCH): run the bus at 100 kHz.\nimport time\n\n_TH = 0x00       # hot-junction (thermocouple) temperature, cold-junction compensated\n_TDELTA = 0x01   # junctions temperature delta (TH - TC)\n_TC = 0x02       # cold-junction (board) temperature\n_STATUS = 0x04   # 8-bit status register (Register 5-6)\n_SENSOR_CFG = 0x05\n_DEVICE_CFG = 0x06\n_DEVICE_ID = 0x20\n\n# STATUS bits (Register 5-6, MCP9601/L01/RL01)\nST_BURST_COMPLETE = 0x80\nST_TH_UPDATE = 0x40\nST_SHORT_CIRCUIT = 0x20  # thermocouple shorted to VDD or GND (needs VSENSE wired, as on the Adafruit board)\nST_OPEN_CIRCUIT = 0x10   # thermocouple disconnected / input out of range\n\nTYPES = {'K': 0, 'J': 1, 'T': 2, 'N': 3, 'S': 4, 'E': 5, 'B': 6, 'R': 7}\n\n\nclass MCP9601:\n    def __init__(self, i2c, addr=0x67, tc_type='K', filter_n=0):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(20)  # tPOR power-up time\n        dev_id = self._read(_DEVICE_ID, 2)[0]\n        if dev_id != 0x41:  # Register 5-13: 0x41 = MCP9601/L01/RL01 (0x40 would be an MCP9600)\n            raise OSError('MCP9601 not found (device ID 0x%02X)' % dev_id)\n        # Sensor configuration: bits 6-4 thermocouple type, bits 2-0 IIR filter coefficient.\n        self._write(_SENSOR_CFG, (TYPES[tc_type] << 4) | (filter_n & 0x07))\n        # Device configuration: 0.0625 degC cold-junction, 18-bit ADC, normal (continuous) mode.\n        self._write(_DEVICE_CFG, 0x00)\n\n    def _write(self, reg, value):\n        self.i2c.writeto(self.addr, bytes([reg, value]))\n\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _temp(self, reg):\n        d = self._read(reg, 2)\n        upper, lower = d[0], d[1]\n        if upper & 0x80:  # negative: Equation 5-1, T < 0 degC\n            return (upper * 16 + lower / 16) - 4096\n        return upper * 16 + lower / 16\n\n    def temperature(self):\n        \"\"\"Thermocouple (hot-junction) temperature in degC, cold-junction compensated.\"\"\"\n        return self._temp(_TH)\n\n    def ambient(self):\n        \"\"\"Cold-junction (board) temperature in degC.\"\"\"\n        return self._temp(_TC)\n\n    def delta(self):\n        \"\"\"Hot-junction minus cold-junction temperature in degC.\"\"\"\n        return self._temp(_TDELTA)\n\n    def status(self):\n        return self._read(_STATUS, 1)[0]\n\n    def open_circuit(self):\n        \"\"\"True when the thermocouple is disconnected (STATUS bit 4).\"\"\"\n        return bool(self.status() & ST_OPEN_CIRCUIT)\n\n    def short_circuit(self):\n        \"\"\"True when the thermocouple is shorted to VDD or GND (STATUS bit 5).\"\"\"\n        return bool(self.status() & ST_SHORT_CIRCUIT)\n\n    def fault(self):\n        \"\"\"'OPEN', 'SHORT' or 'OK'.\"\"\"\n        s = self.status()\n        if s & ST_OPEN_CIRCUIT:\n            return 'OPEN'\n        if s & ST_SHORT_CIRCUIT:\n            return 'SHORT'\n        return 'OK'\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mcp9601 import MCP9601\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = MCP9601(i2c, tc_type='K')\nwhile True:\n    print('TH=%.2fC TC=%.2fC %s' % (sensor.temperature(), sensor.ambient(), sensor.fault()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the thermocouple and cold-junction temperatures set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 412
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cold",
+          "value": 31
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TH=412.00C TC=31.00C OK",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:16:54.958Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP960X-Data-Sheet-20005426.pdf",
+      "https://learn.adafruit.com/adafruit-mcp9601/pinouts",
+      "https://www.adafruit.com/product/5165"
+    ]
+  }
+}

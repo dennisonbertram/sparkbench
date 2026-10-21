@@ -1,0 +1,279 @@
+{
+  "type": "custom-dps368",
+  "name": "DPS368 waterproof barometric pressure & temperature sensor",
+  "mpn": "DPS368",
+  "category": "sensor",
+  "description": "Infineon XENSIV digital barometric pressure (300–1200 hPa, ±1 hPa absolute, ±0.06 hPa relative, ±0.002 hPa precision) and temperature (-40 to 85 °C, ±0.5 °C) sensor in a water- and dust-resistant IPx8 package, with I2C (up to 3.4 MHz) and SPI. Register-compatible with the DPS310. The chip runs on 1.7–3.6 V. Sold as: Infineon XENSIV DPS368 Pressure Shield2Go (S2GO PRESSURE DPS368), a 3.3 V-only board (no regulator or level shifter) with a 9-pin header (NC, NC, NC, SDA, SCL, GND, 3V3, INT/GPIO3, NC) and an 8-pin header (NC, NC, NC, NC, CS, SCLK, MOSI, MISO), 10 kΩ I2C pull-ups, 0 Ω links set for I2C, a red power LED and a break-off sensor head; I2C address 0x77 (0x76 with solder bridge J1 closed).",
+  "eli5": "Feels the weight of the air above it so finely that it notices you lifting it a few centimetres, tells the temperature too, and does not mind getting wet.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "NC1",
+      "role": "nc",
+      "description": "Header 1 pin 1: not connected",
+      "required": false
+    },
+    {
+      "name": "NC2",
+      "role": "nc",
+      "description": "Header 1 pin 2: not connected",
+      "required": false
+    },
+    {
+      "name": "NC3",
+      "role": "nc",
+      "description": "Header 1 pin 3: not connected",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (to the chip's SDI through a 0 Ω link in I2C configuration); 10 kΩ pull-up to 3.3 V on the board. 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (to the chip's SCK through a 0 Ω link in I2C configuration); 10 kΩ pull-up to 3.3 V on the board. 3.3 V logic only",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Power 3.3 V: feeds the DPS368 VDD and VDDIO directly (no regulator, no level shifting). 1.7–3.6 V, absolute maximum 4 V: never 5 V",
+      "required": true
+    },
+    {
+      "name": "INT/GPIO3",
+      "role": "nc",
+      "description": "Interrupt output from the chip's SDO pin, only after solder bridge J2 is closed (open as shipped); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "NC9",
+      "role": "nc",
+      "description": "Header 1 pin 9: not connected",
+      "required": false
+    },
+    {
+      "name": "NC10",
+      "role": "nc",
+      "description": "Header 2 pin 10: not connected",
+      "required": false
+    },
+    {
+      "name": "NC11",
+      "role": "nc",
+      "description": "Header 2 pin 11: not connected",
+      "required": false
+    },
+    {
+      "name": "NC12",
+      "role": "nc",
+      "description": "Header 2 pin 12: not connected",
+      "required": false
+    },
+    {
+      "name": "NC13",
+      "role": "nc",
+      "description": "Header 2 pin 13: not connected",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "SPI chip select; only connected after moving the 0 Ω links to the SPI positions. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "SCLK",
+      "role": "nc",
+      "description": "SPI clock; only connected in SPI configuration. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "MOSI",
+      "role": "nc",
+      "description": "SPI data in; only connected in SPI configuration. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "MISO",
+      "role": "nc",
+      "description": "SPI data out; only connected in SPI configuration. Leave unconnected for I2C",
+      "required": false
+    }
+  ],
+  "vmin": 1.7,
+  "vmax": 3.6,
+  "currentMa": 3,
+  "i2cAddress": 119,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/6/1/9/3/DPS368-DataSheet.pdf",
+  "priceUsd": 14,
+  "supplierQuery": "Infineon S2GO PRESSURE DPS368 Shield2Go",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x17_P2.54mm_Vertical",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/d/6/1/9/3/DPS368-DataSheet.pdf",
+    "https://www.infineon.com/cms/en/product/evaluation-boards/s2go-pressure-dps368/",
+    "https://github.com/Infineon/arduino-xensiv-dps3xx/wiki",
+    "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png",
+    "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/Schematic_DPS3xx.jpg"
+  ],
+  "buildNotes": [
+    "3.3 V only: the 3V3 pin feeds the chip directly (VDD 1.7–3.6 V, absolute maximum 4 V on any pin). Never connect it, SDA or SCL to 5 V.",
+    "As shipped the 0 Ω links select I2C: only 3V3, GND, SDA and SCL (header 1 pins 7, 6, 4, 5) are needed; the board has 10 kΩ pull-ups on SDA and SCL.",
+    "Check the ID register 0x0D: it reads 0x10 (REV_ID 1, PROD_ID 0), the same as a DPS310.",
+    "After power-up or a soft reset (write 0x09 to 0x0C) wait until MEAS_CFG (0x08) bits 7 and 6 (COEF_RDY, SENSOR_RDY) are set: up to 40 ms.",
+    "Raw readings mean nothing until compensated with the factory coefficients c0, c1, c00, c10, c01, c11, c20, c21, c30 (0x10–0x21, two's complement, 12/20/16-bit) and the scale factor kP / kT for the chosen oversampling (datasheet table 9).",
+    "Set TMP_CFG (0x07) bit 7 to TMP_COEF_SRCE (0x28) bit 7 so temperature comes from the sensor the coefficients were made with; above 8× oversampling set P_SHIFT (bit 2) / T_SHIFT (bit 3) in CFG_REG (0x09).",
+    "One-shot reading: write 0x02 to MEAS_CFG, wait for TMP_RDY (bit 5), read 0x03–0x05; then write 0x01, wait for PRS_RDY (bit 4), read 0x00–0x02 (24-bit, MSB first, two's complement). 16× pressure oversampling takes 27.6 ms.",
+    "Keep the vent hole on the sensor uncovered and out of fans, drafts and direct sunlight."
+  ],
+  "keywords": [
+    "dps368",
+    "pressure",
+    "barometer",
+    "barometric",
+    "altitude",
+    "altimeter",
+    "temperature",
+    "waterproof",
+    "infineon",
+    "xensiv",
+    "shield2go",
+    "s2go"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "hPa",
+        "min": 300,
+        "max": 1200,
+        "default": 1013.25
+      }
+    ],
+    "registers": {
+      "0x08": 192,
+      "0x0d": 16,
+      "0x10": 12,
+      "0x11": 206,
+      "0x12": 254,
+      "0x13": 24,
+      "0x14": 12,
+      "0x15": 79,
+      "0x16": 37,
+      "0x17": 64,
+      "0x18": 0,
+      "0x19": 0,
+      "0x1a": 0,
+      "0x1b": 0,
+      "0x1c": 0,
+      "0x1d": 0,
+      "0x1e": 0,
+      "0x1f": 0,
+      "0x20": 0,
+      "0x21": 0,
+      "0x28": 128
+    },
+    "measures": [
+      {
+        "reg": "0x03",
+        "bytes": 3,
+        "signed": true,
+        "scale": -0.000492095947265625,
+        "offset": 102,
+        "control": "value"
+      },
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "signed": true,
+        "scale": -0.0022051411290322583,
+        "offset": 985,
+        "control": "pressure"
+      },
+      {
+        "reg": "0x08",
+        "bytes": 1,
+        "scale": 1000,
+        "offset": -208000,
+        "control": "value",
+        "when": {
+          "reg": "0x08",
+          "equals": 1,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x08",
+        "bytes": 1,
+        "scale": 1000,
+        "offset": -224000,
+        "control": "value",
+        "when": {
+          "reg": "0x08",
+          "equals": 2,
+          "mask": 7
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "dps368.py",
+    "code": "# MicroPython driver for the Infineon DPS368 barometric pressure / temperature sensor (I2C).\n# Written from the Infineon datasheet \"DPS368 Digital XENSIV barometric pressure sensor\" v1.1 (2019-07-03):\n#   operating modes sec. 4.1, I2C address sec. 4.5, compensation sec. 4.9.1 / 4.9.2,\n#   scale factors table 9 (sec. 4.9.3), timing table 8, register map sec. 7,\n#   PRS_CFG / TMP_CFG / MEAS_CFG / CFG_REG / RESET sec. 8.3-8.9, measurement times table 16,\n#   calibration coefficients table 18 (sec. 8.11), coefficient source sec. 8.12.\nimport time\n\nREG_PSR = 0x00        # PSR_B2..B0: 24-bit two's complement pressure result\nREG_TMP = 0x03        # TMP_B2..B0: 24-bit two's complement temperature result\nREG_PRS_CFG = 0x06    # PM_RATE[6:4] PM_PRC[3:0]\nREG_TMP_CFG = 0x07    # TMP_EXT[7] TMP_RATE[6:4] TMP_PRC[3:0]\nREG_MEAS_CFG = 0x08   # COEF_RDY[7] SENSOR_RDY[6] TMP_RDY[5] PRS_RDY[4] MEAS_CTRL[2:0]\nREG_CFG = 0x09        # INT_HL INT_SEL[6:4] T_SHIFT[3] P_SHIFT[2] FIFO_EN[1] SPI_MODE[0]\nREG_RESET = 0x0C      # FIFO_FLUSH[7] SOFT_RST[3:0] = 1001\nREG_ID = 0x0D         # REV_ID[7:4] PROD_ID[3:0]; reset value 0x10\nREG_COEF = 0x10       # 0x10..0x21: c0, c1, c00, c10, c01, c11, c20, c21, c30\nREG_COEF_SRCE = 0x28  # bit7 TMP_COEF_SRCE: coefficients made with the MEMS (external) temperature sensor\n\nMEAS_PRS = 0x01       # command mode: one pressure measurement\nMEAS_TMP = 0x02       # command mode: one temperature measurement\n\n# Table 9: compensation scale factor kP / kT for oversampling code 0..7 (1, 2, 4 ... 128 times)\nSCALE = (524288, 1572864, 3670016, 7864320, 253952, 516096, 1040384, 2088960)\n# Table 16: measurement time in ms for oversampling code 0..7\nMEAS_MS = (3.6, 5.2, 8.4, 14.8, 27.6, 53.2, 104.4, 206.8)\n\n\ndef _twos(v, bits):\n    return v - (1 << bits) if v & (1 << (bits - 1)) else v\n\n\nclass DPS368:\n    def __init__(self, i2c, addr=0x77, prs_osr=4, tmp_osr=0):\n        \"\"\"addr 0x77 (SDO floating, Shield2Go default) or 0x76 (SDO pulled to GND, Shield2Go bridge J1).\n        Oversampling codes 0..7 = 1, 2, 4, 8, 16, 32, 64, 128 times\n        (default: pressure 16x 'Standard', temperature single).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        pid = self._r(REG_ID, 1)[0]\n        if pid != 0x10:\n            raise OSError(\"DPS368 not found at 0x%02X (ID register 0x%02X, expected 0x10)\" % (addr, pid))\n        self._w(REG_RESET, 0x09)  # soft reset: runs the same sequence as power-on\n        time.sleep_ms(40)  # table 8: sensor ready <= 12 ms, coefficients ready <= 40 ms\n        self._wait_bits(0xC0, 100, \"coefficients / sensor not ready\")  # COEF_RDY and SENSOR_RDY\n        self._load_coef()\n        # Sec. 8.4 / 8.12: use the temperature sensor the coefficients were made with (TMP_EXT = TMP_COEF_SRCE).\n        self.tmp_ext = self._r(REG_COEF_SRCE, 1)[0] & 0x80\n        self._fix_temperature()\n        self.set_oversampling(prs_osr, tmp_osr)\n        self.t_raw_sc = None\n\n    def _fix_temperature(self):\n        # Undocumented register sequence from Infineon's own DPS3xx Arduino library\n        # (DpsClass::correctTemp, run for DPS310 and DPS368): fixes ICs with a fuse-bit fault\n        # that report a wrong temperature; \"should not affect ICs without this problem\".\n        for reg, val in ((0x0E, 0xA5), (0x0F, 0x96), (0x62, 0x02), (0x0E, 0x00), (0x0F, 0x00)):\n            self._w(reg, val)\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _wait_bits(self, mask, timeout_ms, err):\n        t0 = time.ticks_ms()\n        while (self._r(REG_MEAS_CFG, 1)[0] & mask) != mask:\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError(\"DPS368 \" + err)\n            time.sleep_ms(2)\n\n    def _load_coef(self):\n        c = self._r(REG_COEF, 18)  # table 18, one auto-increment burst\n        self.c0 = _twos((c[0] << 4) | (c[1] >> 4), 12)\n        self.c1 = _twos(((c[1] & 0x0F) << 8) | c[2], 12)\n        self.c00 = _twos((c[3] << 12) | (c[4] << 4) | (c[5] >> 4), 20)\n        self.c10 = _twos(((c[5] & 0x0F) << 16) | (c[6] << 8) | c[7], 20)\n        self.c01 = _twos((c[8] << 8) | c[9], 16)\n        self.c11 = _twos((c[10] << 8) | c[11], 16)\n        self.c20 = _twos((c[12] << 8) | c[13], 16)\n        self.c21 = _twos((c[14] << 8) | c[15], 16)\n        self.c30 = _twos((c[16] << 8) | c[17], 16)\n\n    def set_oversampling(self, prs_osr, tmp_osr):\n        self.prs_osr = prs_osr & 0x07\n        self.tmp_osr = tmp_osr & 0x07\n        self.kP = SCALE[self.prs_osr]\n        self.kT = SCALE[self.tmp_osr]\n        self._w(REG_PRS_CFG, self.prs_osr)  # PM_RATE only matters in background mode\n        self._w(REG_TMP_CFG, self.tmp_ext | self.tmp_osr)\n        # Table 9 / sec. 8.6: result bit-shift must be enabled when oversampling is more than 8 times.\n        cfg = (0x04 if self.prs_osr > 3 else 0) | (0x08 if self.tmp_osr > 3 else 0)\n        self._w(REG_CFG, cfg)\n\n    def _measure(self, ctrl, ready_bit, reg, osr):\n        # Command mode (sec. 4.1): one measurement, then the sensor returns to standby.\n        self._w(REG_MEAS_CFG, ctrl)\n        time.sleep_ms(int(MEAS_MS[osr]) + 1)\n        self._wait_bits(ready_bit, int(MEAS_MS[osr]) * 2 + 20, \"measurement timed out\")\n        d = self._r(reg, 3)\n        return _twos((d[0] << 16) | (d[1] << 8) | d[2], 24)\n\n    def read_temperature_raw(self):\n        return self._measure(MEAS_TMP, 0x20, REG_TMP, self.tmp_osr)\n\n    def read_pressure_raw(self):\n        return self._measure(MEAS_PRS, 0x10, REG_PSR, self.prs_osr)\n\n    def temperature(self):\n        \"\"\"Degrees C (sec. 4.9.2: Tcomp = c0 * 0.5 + c1 * Traw_sc).\"\"\"\n        t_raw_sc = self.read_temperature_raw() / self.kT\n        self.t_raw_sc = t_raw_sc\n        return self.c0 * 0.5 + self.c1 * t_raw_sc\n\n    def pressure(self):\n        \"\"\"Pascal (sec. 4.9.1). Uses the latest temperature reading; measures one if there is none.\"\"\"\n        if self.t_raw_sc is None:\n            self.temperature()\n        p = self.read_pressure_raw() / self.kP\n        t = self.t_raw_sc\n        return (self.c00 + p * (self.c10 + p * (self.c20 + p * self.c30))\n                + t * self.c01 + t * p * (self.c11 + p * self.c21))\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure hPa): a fresh temperature, then pressure compensated with it.\"\"\"\n        t = self.temperature()\n        p = self.pressure() / 100.0\n        return t, p\n\n    def altitude(self, sea_level_hpa=1013.25):\n        \"\"\"Approximate altitude in metres from the international barometric formula.\"\"\"\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_hpa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom dps368 import DPS368\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = DPS368(i2c, addr=0x77)\nwhile True:\n    t, p = sensor.read()\n    print('T=%.2fC P=%.2fhPa' % (t, p))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 23.7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 962.45
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=23.70C P=962.45hPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (10 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:22:08.121Z",
+    "verifiedSources": [
+      "https://www.infineon.com/assets/row/public/documents/24/49/infineon-dps368-datasheet-en.pdf",
+      "https://github.com/Infineon/arduino-xensiv-dps3xx/blob/master/docs/img/dps368-shield2go.png"
+    ]
+  }
+}

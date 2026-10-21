@@ -1,0 +1,205 @@
+{
+  "type": "custom-sts40",
+  "name": "STS40 high-accuracy temperature sensor",
+  "mpn": "STS40",
+  "category": "sensor",
+  "description": "Sensirion STS4x 16-bit digital temperature sensor (-40 to 125 °C, ±0.2 °C typical, 0.01 °C resolution) with an I2C interface and CRC-checked readings at fixed address 0x44 (STS40-AD1B). The chip runs on 1.08–3.6 V. Sold as: MikroElektronika Thermo 24 Click (MIKROE-5110), a mikroBUS board with two 8-pin headers (AN, RST, CS, SCK, MISO, MOSI, 3V3, GND / PWM, INT, RX, TX, SCL, SDA, 5V, GND; only 3V3, GND, SCL and SDA are needed), a PCA9306 I2C level translator with a VIO SEL jumper (3V3 default / 5V) and a power LED.",
+  "eli5": "A very precise thermometer that tells your board the temperature to a fifth of a degree.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "AN",
+      "role": "nc",
+      "description": "mikroBUS analog pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "nc",
+      "description": "mikroBUS reset pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "mikroBUS SPI chip select (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "SCK",
+      "role": "nc",
+      "description": "mikroBUS SPI clock (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "MISO",
+      "role": "nc",
+      "description": "mikroBUS SPI MISO (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "MOSI",
+      "role": "nc",
+      "description": "mikroBUS SPI MOSI (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V: powers the STS40 and the power LED (no regulator: never 5 V here)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "nc",
+      "description": "mikroBUS PWM pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "nc",
+      "description": "mikroBUS interrupt pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "RX",
+      "role": "nc",
+      "description": "mikroBUS UART RX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "nc",
+      "description": "mikroBUS UART TX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, through the on-board PCA9306 level translator (logic level set by the VIO SEL jumper, default 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, through the on-board PCA9306 level translator (logic level set by the VIO SEL jumper, default 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "nc",
+      "description": "mikroBUS 5 V rail: only used as the I2C logic level when the VIO SEL jumper is moved to 5V; leave unconnected with the default 3V3 setting",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (second GND pin, same net as GND)",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 3.6,
+  "currentMa": 3,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://sensirion.com/resource/datasheet/sts4x",
+  "priceUsd": 15,
+  "supplierQuery": "MikroElektronika Thermo 24 Click MIKROE-5110 STS40",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire it with jumper leads: only 3V3, GND, SCL and SDA are needed. Leave the VIO SEL jumper in its default left (3V3) position for an ESP32, Pico or Raspberry Pi.",
+    "Power the sensor from 3.3 V only: the STS40 is rated 1.08–3.6 V and the board has no regulator on the 3V3 pin.",
+    "Single-shot high-precision command is one byte, 0xFD; wait at least 8.3 ms (10 ms is safe) before reading 3 bytes: temperature MSB, LSB, CRC.",
+    "Check the CRC (poly 0x31, init 0xFF; 0xBEEF gives 0x92). A mismatch almost always means a loose SDA/SCL wire.",
+    "Temperature is T = -45 + 175 × raw / 65535 °C.",
+    "The address is fixed at 0x44 in the chip (STS40-AD1B), so only one Thermo 24 Click per I2C bus.",
+    "Keep the sensor away from the power LED, regulator and microcontroller, which warm the air around them."
+  ],
+  "keywords": [
+    "sts40",
+    "sts4x",
+    "sts40-ad1b",
+    "thermo 24 click",
+    "mikroe-5110",
+    "temperature",
+    "sensirion",
+    "high accuracy",
+    "mikrobus"
+  ],
+  "sources": [
+    "https://sensirion.com/resource/datasheet/sts4x",
+    "https://www.mikroe.com/thermo-24-click",
+    "https://thedebugstore.com/a/llms/products/mikroe-5110-thermo-24-click-board-uk",
+    "https://github.com/MikroElektronika/mikrosdk_click_v2/tree/master/clicks/thermo24"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "responses": [
+      {
+        "match": "fd",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sts40.py",
+    "code": "# STS40 high-accuracy temperature sensor (Sensirion STS4x), MicroPython driver.\n# Single-shot measurement: write one command byte, wait for the conversion, read 3 bytes\n# (T MSB, T LSB, CRC-8 poly 0x31 init 0xFF). T = -45 + 175 * S / 65535 degC (datasheet eq. 1).\n# Commands: 0xFD high (max 8.3 ms), 0xF6 medium (max 4.5 ms), 0xE0 low (max 1.6 ms) repeatability,\n# 0x89 serial number, 0x94 soft reset (max 1 ms).\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\n_MODES = {'high': (0xFD, 10), 'medium': (0xF6, 5), 'low': (0xE0, 2)}\n\n\nclass STS40:\n    def __init__(self, i2c, addr=0x44):\n        # STS40-AD1B answers at 0x44 (BD1B: 0x45, CD1B: 0x46). The address is fixed in the chip.\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(1)  # power-up time tPU is at most 1 ms\n\n    def reset(self):\n        \"\"\"Soft reset (0x94); the sensor is idle again after at most 1 ms.\"\"\"\n        self.i2c.writeto(self.addr, b'\\x94')\n        time.sleep_ms(1)\n\n    def serial_number(self):\n        self.i2c.writeto(self.addr, b'\\x89')\n        time.sleep_ms(1)\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('STS40 CRC mismatch: check the wiring')\n        return (d[0] << 24) | (d[1] << 16) | (d[3] << 8) | d[4]\n\n    def read_raw(self, mode='high'):\n        cmd, wait_ms = _MODES[mode]\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        time.sleep_ms(wait_ms)\n        d = self.i2c.readfrom(self.addr, 3)\n        if _crc8(d[0:2]) != d[2]:\n            raise OSError('STS40 CRC mismatch: check the wiring')\n        return (d[0] << 8) | d[1]\n\n    def temperature(self, mode='high'):\n        \"\"\"Measure once and return the temperature in degrees C.\"\"\"\n        return -45 + 175 * self.read_raw(mode) / 65535\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sts40 import STS40\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = STS40(i2c)\nwhile True:\n    print('T=%.2fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.3
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.30C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:36:25.417Z",
+    "verifiedSources": [
+      "https://sensirion.com/resource/datasheet/sts4x",
+      "https://github.com/MikroElektronika/mikrosdk_click_v2/blob/master/clicks/thermo24/lib_thermo24/include/thermo24.h",
+      "https://www.mikroe.com/thermo-24-click"
+    ]
+  }
+}

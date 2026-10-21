@@ -1,0 +1,130 @@
+{
+  "type": "custom-tc74",
+  "name": "TC74 digital temperature sensor",
+  "mpn": "TC74A0-3.3VAT",
+  "category": "sensor",
+  "description": "Microchip tiny serial digital thermal sensor: reports temperature as one signed byte, 1 °C per step (-40 to 125 °C operating, ±2 °C from 25 to 85 °C, ±3 °C from 0 to 125 °C), about 8 conversions a second, over SMBus/I2C up to 100 kHz. Runs on 2.7–5.5 V at 200 µA (5 µA in standby). Needs external pull-ups on SDA and SCLK. Sold as: Microchip TC74A0-3.3VAT in a 5-pin TO-220 package (pins 1–5 with the printed face towards you, legs down: NC, SDA, GND, SCLK, VDD; tab = GND), I2C address 0x48 fixed by the A0 part number (TC74A5 = default 0x4D, A0–A7 = 0x48–0x4F).",
+  "eli5": "A small thermometer chip in a power-transistor style package; your board asks it for the temperature over two wires and gets back a whole number of degrees.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Pin 1: no internal connection",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "pullUp": 4700,
+      "description": "Pin 2: SMBus/I2C data, open-drain: needs an external pull-up to VDD (4.7k)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 3: ground (the metal tab is also GND)",
+      "required": true
+    },
+    {
+      "name": "SCLK",
+      "role": "io",
+      "fn": "i2c.scl",
+      "pullUp": 4700,
+      "description": "Pin 4: SMBus/I2C clock input, 10–100 kHz: needs an external pull-up to VDD (4.7k)",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Pin 5: supply, 2.7–5.5 V. Use the microcontroller's 3.3 V: at 5 V the inputs need 4 V for a logic high",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.35,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/21462D.pdf",
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/21462D.pdf",
+    "https://www.microchip.com/en-us/product/TC74"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "TC74A0-3.3VAT TO-220 temperature sensor",
+  "footprint": "Package_TO_SOT_THT:TO-220-5_P3.4x3.7mm_StaggerOdd_Lead3.8mm_Vertical",
+  "buildNotes": [
+    "Pin order (TO-220, printed face towards you, legs down, left to right): 1 NC, 2 SDA, 3 GND, 4 SCLK, 5 VDD. The metal tab is tied to GND: do not let it touch other wires.",
+    "The legs are on a 1.7 mm pitch, not 2.54 mm: bend them alternately forward and back (staggered, as the circuit-board footprint expects) to fit a breadboard or PCB, and check that no two legs share a row.",
+    "SDA and SCLK need pull-up resistors to VDD (4.7k each); the chip has none inside.",
+    "Power VDD from 3.3 V on a 3.3 V microcontroller: its logic-high threshold is 0.8 × VDD (4 V at a 5 V supply), so 3.3 V signals are not reliable with a 5 V supply.",
+    "The bus must run at 100 kHz or slower (minimum 10 kHz): create the I2C bus with freq=100000.",
+    "The address is fixed by the part number: TC74A0 = 0x48, TC74A1 = 0x49 ... TC74A5 = 0x4D (the most common default) ... TC74A7 = 0x4F. Run i2c.scan() if unsure.",
+    "Temperature: read one byte from command 0x00; it is two's complement in whole °C (0x19 = 25 °C, 0xE7 = -25 °C). The chip rounds down: 25.75 °C reads 25, -0.25 °C reads -1.",
+    "Wait up to 250 ms after power-up for the first conversion (CONFIG bit 6 DATA_RDY = 1). Writing 0x80 to CONFIG (0x01) enters 5 µA standby; write 0x00 to resume."
+  ],
+  "keywords": [
+    "tc74",
+    "tc74a0",
+    "tc74a5",
+    "temperature",
+    "thermometer",
+    "to-220",
+    "smbus",
+    "microchip"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 22,
+    "registers": {
+      "0x01": 64
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 1,
+      "scale": 1,
+      "offset": 0.5,
+      "signed": true
+    }
+  },
+  "driver": {
+    "filename": "tc74.py",
+    "code": "# TC74 tiny serial digital thermal sensor (Microchip DS21462D), MicroPython driver.\n# SMBus/I2C, 10-100 kHz only. Command byte (register): 0x00 RTR = TEMP (read-only),\n# 0x01 RWCR = CONFIG (D7 SHDN: 1 = standby, D6 DATA_RDY: 1 = ready, read-only).\n# TEMP: one byte, two's complement, 1 degC per LSB (0x19 = 25 C, 0xE7 = -25 C).\n# The chip rounds down: 25.75 C reads 25, -0.25 C reads -1 (Table 4-4).\n# Address 1001 A2A1A0 is set by the part number: TC74A0 = 0x48 ... TC74A5 = 0x4D (default) ... TC74A7 = 0x4F.\nimport time\n\n_RTR = 0x00\n_RWCR = 0x01\n_SHDN = 0x80\n_DATA_RDY = 0x40\n\n\nclass TC74:\n    def __init__(self, i2c, addr=0x48):\n        self.i2c = i2c\n        self.addr = addr\n\n    def config(self, value=None):\n        \"\"\"Read (no argument) or write the CONFIG register.\"\"\"\n        if value is None:\n            return self.i2c.readfrom_mem(self.addr, _RWCR, 1)[0]\n        self.i2c.writeto_mem(self.addr, _RWCR, bytes([value & _SHDN]))\n\n    def ready(self):\n        \"\"\"True once a conversion has finished since power-up or leaving standby.\"\"\"\n        return bool(self.config() & _DATA_RDY)\n\n    def wait_ready(self, timeout_ms=300):\n        \"\"\"Wait for DATA_RDY (datasheet: at most 250 ms after power-on). Returns True if ready.\"\"\"\n        t0 = time.ticks_ms()\n        while not self.ready():\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                return False\n            time.sleep_ms(10)\n        return True\n\n    def temperature(self):\n        \"\"\"Temperature in whole degC (Read Byte, command 0x00, two's complement).\"\"\"\n        raw = self.i2c.readfrom_mem(self.addr, _RTR, 1)[0]\n        return raw - 256 if raw & 0x80 else raw\n\n    def standby(self, on=True):\n        \"\"\"SHDN = 1: A/D halted, TEMP frozen, about 5 uA. SHDN = 0: normal, 8 samples/s.\"\"\"\n        self.config(_SHDN if on else 0)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tc74 import TC74\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)  # TC74: 100 kHz max\nsensor = TC74(i2c, 0x48)  # TC74A0; a TC74A5 is 0x4D\nsensor.wait_ready()  # first conversion: up to 250 ms after power-up\nwhile True:\n    print('T=%dC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider, rounded down like the chip",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -12.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-13C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:14:34.005Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/21462D.pdf"
+    ]
+  }
+}

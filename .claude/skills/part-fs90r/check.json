@@ -1,0 +1,79 @@
+{
+  "type": "custom-fs90r",
+  "mpn": "FS90R",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; M1.SIG → D25 (GPIO25). Added a separate 6 V supply for V+ (it needs 4.8–6 V and up to 800 mA, more than the board can give); its − joins the board's GND. Added the fs90r.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Stops, turns clockwise, then counter-clockwise, then stops: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; M1.SIG → GP2 (GPIO2). Added a separate 6 V supply for V+ (it needs 4.8–6 V and up to 800 mA, more than the board can give); its − joins the board's GND. Added the fs90r.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Stops, turns clockwise, then counter-clockwise, then stops: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T12:08:27.802Z"
+}

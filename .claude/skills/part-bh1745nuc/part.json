@@ -1,0 +1,201 @@
+{
+  "type": "custom-bh1745nuc",
+  "name": "BH1745NUC RGB colour sensor",
+  "mpn": "BH1745NUC",
+  "category": "sensor",
+  "description": "ROHM digital red, green, blue and clear light sensor with an IR-cut filter, 16-bit outputs, 50/60 Hz flicker rejection and a 0.005-40,000 lux range, I2C at 0x38 (0x39). Chip runs on 2.3-3.6 V; the breakout adds a 3.3 V regulator and I2C level shifting. Sold as: Pimoroni BH1745 Luminance and Colour Sensor Breakout (PIM375), 5-pin header 3-6V, SDA, SCL, INT, GND with two white illumination LEDs switched by INT, I2C address 0x38 (cut the ADDR trace for 0x39).",
+  "eli5": "Tells your board how much red, green, blue and total light reaches it, so it can guess the colour of a light or of an object held in front of it.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "3-6V",
+      "role": "power",
+      "description": "Supply, 3-6 V (on-board 3.3 V regulator; 3.3 V or 5 V both fine)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (level-shifted, 10 kOhm pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (level-shifted, 10 kOhm pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain active low (printed as a slashed-circle symbol); it also switches the two white LEDs. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 6,
+  "currentMa": 0.25,
+  "i2cAddress": 56,
+  "datasheetUrl": "https://www.mouser.co.uk/datasheet/2/348/bh1745nuc-e-519994.pdf",
+  "priceUsd": 9,
+  "supplierQuery": "Pimoroni BH1745 luminance colour sensor breakout PIM375",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the IDs first: SYSTEM_CONTROL (0x40) bits 5:0 read 0x0B and MANUFACTURER ID (0x92) reads 0xE0.",
+    "Start a measurement: MODE_CONTROL1 (0x41) = 0x00 (160 ms), MODE_CONTROL2 (0x42) = 0x10 (RGBC on, gain 1x), MODE_CONTROL3 (0x44) = 0x02 as the datasheet requires.",
+    "Each write to MODE_CONTROL restarts the measurement; wait one measurement time (160 ms typ, 225 ms max) before the first read.",
+    "Read 8 bytes from 0x50: red, green, blue, clear, each 16-bit low byte first.",
+    "The datasheet gives no lux formula, only light-source-dependent curves: the counts are relative intensities, compare channels or calibrate for your setup.",
+    "The white LEDs light when the INT output is active (low); the driver's leds(True) forces the interrupt on. Turn them off when measuring ambient light."
+  ],
+  "keywords": [
+    "bh1745",
+    "bh1745nuc",
+    "rgb",
+    "colour",
+    "color",
+    "light",
+    "lux",
+    "sensor",
+    "rohm",
+    "pimoroni"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Red channel reading",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 4000,
+    "controls": [
+      {
+        "key": "green",
+        "quantity": "Green channel reading",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 3350
+      },
+      {
+        "key": "blue",
+        "quantity": "Blue channel reading",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2370
+      },
+      {
+        "key": "clear",
+        "quantity": "Clear channel reading",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 160
+      }
+    ],
+    "registers": {
+      "0x40": 11,
+      "0x92": 224
+    },
+    "measures": [
+      {
+        "reg": "0x50",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x52",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "green"
+      },
+      {
+        "reg": "0x54",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "blue"
+      },
+      {
+        "reg": "0x56",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "clear"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bh1745.py",
+    "code": "# BH1745NUC RGB + clear colour sensor (ROHM BH1745NUC), MicroPython driver.\n# Written from the ROHM datasheet (TSZ02201-0M3M0F616080-1-2, Rev.002):\n#   I2C address 0x38 (ADDR low) / 0x39 (ADDR high); Pimoroni board default 0x38.\n#   SYSTEM_CONTROL 0x40: bit7 SW reset, bit6 INT reset, bits5:0 part ID = 0x0B.\n#   MODE_CONTROL1 0x41: bits2:0 measurement time 160/320/640/1280/2560/5120 ms.\n#   MODE_CONTROL2 0x42: bit7 VALID (read), bit4 RGBC_EN, bits1:0 ADC gain 1x/2x/16x.\n#   MODE_CONTROL3 0x44: write 0x02.\n#   Data 0x50..0x57: red, green, blue, clear, each 16-bit low byte first.\n#   MANUFACTURER ID 0x92 = 0xE0.\nimport time\n\n_SYSTEM_CONTROL = 0x40\n_MODE_CONTROL1 = 0x41\n_MODE_CONTROL2 = 0x42\n_MODE_CONTROL3 = 0x44\n_RED_LSB = 0x50\n_INTERRUPT = 0x60\n_TH_LSB = 0x62\n_MANUFACTURER_ID = 0x92\n\n_TIMES = {160: 0, 320: 1, 640: 2, 1280: 3, 2560: 4, 5120: 5}\n_GAINS = {1: 0, 2: 1, 16: 2}\n\n\nclass BH1745:\n    def __init__(self, i2c, addr=0x38, time_ms=160, gain=1):\n        \"\"\"time_ms: 160, 320, 640, 1280, 2560 or 5120. gain: 1, 2 or 16.\"\"\"\n        if time_ms not in _TIMES or gain not in _GAINS:\n            raise ValueError('time_ms must be 160-5120 (powers of 2 x 160), gain 1, 2 or 16')\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(2)  # datasheet: IC active 2 ms after VCC rises above 2.0 V\n        part = self._r8(_SYSTEM_CONTROL) & 0x3F\n        maker = self._r8(_MANUFACTURER_ID)\n        if part != 0x0B or maker != 0xE0:\n            raise OSError('BH1745 not found (part 0x%02X, maker 0x%02X): check the wiring' % (part, maker))\n        self._w8(_SYSTEM_CONTROL, 0x80)  # software reset: all registers to defaults, power down\n        time.sleep_ms(10)\n        self._w8(_SYSTEM_CONTROL, 0x00)\n        self.time_ms = time_ms\n        self._w8(_MODE_CONTROL1, _TIMES[time_ms])\n        self._w8(_MODE_CONTROL2, 0x10 | _GAINS[gain])  # RGBC_EN = 1, ADC gain\n        self._w8(_MODE_CONTROL3, 0x02)  # datasheet: write 02h\n        # A write to MODE_CONTROL restarts the measurement. Data update period is\n        # 160 ms typ / 225 ms max at the 160 ms setting, so allow 1.5x the nominal time.\n        time.sleep_ms(time_ms * 3 // 2)\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def rgbc(self):\n        \"\"\"Return the latest (red, green, blue, clear) counts, 0-65535 each.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _RED_LSB, 8)\n        return (d[0] | (d[1] << 8), d[2] | (d[3] << 8),\n                d[4] | (d[5] << 8), d[6] | (d[7] << 8))\n\n    def valid(self):\n        \"\"\"True once a new measurement finished since the last MODE_CONTROL write or\n        the last call (reading MODE_CONTROL2 clears VALID).\"\"\"\n        return bool(self._r8(_MODE_CONTROL2) & 0x80)\n\n    def leds(self, on):\n        \"\"\"Pimoroni board only: its two white LEDs are switched by the INT output.\n        Thresholds high=0, low=0xFFFF make the interrupt always active (INT low = LEDs on).\"\"\"\n        if on:\n            self.i2c.writeto_mem(self.addr, _TH_LSB, bytes([0x00, 0x00, 0xFF, 0xFF]))\n            self._w8(_INTERRUPT, 0x11)  # update INT after each measurement, enable\n        else:\n            self._w8(_INTERRUPT, 0x00)  # INT disabled: pin high impedance\n            self._w8(_SYSTEM_CONTROL, 0x40)  # INT reset\n\n    def off(self):\n        \"\"\"Power down (RGBC_EN = 0).\"\"\"\n        self._w8(_MODE_CONTROL2, 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bh1745 import BH1745\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BH1745(i2c)  # 160 ms measurement, gain 1x\nwhile True:\n    r, g, b, c = sensor.rgbc()\n    print('R=%d G=%d B=%d C=%d' % (r, g, b, c))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the red, green, blue and clear counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "green",
+          "value": 8500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "blue",
+          "value": 3100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "clear",
+          "value": 900
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=12000 G=8500 B=3100 C=900",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.mouser.co.uk/datasheet/2/348/bh1745nuc-e-519994.pdf",
+    "https://static.chipdip.ru/lib/417/DOC028417358.pdf",
+    "https://shop.pimoroni.com/products/bh1745-luminance-and-colour-sensor-breakout",
+    "https://cdn.shopify.com/s/files/1/0174/1800/products/BH1745_2_of_3.JPG",
+    "https://github.com/pimoroni/bh1745-python/blob/main/bh1745/__init__.py",
+    "https://forums.pimoroni.com/t/bh1745-breakout-schematic/9711"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:10:18.196Z",
+    "verifiedSources": [
+      "https://static.chipdip.ru/lib/417/DOC028417358.pdf",
+      "https://shop.pimoroni.com/products/bh1745-luminance-and-colour-sensor-breakout"
+    ]
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "type": "custom-sg90-360",
+  "name": "SG90 360° continuous-rotation micro servo",
+  "mpn": "SG90 360",
+  "category": "actuator",
+  "description": "9 g SG90-size micro servo modified for continuous 360° rotation: there is no end stop and no position feedback, so the 50 Hz control pulse sets speed and direction instead of angle (about 1.5 ms = stop, 1.0 ms = full speed clockwise, 2.0 ms = full speed anticlockwise). About 110–120 RPM at 4.8–5 V, 1.3–1.7 kgf·cm stall torque, 4.8–6 V supply, 110–250 mA moving and up to 300 mA stalled. Sold as: ProtoSupplies Servo Motor Micro SG90 360 Degree Continuous Rotation, a bare servo with a 25 cm 3-wire lead and female 2.54 mm JR/Futaba plug (brown GND, red 5V, orange PWM signal), with horns and screws.",
+  "eli5": "A tiny motor that keeps spinning: your board's pulse picks which way it turns and how fast, or makes it stop.",
+  "refPrefix": "M",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Brown wire: ground (join it to the microcontroller's GND)",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Red wire: servo supply 4.8–6 V (5 V typical); 110–250 mA moving, up to 300 mA stalled",
+      "required": true,
+      "supply": {
+        "vmin": 4.8,
+        "vmax": 6,
+        "currentMa": 300
+      }
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Orange wire: control pulses, 50 Hz; 1.5 ms = stop, shorter = clockwise, longer = anticlockwise (3.3 V logic works)",
+      "required": true
+    }
+  ],
+  "vmin": 4.8,
+  "vmax": 6,
+  "currentMa": 250,
+  "datasheetUrl": "https://www.electrokit.com/upload/quick/af/0f/1324_41013137-tds.pdf",
+  "sources": [
+    "https://protosupplies.com/product/servo-motor-micro-sg90-360-degree-continuous-rotation/",
+    "https://www.electrokit.com/upload/quick/af/0f/1324_41013137-tds.pdf",
+    "https://smarthon-docs-en.readthedocs.io/en/latest/Sensors_and_actuators/Servo.html"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "SG90 360 degree continuous rotation micro servo",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire colours: brown = GND, red = V+ (4.8–6 V, 5 V typical), orange = PWM signal. A 3.3 V signal from an ESP32 or Pico drives it fine.",
+    "Power it from 5 V (a separate 5 V supply, or VIN/VBUS for a single servo), never from the 3.3 V pin, and join the supply ground to the board's GND.",
+    "The pulse sets speed, not angle: about 1500 µs stops it, 1000 µs is full speed clockwise and 2000 µs full speed anticlockwise. The exact stop point differs per unit (ProtoSupplies saw a stop zone of roughly 1420–1580 µs), so trim stop_us if it creeps at 'stop'.",
+    "Direction labels follow the Smarthon SG90 360 table; some clones turn the other way, so check yours with a short test first.",
+    "To stop it fully and save power, call off() to stop sending pulses. Add a 470 µF capacitor across V+ and GND if the board resets when the motor starts.",
+    "It looks identical to the normal 180° SG90 (often only a '360' sticker differs): angle code will just make this one spin."
+  ],
+  "keywords": [
+    "sg90 360",
+    "sg90 continuous",
+    "continuous rotation servo",
+    "360 servo",
+    "micro servo",
+    "9g servo",
+    "servo",
+    "motor",
+    "wheel"
+  ],
+  "sim": {
+    "kind": "servo",
+    "inputPin": "PWM",
+    "servo": {
+      "minUs": 1000,
+      "maxUs": 2000,
+      "degrees": 0,
+      "continuous": {
+        "stopUs": 1500,
+        "deadbandUs": 160,
+        "below": "cw"
+      }
+    }
+  },
+  "driver": {
+    "filename": "sg90_360.py",
+    "code": "# SG90 360-degree continuous-rotation micro servo, MicroPython driver.\n# Standard RC servo signal: one positive pulse every 20 ms (50 Hz).\n# On the continuous version the pulse sets SPEED and DIRECTION, not angle:\n#   ~1500 us = stop (the stop point varies a little per unit: trim stop_us),\n#   1000 us  = full speed clockwise, 2000 us = full speed anticlockwise\n#   (Smarthon SG90 360 table; some clones run the other way - test yours).\n# ProtoSupplies measured the stop zone as roughly 1420-1580 us.\n# Supply 4.8-6 V (5 V typical); a 3.3 V signal from an ESP32 / Pico works.\nfrom machine import Pin, PWM\n\nPERIOD_US = 20000  # 50 Hz frame\n\n\nclass SG90_360:\n    def __init__(self, pin, stop_us=1500, span_us=500):\n        self.stop_us = stop_us   # pulse that stops the motor (calibrate per unit)\n        self.span_us = span_us   # stop_us +/- span_us = full speed\n        self.pwm = PWM(pin if isinstance(pin, Pin) else Pin(pin), freq=50)\n        self.pwm.duty_u16(0)     # no pulses: motor idle\n\n    def write_us(self, us):\n        us = max(self.stop_us - self.span_us, min(self.stop_us + self.span_us, us))\n        self.pwm.duty_u16(int(us * 65535 // PERIOD_US))\n\n    def speed(self, pct):\n        \"\"\"pct -100..100: negative = clockwise, positive = anticlockwise, 0 = stop.\"\"\"\n        pct = max(-100, min(100, pct))\n        self.write_us(self.stop_us + self.span_us * pct / 100)\n\n    def stop(self):\n        self.write_us(self.stop_us)\n\n    def off(self):\n        \"\"\"Stop sending pulses: the motor stops and the servo idles (about 10 mA).\"\"\"\n        self.pwm.duty_u16(0)\n\n    def deinit(self):\n        self.pwm.deinit()\n"
+  },
+  "example": {
+    "code": "import time\nfrom sg90_360 import SG90_360\n\nservo = SG90_360({PWM})\nservo.stop()\nprint('stop')\ntime.sleep(1.5)\nservo.speed(-100)\nprint('clockwise')\ntime.sleep(2)\nservo.speed(100)\nprint('anticlockwise')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Stops, then spins clockwise, then anticlockwise",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "expect",
+          "what": "motor",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1500
+        },
+        {
+          "kind": "expect",
+          "what": "motor",
+          "part": "{REF}",
+          "text": "cw",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1500
+        },
+        {
+          "kind": "expect",
+          "what": "motor",
+          "part": "{REF}",
+          "text": "ccw",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:26:42.405Z",
+    "verifiedSources": [
+      "https://www.protosupplies.com/product/servo-motor-micro-sg90-360-degree-continuous-rotation/"
+    ]
+  }
+}

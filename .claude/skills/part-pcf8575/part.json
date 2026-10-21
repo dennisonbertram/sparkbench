@@ -1,0 +1,379 @@
+{
+  "type": "custom-pcf8575",
+  "name": "PCF8575 16-bit I/O expander",
+  "mpn": "PCF8575",
+  "category": "ic",
+  "description": "TI 16-bit quasi-bidirectional I/O expander for I2C (up to 400 kHz): every transfer is a byte pair, port 0 (P07..P00) then port 1 (P17..P10); no registers, no direction register. A pin latched high is a weak 30-300 uA pull-up that can be read as an input; latched low it sinks up to 25 mA, so drive LEDs active-low from VCC. Chip supply 2.5-5.5 V, I2C address 0x20-0x27 (0100 A2 A1 A0). Sold as: Adafruit PCF8575 I2C 16 GPIO Expander Breakout (#5611); pins labelled P0-P7 = chip P00-P07 and P8, P9, 10-15 = chip P10-P17. Modelled as one 26-pin row: bottom header VIN, G, SCL, SDA, P0-P7, then top header IRQ, A0, A1, A2, 15, 14, 13, 12, 11, 10, P9, P8, then one pad each of the 8-pad VCC (+) and GND (-) rails; STEMMA QT connectors; address 0x20 with A0-A2 open.",
+  "eli5": "Gives your board sixteen extra on/off pins over just two I2C wires, for buttons and LEDs.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V: use the same voltage as your microcontroller's logic (chip: 2.5-5.5 V)",
+      "required": true
+    },
+    {
+      "name": "G",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up on the board), up to 400 kHz",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "P0",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P00): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P1",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P01): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P2",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P02): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P3",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P03): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P4",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P04): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P5",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P05): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P6",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P06): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P7",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P07): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "IRQ",
+      "role": "io",
+      "description": "Interrupt output (chip INT), open-drain, active low: goes low when an input pin changes; cleared by reading or writing the port",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address bit 0: unconnected = 0, tie to VIN = +1 (also a solder jumper on the back)",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Address bit 1: unconnected = 0, tie to VIN = +2",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Address bit 2: unconnected = 0, tie to VIN = +4",
+      "required": false
+    },
+    {
+      "name": "15",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P17): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "14",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P16): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "13",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P15): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "12",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P14): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "11",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P13): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "10",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P12): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P9",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P11): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P8",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O (chip pin P10): latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "I/O supply rail (row of 8 pads marked + / VCC, same net as VIN), for powering LEDs/buttons on the I/O pins",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "I/O ground rail (row of 8 pads marked - / GND, same net as G)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 0.2,
+  "i2cAddress": 32,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/pcf8575.pdf",
+  "priceUsd": 5.95,
+  "supplierQuery": "Adafruit PCF8575 I2C 16 GPIO expander breakout 5611",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x26_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Every transfer is two bytes: first P7..P0 (chip P07..P00), then 15..P8 (chip P17..P10). Always write and read an even number of bytes.",
+    "A pin can only pull high weakly (30-300 uA). Wire LEDs from VCC through a resistor (e.g. 1 k) into the pin so they light when the pin is written 0.",
+    "To use a pin as an input, write it 1 first (all pins are 1 at power-on), then wire the button from the pin to GND: pressed reads 0.",
+    "Address 0x20 by default; tie A0/A1/A2 to VIN or close the jumpers on the back for 0x21-0x27 (up to 8 boards on one bus).",
+    "Never drive a pin that is written 0 high from outside: it sinks a large current to GND (25 mA rated per pin).",
+    "The VCC and GND rows are 8 pads each on the same nets as VIN and G; only one of each is modelled."
+  ],
+  "keywords": [
+    "pcf8575",
+    "io expander",
+    "gpio expander",
+    "i2c expander",
+    "port expander",
+    "16-bit expander"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "pointerless": true,
+    "pointerlessBytes": 2,
+    "registers": {
+      "0x00": 255,
+      "0x01": 255
+    },
+    "outputBits": [
+      {
+        "reg": "0x00",
+        "bit": 0,
+        "name": "P0"
+      },
+      {
+        "reg": "0x00",
+        "bit": 1,
+        "name": "P1"
+      },
+      {
+        "reg": "0x00",
+        "bit": 2,
+        "name": "P2"
+      },
+      {
+        "reg": "0x00",
+        "bit": 3,
+        "name": "P3"
+      },
+      {
+        "reg": "0x00",
+        "bit": 4,
+        "name": "P4"
+      },
+      {
+        "reg": "0x00",
+        "bit": 5,
+        "name": "P5"
+      },
+      {
+        "reg": "0x00",
+        "bit": 6,
+        "name": "P6"
+      },
+      {
+        "reg": "0x00",
+        "bit": 7,
+        "name": "P7"
+      },
+      {
+        "reg": "0x01",
+        "bit": 0,
+        "name": "P8"
+      },
+      {
+        "reg": "0x01",
+        "bit": 1,
+        "name": "P9"
+      },
+      {
+        "reg": "0x01",
+        "bit": 2,
+        "name": "10"
+      },
+      {
+        "reg": "0x01",
+        "bit": 3,
+        "name": "11"
+      },
+      {
+        "reg": "0x01",
+        "bit": 4,
+        "name": "12"
+      },
+      {
+        "reg": "0x01",
+        "bit": 5,
+        "name": "13"
+      },
+      {
+        "reg": "0x01",
+        "bit": 6,
+        "name": "14"
+      },
+      {
+        "reg": "0x01",
+        "bit": 7,
+        "name": "15"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x01",
+        "bit": 7,
+        "control": "button",
+        "label": "Button on pin 15 / P17 (to GND)",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "pcf8575.py",
+    "code": "# PCF8575 16-bit quasi-bidirectional I/O expander (TI SCPS121), MicroPython driver.\n# The chip has no registers. Every transfer is a pair of bytes: the first byte is port 0\n# (P07..P00, Adafruit labels P7..P0), the second is port 1 (P17..P10, Adafruit labels 15..P8).\n# Writing a pair sets all 16 output latches; reading a pair returns the 16 pin levels.\n# At power-on every latch is high. A pin latched high is a weak (30-300 uA) pull-up, so it\n# doubles as an input; a pin latched low sinks up to 25 mA. Write a pin high before reading it.\n# I2C clock: up to 400 kHz.\n\n\nclass PCF8575:\n    def __init__(self, i2c, addr=0x20):\n        self.i2c = i2c\n        self.addr = addr  # 0x20 + (A2 << 2) + (A1 << 1) + A0\n        self._out = 0xFFFF  # power-on state: all pins high (inputs)\n        self._write()\n\n    def _write(self):\n        # port 0 (P07..P00) first, then port 1 (P17..P10)\n        self.i2c.writeto(self.addr, bytes([self._out & 0xFF, (self._out >> 8) & 0xFF]))\n\n    def read_port(self):\n        \"\"\"Levels on all 16 pins: bit n = pin n (bits 0-7 = P0-P7, bits 8-15 = P8-P15).\n        Pins latched low always read 0.\"\"\"\n        b = self.i2c.readfrom(self.addr, 2)\n        return b[0] | (b[1] << 8)\n\n    def write_port(self, value):\n        \"\"\"Set all 16 latches at once (bit n = pin n).\"\"\"\n        self._out = value & 0xFFFF\n        self._write()\n\n    def pin(self, n, value=None):\n        \"\"\"pin(n) reads pin n (0-15); pin(n, v) sets its latch (1 = high / input, 0 = low, sinks current).\"\"\"\n        if not 0 <= n <= 15:\n            raise ValueError('pin must be 0-15')\n        if value is None:\n            return (self.read_port() >> n) & 1\n        if value:\n            self._out |= 1 << n\n        else:\n            self._out &= ~(1 << n) & 0xFFFF\n        self._write()\n\n    def toggle(self, n):\n        self.pin(n, 0 if (self._out >> n) & 1 else 1)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pcf8575 import PCF8575\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\nio = PCF8575(i2c, 0x20)\n# Button from pin 15 (chip P17) to GND; LED + 1 k resistor from VCC to P0 (lights when P0 is pulled low).\nwhile True:\n    pressed = io.pin(15) == 0     # pin 15 stays latched high, so it reads the button\n    io.pin(0, 0 if pressed else 1)\n    print('BUTTON=%s LED=%s PORT=%04X' % ('PRESSED' if pressed else 'RELEASED', 'ON' if pressed else 'OFF', io.read_port()))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "button-led",
+      "title": "Reads the button on pin 15 (P17) and sinks P0 low to light the LED",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=RELEASED LED=OFF PORT=FFFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=PRESSED LED=ON PORT=7FFE",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=RELEASED LED=OFF PORT=FFFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/pcf8575.pdf",
+    "https://learn.adafruit.com/adafruit-pcf8575/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/116/227/large1024/adafruit_products_PCF8575_pinouts_guide.jpg",
+    "https://www.adafruit.com/product/5611"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:08:26.232Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCF8575.pdf",
+      "https://learn.adafruit.com/adafruit-pcf8575/pinouts",
+      "https://www.adafruit.com/product/5611"
+    ]
+  }
+}

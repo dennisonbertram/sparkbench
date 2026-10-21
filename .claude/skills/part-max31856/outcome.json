@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max31856",
+  "board": "Adafruit Universal Thermocouple Amplifier MAX31856 Breakout (product 3263)",
+  "reason": "Check passed on ESP32 and Pico. The sim encodes the 19-bit thermocouple value (0Ch-0Eh, 0.0078125 C/LSB) and the 14-bit cold-junction value (0Ah-0Bh, 0.015625 C/LSB) as the datasheet specifies. The driver uses CPHA=1, a 1-shot conversion with the datasheet tCONV, and checks the fault status.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31856.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-MAX31856-PCB (board silkscreen JP1 order VIN,3Vo,GND,SCK,SDO,SDI,CS,FLT,DRDY) + https://learn.adafruit.com/adafruit-max31856-thermocouple-amplifier/pinouts",
+  "checkRuns": 1
+}

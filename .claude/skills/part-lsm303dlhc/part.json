@@ -1,0 +1,282 @@
+{
+  "type": "custom-lsm303dlhc",
+  "name": "LSM303DLHC accelerometer & magnetometer",
+  "mpn": "LSM303DLHC",
+  "category": "sensor",
+  "description": "STMicroelectronics 3-axis accelerometer (±2/4/8/16 g) and 3-axis magnetometer (±1.3 to ±8.1 gauss) in one package, read over I2C as two chips: accelerometer at 0x19, magnetometer at 0x1E. Used for tilt sensing and as an electronic compass. Sold as: GY-511 LSM303DLHC module, 3.3-5 V with on-board 3.3 V regulator, I2C level shifting and pull-ups, 8-pin header (VIN, 3V3, GND, SCL, SDA, INT2, INT1, DRDY).",
+  "eli5": "Feels which way is down and which way is north, so your project knows how it is tilted and where it is pointing.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (on-board 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator; not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Accelerometer interrupt 2 output, 3.3 V logic (optional)",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Accelerometer interrupt 1 output, 3.3 V logic (optional)",
+      "required": false
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Magnetometer data-ready output, 3.3 V logic (optional)",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "i2cAddress": 25,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/LSM303DLHC.PDF",
+  "priceUsd": 4,
+  "supplierQuery": "GY-511 LSM303DLHC accelerometer magnetometer compass module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two I2C addresses: accelerometer 0x19, magnetometer 0x1E. Both share SDA/SCL; the GY-511 has pull-ups and level shifters.",
+    "Accelerometer: write CTRL_REG1_A (0x20) = 0x57 (100 Hz, X/Y/Z on) and CTRL_REG4_A (0x23) = 0x88 (BDU, ±2 g, high resolution). Read 6 bytes from 0x28 with bit 7 set (0xA8) to auto-increment.",
+    "Accelerometer data is 12-bit two's complement, left-justified, low byte first: shift right by 4, then 1 mg per LSB at ±2 g (2, 4, 12 mg at ±4, ±8, ±16 g).",
+    "Magnetometer: CRA_REG_M (0x00) = 0x10 (15 Hz), CRB_REG_M (0x01) = 0x20 (±1.3 gauss), MR_REG_M (0x02) = 0x00 (continuous). Read 6 bytes from 0x03, high byte first, in the order X, Z, Y.",
+    "Magnetometer gain at ±1.3 gauss: X and Y 1100 LSB/gauss, Z 980 LSB/gauss (different!).",
+    "Identify the magnetometer by IRA/IRB/IRC_REG_M (0x0A-0x0C) = 'H', '4', '3'. The accelerometer has no documented WHO_AM_I register.",
+    "INT1, INT2 and DRDY are 3.3 V logic only. Keep the board away from motors, magnets and current-carrying wires, and calibrate hard-iron offsets for a compass."
+  ],
+  "keywords": [
+    "lsm303dlhc",
+    "lsm303",
+    "gy-511",
+    "gy511",
+    "accelerometer",
+    "magnetometer",
+    "compass",
+    "imu",
+    "tilt"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/LSM303DLHC.PDF",
+    "https://www.pololu.com/file/0J564/LSM303DLHC.pdf",
+    "https://electropeak.com/learn/interfacing-gy-511-lsm303-3d-compass-and-accelerometer-with-arduino/",
+    "https://electropeak.com/learn/wp-content/uploads/2020/09/GY511-Arduino-Pinout.jpg"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "autoIncrementBit7": true,
+    "quantity": "Acceleration X",
+    "unit": "mg",
+    "min": -2000,
+    "max": 2000,
+    "default": 0,
+    "controls": [
+      {
+        "key": "accel_y",
+        "quantity": "Acceleration Y",
+        "unit": "mg",
+        "min": -2000,
+        "max": 2000,
+        "default": 0
+      },
+      {
+        "key": "accel_z",
+        "quantity": "Acceleration Z",
+        "unit": "mg",
+        "min": -2000,
+        "max": 2000,
+        "default": 1000
+      },
+      {
+        "key": "mag_x",
+        "quantity": "Magnetic field X",
+        "unit": "mgauss",
+        "min": -1300,
+        "max": 1300,
+        "default": 200
+      },
+      {
+        "key": "mag_y",
+        "quantity": "Magnetic field Y",
+        "unit": "mgauss",
+        "min": -1300,
+        "max": 1300,
+        "default": 0
+      },
+      {
+        "key": "mag_z",
+        "quantity": "Magnetic field Z",
+        "unit": "mgauss",
+        "min": -1300,
+        "max": 1300,
+        "default": -400
+      }
+    ],
+    "registers": {
+      "0x20": 7,
+      "0x27": 15
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 1,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 4
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 1,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 4,
+        "control": "accel_y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 1,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 4,
+        "control": "accel_z"
+      }
+    ],
+    "subDevices": [
+      {
+        "i2cAddress": 30,
+        "registers": {
+          "0x00": 16,
+          "0x01": 32,
+          "0x02": 3,
+          "0x09": 1,
+          "0x0A": 72,
+          "0x0B": 52,
+          "0x0C": 51
+        },
+        "measures": [
+          {
+            "reg": "0x03",
+            "bytes": 2,
+            "scale": 0.9090909090909091,
+            "signed": true,
+            "control": "mag_x"
+          },
+          {
+            "reg": "0x05",
+            "bytes": 2,
+            "scale": 1.0204081632653061,
+            "signed": true,
+            "control": "mag_z"
+          },
+          {
+            "reg": "0x07",
+            "bytes": 2,
+            "scale": 0.9090909090909091,
+            "signed": true,
+            "control": "mag_y"
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lsm303dlhc.py",
+    "code": "# LSM303DLHC 3-axis accelerometer + 3-axis magnetometer (STMicroelectronics), MicroPython driver.\n# Written from the ST datasheet Doc ID 018771 Rev 1. Two I2C chips in one package:\n#   accelerometer at 0x19 (registers 0x20-0x3D, set bit 7 of the register address to auto-increment),\n#   magnetometer at 0x1E (registers 0x00-0x0C, 0x31-0x32; the pointer auto-increments by itself).\n# Accelerometer: high-resolution (12-bit, left-justified, low byte first), +/-2 g, 1 mg/LSB, 100 Hz.\n# Magnetometer: continuous conversion, 15 Hz, +/-1.3 gauss: X/Y 1100 LSB/gauss, Z 980 LSB/gauss,\n#   data big-endian (high byte first) in the order X, Z, Y.\nimport time\n\nACC_ADDR = 0x19\nMAG_ADDR = 0x1E\n\nCTRL_REG1_A = 0x20\nCTRL_REG4_A = 0x23\nSTATUS_REG_A = 0x27\nOUT_X_L_A = 0x28\n\nCRA_REG_M = 0x00\nCRB_REG_M = 0x01\nMR_REG_M = 0x02\nOUT_X_H_M = 0x03\nIRA_REG_M = 0x0A     # IRA/IRB/IRC read 0x48 0x34 0x33 ('H43')\n\nACC_MG_PER_LSB = 1.0          # +/-2 g (datasheet Table 3, LA_So)\nMAG_XY_LSB_PER_GAUSS = 1100   # GN = 001, +/-1.3 gauss (Table 75)\nMAG_Z_LSB_PER_GAUSS = 980\n\n\ndef _s16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 65536 if v & 0x8000 else v\n\n\nclass LSM303DLHC:\n    def __init__(self, i2c, acc_addr=ACC_ADDR, mag_addr=MAG_ADDR):\n        self.i2c = i2c\n        self.acc = acc_addr\n        self.mag = mag_addr\n        if bytes(self.i2c.readfrom_mem(self.mag, IRA_REG_M, 3)) != b'H43':\n            raise OSError('LSM303DLHC magnetometer not found at 0x%02X' % self.mag)\n        # Accelerometer: ODR 100 Hz, LPen = 0, X/Y/Z enabled.\n        self.i2c.writeto_mem(self.acc, CTRL_REG1_A, b'\\x57')\n        # BDU = 1, BLE = 0 (low byte first), FS = +/-2 g, HR = 1.\n        self.i2c.writeto_mem(self.acc, CTRL_REG4_A, b'\\x88')\n        # Magnetometer: temperature sensor off, 15 Hz output rate.\n        self.i2c.writeto_mem(self.mag, CRA_REG_M, b'\\x10')\n        # Gain GN = 001: +/-1.3 gauss.\n        self.i2c.writeto_mem(self.mag, CRB_REG_M, b'\\x20')\n        # Continuous-conversion mode.\n        self.i2c.writeto_mem(self.mag, MR_REG_M, b'\\x00')\n        time.sleep_ms(100)  # accel turn-on 7/ODR = 70 ms; first magnetometer sample at 15 Hz ~ 67 ms\n\n    def acceleration(self):\n        \"\"\"(x, y, z) in mg.\"\"\"\n        t0 = time.ticks_ms()\n        while not (self.i2c.readfrom_mem(self.acc, STATUS_REG_A, 1)[0] & 0x08):  # ZYXDA\n            if time.ticks_diff(time.ticks_ms(), t0) > 200:\n                raise OSError('LSM303DLHC: no new accelerometer data')\n            time.sleep_ms(2)\n        # MSB of the sub-address set: auto-increment over the six output bytes.\n        d = self.i2c.readfrom_mem(self.acc, OUT_X_L_A | 0x80, 6)\n        # 12-bit two's complement, left-justified, low byte first: shift right by 4.\n        return tuple((_s16(d[i + 1], d[i]) >> 4) * ACC_MG_PER_LSB for i in (0, 2, 4))\n\n    def magnetic(self):\n        \"\"\"(x, y, z) in mgauss.\"\"\"\n        # Registers 0x03-0x08: X_H, X_L, Z_H, Z_L, Y_H, Y_L (note the X, Z, Y order).\n        d = self.i2c.readfrom_mem(self.mag, OUT_X_H_M, 6)\n        x = _s16(d[0], d[1])\n        z = _s16(d[2], d[3])\n        y = _s16(d[4], d[5])\n        return (x * 1000 / MAG_XY_LSB_PER_GAUSS,\n                y * 1000 / MAG_XY_LSB_PER_GAUSS,\n                z * 1000 / MAG_Z_LSB_PER_GAUSS)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lsm303dlhc import LSM303DLHC\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = LSM303DLHC(i2c)\nwhile True:\n    ax, ay, az = imu.acceleration()\n    mx, my, mz = imu.magnetic()\n    print('A=%.0f,%.0f,%.0f mg M=%.0f,%.0f,%.0f mG' % (ax, ay, az, mx, my, mz))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration and magnetic field set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "accel_y",
+          "value": 250
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "accel_z",
+          "value": 980
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mag_x",
+          "value": 300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mag_y",
+          "value": -150
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mag_z",
+          "value": -490
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=-500,250,980 mg M=300,-150,-490 mG",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:35:22.891Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J564/LSM303DLHC.pdf",
+      "https://electropeak.com/learn/interfacing-gy-511-lsm303-3d-compass-and-accelerometer-with-arduino/",
+      "https://lamaplc.com/doku.php?id=sensor:gy_511"
+    ]
+  }
+}

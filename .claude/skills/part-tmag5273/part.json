@@ -1,0 +1,207 @@
+{
+  "type": "custom-tmag5273",
+  "name": "TMAG5273 3D Hall-effect sensor",
+  "mpn": "TMAG5273A1",
+  "category": "sensor",
+  "description": "Texas Instruments low-power linear 3D Hall-effect sensor: X, Y and Z magnetic field (A1: ±40 or ±80 mT, 16-bit results) plus an on-chip temperature sensor, read over I2C. Chip runs on 1.7–3.6 V; the breakout adds a 3.3 V regulator and I2C level shifting. Sold as: Adafruit TMAG5273 3D Hall Effect Magnetometer Breakout, A1 variant (±40/±80 mT; 6-pin header VIN, 3Vo, GND, SCL, SDA, INT; plus two STEMMA QT), I2C address 0x35.",
+  "eli5": "Feels a nearby magnet and tells your board how strong its pull is in three directions, great for magnetic knobs and joysticks.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply input to the on-board 3.3 V regulator, 3–5 V; use the same voltage as your board's logic",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifter on the board, 3–5 V logic)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifter on the board, 3–5 V logic)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output / conversion trigger input (open-drain, 3.3 V side); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3,
+  "i2cAddress": 53,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/tmag5273.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Adafruit TMAG5273 A1 3D Hall Effect Magnetometer Breakout STEMMA QT",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the chip first: MANUFACTURER_ID (0x0E/0x0F) reads 0x49, 0x54 (\"TI\"); DEVICE_ID (0x0D) bits 1-0 = 1 for A1 (±40/±80 mT), 2 for A2 (±133/±266 mT).",
+    "Set up: DEVICE_CONFIG_1 (0x00) = 0x14 (32x averaging), SENSOR_CONFIG_1 (0x02) = 0x70 (X, Y, Z on), T_CONFIG (0x07) = 0x01 (temperature on), then DEVICE_CONFIG_2 (0x01) = 0x12 (low-noise, continuous measure).",
+    "Read 8 bytes from 0x10: T, X, Y, Z, each 16-bit two's complement MSB first. Bit 7 of the register address byte is a conversion trigger, so keep it 0 for plain reads.",
+    "Field: B = raw × 2 × range / 65536 mT (A1 default ±40 mT: 1.2207 µT per LSB). Temperature: T = 25 + (raw − 17508) / 58 °C.",
+    "Meant for magnets close by (rotary knobs, joysticks, lid sensors), not the Earth's field. Steel screws and the breadboard's metal clips shift the zero reading.",
+    "The A2 board looks identical but has ±133/±266 mT ranges; the driver reads DEVICE_ID and scales automatically."
+  ],
+  "keywords": [
+    "tmag5273",
+    "hall",
+    "3d hall",
+    "magnetometer",
+    "magnetic",
+    "magnet",
+    "joystick",
+    "rotary",
+    "texas instruments"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "mT",
+    "min": -40,
+    "max": 40,
+    "default": 0,
+    "controls": [
+      {
+        "key": "by",
+        "quantity": "Magnetic field Y",
+        "unit": "mT",
+        "min": -40,
+        "max": 40,
+        "default": 0
+      },
+      {
+        "key": "bz",
+        "quantity": "Magnetic field Z",
+        "unit": "mT",
+        "min": -40,
+        "max": 40,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x0D": 1,
+      "0x0E": 73,
+      "0x0F": 84,
+      "0x18": 17
+    },
+    "measures": [
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "signed": true,
+        "scale": 0.017241379310344827,
+        "offset": -276.86206896551727,
+        "control": "temp"
+      },
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "signed": true,
+        "scale": 0.001220703125,
+        "control": "value"
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "signed": true,
+        "scale": 0.001220703125,
+        "control": "by"
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "signed": true,
+        "scale": 0.001220703125,
+        "control": "bz"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tmag5273.py",
+    "code": "# TMAG5273 3D linear Hall-effect sensor (Texas Instruments), MicroPython driver.\n# Written from the TI TMAG5273 datasheet (SLYS045C):\n#  - registers: DEVICE_CONFIG_1 0x00, DEVICE_CONFIG_2 0x01, SENSOR_CONFIG_1 0x02,\n#    SENSOR_CONFIG_2 0x03, T_CONFIG 0x07, DEVICE_ID 0x0D, MANUFACTURER_ID 0x0E/0x0F (\"TI\" = 0x5449),\n#    T/X/Y/Z results 0x10..0x17 (16-bit two's complement, MSB first), CONV_STATUS 0x18\n#  - standard 3-byte I2C read: the register byte's bit 7 is the conversion trigger, so it is kept 0 here\n#  - B = raw / 2^16 * 2 * BR (Equation 10), BR = 40/80 mT (A1) or 133/266 mT (A2)\n#  - T = 25 + (raw - 17508) / 58 degC (Equation 12, TSENS_T0, TADC_T0, TADC_RES)\nimport time\n\n_DEVICE_CONFIG_1 = 0x00\n_DEVICE_CONFIG_2 = 0x01\n_SENSOR_CONFIG_1 = 0x02\n_SENSOR_CONFIG_2 = 0x03\n_T_CONFIG = 0x07\n_DEVICE_ID = 0x0D\n_MANUFACTURER_ID_LSB = 0x0E\n_T_MSB_RESULT = 0x10\n_CONV_STATUS = 0x18\n\n_TADC_T0 = 17508\n_TADC_RES = 58.0\n_TSENS_T0 = 25.0\n\n\ndef _s16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass TMAG5273:\n    def __init__(self, i2c, addr=0x35, wide_range=False, avg=5):\n        \"\"\"addr: 0x35 for TMAG5273A1/A2 (Adafruit board default).\n        wide_range: False = +-40 mT (A1) / +-133 mT (A2); True = +-80 mT / +-266 mT.\n        avg: CONV_AVG 0..5 (1x..32x averaging).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(1)  # tstart_power_up 270 us\n        mid = self.i2c.readfrom_mem(addr, _MANUFACTURER_ID_LSB, 2)\n        if mid[0] != 0x49 or mid[1] != 0x54:\n            raise OSError('TMAG5273 not found (manufacturer ID 0x%02X%02X)' % (mid[1], mid[0]))\n        ver = self.i2c.readfrom_mem(addr, _DEVICE_ID, 1)[0] & 0x03\n        if ver == 1:\n            base = 40.0\n        elif ver == 2:\n            base = 133.0\n        else:\n            raise OSError('TMAG5273 unknown DEVICE_ID version %d' % ver)\n        self.range_mt = base * (2 if wide_range else 1)\n        # CRC off, no magnet tempco, CONV_AVG, standard 3-byte I2C read\n        self._w(_DEVICE_CONFIG_1, (avg & 0x07) << 2)\n        # MAG_CH_EN = 7h (X, Y, Z), SLEEPTIME unused\n        self._w(_SENSOR_CONFIG_1, 0x70)\n        # no angle calc; X_Y_RANGE and Z_RANGE\n        r = 0x03 if wide_range else 0x00\n        self._w(_SENSOR_CONFIG_2, r)\n        # temperature channel on, no threshold\n        self._w(_T_CONFIG, 0x01)\n        # low-noise mode, glitch filter on, I2C trigger, continuous measure mode\n        self._w(_DEVICE_CONFIG_2, 0x12)\n        # tstart_measure 70 us + up to 4 channels x 32 samples (about 3.3 ms)\n        time.sleep_ms(5)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes((val,)))\n\n    def read(self):\n        \"\"\"Return (x, y, z) in mT and the chip temperature in degC.\"\"\"\n        for _ in range(50):\n            if self.i2c.readfrom_mem(self.addr, _CONV_STATUS, 1)[0] & 0x01:\n                break\n            time.sleep_ms(1)\n        else:\n            raise OSError('TMAG5273: no conversion result')\n        d = self.i2c.readfrom_mem(self.addr, _T_MSB_RESULT, 8)\n        t_raw = _s16(d[0], d[1])\n        k = 2 * self.range_mt / 65536\n        x = _s16(d[2], d[3]) * k\n        y = _s16(d[4], d[5]) * k\n        z = _s16(d[6], d[7]) * k\n        temp = _TSENS_T0 + (t_raw - _TADC_T0) / _TADC_RES\n        return x, y, z, temp\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tmag5273 import TMAG5273\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = TMAG5273(i2c)\nwhile True:\n    x, y, z, t = mag.read()\n    print('X=%.2f Y=%.2f Z=%.2f mT T=%.1fC' % (x, y, z, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the magnetic field and chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "by",
+          "value": -7.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "bz",
+          "value": 25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=12.50 Y=-7.30 Z=25.00 mT T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/tmag5273.pdf",
+    "https://learn.adafruit.com/adafruit-tmag5273-3d-hall-effect-magnetometer-breakout/pinouts",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-tmag5273-3d-hall-effect-magnetometer-breakout.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:14:24.896Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/tmag5273.pdf",
+      "https://learn.adafruit.com/adafruit-tmag5273-3d-hall-effect-magnetometer-breakout/pinouts",
+      "https://www.adafruit.com/product/6489"
+    ]
+  }
+}

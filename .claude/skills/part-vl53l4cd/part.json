@@ -1,0 +1,159 @@
+{
+  "type": "custom-vl53l4cd",
+  "name": "VL53L4CD time-of-flight distance sensor",
+  "mpn": "VL53L4CD",
+  "category": "sensor",
+  "description": "ST FlightSense short-range time-of-flight sensor that times 940 nm laser pulses to measure absolute distance from 1 mm up to about 1.3 m, read in millimetres over I2C (up to 1 MHz) at address 0x29 with 16-bit register addresses. The bare chip runs from 2.6–3.5 V. Sold as: Adafruit VL53L4CD Time of Flight Distance Sensor breakout (product 5396; 6-pin header VIN, GND, SCL, SDA, GPIO, XSHUT plus two STEMMA QT ports) with an LP5907 2.8 V regulator and level shifting, so VIN takes 3–5 V.",
+  "eli5": "It flashes a tiny invisible laser and times how long the light takes to bounce back, which tells you how far away something is, from a millimetre up to about a metre.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply input, 3–5 V (on-board LP5907 regulator makes the chip's 2.8 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, level shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, level shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "GPIO",
+      "role": "io",
+      "fn": "irq",
+      "description": "Interrupt output (chip GPIO1), 2.8 V logic; signals a new range is ready (active low with the default settings)",
+      "required": false
+    },
+    {
+      "name": "XSHUT",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Shutdown input, active low, level shifted and pulled up on the board. Drive low to hold the sensor off, e.g. to give several sensors different addresses",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 24,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vl53l4cd.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "Adafruit VL53L4CD time of flight distance sensor 5396",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Peel off the protective film over the sensor window before use, or readings will be wrong.",
+    "Registers have 16-bit addresses: send the address MSB first, then data. The driver waits for boot (0x00E5 = 0x03), loads ST's 91-byte default configuration to 0x002D–0x0087, runs one VHV ranging and then ranges continuously (0x0087 = 0x21).",
+    "Each range is 16-bit mm at 0x0096; range status 0x0089 (low 5 bits) must be 9 for a valid reading. Write 0x01 to 0x0086 after every read or the result will not update.",
+    "Every VL53L4CD starts at address 0x29. For several on one bus hold their XSHUT pins low, release them one at a time and set a new address (register 0x0001).",
+    "Range is 1 mm to about 1.3 m indoors on a white target, about 0.55 m outdoors; use a VL53L1X for longer distances.",
+    "Ranging peaks at about 40 mA; keep power wires short or add a 10 µF capacitor near VIN."
+  ],
+  "keywords": [
+    "vl53l4cd",
+    "time of flight",
+    "tof",
+    "laser",
+    "distance",
+    "proximity",
+    "range",
+    "short range"
+  ],
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/vl53l4cd.pdf",
+    "https://cdn-learn.adafruit.com/assets/assets/000/109/710/original/vl53l4cd.pdf",
+    "https://www.adafruit.com/product/5396",
+    "https://learn.adafruit.com/adafruit-vl53l4cd-time-of-flight-distance-sensor/pinouts",
+    "https://github.com/adafruit/Adafruit-VL53L4CD-PCB",
+    "https://github.com/stm32duino/VL53L4CD/blob/main/src/vl53l4cd_api.cpp",
+    "https://github.com/stm32duino/VL53L4CD/blob/main/src/vl53l4cd_api.h",
+    "https://github.com/adafruit/Adafruit_CircuitPython_VL53L4CD/blob/main/adafruit_vl53l4cd.py"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Distance",
+    "unit": "mm",
+    "min": 1,
+    "max": 1300,
+    "default": 200,
+    "addrWidth": 16,
+    "registers": {
+      "0x0006": 190,
+      "0x0007": 0,
+      "0x0030": 17,
+      "0x0031": 0,
+      "0x0089": 9,
+      "0x008C": 32,
+      "0x008D": 0,
+      "0x00DE": 1,
+      "0x00DF": 16,
+      "0x00E5": 3,
+      "0x010F": 235,
+      "0x0110": 170
+    },
+    "measures": [
+      {
+        "reg": "0x96",
+        "bytes": 2,
+        "scale": 1,
+        "offset": 0,
+        "signed": false,
+        "littleEndian": false,
+        "shift": 0
+      }
+    ]
+  },
+  "driver": {
+    "filename": "vl53l4cd.py",
+    "code": "# VL53L4CD time-of-flight distance sensor (ST), MicroPython driver.\n# Follows ST's Ultra Lite Driver (ULD, STSW-IMG026, as published in stm32duino/VL53L4CD):\n# 16-bit register addresses, wait for FIRMWARE__SYSTEM_STATUS = 3, load the 91-byte default\n# configuration to 0x2D..0x87, one VHV ranging, then ranging started through SYSTEM_START\n# (0x21 = continuous back-to-back, 0x40 = autonomous with an inter-measurement period).\nimport time\n\n_I2C_SLAVE_DEVICE_ADDRESS = 0x0001\n_OSC_FREQUENCY = 0x0006                      # 16-bit, read by SetRangeTiming\n_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND = 0x0008\n_RANGE_OFFSET_MM = 0x001E\n_INNER_OFFSET_MM = 0x0020\n_OUTER_OFFSET_MM = 0x0022\n_GPIO_HV_MUX_CTRL = 0x0030\n_GPIO_TIO_HV_STATUS = 0x0031\n_RANGE_CONFIG_A = 0x005E\n_RANGE_CONFIG_B = 0x0061\n_INTERMEASUREMENT_MS = 0x006C                # 32-bit\n_SYSTEM_INTERRUPT_CLEAR = 0x0086\n_SYSTEM_START = 0x0087\n_RESULT_RANGE_STATUS = 0x0089\n_RESULT_SPAD_NB = 0x008C                     # 16-bit, number of SPADs x 256\n_RESULT_SIGNAL_RATE = 0x008E                 # 16-bit, kcps / 8\n_RESULT_AMBIENT_RATE = 0x0090                # 16-bit, kcps / 8\n_RESULT_SIGMA = 0x0092                       # 16-bit, mm x 4\n_RESULT_DISTANCE = 0x0096                    # 16-bit, mm\n_RESULT_OSC_CALIBRATE_VAL = 0x00DE\n_FIRMWARE_SYSTEM_STATUS = 0x00E5\n_IDENTIFICATION_MODEL_ID = 0x010F            # 0xEB, then module type 0xAA at 0x0110\n\n# ST ULD default configuration for registers 0x2D..0x87 (91 bytes).\n_DEFAULT_CONFIG = bytes((\n    0x12, 0x00, 0x00, 0x11, 0x02, 0x00, 0x02, 0x08,  # 0x2D..0x34\n    0x00, 0x08, 0x10, 0x01, 0x01, 0x00, 0x00, 0x00,  # 0x35..0x3C\n    0x00, 0xFF, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x00,  # 0x3D..0x44\n    0x00, 0x20, 0x0B, 0x00, 0x00, 0x02, 0x14, 0x21,  # 0x45..0x4C\n    0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0xC8,  # 0x4D..0x54\n    0x00, 0x00, 0x38, 0xFF, 0x01, 0x00, 0x08, 0x00,  # 0x55..0x5C\n    0x00, 0x01, 0xCC, 0x07, 0x01, 0xF1, 0x05, 0x00,  # 0x5D..0x64\n    0xA0, 0x00, 0x80, 0x08, 0x38, 0x00, 0x00, 0x00,  # 0x65..0x6C\n    0x00, 0x0F, 0x89, 0x00, 0x00, 0x00, 0x00, 0x00,  # 0x6D..0x74\n    0x00, 0x00, 0x01, 0x07, 0x05, 0x06, 0x06, 0x00,  # 0x75..0x7C\n    0x00, 0x02, 0xC7, 0xFF, 0x9B, 0x00, 0x00, 0x00,  # 0x7D..0x84\n    0x01, 0x00, 0x00,                                # 0x85..0x87\n))\n\n# RESULT__RANGE_STATUS (low 5 bits) -> ULD range status (0 = valid), from VL53L4CD_GetResult.\n_STATUS = (255, 255, 255, 5, 2, 4, 1, 7, 3, 0, 255, 255, 9, 13, 255, 255,\n           255, 255, 10, 6, 255, 255, 11, 12)\n\n_M32 = 0xFFFFFFFF\n\n\nclass VL53L4CD:\n    def __init__(self, i2c, address=0x29, io_2v8=True, timeout_ms=1000):\n        \"\"\"io_2v8=True when SDA/SCL/GPIO1 are pulled up to the 2.8 V AVDD (Adafruit 5396,\n        Pololu, SATEL boards). Use False only for a bare chip on a 1.8 V I/O bus.\"\"\"\n        self.i2c = i2c\n        self.addr = address\n        self.timeout_ms = timeout_ms\n        self.range_status = 255\n        self.sigma_mm = 0\n        self.signal_kcps = 0\n        mid = self._rd(_IDENTIFICATION_MODEL_ID, 2)\n        if mid[0] != 0xEB or mid[1] != 0xAA:\n            raise OSError('VL53L4CD not found (model id %02X%02X, expected EBAA)' % (mid[0], mid[1]))\n        # ULD SensorInit\n        self._wait(lambda: self._rd(_FIRMWARE_SYSTEM_STATUS, 1)[0] == 0x03, 'boot')\n        cfg = bytearray(_DEFAULT_CONFIG)\n        if io_2v8:\n            cfg[0x2E - 0x2D] |= 0x01  # I2C pads pulled up at AVDD\n            cfg[0x2F - 0x2D] |= 0x01  # GPIO pad pulled up at AVDD\n        self._wr(0x2D, cfg)\n        self._wr(_SYSTEM_START, b'\\x40')          # start VHV\n        self._wait(self.data_ready, 'VHV')\n        self.clear_interrupt()\n        self.stop_ranging()\n        self._wr(_VHV_CONFIG_TIMEOUT_MACROP_LOOP_BOUND, b'\\x09')\n        self._wr(0x000B, b'\\x00')\n        self._wr16(0x0024, 0x0500)\n        self.set_range_timing(50, 0)\n\n    # ---- low level: 16-bit register addresses, big-endian data ----\n    def _wr(self, reg, data):\n        self.i2c.writeto(self.addr, bytes(((reg >> 8) & 0xFF, reg & 0xFF)) + bytes(data))\n\n    def _rd(self, reg, n):\n        self.i2c.writeto(self.addr, bytes(((reg >> 8) & 0xFF, reg & 0xFF)))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _wr16(self, reg, v):\n        self._wr(reg, bytes(((v >> 8) & 0xFF, v & 0xFF)))\n\n    def _wr32(self, reg, v):\n        self._wr(reg, bytes(((v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)))\n\n    def _rd16(self, reg):\n        d = self._rd(reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _rd32(self, reg):\n        d = self._rd(reg, 4)\n        return (d[0] << 24) | (d[1] << 16) | (d[2] << 8) | d[3]\n\n    def _wait(self, cond, what):\n        t0 = time.ticks_ms()\n        while not cond():\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('VL53L4CD timeout waiting for ' + what)\n            time.sleep_ms(1)\n\n    # ---- ranging control ----\n    def data_ready(self):\n        # GPIO_HV_MUX_CTRL bit 4 = 1 means the interrupt is active low (the default config).\n        pol = 0 if self._rd(_GPIO_HV_MUX_CTRL, 1)[0] & 0x10 else 1\n        return (self._rd(_GPIO_TIO_HV_STATUS, 1)[0] & 0x01) == pol\n\n    def clear_interrupt(self):\n        self._wr(_SYSTEM_INTERRUPT_CLEAR, b'\\x01')\n\n    def start_ranging(self):\n        if self._rd32(_INTERMEASUREMENT_MS) == 0:\n            self._wr(_SYSTEM_START, b'\\x21')      # continuous, back-to-back\n        else:\n            self._wr(_SYSTEM_START, b'\\x40')      # autonomous, timed\n        self._wait(self.data_ready, 'first range')\n        self.clear_interrupt()\n\n    def stop_ranging(self):\n        self._wr(_SYSTEM_START, b'\\x00')\n\n    # ---- settings ----\n    def set_range_timing(self, timing_budget_ms, inter_measurement_ms=0):\n        \"\"\"Timing budget 10..200 ms. inter_measurement_ms = 0 ranges back to back (continuous);\n        otherwise it must be larger than the timing budget (autonomous low-power mode).\"\"\"\n        osc = self._rd16(_OSC_FREQUENCY)\n        if osc == 0:\n            raise OSError('VL53L4CD oscillator frequency reads 0')\n        if not 10 <= timing_budget_ms <= 200:\n            raise ValueError('timing budget must be 10..200 ms')\n        macro_period_us = ((2304 * (0x40000000 // osc)) & _M32) >> 6\n        tb_us = timing_budget_ms * 1000\n        if inter_measurement_ms == 0:\n            self._wr32(_INTERMEASUREMENT_MS, 0)\n            tb_us -= 2500\n        elif inter_measurement_ms > timing_budget_ms:\n            clock_pll = self._rd16(_RESULT_OSC_CALIBRATE_VAL) & 0x3FF\n            self._wr32(_INTERMEASUREMENT_MS, int(1.055 * inter_measurement_ms * clock_pll) & _M32)\n            tb_us -= 4300\n            tb_us //= 2\n        else:\n            raise ValueError('inter-measurement period must be 0 or longer than the timing budget')\n        tb_us = (tb_us << 12) & _M32\n        for reg, mult in ((_RANGE_CONFIG_A, 16), (_RANGE_CONFIG_B, 12)):\n            t = ((macro_period_us * mult) & _M32) >> 6\n            ls = (tb_us + (t >> 1)) // t - 1\n            ms = 0\n            while ls & 0xFFFFFF00:\n                ls >>= 1\n                ms += 1\n            self._wr16(reg, (ms << 8) + (ls & 0xFF))\n        self._tb = timing_budget_ms\n\n    def set_offset(self, offset_mm):\n        \"\"\"Offset correction in mm (from ST's offset calibration flow).\"\"\"\n        self._wr16(_RANGE_OFFSET_MM, (offset_mm * 4) & 0xFFFF)\n        self._wr16(_INNER_OFFSET_MM, 0)\n        self._wr16(_OUTER_OFFSET_MM, 0)\n\n    def set_address(self, new_addr):\n        \"\"\"new_addr is the 7-bit address (the ULD takes the 8-bit form and shifts it).\"\"\"\n        self._wr(_I2C_SLAVE_DEVICE_ADDRESS, bytes((new_addr & 0x7F,)))\n        self.addr = new_addr\n\n    # ---- measurement ----\n    def read(self):\n        \"\"\"Wait for the next range. Returns the distance in mm, or None if the range status\n        is not valid (no target, signal too weak, out of range). Call start_ranging() first.\"\"\"\n        self._wait(self.data_ready, 'data')\n        raw = self._rd(_RESULT_RANGE_STATUS, 1)[0] & 0x1F\n        st = _STATUS[raw] if raw < 24 else raw\n        spads = self._rd16(_RESULT_SPAD_NB) // 256\n        if spads == 0:\n            st = 255\n            mm = 0\n        else:\n            self.signal_kcps = self._rd16(_RESULT_SIGNAL_RATE) * 8\n            self.sigma_mm = self._rd16(_RESULT_SIGMA) // 4\n            mm = self._rd16(_RESULT_DISTANCE)\n        self.clear_interrupt()\n        self.range_status = st\n        return mm if st == 0 else None\n"
+  },
+  "skill": "---\nname: part-vl53l4cd\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the VL53L4CD time-of-flight distance sensor (ST VL53L4CD, Adafruit 5396 breakout). Use when designing, wiring, simulating or writing code for a VL53L4CD in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# VL53L4CD time-of-flight distance sensor (VL53L4CD)\n\n## Overview\nThe **VL53L4CD** from STMicroelectronics is a FlightSense time-of-flight sensor for short distances. It fires 940 nm infrared laser pulses (Class 1, eye-safe) and times the reflections, giving an absolute distance in millimetres from **1 mm up to about 1.3 m** (white target, indoors). It is a short-range relative of the VL53L1X with better accuracy close up.\n- Max range with a 33 ms timing budget: about 1200 mm (white, indoors), 450 mm (grey 17 %), about 550 mm outdoors (overcast).\n- Linear response from 1 mm; field of view 18°.\n- Timing budget 10–200 ms; back-to-back (continuous) or autonomous low-power mode with an inter-measurement period.\n- Modelled board: **Adafruit VL53L4CD Time of Flight Distance Sensor (product 5396)**. It has an LP5907 2.8 V regulator, BSS138 level shifting on SDA/SCL/XSHUT, 10 kΩ pull-ups, a green power LED and two STEMMA QT connectors.\n\n## Pinout (Adafruit 5396, header order)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3–5 V (regulated to 2.8 V on the board) |\n| GND | Ground |\n| SCL | I2C clock (10 kΩ pull-up, level shifted) |\n| SDA | I2C data (10 kΩ pull-up, level shifted) |\n| GPIO | Interrupt output (GPIO1), 2.8 V logic, data ready (active low by default) |\n| XSHUT | Shutdown input, active low, level shifted |\n\n## Electrical limits\n- Bare chip AVDD: 2.6–3.5 V (typ. 2.8 V). Never put more than 3.5 V on a bare module; the Adafruit board's regulator takes 3–5 V on VIN.\n- Current: 22 mA typical, 24 mA max while ranging (average); peaks up to 40 mA. HW standby (XSHUT low) about 5 µA.\n- I2C up to 1 MHz (Fast mode plus). Boot takes up to 1.2 ms after XSHUT goes high.\n\n## Interface details\n- **I2C address 0x29** (7-bit; the datasheet gives the 8-bit form 0x52). Change it in software through register 0x0001; it resets on power-up or XSHUT.\n- **16-bit register addresses**, sent MSB first; multi-byte data is big-endian.\n- ID: 0x010F = **0xEB** (model ID), 0x0110 = **0xAA** (module type).\n- Init (ST Ultra Lite Driver, STSW-IMG026): wait for 0x00E5 = 0x03 (booted), write the 91-byte default configuration to 0x002D–0x0087, start VHV (0x0087 = 0x40), wait for data ready, clear the interrupt (0x0086 = 0x01), stop (0x0087 = 0x00), then 0x0008 = 0x09, 0x000B = 0x00, 0x0024 = 0x0500 and set the range timing (50 ms).\n- Start ranging: 0x0087 = 0x21 when the inter-measurement period (0x006C, 32-bit) is 0, else 0x40. Stop: 0x0087 = 0x00.\n- Data ready: 0x0031 bit 0 equals the interrupt polarity. The default config sets 0x0030 bit 4, so the interrupt is **active low** and data is ready when bit 0 reads 0.\n- Result: 0x0096–0x0097 = distance in **mm** (16-bit unsigned). 0x0089 bits 4:0 = range status (9 = valid); 0x008C = SPAD count × 256 (0 means no result); 0x0092 = sigma × 4 mm; 0x008E = signal rate / 8 kcps.\n- After each reading write 0x01 to 0x0086, or the next result does not arrive.\n- ST publishes no full register map; the driver follows the ULD source exactly.\n\n## Wiring\n| Breakout | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VIN | 3V3 | 3V3(OUT) pin 36 | 3.3 V pin 1 |\n| GND | GND | GND pin 38 | GND pin 6 |\n| SDA | GPIO21 | GP4 (pin 6) | GPIO2 SDA pin 3 |\n| SCL | GPIO22 | GP5 (pin 7) | GPIO3 SCL pin 5 |\n| XSHUT | optional GPIO | optional GPIO | optional GPIO |\n| GPIO | optional GPIO (IRQ) | optional GPIO | optional GPIO |\n\nOn a Raspberry Pi 4 running Linux use `adafruit-circuitpython-vl53l4cd` instead of this MicroPython driver.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nimport time\nfrom vl53l4cd import VL53L4CD\n\ni2c = I2C(0, sda=Pin(4), scl=Pin(5), freq=400000)   # Pico\ntof = VL53L4CD(i2c)          # 50 ms timing budget, continuous\ntof.start_ranging()\nwhile True:\n    mm = tof.read()           # None when the range status is not valid\n    print('out of range' if mm is None else 'D=%d mm' % mm)\n    time.sleep_ms(200)\n```\n`tof.set_range_timing(100, 0)` (call before `start_ranging()`) trades speed for repeatability; `tof.set_range_timing(50, 200)` ranges every 200 ms in low-power autonomous mode. `tof.range_status` holds the last ULD status (0 = valid, 1 = sigma above threshold, 2 = signal too low, 3 = below detection threshold, 4 = phase out of limits, 7 = wrap-around, 255 = no result); `tof.sigma_mm` and `tof.signal_kcps` hold the quality figures.\n\n**Several sensors on one bus:** hold every XSHUT low, release one, create `VL53L4CD(i2c)` and call `set_address(0x30)`, then release the next and give it another address.\n\n## Gotchas\n- **Peel off the protective film** over the sensor window first.\n- Maximum range is only about 1.3 m; for longer distances use a VL53L1X.\n- Sunlight and other IR shorten range (about 0.55 m outdoors); a cover glass needs ST's offset/crosstalk calibration (`set_offset`).\n- The address returns to 0x29 at every power cycle or XSHUT reset.\n- The driver uses `writeto`/`readfrom` with a two-byte register address, so it works on MicroPython ports whose `readfrom_mem` lacks `addrsize=16`.\n\n## Datasheet\nhttps://www.st.com/resource/en/datasheet/vl53l4cd.pdf (DS13812; mirror used: https://cdn-learn.adafruit.com/assets/assets/000/109/710/original/vl53l4cd.pdf)\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom vl53l4cd import VL53L4CD\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\ntof = VL53L4CD(i2c)\ntof.start_ranging()\nwhile True:\n    mm = tof.read()\n    print('out of range' if mm is None else 'D=%d mm' % mm)\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider in millimetres",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 321
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=321 mm",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:23:12.077Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/109/710/original/vl53l4cd.pdf?1647371523",
+      "https://learn.adafruit.com/adafruit-vl53l4cd-time-of-flight-distance-sensor/pinouts",
+      "https://www.adafruit.com/product/5396"
+    ]
+  }
+}

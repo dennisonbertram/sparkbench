@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hc-06",
+  "board": "HC-06 4-pin slave module on the blue JY-MCU-style backplate (VCC, GND, TXD, RXD; no button)",
+  "reason": "Modelled as a uart-device at 9600 baud answering the linvor AT command set with no line ending (AT, AT+VERSION, AT+NAME, AT+PIN, AT+BAUD4), plus a 'connected' control that streams the phone's digit and CRLF once a second. The part check passed on ESP32 and Pico (simulator, breadboard, circuit board). Caveat: the simulator keeps answering AT while connected, which the real module does not.",
+  "datasheetUrl": "https://www.martyncurrey.com/?wpdmdl=3421",
+  "breakoutPinoutSource": "https://www.etechnophiles.com/wp-content/uploads/2020/10/HC-06-pinout-1.jpg",
+  "checkRuns": 1
+}

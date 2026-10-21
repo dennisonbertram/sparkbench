@@ -1,0 +1,174 @@
+{
+  "type": "custom-tsl2572",
+  "name": "TSL2572 ambient light sensor",
+  "mpn": "TSL25721",
+  "category": "sensor",
+  "description": "TAOS/ams TSL2572 (TSL25721FN): a two-channel ambient light sensor (Ch0 visible+IR, Ch1 IR, 16-bit counts each, gains 1x/8x/16x/120x, up to 60,000 lux), turned into lux with the datasheet equation, over I2C at the fixed address 0x39. Sold as: Akizuki Denshi AE-TSL25721 illuminance sensor module (K-15536; 7-pin header VIN, GND, 3V3, OE, INT, SDA, SCL; NJM12888 3.3 V regulator, FXMA2102 I2C level shifter, 2.4-5.0 V supply, SDA/SCL pull-ups only when jumper J1 is bridged).",
+  "eli5": "Measures how bright the room is, the way your eyes see it, and tells the microcontroller in lux.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Board supply 2.4-5.0 V (into the 3.3 V regulator; also the host-side I2C logic level). With an ESP32 or Pico feed it 3.3 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Regulated 3.3 V rail of the sensor. Akizuki: on 3.3 V systems tie it to 3.3 V together with VIN; leave open when VIN is 5 V. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "OE",
+      "role": "io",
+      "description": "Level shifter enable (pulled up on the board): leave open or high for normal use",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low, straight from the chip; NOT 5 V tolerant. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (through the FXMA2102 level shifter; no pull-up unless J1 is bridged)",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (through the FXMA2102 level shifter; no pull-up unless J1 is bridged)",
+      "required": true,
+      "pullUp": 10000
+    }
+  ],
+  "vmin": 2.4,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 57,
+  "datasheetUrl": "https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/1023/TSL2572.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "AE-TSL25721 TSL2572 illuminance sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "With an ESP32 or Pico, power VIN (and optionally 3V3) from 3.3 V: VIN also sets the host-side I2C level of the FXMA2102 shifter, so 5 V on VIN would put 5 V-level signals toward a 3.3 V microcontroller.",
+    "The board ships with jumper J1 open, so SDA and SCL have no pull-ups on the host side: add 10 kΩ pull-ups to 3.3 V (or bridge J1 when VIN is 3.3 V). The FXMA2102 needs them to work.",
+    "Address 0x39 is fixed. ID register 0x12 reads 0x34 (TSL25721). Every access uses a command byte: 0xA0 | register for auto-increment; 0xE6 clears the ALS interrupt.",
+    "Start-up: ENABLE (0x00) = 0, set ATIME (0x01), CONFIG (0x0D, AGL bit 2), CONTROL (0x0F, AGAIN 1x/8x/16x/120x), then ENABLE = 0x03 (PON + AEN). Wait 2.73 ms + one integration before the first result.",
+    "Integration time = 2.73 ms x (256 - ATIME); ATIME 0xDB = 101 ms, max count 37888. After STATUS (0x13) bit 0 AVALID, read 4 bytes from 0x14: C0 then C1, low byte first.",
+    "Lux: CPL = ATIME_ms x AGAIN / (GA x 60); Lux = max((C0 - 1.87 C1)/CPL, (0.63 C0 - C1)/CPL, 0). GA = 1 in open air.",
+    "INT is open-drain and not 5 V tolerant: pull it up to 3.3 V only."
+  ],
+  "keywords": [
+    "tsl2572",
+    "tsl25721",
+    "ae-tsl25721",
+    "ae-tsl2572",
+    "ambient light",
+    "lux",
+    "light sensor",
+    "illuminance",
+    "taos",
+    "ams",
+    "akizuki"
+  ],
+  "sources": [
+    "https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/1023/TSL2572.pdf",
+    "https://akizukidenshi.com/goodsaffix/AE-TSL25721_20200806.pdf",
+    "http://akizukidenshi.com/catalog/g/gK-15536/",
+    "https://www.onsemi.com/download/application-notes/pdf/an-9718-d.pdf"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Ch0 visible + IR light (ADC counts)",
+    "unit": "counts",
+    "min": 0,
+    "max": 37888,
+    "default": 2000,
+    "controls": [
+      {
+        "key": "ch1",
+        "quantity": "Ch1 infrared light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 37888,
+        "default": 300
+      }
+    ],
+    "registers": {
+      "0xB2": 52,
+      "0xB3": 1
+    },
+    "measures": [
+      {
+        "reg": "0xB4",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB6",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ch1"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tsl2572.py",
+    "code": "# TSL2572 (TSL25721) ambient light sensor (TAOS / ams), MicroPython driver.\n# Written from the TSL2572 datasheet (TAOS132, March 2012):\n#  - I2C address 0x39 (TSL25721/TSL25723); ID register 0x12 reads 0x34 (TSL25721/25725)\n#    or 0x3D (TSL25723/25727).\n#  - Every register access starts with a COMMAND byte: bit 7 = 1, bits 6:5 TYPE\n#    (00 repeated byte, 01 auto-increment, 11 special function), bits 4:0 register address.\n#    This driver uses auto-increment (0xA0 | reg); 0xE6 is the ALS interrupt clear.\n#  - ENABLE (0x00): PON bit 0, AEN bit 1, WEN bit 3, AIEN bit 4, SAI bit 6.\n#  - ATIME (0x01): integration time = 2.73 ms x (256 - ATIME); max count = min(65535, 1024 x (256 - ATIME)).\n#  - CONFIG (0x0D): AGL bit 2 scales 1x/8x gain by 0.16 (do not use with 16x/120x).\n#  - CONTROL (0x0F): AGAIN bits 1:0 = 1x, 8x, 16x, 120x.\n#  - STATUS (0x13): AVALID bit 0. C0DATA 0x14/0x15, C1DATA 0x16/0x17, low byte first,\n#    read with auto-increment so the high byte comes from the shadow register.\n#  - Lux: CPL = (ATIME_ms x AGAINx) / (GA x 60); Lux1 = (C0 - 1.87 C1) / CPL;\n#    Lux2 = (0.63 C0 - C1) / CPL; Lux = max(Lux1, Lux2, 0).\nimport time\n\n_ADDR = 0x39\n_CMD_AUTO = 0xA0\n_CMD_CLEAR_INT = 0xE6\n\n_ENABLE = 0x00\n_ATIME = 0x01\n_WTIME = 0x03\n_PERS = 0x0C\n_CONFIG = 0x0D\n_CONTROL = 0x0F\n_ID = 0x12\n_STATUS = 0x13\n_C0DATA = 0x14\n\n_PON = 0x01\n_AEN = 0x02\n_AVALID = 0x01\n_AGL = 0x04\n\n_AGAIN = {1: 0, 8: 1, 16: 2, 120: 3}\n_IDS = (0x34, 0x3D)\n\n\nclass TSL2572:\n    def __init__(self, i2c, addr=_ADDR, atime=0xDB, again=1, agl=False, ga=1.0):\n        \"\"\"atime: 0xFF (2.73 ms) .. 0x00 (699 ms); default 0xDB = 101 ms (max count 37888).\n        again: 1, 8, 16 or 120. agl: low-gain mode (only with 1x/8x, for up to 60k lux).\n        ga: glass attenuation factor (1.0 in open air).\"\"\"\n        if again not in _AGAIN:\n            raise ValueError('again must be 1, 8, 16 or 120')\n        if agl and again > 8:\n            raise ValueError('AGL must not be used with 16x or 120x gain')\n        self.i2c = i2c\n        self.addr = addr\n        dev_id = self._read8(_ID)\n        if dev_id not in _IDS:\n            raise OSError('TSL2572 not found (ID 0x%02X): check the wiring' % dev_id)\n        self.atime = atime & 0xFF\n        self.again = again\n        self.agl = agl\n        self.ga = ga\n        self._write8(_ENABLE, 0x00)  # power down while configuring\n        self._write8(_ATIME, self.atime)\n        self._write8(_WTIME, 0xFF)\n        self._write8(_PERS, 0x00)\n        self._write8(_CONFIG, _AGL if agl else 0x00)\n        self._write8(_CONTROL, _AGAIN[again])\n        self._write8(_ENABLE, _PON | _AEN)\n        # first result after ALS init (2.73 ms) + one integration\n        time.sleep_ms(int(self.integration_ms() + 2.73) + 5)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto_mem(self.addr, _CMD_AUTO | reg, bytes((value & 0xFF,)))\n\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, _CMD_AUTO | reg, n)\n\n    def _read8(self, reg):\n        return self._read(reg, 1)[0]\n\n    def integration_ms(self):\n        return 2.73 * (256 - self.atime)\n\n    def gain(self):\n        return self.again * (0.16 if self.agl else 1.0)\n\n    def max_count(self):\n        return min(65535, 1024 * (256 - self.atime))\n\n    def raw(self):\n        \"\"\"(ch0, ch1): ch0 = visible + IR, ch1 = IR, counts from one integration cycle.\"\"\"\n        deadline = time.ticks_add(time.ticks_ms(), int(self.integration_ms() * 2) + 100)\n        while not (self._read8(_STATUS) & _AVALID):\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('TSL2572 timed out waiting for a reading')\n            time.sleep_ms(5)\n        d = self._read(_C0DATA, 4)\n        return d[0] | (d[1] << 8), d[2] | (d[3] << 8)\n\n    def lux(self, ch0=None, ch1=None):\n        \"\"\"Illuminance in lux from the datasheet equation.\"\"\"\n        if ch0 is None or ch1 is None:\n            ch0, ch1 = self.raw()\n        cpl = (self.integration_ms() * self.gain()) / (self.ga * 60.0)\n        lux1 = (ch0 - 1.87 * ch1) / cpl\n        lux2 = (0.63 * ch0 - ch1) / cpl\n        return max(lux1, lux2, 0.0)\n\n    def saturated(self, ch0):\n        return ch0 >= self.max_count()\n\n    def clear_interrupt(self):\n        self.i2c.writeto(self.addr, bytes((_CMD_CLEAR_INT,)))\n\n    def sleep(self):\n        self._write8(_ENABLE, 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tsl2572 import TSL2572\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TSL2572(i2c)  # ATIME 0xDB (101 ms), gain 1x\nwhile True:\n    ch0, ch1 = sensor.raw()\n    print('CH0=%d CH1=%d LUX=%.1f' % (ch0, ch1, sensor.lux(ch0, ch1)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the Ch0/Ch1 counts set on the sliders and the datasheet lux",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ch1",
+          "value": 600
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=5000 CH1=600 LUX=2303.5",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:09:03.014Z",
+    "verifiedSources": [
+      "https://akizukidenshi.com/goodsaffix/tsl2572.pdf",
+      "https://akizukidenshi.com/goodsaffix/AE-TSL25721_20200806.pdf",
+      "https://akizukidenshi.com/catalog/g/g115536/"
+    ]
+  }
+}

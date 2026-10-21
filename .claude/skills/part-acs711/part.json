@@ -1,0 +1,126 @@
+{
+  "type": "custom-acs711",
+  "name": "Pololu ACS711EX current sensor carrier ±15.5 A",
+  "mpn": "ACS711KEXLT-15AB-T",
+  "category": "sensor",
+  "description": "Hall-effect current sensor from Allegro MicroSystems for AC or DC current up to ±15.5 A, with the measured current path separated from the sensing side and a latching overcurrent FAULT output. Its analog output sits at VCC/2 at 0 A and moves 90 mV per amp at VCC = 3.3 V, ratiometric to its 3.0–5.5 V supply. Sold as: Pololu ACS711EX Current Sensor Carrier -15.5A to +15.5A, #2452 (ACS711KEXLT-15AB-T, IP+/IP- holes on one side, 5-pin header GND, GND, Vcc, OUT, FAULT on the other).",
+  "eli5": "Put it in series with a wire and it tells you how much current flows: its OUT pin sits at half the supply voltage with no current and moves 0.09 V for every amp (at 3.3 V). A FAULT pin drops low if the current ever goes above 15.5 A.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1, square pad).",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Second ground pad, printed GND on the board; same net as pin 1.",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply (printed Vcc), 3.0 V to 5.5 V. Use 3.3 V so OUT stays within a 3.3 V ADC's range.",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output: Vout = VCC/2 + 0.090 V/A × I × VCC/3.3 V (1.65 V at 0 A, 0.255 V to 3.045 V over ±15.5 A with a 3.3 V supply). Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "FAULT",
+      "role": "io",
+      "description": "Overcurrent fault, active low, latches low when |I| > 15.5 A; cleared only by power-cycling VCC. Open drain with a 10 kΩ pull-up to VCC on the board. Optional digital input.",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 6,
+  "datasheetUrl": "https://www.allegromicro.com/-/media/files/datasheets/acs711-datasheet.pdf",
+  "priceUsd": 8.95,
+  "supplierQuery": "Pololu ACS711EX current sensor carrier -15.5A to +15.5A 2452",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: GND, GND, Vcc, OUT, FAULT (pin 1 = square GND pad, FAULT at the end). The 5×1 header ships loose: solder it in first.",
+    "Power Vcc from 3.3 V (3.0–5.5 V allowed). At 5 V OUT reaches about 4.6 V at +15.5 A, too much for a 3.3 V ADC: then add a 10 kΩ (OUT to ADC) / 20 kΩ (ADC to GND) divider and pass vcc=5.0, divider=1.5.",
+    "The measured current goes through the large IP+ / IP- holes, in series with the load: in at IP+ and out at IP- (the +i arrow) reads positive. Pololu rates the board for use below 30 V.",
+    "Current (A) = (Vout − VCC/2) / (0.090 × VCC/3.3). With 3.3 V: 1.65 V = 0 A, 2.10 V = +5 A, 1.20 V = −5 A.",
+    "FAULT has a 10 kΩ pull-up on the board, so wire it straight to a GPIO if you want it. It latches low above 15.5 A and only a VCC power cycle clears it. Sparkbench does not simulate the FAULT latch.",
+    "Call calibrate_zero() once with no current flowing and average many samples (noise is about 11 mV, ≈ 0.12 A)."
+  ],
+  "keywords": [
+    "acs711",
+    "acs711kexlt-15ab",
+    "acs711ex",
+    "pololu",
+    "2452",
+    "current",
+    "ammeter",
+    "hall",
+    "analog",
+    "sensor",
+    "overcurrent",
+    "15a"
+  ],
+  "sources": [
+    "https://www.allegromicro.com/-/media/files/datasheets/acs711-datasheet.pdf",
+    "https://www.pololu.com/product/2452",
+    "https://a.pololu-files.com/picture/0J4599.1200.jpg",
+    "https://a.pololu-files.com/picture/0J3673.1200.jpg",
+    "https://a.pololu-files.com/picture/0J4598.1200.jpg"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Current (IP+ to IP-)",
+    "unit": "A",
+    "min": -15.5,
+    "max": 15.5,
+    "default": 0,
+    "vAtMin": 0.255,
+    "vAtMax": 3.045,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "acs711.py",
+    "code": "# Pololu ACS711EX Current Sensor Carrier -15.5A to +15.5A (#2452), MicroPython driver.\n# Chip: Allegro ACS711KEXLT-15AB-T (datasheet rev. 4+):\n#   VCC = 3.0-5.5 V; device is factory-trimmed at VCC = 3.3 V.\n#   VIOUT(Q) = VCC x 0.5 at 0 A; Sens = 90 mV/A at VCC = 3.3 V (x15AB, EX package).\n#   Output is ratiometric: zero point and sensitivity scale with VCC (136 mV/A at 5 V).\n#   I(A) = (Vout - VCC/2) / (0.090 V/A x VCC / 3.3 V)\n#   Positive current flows IP+ -> IP- (the +i arrow on the board's silkscreen).\n#   FAULT (open drain, 10 k pull-up to VCC on the carrier) latches LOW when |I| > 15.5 A;\n#   only a VCC power cycle (VCC < 200 mV for > 100 us) clears it.\nfrom machine import ADC, Pin\n\n\nclass ACS711:\n    SENS_15AB = 0.090  # V/A at VCC = 3.3 V (ACS711KEXLT-15AB, +/-15.5 A)\n    SENS_31AB = 0.045  # V/A at VCC = 3.3 V (ACS711KEXLT-31AB, +/-31 A)\n\n    def __init__(self, pin, vcc=3.3, sensitivity=SENS_15AB, fault_pin=None,\n                 divider=1.0, samples=64, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to OUT. vcc: the carrier's supply voltage (ratiometric).\n        fault_pin: optional GPIO wired to FAULT. divider: Vout / Vadc if a divider is used\n        (needed when VCC = 5 V and the ADC is 3.3 V).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.sens = sensitivity * vcc / 3.3  # ratiometric sensitivity\n        self.zero = vcc / 2.0  # VIOUT(Q) = VCC x 0.5\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC full scale used when read_uv() is not available (e.g. Pico)\n        self.fault_pin = None\n        if fault_pin is not None:\n            self.fault_pin = Pin(fault_pin, Pin.IN) if isinstance(fault_pin, int) else fault_pin\n\n    def voltage(self):\n        \"\"\"Averaged OUT voltage (V).\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with NO current flowing: stores the measured 0 A output instead of VCC/2.\"\"\"\n        self.zero = self.voltage()\n        return self.zero\n\n    def current(self):\n        \"\"\"Current in amperes (positive = IP+ to IP-).\"\"\"\n        return (self.voltage() - self.zero) / self.sens\n\n    def fault(self):\n        \"\"\"True if the overcurrent FAULT latch has tripped (FAULT pin low).\"\"\"\n        if self.fault_pin is None:\n            return False\n        return self.fault_pin.value() == 0\n"
+  },
+  "example": {
+    "code": "from acs711 import ACS711\nimport time\n\nsensor = ACS711({OUT})  # Vcc = 3.3 V: 1.65 V at 0 A, 90 mV/A\nwhile True:\n    print('I=%.1fA' % sensor.current())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the current set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "I=5.0A",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:21:09.585Z",
+    "verifiedSources": [
+      "https://www.allegromicro.com/-/media/files/datasheets/acs711-datasheet.pdf",
+      "https://www.pololu.com/product/2452"
+    ]
+  }
+}

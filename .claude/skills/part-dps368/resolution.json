@@ -1,0 +1,64 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 4: part says SDA, datasheet reading says NC",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 4 = I2C: SDA. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "header pin 5: part says SCL, datasheet reading says CS",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 5 = I2C: SCL. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "header pin 6: part says GND, datasheet reading says SCLK",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 6 = Ground. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "header pin 7: part says 3V3, datasheet reading says MOSI",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 7 = Power 3.3V. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "header pin 12: part says NC12, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 12 = NC. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "header pin 13: part says NC13, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 13 = NC. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "header pin 14: part says CS, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 14 = SPI: CS. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "header pin 15: part says SCLK, datasheet reading says 3V3",
+      "verdict": "part-correct",
+      "evidence": "Infineon's official 'DPS3xx Pressure Shield2Go' pinout graphic gives physical pin 15 = SPI: SCLK. Its physical numbering is 1 NC, 2 NC, 3 NC, 4 I2C: SDA, 5 I2C: SCL, 6 Ground, 7 Power 3.3V, 8 INT/GPIO3, 9 NC on the 9-pin header, then 10 NC, 11 NC, 12 NC, 13 NC, 14 SPI: CS, 15 SPI: SCLK, 16 SPI: MOSI, 17 SPI: MISO on the 8-pin header. The part uses this order exactly. The second reading has the same two headers and signals, but it lists the 8-pin SPI header first and the 9-pin header second, so its pin positions are shifted. This is an ordering difference, not different wiring. Infineon's board photo (dps368-shield2go.png) confirms the silkscreen rows: NC NC NC SDA SCL GND 3V3 INT/GPIO3 NC and NC NC NC NC CS SCLK MOSI MISO.",
+      "source": "https://raw.githubusercontent.com/wiki/Infineon/arduino-xensiv-dps3xx/img/DPSxx_Pressure_Shield2Go_Pin_Out.png"
+    },
+    {
+      "diff": "pressure_Pa: datasheet reading gives 1 per count, the part's model has -0.0004921, -0.002205, 1000, 1000",
+      "verdict": "part-correct",
+      "evidence": "The DPS368 has no fixed per-count conversion. Datasheet sec. 4.9.1/4.9.2: 'Traw_sc = Traw/kT', 'Praw_sc = Praw/kP', 'Tcomp (°C) = c0*0.5 + c1*Traw_sc', 'Pcomp(Pa) = c00 + Praw_sc*(c10 + Praw_sc*(c20 + Praw_sc*c30)) + Traw_sc*c01 + Traw_sc*Praw_sc*(c11 + Praw_sc*c21)'. Here c0..c30 are per-chip factory coefficients (regs 0x10-0x21) and kP/kT come from table 9. The second reading's '1 per count' only says that the compensated outputs are in Pa and °C. The driver implements these formulas exactly. The sim's scales come from the same formulas applied to its own coefficient registers: c0=204, c1=-258, so T = 102 + (-258/524288)*Traw = -0.0004921 °C per count with offset 102. c00=98500 Pa, c10=-56000, kP=253952 (16x), so P = 985 hPa + (-56000/253952/100) = -0.002205 hPa per count. The 1000 scales only encode the MEAS_CFG ready-flag register, not a conversion. The simulator test passes (T=23.70C P=962.45hPa).",
+      "source": "https://cdn.sparkfun.com/assets/d/6/1/9/3/DPS368-DataSheet.pdf"
+    },
+    {
+      "diff": "temperature_C: datasheet reading gives 1 per count, the part's model has -0.0004921, -0.002205, 1000, 1000",
+      "verdict": "part-correct",
+      "evidence": "The DPS368 has no fixed per-count conversion. Datasheet sec. 4.9.1/4.9.2: 'Traw_sc = Traw/kT', 'Praw_sc = Praw/kP', 'Tcomp (°C) = c0*0.5 + c1*Traw_sc', 'Pcomp(Pa) = c00 + Praw_sc*(c10 + Praw_sc*(c20 + Praw_sc*c30)) + Traw_sc*c01 + Traw_sc*Praw_sc*(c11 + Praw_sc*c21)'. Here c0..c30 are per-chip factory coefficients (regs 0x10-0x21) and kP/kT come from table 9. The second reading's '1 per count' only says that the compensated outputs are in Pa and °C. The driver implements these formulas exactly. The sim's scales come from the same formulas applied to its own coefficient registers: c0=204, c1=-258, so T = 102 + (-258/524288)*Traw = -0.0004921 °C per count with offset 102. c00=98500 Pa, c10=-56000, kP=253952 (16x), so P = 985 hPa + (-56000/253952/100) = -0.002205 hPa per count. The 1000 scales only encode the MEAS_CFG ready-flag register, not a conversion. The simulator test passes (T=23.70C P=962.45hPa).",
+      "source": "https://cdn.sparkfun.com/assets/d/6/1/9/3/DPS368-DataSheet.pdf"
+    }
+  ]
+}

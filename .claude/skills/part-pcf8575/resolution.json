@@ -1,0 +1,10 @@
+{
+ "diffs": [
+  {
+   "diff": "pin count: part has 26 (VIN G SCL SDA P0 P1 P2 P3 P4 P5 P6 P7 IRQ A0 A1 A2 15 14 13 12 11 10 P9 P8 VCC GND), datasheet reading has 24 (VIN G SCL SDA P0 P1 P2 P3 P4 P5 P6 P7 IRQ A0 A1 A2 15 14 13 12 11 10 P9 P8)",
+   "verdict": "part-correct",
+   "evidence": "The model is the Adafruit PCF8575 breakout (#5611). The 24 header pins match in both readings; the extra VCC and GND are the board's I/O power rails, which the second reading left out. Adafruit pinout guide, 'Expander Power Pins': 'Above the bottom set of I/O pins is the ground pins for the expander I/O pins ... labeled to the left of the row with a - in a circle, and above the right end of the row with GND.' 'Below the top set of I/O pins is the positive voltage for the expander I/O pins ... labeled ... with a + in a circle, and below the right end of the row with VCC (same as VIN).' The model includes one pad from each rail, marked not required and on the same nets as VIN/G. That is accurate and does not change how anything is wired.",
+   "source": "https://learn.adafruit.com/adafruit-pcf8575/pinouts"
+  }
+ ]
+}

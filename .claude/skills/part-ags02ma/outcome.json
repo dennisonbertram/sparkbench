@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ags02ma",
+  "board": "Adafruit AGS02MA I2C TVOC Gas Sensor (PID 5593), bare 4-lead sensor",
+  "reason": "Both check runs passed (ESP32 and Pico: wiring with the datasheet's 10 kΩ pull-ups, simulator test TVOC=1250ppb, DRC-clean PCB, footprint, LCSC). The driver follows the datasheet: register 0x00 read, 30 ms wait, 5-byte reply with a 24-bit ppb value, RDY status bit, CRC-8 (0x31/0xFF, checked against the datasheet's 0xFC example), and a 20 kHz bus.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/5593/datasheet+ags02ma.pdf",
+  "breakoutPinoutSource": "Aosong AGS02MA datasheet Figure 4 / Table 3 (pin 1 VDD, 2 SDA, 3 GND, 4 SCL); Adafruit product page 5593 (bare sensor, external 10K pull-ups required, 20 kHz I2C)",
+  "checkRuns": 2
+}

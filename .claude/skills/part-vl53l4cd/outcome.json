@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-vl53l4cd",
+  "board": "Adafruit VL53L4CD Time of Flight Distance Sensor (#5396)",
+  "reason": "Check passed on ESP32 and Pico on the first run: the driver follows ST's VL53L4CD ULD exactly (model ID 0xEBAA, boot 0x00E5 = 3, 91-byte default config verified byte-for-byte, VHV start, SetRangeTiming math, active-low data ready on 0x0031, mm at 0x0096, status 0x0089 = 9, SPAD count check) and reads the slider's 321 mm. The sim holds data ready on and fixes the oscillator calibration registers because it does not model range timing.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vl53l4cd.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-VL53L4CD-PCB (JP2 pads 1-6 = VIN, GND, SCL, SDA, GPIO, XSHUT, matching the silkscreen) and https://learn.adafruit.com/adafruit-vl53l4cd-time-of-flight-distance-sensor/pinouts",
+  "checkRuns": 1
+}

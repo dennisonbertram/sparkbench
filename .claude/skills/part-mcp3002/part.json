@@ -1,0 +1,185 @@
+{
+  "type": "custom-mcp3002",
+  "name": "MCP3002 2-channel 10-bit ADC (SPI)",
+  "mpn": "MCP3002",
+  "category": "sensor",
+  "description": "Microchip 10-bit successive-approximation analog-to-digital converter with 2 single-ended inputs (or 1 pseudo-differential pair) and an SPI interface, up to 200 ksps at 5 V (75 ksps at 2.7 V). VDD is also the reference: Code = 1024 x VIN / VDD. Runs on 2.7-5.5 V. Sold as: MCP3002-I/P bare chip in a DIP-8 package (pin 1 CS/SHDN, 2 CH0, 3 CH1, 4 VSS, 5 DIN, 6 DOUT, 7 CLK, 8 VDD/VREF), plugged straight into a breadboard.",
+  "eli5": "Gives your board two analog inputs: it measures two voltages and sends the numbers over SPI.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "CS/SHDN",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select / shutdown, active low (pin 1). Must go high between conversions",
+      "required": true
+    },
+    {
+      "name": "CH0",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 0 (pin 2), 0 V to VDD; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "CH1",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog input 1 (pin 3), 0 V to VDD; never above VDD + 0.6 V",
+      "required": false
+    },
+    {
+      "name": "VSS",
+      "role": "gnd",
+      "description": "Ground (pin 4)",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Serial data in: start bit, SGL/DIFF, ODD/SIGN and MSBF bits (pin 5)",
+      "required": true
+    },
+    {
+      "name": "DOUT",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "Serial data out: null bit then the 10-bit result (pin 6)",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Serial clock, 10 kHz to 1.2 MHz at 2.7 V, 3.2 MHz at 5 V (pin 7)",
+      "required": true
+    },
+    {
+      "name": "VDD/VREF",
+      "role": "power",
+      "description": "Supply AND reference, 2.7-5.5 V (pin 8): sets full scale. Use 3.3 V with an ESP32/Pico for 0-3.3 V inputs and 3.3 V logic",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.65,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/21294E.pdf",
+  "priceUsd": 2.5,
+  "supplierQuery": "MCP3002-I/P DIP-8",
+  "footprint": "Package_DIP:DIP-8_W7.62mm",
+  "buildNotes": [
+    "Send 2 bytes in SPI mode 0: 0x68 for CH0 or 0x78 for CH1 (start, single-ended, MSB first), then 0x00. The result is (reply[0] & 0x03) << 8 | reply[1]; the upper bits of reply[0] are undefined (high-Z, then the null bit).",
+    "Pull CS/SHDN high after every conversion: each conversion starts with a new CS falling edge.",
+    "There is no separate VREF pin: VDD is the reference, so volts = code x VDD / 1024. A noisy supply means noisy readings.",
+    "Power it from 3.3 V with an ESP32 or Pico; at 5 V DOUT would drive 5 V into a 3.3 V GPIO.",
+    "Keep SPI clock between 10 kHz and 1.2 MHz at 2.7-3.3 V (3.2 MHz max at 5 V); too slow and the sample capacitor droops.",
+    "Put a 1 uF ceramic capacitor from VDD/VREF to VSS close to the chip.",
+    "Analog sources above about 1 kohm need a slower clock (datasheet Figure 4-2) or a buffer."
+  ],
+  "keywords": [
+    "mcp3002",
+    "adc",
+    "10-bit",
+    "analog to digital",
+    "spi adc",
+    "microchip",
+    "2-channel"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/21294E.pdf",
+    "https://www.microchip.com/en-us/product/MCP3002"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "CH0 voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 0,
+    "controls": [
+      {
+        "key": "ch1",
+        "quantity": "CH1 voltage",
+        "unit": "V",
+        "min": 0,
+        "max": 3.3,
+        "default": 0
+      }
+    ],
+    "spiReplies": [
+      {
+        "match": "68",
+        "at": 0,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 6
+          },
+          {
+            "control": "value",
+            "bits": 10,
+            "scale": 0.00322265625
+          }
+        ]
+      },
+      {
+        "match": "78",
+        "at": 0,
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 6
+          },
+          {
+            "control": "ch1",
+            "bits": 10,
+            "scale": 0.00322265625
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp3002.py",
+    "code": "# MCP3002 2-channel 10-bit SPI ADC (Microchip MCP3002, DS21294E), MicroPython driver.\n# Uses the datasheet's 2-byte, 8-bit-aligned transfer (Section 6.1, Figure 6-1, SPI mode 0,0):\n#   sent:     0 START SGL/DIFF ODD/SIGN MSBF x x x | x x x x x x x x\n#   received: ? ? ? ? ? NULL B9 B8                 | B7 B6 B5 B4 B3 B2 B1 B0\n# The leading zero before the start bit puts the 10-bit result in the low bits.\n# VDD is also the reference: Code = 1024 * VIN / VDD (Section 4.2).\nfrom machine import Pin\n\n\nclass MCP3002:\n    def __init__(self, spi, cs, vdd=3.3):\n        \"\"\"spi: machine.SPI in mode 0 (polarity=0, phase=0), 10 kHz to 1.2 MHz at 2.7 V\n        (3.2 MHz max at 5 V). cs: GPIO number of CS/SHDN. vdd: voltage on the VDD/VREF pin.\"\"\"\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.vdd = vdd\n        self._tx = bytearray(2)\n        self._rx = bytearray(2)\n\n    def read_raw(self, channel, single_ended=True):\n        \"\"\"Convert one channel and return the 10-bit code (0-1023).\n        single_ended=False selects pseudo-differential mode (Table 5-1):\n        channel 0 = CH0 is IN+ / CH1 is IN-, channel 1 = CH1 is IN+ / CH0 is IN-.\"\"\"\n        if channel not in (0, 1):\n            raise ValueError('MCP3002 channel must be 0 or 1')\n        # 0b0 1 SGL ODD MSBF 000: start bit, mode, channel, MSB-first only\n        self._tx[0] = 0x40 | (0x20 if single_ended else 0x00) | (channel << 4) | 0x08\n        self._tx[1] = 0x00\n        self.cs.value(0)\n        self.spi.write_readinto(self._tx, self._rx)\n        self.cs.value(1)  # CS must go high between conversions (tCSH >= 310 ns)\n        return ((self._rx[0] & 0x03) << 8) | self._rx[1]\n\n    def raw_to_volts(self, raw):\n        return raw * self.vdd / 1024\n\n    def read_volts(self, channel, single_ended=True):\n        return self.raw_to_volts(self.read_raw(channel, single_ended))\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom mcp3002 import MCP3002\n\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}), miso=Pin({DOUT}))\nadc = MCP3002(spi, {CS_SHDN}, vdd=3.3)  # VDD/VREF on 3.3 V\nwhile True:\n    r0 = adc.read_raw(0)\n    r1 = adc.read_raw(1)\n    print('CH0=%d %.3fV CH1=%d %.3fV' % (r0, adc.raw_to_volts(r0), r1, adc.raw_to_volts(r1)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CH0 and CH1 voltages set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.65
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ch1",
+          "value": 2.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=512 1.650V CH1=776 2.501V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:22:47.281Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/21294E.pdf"
+    ]
+  }
+}

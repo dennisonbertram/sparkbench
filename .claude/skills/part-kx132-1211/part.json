@@ -1,0 +1,217 @@
+{
+  "type": "custom-kx132-1211",
+  "name": "KX132-1211 3-axis accelerometer",
+  "mpn": "KX132-1211",
+  "category": "sensor",
+  "description": "Kionix (ROHM) 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, 16-bit output (16384 counts/g at ±2 g), output data rate 0.781 Hz–25.6 kHz, I2C (up to 3.4 MHz) or SPI, 512-byte FIFO, tap/tilt/free-fall/wake-up engines and two interrupt pins. Chip supply 1.7–3.6 V. Sold as: SparkFun Triple Axis Accelerometer Breakout - KX132 (Qwiic), SEN-17871, with two headers on opposite edges: the main 6-pin header GND, 3V3, SDA, SCL, ADR, CS (no regulator: 3.3 V only; 4.7 kΩ I2C pull-ups; ADR pulled to 3.3 V by the default ADR jumper = I2C address 0x1F; CS pulled to 3.3 V = I2C mode), and a 3-pin header INT2, INT1, TRIG on the opposite edge, not needed for basic use (TRIG is tied to GND by its jumper). Because the pins are on two edges it is wired with jumper leads rather than plugged in as a single row.",
+  "eli5": "Feels which way is down and how hard it is being shaken, tilted or vibrated, on three axes.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V (feeds the chip's VDD and IO_VDD directly, no regulator: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SDI in SPI mode); 4.7 kΩ pull-up to 3.3 V on the board",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SCLK in SPI mode); 4.7 kΩ pull-up to 3.3 V on the board",
+      "required": true
+    },
+    {
+      "name": "ADR",
+      "role": "io",
+      "description": "Address select / SPI SDO. Pulled to 3.3 V by the board (0x1F); tie to GND for 0x1E. Leave unconnected for I2C at 0x1F",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select, active low; pulled to 3.3 V on the board (I2C mode). Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Second header (opposite edge): interrupt output 2, push-pull 3.3 V logic, driven low after power-on; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Second header (opposite edge): interrupt output 1, push-pull 3.3 V logic, driven low after power-on; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "TRIG",
+      "role": "nc",
+      "description": "Second header (opposite edge): FIFO trigger input, tied to GND on the board by the closed TRIG jumper. Leave unconnected (driving it high would short a GPIO to GND); only use after cutting the TRIG jumper",
+      "required": false
+    }
+  ],
+  "vmin": 1.7,
+  "vmax": 3.6,
+  "currentMa": 1,
+  "i2cAddress": 31,
+  "datasheetUrl": "https://kionixfs.azureedge.net/en/datasheet/KX132-1211-Specifications-Rev-1.0.pdf",
+  "priceUsd": 22,
+  "supplierQuery": "SparkFun Triple Axis Accelerometer Breakout KX132 Qwiic SEN-17871",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "sources": [
+    "https://github.com/sparkfun/Qwiic_KX13X/blob/main/Documentation/KX132-1211-Specifications-Rev-1.0.pdf",
+    "https://cdn.sparkfun.com/assets/d/a/1/c/0/KX132-1211-Specifications-Rev-1.0.pdf",
+    "https://cdn.sparkfun.com/assets/9/9/a/5/6/KX132-1211-Technical-Reference-Manual-Rev-1.0.pdf",
+    "https://github.com/sparkfun/Qwiic_KX13X/blob/main/docs/docs/hardware-overview.md",
+    "https://raw.githubusercontent.com/sparkfun/Qwiic_KX13X/HEAD/docs/static/img/kx13x-pinouts.png",
+    "https://github.com/sparkfun/Qwiic_KX13X/blob/main/Hardware/Qwiic_KX13X.sch",
+    "https://github.com/sparkfun/SparkFun_KX13X_Arduino_Library/blob/main/src/SparkFun_KX13X.h",
+    "https://www.sparkfun.com/products/17871"
+  ],
+  "buildNotes": [
+    "Power from 3.3 V only: the board has no regulator and the chip's absolute maximum supply is 3.6 V.",
+    "The chip starts in stand-by (CNTL1 0x1B = 0x00). Settings can only be changed with PC1 = 0: write CNTL1 = 0x00, ODCNTL 0x21 = 0x06 (50 Hz), then CNTL1 = 0xE0 (operating, high-performance, data-ready engine, ±2 g).",
+    "Read XOUT_L..ZOUT_H (0x08-0x0D) in one 6-byte burst: the address auto-increments. Each axis is 16-bit two's complement, low byte first; divide by 16384 counts/g at ±2 g (8192/4096/2048 at ±4/8/16 g).",
+    "WHO_AM_I (0x13) must read 0x3D; anything else means a wiring fault or the wrong address.",
+    "Default I2C address is 0x1F (ADR jumper pulls ADR/SDO to 3.3 V); cut the jumper and bridge to GND for 0x1E. Leave CS unconnected for I2C.",
+    "INS2 (0x17) bit 4 DRDY flags a new sample once DRDYE is set in CNTL1.",
+    "Mount the board flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "kx132",
+    "kx132-1211",
+    "kionix",
+    "rohm",
+    "accelerometer",
+    "vibration",
+    "tilt",
+    "tap",
+    "3-axis",
+    "sparkfun 17871",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x00": 75,
+      "0x12": 85,
+      "0x13": 61,
+      "0x17": 16,
+      "0x1B": 0,
+      "0x21": 6
+    },
+    "measures": [
+      {
+        "reg": "0x08",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x0A",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "kx132.py",
+    "code": "# KX132-1211 3-axis accelerometer (Kionix / ROHM), MicroPython driver for I2C.\n# From the KX132-1211 Product Specifications and Technical Reference Manual (Rev 1.0):\n#   WHO_AM_I 0x13 = 0x3D. COTR 0x12 = 0x55.\n#   CNTL1 0x1B: PC1 bit 7 (1 = operating, 0 = stand-by), RES bit 6 (1 = high-performance),\n#     DRDYE bit 5 (data-ready engine), GSEL[1:0] bits 4:3 (+-2/4/8/16 g).\n#     Control registers may only be changed while PC1 = 0 (stand-by).\n#   ODCNTL 0x21: OSA[3:0] output data rate, 0x06 = 50 Hz (default, IIR filter on).\n#   INS2 0x17 bit 4 DRDY = new data in XOUT_L..ZOUT_H (needs DRDYE = 1).\n#   XOUT_L..ZOUT_H 0x08-0x0D: 16-bit two's complement, low byte first. The register address\n#     auto-increments, so all six bytes are read in one transaction (as the datasheet recommends).\n#   Sensitivity (16 bit): 16384 / 8192 / 4096 / 2048 counts per g at +-2/4/8/16 g.\nimport time\n\n_COTR = 0x12\n_WHO_AM_I = 0x13\n_INS2 = 0x17\n_CNTL1 = 0x1B\n_ODCNTL = 0x21\n_XOUT_L = 0x08\n\n_PC1 = 0x80\n_RES = 0x40\n_DRDYE = 0x20\n\n_GSEL = {2: (0b00, 16384), 4: (0b01, 8192), 8: (0b10, 4096), 16: (0b11, 2048)}\n\n\nclass KX132:\n    def __init__(self, i2c, addr=0x1F, g_range=2):\n        \"\"\"addr: 0x1F with ADR pulled to 3.3 V (SparkFun Qwiic board default), 0x1E with ADR to GND.\n        g_range: 2, 4, 8 or 16 g full scale.\"\"\"\n        if g_range not in _GSEL:\n            raise ValueError('g_range must be 2, 4, 8 or 16')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x3D:\n            raise OSError('KX132 not found (WHO_AM_I 0x%02X, expected 0x3D): check wiring/address' % who)\n        gsel, self._counts_per_g = _GSEL[g_range]\n        self._w(_CNTL1, 0x00)  # stand-by: settings may only change with PC1 = 0\n        self._w(_ODCNTL, 0x06)  # 50 Hz output data rate, IIR low-pass on (corner ODR/9)\n        # operating, high-performance, data-ready engine on, chosen range\n        self._w(_CNTL1, _PC1 | _RES | _DRDYE | (gsel << 3))\n        time.sleep_ms(50)  # start-up (~2 ms at 50 Hz) plus one 20 ms sample period, with margin\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when INS2 DRDY says a new X/Y/Z sample is available.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _INS2, 1)[0] & 0x10)\n\n    def raw(self):\n        \"\"\"(x, y, z) 16-bit counts, read in one 6-byte auto-increment burst from XOUT_L.\"\"\"\n        for _ in range(40):  # wait up to ~40 ms (two samples at 50 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _XOUT_L, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # low byte first\n            if v & 0x8000:\n                v -= 65536\n            out.append(v)\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._counts_per_g\n        x, y, z = self.raw()\n        return x / k, y / k, z / k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom kx132 import KX132\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = KX132(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.3f Y=%.3f Z=%.3f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.500 Y=-0.750 Z=1.250 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "cabled": true,
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:34:59.751Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/d/a/1/c/0/KX132-1211-Specifications-Rev-1.0.pdf",
+      "https://cdn.sparkfun.com/assets/9/9/a/5/6/KX132-1211-Technical-Reference-Manual-Rev-1.0.pdf",
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/5339/Triple_Axis_Accelerometer_Breakout_KX13x_Qwiic_Hookup_Guide_Web.pdf"
+    ]
+  }
+}

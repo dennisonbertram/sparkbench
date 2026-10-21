@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-max31820",
+  "board": "MAX31820MCR+ bare chip in 3-pin TO-92 (Maxim/Analog Devices), pins GND, DQ, VDD",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring with auto-added 4.7 kOhm DQ pull-up, design checks, breadboard, simulator test at 31.5 C, PCB DRC, TO-92_Inline footprint). Family 28h and the 12-bit 0.0625 C two's-complement register from the datasheet are read with MicroPython's built-in ds18x20 module, so no custom driver is needed; supply limited to the datasheet's 3.0-3.7 V.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31820.pdf",
+  "breakoutPinoutSource": "MAX31820 datasheet (19-6731 Rev 0) Pin Configuration / Pin Description, TO-92: pin 1 GND, pin 2 DQ, pin 3 VDD (archived at http://web.archive.org/web/2022id_/https://datasheets.maximintegrated.com/en/ds/MAX31820.pdf)",
+  "checkRuns": 1
+}

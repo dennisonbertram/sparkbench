@@ -1,0 +1,79 @@
+{
+  "type": "custom-tsl2572",
+  "mpn": "TSL25721",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; Added a 10 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. Added a 10 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. It shares the I2C bus (SDA D21, SCL D22) at address 0x39. Added the tsl2572.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "18 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the Ch0/Ch1 counts set on the sliders and the datasheet lux: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "52×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; Added a 10 kΩ pull-up resistor from SDA to 3V3, as the datasheet requires. Added a 10 kΩ pull-up resistor from SCL to 3V3, as the datasheet requires. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x39. Added the tsl2572.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "19 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the Ch0/Ch1 counts set on the sliders and the datasheet lux: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C22413983 TSL25721FN (31 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T12:09:03.014Z"
+}

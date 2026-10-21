@@ -1,0 +1,156 @@
+{
+  "type": "custom-ags02ma",
+  "name": "AGS02MA TVOC gas sensor",
+  "mpn": "AGS02MA",
+  "category": "sensor",
+  "description": "Aosong/ASAIR MEMS metal-oxide gas sensor with a built-in ASIC that reports total volatile organic compounds (TVOC, 0-99999 ppb, calibrated with ethanol, ±25 % of reading) over a slow I2C bus (30 kHz max). Runs on 3.3-5.5 V, about 28 mA for the heater; needs 120 s preheat and a 2 s sampling period. Sold as: Adafruit AGS02MA I2C TVOC Gas Sensor (PID 5593), the bare 4-lead sensor (VDD, SDA, GND, SCL, 2.5 mm pitch) with no pull-ups, I2C address 0x1A.",
+  "eli5": "Smells the air for fumes like alcohol, paint, cooking or smoke and tells your board how much is around.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.3-5.5 V (use 3.3 V so the SDA/SCL pull-ups stay at 3.3 V logic)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; no pull-up on the sensor, add 10 kΩ to VDD",
+      "required": true,
+      "pullUp": 10000
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (30 kHz max); no pull-up on the sensor, add 10 kΩ to VDD",
+      "required": true,
+      "pullUp": 10000
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 33,
+  "i2cAddress": 26,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/5593/datasheet+ags02ma.pdf",
+  "priceUsd": 4.95,
+  "supplierQuery": "AGS02MA TVOC gas sensor I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Run the I2C bus at 20 kHz (I2C(..., freq=20000)); the AGS02MA does not work at 100 or 400 kHz. Boards that cannot go that slow (e.g. SAMD21/SAMD51) cannot talk to it.",
+    "SDA and SCL need 1-10 kΩ pull-ups to VDD; the bare sensor has none. Power it from 3.3 V so the pulled-up lines stay at 3.3 V logic.",
+    "Read TVOC: write register 0x00, wait 30 ms, read 5 bytes: status, TVOC (24-bit, ppb, MSB first), CRC-8 (poly 0x31, init 0xFF over the first 4 bytes).",
+    "Status bit 0 (RDY) = 1 means not ready / still preheating (at least 120 s after power-up). Do not read more often than every 1.5 s or RDY stays 1; a 2 s period is recommended.",
+    "The 4 leads are on a 2.5 mm pitch; they fit a 2.54 mm breadboard row or socket.",
+    "Fresh sensors need long burn-in (12 h after up to a week of storage, 72-96 h after longer storage) before readings settle."
+  ],
+  "keywords": [
+    "ags02ma",
+    "tvoc",
+    "voc",
+    "gas",
+    "air quality",
+    "aosong",
+    "asair"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/5593/datasheet+ags02ma.pdf",
+    "https://www.adafruit.com/product/5593"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "TVOC (total volatile organic compounds)",
+    "unit": "ppb",
+    "min": 0,
+    "max": 99999,
+    "default": 0,
+    "controls": [
+      {
+        "key": "resistance",
+        "quantity": "Sensing element resistance",
+        "unit": "kΩ",
+        "min": 0,
+        "max": 10000,
+        "default": 1000
+      }
+    ],
+    "responses": [
+      {
+        "match": "00",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 24,
+            "scale": 1
+          },
+          {
+            "crc": "sensirion",
+            "over": 4
+          }
+        ]
+      },
+      {
+        "match": "20",
+        "bytes": [
+          {
+            "control": "resistance",
+            "bits": 32,
+            "scale": 0.1
+          },
+          {
+            "crc": "sensirion",
+            "over": 4
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ags02ma.py",
+    "code": "# AGS02MA TVOC gas sensor (Aosong/ASAIR AGS02MA, datasheet June 2022), MicroPython driver.\n# I2C address 0x1A. The bus MUST run at 30 kHz or slower (use freq=20000), and SDA/SCL need\n# 1-10 kOhm pull-ups to VDD. Every reply is 4 data bytes + CRC-8 (poly 0x31, init 0xFF).\n# Preheat at least 120 s after power-up; read TVOC no more often than every 1.5 s (2 s period).\nimport time\n\n_REG_TVOC = 0x00\n_REG_CAL = 0x01\n_REG_VERSION = 0x11\n_REG_RESISTANCE = 0x20\n_REG_ADDR = 0x21\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass AGS02MA:\n    def __init__(self, i2c, addr=0x1A):\n        self.i2c = i2c\n        self.addr = addr\n        self.ready = False\n\n    def _read(self, reg):\n        # Write the register, wait 30 ms (datasheet note 1), then read Data1..Data4 + CRC.\n        self.i2c.writeto(self.addr, bytes([reg]))\n        time.sleep_ms(30)\n        d = self.i2c.readfrom(self.addr, 5)\n        if _crc8(d[0:4]) != d[4]:\n            raise OSError('AGS02MA CRC mismatch: check wiring, pull-ups and I2C speed (<= 30 kHz)')\n        return d\n\n    def _write(self, reg, data4):\n        buf = bytes([reg]) + bytes(data4) + bytes([_crc8(data4)])\n        self.i2c.writeto(self.addr, buf)\n        time.sleep_ms(30)\n\n    def tvoc(self):\n        \"\"\"TVOC in ppb (24-bit, 0-99999). Sets self.ready from the status RDY bit (0 = ready);\n        returns None while the sensor is still preheating / data not ready.\"\"\"\n        d = self._read(_REG_TVOC)\n        self.ready = (d[0] & 0x01) == 0\n        if not self.ready:\n            return None\n        return (d[1] << 16) | (d[2] << 8) | d[3]\n\n    def resistance_kohm(self):\n        \"\"\"Sensing-element resistance in kOhm (32-bit raw, unit 0.1 kOhm).\"\"\"\n        d = self._read(_REG_RESISTANCE)\n        return ((d[0] << 24) | (d[1] << 16) | (d[2] << 8) | d[3]) / 10\n\n    def version(self):\n        \"\"\"Firmware version (Data4 of register 0x11).\"\"\"\n        return self._read(_REG_VERSION)[3]\n\n    def zero_calibrate(self):\n        \"\"\"Zero-point calibration in fresh air after >= 5 min powered. Lost at power-off.\"\"\"\n        self._write(_REG_CAL, (0x00, 0x0C, 0xFF, 0xF3))\n\n    def set_address(self, new_addr):\n        \"\"\"Change the I2C address (1-127). Saved permanently, takes effect at once.\"\"\"\n        new_addr &= 0x7F\n        inv = (~new_addr) & 0xFF\n        self._write(_REG_ADDR, (new_addr, inv, new_addr, inv))\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ags02ma import AGS02MA\n\n# The AGS02MA only works on a slow bus: 20 kHz.\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=20000)\nsensor = AGS02MA(i2c)\nwhile True:\n    ppb = sensor.tvoc()\n    if ppb is None:\n        print('warming up')\n    else:\n        print('TVOC=%dppb' % ppb)\n    time.sleep(2)  # sampling period >= 2 s\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the TVOC set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1250
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TVOC=1250ppb",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:19:32.353Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/5593/datasheet+ags02ma.pdf",
+      "https://www.adafruit.com/product/5593"
+    ]
+  }
+}

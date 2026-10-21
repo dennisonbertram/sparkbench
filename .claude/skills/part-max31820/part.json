@@ -1,0 +1,106 @@
+{
+  "type": "custom-max31820",
+  "name": "MAX31820 1-Wire ambient temperature sensor",
+  "mpn": "MAX31820MCR+",
+  "category": "sensor",
+  "description": "Maxim/Analog Devices 1-Wire ambient temperature sensor, -55 to +125 °C (±0.5 °C from +10 to +45 °C, ±2 °C over the full range), 9-12 bit resolution (0.0625 °C at the default 12 bits, 750 ms conversion), unique 64-bit ROM code with family code 28h, software compatible with the DS18B20 and DS1822. Runs on 3.0-3.7 V only (not 5 V). Sold as: MAX31820MCR+ bare chip in a 3-pin TO-92 through-hole package (flat face towards you, legs down: GND, DQ, VDD), needing an external 4.7 kΩ pull-up from DQ to VDD.",
+  "eli5": "A small thermometer chip that sends the room temperature as a number down a single wire; several can share the same wire.",
+  "refPrefix": "U",
+  "interface": "onewire",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (TO-92 pin 1, left with the flat face towards you)",
+      "required": true
+    },
+    {
+      "name": "DQ",
+      "role": "io",
+      "fn": "onewire",
+      "description": "1-Wire data in/out, open-drain (TO-92 pin 2, middle); needs a 4.7 kΩ pull-up to VDD",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.0-3.7 V (TO-92 pin 3, right). Feed it from 3.3 V, never 5 V",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.7,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31820.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "MAX31820MCR+ TO-92 1-Wire ambient temperature sensor",
+  "footprint": "Package_TO_SOT_THT:TO-92_Inline",
+  "buildNotes": [
+    "Pin order with the flat face towards you, legs down: left = GND, middle = DQ, right = VDD (same as a DS18B20). Wired backwards it gets hot fast: unplug it at once.",
+    "Supply is 3.0-3.7 V: power VDD from the board's 3.3 V pin, not 5 V (unlike the DS18B20).",
+    "Fit a 4.7 kΩ pull-up from DQ to VDD (3.3 V); the bare chip has none.",
+    "Send Convert T (44h), then wait at least 750 ms (12-bit) before Read Scratchpad (BEh); MicroPython's ds18x20 module does the commands and the CRC check (family 28h), your code does the wait.",
+    "Temperature = signed 16-bit register x 0.0625 °C at 12 bits (0191h = +25.0625 °C, FF5Eh = -10.125 °C). A reading of exactly 85 °C is the power-on value: the conversion did not finish or the sensor lost power.",
+    "For true air temperature keep it away from warm parts and copper, and in any air flow; the TO-92 legs carry board heat.",
+    "Use VDD (local power), not parasite power: parasite mode needs VDD grounded and a strong pull-up within 10 µs of every Convert T."
+  ],
+  "keywords": [
+    "max31820",
+    "max31820mcr",
+    "1-wire",
+    "onewire",
+    "temperature",
+    "ambient",
+    "thermometer",
+    "maxim",
+    "to-92",
+    "ds18b20 compatible"
+  ],
+  "sim": {
+    "kind": "onewire-temp",
+    "family": 40,
+    "outputPin": "DQ",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 125,
+    "default": 21
+  },
+  "example": {
+    "code": "import machine, onewire, ds18x20, time\n\nds = ds18x20.DS18X20(onewire.OneWire(machine.Pin({DQ})))\nroms = ds.scan()\nprint('found', len(roms))\nwhile True:\n    ds.convert_temp()\n    time.sleep_ms(750)  # 12-bit conversion: up to 750 ms\n    print('T=%.2fC' % ds.read_temp(roms[0]))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 31.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=31.50C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX31820.pdf",
+    "http://web.archive.org/web/2022id_/https://datasheets.maximintegrated.com/en/ds/MAX31820.pdf",
+    "https://github.com/micropython/micropython-lib/blob/master/micropython/drivers/sensor/ds18x20/ds18x20.py"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:38:45.564Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/datasheets/Sensors/Temp/MAX31820.pdf",
+      "https://www.flux.ai/kicad-part-library/max31820.md"
+    ]
+  }
+}
