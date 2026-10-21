@@ -567,6 +567,15 @@ export class GenericI2CDevice implements I2CDevice {
     if (!this.wide && !this.layout.pointerless) this.ptr = (this.ptr + n) & 0xffff;
     return out;
   }
+  /** PCA9685-style channel duty (0–1) from its four registers. */
+  pwmDuty(base: number, ch: number): number {
+    const r = (i: number) => this.byteAt(base + ch * 4 + i, 0);
+    const on = ((r(1) & 0x0f) << 8) | r(0);
+    const off = ((r(3) & 0x0f) << 8) | r(2);
+    if (r(3) & 0x10) return 0;
+    if (r(1) & 0x10) return 1;
+    return (((off - on) % 4096) + 4096) % 4096 / 4096;
+  }
   /** One bit of a byte register (for output pins shown on the part). */
   bit(reg: number, bit: number): boolean {
     return ((this.byteAt(reg, 0) >> bit) & 1) === 1;

@@ -997,11 +997,15 @@ export class SimEngine {
         default: {
           if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
           const cs = customSpec(part.type);
-          if (cs?.sim.kind === 'i2c-device' && cs.sim.outputBits?.length) {
+          if (cs?.sim.kind === 'i2c-device' && (cs.sim.outputBits?.length || cs.sim.pwmChannels)) {
             const d = this.devices.find((x) => x.part.id === part.id)?.dev;
             if (d instanceof GenericI2CDevice) {
               v.powered = m.modulePowered(part.id);
-              v.inputs = Object.fromEntries(cs.sim.outputBits.map((o) => [o.name, !!v.powered && d.bit(Number(o.reg), o.bit)]));
+              const pc = cs.sim.pwmChannels;
+              v.inputs = Object.fromEntries([
+                ...(cs.sim.outputBits ?? []).map((o) => [o.name, !!v.powered && d.bit(Number(o.reg), o.bit)] as const),
+                ...(pc ? Array.from({ length: pc.count }, (_, ch) => [`CH${ch}`, !!v.powered && d.pwmDuty(Number(pc.base), ch) > 0] as const) : []),
+              ]);
               v.active = Object.values(v.inputs).some(Boolean);
             }
           }

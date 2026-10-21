@@ -84,6 +84,10 @@ export interface CustomSim {
    * (starts 2026-10-21 12:00:00, 24-hour mode; writing them sets the clock). order 'ds1307' = sec, min, hour,
    * weekday, date, month, year (DS1307/DS3231); 'pcf8563' = sec, min, hour, date, weekday, month, year. */
   rtc?: { reg: string; order: 'ds1307' | 'pcf8563' };
+  /** i2c-device: PCA9685-style PWM channels: `count` channels of ON_L, ON_H, OFF_L, OFF_H starting at `base`
+   * (12-bit counts; bit 4 of ON_H = full on, bit 4 of OFF_H = full off). Each shows as on when its duty is above 0,
+   * testable with expect what:"active" text:"CH<n>". */
+  pwmChannels?: { base: string; count: number };
   /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
   pointerless?: boolean;
   /** i2c-device: register bits that are output pins (e.g. an expander's P0…P7), shown as on/off and testable
