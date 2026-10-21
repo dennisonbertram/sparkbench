@@ -422,7 +422,11 @@ export class ElectricalModel {
           // The simulator steps pulseLevel through the square wave; an open-collector output only pulls low.
           const high = !powered || st.pulseLevel > 0;
           if (s.pulse?.openDrain) (els.out as Switch).set(!high);
-          else (els.out as VSource).volts = powered && high ? vcc : 0;
+          else {
+            const out = els.out as VSource;
+            out.volts = powered && high ? vcc : 0;
+            out.rs = st.pulseHiZ ? 1e9 : 200; // output disabled (OE): high impedance
+          }
         } else if (s.kind === 'ultrasonic') {
           (els.out as VSource).volts = powered && st.echoLevel > 0 ? vcc : 0;
         } else if (s.kind === 'ir-receiver') {

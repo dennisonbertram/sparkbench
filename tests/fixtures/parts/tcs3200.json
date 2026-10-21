@@ -1,0 +1,173 @@
+{
+ "type": "custom-tcs3200-test",
+ "name": "TCS3200 test",
+ "mpn": "TCS3200",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "digital-in",
+ "priceUsd": 4,
+ "supplierQuery": "TCS3200",
+ "pins": [
+  {
+   "name": "S0",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "S1",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "S2",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "S3",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "OUT",
+   "role": "io",
+   "fn": "digital-in",
+   "required": true
+  },
+  {
+   "name": "OE",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  }
+ ],
+ "vmin": 2.7,
+ "vmax": 5.5,
+ "currentMa": 2,
+ "sim": {
+  "kind": "pulse-sensor",
+  "outputPin": "OUT",
+  "quantity": "Clear (kHz at 100%)",
+  "unit": "kHz",
+  "min": 0,
+  "max": 600,
+  "default": 0,
+  "controls": [
+   {
+    "key": "red",
+    "quantity": "Red (kHz at 100%)",
+    "unit": "kHz",
+    "min": 0,
+    "max": 600,
+    "default": 0
+   },
+   {
+    "key": "green",
+    "quantity": "Green (kHz at 100%)",
+    "unit": "kHz",
+    "min": 0,
+    "max": 600,
+    "default": 0
+   },
+   {
+    "key": "blue",
+    "quantity": "Blue (kHz at 100%)",
+    "unit": "kHz",
+    "min": 0,
+    "max": 600,
+    "default": 0
+   }
+  ],
+  "pulse": {
+   "hzPerUnit": 1000,
+   "maxHz": 50000,
+   "select": {
+    "channel": {
+     "pins": [
+      "S2",
+      "S3"
+     ],
+     "controls": [
+      "red",
+      "blue",
+      "value",
+      "green"
+     ]
+    },
+    "scale": {
+     "pins": [
+      "S0",
+      "S1"
+     ],
+     "factors": [
+      0,
+      0.02,
+      0.2,
+      1
+     ]
+    },
+    "enable": {
+     "pin": "OE",
+     "activeLow": true
+    },
+    "defaults": {
+     "OE": 0
+    }
+   }
+  }
+ },
+ "example": {
+  "code": "from machine import Pin\nimport time\ns0 = Pin({S0}, Pin.OUT); s1 = Pin({S1}, Pin.OUT); s2 = Pin({S2}, Pin.OUT); s3 = Pin({S3}, Pin.OUT)\nout = Pin({OUT}, Pin.IN)\ns0.value(0); s1.value(1)  # 2% scaling\nn = 0\ndef cb(p):\n    global n\n    n += 1\nout.irq(trigger=Pin.IRQ_RISING, handler=cb)\ndef hz(a, b):\n    global n\n    s2.value(a); s3.value(b)\n    time.sleep_ms(5)\n    n = 0\n    time.sleep_ms(100)\n    return round(n * 10, -2)\nwhile True:\n    print('R=%d G=%d B=%d' % (hz(0, 0), hz(1, 1), hz(0, 1)))\n    time.sleep_ms(200)\n",
+  "test": {
+   "id": "t",
+   "title": "colour",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "red",
+     "value": 300
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "green",
+     "value": 150
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "blue",
+     "value": 50
+    },
+    {
+     "kind": "wait",
+     "ms": 1000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "R=6000 G=3000 B=1000",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

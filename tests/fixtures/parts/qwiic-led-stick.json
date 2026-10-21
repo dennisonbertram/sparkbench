@@ -1,0 +1,233 @@
+{
+ "type": "custom-qwiic-led-stick-test",
+ "name": "Qwiic LED Stick test",
+ "mpn": "COM-18354",
+ "category": "actuator",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "3V3",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 3.6,
+ "currentMa": 50,
+ "i2cAddress": 35,
+ "priceUsd": 20,
+ "supplierQuery": "SparkFun Qwiic LED Stick",
+ "sim": {
+  "kind": "i2c-device",
+  "registers": {
+   "0x02": 10
+  },
+  "commands": [
+   {
+    "code": 112,
+    "data": 1,
+    "actions": [
+     {
+      "reg": "0x02",
+      "op": "set",
+      "value": "data",
+      "min": 1,
+      "max": 100
+     }
+    ]
+   },
+   {
+    "code": 113,
+    "block": {
+     "mode": "one",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      0,
+      1,
+      2
+     ],
+     "maxIndex": 99
+    }
+   },
+   {
+    "code": 114,
+    "block": {
+     "mode": "all",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      0,
+      1,
+      2
+     ],
+     "maxIndex": 99,
+     "countReg": "0x02"
+    }
+   },
+   {
+    "code": 115,
+    "block": {
+     "mode": "array",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      0
+     ],
+     "maxIndex": 99,
+     "countReg": "0x02"
+    }
+   },
+   {
+    "code": 116,
+    "block": {
+     "mode": "array",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      1
+     ],
+     "maxIndex": 99,
+     "countReg": "0x02"
+    }
+   },
+   {
+    "code": 117,
+    "block": {
+     "mode": "array",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      2
+     ],
+     "maxIndex": 99,
+     "countReg": "0x02"
+    }
+   },
+   {
+    "code": 118,
+    "block": {
+     "mode": "one",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      3
+     ],
+     "maxIndex": 99
+    }
+   },
+   {
+    "code": 119,
+    "block": {
+     "mode": "all",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      3
+     ],
+     "maxIndex": 99,
+     "countReg": "0x02"
+    }
+   },
+   {
+    "code": 120,
+    "block": {
+     "mode": "clear",
+     "base": "0x100",
+     "stride": 4,
+     "fields": [
+      0,
+      1,
+      2
+     ],
+     "maxIndex": 99,
+     "countReg": "0x02"
+    }
+   },
+   {
+    "code": 199,
+    "data": 1
+   }
+  ],
+  "blockPixels": {
+   "base": "0x100",
+   "stride": 4,
+   "rgb": [
+    0,
+    1,
+    2
+   ],
+   "brightness": 3,
+   "countReg": "0x02",
+   "countDefault": 10,
+   "maxCount": 100,
+   "init": {
+    "3": 31
+   }
+  }
+ },
+ "driver": {
+  "filename": "qwiic_led_stick.py",
+  "code": "# Port of SparkFun_Qwiic_LED_Stick_Arduino_Library (Qwiic_LED_Stick.cpp)\nclass LEDStick:\n    def __init__(self, i2c, addr=0x23):\n        self.i2c = i2c\n        self.addr = addr\n    def _w(self, *b):\n        self.i2c.writeto(self.addr, bytes(b))\n    def set_led_color(self, number, r, g, b):\n        self._w(0x71, number, r & 255, g & 255, b & 255)\n    def set_all(self, r, g, b):\n        self._w(0x72, r & 255, g & 255, b & 255)\n    def set_colors(self, reds, greens, blues):\n        # ATtiny85 I2C buffer: 12 values per transmission, as the Arduino library does\n        n = len(reds)\n        for cmd, arr in ((0x73, reds), (0x74, greens), (0x75, blues)):\n            for off in range(0, n, 12):\n                chunk = arr[off:off + 12]\n                self.i2c.writeto(self.addr, bytes([cmd, len(chunk), off]) + bytes(chunk))\n    def set_brightness(self, number, bri):\n        self._w(0x76, number, min(31, max(0, bri)))\n    def set_all_brightness(self, bri):\n        self._w(0x77, min(31, max(0, bri)))\n    def off(self):\n        self._w(0x78)\n    def change_length(self, n):\n        self._w(0x70, n)\n"
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_led_stick import LEDStick\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nled = LEDStick(i2c)\nled.off()\nprint('off')\ntime.sleep(1)\nled.set_led_color(0, 255, 0, 0)  # the firmware's LED index starts at 0\nprint('on')\ntime.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "lights",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "off",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": false,
+     "within": 3000
+    },
+    {
+     "kind": "wait",
+     "ms": 1200
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "on",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": true,
+     "within": 3000
+    }
+   ]
+  }
+ }
+}
