@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { getContext, mode, type RequestContext } from './tenancy/context';
 import { requestScope } from './tenancy/als';
 import { assertAiBudget } from './tenancy/repo';
+import { checkRate } from './tenancy/ratelimit';
 
 const KICAD_CLI = [process.env.KICAD_CLI, join(homedir(), 'Applications/KiCad.app/Contents/MacOS/kicad-cli'), '/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli', '/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find((p) => p && existsSync(p));
 const NGSPICE = ['/opt/homebrew/bin/ngspice', '/usr/local/bin/ngspice', '/usr/bin/ngspice'].find((p) => existsSync(p));
@@ -85,6 +86,7 @@ const AI_ROUTES = /^\/api\/(ai\/|parts\/fetch$)/;
 async function routes(req: Connect.IncomingMessage, res: any, ctx: RequestContext, route: string): Promise<void> {
   {
     try {
+      if (req.method === 'POST') checkRate(ctx, route);
       if (AI_ROUTES.test(route) && req.method === 'POST') await assertAiBudget(ctx);
       if (route.startsWith('/api/projects') || route === '/api/me') {
         const { projectRoutes } = await import('./tenancy/routes');

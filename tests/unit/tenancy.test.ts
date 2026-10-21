@@ -180,3 +180,15 @@ describe('limits', () => {
     expect((await call('POST', '/api/ota', A, { host: '10.0.0.5', projectId: 'p', files: {} })).status).toBe(400);
   });
 });
+
+describe('rate limits', () => {
+  it('stop one person from flooding the expensive routes, without affecting others', async () => {
+    const { checkRate } = await import('../../server/tenancy/ratelimit');
+    const me = contextFromClaims({ userId: 'user_flood', orgId: 'org_x', orgRole: 'org:member' });
+    const other = contextFromClaims({ userId: 'user_calm', orgId: 'org_x', orgRole: 'org:member' });
+    for (let i = 0; i < 6; i++) checkRate(me, '/api/pcb/start', 1000 + i);
+    expect(() => checkRate(me, '/api/pcb/start', 2000)).toThrow(/Too many/);
+    expect(() => checkRate(other, '/api/pcb/start', 2000)).not.toThrow();
+    expect(() => checkRate(me, '/api/pcb/start', 70_000)).not.toThrow(); // a minute later
+  });
+});
