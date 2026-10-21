@@ -572,6 +572,26 @@ export class GenericI2CDevice implements I2CDevice {
     for (const m of this.measures) {
       if (m.when && (this.byteAt(Number(m.when.reg), 0) & (m.when.mask ?? 0xff)) !== m.when.equals) continue;
       const reg = Number(m.reg);
+      if (m.format) {
+        // Smallest exponent whose mantissa fits, as the chips' automatic ranging does.
+        const v = Math.max(0, this.value(m.control ?? 'value'));
+        const mbits = m.format === 'max44009' ? 8 : 12;
+        let e = 0;
+        while (e < 15 && Math.round(v / (m.scale * 2 ** e)) > 2 ** mbits - 1) e++;
+        const mant = Math.min(2 ** mbits - 1, Math.round(v / (m.scale * 2 ** e)));
+        if (m.format === 'max44009') {
+          this.store.set(reg, [(e << 4) | (mant >> 4)]);
+          this.store.set(reg + 1, [mant & 0x0f]);
+        } else {
+          const word = (e << 12) | mant;
+          if (this.wide) this.store.set(reg, [word >> 8, word & 0xff]);
+          else {
+            this.store.set(reg, [word >> 8]);
+            this.store.set(reg + 1, [word & 0xff]);
+          }
+        }
+        continue;
+      }
       let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1)) * 2 ** (m.shift ?? 0);
       const bits = m.bytes * 8;
       if (m.signed && raw < 0) raw += 2 ** bits;

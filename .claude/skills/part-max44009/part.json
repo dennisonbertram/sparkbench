@@ -75,9 +75,9 @@
     "kind": "i2c-device",
     "quantity": "Illuminance",
     "unit": "lx",
-    "min": 368.64,
-    "max": 734.4,
-    "default": 500,
+    "min": 0,
+    "max": 188006,
+    "default": 300,
     "registers": {
       "0x00": 0,
       "0x01": 0,
@@ -86,17 +86,12 @@
       "0x06": 0,
       "0x07": 255
     },
-    "measure": {
-      "reg": "0x03",
-      "bytes": 2,
-      "scale": 2.88
-    },
     "measures": [
       {
         "reg": "0x03",
-        "bytes": 1,
-        "scale": 46.08,
-        "offset": -4402.08
+        "bytes": 2,
+        "scale": 0.045,
+        "format": "max44009"
       }
     ]
   },
@@ -108,19 +103,35 @@
     "code": "from machine import I2C, Pin\nimport time\nfrom max44009 import MAX44009\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MAX44009(i2c)  # 0x4A, automatic ranging, one reading every 800 ms\nwhile True:\n    print('Lux=%.2f' % sensor.lux())\n    time.sleep(1)\n",
     "test": {
       "id": "reads",
-      "title": "Reports the illuminance set on the slider",
+      "title": "Reports the illuminance set on the slider, bright and nearly dark",
       "source": "user",
       "steps": [
         {
           "kind": "set",
           "part": "{REF}",
           "control": "value",
-          "value": 600
+          "value": 1234.5
         },
         {
           "kind": "expect",
           "what": "serial",
-          "text": "Lux=599.04",
+          "text": "Lux=1232.64",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 2500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=1.98",
           "within": 3000
         }
       ]
@@ -128,14 +139,13 @@
   },
   "library": {
     "status": "checked",
-    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware. Simulator model updated to the chip's exponent + mantissa auto-ranging (full 0–188,000 lux range) and re-checked.",
     "checkedAt": "2026-10-21T06:28:37.205Z",
     "verifiedSources": [
       "https://www.analog.com/media/en/technical-documentation/data-sheets/max44009.pdf",
       "https://github.com/RobTillaart/Max44009",
       "https://michiel.vanderwulp.be/domotica/Modules/MAX44009-Light-Sensor/"
     ],
-    "simNote": "The simulator slider covers 369–734 lux only: the chip reports light as exponent + mantissa, and the model fixes the exponent. The driver handles the full range on real hardware.",
     "caveat": "The independent reading could not download the manufacturer PDF; register layout and scale were confirmed from library code and the author's reading, not the PDF."
   }
 }

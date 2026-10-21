@@ -122,6 +122,10 @@ export interface I2CMeasure {
   shift?: number;
   /** Which control supplies the value ('value' = the main slider). */
   control?: string;
+  /** Exponent + mantissa encodings that auto-range like the chip (scale = LSB at exponent 0):
+   * 'max44009' — reg = E3..E0 M7..M4, reg+1 = 0000 M3..M0, value = 2^E × M × scale;
+   * 'opt3001' — 16-bit word E3..E0 R11..R0, value = 2^E × R × scale. */
+  format?: 'max44009' | 'opt3001';
   /** Only while the last value written to this register matches (e.g. BMP180: 0xF4 = 0x2E → temperature in 0xF6). */
   when?: { reg: string; equals: number; mask?: number };
 }
