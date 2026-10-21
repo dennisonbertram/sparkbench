@@ -1322,3 +1322,78 @@ sys.modules["time"] = _simtime
 sys.modules["utime"] = _simtime
 `;
 }
+
+/** MicroPython's built-in onewire module, backed by the simulated bus (scan + ROM select). */
+export const ONEWIRE_PY = `import _hw
+
+
+class OneWireError(Exception):
+    pass
+
+
+class OneWire:
+    SEARCH_ROM = 0xF0
+    MATCH_ROM = 0x55
+    SKIP_ROM = 0xCC
+
+    def __init__(self, pin):
+        self.pin = pin
+        self._id = pin._id
+        self._rom = None
+
+    def reset(self, required=False):
+        ok = len(_hw.ow_scan(self._id)) > 0
+        if required and not ok:
+            raise OneWireError
+        return ok
+
+    def scan(self):
+        return [bytearray(bytes.fromhex(h)) for h in _hw.ow_scan(self._id)]
+
+    def select_rom(self, rom):
+        self.reset()
+        self._rom = bytes(rom)
+
+    def writebyte(self, value):
+        pass
+
+    def write(self, buf):
+        pass
+
+    def readbyte(self):
+        return 0xFF
+
+    def crc8(self, data):
+        crc = 0
+        for b in data:
+            for _ in range(8):
+                mix = (crc ^ b) & 1
+                crc >>= 1
+                if mix:
+                    crc ^= 0x8C
+                b >>= 1
+        return crc
+`;
+
+/** MicroPython's built-in ds18x20 module (same API), reading the simulated thermometers. */
+export const DS18X20_PY = `import _hw
+from onewire import OneWireError
+
+
+class DS18X20:
+    def __init__(self, onewire):
+        self.ow = onewire
+
+    def scan(self):
+        return [rom for rom in self.ow.scan() if rom[0] in (0x10, 0x22, 0x28)]
+
+    def convert_temp(self):
+        if not self.ow.reset():
+            raise OneWireError
+
+    def read_temp(self, rom):
+        t = _hw.ow_temp(self.ow._id, bytes(rom).hex())
+        if t is None:
+            raise OneWireError
+        return t
+`;

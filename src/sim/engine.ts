@@ -6,7 +6,7 @@ import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
 import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
-import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
+import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
 export class SimStop extends Error {
   constructor(public reason: 'user' | 'time' | 'reset') {
@@ -434,6 +434,45 @@ export class SimEngine {
     return [-ETIMEDOUT, 0, 0];
   }
 
+  /** 1-Wire thermometers (datasheet parts of kind onewire-temp) whose DQ line is on this GPIO. */
+  private owDevices(g: number) {
+    const out: { part: PartInstance; rom: string }[] = [];
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'onewire-temp' || !cs.sim.outputPin) continue;
+      if (!this.model.gpiosOnNet(part.id, cs.sim.outputPin).includes(g)) continue;
+      if (!this.model.modulePowered(part.id)) {
+        this.warn(`ow-power-${part.id}`, 'warning', `${part.ref}: the ${cs.mpn} isn't powered — check its power and GND wires.`, [part.id]);
+        continue;
+      }
+      // A stable 64-bit ROM code: family, 6 serial bytes from the part id, Maxim CRC-8.
+      let h = 2166136261;
+      for (const ch of part.id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+      const rom = [cs.sim.family ?? 0x28, h & 0xff, (h >> 8) & 0xff, (h >> 16) & 0xff, (h >>> 24) & 0xff, 0, 0];
+      let crc = 0;
+      for (let b of rom) for (let i = 0; i < 8; i++, b >>= 1) crc = (crc ^ b) & 1 ? (crc >> 1) ^ 0x8c : crc >> 1;
+      out.push({ part, rom: [...rom, crc].map((x) => x.toString(16).padStart(2, '0')).join('') });
+    }
+    return out;
+  }
+
+  owScan(g: number): string[] {
+    this.tick();
+    this.sleepUs(3000);
+    const devs = this.owDevices(g);
+    if (!devs.length) this.warn(`ow-missing-${g}`, 'warning', `Your code scans a 1-Wire bus on GPIO${g}, but no powered 1-Wire sensor's data pin is wired to GPIO${g}.`);
+    return devs.map((d) => d.rom);
+  }
+
+  owTemp(g: number, rom: string): number | null {
+    this.tick();
+    this.sleepUs(5000);
+    const d = this.owDevices(g).find((x) => x.rom === rom.toLowerCase());
+    if (!d) return null;
+    // DS18B20 default 12-bit resolution: 0.0625 °C steps.
+    return Math.round(((this.model.states.get(d.part.id) as any)?.value ?? 25) * 16) / 16;
+  }
+
   neopixelWrite(g: number, hex: string) {
     this.tick();
     const bytes = hexToBytes(hex);
@@ -783,6 +822,8 @@ export class SimEngine {
       },
       pulse_in: (g: number, l: number, t: number) => this.pulseIn(g, l, t),
       dht_read: (g: number) => this.dhtRead(g),
+      ow_scan: (g: number) => this.owScan(g),
+      ow_temp: (g: number, rom: string) => this.owTemp(g, rom),
       neopixel_write: (g: number, hex: string) => this.neopixelWrite(g, hex),
       i2c_default: (id: number) => this.i2cDefault(id),
       i2c_open: (sda: number, scl: number) => this.i2cOpen(sda, scl),
@@ -828,7 +869,7 @@ export class SimEngine {
     } catch {}
     const lib: Record<string, string> = isPi
       ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY, 'requests.py': REQUESTS_PY, 'signal.py': SIGNAL_PY }
-      : { 'esp32.py': ESP32_PY, '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
+      : { 'esp32.py': ESP32_PY, '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'onewire.py': ONEWIRE_PY, 'ds18x20.py': DS18X20_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
     for (const [name, src] of Object.entries(lib)) mp.FS.writeFile(`/lib/${name}`, src);
     // Only the program's own Python files go onto the board (not e.g. the arduino/ C++ version).
     for (const [name, src] of Object.entries(this.project.files)) if (/^[\w.-]+\.py$/.test(name)) mp.FS.writeFile(`/project/${name}`, src);

@@ -1,6 +1,11 @@
 {
  "supported": [
   {
+   "mpn": "DS18B20",
+   "form": "KY-001 DS18B20 temperature module (3-pin, 4.7 k\u03a9 pull-up on board)",
+   "family": "onewire"
+  },
+  {
    "mpn": "AHT20",
    "form": "AHT20 temperature & humidity breakout (4-pin VIN GND SCL SDA)",
    "family": "i2c-command"
@@ -603,10 +608,6 @@
  ],
  "later": [
   {
-   "mpn": "DS18B20",
-   "why": "1-Wire: needs a 1-Wire simulator model"
-  },
-  {
    "mpn": "MAX7219",
    "why": "SPI LED matrix/7-seg: needs SPI + display model"
   },
@@ -689,6 +690,10 @@
   {
    "mpn": "Keypad 4x4",
    "why": "matrix scanning model"
+  },
+  {
+   "mpn": "DS18B20 waterproof probe",
+   "why": "needs a 4.7 k\u03a9 pull-up resistor that auto-wiring doesn't add yet (the KY-001 module has one on board)"
   }
  ]
 }
