@@ -54,7 +54,16 @@ npm run dev          # http://localhost:5173
 
 | Boards | Parts |
 |---|---|
-| ESP32 DevKit V1 (MicroPython, Wi-Fi) · Raspberry Pi Pico (MicroPython) · Raspberry Pi 4 (Python + gpiozero, network) · no microcontroller (battery circuits) | 2.9" e-paper (SPI), SSD1306 OLED, 16×2 I2C LCD, push buttons, slide switch, potentiometer, DHT22, MPU-6050 IMU, HC-SR04 ultrasonic, PIR, photoresistor, NTC thermistor, soil moisture probe, LEDs, RGB LED, NeoPixel ring, buzzer, servo, relay module, 5 V pump / fan, resistors, capacitors, diode, NPN transistor, NE555, MCP3008, 9 V battery |
+| ESP32 DevKit V1 (MicroPython, Wi-Fi) · Raspberry Pi Pico (MicroPython) · Raspberry Pi 4 (Python + gpiozero, network) · no microcontroller (battery circuits) | 2.9" e-paper (SPI), SSD1306 OLED, 16×2 I2C LCD, push buttons, slide switch, potentiometer, DHT22, MPU-6050 IMU, HC-SR04 ultrasonic, PIR, photoresistor, NTC thermistor, soil moisture probe, LEDs, RGB LED, NeoPixel ring, buzzer, servo, relay module, 5 V pump / fan, resistors, capacitors, diode, NPN transistor, NE555, MCP3008, 9 V battery — plus the **parts library** below |
+
+### Parts library
+
+Beyond the hand-modelled parts, the library holds sensors, displays and modules added from their datasheets (status and the full list: [docs/PARTS-LIBRARY.md](docs/PARTS-LIBRARY.md)). Each one lives in `.claude/skills/part-<name>/` (part.json, MicroPython driver, SKILL.md) and only gets in through two gates:
+
+1. **The part check** — `npx tsx scripts/parts/check.ts <folder>` wires the part to an ESP32 and a Pico, runs the design checks and the breadboard planner, runs its example program in the simulator against its test, checks the KiCad footprint's pad count, builds a routed circuit board that must pass DRC with schematic parity, and looks it up at LCSC.
+2. **An independent datasheet reading** — `npx tsx scripts/parts/publish.ts <name>` compares the part with a second, blind reading (header pin order and roles, I2C address, supply range, conversion constants, chip ID). Any difference goes to review; a third reading must settle each one with a quoted source before the part is published.
+
+The simulator models datasheet parts as data, not code: analog and digital sensors, actuators, I2C registers and command/CRC protocols, 1-Wire thermometers, HX711 bridge ADCs, SPI chips, UART modules (NMEA, binary frames, command/reply with checksums), matrix keypads, OLEDs, TM1637/MAX7219 segment displays, colour TFTs, addressable LED strips, I/O expanders, PWM drivers and real-time clocks. `scripts/parts/lookup.ts` gathers what open libraries already know (Fritzing pinouts, KiCad footprints, LCSC stock); `scripts/parts/catalog.json` lists what is queued and what still needs a new kind of simulator model. Nothing in the library has been tested on real hardware yet.
 
 ## Example projects
 
