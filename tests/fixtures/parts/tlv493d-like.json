@@ -1,0 +1,133 @@
+{
+ "category": "sensor",
+ "description": "test",
+ "eli5": "t",
+ "refPrefix": "U",
+ "priceUsd": 5,
+ "vmin": 2.8,
+ "vmax": 3.6,
+ "currentMa": 5,
+ "type": "custom-tlv-test",
+ "name": "TLV test",
+ "mpn": "TLV493D",
+ "interface": "i2c",
+ "supplierQuery": "TLV493D",
+ "i2cAddress": 94,
+ "pins": [
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  }
+ ],
+ "sim": {
+  "kind": "i2c-device",
+  "readFromZero": true,
+  "quantity": "Bx",
+  "unit": "mT",
+  "min": -130,
+  "max": 130,
+  "default": 0,
+  "controls": [
+   {
+    "key": "by",
+    "quantity": "By",
+    "unit": "mT",
+    "min": -130,
+    "max": 130,
+    "default": 0
+   }
+  ],
+  "registers": {
+   "0x05": 16
+  },
+  "measures": [
+   {
+    "reg": "0x00",
+    "bytes": 2,
+    "bits": 12,
+    "signed": true,
+    "scale": 0.098,
+    "fields": [
+     {
+      "reg": "0x00",
+      "from": 4,
+      "width": 8
+     },
+     {
+      "reg": "0x04",
+      "from": 0,
+      "width": 4,
+      "at": 4
+     }
+    ]
+   },
+   {
+    "reg": "0x01",
+    "bytes": 2,
+    "bits": 12,
+    "signed": true,
+    "scale": 0.098,
+    "control": "by",
+    "fields": [
+     {
+      "reg": "0x01",
+      "from": 4,
+      "width": 8
+     },
+     {
+      "reg": "0x04",
+      "from": 0,
+      "width": 4,
+      "at": 0
+     }
+    ]
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ni2c.writeto(0x5E, bytes([0x00, 0x05, 0x00, 0x40]))\ndef s12(v):\n    return v - 4096 if v & 0x800 else v\nwhile True:\n    r = i2c.readfrom(0x5E, 7)\n    bx = s12((r[0] << 4) | (r[4] >> 4))\n    by = s12((r[1] << 4) | (r[4] & 0x0F))\n    print('BX=%.1f BY=%.1f F=%d' % (bx * 0.098, by * 0.098, r[5]))\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "reads both axes",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 49
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "by",
+     "value": -24.5
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "BX=49.0 BY=-24.5 F=16",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

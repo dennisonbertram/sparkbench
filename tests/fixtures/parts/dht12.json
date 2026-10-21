@@ -1,0 +1,118 @@
+{
+ "category": "sensor",
+ "description": "test",
+ "eli5": "t",
+ "refPrefix": "U",
+ "priceUsd": 5,
+ "vmin": 2.7,
+ "vmax": 5.5,
+ "currentMa": 2,
+ "type": "custom-dht12-test",
+ "name": "DHT12 test",
+ "mpn": "DHT12",
+ "interface": "i2c",
+ "supplierQuery": "DHT12",
+ "i2cAddress": 92,
+ "pins": [
+  {
+   "name": "VDD",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  }
+ ],
+ "sim": {
+  "kind": "i2c-device",
+  "quantity": "Temperature",
+  "unit": "\u00b0C",
+  "min": -20,
+  "max": 60,
+  "default": 21.3,
+  "controls": [
+   {
+    "key": "humidity",
+    "quantity": "Humidity",
+    "unit": "%",
+    "min": 20,
+    "max": 95,
+    "default": 40
+   }
+  ],
+  "responses": [
+   {
+    "match": "00",
+    "bytes": [
+     {
+      "control": "humidity",
+      "split": "int",
+      "bits": 8
+     },
+     {
+      "control": "humidity",
+      "split": "tenths",
+      "bits": 8
+     },
+     {
+      "control": "value",
+      "split": "int",
+      "bits": 8
+     },
+     {
+      "control": "value",
+      "split": "tenths",
+      "bits": 8,
+      "signBit": 7
+     },
+     {
+      "crc": "sum8",
+      "over": 4
+     }
+    ]
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nwhile True:\n    i2c.writeto(0x5C, bytes([0]))\n    b = i2c.readfrom(0x5C, 5)\n    if (b[0] + b[1] + b[2] + b[3]) & 0xFF == b[4]:\n        t = b[2] + (b[3] & 0x7F) * 0.1\n        if b[3] & 0x80:\n            t = -t\n        print('H=%.1f T=%.1f' % (b[0] + b[1] * 0.1, t))\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "reads negative temperature",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": -5.7
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "humidity",
+     "value": 56.8
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "H=56.8 T=-5.7",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

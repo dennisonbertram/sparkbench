@@ -64,6 +64,11 @@ export class SSD1306Device implements I2CDevice {
     }
     if (bytes.length > 2 && (bytes[0] & 0x40)) this.frames++;
   }
+  /** 4-wire SPI: the DC pin says whether these bytes are commands (low) or display data (high). */
+  spi(dc: boolean, bytes: number[]) {
+    for (const b of bytes) dc ? this.data(b) : this.command(b);
+    if (dc && bytes.length > 1) this.frames++;
+  }
   read(n: number) {
     return new Array(n).fill(this.on ? 0x03 : 0x43);
   }
@@ -248,9 +253,12 @@ export class MPU6050Device implements I2CDevice {
   }
 }
 
-/** HD44780 16×2 behind a PCF8574 backpack (P0=RS, P1=RW, P2=E, P3=backlight, P4–P7=D4–D7). */
+/** HD44780 character LCD behind a PCF8574 backpack (default P0=RS, P1=RW, P2=E, P3=backlight, P4–P7=D4–D7). */
 export class Lcd1602Device implements I2CDevice {
   addr = 0x27;
+  cols = 16;
+  rows = 2;
+  private map = { rs: 0, rw: 1, e: 2, backlight: 3, d4: 4 };
   ddram = new Uint8Array(128).fill(0x20);
   addrPtr = 0;
   displayOn = false;
@@ -264,13 +272,19 @@ export class Lcd1602Device implements I2CDevice {
   private cgAddr = 0;
   private hiNibble: number | null = null;
   dirty = true;
-  constructor(public partId: string) {}
+  constructor(public partId: string, opts: { addr?: number; cols?: number; rows?: number; pins?: { rs: number; rw: number; e: number; backlight: number; d4: number } } = {}) {
+    if (opts.addr !== undefined) this.addr = opts.addr;
+    if (opts.cols) this.cols = opts.cols;
+    if (opts.rows) this.rows = opts.rows;
+    if (opts.pins) this.map = opts.pins;
+  }
   write(bytes: number[]) {
+    const { rs, e, backlight, d4 } = this.map;
     for (const b of bytes) {
-      const prevE = this.port & 0x04;
+      const prevE = (this.port >> e) & 1;
       this.port = b;
-      this.backlight = (b & 0x08) !== 0;
-      if (prevE && !(b & 0x04)) this.latch((b >> 4) & 0x0f, (b & 0x01) !== 0);
+      this.backlight = ((b >> backlight) & 1) !== 0;
+      if (prevE && !((b >> e) & 1)) this.latch((b >> d4) & 0x0f, ((b >> rs) & 1) !== 0);
     }
     this.dirty = true;
   }
@@ -326,17 +340,21 @@ export class Lcd1602Device implements I2CDevice {
     this.ddram[this.addrPtr & 0x7f] = v;
     this.addrPtr = (this.addrPtr + 1) & 0x7f;
   }
-  lines(): [string, string] {
-    if (!this.displayOn) return ['                ', '                '];
-    const row = (base: number) => Array.from(this.ddram.subarray(base, base + 16), (c) => String.fromCharCode(c < 32 ? 32 : c)).join('');
-    return [row(0x00), row(0x40)];
+  /** DDRAM address of each visible row: 0x00 and 0x40, then cols and 0x40 + cols on 4-row panels (0x14/0x54 on a 20×4). */
+  private rowBase(r: number): number {
+    return [0x00, 0x40, this.cols, 0x40 + this.cols][r];
   }
-  /** Raw character codes for the Wokwi element (32 bytes). */
+  lines(): string[] {
+    const blank = ' '.repeat(this.cols);
+    if (!this.displayOn) return Array.from({ length: this.rows }, () => blank);
+    const row = (base: number) => Array.from(this.ddram.subarray(base, base + this.cols), (c) => String.fromCharCode(c < 32 ? 32 : c)).join('');
+    return Array.from({ length: this.rows }, (_, r) => row(this.rowBase(r)));
+  }
+  /** Raw character codes, row after row (cols × rows bytes; 32 for the 16×2 Wokwi element). */
   characters(): Uint8Array {
-    const out = new Uint8Array(32);
+    const out = new Uint8Array(this.cols * this.rows);
     if (!this.displayOn) return out.fill(32);
-    out.set(this.ddram.subarray(0, 16), 0);
-    out.set(this.ddram.subarray(0x40, 0x50), 16);
+    for (let r = 0; r < this.rows; r++) out.set(this.ddram.subarray(this.rowBase(r), this.rowBase(r) + this.cols), r * this.cols);
     return out;
   }
 }
@@ -463,7 +481,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     for (const [k, v] of Object.entries(registers)) this.setReg(Number(k), v);
@@ -478,6 +496,8 @@ export class GenericI2CDevice implements I2CDevice {
     } else this.store.set(addr & 0xffff, [v & 0xff]);
   }
   private store = new Map<number, number[]>();
+  /** readFromZero chips: the separate write registers (TLV493D MOD1/MOD2…). */
+  written = new Map<number, number>();
   /** RTC: seconds between the simulated clock's epoch and the time set on the chip. */
   private rtcOffset = Date.UTC(2026, 9, 21, 12, 0, 0) / 1000;
   private rtcFields(): number[] | null {
@@ -521,6 +541,11 @@ export class GenericI2CDevice implements I2CDevice {
       return;
     }
     this.reply = [];
+    if (this.layout.readFromZero) {
+      // Writes fill a separate write-register map from its register 0; reads never see them.
+      bytes.forEach((b, i) => this.written.set(i, b));
+      return;
+    }
     if (this.layout.pointerless) {
       this.ptr = 0;
       const k = this.layout.pointerlessBytes ?? 1;
@@ -553,7 +578,7 @@ export class GenericI2CDevice implements I2CDevice {
       const latchHigh = !this.layout.pointerless || ((this.byteAt(reg, 0) >> ib.bit) & 1) === 1;
       view.set(reg, level && latchHigh ? cur | (1 << ib.bit) : cur & ~(1 << ib.bit));
     }
-    if (this.layout.pointerless) this.ptr = 0;
+    if (this.layout.pointerless || this.layout.readFromZero) this.ptr = 0;
     const out: number[] = [];
     // Byte registers auto-increment; word registers stream the word at the pointer (then the next).
     // A pointerless expander repeats its port(s): PCF8574 port, port…; PCF8575 port 0, port 1, port 0…
@@ -600,6 +625,20 @@ export class GenericI2CDevice implements I2CDevice {
             this.store.set(reg, [word >> 8]);
             this.store.set(reg + 1, [word & 0xff]);
           }
+        }
+        continue;
+      }
+      if (m.fields && m.bits) {
+        // Spread the value's bits over (parts of) several registers.
+        let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1));
+        raw = m.signed ? Math.max(-(2 ** (m.bits - 1)), Math.min(2 ** (m.bits - 1) - 1, raw)) : Math.max(0, Math.min(2 ** m.bits - 1, raw));
+        if (raw < 0) raw += 2 ** m.bits;
+        for (const f of m.fields) {
+          const at = f.at ?? 0;
+          const mask = ((1 << f.width) - 1) << at;
+          const slice = Math.floor(raw / 2 ** f.from) & ((1 << f.width) - 1);
+          const r = Number(f.reg);
+          this.store.set(r, [(this.byteAt(r, 0) & ~mask) | (slice << at)]);
         }
         continue;
       }
@@ -692,6 +731,13 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
       else push(crc8Sensirion(prev, s.crc === 'htu21d' ? 0 : 0xff), 8);
     }
     else if ('const' in s) push(s.const, s.bits);
+    else if ('split' in s) {
+      const v = value(s.control);
+      const tenths = Math.round(Math.abs(v) * 10);
+      let x = s.split === 'int' ? Math.floor(tenths / 10) : tenths % 10;
+      if (s.signBit !== undefined && v < 0 && tenths > 0) x |= 1 << s.signBit;
+      push(Math.min(2 ** s.bits - 1, x), s.bits);
+    }
     else if ('float32' in s) {
       const dv = new DataView(new ArrayBuffer(4));
       dv.setFloat32(0, (value(s.control) - (s.offset ?? 0)) / (s.scale ?? 1));
