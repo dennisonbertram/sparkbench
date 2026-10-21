@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lis2dw12",
+  "board": "DFRobot Fermion: LIS2DW12 Triple Axis Accelerometer Sensor (Breakout) (±16g), SEN0405",
+  "reason": "Part check PASS on ESP32 and Pico on the first run (spec, wiring, design checks, breadboard, simulator test X=-0.750 Y=0.250 Z=0.900 g, circuit board DRC clean, footprint, LCSC C189624). The sim stores OUT_X/Y/Z as left-justified 14-bit two's complement, low byte first, 0.244 mg/digit (High-Performance mode, ±2 g), with WHO_AM_I 0x44, IF_ADD_INC-style plain auto-increment from 0x28 and a self-clearing SOFT_RESET. The headers are on two edges, so the part is marked cabled.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lis2dw12.pdf",
+  "breakoutPinoutSource": "DFRobot wiki https://wiki.dfrobot.com/SEN0405 board overview and dimension drawing SEN0405_lis2dw12_dimension_1.0.jpg, plus schematic SEN0405_lis2dw12_schematics_1.0.pdf: P1 = VCC, GND, SCL, SDA; P2 = SDO, CS, INT1, INT2 (square pad = pin 1, on opposite edges); ME6206A33 regulator VCC->3V3; 10k pull-ups to 3V3 on SCL, SDA, SDO, CS",
+  "checkRuns": 1
+}

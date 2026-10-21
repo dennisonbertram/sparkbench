@@ -1,0 +1,228 @@
+{
+  "type": "custom-lis2dw12",
+  "name": "LIS2DW12 low-power 3-axis accelerometer",
+  "mpn": "LIS2DW12",
+  "category": "sensor",
+  "description": "STMicroelectronics ultra-low-power 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, 14-bit High-Performance mode (0.244 mg/digit at ±2 g) plus four low-power modes down to about 1 µA, I2C/SPI, 32-level FIFO, tap/free-fall/wake-up/6D detection on two interrupt pins. Chip supply 1.62–3.6 V. Sold as: DFRobot Fermion: LIS2DW12 Triple Axis Accelerometer Sensor (Breakout) (±16g), SEN0405, two 4-pin headers on opposite edges (VCC, GND, SCL, SDA and SDO, CS, INT1, INT2), ME6206A33 3.3 V regulator so VCC takes 3.3–5 V, 10 kΩ pull-ups to the board's 3.3 V on SCL, SDA, SDO and CS (I2C mode, address 0x19; 0x18 with SDO tied to GND).",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, on three axes, while sipping almost no power.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3–5 V into the board's ME6206A33 3.3 V regulator",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock / SPI clock (10 kΩ pull-up to the board's 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data / SPI MOSI (10 kΩ pull-up to the board's 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select (10 kΩ pull-up: 0x19; tie to GND for 0x18) / SPI MISO; leave open for I2C",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select (10 kΩ pull-up selects I2C mode); leave open for I2C",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "levelV": 3.3,
+      "description": "Interrupt 1 output (push-pull at 3.3 V: data ready, tap, free-fall, wake-up…), optional",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "levelV": 3.3,
+      "description": "Interrupt 2 output (push-pull at 3.3 V), optional",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 25,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lis2dw12.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "DFRobot SEN0405 Fermion LIS2DW12 triple axis accelerometer breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lis2dw12.pdf",
+    "https://dfimg.dfrobot.com/wiki/23156/SEN0405_lis2dw12_datasheet_1.0.pdf",
+    "https://wiki.dfrobot.com/SEN0405",
+    "https://dfimg.dfrobot.com/wiki/23156/SEN0405_lis2dw12_schematics_1.0.pdf",
+    "https://dfimg.dfrobot.com/wiki/23156/SEN0405_lis2dw12_dimension_1.0.jpg",
+    "https://www.dfrobot.com/product-2337.html"
+  ],
+  "buildNotes": [
+    "VCC takes 3.3–5 V: the board's ME6206A33 regulator feeds the chip 3.3 V, and SCL/SDA are pulled up to that 3.3 V, so the I2C lines are safe for 3.3 V boards.",
+    "The two 4-pin headers sit on opposite edges (VCC/GND/SCL/SDA on one, SDO/CS/INT1/INT2 on the other), so wire the board with jumper leads; for I2C only the first header is needed.",
+    "Leave CS open (its 10 kΩ pull-up keeps the chip in I2C mode) and SDO open for address 0x19; tie SDO to GND for 0x18.",
+    "The chip powers up in power-down (CTRL1 0x20 = 0x00): write e.g. CTRL1 = 0x54 (100 Hz, High-Performance 14-bit) before reading.",
+    "Set BDU in CTRL2 (0x21 = 0x0C keeps IF_ADD_INC on) and the full scale in CTRL6 (0x25, FS bits 5:4; 0x04 = ±2 g, low-noise).",
+    "Read OUT_X_L..OUT_Z_H in one 6-byte burst from 0x28 (auto-increment comes from IF_ADD_INC, not from bit 7 of the address as on the LIS2DH12). Each axis is two's complement, low byte first, left-justified: shift right by 2, then 0.244 mg/digit at ±2 g (0.488/0.976/1.952 at ±4/8/16 g).",
+    "WHO_AM_I (0x0F) must read 0x44; anything else means a wiring fault or the wrong address.",
+    "Mount the board flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "lis2dw12",
+    "accelerometer",
+    "low power",
+    "tilt",
+    "vibration",
+    "tap",
+    "free-fall",
+    "wake-up",
+    "3-axis",
+    "stmicroelectronics",
+    "dfrobot",
+    "sen0405",
+    "fermion"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -1.998,
+    "max": 1.998,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -1.998,
+        "max": 1.998,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -1.998,
+        "max": 1.998,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x0F": 68,
+      "0x20": 0,
+      "0x21": 4,
+      "0x25": 0,
+      "0x26": 0,
+      "0x27": 1
+    },
+    "selfClearing": [
+      {
+        "reg": "0x21",
+        "mask": 64,
+        "reset": true
+      },
+      {
+        "reg": "0x21",
+        "mask": 128
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.000244,
+        "shift": 2,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.000244,
+        "shift": 2,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.000244,
+        "shift": 2,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lis2dw12.py",
+    "code": "# LIS2DW12 3-axis accelerometer (STMicroelectronics), MicroPython driver for I2C.\n# From the LIS2DW12 datasheet (DS11811 Rev 8):\n#   I2C address 001100xb: 0x18 with SDO/SA0 low, 0x19 with SDO/SA0 high.\n#   WHO_AM_I 0x0F = 0x44.\n#   CTRL1 0x20: ODR[7:4], MODE[3:2] (01 = High-Performance, 14-bit), LP_MODE[1:0]; powers up 0x00 = power-down.\n#   CTRL2 0x21: BOOT bit 7, SOFT_RESET bit 6, bit 5 must be 0, CS_PU_DISC bit 4, BDU bit 3,\n#               IF_ADD_INC bit 2 (default 1: register address auto-increments on multi-byte access), I2C_DISABLE bit 1, SIM bit 0.\n#   CTRL6 0x25: BW_FILT[7:6], FS[5:4] (+-2/4/8/16 g), FDS bit 3, LOW_NOISE bit 2.\n#   OUT_T 0x26: temperature, 8-bit two's complement, 1 degC/LSB, 0 = 25 degC.\n#   STATUS 0x27: DRDY bit 0.\n#   OUT_X_L..OUT_Z_H 0x28-0x2D: 16-bit two's complement, low byte first, left-justified\n#   (14-bit in High-Performance mode: value >> 2).\n#   Sensitivity (Table 3, High-Performance mode): 0.244 / 0.488 / 0.976 / 1.952 mg/digit at +-2/4/8/16 g.\n#   Table 13: at 100 Hz in HP mode with ODR/2 bandwidth, discard the first sample after setting the ODR.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL1 = 0x20\n_CTRL2 = 0x21\n_CTRL6 = 0x25\n_OUT_T = 0x26\n_STATUS = 0x27\n_OUT_X_L = 0x28\n\n_FS = {2: (0b00, 0.244), 4: (0b01, 0.488), 8: (0b10, 0.976), 16: (0b11, 1.952)}  # FS bits, mg/digit (14-bit HP)\n\n\nclass LIS2DW12:\n    def __init__(self, i2c, addr=0x19, g_range=2):\n        \"\"\"addr: 0x19 with SDO high (DFRobot SEN0405 default, 10 k pull-up on SDO),\n        0x18 with the SDO pin tied to GND.\n        g_range: 2, 4, 8 or 16 g full scale (High-Performance 14-bit mode).\"\"\"\n        if g_range not in _FS:\n            raise ValueError('g_range must be 2, 4, 8 or 16')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x44:\n            raise OSError('LIS2DW12 not found (WHO_AM_I 0x%02X, expected 0x44): check wiring and address' % who)\n        fs, self._mg_per_digit = _FS[g_range]\n        # Soft reset: restores all control registers; the bit clears itself when done\n        self._w(_CTRL2, 0x40)\n        for _ in range(10):\n            time.sleep_ms(5)\n            if not self.i2c.readfrom_mem(addr, _CTRL2, 1)[0] & 0x40:\n                break\n        # BDU = 1 (MSB/LSB from the same sample), IF_ADD_INC = 1 (burst reads), bit 5 = 0, CS pull-up kept\n        self._w(_CTRL2, 0x0C)\n        # BW_FILT = ODR/2, FS, low-pass path, LOW_NOISE = 1\n        self._w(_CTRL6, (fs << 4) | 0x04)\n        # ODR = 100 Hz (0101), MODE = 01 High-Performance (14-bit), LP_MODE = 00\n        self._w(_CTRL1, 0x54)\n        time.sleep_ms(30)  # Table 13: discard the first sample at 100 Hz (10 ms per sample)\n        self.raw()\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when STATUS DRDY says a new X/Y/Z set is available.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _STATUS, 1)[0] & 0x01)\n\n    def raw(self):\n        \"\"\"(x, y, z) 14-bit counts from one 6-byte burst at OUT_X_L (IF_ADD_INC = 1).\"\"\"\n        for _ in range(25):  # wait up to ~25 ms (two samples at 100 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _OUT_X_L, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # OUT_x_L = low byte, OUT_x_H = high byte\n            if v & 0x8000:\n                v -= 65536\n            out.append(v >> 2)  # left-justified: the 14-bit value sits in bits 15:2\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._mg_per_digit / 1000\n        x, y, z = self.raw()\n        return x * k, y * k, z * k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n\n    def temperature(self):\n        \"\"\"Die temperature in degC from OUT_T (8-bit, 1 degC/LSB, 0 = 25 degC); rough, not an ambient sensor.\"\"\"\n        t = self.i2c.readfrom_mem(self.addr, _OUT_T, 1)[0]\n        if t & 0x80:\n            t -= 256\n        return 25 + t\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lis2dw12 import LIS2DW12\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = LIS2DW12(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.3f Y=%.3f Z=%.3f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": 0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 0.9
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=-0.750 Y=0.250 Z=0.900 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:09:39.165Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/sen0405/",
+      "https://github.com/STMicroelectronics/lis2dw12-pid",
+      "https://www.st.com/resource/en/datasheet/lis2dw12.pdf"
+    ]
+  }
+}

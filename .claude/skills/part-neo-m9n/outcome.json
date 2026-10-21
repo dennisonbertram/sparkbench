@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "uart-device",
+  "board": "SparkFun GPS Breakout - NEO-M9N, U.FL (Qwiic), GPS-15712 (top 7-pin header GND, 5V, 3V3, CS, RX/MOSI, TX/MISO, SCK)",
+  "reason": "Modelled as a 38400-baud NMEA uart-device (datasheet default interface settings) with a talker-agnostic, checksum-verifying GGA/RMC driver; pin order taken from SparkFun's Eagle board file and dimension drawing. The check passed on ESP32 and Pico; run 2 marked the optional 5V regulator input leave-unconnected so it is not wired alongside 3V3.",
+  "datasheetUrl": "https://content.u-blox.com/sites/default/files/NEO-M9N-00B_DataSheet_UBX-19014285.pdf",
+  "breakoutPinoutSource": "https://cdn.sparkfun.com/assets/5/1/3/1/9/SparkFun_GPS_NEO_M9N_uFL.zip (Eagle .brd: J1 pads 1-7 = GND, 5V, 3.3V, SDA/CS, RXI/MOSI, TXO/MISO, SCL/SCK) and https://cdn.sparkfun.com/assets/e/9/0/b/b/SparkFun_GPS_NEO_M9N_uFL_Board_Dimensions.png (silkscreen labels)",
+  "checkRuns": 2
+}

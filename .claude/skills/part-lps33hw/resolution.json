@@ -1,0 +1,34 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 2: part says 3Vo, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Adafruit LPS3X board file: header JP3 pad 2 is on net 3.3V and the second silkscreen label (x=6.477, after VIN at 3.937) is 3Vo: 'x=\"6.477\" y=\"4.191\" size=\"1.016\" layer=\"21\" font=\"vector\" ratio=\"14\" align=\"center\">3Vo</text>'; the second reading reordered the pins by function.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-LPS3X-PCB/master/Adafruit%20LPS3X.brd"
+    },
+    {
+      "diff": "header pin 3: part says GND, datasheet reading says 3Vo",
+      "verdict": "part-correct",
+      "evidence": "Adafruit LPS3X board file: the third silkscreen label (x=9.017) is GND and JP3 pad 3 is on the GND net: 'x=\"9.017\" y=\"0.889\" size=\"1.016\" layer=\"21\" font=\"vector\" ratio=\"14\" align=\"center\">GND</text>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-LPS3X-PCB/master/Adafruit%20LPS3X.brd"
+    },
+    {
+      "diff": "header pin 5: part says SDO, datasheet reading says SDI",
+      "verdict": "part-correct",
+      "evidence": "Adafruit LPS3X board file: the fifth silkscreen label (x=14.097, between SCK at 11.557 and SDI at 16.51) is SDO, and JP3 pad 5 is on net SDO/ADR: 'x=\"14.097\" y=\"0.889\" size=\"1.016\" layer=\"21\" font=\"vector\" ratio=\"14\" align=\"center\">SDO</text>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-LPS3X-PCB/master/Adafruit%20LPS3X.brd"
+    },
+    {
+      "diff": "header pin 6: part says SDA, datasheet reading says SDO",
+      "verdict": "part-correct",
+      "evidence": "Adafruit LPS3X board file: the sixth silkscreen label (x=16.51) is SDI, the I2C data pin modelled as SDA, and JP3 pad 6 is on net SDI/SDA: 'x=\"16.51\" y=\"4.064\" size=\"1.016\" layer=\"21\" font=\"vector\" ratio=\"14\" align=\"center\">SDI</text>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-LPS3X-PCB/master/Adafruit%20LPS3X.brd"
+    },
+    {
+      "diff": "minimum supply: part 3 V, datasheet reading 3.3 V",
+      "verdict": "part-correct",
+      "evidence": "Adafruit pinout guide for this board family says the on-board regulator accepts 3 V minimum on VIN: 'we have included a voltage regulator on board that will take 3-5VDC and safely convert it down'.",
+      "source": "https://learn.adafruit.com/lps35hw-water-resistant-pressure-sensor/pinouts"
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "type": "custom-neo-m9n",
+  "name": "NEO-M9N GPS breakout",
+  "mpn": "NEO-M9N",
+  "category": "sensor",
+  "description": "u-blox NEO-M9N 92-channel GNSS receiver (GPS, GLONASS, Galileo and BeiDou concurrently, about 1.5 m accuracy) that streams NMEA sentences (position, altitude, speed, UTC time) over its UART at 38400 baud 8N1, once per second by default. The chip runs on 2.7-3.6 V; the breakout also has a 5V pin feeding an on-board 3.3 V regulator, a rechargeable backup battery, Qwiic (I2C) and USB-C connectors. The 7-pin top header is modelled; the opposite edge carries PPS, RST, SAFE, INT and a second GND/3V3/SDA/SCL row (optional). Sold as: SparkFun GPS Breakout - NEO-M9N, U.FL (Qwiic), GPS-15712 (also GPS-15733 chip antenna, GPS-17285 SMA; same headers), top header GND, 5V, 3V3, CS, RX/MOSI, TX/MISO, SCK.",
+  "eli5": "Listens to four satellite systems at once and tells your board where on Earth it is, once a second.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "nc",
+      "description": "Optional 5 V input (max 6 V) to the on-board 3.3 V regulator. Leave unconnected when the 3V3 pin is powered (use one supply input, not both)",
+      "required": false
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "3.3 V supply straight to the NEO-M9N VCC (2.7-3.6 V, absolute max 3.6 V). Feed it from the board's 3V3 pin",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select when the D_SEL jumper is closed; I2C SDA (Qwiic) otherwise. Not needed for UART use",
+      "required": false
+    },
+    {
+      "name": "RX/MOSI",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module UART input (3.3 V logic, max 3.6 V): connect to the board's UART TX. Only needed to send UBX/NMEA configuration",
+      "required": false
+    },
+    {
+      "name": "TX/MISO",
+      "role": "io",
+      "fn": "uart.tx",
+      "levelV": 3.3,
+      "description": "Module UART output, NMEA at 38400 baud 8N1, 3.3 V logic: connect to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "description": "SPI clock when the D_SEL jumper is closed; I2C SCL (Qwiic) otherwise. Not needed for UART use",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.6,
+  "currentMa": 50,
+  "datasheetUrl": "https://content.u-blox.com/sites/default/files/NEO-M9N-00B_DataSheet_UBX-19014285.pdf",
+  "priceUsd": 70,
+  "supplierQuery": "SparkFun GPS Breakout NEO-M9N GPS-15712",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Cross the serial lines: module TX/MISO goes to the board's UART RX pin, module RX/MOSI (optional) to the board's UART TX pin.",
+    "The factory default is 38400 baud, 8N1 (not 9600 like older NEO-6M/M8N modules); open the UART at 38400 or the sentences come out as garbage.",
+    "Power it from the 3V3 pin (2.7-3.6 V) or from the 5V pin (max 6 V, on-board regulator), not both. The I/O is 3.3 V only, so wire ESP32/Pico pins directly but never a 5 V UART.",
+    "Leave the D_SEL jumper open: open means UART + I2C, closed switches the header to SPI and the UART stops working.",
+    "With several constellations the position sentences start $GNGGA / $GNRMC, not $GPGGA; match the sentence type after the talker ID.",
+    "Connect an active or passive GNSS antenna to the U.FL socket (the GPS-15733 has a chip antenna) and give it a view of the sky. Cold start is about 24 s outdoors; indoors it may never get a fix.",
+    "Peak supply current is up to 100 mA during acquisition; supply it from the board's 3V3 pin, never a GPIO."
+  ],
+  "keywords": [
+    "neo-m9n",
+    "neom9n",
+    "m9n",
+    "gps-15712",
+    "gps-15733",
+    "gps-17285",
+    "sparkfun",
+    "qwiic",
+    "gps",
+    "gnss",
+    "glonass",
+    "galileo",
+    "beidou",
+    "nmea",
+    "u-blox",
+    "ublox",
+    "location"
+  ],
+  "sources": [
+    "https://content.u-blox.com/sites/default/files/NEO-M9N-00B_DataSheet_UBX-19014285.pdf",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/1/1/0/2/NEO-M9N-00B_DataSheet_UBX-19014285.pdf",
+    "https://www.sparkfun.com/products/15712",
+    "https://cdn.sparkfun.com/assets/1/a/c/8/4/SparkFun_GPS_NEO_M9N_uFL.pdf",
+    "https://cdn.sparkfun.com/assets/5/1/3/1/9/SparkFun_GPS_NEO_M9N_uFL.zip",
+    "https://cdn.sparkfun.com/assets/e/9/0/b/b/SparkFun_GPS_NEO_M9N_uFL_Board_Dimensions.png",
+    "https://learn.sparkfun.com/tutorials/sparkfun-gps-neo-m9n-hookup-guide/all"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 38400,
+    "quantity": "Latitude",
+    "unit": "°",
+    "min": -90,
+    "max": 90,
+    "default": 51.5,
+    "controls": [
+      {
+        "key": "lat",
+        "quantity": "Latitude",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 51.5
+      },
+      {
+        "key": "lon",
+        "quantity": "Longitude",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": -0.12
+      },
+      {
+        "key": "alt",
+        "quantity": "Altitude above sea level",
+        "unit": "m",
+        "min": -100,
+        "max": 5000,
+        "default": 35
+      },
+      {
+        "key": "speed",
+        "quantity": "Speed over ground",
+        "unit": "knots",
+        "min": 0,
+        "max": 100,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "nmea": true
+    }
+  },
+  "driver": {
+    "filename": "neom9n.py",
+    "code": "# u-blox NEO-M9N GNSS receiver (SparkFun GPS Breakout NEO-M9N), MicroPython NMEA driver for the UART.\n# NEO-M9N-00B datasheet (UBX-19014285) 5.5 \"Default interface settings\": UART 38400 baud, 8N1,\n# output NMEA GGA, GLL, GSA, GSV, RMC, VTG, TXT (no UBX), 1 Hz navigation.\n# The receiver tracks GPS + GLONASS + Galileo + BeiDou concurrently, so combined position sentences\n# use the talker ID \"GN\" ($GNGGA, $GNRMC); this driver accepts any talker ID.\n# Every sentence is checked with its NMEA checksum (XOR of all characters between '$' and '*').\n# Latitude is ddmm.mmmmm, longitude dddmm.mmmmm (u-blox M9 interface description, NMEA GGA / RMC).\n\n\ndef _checksum_ok(line):\n    # line: str without CR/LF, starting with '$'\n    star = line.rfind('*')\n    if line[:1] != '$' or star < 0 or len(line) < star + 3:\n        return False\n    cs = 0\n    for c in line[1:star]:\n        cs ^= ord(c)\n    try:\n        return cs == int(line[star + 1:star + 3], 16)\n    except ValueError:\n        return False\n\n\ndef _deg(field, hemi, dlen):\n    # 'ddmm.mmmmm' (dlen=2) or 'dddmm.mmmmm' (dlen=3) -> signed decimal degrees, None if empty\n    if not field or not hemi:\n        return None\n    d = int(field[:dlen]) + float(field[dlen:]) / 60\n    return -d if hemi in ('S', 'W') else d\n\n\ndef _num(field):\n    return float(field) if field else None\n\n\nclass NEOM9N:\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 38400 baud (factory default), rx= the pin wired to the module's TX/MISO.\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.fix = False          # True when GGA quality > 0 or RMC status 'A'\n        self.fix_quality = 0      # GGA: 0 none, 1 GNSS fix, 2 DGNSS, 6 dead reckoning\n        self.latitude = None      # decimal degrees, + north\n        self.longitude = None     # decimal degrees, + east\n        self.altitude = None      # metres above mean sea level (GGA)\n        self.satellites = 0       # satellites used (GGA)\n        self.hdop = None\n        self.speed_knots = None   # speed over ground (RMC)\n        self.course = None        # course over ground, degrees (RMC)\n        self.utc_time = None      # (hh, mm, ss)\n        self.date = None          # (day, month, 2-digit year)\n        self.bad_checksums = 0\n\n    def update(self):\n        \"\"\"Read what has arrived and decode complete sentences. Returns True if a GGA or RMC was decoded.\"\"\"\n        n = self.uart.any()\n        if n:\n            data = self.uart.read(n)\n            if data:\n                self._buf += data\n        got = False\n        while True:\n            nl = self._buf.find(b'\\n')\n            if nl < 0:\n                break\n            line = self._buf[:nl].strip()\n            self._buf = self._buf[nl + 1:]\n            try:\n                line = line.decode()\n            except UnicodeError:  # noise or a binary UBX frame\n                continue\n            try:\n                if line and self._parse(line):\n                    got = True\n            except (ValueError, IndexError):  # malformed field\n                pass\n        if len(self._buf) > 1024:  # garbage without newlines (wrong baud rate?)\n            self._buf = b''\n        return got\n\n    def _parse(self, line):\n        if line[:1] != '$':\n            return False\n        if not _checksum_ok(line):\n            self.bad_checksums += 1\n            return False\n        f = line[1:line.rfind('*')].split(',')\n        kind = f[0][2:]  # skip the talker ID (GN, GP, GL, GA, GB)\n        if kind == 'GGA' and len(f) >= 10:\n            self._time(f[1])\n            self.fix_quality = int(f[6]) if f[6] else 0\n            self.fix = self.fix_quality > 0\n            self.satellites = int(f[7]) if f[7] else 0\n            self.hdop = _num(f[8])\n            if self.fix:\n                self.latitude = _deg(f[2], f[3], 2)\n                self.longitude = _deg(f[4], f[5], 3)\n                self.altitude = _num(f[9])\n            return True\n        if kind == 'RMC' and len(f) >= 10:\n            self._time(f[1])\n            self.fix = f[2] == 'A'\n            if self.fix:\n                self.latitude = _deg(f[3], f[4], 2)\n                self.longitude = _deg(f[5], f[6], 3)\n                self.speed_knots = _num(f[7])\n                self.course = _num(f[8])\n            if len(f[9]) == 6:\n                self.date = (int(f[9][0:2]), int(f[9][2:4]), int(f[9][4:6]))\n            return True\n        return False\n\n    def _time(self, t):\n        if len(t) >= 6:\n            self.utc_time = (int(t[0:2]), int(t[2:4]), int(float(t[4:])))\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom neom9n import NEOM9N\n\nuart = UART({UART_ID}, baudrate=38400, tx=Pin({RX_MOSI}), rx=Pin({TX_MISO}))\ngps = NEOM9N(uart)\nwhile True:\n    if gps.update():\n        if gps.fix and gps.latitude is not None:\n            print('LAT=%.4f LON=%.4f ALT=%.1fm' % (gps.latitude, gps.longitude, gps.altitude or 0))\n        else:\n            print('Waiting for fix...')\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "fix",
+      "title": "Reports the position and altitude set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lat",
+          "value": 40.015
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lon",
+          "value": -105.2705
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "alt",
+          "value": 1655
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LAT=40.0150 LON=-105.2705 ALT=1655.0m",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:01:34.506Z",
+    "verifiedSources": [
+      "https://content.u-blox.com/sites/default/files/NEO-M9N-00B_DataSheet_UBX-19014285.pdf",
+      "https://www.sparkfun.com/products/15712"
+    ]
+  }
+}

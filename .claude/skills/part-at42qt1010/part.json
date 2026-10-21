@@ -1,0 +1,111 @@
+{
+  "type": "custom-at42qt1010",
+  "name": "AT42QT1010 capacitive touch breakout",
+  "mpn": "AT42QT1010",
+  "category": "sensor",
+  "description": "Microchip AT42QT1010 single-key QTouch capacitive sensor: its push-pull OUT pin goes high while the electrode is touched, replacing a push button. Runs on 1.8–5.5 V; OUT swings to VDD, so power it from 3.3 V. A touch held for about 60 s is released by an automatic recalibration. Sold as: SparkFun Capacitive Touch Breakout - AT42QT1010 (SEN-12041), with on-board electrode, green touch LED, mode jumper and 4-pin header GND, OUT, VDD, LED.",
+  "eli5": "A touch button with no moving parts: put your finger on the round pad and the OUT wire tells your board.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Touch output (chip OUT, push-pull, swings to VDD). High while touched",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 1.8–5.5 V (use 3.3 V with an ESP32 or Pico: OUT swings to VDD)",
+      "required": true
+    },
+    {
+      "name": "LED",
+      "role": "io",
+      "description": "LED transistor drive, tied to OUT through jumper JP7 (closed). Leave unconnected unless JP7 is cut",
+      "required": false
+    }
+  ],
+  "vmin": 1.8,
+  "vmax": 5.5,
+  "currentMa": 8,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/5/2/e/d/d/40001946A.pdf",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/5/2/e/d/d/40001946A.pdf",
+    "https://www.sparkfun.com/products/12041",
+    "https://cdn.sparkfun.com/assets/8/4/0/c/0/AT42QT101X_Capacitive_Touch_Breakout.pdf",
+    "https://learn.sparkfun.com/tutorials/at42qt101x-capacitive-touch-breakout-hookup-guide"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "SparkFun AT42QT1010 capacitive touch breakout SEN-12041",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (schematic J1 pins 1–4): GND, OUT, VDD, LED.",
+    "Power from 3.3 V on an ESP32 or Pico: OUT is push-pull and swings to VDD (a 5 V supply gives a 5 V output).",
+    "No pull resistor needed on the GPIO; leave the LED pin unconnected (it is tied to OUT by jumper JP7).",
+    "Keep fingers off the electrode for ~100 ms after power-up while it calibrates.",
+    "Mode jumper JP8: 1 = Fast mode (200–750 µA), 2 = Low Power mode (15–75 µA, slower response).",
+    "An external electrode can be wired to the separate PAD hole."
+  ],
+  "keywords": [
+    "at42qt1010",
+    "qt1010",
+    "at42qt1011",
+    "touch",
+    "capacitive",
+    "button",
+    "touch sensor",
+    "qtouch",
+    "sparkfun"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Touched",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "at42qt1010.py",
+    "code": "# AT42QT1010 one-key capacitive touch sensor (Microchip/Atmel QTouch), MicroPython driver.\n# SparkFun AT42QT1010 Capacitive Touch Breakout (SEN-12041): header GND, OUT, VDD, LED.\n# OUT is the chip's push-pull output, active HIGH while a touch is detected (datasheet 3.9.1).\n# No pull resistor is needed. Datasheet timing: ~100 ms after power-up OUT is not valid\n# (power-on calibration); the Max On-duration (~60 s at 3 V, LP mode) forces a recalibration,\n# so a touch held longer than that drops OUT low again.\n# HeartBeat: once per burst OUT is tri-stated for 15 us; a plain CMOS GPIO input ignores it,\n# so do not enable a pull resistor if you want clean levels.\nfrom machine import Pin\nimport time\n\n\nclass AT42QT1010:\n    POWER_UP_MS = 100  # datasheet 4.x: OUT invalid for ~100 ms after power-up\n\n    def __init__(self, pin, wait_power_up=True):\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        if wait_power_up:\n            time.sleep_ms(self.POWER_UP_MS)\n\n    def value(self):\n        \"\"\"Raw level on OUT (0 or 1).\"\"\"\n        return self.pin.value()\n\n    def touched(self):\n        \"\"\"True while the electrode is touched (OUT is active high).\"\"\"\n        return self.pin.value() == 1\n\n    def irq(self, handler, on_touch=True):\n        \"\"\"Call handler(pin) on the edge where a touch starts (on_touch) or ends.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_RISING if on_touch else Pin.IRQ_FALLING)\n"
+  },
+  "skill": "---\nname: part-at42qt1010\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the AT42QT1010 single-key capacitive touch sensor (Microchip AT42QT1010, SparkFun SEN-12041 breakout). Use when designing, wiring, simulating or writing code for an AT42QT1010 touch breakout in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# AT42QT1010 capacitive touch breakout (AT42QT1010)\n\n## Overview\nThe **AT42QT1010** (Microchip, formerly Atmel QTouch) is a one-key capacitive touch sensor with a single digital output. Hobbyists buy it on the **SparkFun Capacitive Touch Breakout - AT42QT1010 (SEN-12041)**: a small red board with an on-board round touch electrode, a green LED that lights while touched, a 4-hole header, and a PAD hole for an external electrode.\n\n## Pinout (4-pin header, J1 pins 1–4: GND, OUT, VDD, LED)\n| Pin | Function |\n|---|---|\n| GND | Ground |\n| OUT | Touch output, push-pull, active HIGH while touched |\n| VDD | Supply, 1.8–5.5 V |\n| LED | Base drive of the LED transistor; tied to OUT by jumper JP7 (closed). Leave unconnected |\n\nPAD (separate hole, corner of the board) connects an external electrode in parallel with the on-board one.\n\n## Electrical limits\n- Supply 1.8–5.5 V (abs. max: any pin −0.6 V to Vdd+0.6 V). **OUT swings to VDD, so power it from 3.3 V** on an ESP32 or Pico.\n- Chip current: ~200–750 µA in Fast mode, ~15–75 µA in Low Power mode; the green LED adds a few mA while touched.\n- OUT sinks/sources up to 2 mA (VOL ≤ 0.5 V at 4 mA, VOH ≥ 2.3 V at 1 mA).\n\n## Interface details\n- Plain digital output: read OUT as a GPIO input, no pull resistor needed.\n- Power-up: OUT is invalid for ~100 ms while the chip calibrates; keep fingers off the electrode.\n- Max On-duration: a touch held for ~60 s (3 V, LP mode) triggers a recalibration and OUT goes low (AT42QT1011 has no timeout).\n- Response time up to ~100 ms; detect integrator needs several successive detections.\n- Mode jumper JP8 (SYNC/MODE): 1 = Fast (SYNC high), 2 = Low Power (SYNC low, 80 ms sleep between bursts).\n- HeartBeat: OUT tri-states for 15 µs before each burst; harmless for a CMOS GPIO input.\n- JP7: cut it to disconnect the LED from OUT, then drive the LED pin yourself.\n\n## Wiring\n- ESP32: VDD → 3V3, GND → GND, OUT → GPIO4.\n- Pico: VDD → 3V3(OUT), GND → GND, OUT → GP15.\n- Raspberry Pi 4: VDD → pin 1 (3.3 V), GND → pin 6, OUT → GPIO17 (pin 11).\n\n## Using the driver\n```python\nfrom at42qt1010 import AT42QT1010\nimport time\npad = AT42QT1010(4)       # GPIO wired to OUT; waits 100 ms for power-up\nwhile True:\n    print('TOUCH=%d' % pad.touched())\n    time.sleep(0.2)\n```\n`irq(handler)` calls `handler` when a touch starts (`on_touch=False` for release).\n\n## Gotchas\n- **At 5 V the OUT pin is 5 V** – too much for ESP32/Pico GPIO. Use 3.3 V.\n- A held touch is released after ~60 s by the Max On-duration recalibration.\n- Supply noise causes false detections; give it a clean 3.3 V and keep leads short.\n- Larger electrodes or thick panels need tuning of the sense capacitor (Cs, 10 nF on the board).\n\n## Datasheet\nhttps://cdn.sparkfun.com/assets/5/2/e/d/d/40001946A.pdf\n",
+  "example": {
+    "code": "from at42qt1010 import AT42QT1010\nimport time\n\npad = AT42QT1010({OUT})\nwhile True:\n    print('TOUCH=%d' % pad.touched())\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports a touch when the electrode is touched",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:56:45.657Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/5/2/e/d/d/40001946A.pdf",
+      "https://cdn.sparkfun.com/datasheets/Sensors/Capacitive/AT42QT1010_Capacitive_Touch_Breakout.pdf",
+      "https://www.sparkfun.com/products/12041"
+    ]
+  }
+}

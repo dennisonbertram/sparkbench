@@ -1,0 +1,79 @@
+{
+  "type": "custom-adxl362",
+  "mpn": "ADXL362",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; Added the adxl362.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the X, Y and Z acceleration set on the sliders: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "8 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; Added the adxl362.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the X, Y and Z acceleration set on the sliders: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C59641 ADXL362BCCZ-RL (21 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T17:07:54.649Z"
+}

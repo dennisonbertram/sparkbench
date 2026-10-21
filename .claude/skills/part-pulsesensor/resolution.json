@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says GND, datasheet reading says S",
+      "verdict": "part-correct",
+      "evidence": "The genuine PulseSensor ends in a colour-coded ribbon, not an S/+/- silkscreen: the manufacturer datasheet lists 'Male Header Termination Black Wire = GND Red Wire = Vdd Purple Wire = Pulse Signal', the official Fritzing breadboard art draws the wires black, red, purple left to right, and components101 (one of the second reading's own sources) numbers it 'Pin Number Pin Name Wire Colour Description 1 Ground Black', so pin 1 is GND and the S,+,- reading is the same three-wire sequence numbered from the opposite end (pin 2 = Vdd agrees).",
+      "source": "https://cdn-shop.adafruit.com/product-files/1093/Pulse+Sensor+Data+Sheet-2018.pdf ; https://components101.com/sensors/pulse-sensor"
+    },
+    {
+      "diff": "header pin 3: part says Signal, datasheet reading says -",
+      "verdict": "part-correct",
+      "evidence": "The current PulseSensor manual from the manufacturer states 'Purple = analog signal · Red = Vdd supply · Black = GND' and the 2018 datasheet lists 'Red Wire = Vdd Purple Wire = Pulse Signal' after the black GND wire, so the third lead in the black, red, purple ribbon order is Signal; the minus sign the second reading puts at pin 3 is just the reversed numbering of the same cable, and wiring is identified by wire colour as the pin descriptions of the part say.",
+      "source": "https://cdn.shopify.com/s/files/1/0100/6632/files/PulseSensor-EN-C-RC2-2026-10-16.pdf ; https://cdn-shop.adafruit.com/product-files/1093/Pulse+Sensor+Data+Sheet-2018.pdf"
+    },
+    {
+      "diff": "output voltage (V): datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The datasheet specifies no transfer function from a measured quantity to volts, only 'Analog output voltage 0.3 Vdd/2 Vdd V' with the note 'Vdd/2 describes the approximate signal baseline, not a fixed output', so the Signal is an uncalibrated PPG waveform whose beat timing (BPM) is the measured quantity; the reading's 1 V per V 'conversion' is an identity, and the model correctly has no value-per-volt mapping (it simulates a pulse centred at Vdd/2 and the driver's voltage() returns plain volts).",
+      "source": "https://cdn.shopify.com/s/files/1/0100/6632/files/PulseSensor-EN-C-RC2-2026-10-16.pdf"
+    }
+  ]
+}

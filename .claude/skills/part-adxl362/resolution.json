@@ -1,0 +1,58 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says V+, datasheet reading says CS",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"U1\" gate=\"G$1\" pin=\"VDDIO\"/> <pinref part=\"JP2\" gate=\"G$1\" pin=\"1\"/>' (JP2 pin 1 is the 3.3V net feeding VDDIO/VS and is silkscreened V+), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">V+</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "header pin 2: part says GND, datasheet reading says MISO",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"JP2\" gate=\"G$1\" pin=\"2\"/>' (JP2 pin 2 is on the GND net and is silkscreened GND), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">GND</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "header pin 3: part says INT1, datasheet reading says MOSI",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"U1\" gate=\"G$1\" pin=\"INT1\"/> <pinref part=\"JP2\" gate=\"G$1\" pin=\"3\"/>' (JP2 pin 3 is INT1), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">INT1</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "header pin 4: part says INT2, datasheet reading says SCLK",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"U1\" gate=\"G$1\" pin=\"INT2\"/> <pinref part=\"JP2\" gate=\"G$1\" pin=\"4\"/>' (JP2 pin 4 is INT2), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">INT2</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "header pin 5: part says CS, datasheet reading says 3.3V",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"U1\" gate=\"G$1\" pin=\"!CS\"/> <pinref part=\"JP1\" gate=\"G$1\" pin=\"1\"/>' (JP1 pin 1 is !CS), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">!CS</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "header pin 6: part says MISO, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"JP1\" gate=\"G$1\" pin=\"2\"/> <pinref part=\"U1\" gate=\"G$1\" pin=\"MISO\"/>' (JP1 pin 2 is MISO), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">MISO</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "header pin 7: part says MOSI, datasheet reading says INT1",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"U1\" gate=\"G$1\" pin=\"MOSI\"/> <pinref part=\"JP1\" gate=\"G$1\" pin=\"3\"/>' (JP1 pin 3 is MOSI), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">MOSI</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "header pin 8: part says SCK, datasheet reading says INT2",
+      "verdict": "part-correct",
+      "evidence": "The SparkFun SEN-11446 board has two separate 4-pin headers and the model lists JP2 (V+, GND, INT1, INT2) before JP1 (CS, MISO, MOSI, SCK) while the second reading listed JP1 first, so this is only header ordering, not a wiring error: SparkFun Eagle schematic shows '<pinref part=\"JP1\" gate=\"G$1\" pin=\"4\"/> <pinref part=\"U1\" gate=\"G$1\" pin=\"SCLK\"/>' (JP1 pin 4 is SCLK, silkscreened SCK), and the board silkscreen text reads 'font=\"vector\" ratio=\"15\" rot=\"MR0\">SCK</text>'.",
+      "source": "https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.sch ; https://raw.githubusercontent.com/sparkfun/ADXL362_Breakout/master/Hardware/ADXL362_BOB.brd"
+    },
+    {
+      "diff": "acceleration (g, +/-2g range): datasheet reading gives 0.001 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The model already uses 0.001 g per count (sim spiReplies scale 0.001 for X/Y/Z and driver _MG_PER_LSB {2: 1}), which the gate does not read from spiReplies; the ADXL362 datasheet states 'Sensitivity at XOUT, YOUT, ZOUT 2 g range 1 mg/LSB'.",
+      "source": "https://cdn.sparkfun.com/datasheets/BreakoutBoards/ADXL362.pdf ; https://www.analog.com/media/en/technical-documentation/data-sheets/adxl362.pdf"
+    }
+  ]
+}

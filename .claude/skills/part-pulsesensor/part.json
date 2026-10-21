@@ -1,0 +1,139 @@
+{
+  "type": "custom-pulsesensor",
+  "name": "PulseSensor optical heart-rate sensor",
+  "mpn": "PulseSensor",
+  "category": "sensor",
+  "description": "World Famous Electronics' open-source optical heart-rate sensor (photoplethysmography): a green LED shines into a fingertip or earlobe, an APDS-9008 light sensor picks up the reflected light and an amplifier turns each pulse into an analog Signal that rests near Vdd/2 and rises with every heartbeat. Runs on 3.0-5.5 V, about 4 mA; the Signal swings up to Vdd, so power it from 3.3 V for a 3.3 V ADC. Not a medical device. Sold as: PulseSensor Kit / Pulse Sensor Amped by World Famous Electronics (PulseSensor.com, also Adafruit #1093 and SparkFun SEN-11574), 15.8 mm round sensor on a 24 in ribbon cable ending in three male header pins: black GND, red Vdd, purple Signal.",
+  "eli5": "Rest your fingertip on the little heart-shaped light and it turns your pulse into a wiggly voltage your board can read and count.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, black wire (pin 1 of the ribbon).",
+      "required": true
+    },
+    {
+      "name": "Vdd",
+      "role": "power",
+      "description": "Supply, red wire (pin 2), 3.0-5.5 V, about 4 mA. Use 3.3 V on a 3.3 V board: the Signal can rise all the way to Vdd.",
+      "required": true
+    },
+    {
+      "name": "Signal",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog pulse waveform, purple wire (pin 3): rests near Vdd/2 (1.65 V on 3.3 V) and rises with each heartbeat; datasheet range 0.3 V to Vdd. Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 4,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/1093/Pulse+Sensor+Data+Sheet-2018.pdf",
+  "priceUsd": 30,
+  "supplierQuery": "PulseSensor pulse sensor amped heart rate",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power it from 3.3 V when the board's ADC is 3.3 V: the datasheet gives the Signal range as 0.3 V to Vdd, so on 5 V it can exceed a 3.3 V pin.",
+    "Identify the three leads by colour (black GND, red Vdd, purple Signal); reversing power can damage the sensor.",
+    "Stick a clear vinyl dot on the front and insulate the exposed parts on the back (hot glue, per the manual) before it touches skin.",
+    "Use light, steady pressure (the stabilizer ring or Velcro strap). Pressing hard flattens the pulse; movement and bright ambient light add noise.",
+    "On ESP32 use an ADC1 pin (ADC2 is unusable while Wi-Fi is on). Raspberry Pi has no ADC: use an ADS1115 or MCP3008.",
+    "Hobby/educational sensor, not a medical device."
+  ],
+  "keywords": [
+    "pulsesensor",
+    "pulse sensor",
+    "pulse sensor amped",
+    "heart rate",
+    "heartbeat",
+    "ppg",
+    "bpm",
+    "optical",
+    "apds-9008",
+    "adafruit 1093",
+    "sparkfun sen-11574"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "Signal",
+    "quantity": "Heart rate",
+    "unit": "BPM",
+    "min": 30,
+    "max": 200,
+    "default": 70,
+    "vAtMin": 1.65,
+    "vAtMax": 1.65,
+    "controls": [
+      {
+        "key": "amplitude",
+        "quantity": "Pulse size at Signal (V peak-to-peak)",
+        "unit": "V",
+        "min": 0,
+        "max": 1.6,
+        "default": 0.6
+      }
+    ],
+    "wave": {
+      "ampControl": "amplitude",
+      "voltsPerUnit": 1,
+      "centerV": 1.65,
+      "freqControl": "value",
+      "freqScale": 0.016666666666666666,
+      "shape": "pulse"
+    }
+  },
+  "driver": {
+    "filename": "pulsesensor.py",
+    "code": "# PulseSensor (World Famous Electronics, PulseSensor.com) optical heart-rate sensor, MicroPython driver.\n# The sensor is a green LED + APDS-9008 light sensor + op-amp stage: its purple Signal wire is an\n# analog photoplethysmogram (PPG) that rests near Vdd/2 and rises with each heartbeat\n# (datasheet: output 0.3 V .. Vdd, typical Vdd/2). Power it from 3.3 V so Signal never exceeds 3.3 V.\nimport time\nfrom machine import ADC, Pin\n\n\nclass PulseSensor:\n    def __init__(self, signal, vref=3.3):\n        self.adc = ADC(Pin(signal))\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range\n        except AttributeError:\n            pass\n        self.vref = vref\n\n    def raw(self):\n        \"\"\"Raw ADC reading, 0..65535.\"\"\"\n        return self.adc.read_u16()\n\n    def voltage(self):\n        \"\"\"Signal voltage in volts (about Vdd/2 = 1.65 V between beats on a 3.3 V supply).\"\"\"\n        return self.adc.read_u16() * self.vref / 65535\n\n    def bpm(self, beats=4, learn_ms=2000, timeout_ms=10000, period_ms=4):\n        \"\"\"Heart rate in beats per minute from the time between beats, or None if no clear pulse.\n\n        Learns the waveform's low and high level first, then times `beats` intervals between\n        rising crossings of a threshold at 60 % of that range (re-armed below 40 %),\n        ignoring crossings closer than 250 ms (faster than 240 BPM).\"\"\"\n        lo, hi = 65535, 0\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < learn_ms:\n            v = self.adc.read_u16()\n            lo = min(lo, v)\n            hi = max(hi, v)\n            time.sleep_ms(period_ms)\n        if hi - lo < 2000:  # under about 0.1 V of swing: no finger / no usable pulse\n            return None\n        up = lo + (hi - lo) * 6 // 10\n        down = lo + (hi - lo) * 4 // 10\n        armed = False\n        edges = []\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            v = self.adc.read_u16()\n            now = time.ticks_ms()\n            if not armed and v < down:\n                armed = True\n            elif armed and v > up:\n                armed = False\n                if not edges or time.ticks_diff(now, edges[-1]) > 250:\n                    edges.append(now)\n                    if len(edges) > beats:\n                        return 60000 * beats / time.ticks_diff(edges[-1], edges[0])\n            time.sleep_ms(period_ms)\n        return None\n"
+  },
+  "example": {
+    "code": "from pulsesensor import PulseSensor\nimport time\n\nps = PulseSensor({SIGNAL})\nwhile True:\n    bpm = ps.bpm()\n    if bpm is None:\n        print('No pulse')\n    else:\n        print('BPM=%d' % round(bpm))\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "bpm",
+      "title": "Counts the heart rate set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 84
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "amplitude",
+          "value": 0.9
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BPM=84",
+          "within": 15000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://pulsesensor.com/products/pulse-sensor-amped",
+    "https://pulsesensor.com/pages/datasheet",
+    "https://cdn.shopify.com/s/files/1/0100/6632/files/PulseSensor-EN-C-RC2-2026-10-16.pdf",
+    "https://cdn-shop.adafruit.com/product-files/1093/Pulse+Sensor+Data+Sheet-2018.pdf",
+    "https://www.adafruit.com/product/1093",
+    "https://github.com/WorldFamousElectronics/Fritzing_PulseSensor_Files",
+    "https://github.com/WorldFamousElectronics/PulseSensorAmped_Hardware"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:00:55.282Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/1093/PulseSensorAmpedGettingStartedGuide.pdf",
+      "https://www.adafruit.com/product/1093",
+      "https://components101.com/sensors/pulse-sensor"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-adxl362",
+  "board": "SparkFun Triple Axis Accelerometer Breakout - ADXL362 (SEN-11446)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test X=0.250 Y=-0.750 Z=1.500 g, circuit board, footprint, LCSC). Modelled as an spi-device answering 0x0B 0x00 with IDs AD 1D F2 and 0x0B 0x0E with little-endian sign-extended X/Y/Z/TEMP at 1 mg/LSB; the driver soft-resets, checks the ID, sets FILTER_CTL and POWER_CTL=0x02 per the datasheet.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl362.pdf",
+  "breakoutPinoutSource": "SparkFun ADXL362 BOB v01 schematic PDF and Eagle .brd silkscreen (JP2: V+, GND, INT1, INT2; JP1: !CS, MISO, MOSI, SCK), cdn.sparkfun.com/datasheets/BreakoutBoards/ADXL362%20BOB%20v01.zip",
+  "checkRuns": 2
+}

@@ -1,0 +1,238 @@
+{
+  "type": "custom-adxl362",
+  "name": "ADXL362 ultralow-power 3-axis accelerometer",
+  "mpn": "ADXL362",
+  "category": "sensor",
+  "description": "Analog Devices micropower 3-axis MEMS accelerometer, ±2/±4/±8 g, 12-bit (1 mg/LSB on ±2 g), about 2 µA at 100 Hz, with a 4-wire SPI interface (mode 0, 1-5 MHz) and a die temperature sensor. Runs on 1.6-3.5 V; no regulator on the board, so never feed it 5 V. Sold as: SparkFun Triple Axis Accelerometer Breakout - ADXL362 (SEN-11446), two 4-pin headers on opposite edges: V+, GND, INT1, INT2 and CS, MISO, MOSI, SCK.",
+  "eli5": "Feels which way is down and how hard the board is shaken, while using almost no battery.",
+  "refPrefix": "U",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Supply to VS and VDDIO, 1.6-3.5 V (use 3.3 V; no regulator, 5 V destroys it). JP2 pin 1",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground. JP2 pin 2",
+      "required": true
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Interrupt 1 output (push-pull to V+), or external clock input; not needed for basic use. JP2 pin 3",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Interrupt 2 output (push-pull to V+), or external sample trigger; not needed for basic use. JP2 pin 4",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low (printed !CS). JP1 pin 1",
+      "required": true
+    },
+    {
+      "name": "MISO",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "SPI data out, swings to V+. JP1 pin 2",
+      "required": true
+    },
+    {
+      "name": "MOSI",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in. JP1 pin 3",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock, 1-5 MHz recommended, mode 0. JP1 pin 4",
+      "required": true
+    }
+  ],
+  "vmin": 1.6,
+  "vmax": 3.5,
+  "currentMa": 0.02,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl362.pdf",
+  "priceUsd": 17,
+  "supplierQuery": "SparkFun ADXL362 triple axis accelerometer breakout SEN-11446",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Power V+ from 3.3 V only: the board feeds VS and VDDIO straight from V+ (absolute maximum 3.6 V).",
+    "SPI mode 0 (CPOL = CPHA = 0), 1-5 MHz. Read registers with 0x0B <addr>, write with 0x0A <addr> <data>; CS must stay low for the whole transfer.",
+    "After reset the chip is in standby and reads 0: write 0x02 to POWER_CTL (0x2D) to start measuring, then wait 4/ODR (40 ms at 100 Hz).",
+    "Read X, Y, Z (and temperature) in one burst from 0x0E: 12-bit two's complement, low byte first, sign-extended to 16 bits. 1 mg/LSB on ±2 g.",
+    "The two headers are on opposite edges (0.4 in apart), so wire it with jumper leads.",
+    "If power is removed, let V+ fall fully to 0 V before re-applying it (datasheet power supply requirements)."
+  ],
+  "keywords": [
+    "adxl362",
+    "accelerometer",
+    "3-axis",
+    "low power",
+    "spi",
+    "tilt",
+    "motion",
+    "analog devices",
+    "sen-11446"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl362.pdf",
+    "https://cdn.sparkfun.com/datasheets/BreakoutBoards/ADXL362.pdf",
+    "https://www.sparkfun.com/sparkfun-triple-axis-accelerometer-breakout-adxl362.html",
+    "https://cdn.sparkfun.com/datasheets/BreakoutBoards/ADXL362%20BOB%20v01.pdf",
+    "http://cdn.sparkfun.com/datasheets/BreakoutBoards/ADXL362%20BOB%20v01.zip",
+    "https://github.com/sparkfun/ADXL362_Breakout"
+  ],
+  "sim": {
+    "kind": "spi-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      },
+      {
+        "key": "temperature",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "spiReplies": [
+      {
+        "match": "0B 00",
+        "bytes": [
+          {
+            "const": 173,
+            "bits": 8
+          },
+          {
+            "const": 29,
+            "bits": 8
+          },
+          {
+            "const": 242,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "0B 0E",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.001,
+            "signed": true,
+            "littleEndian": true
+          },
+          {
+            "control": "y",
+            "bits": 16,
+            "scale": 0.001,
+            "signed": true,
+            "littleEndian": true
+          },
+          {
+            "control": "z",
+            "bits": 16,
+            "scale": 0.001,
+            "signed": true,
+            "littleEndian": true
+          },
+          {
+            "control": "temperature",
+            "bits": 16,
+            "scale": 0.065,
+            "offset": 2.25,
+            "signed": true,
+            "littleEndian": true
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "adxl362.py",
+    "code": "# ADXL362 micropower 3-axis accelerometer (Analog Devices), MicroPython driver.\n# SPI mode 0 (CPOL = CPHA = 0), 1-5 MHz recommended. Commands per the datasheet:\n#   0x0A <addr> <data...>  write register(s)\n#   0x0B <addr>            read register(s), address auto-increments\n# Data: XDATA_L..ZDATA_H (0x0E-0x13) are 12-bit two's complement values, low byte\n# first, sign-extended to 16 bits; TEMP_L/TEMP_H (0x14-0x15) likewise.\nfrom machine import Pin\nimport time\n\n_WRITE = 0x0A\n_READ = 0x0B\n_DEVID_AD = 0x00\n_XDATA_L = 0x0E\n_SOFT_RESET = 0x1F\n_FILTER_CTL = 0x2C\n_POWER_CTL = 0x2D\n\n_MG_PER_LSB = {2: 1, 4: 2, 8: 4}\n_RANGE_BITS = {2: 0x00, 4: 0x40, 8: 0x80}\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass ADXL362:\n    def __init__(self, spi, cs, g_range=2, odr_bits=0x03):\n        \"\"\"spi: machine.SPI in mode 0; cs: GPIO number of CS. g_range 2, 4 or 8.\n        odr_bits 0x03 = 100 Hz (datasheet reset default).\"\"\"\n        if g_range not in _MG_PER_LSB:\n            raise ValueError('g_range must be 2, 4 or 8')\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.g_range = g_range\n        self._write(_SOFT_RESET, 0x52)  # 'R': reset, all registers cleared, standby\n        time.sleep_ms(10)\n        ident = self._read(_DEVID_AD, 3)\n        if ident[0] != 0xAD or ident[1] != 0x1D or ident[2] != 0xF2:\n            raise OSError('ADXL362 not found (ID %02x %02x %02x): check wiring' % (ident[0], ident[1], ident[2]))\n        # FILTER_CTL: range bits [7:6], HALF_BW = 1 (bit 4), ODR [2:0]\n        self._write(_FILTER_CTL, _RANGE_BITS[g_range] | 0x10 | (odr_bits & 0x07))\n        self._write(_POWER_CTL, 0x02)  # MEASURE = 10: measurement mode, normal noise\n        time.sleep_ms(50)  # first valid data after 4/ODR (40 ms at 100 Hz)\n\n    def _write(self, reg, val):\n        self.cs.value(0)\n        self.spi.write(bytes((_WRITE, reg, val)))\n        self.cs.value(1)\n\n    def _read(self, reg, n):\n        # One full-duplex transfer: command, address, then n dummy bytes while the chip\n        # clocks the registers out on MISO (address auto-increments).\n        tx = bytearray(2 + n)\n        tx[0] = _READ\n        tx[1] = reg\n        rx = bytearray(2 + n)\n        self.cs.value(0)\n        self.spi.write_readinto(tx, rx)\n        self.cs.value(1)\n        return rx[2:]\n\n    def read_raw(self):\n        \"\"\"(x, y, z, temp) raw counts from one burst read, so all axes are from the same sample.\"\"\"\n        d = self._read(_XDATA_L, 8)\n        return (_s16(d[0], d[1]), _s16(d[2], d[3]), _s16(d[4], d[5]), _s16(d[6], d[7]))\n\n    def acceleration(self):\n        \"\"\"(x, y, z) in g. 1 mg/LSB at +/-2 g, 2 mg at +/-4 g, 4 mg at +/-8 g.\"\"\"\n        x, y, z, _ = self.read_raw()\n        k = _MG_PER_LSB[self.g_range] / 1000\n        return x * k, y * k, z * k\n\n    def temperature(self):\n        \"\"\"Approximate die temperature in degC from the datasheet's TYPICAL figures\n        (350 LSB at 25 degC, 0.065 degC/LSB). Uncalibrated: the bias varies by\n        +/-290 LSB part to part, so calibrate against a known temperature.\"\"\"\n        t = self.read_raw()[3]\n        return 25 + (t - 350) * 0.065\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom adxl362 import ADXL362\n\n# SPI mode 0 (polarity=0, phase=0) as the ADXL362 datasheet requires\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin({SCK}), mosi=Pin({MOSI}), miso=Pin({MISO}))\nacc = ADXL362(spi, {CS})  # +/-2 g range: 1 mg per count\nwhile True:\n    x, y, z = acc.acceleration()\n    print('X=%.3f Y=%.3f Z=%.3f g' % (x, y, z))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.250 Y=-0.750 Z=1.500 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (9 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:07:54.649Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/datasheets/BreakoutBoards/ADXL362.pdf",
+      "https://cdn.sparkfun.com/datasheets/BreakoutBoards/ADXL362%20BOB%20v01.pdf",
+      "https://www.sparkfun.com/products/11446"
+    ]
+  }
+}
