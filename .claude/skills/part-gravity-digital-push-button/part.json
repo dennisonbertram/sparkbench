@@ -1,0 +1,115 @@
+{
+  "type": "custom-gravity-digital-push-button",
+  "name": "Gravity Digital Push Button",
+  "mpn": "DFR0029",
+  "category": "sensor",
+  "description": "DFRobot Gravity digital push button: a 12 mm tactile key from VCC to the output (through 1 kOhm) with a 10 kOhm pull-down to GND and a red LED that lights while pressed. No IC. D is HIGH (= VCC) while pressed and LOW when released. Runs on 3.3-5 V; D swings to VCC, so power it from 3.3 V on a 3.3 V board. Sold as: DFRobot Gravity: Digital Push Button (SKU DFR0029-R/-Y/-G/-B/-W), 3-pin Gravity PH2.0 connector D, VCC, GND.",
+  "eli5": "A big friendly button on a little board. Press it and your board reads 1 and a red light comes on; let go and it reads 0.",
+  "refPrefix": "SW",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "description": "Digital output (J1 pin 1, green wire): HIGH (= VCC through 1 kOhm) while pressed, LOW (10 kOhm pull-down) while released."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (J1 pin 2, red wire): 3.3-5 V. The key switches VCC to D, so use 3V3 with an ESP32 or Pico."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (J1 pin 3, black wire)."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 4,
+  "datasheetUrl": "https://dfimg.dfrobot.com/wiki/17140/DFR0029_digital-push-button_schematics_v1.0.pdf",
+  "sources": [
+    "https://wiki.dfrobot.com/DFRobot_Digital_Push_Button_SKU_DFR0029",
+    "https://dfimg.dfrobot.com/wiki/17140/DFR0029_digital-push-button_schematics_v1.0.pdf",
+    "https://wiki.dfrobot.com/dfr0029-r/docs/22805"
+  ],
+  "priceUsd": 2,
+  "supplierQuery": "DFRobot Gravity Digital Push Button DFR0029",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Gravity connector J1 (DFRobot schematic): pin 1 D (green), pin 2 VCC (red), pin 3 GND (black). It is a 2 mm PH socket: use the Gravity-to-Dupont cable to reach the breadboard.",
+    "Power VCC from 3V3 on an ESP32 or Pico: the closed key connects D to VCC through 1 kOhm, so a 5 V supply puts 5 V on the GPIO.",
+    "D is HIGH while pressed (active high); the board already has a 10 kOhm pull-down, so do not enable the internal pull-up.",
+    "The on-board red LED lights while the key is held.",
+    "The key bounces for a few milliseconds; the driver waits 10 ms for a stable level."
+  ],
+  "keywords": [
+    "gravity push button",
+    "gravity",
+    "dfrobot",
+    "dfr0029",
+    "dfr0029-r",
+    "dfr0029-y",
+    "dfr0029-g",
+    "dfr0029-b",
+    "dfr0029-w",
+    "push button",
+    "pushbutton",
+    "button module",
+    "digital button",
+    "tactile switch"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "D",
+    "quantity": "Pressed",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "gravity_button.py",
+    "code": "# DFRobot Gravity: Digital Push Button (DFR0029-R/-Y/-G/-B/-W), MicroPython driver.\n# Board (DFRobot schematic \"Digital Push Button\" V2): a 12 mm tactile key from VCC to an internal node;\n# that node has a 10 kOhm pull-down (R3) to GND, a 1 kOhm + LED (R2, D1) to GND, and reaches the\n# D pin through a 1 kOhm series resistor (R1).\n#   pressed  -> D = HIGH (VCC), the on-board LED lights\n#   released -> D = LOW (10 kOhm pull-down)\n# Gravity 3-pin connector J1: pin 1 D (green), pin 2 VCC (red), pin 3 GND (black). Supply 3.3-5 V.\n# D swings to VCC, so on an ESP32 / Pico power the module from 3.3 V.\n# Do not enable the GPIO's internal pull-up: the board already pulls D down.\nfrom machine import Pin\nimport time\n\n\nclass GravityButton:\n    def __init__(self, pin, debounce_ms=10):\n        \"\"\"pin: GPIO number (or Pin) wired to the module's D pin.\"\"\"\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN)\n        self.pin = pin\n        self.debounce_ms = debounce_ms\n        self._last = 0\n\n    def value(self):\n        \"\"\"Raw level on D: 1 = pressed, 0 = released.\"\"\"\n        return self.pin.value()\n\n    def _stable(self):\n        v = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            n = self.pin.value()\n            if n != v:\n                v = n\n                t0 = time.ticks_ms()\n        return v\n\n    def is_pressed(self):\n        \"\"\"True while the button is held down. Debounced.\"\"\"\n        return self._stable() == 1\n\n    def was_pressed(self):\n        \"\"\"True once for each new press (released -> pressed edge); call it often in a loop.\"\"\"\n        v = self._stable()\n        edge = self._last == 0 and v == 1\n        self._last = v\n        return edge\n\n    def irq(self, handler, on_press=True):\n        \"\"\"Call handler(pin) on press (rising edge) or release (falling edge, on_press=False).\n        The key bounces, so a handler may fire more than once per press.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_RISING if on_press else Pin.IRQ_FALLING)\n"
+  },
+  "skill": "---\nname: part-gravity-digital-push-button\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity Digital Push Button module (DFR0029, active-high key with on-board pull-down and LED, D/VCC/GND Gravity connector). Use when designing, wiring, simulating or writing code for a Gravity digital push button in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# DFRobot Gravity Digital Push Button (DFR0029)\n\n## Overview\nThe **Gravity: Digital Push Button** (DFR0029-R red, -Y yellow, -G green, -B blue, -W white) is a 22 x 30 mm board with a large 12 mm tactile key, a red indicator LED and a 3-pin Gravity (JST PH 2.0) connector. No chip: the key connects VCC to the output through 1 kOhm, and a 10 kOhm resistor pulls the output down while released. **Active high**: D reads 1 while pressed, 0 when released; the LED lights while pressed.\n\n## Pinout (Gravity connector J1, schematic pin order)\n| Pin | Wire | Function |\n|---|---|---|\n| D | green | Digital output: HIGH (= VCC via 1 kOhm) pressed, LOW (10 kOhm pull-down) released |\n| VCC | red | Supply 3.3-5 V |\n| GND | black | Ground |\n\n## Electrical limits\n- Supply 3.3-5 V (DFRobot spec).\n- Current: about 0.3 mA through the pull-down plus 1-3 mA for the LED, only while pressed; nothing while released.\n- D swings to VCC: at 5 V supply the GPIO would see 5 V (through 1 kOhm). Power it from **3.3 V** on an ESP32 / Pico / Raspberry Pi.\n\n## Interface details\n- Plain switch with pull-down, no logic IC: 1 = pressed, 0 = released.\n- Tactile contacts bounce for a few milliseconds: the driver waits 10 ms of stable level.\n- Do not turn on the GPIO's internal pull-up; it fights the board's 10 kOhm pull-down (a pull-down is harmless but unnecessary).\n\n## Wiring\n- ESP32: D -> GPIO4, VCC -> 3V3, GND -> GND.\n- Pico: D -> GP15, VCC -> 3V3(OUT), GND -> GND.\n- Raspberry Pi 4: D -> GPIO17 (pin 11), VCC -> pin 1 (3.3 V), GND -> pin 6.\n- The board has a 2 mm Gravity socket: use the Gravity-to-Dupont cable that comes with it (green D, red VCC, black GND).\n\n## Using the driver\n```python\nfrom gravity_button import GravityButton\nimport time\nbtn = GravityButton(4)     # GPIO wired to D\nwhile True:\n    print('BUTTON=%s' % ('DOWN' if btn.is_pressed() else 'UP'))\n    time.sleep(0.2)\n```\n`btn.was_pressed()` returns True once per new press; `btn.irq(handler)` calls `handler(pin)` on the rising edge.\n\n## Gotchas\n- Opposite polarity to a bare button with Pin.PULL_UP: here pressed = 1.\n- 5 V on VCC puts 5 V on the GPIO: use 3.3 V with 3.3 V boards.\n- Several presses counted for one: contact bounce; debounce in software (the driver does).\n- The on-board LED lighting confirms the key closes; if the LED lights but the GPIO stays 0, check the green D wire.\n\n## Datasheet\nhttps://dfimg.dfrobot.com/wiki/17140/DFR0029_digital-push-button_schematics_v1.0.pdf\n",
+  "example": {
+    "code": "from gravity_button import GravityButton\nimport time\n\nbtn = GravityButton({D})  # D is HIGH while pressed (board has a 10 kOhm pull-down)\nwhile True:\n    print('BUTTON=%s' % ('DOWN' if btn.is_pressed() else 'UP'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the button down while it is pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=UP",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=DOWN",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:01:08.732Z",
+    "verifiedSources": [
+      "https://www.dfrobot.com/product-1098.html",
+      "https://dfimg.dfrobot.com/enshop/image/data/DFR0029-R/DFR0029-R_260526%20(3).jpg"
+    ]
+  }
+}

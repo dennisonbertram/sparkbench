@@ -1,0 +1,113 @@
+{
+  "type": "custom-gravity-steam-sensor",
+  "name": "Gravity Steam Sensor",
+  "mpn": "SEN0121",
+  "category": "sensor",
+  "description": "DFRobot Gravity steam / water-droplet sensor V2: a pad of bare interleaved gold traces with no chip. Its analog output A is about 0 V when dry and rises as steam, mist or droplets wet the pad: 0-3.0 V on a 3.3 V supply, 0-4.5 V on 5 V (DFRobot spec). Relative reading only, no humidity formula. Sold as: DFRobot Gravity: Steam Sensor V2 (SKU SEN0121), 3-pin PH2.0 Gravity socket, pin 1 A (signal, blue), pin 2 + (VCC, red), pin 3 - (GND, black).",
+  "eli5": "A little board with a flower of bare gold stripes. When steam or water drops land on the stripes, the voltage on its blue wire goes up, so your board can tell the pad is getting wet.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "A",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "description": "Gravity pin 1, A (blue wire, labelled S in DFRobot's connector drawing): analog output, about 0 V dry, rising as the pad gets wet, up to 3.0 V on a 3.3 V supply (4.5 V on 5 V). Connect to an ADC pin."
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "required": true,
+      "description": "Gravity pin 2, + (red wire, VCC): supply, 3.3 V or 5 V. Use 3.3 V when A goes straight to a 3.3 V ADC (A then stays at or below 3.0 V)."
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "required": true,
+      "description": "Gravity pin 3, - (black wire, GND): ground."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 10,
+  "datasheetUrl": "https://wiki.dfrobot.com/SEN0121",
+  "sources": [
+    "https://wiki.dfrobot.com/SEN0121",
+    "https://www.dfrobot.com/product-798.html",
+    "https://dfimg.dfrobot.com/enshop/image/data/SEN0121/SEN0121_TOP_03.jpg",
+    "https://dfimg.dfrobot.com/enshop/image/data/SEN0121/20140728/_DSC6269.jpg",
+    "https://thepihut.com/products/gravity-analog-3-pin-ph2-0-to-male-jumper-cables-30cm-10-pack"
+  ],
+  "priceUsd": 3.9,
+  "supplierQuery": "DFRobot Gravity Steam Sensor SEN0121",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Connector: 3-pin PH2.0 Gravity socket. DFRobot's pin mapping drawing for the current (new) version: pin 1 S = A (signal, blue), pin 2 VCC = + (red), pin 3 GND = - (black). Older boards had pin 2 GND and pin 3 VCC, so always wire by the cable colours (blue = A, red = +, black = -), which DFRobot's pin definition gives. Use the Gravity-to-jumper cable to reach the breadboard.",
+    "Power + from 3.3 V on an ESP32 or Pico: DFRobot specifies 0-3.0 V output at 3.3 V but up to 4.5 V at 5 V. On 5 V add a divider on A and give the driver its ratio (divider=).",
+    "On the ESP32 wire A to an ADC1 pin (GPIO32-39); the driver sets 11 dB attenuation. On the Pico use GP26-GP28.",
+    "The output is relative (higher = wetter); DFRobot gives no humidity formula. Choose a wet threshold for your setup.",
+    "Only the flower-shaped pad should get wet: the connector is not waterproof."
+  ],
+  "keywords": [
+    "gravity steam sensor",
+    "steam sensor",
+    "sen0121",
+    "dfrobot",
+    "gravity",
+    "steam",
+    "water droplet",
+    "rain",
+    "moisture",
+    "humidity",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "A",
+    "quantity": "A output voltage (rises as the pad gets wet)",
+    "unit": "V",
+    "min": 0,
+    "max": 3,
+    "default": 0,
+    "vAtMin": 0,
+    "vAtMax": 3
+  },
+  "driver": {
+    "filename": "gravity_steam_sensor.py",
+    "code": "# DFRobot Gravity: Steam Sensor V2 (SKU SEN0121), MicroPython driver.\n# The board has a pad of bare interleaved gold traces and a few passive parts; no chip, no\n# protocol. Its analog output A is about 0 V when the pad is dry and RISES as steam, mist or\n# water droplets wet the traces (DFRobot: \"The output voltage will increase when the humidity\n# of the sensor surface goes up\"). DFRobot spec: output 0-3.0 V on a 3.3 V supply, 0-4.5 V on\n# a 5 V supply. There is no volts-to-humidity formula: the reading is relative, so calibrate a\n# \"wet\" threshold for your own setup.\n# Power the module from 3.3 V when A goes straight to a 3.3 V ADC (ESP32 / Pico): on 5 V the\n# output can reach 4.5 V. If you must use 5 V, put a divider on A and pass its ratio here.\nfrom machine import ADC, Pin\n\n\nclass GravitySteamSensor:\n    def __init__(self, pin, samples=16, vref=3.3, divider=1.0):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full ~0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref        # ADC reference when read_uv() is not available (e.g. Pico)\n        self.divider = divider  # (top + bottom) / bottom of an external divider on A, 1.0 if none\n\n    def raw(self):\n        \"\"\"One 16-bit ADC reading (0-65535): higher = wetter.\"\"\"\n        return self.adc.read_u16()\n\n    def volts(self):\n        \"\"\"Average several samples and return the voltage on the module's A pin in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def wet(self, threshold_v=1.0):\n        \"\"\"True when the output is above threshold_v (steam or droplets on the pad).\n        The default 1.0 V is only a starting point; calibrate it for your setup.\"\"\"\n        return self.volts() > threshold_v\n"
+  },
+  "skill": "---\nname: part-gravity-steam-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity Steam Sensor V2 (SKU SEN0121), an analog steam / water-droplet sensor whose output rises as its bare-trace pad gets wet. Use when designing, wiring, simulating or writing code for a Gravity steam sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# DFRobot Gravity: Steam Sensor V2 (SEN0121)\n\n## Overview\nThe **DFRobot Gravity: Steam Sensor V2 (SKU SEN0121)** detects steam, mist or water droplets on its gold pad of interleaved bare traces. There is no chip and no protocol: it gives one **analog voltage** on its A wire.\n- Dry pad: A is about **0 V**.\n- As moisture bridges the traces, A **rises** (DFRobot: \"the output voltage will increase when the humidity of the sensor surface goes up\").\n- Range (DFRobot spec): **0–3.0 V on a 3.3 V supply**, 0–4.5 V on a 5 V supply.\n- The reading is relative. DFRobot gives no volts-to-humidity formula, so pick a \"wet\" threshold for your own setup.\n\n## Pinout (3-pin PH2.0 Gravity socket)\n| Pin # | Name | Gravity cable | Function |\n|-------|------|---------------|----------|\n| 1 | A (S) | blue | Analog output, rises with moisture |\n| 2 | + (VCC) | red | Supply, 3.3 V or 5 V |\n| 3 | - (GND) | black | Ground |\n\nSource: DFRobot wiki / product page SEN0121 pin definition (analog output blue, GND black, power red) and DFRobot's pin mapping comparison drawing on the product page (new version: 1 S, 2 VCC, 3 GND; old version: 1 S, 2 GND, 3 VCC). **Wire by cable colour**, since older boards swap pins 2 and 3.\n\n## Electrical limits\n- Supply: 3.3 V or 5 V (DFRobot). Use **3.3 V** with an ESP32 or Pico so A stays at or below 3.0 V.\n- On 5 V, A can reach 4.5 V: too high for a 3.3 V ADC. Then add a divider on A and pass its ratio to the driver (`divider=`).\n- Board size 30 × 20 × 6 mm. The connector is **not waterproof**: only the pad should see steam or water.\n\n## Interface details\n```\nA ≈ 0 V            dry pad\nA rises            steam / droplets on the pad\nA up to ~3.0 V     very wet (3.3 V supply)\n```\nOn the ESP32 use an ADC1 pin (GPIO32–39) with 11 dB attenuation (the driver sets it). On the Pico use GP26–GP28.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| A (blue) | GPIO34 | GP26 (pin 31) | needs an external ADC (e.g. ADS1115) |\n| + (red) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| - (black) | GND | GND | GND (pin 6) |\n\n## Using the driver\n```python\nfrom gravity_steam_sensor import GravitySteamSensor\nimport time\nsteam = GravitySteamSensor(34)       # ADC pin that A is wired to\nwhile True:\n    print('Steam: %.1f V' % steam.volts())\n    time.sleep(1)\n```\n`volts()` averages 16 samples and returns the voltage on A. `raw()` is one 16-bit reading. `wet(threshold_v)` compares against a threshold you choose (1.0 V by default, a starting point only).\n\n## Gotchas\n- **Higher = wetter**, not a calibrated %RH. For air humidity use a real humidity sensor (SHT31, BME280).\n- **Keep the connector and passives dry.** Only the flower-shaped pad is meant to get wet.\n- **Corrosion:** DC across wet traces slowly wears them. Dry the pad after use, or switch the supply only while reading.\n- **Old vs new boards:** DFRobot changed the socket order (old: S, GND, VCC; new: S, VCC, GND). Follow the wire colours, not the pin position.\n- **5 V supply** puts up to 4.5 V on A: use 3.3 V, or a divider.\n\n## Datasheet\nhttps://wiki.dfrobot.com/SEN0121\n\n---\n*Generated by Sparkbench from the datasheet: https://wiki.dfrobot.com/SEN0121. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from gravity_steam_sensor import GravitySteamSensor\nimport time\n\nsteam = GravitySteamSensor({A})\nwhile True:\n    print('Steam: %.1f V' % steam.volts())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the output voltage set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Steam: 1.2 V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:05:27.571Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/SEN0121",
+      "https://dfrobot.com/product-798.html"
+    ]
+  }
+}

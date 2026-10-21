@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-gravity-crash-sensor",
+  "board": "DFRobot Gravity: Digital Crash Sensor (SEN0138-L, left lever; SEN0138-R is the mirror-image right-lever version)",
+  "reason": "Modelled from DFRobot's v1.0 schematic (micro switch to GND, 10 kOhm pull-up to VCC on D, LED+1 kOhm VCC-to-D) as an active-low digital-sensor with boardPullUp 10000, powered at 3.3 V on 3.3 V boards; check passed on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://dfimg.dfrobot.com/wiki/22387/SEN0138-L_digital-crash-sensor_schematics_v1.0.pdf",
+  "breakoutPinoutSource": "https://wiki.dfrobot.com/sen0138-l/ (Pinout table: 1 D digital output, 2 VCC, 3 GND; matches schematic J1)",
+  "checkRuns": 1
+}

@@ -1,0 +1,337 @@
+{
+  "type": "custom-pimoroni-mics6814-breakout",
+  "name": "Pimoroni MICS6814 3-in-1 gas sensor breakout (I2C)",
+  "mpn": "PIM569",
+  "category": "sensor",
+  "description": "SGX Sensortech (Amphenol) MiCS-6814 three-element MOS gas sensor (RED: CO and other reducing gases, OX: NO2, NH3) read over I2C by an on-board Nuvoton MS51XB9AE running Pimoroni's IO Expander firmware at address 0x19 (chip id 0xE26A). Each sensing resistor sits under a 56 kOhm load from the board's 3.3 V LDO rail; the MCU's 12-bit ADC reads the three nodes and the rail itself, so Rs = 56k x raw / (raw_rail - raw). The MCU also switches the heaters (about 88 mA) and an RGB LED. Gives resistances / relative changes, not calibrated ppm, and is not a safety alarm. Sold as: Pimoroni MICS6814 3-in-1 Gas Sensor Breakout (CO, NO2, NH3), PIM569, Breakout Garden 5-pin header 3-5V, SDA, SCL, INT, GND.",
+  "eli5": "A tiny electronic nose with three noses inside, each warmed by its own little heater. Gases change how easily electricity flows through each nose, and a small helper chip on the board measures that and tells your microcontroller over two wires. It shows when gases go up or down; it is a learning toy, not a safety alarm.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "3-5V",
+      "role": "power",
+      "required": true,
+      "description": "Supply 3-5 V (header pin 1). Feeds the MS51 MCU directly (so its I2C/INT levels follow it) and a 3.3 V LDO for the sensor and heaters, about 95 mA in total. Use 3.3 V with an ESP32 or Pico."
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "pullUp": 4700,
+      "required": true,
+      "description": "I2C data (header pin 2), straight to the MS51; the board has no pull-up resistors, so fit 4.7 kOhm to 3.3 V (a Raspberry Pi has its own)."
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "pullUp": 4700,
+      "required": true,
+      "description": "I2C clock (header pin 3), straight to the MS51; no pull-up on the board, fit 4.7 kOhm to 3.3 V."
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "required": false,
+      "description": "Interrupt output from the MS51 (P1.3, header pin 4). Not used for gas readings; leave unconnected. Its level follows the 3-5V supply."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (header pin 5)."
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 95,
+  "i2cAddress": 25,
+  "datasheetUrl": "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf",
+  "sources": [
+    "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf",
+    "https://shop.pimoroni.com/products/mics6814-gas-sensor-breakout",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/MICS6814_breakout_schematic.pdf?v=1628772412",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/mics6814-drawing.png?v=1688982418",
+    "https://github.com/pimoroni/mics6814-python/blob/main/mics6814/__init__.py",
+    "https://github.com/pimoroni/ioe-python/blob/main/ioexpander/__init__.py",
+    "https://github.com/pimoroni/ioe-python/blob/main/ioexpander/ioe_regs.py",
+    "https://github.com/OpenNuvoton/MS51BSP_Keil/blob/master/MS51FB9AE_MS51XB9AE_MS51XB9BE/Library/Device/Include/MS51_16K.h"
+  ],
+  "priceUsd": 22,
+  "supplierQuery": "Pimoroni MICS6814 3-in-1 Gas Sensor Breakout PIM569",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: 3-5V, SDA, SCL, INT, GND (it matches Raspberry Pi pins 1, 3, 5, 7, 9).",
+    "Power it from 3.3 V on an ESP32 or Pico: the MS51 runs from the 3-5V pin, so at 5 V its I2C and INT levels are 5 V logic.",
+    "The breakout has no I2C pull-ups: fit 4.7 kOhm from SDA and SCL to 3.3 V (not needed on a Raspberry Pi).",
+    "I2C address 0x19. The heaters draw about 88 mA; the driver turns them on at start-up. Let the sensor warm up for several minutes (much longer the first time) before trusting readings.",
+    "Rs = 56k x raw / (raw_rail - raw) from the MS51's 12-bit ADC: RED and NH3 resistance falls with gas, OX (NO2) resistance rises.",
+    "Calibrate R0 in clean air yourself; readings are relative, not ppm. Not a safety gas alarm."
+  ],
+  "keywords": [
+    "mics6814",
+    "mics-6814",
+    "pimoroni",
+    "pim569",
+    "breakout garden",
+    "gas",
+    "co",
+    "no2",
+    "nh3",
+    "ammonia",
+    "nitrogen dioxide",
+    "carbon monoxide",
+    "air quality",
+    "i2c",
+    "ms51",
+    "io expander"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "RED (CO) sensing resistance Rs",
+    "unit": "kΩ",
+    "min": 1,
+    "max": 1500,
+    "default": 300,
+    "controls": [
+      {
+        "key": "nh3",
+        "quantity": "NH3 sensing resistance Rs",
+        "unit": "kΩ",
+        "min": 1,
+        "max": 1500,
+        "default": 300
+      },
+      {
+        "key": "ox",
+        "quantity": "OX (NO2) sensing resistance Rs",
+        "unit": "kΩ",
+        "min": 0.8,
+        "max": 200,
+        "default": 10
+      },
+      {
+        "key": "rail",
+        "quantity": "Sensor 3.3 V rail (SENSOR_3V3) with a 3.3 V supply",
+        "unit": "V",
+        "min": 3,
+        "max": 3.3,
+        "default": 3.25
+      }
+    ],
+    "registers": {
+      "0xFA": 106,
+      "0xFB": 226,
+      "0xA8": 128,
+      "0xA1": 0,
+      "0xB6": 0,
+      "0x71": 0,
+      "0x72": 0,
+      "0x73": 0,
+      "0x74": 0,
+      "0x82": 0,
+      "0x83": 0
+    },
+    "writable": {
+      "0xA8": 127,
+      "0xA1": 255,
+      "0xB6": 255,
+      "0x71": 255,
+      "0x72": 255,
+      "0x73": 255,
+      "0x74": 255
+    },
+    "selfClearing": [
+      {
+        "reg": "0xA8",
+        "mask": 64
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x83",
+        "bytes": 2,
+        "scale": 1,
+        "control": "rail",
+        "bits": 12,
+        "fields": [
+          {
+            "reg": "0x83",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x82",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ],
+        "when": {
+          "reg": "0xA8",
+          "equals": 0,
+          "mask": 15
+        },
+        "solve": {
+          "raw": "rail",
+          "formula": "rail*3.3/4095",
+          "min": 0,
+          "max": 4095
+        }
+      },
+      {
+        "reg": "0x83",
+        "bytes": 2,
+        "scale": 1,
+        "control": "value",
+        "bits": 12,
+        "fields": [
+          {
+            "reg": "0x83",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x82",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ],
+        "when": {
+          "reg": "0xA8",
+          "equals": 2,
+          "mask": 15
+        },
+        "solve": {
+          "raw": "red",
+          "formula": "if(red >= rail, 1000000000, 56*red/(rail - red))",
+          "min": 0,
+          "max": 4095
+        }
+      },
+      {
+        "reg": "0x83",
+        "bytes": 2,
+        "scale": 1,
+        "control": "nh3",
+        "bits": 12,
+        "fields": [
+          {
+            "reg": "0x83",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x82",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ],
+        "when": {
+          "reg": "0xA8",
+          "equals": 3,
+          "mask": 15
+        },
+        "solve": {
+          "raw": "nh3raw",
+          "formula": "if(nh3raw >= rail, 1000000000, 56*nh3raw/(rail - nh3raw))",
+          "min": 0,
+          "max": 4095
+        }
+      },
+      {
+        "reg": "0x83",
+        "bytes": 2,
+        "scale": 1,
+        "control": "ox",
+        "bits": 12,
+        "fields": [
+          {
+            "reg": "0x83",
+            "from": 4,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x82",
+            "from": 0,
+            "width": 4,
+            "at": 0
+          }
+        ],
+        "when": {
+          "reg": "0xA8",
+          "equals": 4,
+          "mask": 15
+        },
+        "solve": {
+          "raw": "oxraw",
+          "formula": "if(oxraw >= rail, 1000000000, 56*oxraw/(rail - oxraw))",
+          "min": 0,
+          "max": 4095
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mics6814_i2c.py",
+    "code": "# Pimoroni MICS6814 3-in-1 Gas Sensor Breakout (PIM569), MicroPython driver.\n# The board puts an SGX/Amphenol MiCS-6814 behind a Nuvoton MS51XB9AE running Pimoroni's \"IO Expander\"\n# firmware (I2C address 0x19, chip id 0xE26A). The firmware exposes the MS51 special function registers\n# over I2C (SFR address - 0x40), as used by Pimoroni's ioe-python / mics6814-python libraries:\n#   ADCRL 0x82 (result bits 3:0), ADCRH 0x83 (result bits 11:4), ADCCON1 0xA1 (bit 0 ADCEN),\n#   ADCCON0 0xA8 (bit 7 ADCF done, bit 6 ADCS start, bits 3:0 ADCHS channel), AINDIDS0 0xB6,\n#   P0M1/P0M2 0x71/0x72, P1M1/P1M2 0x73/0x74, P1 0x50 (bit-addressed: write 0b1000|bit to set, bit to clear).\n# Board wiring (schematic PIM569): each sensing resistor Rs runs from its *_SENSE node to GND, with a\n# 56 kOhm resistor from the on-board 3.3 V LDO rail (SENSOR_3V3) to the node:\n#     V_sense = V_rail * Rs / (Rs + 56k)\n# SENSOR_3V3 itself is read on AIN0, and the ADC reference is the MCU supply, so the ratio of the two\n# 12-bit readings gives Rs without knowing either voltage:\n#     Rs = 56k * raw / (raw_rail - raw)\n# Channels: RED (reducing, CO) P0.7 AIN2, NH3 P0.6 AIN3, OX (oxidising, NO2) P0.5 AIN4, rail P1.7 AIN0.\n# Heater enable: P1.5 drives a P-MOSFET, LOW = heaters on (about 88 mA).\n# Readings are resistances; gas concentrations need Rs/R0 against the MiCS-6814 datasheet curves and your\n# own clean-air R0. Not a safety device.\nimport time\n\nADDR = 0x19\nCHIP_ID = 0xE26A\n\n_REG_CHIP_ID_L = 0xFA\n_REG_ADCRL = 0x82\n_REG_ADCCON1 = 0xA1\n_REG_ADCCON0 = 0xA8\n_REG_AINDIDS0 = 0xB6\n_REG_P1 = 0x50\n_REG_M1 = (0x71, 0x73)  # P0M1, P1M1\n_REG_M2 = (0x72, 0x74)  # P0M2, P1M2\n\n# (port, pin, adc channel)\n_RAIL = (1, 7, 0)\n_RED = (0, 7, 2)\n_NH3 = (0, 6, 3)\n_OX = (0, 5, 4)\n_HEATER = (1, 5)  # P1.5, active low\n_LEDS = ((1, 2), (1, 1), (1, 0))  # red, green, blue cathodes (LED anodes on the supply): LOW = on\n\nLOAD_OHMS = 56000\n\n\nclass MICS6814:\n    def __init__(self, i2c, address=ADDR, heater=True):\n        self.i2c = i2c\n        self.addr = address\n        cid = self._read(_REG_CHIP_ID_L, 2)\n        cid = cid[0] | (cid[1] << 8)\n        if cid != CHIP_ID:\n            raise OSError('MICS6814 breakout not found (chip id 0x%04x, expected 0x%04x)' % (cid, CHIP_ID))\n        # ADC on, then the four analog pins as input-only (PxM1 = 1, PxM2 = 0).\n        self._w(_REG_ADCCON1, self._r(_REG_ADCCON1) | 0x01)\n        for port, pin, _ in (_RAIL, _RED, _NH3, _OX):\n            self._mode(port, pin, 1, 0)\n        self.r0 = None\n        self.heater(heater)\n\n    # --- register access ---\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _r(self, reg):\n        return self._read(reg, 1)[0]\n\n    def _w(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes((value & 0xFF,)))\n\n    def _mode(self, port, pin, m1, m2):\n        a = self._r(_REG_M1[port]) & ~(1 << pin)\n        b = self._r(_REG_M2[port]) & ~(1 << pin)\n        self._w(_REG_M1[port], a | (m1 << pin))\n        self._w(_REG_M2[port], b | (m2 << pin))\n\n    def _out(self, pin, high):\n        # P1 is bit-addressed by the firmware: 0b1000 | bit sets the bit, bit alone clears it.\n        self._w(_REG_P1, (0x08 if high else 0x00) | pin)\n\n    # --- heater and LED ---\n    def heater(self, on=True):\n        \"\"\"Switch the three sensor heaters on (default) or off. Readings need several minutes of heating.\"\"\"\n        self._mode(1, _HEATER[1], 0, 1)  # push-pull output\n        self._out(_HEATER[1], not on)    # LOW = heaters on\n        self.heating = bool(on)\n\n    def led(self, r=False, g=False, b=False):\n        \"\"\"Switch the RGB LED colours on/off (full brightness; Pimoroni's library adds PWM dimming).\"\"\"\n        for (port, pin), on in zip(_LEDS, (r, g, b)):\n            self._mode(port, pin, 0, 1)\n            self._out(pin, not on)\n\n    # --- ADC ---\n    def raw(self, channel, timeout_ms=1000):\n        \"\"\"One 12-bit conversion of AIN<channel> (0-4095, full scale = the board's supply).\"\"\"\n        self._w(_REG_AINDIDS0, 1 << channel)\n        con = self._r(_REG_ADCCON0)\n        con = (con & ~0x0F) | channel\n        con = (con & ~0x80) | 0x40  # clear ADCF, set ADCS (start)\n        self._w(_REG_ADCCON0, con)\n        t0 = time.ticks_ms()\n        while not (self._r(_REG_ADCCON0) & 0x80):\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('MICS6814 ADC conversion timed out')\n            time.sleep_ms(1)\n        lo, hi = self._read(_REG_ADCRL, 2)\n        return (hi << 4) | (lo & 0x0F)\n\n    def _rs(self, ch, rail):\n        v = self.raw(ch)\n        if v >= rail:\n            return float('inf')  # open circuit or Rs far above the 56k load\n        return LOAD_OHMS * v / (rail - v)\n\n    def resistances(self):\n        \"\"\"(Rs_RED, Rs_NH3, Rs_OX) in ohms, from the ratio to the SENSOR_3V3 rail reading.\"\"\"\n        rail = self.raw(_RAIL[2])\n        if rail == 0:\n            raise OSError('MICS6814 sensor rail reads 0')\n        return self._rs(_RED[2], rail), self._rs(_NH3[2], rail), self._rs(_OX[2], rail)\n\n    def rail_fraction(self):\n        \"\"\"SENSOR_3V3 as a fraction of the supply (about 1.0 on 3.3 V, about 0.66 on 5 V).\"\"\"\n        return self.raw(_RAIL[2]) / 4095\n\n    def calibrate(self):\n        \"\"\"Store the present Rs of each channel as R0 (clean air, after a long warm-up).\"\"\"\n        self.r0 = self.resistances()\n        return self.r0\n\n    def ratios(self):\n        \"\"\"(Rs/R0 RED, NH3, OX): the y axis of the MiCS-6814 datasheet charts. Needs calibrate() first.\"\"\"\n        if not self.r0:\n            raise ValueError('call calibrate() first')\n        return tuple(r / r0 for r, r0 in zip(self.resistances(), self.r0))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mics6814_i2c import MICS6814\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\ngas = MICS6814(i2c)  # heaters on\nwhile True:\n    red, nh3, ox = gas.resistances()\n    print('RED=%.0fk NH3=%.0fk OX=%.1fk' % (red / 1000, nh3 / 1000, ox / 1000))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports each channel's sensing resistance from the MS51 ADC ratio to the sensor rail",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "nh3",
+          "value": 50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ox",
+          "value": 20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "rail",
+          "value": 3.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RED=100k NH3=50k OX=20.0k",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-pimoroni-mics6814-breakout\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Pimoroni MICS6814 3-in-1 Gas Sensor Breakout (PIM569, CO / NO2 / NH3, SGX MiCS-6814 read over I2C by a Nuvoton MS51 running Pimoroni's IO Expander firmware at 0x19). Use when designing, wiring, simulating or writing code for this I2C MICS6814 board in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Pimoroni MICS6814 3-in-1 Gas Sensor Breakout (PIM569)\n\n## Overview\nThe **MiCS-6814** (SGX Sensortech, now Amphenol) holds three metal-oxide gas sensors, each with its own heater:\n- **RED** (reducing gases: CO 1–1000 ppm, ethanol, H2, hydrocarbons). Rs **falls** with gas. R0 in air 100–1500 kΩ.\n- **OX** (oxidising gases: NO2 0.05–10 ppm). Rs **rises** with NO2. R0 in air 0.8–20 kΩ.\n- **NH3** (ammonia 1–300 ppm). Rs **falls** with gas. R0 in air 10–1500 kΩ.\n\nOn Pimoroni's Breakout Garden board a **Nuvoton MS51XB9AE** microcontroller runs Pimoroni's *IO Expander* firmware: it reads the three sensor nodes with its 12-bit ADC, switches the heaters, and drives an RGB LED, all over **I2C at 0x19**. It gives resistances and relative changes, **not calibrated ppm**.\n\nThis is a different board from the analog CJMCU-6814 (part-mics-6814), which has no microcontroller.\n\n## Pinout (header, left to right as printed)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | 3-5V | Supply 3–5 V (MS51 VDD + 3.3 V LDO for sensor and heaters) |\n| 2 | SDA | I2C data (no pull-up on the board) |\n| 3 | SCL | I2C clock (no pull-up on the board) |\n| 4 | INT | Interrupt output (P1.3), not needed |\n| 5 | GND | Ground |\n\nThe order matches Raspberry Pi header pins 1, 3, 5, 7, 9.\n\n## Electrical limits\n- Supply **3–5 V** (silkscreen \"3-5V\"; MS51 VDD 2.4–5.5 V, its ADC 2.7–5.5 V). About **95 mA** with the heaters on: 26 + 32 + 30 mA through the board's 62 Ω / 28 Ω / 36.5 Ω heater resistors from the AP7333 3.3 V LDO, plus the MCU.\n- The MS51 runs **straight from the supply pin**, so SDA, SCL and INT are logic at that voltage. Use **3.3 V** with an ESP32 or Pico.\n- **No I2C pull-ups** on the board: fit 4.7 kΩ from SDA and SCL to 3.3 V (a Raspberry Pi already has 1.8 kΩ).\n\n## Interface details\n- I2C address **0x19**, chip id **0xE26A** (registers 0xFA low, 0xFB high).\n- The firmware maps the MS51's SFRs to I2C registers (SFR − 0x40): ADCRL 0x82 (result bits 3:0), ADCRH 0x83 (bits 11:4), ADCCON1 0xA1 (bit 0 ADCEN), ADCCON0 0xA8 (bit 7 ADCF done, bit 6 ADCS start, bits 3:0 channel), AINDIDS0 0xB6, P0M1/P0M2 0x71/0x72, P1M1/P1M2 0x73/0x74. P1 (0x50) is bit-addressed: write `0b1000 | bit` to set a bit, `bit` to clear it.\n- One reading: write `1 << ch` to AINDIDS0, read ADCCON0, write it back with the channel in bits 3:0, ADCF cleared and ADCS set, poll ADCF, then read 0x82–0x83: `raw = ADCRH << 4 | ADCRL & 0x0F`.\n- Channels: RED = AIN2 (P0.7), NH3 = AIN3 (P0.6), OX = AIN4 (P0.5), SENSOR_3V3 rail = AIN0 (P1.7).\n- Board circuit (schematic): 56 kΩ from the 3.3 V rail to each node, Rs from the node to GND:\n```\nV = Vrail × Rs / (Rs + 56k)          Rs = 56k × raw / (raw_rail − raw)\n```\n  Taking the ratio to the rail reading cancels both the rail voltage and the ADC reference (= the supply).\n- Heater enable: P1.5 drives a P-MOSFET, **LOW = heaters on**. RGB LED cathodes on P1.2 (red), P1.1 (green), P1.0 (blue), LOW = on.\n\n## Wiring\n| Breakout | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| 3-5V | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| SDA | GPIO21 + 4.7 kΩ to 3V3 | GP4 + 4.7 kΩ to 3V3 | pin 3 |\n| SCL | GPIO22 + 4.7 kΩ to 3V3 | GP5 + 4.7 kΩ to 3V3 | pin 5 |\n| INT | not connected | not connected | pin 7 (optional) |\n| GND | GND | GND | pin 9 |\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nimport time\nfrom mics6814_i2c import MICS6814\ni2c = I2C(0, sda=Pin(21), scl=Pin(22), freq=100000)\ngas = MICS6814(i2c)          # checks the chip id, enables the ADC, heaters on\ntime.sleep(600)              # warm-up\ngas.calibrate()              # R0 = Rs now (clean air)\nwhile True:\n    red, nh3, ox = gas.resistances()      # ohms\n    print('RED %.0fk NH3 %.0fk OX %.1fk' % (red / 1000, nh3 / 1000, ox / 1000), gas.ratios())\n    time.sleep(1)\n```\n`gas.heater(False)` turns the heaters off; `gas.led(r, g, b)` switches the LED colours (on/off; Pimoroni's Python library adds PWM dimming). `gas.raw(ch)` gives one 12-bit conversion.\n\n## Gotchas\n- **No pull-ups on SDA/SCL.** Without them an ESP32 or Pico gets no ACK at 0x19.\n- **Power it at 3.3 V** with 3.3 V boards: at 5 V the MS51's I2C and INT levels follow 5 V.\n- **Warm-up**: the heaters need minutes (ideally hours the first time) before readings settle.\n- **Not selective, not calibrated, not a safety device.** Use Rs/R0 trends; calibrate R0 in clean air.\n- **OX is inverted**: NO2 raises its resistance while RED and NH3 fall with gas.\n- Pimoroni's Python library uses a fixed 3.3 V reference; this driver uses the rail channel (AIN0) instead, which stays right on a 5 V supply or a sagging LDO.\n- Simulator: the heater and LED are not shown; conversions finish at once (ADCF reads 1), as they do on the chip before the next I2C transfer.\n\n## Datasheet\nhttps://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf\n\nBoard schematic: https://cdn.shopify.com/s/files/1/0174/1800/files/MICS6814_breakout_schematic.pdf?v=1628772412\n\n---\n*Generated by Sparkbench from the datasheet: https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf. Machine-readable definition: `part.json`.*\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:05:37.775Z",
+    "verifiedSources": [
+      "https://shop.pimoroni.com/products/mics6814-gas-sensor-breakout.js",
+      "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf",
+      "https://raw.githubusercontent.com/pimoroni/pimoroni-pico/main/libraries/breakout_mics6814/breakout_mics6814.hpp"
+    ]
+  }
+}

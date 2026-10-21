@@ -1,0 +1,127 @@
+{
+  "type": "custom-gravity-crash-sensor",
+  "name": "Gravity Digital Crash Sensor",
+  "mpn": "SEN0138",
+  "category": "sensor",
+  "description": "Roller-lever snap-action micro switch on a DFRobot Gravity board: D is pulled up to VCC by 10 kOhm and the switch shorts it to GND while the lever is pressed, so D reads 1 released and 0 pressed; a status LED (1 kOhm from VCC to D) lights while pressed. Passive board (switch, two resistors, LED): DFRobot lists 5 V for Arduino use, but on a 3.3 V board power VCC from 3.3 V so D idles at 3.3 V. Sold as: DFRobot Gravity: Digital Crash Sensor (SEN0138-L, left lever; SEN0138-R is the mirror-image right-lever version), 3-pin Gravity header D, VCC, GND, 30 x 20 mm, 2 x M3 holes.",
+  "eli5": "A tiny clicky switch with a little wheel on its arm. When your robot bumps into something, the arm is pushed, the switch clicks and a light comes on so your board knows it crashed.",
+  "refPrefix": "SW",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 10000,
+      "description": "Digital output (Gravity pin 1): pulled up to VCC by the board's 10 kOhm resistor (R2), shorted to GND by the switch while the lever is pressed. Reads 1 released, 0 pressed. No internal pull-up needed."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Gravity pin 2): feeds the pull-up and the LED. DFRobot lists 5 V; use 3.3 V on an ESP32 / Pico so D never exceeds 3.3 V."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Gravity pin 3): the switch's common contact."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 4,
+  "datasheetUrl": "https://dfimg.dfrobot.com/wiki/22387/SEN0138-L_digital-crash-sensor_schematics_v1.0.pdf",
+  "sources": [
+    "https://dfimg.dfrobot.com/wiki/22387/SEN0138-L_digital-crash-sensor_schematics_v1.0.pdf",
+    "https://wiki.dfrobot.com/sen0138-l/",
+    "https://www.dfrobot.com/product-762.html"
+  ],
+  "priceUsd": 1.9,
+  "supplierQuery": "DFRobot SEN0138 Gravity digital crash sensor micro switch",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Gravity header order printed on the board: D (signal), VCC, GND. The supplied Gravity cable is green/blue = D, red = VCC, black = GND.",
+    "On an ESP32 / Pico wire VCC to 3.3 V: the board's 10 kOhm pull-up goes to VCC, so a 5 V supply would put 5 V on the GPIO.",
+    "D is active low: 0 while the lever is pressed (LED on), 1 while released. Pin.IN is enough, the board has its own pull-up.",
+    "Contacts bounce for a few milliseconds: debounce in software (the driver waits 10 ms of stable readings).",
+    "Mount with the two M3 holes so the lever is not driven past its overtravel."
+  ],
+  "keywords": [
+    "crash sensor",
+    "collision sensor",
+    "bumper",
+    "micro switch",
+    "microswitch",
+    "limit switch",
+    "end stop",
+    "sen0138",
+    "sen0138-l",
+    "sen0138-r",
+    "dfrobot",
+    "gravity"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "D",
+    "quantity": "Lever pressed",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "crash_sensor.py",
+    "code": "# DFRobot Gravity: Digital Crash Sensor (SEN0138-L / SEN0138-R), MicroPython driver.\n# The board is a snap-action micro switch with a roller lever (schematic v1.0, 2012):\n#   D (pin 1) is pulled up to VCC by R2 = 10 kOhm; the switch K shorts D to GND when the lever is pressed.\n#   A status LED with R1 = 1 kOhm from VCC to D lights while the switch is pressed.\n# So: released -> D reads 1 (VCC), pressed -> D reads 0. No chip, no protocol.\n# Power VCC from 3.3 V on an ESP32 / Pico so the high level on D stays at 3.3 V.\n# Snap-action contacts bounce for a few milliseconds: readings are debounced.\nfrom machine import Pin\nimport time\n\n\nclass CrashSensor:\n    def __init__(self, pin, debounce_ms=10):\n        \"\"\"pin: GPIO number (or Pin) wired to the board's D pin.\"\"\"\n        if isinstance(pin, int):\n            # The board has its own 10 kOhm pull-up; no internal pull is needed.\n            pin = Pin(pin, Pin.IN)\n        self.pin = pin\n        self.debounce_ms = debounce_ms\n\n    def value(self):\n        \"\"\"Raw level on D: 0 = pressed, 1 = released.\"\"\"\n        return self.pin.value()\n\n    def _stable(self):\n        v = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            n = self.pin.value()\n            if n != v:\n                v = n\n                t0 = time.ticks_ms()\n        return v\n\n    def is_pressed(self):\n        \"\"\"True while the lever is pressed (switch closed, D pulled to GND). Debounced.\"\"\"\n        return self._stable() == 0\n\n    def irq(self, handler, on_press=True):\n        \"\"\"Call handler(pin) when the lever is pressed (falling edge) or released (on_press=False).\n        Contacts bounce, so a handler may fire more than once per movement.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_press else Pin.IRQ_RISING)\n"
+  },
+  "example": {
+    "code": "from crash_sensor import CrashSensor\nimport time\n\ncrash = CrashSensor({D})  # D is low while the lever is pressed\nwhile True:\n    print('CRASH=%d' % crash.is_pressed())\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a crash while the lever is pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CRASH=0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CRASH=1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CRASH=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-gravity-crash-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity Digital Crash Sensor (SEN0138-L / SEN0138-R, roller-lever micro switch with 10 kOhm pull-up and status LED, pins D/VCC/GND). Use when designing, wiring, simulating or writing code for a Gravity crash sensor, bumper or end-stop switch in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Gravity Digital Crash Sensor (DFRobot SEN0138)\n\n## Overview\nThe **DFRobot Gravity: Digital Crash Sensor** (SKU SEN0138-L, lever on the left; SEN0138-R, lever on the right) is a miniature snap-action micro switch with a roller lever on a 30 × 20 mm board with a 3-pin Gravity header. It is used as a robot bumper, an end-stop or a door/limit switch. There is no chip on it. Per DFRobot's schematic (v1.0):\n- **R2 = 10 kΩ** pulls D up to VCC.\n- The switch **K** shorts D to GND while the lever is pressed.\n- A status **LED with R1 = 1 kΩ** runs from VCC to D, so it lights while the lever is pressed.\n\nSo D reads **1 when released** and **0 when pressed** (active low).\n\n## Pinout (Gravity header, board order)\n| Pin | Label | Function |\n|---|---|---|\n| 1 | D | Digital output: high (VCC through 10 kΩ) when released, low when pressed |\n| 2 | VCC | Supply |\n| 3 | GND | Ground |\n\n## Electrical limits\n- DFRobot lists a 5 V working voltage (Arduino/IO shield use). The board is passive (switch, two resistors, an LED), so it also works at 3.3 V; the LED is just dimmer.\n- The high level on D equals VCC. **On an ESP32 / Pico power VCC from 3.3 V**, never 5 V, or D idles at 5 V.\n- Current: practically zero while released; about 1.8 mA at 3.3 V (about 3.7 mA at 5 V) while pressed (LED through 1 kΩ plus the 10 kΩ pull-up).\n\n## Interface details\n- Plain digital input: `Pin(n, Pin.IN)`. No internal pull-up is needed, the board has a 10 kΩ one.\n- **0 = pressed (crash), 1 = released.**\n- Contacts bounce for a few ms: the driver debounces (10 ms of stable readings).\n\n## Wiring\n- ESP32: VCC → 3V3, GND → GND, D → GPIO4.\n- Pico: VCC → 3V3(OUT), GND → GND, D → GP15.\n- Raspberry Pi 4: VCC → pin 1 (3.3 V), GND → pin 6, D → GPIO17 (pin 11).\n\n## Using the driver\n```python\nfrom crash_sensor import CrashSensor\nimport time\ncrash = CrashSensor(4)   # GPIO wired to D\nwhile True:\n    print('CRASH=%d' % crash.is_pressed())\n    time.sleep(0.2)\n```\n`crash.irq(handler)` calls `handler(pin)` on each press (falling edge).\n\n## Gotchas\n- Powering it from 5 V on a 3.3 V board puts 5 V on the GPIO through 10 kΩ: use the 3.3 V pin.\n- Logic is inverted: the LED lights and D reads 0 while pressed.\n- Contacts bounce: expect several interrupts per press unless you debounce.\n\n## Datasheet\nSchematic: https://dfimg.dfrobot.com/wiki/22387/SEN0138-L_digital-crash-sensor_schematics_v1.0.pdf\nWiki: https://wiki.dfrobot.com/sen0138-l/\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:01:37.928Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/sen0138-l/",
+      "https://dfimg.dfrobot.com/wiki/22387/SEN0138-L_digital-crash-sensor_dimension_v1.0.png",
+      "https://www.alldatasheet.com/datasheet-pdf/pdf/2215082/DFROBOT/SEN0138-R.html"
+    ]
+  }
+}

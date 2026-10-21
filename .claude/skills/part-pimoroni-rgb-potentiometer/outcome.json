@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "i2c-register",
+  "board": "Pimoroni RGB Potentiometer Breakout (PIM523)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test, PCB, footprint). Modelled as an MS51 IO Expander register map: chip ID 0xE26A, ADC channel 3 result split across ADCRL[3:0]/ADCRH, ADCCON0 with ADCS self-clearing and ADCF reading done, PWM LOAD self-clearing; the driver follows Pimoroni's ioe library and the MS51 TRM, and the LED colour is not shown in the simulator.",
+  "datasheetUrl": "https://cdn.shopify.com/s/files/1/0174/1800/files/TRM_MS51_16KBFlash_Series_EN_Rev1.03.pdf?v=1601027378",
+  "breakoutPinoutSource": "https://shop.pimoroni.com/products/rgb-potentiometer-breakout (board photo RotaryPot_2of2.jpg: 3-5V, SDA, SCL, INT, GND)",
+  "checkRuns": 1
+}

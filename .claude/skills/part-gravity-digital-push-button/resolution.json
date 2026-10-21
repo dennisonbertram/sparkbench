@@ -1,0 +1,16 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says D, datasheet reading says -",
+      "verdict": "part-correct",
+      "evidence": "Same three signals, opposite listing order: the DFRobot 'Digital Push Button' schematic (Revision V2) labels the connector 'GND J1 3 2 1', with GND tied to J1 pin 3, the KEY/VCC net on pin 2 and the R1 1K output (D) on pin 1, so pin 1 is D as the model says; the second reading copied the V3 board's silkscreen top-to-bottom ('-', '+', 'D'), which runs from pin 3 to pin 1.",
+      "source": "https://dfimg.dfrobot.com/wiki/17140/DFR0029_digital-push-button_schematics_v1.0.pdf"
+    },
+    {
+      "diff": "header pin 3: part says GND, datasheet reading says D",
+      "verdict": "part-correct",
+      "evidence": "The DFRobot schematic draws the ground symbol directly on J1 pin 3 (text 'GND J1 3 2 1'), and the output through R1 1K on pin 1, so pin 3 is GND (black wire) as the model says; the second reading's 'D' at position 3 comes from reading the silkscreen '- + D' in reverse pin order, and the physical D pad still carries the signal.",
+      "source": "https://dfimg.dfrobot.com/wiki/17140/DFR0029_digital-push-button_schematics_v1.0.pdf"
+    }
+  ]
+}

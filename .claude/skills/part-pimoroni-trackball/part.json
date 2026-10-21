@@ -1,0 +1,246 @@
+{
+  "type": "custom-pimoroni-trackball",
+  "name": "Pimoroni Trackball Breakout",
+  "mpn": "PIM447",
+  "category": "input",
+  "description": "Mini trackball with a click switch and RGBW LEDs under the ball, read over I2C: four Hall-effect sensors read the rollers and an on-board Nuvoton MS51XB9AE (older boards N76E003AQ20) running Pimoroni's firmware counts left/right/up/down movement since the last read, reports the switch, sets the LED brightness and drives an active-low INT line. 3.3-5 V supply (\"3.3V or 5V compatible\") with reverse polarity protection; chip ID 0xBA11; run the bus at 100 kHz. I2C address 0x0A (0x0B with the ADDR+1 trace cut). Sold as: Pimoroni Trackball Breakout (PIM447), 5-pin 0.1\" header 3-5V, SDA, SCL, INT, GND (fits Raspberry Pi pins 1, 3, 5, 7, 9) plus a Qw/ST connector on boards made after April 2024.",
+  "eli5": "A tiny rolling ball like an old mouse, with a click and coloured lights; a little chip counts how far you roll it each way and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "3-5V",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin labelled 3-5V; reverse polarity protected)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pulled up to the board's 3.3 V logic supply on the breakout)",
+      "required": true,
+      "levelV": 3.3
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pulled up on the breakout); 100 kHz or less",
+      "required": true,
+      "levelV": 3.3
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low: goes low when there is new movement or a click (enable with bit 1 of register 0xF9). Not needed for basic use",
+      "required": false,
+      "levelV": 3.3
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "i2cAddress": 10,
+  "datasheetUrl": "https://www.nuvoton.com/products/microcontrollers/8bit-8051-mcus/industrial-8051-series/ms51xb9ae/",
+  "priceUsd": 15,
+  "supplierQuery": "Pimoroni Trackball Breakout PIM447",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://shop.pimoroni.com/products/trackball-breakout",
+    "https://cdn.shopify.com/s/files/1/0174/1800/products/Trackball_2_of_4.JPG?v=1560173220",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/trackball-breakout-qwst.jpg?v=1712237092",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/trackballbreakout.png?v=1599645804",
+    "https://github.com/pimoroni/trackball-python/blob/master/library/trackball/__init__.py",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/drivers/trackball/trackball.cpp",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/drivers/trackball/trackball.hpp",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/examples/breakout_trackball/demo.cpp",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/micropython/examples/breakout_trackball/demo.py",
+    "https://www.nuvoton.com/products/microcontrollers/8bit-8051-mcus/industrial-8051-series/ms51xb9ae/"
+  ],
+  "buildNotes": [
+    "Header order as printed: 3-5V, SDA, SCL, INT, GND. With the right-angle socket it plugs straight onto Raspberry Pi pins 1, 3, 5, 7, 9.",
+    "Run the I2C bus at 100 kHz (Pimoroni's Pico library refuses faster; the Pi needs 250 kHz or less because of clock stretching).",
+    "Check the chip ID first: registers 0xFA/0xFB read 0x11, 0xBA (0xBA11).",
+    "Read 5 bytes from 0x04: left, right, up, down, switch. The four counts are movement since the previous read and are cleared by the read, so poll every 10-50 ms and add them up for a cursor position.",
+    "Switch byte: bit 7 = pressed now, bits 6-0 = number of press/release changes since the last read.",
+    "LEDs: write red, green, blue, white (0-255) to 0x00-0x03 in one write.",
+    "Default address 0x0A; cut the ADDR+1 trace on the back for 0x0B. A new address written to 0xFD is stored in flash.",
+    "INT (active low) is optional: set bit 1 of register 0xF9 to enable it, or poll the triggered bit (bit 0) instead."
+  ],
+  "keywords": [
+    "trackball",
+    "pimoroni",
+    "pim447",
+    "breakout garden",
+    "mouse",
+    "joystick",
+    "rgbw",
+    "ms51",
+    "n76e003"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Left movement since last read",
+    "unit": "counts",
+    "min": 0,
+    "max": 255,
+    "default": 0,
+    "controls": [
+      {
+        "key": "right",
+        "quantity": "Right movement since last read",
+        "unit": "counts",
+        "min": 0,
+        "max": 255,
+        "default": 0
+      },
+      {
+        "key": "up",
+        "quantity": "Up movement since last read",
+        "unit": "counts",
+        "min": 0,
+        "max": 255,
+        "default": 0
+      },
+      {
+        "key": "down",
+        "quantity": "Down movement since last read",
+        "unit": "counts",
+        "min": 0,
+        "max": 255,
+        "default": 0
+      }
+    ],
+    "registers": {
+      "0x00": 0,
+      "0x01": 0,
+      "0x02": 0,
+      "0x03": 0,
+      "0x08": 0,
+      "0xF9": 0,
+      "0xFA": 17,
+      "0xFB": 186,
+      "0xFC": 1,
+      "0xFD": 10,
+      "0xFE": 0
+    },
+    "measures": [
+      {
+        "reg": "0x04",
+        "bytes": 1,
+        "scale": 1,
+        "control": "value"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 1,
+        "scale": 1,
+        "control": "right"
+      },
+      {
+        "reg": "0x06",
+        "bytes": 1,
+        "scale": 1,
+        "control": "up"
+      },
+      {
+        "reg": "0x07",
+        "bytes": 1,
+        "scale": 1,
+        "control": "down"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x08",
+        "bit": 7,
+        "control": "button",
+        "label": "Ball pressed"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "trackball.py",
+    "code": "# Pimoroni Trackball Breakout (PIM447), MicroPython driver.\n# A Nuvoton MS51XB9AE (older boards: N76E003AQ20) runs Pimoroni's firmware: it counts the four\n# Hall-effect roller sensors and the dome switch under the ball, dims the RGBW LEDs and answers on I2C\n# with a byte register map (from Pimoroni's trackball-python and pimoroni-pico drivers):\n#   0x00-0x03 LED red, green, blue, white (0-255, PWM brightness)\n#   0x04 LEFT, 0x05 RIGHT, 0x06 UP, 0x07 DOWN: roller counts since the last read (cleared when read)\n#   0x08 SWITCH: bit 7 = ball pressed now, bits 6-0 = number of press/release changes since the last read\n#   0xF9 INT: bit 0 = interrupt triggered, bit 1 = drive the INT pin (active low)\n#   0xFA/0xFB chip ID low/high = 0xBA11   0xFC firmware version   0xFD I2C address (kept in flash)\n#   0xFE CTRL: bit 0 sleep, bit 1 reset, bit 2 flash read, bit 3 flash write\n# Reads: register number, then read; the pointer auto-increments, so one 5-byte read from 0x04 takes\n# left, right, up, down and switch together. Pimoroni runs the bus at 100 kHz or less.\nimport time\n\nADDR = 0x0A          # 0x0B with the ADDR+1 trace cut\nCHIP_ID = 0xBA11\n\n_LED_RED = 0x00\n_LEFT = 0x04\n_SWITCH = 0x08\n_INT = 0xF9\n_CHIP_ID_L = 0xFA\n_VERSION = 0xFC\n_I2C_ADDR = 0xFD\n_CTRL = 0xFE\n\n_SW_STATE = 0x80\n_INT_TRIGGERED = 0x01\n_INT_OUT_EN = 0x02\n_CTRL_SLEEP = 0x01\n\n\nclass Trackball:\n    def __init__(self, i2c, addr=ADDR, int_pin=None, timeout_ms=5000):\n        self.i2c = i2c\n        self.addr = addr\n        self.int_pin = int_pin   # optional machine.Pin (input) wired to INT\n        self.timeout_ms = timeout_ms\n        d = self._read(_CHIP_ID_L, 2)\n        chip = d[0] | (d[1] << 8)\n        if chip != CHIP_ID:\n            raise OSError('Trackball not found at 0x%02X (chip ID 0x%04X)' % (addr, chip))\n        self.enable_interrupt(True)\n\n    # --- low level\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _write(self, reg, data):\n        self.i2c.writeto_mem(self.addr, reg, bytes(data))\n\n    # --- identity\n    def version(self):\n        return self._read(_VERSION, 1)[0]\n\n    # --- motion and switch\n    def read(self):\n        \"\"\"Return (left, right, up, down, sw_changes, pressed).\n\n        The four direction counts are how far the ball rolled each way since the previous read\n        (the firmware clears them when they are read), so poll regularly and add them up yourself.\"\"\"\n        left, right, up, down, sw = self._read(_LEFT, 5)\n        return left, right, up, down, sw & ~_SW_STATE & 0xFF, bool(sw & _SW_STATE)\n\n    def pressed(self):\n        \"\"\"True while the ball is pushed in (also clears the switch change count).\"\"\"\n        return bool(self._read(_SWITCH, 1)[0] & _SW_STATE)\n\n    # --- LEDs\n    def set_rgbw(self, r, g, b, w):\n        self._write(_LED_RED, (r & 0xFF, g & 0xFF, b & 0xFF, w & 0xFF))\n\n    # --- interrupt\n    def enable_interrupt(self, on=True):\n        v = self._read(_INT, 1)[0] & ~_INT_OUT_EN & 0xFF\n        if on:\n            v |= _INT_OUT_EN\n        self._write(_INT, (v,))\n\n    def interrupt(self):\n        \"\"\"True when the trackball has new data (INT pin low, or the INT register's triggered bit).\"\"\"\n        if self.int_pin is not None:\n            return self.int_pin.value() == 0\n        return bool(self._read(_INT, 1)[0] & _INT_TRIGGERED)\n\n    # --- power / address\n    def sleep(self, on=True):\n        self._write(_CTRL, (_CTRL_SLEEP if on else 0,))\n\n    def change_address(self, new_addr):\n        \"\"\"Store a new 7-bit I2C address in the MCU's flash.\"\"\"\n        self._write(_I2C_ADDR, (new_addr & 0x7F,))\n        self._wait_for_flash()\n\n    def _wait_for_flash(self):\n        # The firmware drops the interrupt while it writes flash and raises it when done.\n        t0 = time.ticks_ms()\n        while self.interrupt():\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('Trackball flash write timed out')\n            time.sleep_ms(1)\n        t0 = time.ticks_ms()\n        while not self.interrupt():\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('Trackball flash write timed out')\n            time.sleep_ms(1)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom trackball import Trackball\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nball = Trackball(i2c)\nball.set_rgbw(0, 0, 0, 64)\nwhile True:\n    left, right, up, down, changes, pressed = ball.read()\n    print('L=%d R=%d U=%d D=%d SW=%d' % (left, right, up, down, 1 if pressed else 0))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the roll counts and the click switch",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "right",
+          "value": 3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "up",
+          "value": 12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "down",
+          "value": 5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L=7 R=3 U=12 D=5 SW=1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L=0 R=3 U=12 D=5 SW=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:06:54.614Z",
+    "verifiedSources": [
+      "https://shop.pimoroni.com/products/trackball-breakout",
+      "https://github.com/pimoroni/trackball-python/blob/HEAD/library/trackball/__init__.py"
+    ]
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "type": "custom-pimoroni-rgb-potentiometer",
+  "name": "Pimoroni RGB Potentiometer breakout",
+  "mpn": "PIM523",
+  "category": "input",
+  "description": "Rotary potentiometer with an RGB LED inside its clear shaft, read and lit over I2C by a Nuvoton MS51XB9AE microcontroller running Pimoroni's IO Expander firmware (12-bit ADC on the wiper, three PWM channels for the LED). Runs on 3-5 V. Sold as: Pimoroni RGB Potentiometer Breakout (PIM523), 5-pin header 3-5V, SDA, SCL, INT, GND, I2C address 0x0E (changeable in software, stored in flash).",
+  "eli5": "A knob that tells your board how far it is turned and glows any colour you like.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "3-5V",
+      "role": "power",
+      "description": "Supply, 3-5 V (reverse-polarity protected). Use 3.3 V with an ESP32/Pico so the I2C and INT levels stay at 3.3 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (open-drain); the board is meant for a Raspberry Pi header, whose pull-ups it relies on, so add a 4.7 k pull-up to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock; add a 4.7 k pull-up to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output from the MS51 (only when enabled in the firmware's INT register); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 20,
+  "i2cAddress": 14,
+  "datasheetUrl": "https://cdn.shopify.com/s/files/1/0174/1800/files/TRM_MS51_16KBFlash_Series_EN_Rev1.03.pdf?v=1601027378",
+  "priceUsd": 12,
+  "supplierQuery": "Pimoroni RGB Potentiometer Breakout PIM523",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the chip ID first: registers 0xFA/0xFB read 0x6A, 0xE2 (0xE26A). Anything else means wrong address or wiring.",
+    "The pot is a plain voltage divider: IO-expander pins 12 (P0.5) and 3 (P1.2) must be set push-pull and driven low/high before the wiper (pin 11, ADC channel 3) reads anything; swap them to reverse the direction.",
+    "ADC read: write 1<<3 to AINDIDS0 (0xB6), set ADCCON0 (0xA8) to channel 3 with ADCF (bit 7) cleared and ADCS (bit 6) set, poll ADCF, then read ADCRL (0x82, bits 3:0) and ADCRH (0x83, bits 11:4). The reading is 4095 x Vwiper / VDD, so it is ratiometric: the same at 3.3 V and 5 V.",
+    "The LED is common cathode on PWM5 (red, P1.5), PWM1 (green, P1.1) and PWM2 (blue, P1.0) with inverted outputs; after writing duty registers set the LOAD bit (PWMCON0 bit 6) and wait for it to clear.",
+    "Writes to the port registers P0 (0x40) and P1 (0x50) are bit-addressed by the firmware: write (state << 3) | bit, never a whole port value.",
+    "The board is designed to plug onto Raspberry Pi pins 1, 3, 5, 7, 9 and relies on the Pi's I2C pull-ups; on an ESP32 or Pico add 4.7 k pull-ups to 3.3 V."
+  ],
+  "keywords": [
+    "pimoroni",
+    "rgb potentiometer",
+    "potentiometer",
+    "knob",
+    "rotary pot",
+    "pim523",
+    "ms51",
+    "io expander",
+    "ioe",
+    "breakout garden"
+  ],
+  "sources": [
+    "https://shop.pimoroni.com/products/rgb-potentiometer-breakout",
+    "https://shop.pimoroni.com/cdn/shop/products/RotaryPot_2of2.jpg",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/TRM_MS51_16KBFlash_Series_EN_Rev1.03.pdf?v=1601027378",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/DS_MS51_16KBFlash_Series_EN_Rev1.01.pdf?v=1601027185",
+    "https://github.com/pimoroni/ioe-python/blob/master/ioexpander/__init__.py",
+    "https://github.com/pimoroni/ioe-python/blob/master/ioexpander/ioe_regs.py",
+    "https://github.com/pimoroni/ioe-python/blob/master/examples/potentiometer.py",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/libraries/breakout_potentiometer/breakout_potentiometer.cpp"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Knob position (ADC reading)",
+    "unit": "counts",
+    "min": 0,
+    "max": 4095,
+    "default": 2048,
+    "registers": {
+      "0xFA": 106,
+      "0xFB": 226,
+      "0xA8": 128
+    },
+    "writable": {
+      "0x40": 255,
+      "0x50": 255,
+      "0x9E": 255,
+      "0xC9": 255,
+      "0x96": 255,
+      "0x98": 255,
+      "0x9F": 255,
+      "0x99": 255,
+      "0x91": 255,
+      "0x9A": 255,
+      "0x9B": 255,
+      "0x9C": 255,
+      "0x9D": 255,
+      "0x92": 255,
+      "0x93": 255,
+      "0x94": 255,
+      "0x95": 255,
+      "0xC7": 255,
+      "0xC8": 255,
+      "0xCA": 255,
+      "0xCB": 255,
+      "0xA1": 255,
+      "0xB6": 255,
+      "0x71": 251,
+      "0x72": 251,
+      "0x73": 183,
+      "0x74": 183,
+      "0xA8": 79
+    },
+    "selfClearing": [
+      {
+        "reg": "0xA8",
+        "mask": 64
+      },
+      {
+        "reg": "0x98",
+        "mask": 80
+      }
+    ],
+    "measure": {
+      "reg": "0x82",
+      "bytes": 2,
+      "scale": 1,
+      "bits": 12,
+      "fields": [
+        {
+          "reg": "0x82",
+          "from": 0,
+          "width": 4,
+          "at": 0
+        },
+        {
+          "reg": "0x83",
+          "from": 4,
+          "width": 8,
+          "at": 0
+        }
+      ],
+      "when": {
+        "reg": "0xA8",
+        "equals": 3,
+        "mask": 15
+      }
+    }
+  },
+  "driver": {
+    "filename": "rgbpot.py",
+    "code": "# Pimoroni RGB Potentiometer Breakout (PIM523), MicroPython driver.\n# The board is a Nuvoton MS51XB9AE running Pimoroni's \"IO Expander\" firmware (I2C address 0x0E):\n# the MS51's special function registers are exposed as I2C registers. Pin mapping and register\n# sequences follow Pimoroni's ioe-python / pimoroni-pico libraries and the MS51 Technical Reference Manual:\n#   pot track ends: IOE pin 12 (P0.5) and pin 3 (P1.2), driven as push-pull outputs (one low, one high)\n#   pot wiper:      IOE pin 11 (P0.6) = ADC channel 3, 12-bit, result = 4095 * Vain / VDD\n#   RGB LED:        IOE pins 1 (P1.5, PWM CH5) red, 7 (P1.1, PWM CH1) green, 2 (P1.0, PWM CH2) blue,\n#                   common cathode, so the PWM outputs are inverted (PNP register).\nimport time\n\n_CHIP_ID = 0xE26A\n_REG_CHIP_ID_L = 0xFA\n_REG_P0 = 0x40   # bit-addressed by the firmware: write (state << 3) | bit\n_REG_P1 = 0x50\n_REG_P0M1 = 0x71\n_REG_P0M2 = 0x72\n_REG_P1M1 = 0x73\n_REG_P1M2 = 0x74\n_REG_ADCRL = 0x82   # ADCR[3:0]\n_REG_PWMPH = 0x91\n_REG_PNP = 0x96\n_REG_PWMCON0 = 0x98  # bit 7 PWMRUN, bit 6 LOAD, bit 4 CLRPWM\n_REG_PWMPL = 0x99\n_REG_PIOCON0 = 0x9E\n_REG_PWMCON1 = 0x9F\n_REG_ADCCON1 = 0xA1  # bit 0 ADCEN\n_REG_ADCCON0 = 0xA8  # bit 7 ADCF (done), bit 6 ADCS (start), bits 3:0 channel\n_REG_AINDIDS0 = 0xB6\n_REG_PIOCON1 = 0xC9\n_BIT_ADDRESSED = (_REG_P0, _REG_P1)\n\n_M1 = (_REG_P0M1, _REG_P1M1)\n_M2 = (_REG_P0M2, _REG_P1M2)\n_P = (_REG_P0, _REG_P1)\n_PIOCON = (_REG_PIOCON0, _REG_PIOCON1)\n\n# (port, bit, piocon (reg index, bit), PWM duty L/H registers)\n_LED_R = (1, 5, (1, 5), 0xCB, 0xC8)  # IOE pin 1, PWM5\n_LED_G = (1, 1, (0, 1), 0x9B, 0x93)  # IOE pin 7, PWM1\n_LED_B = (1, 0, (0, 2), 0x9C, 0x94)  # IOE pin 2, PWM2\n_TERM_A = (0, 5, (1, 2))             # IOE pin 12, P0.5\n_TERM_B = (1, 2, (0, 0))             # IOE pin 3, P1.2\n_WIPER = (0, 6)                      # IOE pin 11, P0.6\n_WIPER_ADC_CH = 3\n\n_GPIO_PP = 0b01\n_GPIO_IN = 0b10\n\n\nclass RGBPotentiometer:\n    def __init__(self, i2c, addr=0x0E, clockwise=True, brightness=1.0, timeout_ms=1000):\n        self.i2c = i2c\n        self.addr = addr\n        self.timeout_ms = timeout_ms\n        d = self.i2c.readfrom_mem(addr, _REG_CHIP_ID_L, 2)\n        chip = d[0] | (d[1] << 8)\n        if chip != _CHIP_ID:\n            raise OSError('RGB pot: chip ID 0x%04X, expected 0x%04X' % (chip, _CHIP_ID))\n        # Pot track: two push-pull outputs, wiper on the ADC.\n        self._gpio_mode(_TERM_A[0], _TERM_A[1], _GPIO_PP, piocon=_TERM_A[2])\n        self._gpio_mode(_TERM_B[0], _TERM_B[1], _GPIO_PP, piocon=_TERM_B[2])\n        self._set_bit(_REG_ADCCON1, 0)  # ADCEN\n        self._gpio_mode(_WIPER[0], _WIPER[1], _GPIO_IN)\n        self.set_direction(clockwise)\n        # LED PWM: period sized for 0-255 duty steps at the chosen brightness, clock /2.\n        self._w8(_REG_PWMCON1, 0b001)\n        self.set_brightness(brightness)\n        for led in (_LED_R, _LED_G, _LED_B):\n            reg, bit = led[2]\n            self._set_bit(_PIOCON[reg], bit)\n            self._set_bit(_REG_PNP, bit)        # invert: common-cathode LED\n            self._set_bit(_REG_PWMCON0, 7)      # PWMRUN\n            self._gpio_mode(led[0], led[1], _GPIO_PP)\n\n    # --- register helpers -------------------------------------------------\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes((value & 0xFF,)))\n\n    def _set_bit(self, reg, bit):\n        if reg in _BIT_ADDRESSED:\n            self._w8(reg, 0b1000 | bit)\n        else:\n            self._w8(reg, self._r8(reg) | (1 << bit))\n\n    def _clr_bit(self, reg, bit):\n        if reg in _BIT_ADDRESSED:\n            self._w8(reg, bit)\n        else:\n            self._w8(reg, self._r8(reg) & ~(1 << bit))\n\n    def _gpio_mode(self, port, bit, mode, piocon=None):\n        if piocon is not None:\n            self._clr_bit(_PIOCON[piocon[0]], piocon[1])  # plain GPIO, not PWM\n        m1 = self._r8(_M1[port]) & ~(1 << bit)\n        m2 = self._r8(_M2[port]) & ~(1 << bit)\n        m1 |= (mode >> 1) << bit\n        m2 |= (mode & 1) << bit\n        self._w8(_M1[port], m1)\n        self._w8(_M2[port], m2)\n        self._clr_bit(_P[port], bit)  # initial state low\n\n    def _wait_clear(self, reg, bit, what):\n        t0 = time.ticks_ms()\n        while self._r8(reg) & (1 << bit):\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('RGB pot: timeout waiting for ' + what)\n            time.sleep_ms(1)\n\n    def _pwm_load(self):\n        self._set_bit(_REG_PWMCON0, 6)  # LOAD new period/duty\n        self._wait_clear(_REG_PWMCON0, 6, 'PWM load')\n\n    # --- public API -------------------------------------------------------\n    def set_direction(self, clockwise=True):\n        \"\"\"Choose which way the reading increases (drives the track ends low/high).\"\"\"\n        a, b = (0, 1) if clockwise else (1, 0)\n        (self._set_bit if a else self._clr_bit)(_P[_TERM_A[0]], _TERM_A[1])\n        (self._set_bit if b else self._clr_bit)(_P[_TERM_B[0]], _TERM_B[1])\n\n    def set_brightness(self, brightness):\n        brightness = min(max(brightness, 0.01), 1.0)\n        period = int(255 / brightness)\n        self._w8(_REG_PWMPL, period & 0xFF)\n        self._w8(_REG_PWMPH, period >> 8)\n        self._pwm_load()\n\n    def set_led(self, r, g, b):\n        \"\"\"Set the LED colour, each channel 0-255.\"\"\"\n        for led, v in ((_LED_R, r), (_LED_G, g), (_LED_B, b)):\n            v = min(max(int(v), 0), 255)\n            self._w8(led[3], v & 0xFF)\n            self._w8(led[4], v >> 8)\n        self._pwm_load()\n\n    def read_raw(self):\n        \"\"\"One 12-bit ADC conversion of the wiper (0-4095).\"\"\"\n        self._w8(_REG_AINDIDS0, 1 << _WIPER_ADC_CH)  # analog input, digital buffer off\n        c = self._r8(_REG_ADCCON0)\n        c = (c & ~0x0F) | _WIPER_ADC_CH\n        c = (c & ~0x80) | 0x40  # clear ADCF, set ADCS (start)\n        self._w8(_REG_ADCCON0, c)\n        t0 = time.ticks_ms()\n        while not (self._r8(_REG_ADCCON0) & 0x80):  # ADCF = conversion done\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('RGB pot: ADC timeout')\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _REG_ADCRL, 2)  # ADCRL, ADCRH\n        return (d[1] << 4) | (d[0] & 0x0F)\n\n    def read(self):\n        \"\"\"Knob position as a fraction 0.0-1.0 (ratiometric to the board supply).\"\"\"\n        return self.read_raw() / 4095\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom rgbpot import RGBPotentiometer\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\npot = RGBPotentiometer(i2c)\nwhile True:\n    raw = pot.read_raw()\n    pot.set_led(255 - raw // 16, raw // 16, 0)  # red at one end, green at the other\n    print('pot=%d (%d%%)' % (raw, round(raw * 100 / 4095)))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the knob position set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pot=3000 (73%)",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pot=1234 (30%)",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:06:11.455Z",
+    "verifiedSources": [
+      "https://shop.pimoroni.com/products/rgb-potentiometer-breakout"
+    ]
+  }
+}

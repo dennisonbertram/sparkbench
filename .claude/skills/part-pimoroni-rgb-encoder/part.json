@@ -1,0 +1,170 @@
+{
+  "type": "custom-pimoroni-rgb-encoder",
+  "name": "Pimoroni RGB Encoder Breakout",
+  "mpn": "PIM522",
+  "category": "input",
+  "description": "Rotary encoder with an RGB LED inside its clear shaft, read over I2C: a Nuvoton MS51 microcontroller running Pimoroni's IO Expander firmware counts the encoder in hardware (an 8-bit wrapping count in register 0x06, chip ID 0xE26A in 0xFA/0xFB) and drives the red, green and blue LEDs with its PWM unit. No push switch. No regulator: the MS51 runs from the 3-5V pin (2.4-5.5 V) and the 10 kOhm SDA/SCL/INT pull-ups go to that supply, so power it from 3.3 V on a 3.3 V board. I2C address 0x0F (changeable in software, kept in flash). Sold as: Pimoroni RGB Encoder Breakout (PIM522), 5-pin 0.1\" header 3-5V, SDA, SCL, INT, GND (Raspberry Pi pins 1, 3, 5, 7, 9).",
+  "eli5": "A knob you can spin round and round forever, with a coloured light inside it. A tiny chip counts the clicks and tells your board over two wires, and your board can tell it what colour to glow.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "3-5V",
+      "role": "power",
+      "description": "Supply, 3-5 V (MS51 2.4-5.5 V, no regulator; the I2C/INT pull-ups go to this pin, so use 3.3 V with a 3.3 V board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 10000,
+      "description": "I2C data (10 kOhm pull-up to the 3-5V pin on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 10000,
+      "description": "I2C clock (10 kOhm pull-up to the 3-5V pin on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "boardPullUp": 10000,
+      "description": "Interrupt output from the MS51 (P0.0 once the firmware's INT pin swap is set), low when the count has changed until the flag is cleared; 10 kOhm pull-up to the supply. Not needed for basic use (poll the count instead)",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 25,
+  "i2cAddress": 15,
+  "datasheetUrl": "https://cdn.shopify.com/s/files/1/0174/1800/files/DS_MS51_16KBFlash_Series_EN_Rev1.01.pdf",
+  "sources": [
+    "https://shop.pimoroni.com/products/rgb-encoder-breakout",
+    "https://cdn.shopify.com/s/files/1/0174/1800/products/RotaryEnc_2of2.jpg",
+    "https://cdn.shopify.com/s/files/1/0174/1800/products/RotaryEnc-base.jpg",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/DS_MS51_16KBFlash_Series_EN_Rev1.01.pdf",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/TRM_MS51_16KBFlash_Series_EN_Rev1.03.pdf",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/EC12PVF-D-15F-24-24C-03-6H_SPEC.pdf",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/io_expander_schematic.pdf",
+    "https://github.com/pimoroni/ioe-python/blob/master/ioexpander/__init__.py",
+    "https://github.com/pimoroni/ioe-python/blob/master/ioexpander/ioe_regs.py",
+    "https://github.com/pimoroni/ioe-python/blob/master/examples/rotary.py",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/drivers/ioexpander/ioexpander.cpp",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/libraries/breakout_encoder/breakout_encoder.cpp",
+    "https://github.com/pimoroni/pimoroni-pico/blob/main/libraries/breakout_encoder/breakout_encoder.hpp"
+  ],
+  "priceUsd": 12,
+  "supplierQuery": "Pimoroni RGB Encoder Breakout PIM522",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order 3-5V, SDA, SCL, INT, GND matches Raspberry Pi pins 1, 3, 5, 7, 9, so it can sit straight on a Pi.",
+    "Power it from 3.3 V on ESP32/Pico/Pi: there is no regulator and the 10 kOhm SDA/SCL/INT pull-ups go to the supply pin, so 5 V would put 5 V on the I2C lines.",
+    "Check the chip ID first: registers 0xFA (low) and 0xFB (high) read 0xE26A.",
+    "The firmware only counts after setup: encoder pins 12 (A, P0.5) and 3 (B, P1.2) as pulled-up Schmitt inputs, pin 11 (C, P0.6) as an open-drain low output, ENC_1_CFG 0x05 = 0x3C, then set bit 0 of ENC_EN 0x04.",
+    "The count register 0x06 is 8 bits and wraps; the driver keeps a running total, so read it at least every ~64 steps of turning.",
+    "LED: red PWM5 (pin 1), green PWM1 (pin 7), blue PWM2 (pin 2), inverted PWM outputs; set the duty registers then the LOAD bit (PWMCON0 0x98 bit 6), which the MS51 clears when done.",
+    "No push switch on this encoder."
+  ],
+  "keywords": [
+    "pimoroni",
+    "rgb encoder",
+    "rotary encoder",
+    "pim522",
+    "breakout garden",
+    "ms51",
+    "io expander",
+    "ioe",
+    "i2c encoder",
+    "knob",
+    "rgb led"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Encoder count",
+    "unit": "steps",
+    "min": -120,
+    "max": 120,
+    "default": 0,
+    "registers": {
+      "0xFA": 106,
+      "0xFB": 226,
+      "0xFC": 2,
+      "0xFD": 15
+    },
+    "selfClearing": [
+      {
+        "reg": "0x98",
+        "mask": 80
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x06",
+        "bytes": 1,
+        "scale": 1,
+        "signed": true,
+        "control": "value"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "pimoroni_rgb_encoder.py",
+    "code": "# Pimoroni RGB Encoder Breakout (PIM522), MicroPython driver.\n# A Nuvoton MS51 microcontroller running Pimoroni's IO Expander (\"ioe\") firmware reads the rotary\n# encoder in hardware and drives the RGB LED inside the knob with its PWM unit. The firmware maps\n# the MS51's special-function registers into an I2C register space (address 0x0F by default).\n# Sequences follow Pimoroni's own libraries (ioe-python ioexpander/__init__.py and\n# pimoroni-pico drivers/ioexpander + libraries/breakout_encoder).\n#\n# Board wiring of the MS51 (IOE pin numbers): LED red = pin 1 (P1.5, PWM5), green = pin 7\n# (P1.1, PWM1), blue = pin 2 (P1.0, PWM2); encoder A = pin 12 (P0.5), B = pin 3 (P1.2),\n# common C = pin 11 (P0.6, driven low as open drain). INT is on P0.0 (INT pin swap bit).\nimport time\n\nADDR = 0x0F\nCHIP_ID = 0xE26A\n\n# ioe firmware registers\n_CHIP_ID_L = 0xFA\n_CHIP_ID_H = 0xFB\n_VERSION = 0xFC\n_ADDR = 0xFD\n_CTRL = 0xFE\n_INT = 0xF9            # bit0 TRIGD (interrupt flag), bit1 OUT_EN, bit2 PIN_SWAP (0 = P1.3, 1 = P0.0)\n_ENC_EN = 0x04         # bit0 enable channel 1, bit1 count microsteps on channel 1\n_ENC_1_CFG = 0x05      # pin A | pin B << 4\n_ENC_1_COUNT = 0x06    # 8-bit count, wraps (two's complement)\n# MS51 SFRs as mapped by the firmware\n_P0 = 0x40             # bit-addressed: write 0b1000|bit to set, bit to clear\n_P1 = 0x50\n_P0M1 = 0x71\n_P0M2 = 0x72\n_P1M1 = 0x73\n_P1M2 = 0x74\n_P0S = 0xC2\n_P1S = 0xC4\n_PIOCON0 = 0x9E\n_PIOCON1 = 0xC9\n_PNP = 0x96\n_PWMCON0 = 0x98        # bit7 PWMRUN, bit6 LOAD (clears itself), bit4 CLRPWM\n_PWMCON1 = 0x9F        # bits 2:0 clock divider\n_PWMPL = 0x99\n_PWMPH = 0x91\n_BIT_ADDRESSED = (_P0, _P1)\n\n# (port P reg, M1, M2, S reg, bit) per pin, and (piocon reg, bit, PWM L reg, PWM H reg) for PWM pins\n_ENC_A = (_P0, _P0M1, _P0M2, _P0S, 5, (_PIOCON1, 2))   # IOE pin 12\n_ENC_B = (_P1, _P1M1, _P1M2, _P1S, 2, (_PIOCON0, 0))   # IOE pin 3\n_ENC_C = (_P0, _P0M1, _P0M2, _P0S, 6, None)            # IOE pin 11 (ADC-only pin, no PWM)\n_LED_R = (_P1, _P1M1, _P1M2, _P1S, 5, (_PIOCON1, 5), 0xCB, 0xC8)  # pin 1, PWM5\n_LED_G = (_P1, _P1M1, _P1M2, _P1S, 1, (_PIOCON0, 1), 0x9B, 0x93)  # pin 7, PWM1\n_LED_B = (_P1, _P1M1, _P1M2, _P1S, 0, (_PIOCON0, 2), 0x9C, 0x94)  # pin 2, PWM2\n\n_MODE_PU = 0b10000   # input with pull-up (quasi-bidirectional, initial high)\n_MODE_OD = 0b00011   # open-drain output\n_MODE_PWM = 0b00101  # PWM, push-pull\n\n\nclass RGBEncoder:\n    def __init__(self, i2c, addr=ADDR, brightness=1.0, timeout_ms=1000):\n        self.i2c = i2c\n        self.addr = addr\n        self.timeout_ms = timeout_ms\n        self._last = 0\n        self._offset = 0\n        self.direction = 1   # 1 = as counted by the chip, -1 = reversed\n        cid = self.chip_id()\n        if cid != CHIP_ID:\n            raise OSError('RGB Encoder not found at 0x%02X (chip ID 0x%04X, expected 0x%04X)' % (addr, cid, CHIP_ID))\n        # Encoder: A and B inputs with pull-ups and Schmitt triggers, C driven low.\n        self._set_mode(_ENC_A, _MODE_PU, schmitt=True)\n        self._set_mode(_ENC_B, _MODE_PU, schmitt=True)\n        self._set_mode(_ENC_C, _MODE_OD)\n        self._w8(_ENC_C[0], _ENC_C[4])                 # clear the bit: output low\n        self._w8(_ENC_1_CFG, 12 | (3 << 4))            # channel 1 = pins 12 (A) and 3 (B)\n        self._clr_bit(_ENC_EN, 1)                      # count whole steps, not microsteps\n        self._set_bit(_ENC_EN, 0)                      # enable channel 1\n        self.clear()\n        # LED: PWM period gives 0-255 steps at the chosen brightness, divider 2.\n        self.set_brightness(brightness)\n        self._w8(_PWMCON1, 0b001)\n        for led in (_LED_R, _LED_G, _LED_B):\n            self._set_mode(led, _MODE_PWM, invert=True)\n\n    # --- low level\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, v):\n        self.i2c.writeto_mem(self.addr, reg, bytes([v & 0xFF]))\n\n    def _set_bit(self, reg, bit):\n        if reg in _BIT_ADDRESSED:\n            self._w8(reg, 0b1000 | bit)\n        else:\n            self._w8(reg, self._r8(reg) | (1 << bit))\n\n    def _clr_bit(self, reg, bit):\n        if reg in _BIT_ADDRESSED:\n            self._w8(reg, bit)\n        else:\n            self._w8(reg, self._r8(reg) & ~(1 << bit))\n\n    def _change_bit(self, reg, bit, state):\n        if state:\n            self._set_bit(reg, bit)\n        else:\n            self._clr_bit(reg, bit)\n\n    def _set_mode(self, pin, mode, schmitt=False, invert=False):\n        p, m1, m2, ps, bit, pio = pin[0], pin[1], pin[2], pin[3], pin[4], pin[5]\n        gpio_mode = mode & 0b11\n        initial = mode >> 4\n        if mode == _MODE_PWM:\n            self._set_bit(pio[0], pio[1])                # route the PWM channel to the pin\n            self._change_bit(_PNP, pio[1], invert)       # output polarity\n            self._set_bit(_PWMCON0, 7)                   # PWMRUN\n        elif pio is not None:\n            self._clr_bit(pio[0], pio[1])\n        pm1 = self._r8(m1) & ~(1 << bit) & 0xFF\n        pm2 = self._r8(m2) & ~(1 << bit) & 0xFF\n        pm1 |= (gpio_mode >> 1) << bit\n        pm2 |= (gpio_mode & 1) << bit\n        self._w8(m1, pm1)\n        self._w8(m2, pm2)\n        if mode == _MODE_PU:\n            self._change_bit(ps, bit, schmitt)\n        self._w8(p, (initial << 3) | bit)\n\n    def _pwm_load(self):\n        self._set_bit(_PWMCON0, 6)                       # LOAD: latch period and duties\n        t0 = time.ticks_ms()\n        while self._r8(_PWMCON0) & 0x40:\n            if time.ticks_diff(time.ticks_ms(), t0) > self.timeout_ms:\n                raise OSError('timed out waiting for PWM load')\n            time.sleep_ms(1)\n\n    # --- identity\n    def chip_id(self):\n        return self._r8(_CHIP_ID_L) | (self._r8(_CHIP_ID_H) << 8)\n\n    def version(self):\n        return self._r8(_VERSION)\n\n    # --- encoder\n    def read(self):\n        \"\"\"Steps turned since clear(). The chip keeps an 8-bit count; wraps are tracked here,\n        so call this at least once per ~64 steps of turning.\"\"\"\n        v = self._r8(_ENC_1_COUNT)\n        if v & 0x80:\n            v -= 256\n        if self._last > 64 and v < -64:\n            self._offset += 256\n        if self._last < -64 and v > 64:\n            self._offset -= 256\n        self._last = v\n        self.clear_interrupt()\n        return (self._offset + v) * self.direction\n\n    def clear(self):\n        self._w8(_ENC_1_COUNT, 0)\n        self._last = 0\n        self._offset = 0\n\n    # --- interrupt flag (set by the firmware when the count changes)\n    def changed(self):\n        return bool(self._r8(_INT) & 0x01)\n\n    def clear_interrupt(self):\n        self._clr_bit(_INT, 0)\n\n    def enable_interrupt_out(self):\n        \"\"\"Drive the board's INT pin (active low). The breakout's INT is on P0.0, so PIN_SWAP is set.\"\"\"\n        self._set_bit(_INT, 1)\n        self._set_bit(_INT, 2)\n\n    # --- RGB LED\n    def set_brightness(self, brightness):\n        brightness = min(max(brightness, 0.01), 1.0)\n        period = int(255 / brightness)\n        self._w8(_PWMPL, period & 0xFF)\n        self._w8(_PWMPH, period >> 8)\n        self._pwm_load()\n\n    def set_led(self, r, g, b):\n        for led, v in ((_LED_R, r), (_LED_G, g), (_LED_B, b)):\n            v = max(0, min(255, int(v)))\n            self._w8(led[6], v & 0xFF)\n            self._w8(led[7], v >> 8)\n        self._pwm_load()\n\n    # --- address (kept in the MS51's flash)\n    def set_address(self, new_addr):\n        self._set_bit(_CTRL, 4)\n        self._w8(_ADDR, new_addr)\n        self.addr = new_addr\n        time.sleep_ms(250)\n        self._clr_bit(_CTRL, 4)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pimoroni_rgb_encoder import RGBEncoder\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nenc = RGBEncoder(i2c)\nprint('chip ok, firmware v%d' % enc.version())\nenc.set_led(0, 0, 64)\nwhile True:\n    n = enc.read()\n    if n >= 0:\n        enc.set_led(0, 64, 0)\n    else:\n        enc.set_led(64, 0, 0)\n    print('count=%d' % n)\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the encoder count",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "count=37",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -45
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "count=-45",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-pimoroni-rgb-encoder\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Pimoroni RGB Encoder Breakout (PIM522, rotary encoder with an RGB LED in the shaft, Nuvoton MS51 running Pimoroni's IO Expander firmware at I2C address 0x0F). Use when designing, wiring, simulating or writing code for a Pimoroni RGB encoder in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Pimoroni RGB Encoder Breakout (PIM522)\n\n## Overview\nA continuous-rotation rotary encoder (24 detents, no push switch) with a red/green/blue LED shining through its clear shaft, read over I2C. A **Nuvoton MS51** microcontroller running Pimoroni's **IO Expander (\"ioe\") firmware** counts the encoder in hardware and drives the three LED colours with its PWM unit, so your board only needs SDA and SCL. It is the same firmware as Pimoroni's IO Expander breakout, so the chip's pins have to be set up over I2C before it counts.\n\n## Pinout (5-pin header, as printed)\n| Pin | Function |\n|---|---|\n| 3-5V | Supply, 3-5 V (MS51 2.4-5.5 V, no regulator) |\n| SDA | I2C data (10 k pull-up to 3-5V) |\n| SCL | I2C clock (10 k pull-up to 3-5V) |\n| INT | Interrupt output, low when the count changed (optional) |\n| GND | Ground |\n\nThe order matches Raspberry Pi header pins 1, 3, 5, 7, 9 (3V3, SDA, SCL, GPIO4, GND), so the board can plug straight onto a Pi with the supplied right-angle socket.\n\n## Electrical limits\n- Supply 3-5 V on the board (MS51: 2.4-5.5 V). There is **no regulator**: the SDA/SCL/INT pull-ups go to the supply pin, so on a 3.3 V board (ESP32, Pico, Pi) feed it **3.3 V**.\n- Current: a few mA plus up to roughly 20 mA with the LED fully on.\n- I2C 100/400 kHz.\n\n## Interface details (I2C address 0x0F)\n| Reg | Content |\n|---|---|\n| 0xFA / 0xFB | Chip ID low / high = 0x6A / 0xE2 (0xE26A) |\n| 0xFC | Firmware version |\n| 0x04 | ENC_EN: bit 0 enable channel 1, bit 1 count microsteps |\n| 0x05 | ENC_1_CFG: pin A | pin B << 4 (0x3C for this board) |\n| 0x06 | ENC_1_COUNT: 8-bit two's-complement count, wraps |\n| 0xF9 | INT: bit 0 flag (count changed), bit 1 drive INT pin, bit 2 INT on P0.0 |\n| 0x98 | PWMCON0: bit 7 PWMRUN, bit 6 LOAD (self-clearing) |\n| 0x99 / 0x91 | PWM period low / high |\n| 0xCB/0xC8, 0x9B/0x93, 0x9C/0x94 | Duty low/high for red (PWM5), green (PWM1), blue (PWM2) |\n| 0xFD / 0xFE | I2C address (bit 4 of CTRL unlocks it; kept in flash) |\n\nBoard wiring of the MS51 (IOE pin numbers): encoder A = pin 12 (P0.5), B = pin 3 (P1.2), common C = pin 11 (P0.6, open-drain low); LED red = pin 1, green = pin 7, blue = pin 2 (inverted PWM).\nRead a register: write its number, then read (repeated start, `readfrom_mem`). Write: register number then the value.\n\n## Wiring\n| Breakout | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| 3-5V | 3V3 | 3V3(OUT) | pin 1 |\n| SDA | GPIO21 | GP4 | pin 3 |\n| SCL | GPIO22 | GP5 | pin 5 |\n| INT (optional) | any GPIO | any GP | pin 7 |\n| GND | GND | GND | pin 9 |\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom pimoroni_rgb_encoder import RGBEncoder\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nenc = RGBEncoder(i2c)          # checks the chip ID, sets up the encoder and PWM\nenc.set_led(0, 0, 255)         # blue\nprint(enc.read())              # steps since clear()\nenc.clear()\nenc.direction = -1             # reverse the counting direction\n```\n\n## Gotchas\n- Nothing counts until the driver has configured the encoder pins and ENC_EN; a fresh chip reads 0 forever otherwise.\n- The hardware count is only 8 bits. The driver extends it by watching for wraps, so poll `read()` at least every ~64 steps of fast turning.\n- Changing the address with `set_address()` stores it in flash; note the new address or you will have to scan for it.\n- There is no push switch on this encoder (the RGB Potentiometer breakout is the version with end stops).\n- In the Sparkbench simulator the slider sets the count register; LED colours are accepted but not shown.\n\n## Datasheet\n- MS51 datasheet: https://cdn.shopify.com/s/files/1/0174/1800/files/DS_MS51_16KBFlash_Series_EN_Rev1.01.pdf\n- MS51 technical reference: https://cdn.shopify.com/s/files/1/0174/1800/files/TRM_MS51_16KBFlash_Series_EN_Rev1.03.pdf\n- Product page: https://shop.pimoroni.com/products/rgb-encoder-breakout\n- Firmware register map / library: https://github.com/pimoroni/ioe-python\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:06:17.221Z",
+    "verifiedSources": [
+      "https://shop.pimoroni.com/products/rgb-encoder-breakout",
+      "https://cdn.shopify.com/s/files/1/0174/1800/files/DS_MS51_16KBFlash_Series_EN_Rev1.01.pdf?v=1601027185",
+      "https://github.com/pimoroni/pimoroni-pico/blob/main/drivers/ioexpander/ioexpander.hpp"
+    ]
+  }
+}

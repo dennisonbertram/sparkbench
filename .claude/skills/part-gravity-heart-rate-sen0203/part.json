@@ -1,0 +1,142 @@
+{
+  "type": "custom-gravity-heart-rate-sen0203",
+  "name": "DFRobot Gravity Heart Rate Monitor Sensor",
+  "mpn": "SEN0203",
+  "category": "sensor",
+  "description": "DFRobot's Gravity optical heart-rate sensor (photoplethysmography): a SON1303 reflective sensor (green LED + photodetector) on the fingertip picks up the blood-volume pulse and a SON3130 rail-to-rail quad op-amp amplifies it. An onboard slide switch selects the output on the Signal pin: A = analog pulse waveform (0 to VCC), D = digital square pulse per beat (0 / VCC, comparator with hysteresis). Runs on 3.3-5.5 V (DFRobot rates the board 3.3-6 V, 5 V recommended; the SON3130 op-amp's recommended maximum is 5.5 V), under 10 mA. The output swings to VCC, so power it from 3.3 V for a 3.3 V board. Not a medical device. Sold as: DFRobot Gravity: Heart Rate Monitor Sensor for Arduino, SKU SEN0203, 28 x 24 mm round board with a PH2.0-3P Gravity connector (1 GND, 2 VCC, 3 Signal), finger strap included.",
+  "eli5": "Strap it to your fingertip and its little green light watches your blood pulse, turning every heartbeat into a wiggle (or a click) your board can count.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, pin 1 of the PH2.0-3P Gravity connector (black wire).",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, pin 2 (red wire), 3.3-5.5 V, under 10 mA. Use 3.3 V on a 3.3 V board: the Signal swings up to VCC.",
+      "required": true
+    },
+    {
+      "name": "Signal",
+      "role": "io",
+      "fn": "adc",
+      "description": "Pin 3 (green/blue wire). Switch on A: analog pulse waveform 0..VCC (connect to an ADC pin). Switch on D: digital pulse, high (VCC) during each beat.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 10,
+  "datasheetUrl": "https://dfimg.dfrobot.com/wiki/20189/SEN0203_heart-rate-monitor-sensor_schematics_1.0.pdf",
+  "priceUsd": 16,
+  "supplierQuery": "DFRobot SEN0203 Gravity heart rate monitor sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Set the A/D slide switch to A for this analog wiring and code; with the switch on D the Signal is a 0/VCC square pulse (use SEN0203(pin, mode='digital')). A switch that doesn't match the code gives no reading.",
+    "Power it from 3.3 V on an ESP32 / Pico: the output (analog or digital) swings to VCC, so on 5 V it can exceed a 3.3 V pin.",
+    "The connector is a 2.0 mm PH2.0-3P Gravity socket: use the supplied Gravity cable (black GND, red VCC, green/blue Signal) or PH2.0-to-DuPont jumpers.",
+    "Keep the clear plastic film over the sensor (transparent tape replaces it); without it the module does not work.",
+    "Strap it to the fingertip pad with the band, not too tight, not too loose, and keep still; movement and bright light add noise.",
+    "On ESP32 use an ADC1 pin (ADC2 is unusable while Wi-Fi is on). Raspberry Pi has no ADC: use digital mode on a GPIO, or an ADS1115 / MCP3008.",
+    "Hobby/educational sensor, not a medical device."
+  ],
+  "keywords": [
+    "sen0203",
+    "dfrobot",
+    "gravity",
+    "heart rate",
+    "heartbeat",
+    "pulse",
+    "ppg",
+    "bpm",
+    "optical",
+    "son1303",
+    "son3130"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "Signal",
+    "quantity": "Heart rate",
+    "unit": "BPM",
+    "min": 30,
+    "max": 200,
+    "default": 70,
+    "vAtMin": 1.65,
+    "vAtMax": 1.65,
+    "controls": [
+      {
+        "key": "amplitude",
+        "quantity": "Pulse size at Signal (V peak-to-peak)",
+        "unit": "V",
+        "min": 0,
+        "max": 1.6,
+        "default": 0.6
+      }
+    ],
+    "wave": {
+      "ampControl": "amplitude",
+      "voltsPerUnit": 1,
+      "centerV": 1.65,
+      "freqControl": "value",
+      "freqScale": 0.016666666666666666,
+      "shape": "pulse"
+    }
+  },
+  "driver": {
+    "filename": "sen0203.py",
+    "code": "# DFRobot Gravity Heart Rate Monitor Sensor (SEN0203), MicroPython driver.\n# A SON1303 reflective optical sensor (green LED + photodetector) feeds a SON3130 quad op-amp:\n# U2A/U2B amplify the blood-volume pulse (photoplethysmography) to the analog output Aout, and\n# U2C/U2D form a comparator with hysteresis that turns each beat into a square pulse, Dout.\n# The onboard slide switch SW1 picks which one reaches the Signal pin: A = analog, D = digital.\n# Output swings 0..VCC (wiki: \"0 - Vin (Analog), 0/Vin (Digital)\"), so power it from 3.3 V\n# on a 3.3 V board.\nimport time\nfrom machine import ADC, Pin\n\n\nclass SEN0203:\n    def __init__(self, signal, mode='analog', vref=3.3):\n        \"\"\"signal: GPIO the Signal wire goes to. mode: 'analog' (switch on A, needs an ADC pin)\n        or 'digital' (switch on D, any GPIO).\"\"\"\n        self.mode = mode\n        self.vref = vref\n        if mode == 'analog':\n            self.adc = ADC(Pin(signal))\n            try:\n                self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range\n            except AttributeError:\n                pass\n        else:\n            self.pin = Pin(signal, Pin.IN)\n\n    def raw(self):\n        \"\"\"Analog mode: raw ADC reading 0..65535. Digital mode: 0 or 1.\"\"\"\n        if self.mode == 'analog':\n            return self.adc.read_u16()\n        return self.pin.value()\n\n    def voltage(self):\n        \"\"\"Analog mode: Signal voltage in volts.\"\"\"\n        return self.adc.read_u16() * self.vref / 65535\n\n    def bpm(self, beats=4, learn_ms=2000, timeout_ms=10000, period_ms=4):\n        \"\"\"Heart rate in beats per minute from the time between beats, or None if no clear pulse.\n\n        Digital mode times rising edges of the beat pulse. Analog mode first learns the\n        waveform's low and high level, then times rising crossings of a threshold at 60 % of\n        that range (re-armed below 40 %). Edges closer than 250 ms (over 240 BPM) are ignored.\"\"\"\n        if self.mode == 'analog':\n            lo, hi = 65535, 0\n            t0 = time.ticks_ms()\n            while time.ticks_diff(time.ticks_ms(), t0) < learn_ms:\n                v = self.adc.read_u16()\n                lo = min(lo, v)\n                hi = max(hi, v)\n                time.sleep_ms(period_ms)\n            if hi - lo < 2000:  # under about 0.1 V of swing: no finger / no usable pulse\n                return None\n            up = lo + (hi - lo) * 6 // 10\n            down = lo + (hi - lo) * 4 // 10\n            read = self.adc.read_u16\n        else:\n            up, down = 1, 0\n            read = self.pin.value\n        armed = False\n        edges = []\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            v = read()\n            now = time.ticks_ms()\n            if not armed and v <= down:\n                armed = True\n            elif armed and v >= up:\n                armed = False\n                if not edges or time.ticks_diff(now, edges[-1]) > 250:\n                    edges.append(now)\n                    if len(edges) > beats:\n                        return 60000 * beats / time.ticks_diff(edges[-1], edges[0])\n            time.sleep_ms(period_ms)\n        return None\n"
+  },
+  "example": {
+    "code": "from sen0203 import SEN0203\nimport time\n\nhr = SEN0203({SIGNAL})  # A/D switch on A\nwhile True:\n    bpm = hr.bpm()\n    if bpm is None:\n        print('No pulse')\n    else:\n        print('BPM=%d' % round(bpm))\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "bpm",
+      "title": "Counts the heart rate set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 96
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "amplitude",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BPM=96",
+          "within": 15000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://wiki.dfrobot.com/SEN0203",
+    "https://wiki.dfrobot.com/sen0203/",
+    "https://dfimg.dfrobot.com/nobody/wiki/c6c4b8f7f56160050ea5e8fda9c3094e_0x0.png.webp",
+    "https://dfimg.dfrobot.com/wiki/20189/SEN0203_heart-rate-monitor-sensor_schematics_1.0.pdf",
+    "https://dfimg.dfrobot.com/wiki/20189/SEN0203_heart-rate-monitor-sensor_layout_1.0.pdf",
+    "https://dfimg.dfrobot.com/wiki/20189/SEN0203_heart-rate-monitor-sensor_datasheet_1.0.zip",
+    "https://github.com/jimaobian/DFRobotWiki/wiki/Heart_Rate_Sensor_SKU__SEN0203",
+    "https://www.farnell.com/datasheets/3161934.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:02:26.487Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/Heart_Rate_Sensor_SKU__SEN0203",
+      "https://dfimg.dfrobot.com/nobody/wiki/c6c4b8f7f56160050ea5e8fda9c3094e_0x0.png",
+      "https://dfimg.dfrobot.com/wiki/20189/SEN0203_heart-rate-monitor-sensor_schematics_1.0.pdf",
+      "https://dfimg.dfrobot.com/wiki/20189/SEN0203_heart-rate-monitor-sensor_datasheet_1.0.zip"
+    ]
+  }
+}

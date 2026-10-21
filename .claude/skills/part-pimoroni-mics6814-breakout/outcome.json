@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-pimoroni-mics6814-breakout",
+  "board": "Pimoroni MICS6814 3-in-1 Gas Sensor Breakout (CO, NO2, NH3), PIM569",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB). Modelled from the PIM569 schematic and Pimoroni's ioe/mics6814 libraries: the MS51 IO-expander registers at 0x19, 12-bit ADC channels selected by ADCCON0 and decoded ratiometrically against the AIN0 rail (Rs = 56k*raw/(rail-raw)). External 4.7k I2C pull-ups added because the board has none.",
+  "datasheetUrl": "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf",
+  "breakoutPinoutSource": "https://cdn.shopify.com/s/files/1/0174/1800/files/mics6814-drawing.png?v=1688982418 (silkscreen 3-5V, SDA, SCL, INT, GND) and schematic https://cdn.shopify.com/s/files/1/0174/1800/files/MICS6814_breakout_schematic.pdf?v=1628772412",
+  "checkRuns": 2
+}
