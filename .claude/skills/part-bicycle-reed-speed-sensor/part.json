@@ -1,0 +1,120 @@
+{
+  "type": "custom-bicycle-reed-speed-sensor",
+  "name": "Bicycle reed speed sensor",
+  "mpn": "CatEye 1603390",
+  "category": "sensor",
+  "description": "Wired bike-computer speed sensor: a sealed normally-open reed switch in a fork-mounted housing plus a spoke magnet. Each wheel revolution the magnet passes within 5 mm and the switch closes briefly, shorting its two wires: one pulse per revolution, passive, not polarised, no supply. Wire one lead to GND and the other to a GPIO with the pull-up on and count falling edges; speed = rpm x wheel circumference (700x23C: 2096 mm). On a chainstay with a crank magnet it reads pedal cadence. Sold as: CatEye Computer Mount and Wired Speed Sensor Kit (part 1603390, for Velo 7 / Velo 9 / Enduro), a 2-wire reed sensor with spoke magnet (two wires / two mount contacts: SPEED, GND).",
+  "eli5": "A magnet on your wheel spoke flicks a tiny switch on the fork every time the wheel goes round. Your board counts the clicks and, knowing how far the wheel rolls each turn, works out how fast you are going.",
+  "refPrefix": "SW",
+  "interface": "digital-in",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "SPEED",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "One sensor wire: to a GPIO with the internal pull-up on (pull up to 3.3 V). Idles at 1, dips to 0 once per wheel revolution while the magnet passes.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "The other sensor wire: to ground (the reed switch is not polarised).",
+      "required": true
+    }
+  ],
+  "vmin": 0,
+  "vmax": 3.3,
+  "currentMa": 0.1,
+  "datasheetUrl": "https://www.manualsdir.com/manuals/458398/cateye-cc-vl520_cc-vl820-velo-7_velo-9.html",
+  "sources": [
+    "https://www.manualsdir.com/manuals/458398/cateye-cc-vl520_cc-vl820-velo-7_velo-9.html",
+    "https://performancebike.com/cateye-computer-mount-and-wired-speed-sensor-kit-1603390/p1192403",
+    "https://www.sheldonbrown.com/cyclecomputer-troubleshoot.html",
+    "https://www.sheldonbrown.com/cyclecomputer-magnet.html",
+    "https://forum.arduino.cc/t/bike-speedometer-using-reed-switch/514581"
+  ],
+  "priceUsd": 16,
+  "supplierQuery": "bicycle computer wired speed sensor reed switch magnet",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two wires, not polarised: either one to GND, the other to a GPIO with Pin.PULL_UP. Pull up to 3.3 V, never 5 V.",
+    "Cut the cable off the handlebar mount (or clip onto its two spring contacts) and solder the pair to a 2-pin header or jumper leads.",
+    "Align the magnet centre with the sensor's marking line, gap under 5 mm (CatEye manual). Mount the magnet near the hub.",
+    "One pulse per wheel turn: km/h = rpm x circumference_mm x 60 / 1e6. Measure the roll-out of your wheel (700x23C is about 2096 mm).",
+    "Count edges with an interrupt and debounce: the driver ignores chatter on closing and opening (line must have been high 2 ms, and 20 ms min between counts).",
+    "Long cable: if you get stray counts add a 10 kOhm pull-up to 3.3 V and 10-100 nF to GND at the board."
+  ],
+  "keywords": [
+    "bicycle",
+    "bike",
+    "speedometer",
+    "speed sensor",
+    "cadence",
+    "reed switch",
+    "cyclecomputer",
+    "wheel rpm",
+    "odometer",
+    "cateye",
+    "spoke magnet"
+  ],
+  "sim": {
+    "kind": "pulse-sensor",
+    "outputPin": "SPEED",
+    "selfPowered": true,
+    "quantity": "Wheel speed (revolutions per minute)",
+    "unit": "rpm",
+    "min": 0,
+    "max": 1000,
+    "default": 0,
+    "pulse": {
+      "hzPerUnit": 0.016666666666666666,
+      "duty": 0.95,
+      "openDrain": true
+    }
+  },
+  "driver": {
+    "filename": "bike_speed.py",
+    "code": "# Wired bicycle speed / cadence sensor (2-wire reed switch + spoke or crank magnet), MicroPython driver.\n# The sensor is passive: a normally-open reed switch in the fork-mounted housing closes once per wheel\n# revolution, each time the spoke magnet passes within about 5 mm, connecting the two wires of its cable.\n# Wire one lead to GND and the other to a GPIO with a pull-up: the pin idles at 1 and dips to 0 briefly\n# once per revolution. On a crank arm with a pedal magnet the same sensor gives cadence (1 pulse per\n# crank turn).\n#\n# Debounce: reed contacts chatter for about a millisecond when they close and when they open. The\n# handler watches both edges and counts a closure (falling edge) only if the line had been high for at\n# least debounce_ms and at least min_period_ms has passed since the last counted closure. That rejects\n# chatter on closing and on opening at any speed, and allows up to 60000/min_period_ms rpm\n# (default 20 ms: 3000 rpm, about 377 km/h on a 2096 mm wheel).\n#\n# Speed is the average period between counted closures, which is exact to a millisecond or so, instead\n# of a count per time window (which jitters by one pulse).\nimport machine\nfrom machine import Pin\nimport time\n\n\nclass BikeSpeedSensor:\n    def __init__(self, pin, circumference_mm=2096, debounce_ms=2, min_period_ms=20,\n                 timeout_ms=3000, pull_up=True):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.circumference_mm = circumference_mm\n        self.debounce_ms = debounce_ms\n        self.min_period_ms = min_period_ms\n        self.timeout_ms = timeout_ms\n        now = time.ticks_ms()\n        self._rise = time.ticks_add(now, -10000)   # last time the line went high (switch opened)\n        self._last = None                          # time of the last counted closure\n        self._ref = None                           # closure the current averaging window starts at\n        self._n = 0                                # closures counted since _ref\n        self._total = 0                            # all closures since start-up / reset_distance()\n        self._rpm = 0.0\n        self.pin.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=self._on_edge)\n\n    def _on_edge(self, p):\n        now = time.ticks_ms()\n        if p.value():\n            self._rise = now\n            return\n        if time.ticks_diff(now, self._rise) < self.debounce_ms:\n            return          # chatter: the line was not high long enough\n        if self._last is not None and time.ticks_diff(now, self._last) < self.min_period_ms:\n            return          # chatter / faster than the sensor can turn\n        self._last = now\n        self._total += 1\n        if self._ref is None:\n            self._ref = now\n        else:\n            self._n += 1\n\n    def rpm(self):\n        \"\"\"Revolutions per minute averaged over the closures since the previous call (0 when stopped).\"\"\"\n        s = machine.disable_irq()\n        n, ref, last = self._n, self._ref, self._last\n        if n:\n            self._ref = last\n            self._n = 0\n        machine.enable_irq(s)\n        if n and ref is not None:\n            dt = time.ticks_diff(last, ref)\n            if dt > 0:\n                self._rpm = n * 60000 / dt\n        elif last is None or time.ticks_diff(time.ticks_ms(), last) > self.timeout_ms:\n            self._rpm = 0.0\n            s = machine.disable_irq()\n            self._ref = None   # restart averaging from the next closure\n            self._n = 0\n            machine.enable_irq(s)\n        return self._rpm\n\n    def speed_kmh(self, rpm=None):\n        \"\"\"Road speed in km/h: rpm x wheel circumference. Pass rpm to reuse a reading from rpm().\"\"\"\n        if rpm is None:\n            rpm = self.rpm()\n        return rpm * self.circumference_mm * 60 / 1e6\n\n    def revolutions(self):\n        \"\"\"Wheel turns counted since start-up or reset_distance().\"\"\"\n        return self._total\n\n    def distance_m(self):\n        return self._total * self.circumference_mm / 1000\n\n    def reset_distance(self):\n        s = machine.disable_irq()\n        self._total = 0\n        machine.enable_irq(s)\n"
+  },
+  "skill": "---\nname: part-bicycle-reed-speed-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for a 2-wire magnetic reed bicycle speed / cadence sensor with spoke magnet (CatEye Computer Mount and Wired Speed Sensor Kit 1603390 for Velo 7 / Velo 9 / Enduro, and the generic wired bike-computer sensors like it). Use when designing, wiring, simulating or writing code for a bike speedometer, wheel RPM or pedal cadence sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Bicycle reed speed sensor (2-wire, with magnet)\n\n## Overview\nA wired bike-computer speed sensor is a plastic housing on the front fork with a sealed, normally-open **reed switch** inside, plus a **magnet** clamped to a spoke. Every wheel revolution the magnet passes the sensor and the switch closes for a moment, \"making contact between the two wires in the cable\" (Sheldon Brown). There is no chip and no supply: one pulse per revolution, counted by a GPIO.\n- Modelled product: **CatEye Computer Mount and Wired Speed Sensor Kit (part 1603390, Velo 7 / Velo 9 / Enduro)**; CatEye's manual calls it a \"No contact magnetic sensor\" and wants the magnet-to-sensor gap under 5 mm.\n- Speed (km/h) = rpm x wheel circumference (mm) x 60 / 1 000 000. 700x23C = 2096 mm, 26 inch MTB around 2050-2100 mm: measure a wheel roll-out for accuracy.\n- Mounted on a chainstay with the magnet on the crank arm it reads pedal **cadence** (1 pulse per crank turn).\n\n## Pinout (the two wires / the two contacts in the handlebar mount, not polarised)\n| Sparkbench pin | Wire | Function |\n|---|---|---|\n| SPEED | either sensor wire | To a GPIO with the internal pull-up on. Reads 1 idle, 0 while the magnet is at the sensor |\n| GND | the other wire | To ground |\n\nIt is wired with jumper leads (`cabled`): cut the cable off the handlebar mount, or clip onto the mount's two spring contacts.\n\n## Electrical limits\n- Just a reed switch: with the GPIO pull-up only tens of microamps flow. Pull up to **3.3 V**, never 5 V on an ESP32 / Pico pin.\n- No supply pin, no polarity.\n- A long cable along the fork picks up noise: if you see stray counts add a 10 kOhm pull-up to 3.3 V and 10-100 nF from SPEED to GND at the board.\n\n## Interface details\n- One closure per wheel revolution; the closed time is short (a few % of the turn), so count edges with `Pin.irq`, don't poll.\n- Reed contacts chatter on closing and opening. The driver watches both edges and counts a falling edge only if the line was high for `debounce_ms` (2 ms) and `min_period_ms` (20 ms, i.e. up to 3000 rpm) has passed since the last count.\n- Speed is the average period between closures (exact), not pulses per window (jitters by one pulse). It drops to 0 when no pulse arrives for `timeout_ms` (3 s, about 2.5 km/h on a 700c wheel).\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SPEED | GPIO4 (pull-up on) | GP15 (pull-up on) | GPIO17 (pull-up on) |\n| GND | GND | GND | GND |\n\n## Using the driver\n```python\nfrom bike_speed import BikeSpeedSensor\nimport time\ns = BikeSpeedSensor(4, circumference_mm=2096)   # 700x23C wheel\nwhile True:\n    r = s.rpm()\n    print('Speed=%.1f km/h  %.0f rpm  %.2f km' % (s.speed_kmh(r), r, s.distance_m() / 1000))\n    time.sleep(1)\n```\nCall `rpm()` once per update and pass it to `speed_kmh(r)`: each `rpm()` call starts a new averaging window. `revolutions()` / `distance_m()` give the odometer, `reset_distance()` clears it.\n\n## Gotchas\n- Line up the magnet's centre with the marking line on the sensor, gap under 5 mm; too far and nothing counts.\n- Some magnets give two closures per pass when mounted crosswise (Sheldon Brown's \"doubled readings\" fault): turn the magnet so its axis is along the direction of travel if speed reads double.\n- Mount the magnet near the hub; far out on the spoke it moves fast and the closure gets very short.\n- Hall-effect (3-wire, powered) sensors are a different part; this one has exactly two wires.\n\n## Datasheet\nCatEye Velo 7 / Velo 9 manual: https://www.manualsdir.com/manuals/458398/cateye-cc-vl520_cc-vl820-velo-7_velo-9.html ; how the sensor works: https://www.sheldonbrown.com/cyclecomputer-troubleshoot.html\n",
+  "example": {
+    "code": "from bike_speed import BikeSpeedSensor\nimport time\n\nbike = BikeSpeedSensor({SPEED}, circumference_mm=2096)  # 700x23C wheel, internal pull-up on\nwhile True:\n    time.sleep(2)\n    rpm = bike.rpm()\n    print('Speed=%.0f km/h' % bike.speed_kmh(rpm))\n",
+    "test": {
+      "id": "speed",
+      "title": "240 rpm on a 2096 mm wheel reads 30 km/h",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 240
+        },
+        {
+          "kind": "wait",
+          "ms": 4500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Speed=30 km/h",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:45:26.571Z",
+    "verifiedSources": [
+      "https://cateyeamerica.com/products/velo-7-velo-9-parts-kit",
+      "https://nashbar.com/cateye-computer-mount-and-wired-speed-sensor-kit-1603390/p1192403"
+    ]
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "type": "custom-kxtj3-1057",
+  "name": "KXTJ3-1057 3-axis accelerometer",
+  "mpn": "KXTJ3-1057",
+  "category": "sensor",
+  "description": "Kionix (ROHM) low-power 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, 8-bit (low power), 12-bit or 14-bit (±8/±16 g) output (1024 counts/g at ±2 g, 12-bit), output data rate 0.781–1600 Hz, I2C up to 3.4 MHz, motion wake-up engine and one push-pull interrupt pin. Chip supply 1.71–3.6 V. Sold as: PTSolns I2Connect: KXTJ3-1057 3-axis accelerometer module (Qwiic-compatible), with two Qwiic-compatible JST SH sockets and a 5-pin right-angle 2.54 mm header INT, SCL, SDA, 3V3, GND; onboard regulator and I2C level shifting (\"3.3/5V Rated\"), default I2C address 0x0E (ADDR pad on the back changes it to 0x0F). There is no SparkFun-branded KXTJ3 Qwiic board; this is the Qwiic-format board with a published header order.",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, on three axes.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (KXTJ3 push-pull INT, at the chip's regulated logic level, at most 3.3 V); data-ready or motion wake-up. Not needed for basic use",
+      "required": false,
+      "levelV": 3.3
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock; level-shifted, pulled up on the board to the module supply (3V3 pin)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; level-shifted, pulled up on the board to the module supply (3V3 pin)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Module supply into the onboard regulator (3.3 V or 5 V rated). The I2C pull-ups go to this pin, so feed it 3.3 V when the microcontroller has 3.3 V logic (ESP32, Pico, Raspberry Pi)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 2,
+  "i2cAddress": 14,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/c/e/a/5/c/KXTJ3-1057.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "PTSolns I2Connect KXTJ3-1057 accelerometer module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/c/e/a/5/c/KXTJ3-1057.pdf",
+    "https://github.com/PTSolns/I2Connect_KXTJ3-1057",
+    "https://raw.githubusercontent.com/PTSolns/I2Connect_KXTJ3-1057/main/README.MD",
+    "https://raw.githubusercontent.com/PTSolns/I2Connect_KXTJ3-1057/main/src/PTSolns_I2Connect_KXTJ3_1057.cpp",
+    "https://ptsolns.com/products/i2connect-kxtj3-1057",
+    "https://docs.ptsolns.com/Products/PTS-00219_I2Connect_AHT20/Datasheets/Datasheet_PTS-00219_I2Connect_AHT20.pdf",
+    "https://raw.githubusercontent.com/PTSolns/docs/main/Products/PTS-00219_I2Connect_AHT20/Images/PTS-00219-201_Tech.JPG",
+    "https://github.com/ldab/KXTJ3-1057"
+  ],
+  "buildNotes": [
+    "Power the 3V3 pin from 3.3 V when using a 3.3 V microcontroller: the board's I2C pull-ups go to that pin, so 5 V on it puts 5 V on SDA/SCL.",
+    "Wait up to 30 ms after power-up before talking to the chip (it NACKs until boot completes).",
+    "The chip starts in stand-by (CTRL_REG1 0x1B = 0x00). Settings change only with PC1 = 0: write CTRL_REG1 = 0x00, DATA_CTRL_REG 0x21 = 0x02 (50 Hz), then CTRL_REG1 = 0xC0 (operating, 12-bit high resolution, ±2 g).",
+    "Read XOUT_L..ZOUT_H (0x06-0x0B) in one 6-byte burst. Each axis is two's complement, low byte first and LEFT-justified: shift right by 4 for 12-bit data (by 2 for 14-bit), then divide by 1024 counts/g at ±2 g (512/256/128 at ±4/8/16 g).",
+    "WHO_AM_I (0x0F) must read 0x35; anything else means a wiring fault or the wrong address (0x0E default, 0x0F with the ADDR pad changed).",
+    "Mount the board flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "kxtj3",
+    "kxtj3-1057",
+    "kionix",
+    "rohm",
+    "accelerometer",
+    "tilt",
+    "motion",
+    "3-axis",
+    "ptsolns",
+    "i2connect",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x0C": 85,
+      "0x0F": 53,
+      "0x1B": 0,
+      "0x1D": 0,
+      "0x21": 2
+    },
+    "measures": [
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x08",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x0A",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "kxtj3.py",
+    "code": "# KXTJ3-1057 3-axis accelerometer (Kionix / ROHM), MicroPython driver for I2C.\n# From the KXTJ3-1057 Specifications (Rev 4.0, 05-Oct-2018):\n#   I2C address 0x0E (ADDR to GND) or 0x0F (ADDR to IO_VDD). WHO_AM_I 0x0F = 0x35. DCST_RESP 0x0C = 0x55.\n#   Power-up (supply valid to boot complete) takes up to 30 ms; the chip NACKs until then.\n#   CTRL_REG1 0x1B: PC1 bit 7 (1 = operating, 0 = stand-by), RES bit 6 (1 = high resolution 12/14-bit,\n#     0 = low power 8-bit), DRDYE bit 5, GSEL1 bit 4, GSEL0 bit 3, EN16G bit 2, WUFE bit 1.\n#     CTRL_REG1, CTRL_REG2, INT_CTRL_REG1/2 and DATA_CTRL_REG may only be changed while PC1 = 0.\n#   Range (Table 12): GSEL1 GSEL0 EN16G = 000 +-2 g, 010 +-4 g, 100 +-8 g, 110 +-8 g 14-bit,\n#     001 +-16 g, 111 +-16 g 14-bit (14-bit only with RES = 1).\n#   DATA_CTRL_REG 0x21: OSA[3:0] output data rate, 0x02 = 50 Hz (reset value).\n#   XOUT_L..ZOUT_H 0x06-0x0B: two's complement, low byte first, LEFT-justified:\n#     12-bit data in bits 15:4, 14-bit data in bits 15:2. Read all six bytes in one burst.\n#   Sensitivity (counts/g): 12-bit 1024 / 512 / 256 / 128 at +-2/4/8/16 g; 14-bit 1024 (+-8 g), 512 (+-16 g).\n#   Start-up after PC1 = 1 is about 1/ODR.\nimport time\n\n_DCST_RESP = 0x0C\n_WHO_AM_I = 0x0F\n_XOUT_L = 0x06\n_CTRL_REG1 = 0x1B\n_DATA_CTRL_REG = 0x21\n\n_PC1 = 0x80\n_RES = 0x40\n\n# (g_range, bits) -> (CTRL_REG1 GSEL1/GSEL0/EN16G bits, right shift, counts per g)\n_MODES = {\n    (2, 12): (0x00, 4, 1024),\n    (4, 12): (0x08, 4, 512),\n    (8, 12): (0x10, 4, 256),\n    (16, 12): (0x04, 4, 128),\n    (8, 14): (0x18, 2, 1024),\n    (16, 14): (0x1C, 2, 512),\n}\n\n# Output data rate in Hz -> OSA[3:0] (Table 14)\n_ODR = {0.781: 0x08, 1.563: 0x09, 3.125: 0x0A, 6.25: 0x0B, 12.5: 0x00, 25: 0x01,\n        50: 0x02, 100: 0x03, 200: 0x04, 400: 0x05, 800: 0x06, 1600: 0x07}\n\n\nclass KXTJ3:\n    def __init__(self, i2c, addr=0x0E, g_range=2, bits=12, odr=50):\n        \"\"\"addr: 0x0E (PTSolns I2Connect default, ADDR to GND) or 0x0F (ADDR pad changed).\n        g_range: 2, 4, 8 or 16 g. bits: 12, or 14 with g_range 8 or 16. odr: output data rate in Hz.\"\"\"\n        if (g_range, bits) not in _MODES:\n            raise ValueError('use g_range 2/4/8/16 with bits=12, or g_range 8/16 with bits=14')\n        if odr not in _ODR:\n            raise ValueError('odr must be one of %s' % sorted(_ODR))\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(30)  # power-up time max 30 ms: the chip NACKs until boot completes\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x35:\n            raise OSError('KXTJ3 not found (WHO_AM_I 0x%02X, expected 0x35): check wiring/address' % who)\n        gbits, self._shift, self._counts_per_g = _MODES[(g_range, bits)]\n        self._w(_CTRL_REG1, 0x00)  # stand-by: settings may only change with PC1 = 0\n        self._w(_DATA_CTRL_REG, _ODR[odr])\n        self._w(_CTRL_REG1, _PC1 | _RES | gbits)  # operating, high resolution, chosen range\n        # start-up is about 1/ODR after PC1 = 1; wait two sample periods plus margin\n        time.sleep_ms(int(2000 / odr) + 10)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def raw(self):\n        \"\"\"(x, y, z) as 12- or 14-bit signed counts, read in one 6-byte burst from XOUT_L.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _XOUT_L, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # low byte first\n            if v & 0x8000:\n                v -= 65536\n            out.append(v >> self._shift)  # data is left-justified\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._counts_per_g\n        x, y, z = self.raw()\n        return x / k, y / k, z / k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n\n    def standby(self):\n        \"\"\"Stop measuring (0.9 uA).\"\"\"\n        c = self.i2c.readfrom_mem(self.addr, _CTRL_REG1, 1)[0]\n        self._w(_CTRL_REG1, c & ~_PC1)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom kxtj3 import KXTJ3\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = KXTJ3(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.3f Y=%.3f Z=%.3f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.500 Y=-0.750 Z=1.250 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:48:46.057Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/c/e/a/5/c/KXTJ3-1057.pdf",
+      "https://ptsolns.com/products/i2connect-kxtj3-1057",
+      "https://github.com/PTSolns/I2Connect_KXTJ3-1057"
+    ]
+  }
+}

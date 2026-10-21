@@ -1,0 +1,284 @@
+{
+  "type": "custom-bmi323",
+  "name": "BMI323 6-axis IMU (accelerometer + gyroscope)",
+  "mpn": "BMI323",
+  "category": "sensor",
+  "description": "Bosch Sensortec 16-bit 3-axis accelerometer (±2/4/8/16 g) and 3-axis gyroscope (±125 to ±2000 °/s) with an on-chip temperature sensor, read over I2C/SPI/I3C as 16-bit little-endian registers (every I2C read starts with 2 dummy bytes); no config file upload needed. Sold as: 7Semi BMI323 IMU Breakout Board - 6DOF Accelerometer + Gyroscope with Qwiic (ES-12252): one 9-pin 0.1 inch header VIN, 3V3, GND, SCL, SDA, SDO, CS, IT1, IT2, two Qwiic connectors, 3.3 V regulator (VIN 3.6-5 V per vendor, 3.3 V through Qwiic), MOSFET level shifters with 2.2 kΩ pull-ups on SCL/SDA, I2C address 0x68 in the vendor's example (0x69 with SDO high).",
+  "eli5": "Feels which way is down and how fast it is turning, so your board knows tilt, shakes and spins.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply input to the onboard 3.3 V regulator: 3.3-5 V (vendor: 3.6-5 V on VIN, 3.3 V through the Qwiic 3V3 line). Feed it 3.3 V so the SCL/SDA pull-ups stay at 3.3 V",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "nc",
+      "description": "3.3 V output of the onboard regulator (up to 50 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); MOSFET level shifter with 2.2 kΩ pull-ups on the board",
+      "required": true,
+      "boardPullUp": 2200
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI MOSI); MOSFET level shifter with 2.2 kΩ pull-ups on the board",
+      "required": true,
+      "boardPullUp": 2200
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select (SPI MISO): low = 0x68, high (3.3 V) = 0x69. Straight to the 3.3 V chip: never 5 V",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select (CSB, internal pull-up in the chip = I2C mode); leave unconnected for I2C. 3.3 V only",
+      "required": false
+    },
+    {
+      "name": "IT1",
+      "role": "io",
+      "description": "Interrupt output INT1 (push-pull from the chip's 3.3 V rail; off until configured)",
+      "required": false,
+      "levelV": 3.3
+    },
+    {
+      "name": "IT2",
+      "role": "io",
+      "description": "Interrupt output INT2 (push-pull from the chip's 3.3 V rail; off until configured)",
+      "required": false,
+      "levelV": 3.3
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 2,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi323-ds000.pdf",
+  "priceUsd": 9,
+  "supplierQuery": "7Semi BMI323 IMU breakout ES-12252",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from the board's 3.3 V: the onboard regulator still gives the chip about 3.2 V, and the 2.2 kΩ SCL/SDA pull-ups then stay at 3.3 V. The 3V3 header pin is the regulator's output, not an input.",
+    "Every I2C register read returns 2 dummy bytes before the data (datasheet section 4): read 2 extra bytes and drop them. Registers are 16-bit, low byte first; write the low byte then the high byte.",
+    "CHIP_ID (0x00) low byte must read 0x43. After power-up or a soft reset (0xDEAF to CMD 0x7E) the sensors are off (suspend): write ACC_CONF 0x20 and GYR_CONF 0x21 with a mode (bits 14:12) before reading data; until then data registers read 0x8000.",
+    "Address: SDO low = 0x68 (vendor's example code), SDO high = 0x69 (the vendor page lists 0x69); the driver tries both. SDO, CS, IT1 and IT2 are not level shifted: 3.3 V only.",
+    "In suspend mode the chip needs 450 µs of bus idle time after each write (2 µs in normal mode)."
+  ],
+  "keywords": [
+    "bmi323",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "6dof",
+    "6-axis",
+    "bosch",
+    "7semi",
+    "qwiic",
+    "es-12252"
+  ],
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi323-ds000.pdf",
+    "https://7semi.com/7semi-bmi323-imu-sensor-breakout-board-6dof-qwiic-spi-i2c/",
+    "https://cdn11.bigcommerce.com/s-e7ighpotvb/images/stencil/original/image-manager/es-12252-.jpg?t=1786187810",
+    "https://cdn11.bigcommerce.com/s-e7ighpotvb/images/stencil/1280x1280/products/2018/2720/ES-12252_001__96870.1762424583.jpg?c=1",
+    "https://github.com/7semi-solutions/7Semi-BMI323",
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/shuttle_board_flyer/application_board_3_1/bst-bmi323-sf000.pdf"
+  ],
+  "cabled": true,
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Acceleration Z",
+    "unit": "g",
+    "min": -7.99,
+    "max": 7.99,
+    "default": 1,
+    "regWidth": 16,
+    "wordOrder": "lsb",
+    "registers": {
+      "0x01": 67,
+      "0x03": 225
+    },
+    "controls": [
+      {
+        "key": "ax",
+        "quantity": "Acceleration X",
+        "unit": "g",
+        "min": -7.99,
+        "max": 7.99,
+        "default": 0
+      },
+      {
+        "key": "ay",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -7.99,
+        "max": 7.99,
+        "default": 0
+      },
+      {
+        "key": "gx",
+        "quantity": "Rotation rate X",
+        "unit": "°/s",
+        "min": -1999,
+        "max": 1999,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Rotation rate Y",
+        "unit": "°/s",
+        "min": -1999,
+        "max": 1999,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Rotation rate Z",
+        "unit": "°/s",
+        "min": -1999,
+        "max": 1999,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "signed": true,
+        "control": "ax"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "signed": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x07",
+        "bytes": 2,
+        "scale": 0.06103515625,
+        "signed": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x08",
+        "bytes": 2,
+        "scale": 0.06103515625,
+        "signed": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 0.06103515625,
+        "signed": true,
+        "control": "gz"
+      },
+      {
+        "reg": "0x0A",
+        "bytes": 2,
+        "scale": 0.001953125,
+        "signed": true,
+        "control": "temp",
+        "offset": 23
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmi323.py",
+    "code": "# MicroPython driver for the Bosch BMI323 6-axis IMU (accelerometer + gyroscope) over I2C.\n# Written from the BMI323 datasheet (BST-BMI323-DS000):\n#  - registers are 16-bit words, sent low byte first; register addresses are 8-bit\n#  - every I2C register read returns 2 dummy bytes before the payload (section 4, 7.2.4)\n#  - CHIP_ID (0x00) low byte = 0x43; soft reset = write 0xDEAF to CMD (0x7E)\n#  - ACC_DATA_X/Y/Z 0x03-0x05, GYR_DATA_X/Y/Z 0x06-0x08, TEMP_DATA 0x09 (T = raw/512 + 23 C)\n#  - 0x8000 in a data register means \"no valid sample yet\"\nimport time\n\n_CHIP_ID = 0x00\n_ERR_REG = 0x01\n_STATUS = 0x02\n_ACC_DATA_X = 0x03\n_ACC_CONF = 0x20\n_GYR_CONF = 0x21\n_CMD = 0x7E\n\n_CHIP_ID_VALUE = 0x43\n_SOFT_RESET = 0xDEAF\n\n# ACC_CONF: acc_mode 0b100 (normal, continuous) <<12, no averaging, BW = ODR/2,\n# acc_range 0b010 = +/-8 g (4.10 LSB/mg), acc_odr 0b1000 = 100 Hz  -> 0x4028\n_ACC_CONF_VALUE = 0x4028\n# GYR_CONF: gyr_mode 0b100 (normal) <<12, no averaging, BW = ODR/2,\n# gyr_range 0b100 = +/-2000 dps (16.4 LSB/dps), gyr_odr 0b1000 = 100 Hz -> 0x4048\n_GYR_CONF_VALUE = 0x4048\n\nACC_G_PER_LSB = 8 / 32768        # +/-8 g full scale\nGYR_DPS_PER_LSB = 2000 / 32768   # +/-2000 deg/s full scale\n_INVALID = -32768                # 0x8000\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 0x10000 if v & 0x8000 else v\n\n\nclass BMI323:\n    def __init__(self, i2c, addr=None):\n        self.i2c = i2c\n        if addr is None:\n            addr = self._find()\n        self.addr = addr\n        if self.chip_id() != _CHIP_ID_VALUE:\n            raise OSError('BMI323 not found at 0x%02X' % addr)\n        # Soft reset, then wait for the power-on time (1.5 ms, datasheet table 1).\n        self._write(_CMD, _SOFT_RESET)\n        time.sleep_ms(2)\n        if self.chip_id() != _CHIP_ID_VALUE:\n            raise OSError('BMI323 did not come back after soft reset')\n        if self._read_words(_ERR_REG, 1)[0] & 0x0001:\n            raise OSError('BMI323 fatal error (ERR_REG.fatal_err)')\n        self._write(_ACC_CONF, _ACC_CONF_VALUE)\n        self._write(_GYR_CONF, _GYR_CONF_VALUE)\n        # Gyroscope start-up from suspend is about 30 ms; give both sensors time for a first sample.\n        time.sleep_ms(50)\n\n    def _find(self):\n        found = self.i2c.scan()\n        for a in (0x68, 0x69):\n            if a in found:\n                return a\n        raise OSError('BMI323 not found at 0x68 or 0x69')\n\n    def _read_raw(self, reg, nbytes):\n        # 2 dummy bytes come first on I2C; drop them.\n        return self.i2c.readfrom_mem(self.addr, reg, nbytes + 2)[2:]\n\n    def _read_words(self, reg, n):\n        b = self._read_raw(reg, 2 * n)\n        return [b[2 * i] | (b[2 * i + 1] << 8) for i in range(n)]\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes((value & 0xFF, (value >> 8) & 0xFF)))\n        # Interface idle time: 450 us while in suspend mode, 2 us otherwise (datasheet 7.3).\n        time.sleep_us(500)\n\n    def chip_id(self):\n        return self._read_words(_CHIP_ID, 1)[0] & 0xFF\n\n    def status(self):\n        \"\"\"STATUS register (clear-on-read): bit 7 drdy_acc, 6 drdy_gyr, 5 drdy_temp, 0 por_detected.\"\"\"\n        return self._read_words(_STATUS, 1)[0]\n\n    def read_raw(self):\n        \"\"\"Raw words: (ax, ay, az, gx, gy, gz, temp) from one burst read of 0x03-0x09.\"\"\"\n        b = self._read_raw(_ACC_DATA_X, 14)\n        return tuple(_s16(b[2 * i], b[2 * i + 1]) for i in range(7))\n\n    def read(self):\n        \"\"\"((ax, ay, az) in g, (gx, gy, gz) in deg/s). None for an axis without a valid sample.\"\"\"\n        r = self.read_raw()\n        acc = tuple(None if v == _INVALID else v * ACC_G_PER_LSB for v in r[0:3])\n        gyr = tuple(None if v == _INVALID else v * GYR_DPS_PER_LSB for v in r[3:6])\n        return acc, gyr\n\n    def temperature(self):\n        \"\"\"Die temperature in C (T = raw/512 + 23), or None if no sample yet.\"\"\"\n        t = self._read_words(0x09, 1)[0]\n        if t == 0x8000:\n            return None\n        if t & 0x8000:\n            t -= 0x10000\n        return t / 512 + 23\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmi323 import BMI323\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\nimu = BMI323(i2c)  # finds the board at 0x68 or 0x69 (SDO level)\nf = lambda v, p: '--' if v is None else p % v\nwhile True:\n    (ax, ay, az), (gx, gy, gz) = imu.read()\n    t = imu.temperature()\n    print('A=%s,%s,%sg G=%s,%s,%sdps T=%sC' % (f(ax, '%.2f'), f(ay, '%.2f'), f(az, '%.2f'),\n          f(gx, '%.1f'), f(gy, '%.1f'), f(gz, '%.1f'), f(t, '%.1f')))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ax",
+          "value": 0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 250
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": -100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.25,0.00,-0.50g G=-100.0,0.0,250.0dps T=30.0C",
+          "within": 8000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:50:40.097Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi323-ds000.pdf",
+      "https://7semi.com/7semi-bmi323-imu-sensor-breakout-board-6dof-qwiic-spi-i2c/",
+      "https://cdn11.bigcommerce.com/s-e7ighpotvb/images/stencil/1280w/products/2018/4243/ES-12252-W__88875.1786187839.jpg"
+    ]
+  }
+}

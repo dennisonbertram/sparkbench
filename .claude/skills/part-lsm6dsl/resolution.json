@@ -1,0 +1,28 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 3 (CS): part says nc, datasheet reading says io",
+      "verdict": "part-correct",
+      "evidence": "The model is the I2C configuration of the MIKROE-2731 Click (interface i2c, buildNotes tell the user to move the COMM SEL jumpers to I2C); the vendor jumper table says 'Communication Interface Selection SPI/I2C, left' / 'position SPI, right position I2C', and JP2 switches the chip CS between the mikroBUS CS pin and VCC (CSX net in the schematic), so in I2C mode pin 3 (CS) is disconnected from the chip; the second reading described the factory SPI setting.",
+      "source": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2538/MIKROE-2731_Web.pdf ; https://download.mikroe.com/documents/add-on-boards/click/lsm6dsl/lsm6dsl-click-schematic-v100.pdf"
+    },
+    {
+      "diff": "header pin 4 (SCK): part says nc, datasheet reading says io",
+      "verdict": "part-correct",
+      "evidence": "The model is the I2C configuration of the MIKROE-2731 Click (interface i2c, buildNotes tell the user to move the COMM SEL jumpers to I2C); the vendor jumper table says 'Communication Interface Selection SPI/I2C, left' / 'position SPI, right position I2C', and JP3 switches the chip SCx between the mikroBUS SCK pin and SCL, so in I2C mode pin 4 (SCK) is disconnected from the chip; the second reading described the factory SPI setting.",
+      "source": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2538/MIKROE-2731_Web.pdf ; https://download.mikroe.com/documents/add-on-boards/click/lsm6dsl/lsm6dsl-click-schematic-v100.pdf"
+    },
+    {
+      "diff": "header pin 5 (MISO): part says nc, datasheet reading says io",
+      "verdict": "part-correct",
+      "evidence": "The model is the I2C configuration of the MIKROE-2731 Click (interface i2c, buildNotes tell the user to move the COMM SEL jumpers to I2C); the vendor jumper table says 'Communication Interface Selection SPI/I2C, left' / 'position SPI, right position I2C', and JP5 switches the chip SDO/SA0 between the mikroBUS MISO pin and the ADD SEL A0 net, so in I2C mode pin 5 (MISO) is disconnected from the chip; the second reading described the factory SPI setting.",
+      "source": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2538/MIKROE-2731_Web.pdf ; https://download.mikroe.com/documents/add-on-boards/click/lsm6dsl/lsm6dsl-click-schematic-v100.pdf"
+    },
+    {
+      "diff": "header pin 6 (MOSI): part says nc, datasheet reading says io",
+      "verdict": "part-correct",
+      "evidence": "The model is the I2C configuration of the MIKROE-2731 Click (interface i2c, buildNotes tell the user to move the COMM SEL jumpers to I2C); the vendor jumper table says 'Communication Interface Selection SPI/I2C, left' / 'position SPI, right position I2C', and JP1 switches the chip SDx between the mikroBUS MOSI pin and SDA, so in I2C mode pin 6 (MOSI) is disconnected from the chip; the second reading described the factory SPI setting.",
+      "source": "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2538/MIKROE-2731_Web.pdf ; https://download.mikroe.com/documents/add-on-boards/click/lsm6dsl/lsm6dsl-click-schematic-v100.pdf"
+    }
+  ]
+}

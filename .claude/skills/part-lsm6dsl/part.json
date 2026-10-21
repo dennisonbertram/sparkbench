@@ -1,0 +1,345 @@
+{
+  "type": "custom-lsm6dsl",
+  "name": "LSM6DSL accelerometer & gyroscope",
+  "mpn": "LSM6DSL",
+  "category": "sensor",
+  "description": "STMicroelectronics 6-axis iNEMO IMU: 3-axis accelerometer (±2/4/8/16 g) and 3-axis gyroscope (±125/245/500/1000/2000 dps) plus a die temperature sensor, read over I2C (or SPI). The chip runs on 1.71–3.6 V and its pins are not 5 V tolerant. Sold as: MikroElektronika LSM6DSL Click (MIKROE-2731), a mikroBUS board with two 8-pin headers (AN, RST, CS, SCK, MISO, MOSI, 3V3, GND / PWM, INT, TX, RX, SCL, SDA, 5V, GND), 4.7 kΩ I2C pull-ups to 3.3 V, COMM SEL jumpers that ship set to SPI (move all four to I2C), an INT SEL jumper (INT1/INT2), an ADD SEL jumper (0 = address 0x6A default, 1 = 0x6B) and a power LED.",
+  "eli5": "Feels which way it is tilted and how fast it is spinning, so your project knows how it is moving.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "AN",
+      "role": "nc",
+      "description": "mikroBUS analog pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "nc",
+      "description": "mikroBUS reset pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "SPI chip select; disconnected in I2C mode (COMM SEL jumpers on I2C tie the chip's CS to 3.3 V)",
+      "required": false
+    },
+    {
+      "name": "SCK",
+      "role": "nc",
+      "description": "SPI clock; disconnected in I2C mode (COMM SEL on I2C routes the chip's SCL to the SCL pin)",
+      "required": false
+    },
+    {
+      "name": "MISO",
+      "role": "nc",
+      "description": "SPI data out; disconnected in I2C mode (COMM SEL on I2C sends SDO/SA0 to the ADD SEL jumper)",
+      "required": false
+    },
+    {
+      "name": "MOSI",
+      "role": "nc",
+      "description": "SPI data in; disconnected in I2C mode (COMM SEL on I2C routes the chip's SDA to the SDA pin)",
+      "required": false
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V: powers the LSM6DSL (VDD and VDDIO), the SDA/SCL pull-ups and the power LED. Never 5 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "nc",
+      "description": "mikroBUS PWM pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, push-pull at 3.3 V: INT1 with the INT SEL jumper on INT1 (default), INT2 on the other side; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "nc",
+      "description": "mikroBUS UART TX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "RX",
+      "role": "nc",
+      "description": "mikroBUS UART RX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 4700,
+      "description": "I2C clock (4.7 kΩ pull-up to 3.3 V on the board); the four COMM SEL jumpers must be on I2C",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 4700,
+      "description": "I2C data (4.7 kΩ pull-up to 3.3 V on the board); the four COMM SEL jumpers must be on I2C",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "nc",
+      "description": "mikroBUS 5 V rail (not connected on this board); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (second GND pin, same net as GND)",
+      "required": false
+    }
+  ],
+  "vmin": 1.71,
+  "vmax": 3.6,
+  "currentMa": 3,
+  "i2cAddress": 106,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lsm6dsl.pdf",
+  "priceUsd": 18,
+  "supplierQuery": "MikroElektronika LSM6DSL Click MIKROE-2731",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lsm6dsl.pdf",
+    "https://datasheet.octopart.com/LSM6DSLTR-STMicroelectronics-datasheet-62086510.pdf",
+    "https://www.mikroe.com/lsm6dsl-click",
+    "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2538/MIKROE-2731_Web.pdf",
+    "https://download.mikroe.com/documents/add-on-boards/click/lsm6dsl/lsm6dsl-click-schematic-v100.pdf"
+  ],
+  "buildNotes": [
+    "The Click ships configured for SPI: move all four COMM SEL jumpers (JP1, JP2, JP3, JP5) to the I2C side before use, otherwise the chip never answers on I2C.",
+    "Power from the 3V3 pin only (the 5V pin is not connected); the 4.7 kΩ SDA/SCL pull-ups go to 3.3 V, so it is safe on ESP32, Pico and Raspberry Pi.",
+    "ADD SEL on 0 (default) gives address 0x6A; on 1 it gives 0x6B (e.g. for a second IMU). Keep both MODE SEL jumpers on 1.",
+    "Check WHO_AM_I (register 0x0F) reads 0x6A first (the LSM6DSM reports the same ID); then write CTRL3_C = 0x44 (BDU + auto-increment), CTRL1_XL = 0x40 (104 Hz, ±2 g) and CTRL2_G = 0x40 (104 Hz, ±245 dps). Both sensors are powered down until you do.",
+    "Outputs are 16-bit two's complement, low byte first: accel 0x28–0x2D (0.061 mg/LSB at ±2 g), gyro 0x22–0x27 (8.75 mdps/LSB at ±245 dps), temperature 0x20–0x21 (25 °C + raw/256).",
+    "The full-scale bits are not in numeric order: FS_XL 01 means ±16 g; gyro FS_G 00/01/10/11 = 245/500/1000/2000 dps (FS_125 bit for ±125 dps).",
+    "The temperature output is the die temperature (±15 °C offset), not an air thermometer."
+  ],
+  "keywords": [
+    "lsm6dsl",
+    "lsm6dsm",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "6dof",
+    "6-axis",
+    "motion",
+    "tilt",
+    "lsm6dsl click",
+    "mikroe-2731"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Chip temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 25,
+    "registers": {
+      "0x0F": 106,
+      "0x10": 0,
+      "0x11": 0,
+      "0x12": 4,
+      "0x1E": 7
+    },
+    "controls": [
+      {
+        "key": "ax",
+        "quantity": "Acceleration X",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "ay",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "az",
+        "quantity": "Acceleration Z",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      },
+      {
+        "key": "gx",
+        "quantity": "Rotation rate X",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Rotation rate Y",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Rotation rate Z",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x20",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "offset": 25
+      },
+      {
+        "reg": "0x22",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x24",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x26",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz"
+      },
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "az"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lsm6dsl.py",
+    "code": "# LSM6DSL accelerometer + gyroscope (STMicroelectronics DocID028475), MicroPython driver.\n# Register map from the datasheet: WHO_AM_I 0x0F = 0x6A, CTRL1_XL 0x10, CTRL2_G 0x11, CTRL3_C 0x12,\n# STATUS_REG 0x1E, OUT_TEMP 0x20-0x21, OUTX_L_G 0x22-0x27, OUTX_L_XL 0x28-0x2D (16-bit two's complement,\n# low byte first). Temperature: 256 LSB/degC, 0 LSB = 25 degC.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL1_XL = 0x10\n_CTRL2_G = 0x11\n_CTRL3_C = 0x12\n_STATUS = 0x1E\n_OUT_TEMP_L = 0x20\n_OUTX_L_G = 0x22\n_OUTX_L_XL = 0x28\n\n# Full scale -> (FS_XL[1:0] for CTRL1_XL[3:2], sensitivity in g/LSB). Note the coding: 01 = 16 g.\n_ACC_FS = {2: (0b00, 0.061e-3), 4: (0b10, 0.122e-3), 8: (0b11, 0.244e-3), 16: (0b01, 0.488e-3)}\n# Full scale -> (CTRL2_G[3:1] = FS_G1 FS_G0 FS_125, sensitivity in dps/LSB).\n_GYR_FS = {125: (0b001, 4.375e-3), 245: (0b000, 8.75e-3), 500: (0b010, 17.5e-3),\n           1000: (0b100, 35e-3), 2000: (0b110, 70e-3)}\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass LSM6DSL:\n    def __init__(self, i2c, addr=0x6A, accel_fs=2, gyro_fs=245):\n        \"\"\"addr: 0x6A with SDO/SA0 low (Click ADD SEL jumper on 0), 0x6B with ADD SEL on 1.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        who = self._r(_WHO_AM_I, 1)[0]\n        if who != 0x6A:\n            raise OSError('LSM6DSL not found at 0x%02X (WHO_AM_I=0x%02X)' % (addr, who))\n        fa, self._acc_s = _ACC_FS[accel_fs]\n        fg, self._gyr_s = _GYR_FS[gyro_fs]\n        # BDU=1 (MSB and LSB from the same sample), IF_INC=1 (auto-increment for burst reads).\n        self._w(_CTRL3_C, 0x44)\n        # ODR_XL = 0100 (104 Hz), chosen full scale; bit 0 must be 0.\n        self._w(_CTRL1_XL, 0x40 | (fa << 2))\n        # ODR_G = 0100 (104 Hz), chosen full scale; bit 0 must be 0.\n        self._w(_CTRL2_G, 0x40 | (fg << 1))\n        time.sleep_ms(100)  # gyroscope turn-on time is 35 ms typ., then the first samples arrive\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _xyz(self, reg, scale):\n        d = self._r(reg, 6)\n        return (_s16(d[0], d[1]) * scale, _s16(d[2], d[3]) * scale, _s16(d[4], d[5]) * scale)\n\n    def data_ready(self):\n        \"\"\"(accel, gyro, temperature) new-data flags from STATUS_REG.\"\"\"\n        s = self._r(_STATUS, 1)[0]\n        return bool(s & 1), bool(s & 2), bool(s & 4)\n\n    def acceleration(self):\n        \"\"\"(x, y, z) in g.\"\"\"\n        return self._xyz(_OUTX_L_XL, self._acc_s)\n\n    def gyro(self):\n        \"\"\"(x, y, z) angular rate in degrees per second.\"\"\"\n        return self._xyz(_OUTX_L_G, self._gyr_s)\n\n    def temperature(self):\n        \"\"\"Die temperature in degC (offset up to +/-15 degC: not an air thermometer).\"\"\"\n        d = self._r(_OUT_TEMP_L, 2)\n        return 25 + _s16(d[0], d[1]) / 256\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lsm6dsl import LSM6DSL\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = LSM6DSL(i2c)  # 0x6A: ADD SEL jumper on 0 (default)\nwhile True:\n    ax, ay, az = imu.acceleration()\n    gx, gy, gz = imu.gyro()\n    t = imu.temperature()\n    print('A=%.2f,%.2f,%.2fg G=%.1f,%.1f,%.1fdps T=%.1fC' % (ax, ay, az, gx, gy, gz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the tilt, rotation and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ax",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "az",
+          "value": 0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": 10
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gy",
+          "value": -20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,-0.25,0.75g G=10.0,-20.0,30.0dps T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:44:39.574Z",
+    "verifiedSources": [
+      "https://datasheet.octopart.com/LSM6DSLTR-STMicroelectronics-datasheet-62086510.pdf",
+      "https://www.st.com/resource/en/datasheet/lsm6dsl.pdf",
+      "https://www.mikroe.com/lsm6dsl-click"
+    ]
+  }
+}

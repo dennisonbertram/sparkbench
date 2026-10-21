@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lis2hh12",
+  "board": "ST STEVAL-MKI164V1 LIS2HH12 adapter board for a standard DIL24 socket (pins 1 VDD, 2 VDD_IO, 13 GND, 14 INT1, 15 INT2, 19 CS, 20 SCL/SPC, 21 SDA/SDI/SDO, 22 SDO, others NC)",
+  "reason": "Part check PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test X=-0.750 Y=0.250 Z=0.900 g, DRC clean, footprint, LCSC C221446). Sim encodes OUT_X/Y/Z as 16-bit two's complement little-endian at 0.061 mg/digit (+-2 g) with WHO_AM_I 0x41 and 7-bit sub-address; the adapter has no pull-ups, so SDA/SCL get 4.7 k pull-ups and CS and SDO/SA0 are tied to 3.3 V (I2C mode, address 0x1D) per the datasheet. Slider range is +-1.99 g so the 16-bit raw does not overflow.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lis2hh12.pdf",
+  "breakoutPinoutSource": "ST STEVAL-MKI164V1 data brief DocID027553 Rev 1, Figure 1 schematic (JP1/JP2 DIL24 header nets), https://www.nyang-tech.com/datasheet/2999189616/STMicroelectronics/STEVAL-MKI164V1.pdf",
+  "checkRuns": 4
+}

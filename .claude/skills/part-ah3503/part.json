@@ -1,0 +1,120 @@
+{
+  "type": "custom-ah3503",
+  "name": "AH3503 linear Hall sensor",
+  "mpn": "AH3503",
+  "category": "sensor",
+  "description": "Linear Hall-effect magnetic field sensor from Nanjing AH Electronics (regulator, Hall element, linear amplifier and emitter-follower output). Its analog output sits at 2.5 V with no field and moves 13.5 mV per mT (typ, 7.5-17.5), up for one pole and down for the other, linear over ±90 mT; runs on 4.5-6 V. Sold as: AH3503 linear Hall-effect sensor, bare 3-pin TO-92 (marked face towards you, legs down: VCC, GND, OUT).",
+  "eli5": "It feels magnets. Its OUT leg sits at 2.5 V with no magnet and goes up or down (depending on the pole) the closer and stronger the magnet is. It needs 5 V, so its output goes to the board through two resistors.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 4.5-6 V (pin 1, left with the marked face towards you). Use 5 V: 3.3 V is too low.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2, middle).",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 3, right): Vout = 2.5 V + 13.5 mV/mT x B (1.29-3.72 V over ±90 mT), 50 Ω emitter follower. Reaches 3.7 V, so it goes to the ADC pin through a 10 kΩ / 20 kΩ divider (Sparkbench adds it).",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      }
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 6,
+  "currentMa": 14,
+  "datasheetUrl": "https://www.datasheetcafe.com/wp-content/uploads/2021/02/AH3503.pdf",
+  "sources": [
+    "https://www.datasheetcafe.com/wp-content/uploads/2021/02/AH3503.pdf",
+    "https://www.datasheetcafe.com/ah3503-datasheet-hall-sensor/",
+    "https://html.alldatasheet.net/html-pdf/1132644/AHNJ/AH3503/227/2/AH3503.html",
+    "https://ifuturetech.org/product/ah3503-linear-hall-effect-sensor-to-92/"
+  ],
+  "priceUsd": 0.5,
+  "supplierQuery": "AH3503 linear hall effect sensor TO-92",
+  "footprint": "Package_TO_SOT_THT:TO-92_Inline",
+  "buildNotes": [
+    "Pin order with the marked face towards you, legs down: left = VCC, middle = GND, right = OUT (datasheet pinning 1 Vcc, 2 GND, 3 Output).",
+    "Power VCC from 5 V (USB 5V / VIN / VBUS): the AH3503 needs 4.5-6 V. Put a 0.1 µF capacitor across VCC and GND.",
+    "OUT reaches about 3.7 V at +90 mT: wire it through 10 kΩ to the ADC pin with 20 kΩ from the ADC pin to GND, and pass divider=1.5 to the driver.",
+    "B (mT) = (Vout - 2.5 V) / 0.0135 V/mT. 2.5 V = 0 mT, 3.04 V = +40 mT, 1.96 V = -40 mT (1 mT = 10 G).",
+    "The zero output varies 2.25-2.75 V and sensitivity 7.5-17.5 mV/mT between parts: call calibrate_zero() with no magnet nearby, and calibrate against a known magnet for real mT values.",
+    "Point a magnet pole at the marked face; strong neodymium magnets saturate it when close."
+  ],
+  "keywords": [
+    "ah3503",
+    "3503",
+    "a3503",
+    "ugn3503",
+    "hall",
+    "linear",
+    "magnetic",
+    "magnet",
+    "gauss",
+    "millitesla",
+    "analog",
+    "sensor",
+    "to-92"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Magnetic field",
+    "unit": "mT",
+    "min": -90,
+    "max": 90,
+    "default": 0,
+    "vAtMin": 1.285,
+    "vAtMax": 3.715,
+    "registers": {},
+    "outputOhms": 50
+  },
+  "driver": {
+    "filename": "ah3503.py",
+    "code": "# AH3503 linear Hall-effect sensor (Nanjing AH Electronics), MicroPython driver.\n# Datasheet (AH3503 series): Vcc 4.5-6 V, Icc 9 mA typ; at Ta = 25 C:\n#   quiescent output (B = 0)   Vout = 2.5 V typ (2.25-2.75 V)\n#   sensitivity                S = 13.5 mV/mT typ (7.5-17.5 mV/mT), linear over -90..+90 mT\n#   output resistance          50 ohm (emitter follower)\n# so B(mT) = (Vout - Vq) / 0.0135 V/mT (1 mT = 10 G). One pole raises Vout, the other lowers it.\n# At +90 mT Vout is about 3.7 V, above a 3.3 V ADC pin: feed it through a divider\n# (e.g. 10k from OUT to the ADC pin, 20k from the ADC pin to GND) and pass divider=1.5.\nfrom machine import ADC, Pin\n\n\nclass AH3503:\n    SENS = 0.0135   # V/mT, typical\n    VQ = 2.5        # V at B = 0, typical\n\n    def __init__(self, pin, divider=1.0, sensitivity=SENS, zero=VQ, samples=64, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to OUT. divider: Vout / Vadc (1.5 for a 10k top / 20k bottom divider).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.divider = divider\n        self.sens = sensitivity\n        self.zero = zero\n        self.samples = samples\n        self.vref = vref  # ADC full scale when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Averaged sensor output voltage (V) at the OUT pin (divider undone).\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with no magnet nearby: stores the measured B = 0 output (parts vary 2.25-2.75 V).\"\"\"\n        self.zero = self.voltage()\n        return self.zero\n\n    def millitesla(self):\n        \"\"\"Magnetic flux density in mT; the sign gives the pole.\"\"\"\n        return (self.voltage() - self.zero) / self.sens\n\n    def gauss(self):\n        return self.millitesla() * 10.0\n"
+  },
+  "skill": "---\nname: part-ah3503\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the AH3503 linear Hall-effect magnetic field sensor (Nanjing AH Electronics, TO-92, analog output). Use when designing, wiring, simulating or writing code for an AH3503 / 3503 linear Hall sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# AH3503 linear Hall-effect sensor (AH3503, TO-92)\n\n## Overview\nThe **AH3503** (Nanjing AH Electronics) is a linear Hall-effect sensor in a 3-pin TO-92 package. Inside are a voltage regulator, a Hall element, a linear amplifier and an emitter-follower output. It gives an **analog voltage proportional to the magnetic field** through its marked face, for either pole. Hobbyists buy the bare chip, sold as \"AH3503 linear Hall sensor TO-92\".\n- Quiescent output (B = 0): **2.5 V typ** (2.25–2.75 V between parts)\n- Sensitivity: **13.5 mV/mT typ** (7.5–17.5 mV/mT), i.e. 1.35 mV/G\n- Linear range: **±90 mT** (±900 G); flat response to 23 kHz\n- Supply: **4.5–6 V**, 9 mA typ (14 mA max)\n- Output resistance 50 Ω\n\n## Pinout (TO-92, marked face towards you, legs down)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 (left) | VCC | Supply, 4.5–6 V |\n| 2 (middle) | GND | Ground |\n| 3 (right) | OUT | Analog output, 2.5 V ± 13.5 mV/mT |\n\n## Electrical limits\n- Supply: 4.5 V min, 6 V max (6 V is also the absolute maximum). **3.3 V is too low:** power it from 5 V.\n- Operating temperature −20 °C to +85 °C.\n- Output swings about 1.29 V to 3.72 V over ±90 mT, **above 3.3 V** for strong fields of one pole.\n\n## Interface details\n```\nB (mT) = (Vout − 2.5 V) / 0.0135 V/mT        (1 mT = 10 G)\n```\nExamples: 2.5 V = 0 mT, 3.04 V = +40 mT, 1.96 V = −40 mT, 3.715 V = +90 mT.\nWith a 10 kΩ (top) / 20 kΩ (bottom) divider the ADC pin sees 2/3 of Vout (max about 2.48 V); multiply back by 1.5.\n\n## Wiring\n| AH3503 | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 5V / VIN | VBUS (pin 40) | 5V (pin 2) |\n| GND | GND | GND | GND |\n| OUT | 10 kΩ to GPIO34 (ADC1), 20 kΩ GPIO34→GND | 10 kΩ to GP26 / ADC0, 20 kΩ GP26→GND | External ADC (e.g. ADS1115 A0) |\n\nAdd a 0.1 µF capacitor across VCC and GND near the sensor.\n\n## Using the driver\n```python\nfrom ah3503 import AH3503\nimport time\nhall = AH3503(26, divider=1.5)   # ADC GPIO; 1.5 for the 10k/20k divider\nhall.calibrate_zero()            # run with no magnet nearby\nwhile True:\n    print('B=%.0fmT' % hall.millitesla())\n    time.sleep(0.5)\n```\n`gauss()` returns gauss. Pass `sensitivity=` (V/mT) if you calibrate against a known magnet.\n\n## Gotchas\n- **Needs 5 V:** below 4.5 V it is out of spec. Then the output can exceed 3.3 V, so always use the divider into a 3.3 V ADC pin.\n- **Calibrate the zero:** the B = 0 output is 2.25–2.75 V between parts (±19 mT uncorrected). Call `calibrate_zero()`.\n- **Sensitivity is typical:** 7.5–17.5 mV/mT between parts. Good for \"how close / which pole\", calibrate for real mT.\n- **Strong neodymium magnets saturate it** when close (beyond ±90 mT it stops being linear).\n- Only the field through the marked face counts; keep mechanical stress off the package.\n- **ESP32 ADC:** use ADC1 pins (GPIO32–39); ADC2 stops working with Wi-Fi. The Raspberry Pi has no ADC.\n- Not a switch: for on/off magnet detection use a Hall switch (A3144 / KY-003).\n- A newer AH datasheet revision (AH3503/E-UA, TO-92UA, 2020) lists 15.25 mV/mT typ (12–17), 2.3–2.7 V null and ±80 mT linear; this guide follows the 4.5–6 V AH3503 sheet linked below (13.5 mV/mT typ). Either way, calibrate.\n- Same part number as the discontinued Allegro A3503 / UGN3503 and the same pinout, but use the AH figures above for the AH part.\n\n## Datasheet\nhttps://www.datasheetcafe.com/wp-content/uploads/2021/02/AH3503.pdf\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from ah3503 import AH3503\nimport time\n\nhall = AH3503({OUT}, divider=1.5)  # 10k/20k divider: OUT reaches 3.7 V\nwhile True:\n    print('B=%dmT' % round(hall.millitesla()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the magnetic field set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 40
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "B=40mT",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:57:13.759Z",
+    "verifiedSources": [
+      "https://radel.ru/upload/iblock/b71/8ksmc6kg7xc2202iknqgbayc9qpi6b0z.pdf",
+      "https://html.alldatasheet.net/html-pdf/1132644/AHNJ/AH3503/227/2/AH3503.html"
+    ]
+  }
+}

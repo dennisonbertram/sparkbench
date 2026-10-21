@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-vnh2sp30-monster-moto",
+  "board": "SparkFun Monster Moto Shield (DEV-10182, 2x VNH2SP30)",
+  "reason": "Modelled as an actuator with inputs INA1/INB1/PWM1 and INA2/INB2/PWM2. The driver follows the ST truth table (CW, CCW, brake to GND/VCC, coast with PWM=0, 20 kHz PWM) and the CS formula K=11370 into 1.5 kOhm. VIN gets an external 5.5-16 V supply, EN1/EN2 are optional with their 4.7 kOhm pull-up to 5 V, and CS1/CS2 are optional through a divider. The part check passed on ESP32 and Pico on the first run; the 3.3 V logic margin (VIH 3.25 V min) is documented.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vnh2sp30-e.pdf",
+  "breakoutPinoutSource": "https://cdn.sparkfun.com/datasheets/Dev/Arduino/Shields/MonsterMoto-Shield-v12.pdf",
+  "checkRuns": 1
+}

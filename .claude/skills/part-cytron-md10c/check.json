@@ -1,0 +1,79 @@
+{
+  "type": "custom-cytron-md10c",
+  "mpn": "MD10C",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; U2.PWM → D25 (GPIO25). U2.DIR → D26 (GPIO26). Added a separate 12 V supply for POWER+ (it needs 5–30 V and up to 13 A, more than the board can give); its − joins the board's GND. Added the md10c.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor runs forward, brakes, then runs in reverse: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; U2.PWM → GP2 (GPIO2). U2.DIR → GP3 (GPIO3). Added a separate 12 V supply for POWER+ (it needs 5–30 V and up to 13 A, more than the board can give); its − joins the board's GND. Added the md10c.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor runs forward, brakes, then runs in reverse: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C614856 ATSAMD10C13A-SSUT (9 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:52:20.709Z"
+}

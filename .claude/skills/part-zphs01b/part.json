@@ -1,0 +1,340 @@
+{
+  "type": "custom-zphs01b",
+  "name": "ZPHS01B multi-in-one air quality module",
+  "mpn": "ZPHS01B",
+  "category": "sensor",
+  "description": "Winsen all-in-one air quality module: laser PM1.0/PM2.5/PM10 (0-1000 ug/m3), NDIR CO2 (0-5000 ppm), electrochemical formaldehyde CH2O (0-6.25 mg/m3), CO (0-500 ppm), O3 (0-10 ppm) and NO2 (0.1-10 ppm) cells, a TVOC grade (0-3), temperature and humidity. Question-and-answer UART at 9600 baud, 3 V TTL levels (3.3 V compatible): send FF 01 86 00 00 00 00 00 79 and it returns all readings in one 26-byte frame. Needs 5 V, about 300 mA average and up to 500 mA peak, so it gets its own 5 V supply. Sold as: Winsen ZPHS01B multi-in-one sensor module (135 x 50 mm, XH2.54-4P connector: pin 1 GND, pin 2 +5V, pin 3 RXD, pin 4 TXD).",
+  "eli5": "One box full of sensors that smells the air for dust, carbon dioxide, formaldehyde, carbon monoxide, ozone and nitrogen dioxide, and also tells you the temperature and humidity when your board asks.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 1: ground (common with the board and the 5 V supply)",
+      "required": true
+    },
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "Pin 2: 5 V DC supply, about 300 mA average and up to 500 mA peak (fan, laser, CO2 lamp)",
+      "required": true,
+      "supply": {
+        "vmin": 4.9,
+        "vmax": 5.1,
+        "currentMa": 500
+      }
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Pin 3: module serial input (3 V TTL, 3.3 V compatible): wire to the board's UART TX. Needed, because the module only answers commands",
+      "required": true
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Pin 4: module serial output, 3 V TTL, 9600 baud: wire to the board's UART RX",
+      "required": true,
+      "levelV": 3.3
+    }
+  ],
+  "vmin": 4.9,
+  "vmax": 5.1,
+  "currentMa": 300,
+  "cabled": true,
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf",
+  "priceUsd": 60,
+  "supplierQuery": "Winsen ZPHS01B multi-in-one air quality sensor module UART",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "The module is a 135 x 50 mm box with an XH2.54 4-pin socket: wire it with an XH cable and jumper leads, not on the breadboard.",
+    "Pin order on the XH socket is 1 GND, 2 +5V, 3 RXD, 4 TXD (GND first, unlike most modules). Check pin 1 before powering it.",
+    "Feed +5V from its own 5 V supply rated at least 500 mA (300 mA average, 500 mA peak) and join its ground to the board's GND. The datasheet only says 5 V DC, so keep it close to 5 V.",
+    "Signals are 3 V TTL (3.3 V compatible), so they connect straight to an ESP32 or Pico. Cross them: module TXD -> board RX, module RXD -> board TX. Both are needed: the module only answers the read command.",
+    "9600 baud 8N1. Send FF 01 86 00 00 00 00 00 79; the 26-byte reply starts FF 86 and ends with a check byte = (NOT(sum of bytes 1-24)) + 1.",
+    "Warm it up for at least 3 minutes after power-on (CO2, CH2O, O3 and NO2 cells) before trusting gas readings. Keep the dust inlet and the fan outlet open and out of strong drafts."
+  ],
+  "keywords": [
+    "zphs01b",
+    "winsen",
+    "air quality",
+    "multi-in-one",
+    "co2",
+    "pm2.5",
+    "pm10",
+    "formaldehyde",
+    "ch2o",
+    "carbon monoxide",
+    "ozone",
+    "no2",
+    "tvoc",
+    "temperature",
+    "humidity"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "CO2",
+    "unit": "ppm",
+    "min": 0,
+    "max": 5000,
+    "default": 450,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm25",
+        "quantity": "PM2.5",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 12
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      },
+      {
+        "key": "voc",
+        "quantity": "TVOC grade",
+        "unit": "grade",
+        "min": 0,
+        "max": 3,
+        "default": 0
+      },
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -20,
+        "max": 65,
+        "default": 22
+      },
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%RH",
+        "min": 0,
+        "max": 100,
+        "default": 45
+      },
+      {
+        "key": "ch2o",
+        "quantity": "Formaldehyde (CH2O)",
+        "unit": "mg/m³",
+        "min": 0,
+        "max": 6.25,
+        "default": 0.02
+      },
+      {
+        "key": "co",
+        "quantity": "Carbon monoxide (CO)",
+        "unit": "ppm",
+        "min": 0,
+        "max": 500,
+        "default": 0.5
+      },
+      {
+        "key": "o3",
+        "quantity": "Ozone (O3)",
+        "unit": "ppm",
+        "min": 0,
+        "max": 10,
+        "default": 0.02
+      },
+      {
+        "key": "no2",
+        "quantity": "Nitrogen dioxide (NO2)",
+        "unit": "ppm",
+        "min": 0,
+        "max": 10,
+        "default": 0.1
+      }
+    ],
+    "uartReplies": [
+      {
+        "match": "FF 01 86 00 00 00 00 00 79",
+        "bytes": [
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 134,
+            "bits": 8
+          },
+          {
+            "control": "pm1",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm25",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "voc",
+            "bits": 8,
+            "scale": 1
+          },
+          {
+            "control": "temperature",
+            "bits": 16,
+            "scale": 0.1,
+            "offset": -50
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "ch2o",
+            "bits": 16,
+            "scale": 0.001
+          },
+          {
+            "control": "co",
+            "bits": 16,
+            "scale": 0.1
+          },
+          {
+            "control": "o3",
+            "bits": 16,
+            "scale": 0.01
+          },
+          {
+            "control": "no2",
+            "bits": 16,
+            "scale": 0.01
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "crc": "mhz19",
+            "over": 25
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "zphs01b.py",
+    "code": "# Winsen ZPHS01B multi-in-one air quality module, MicroPython driver.\n# From the Winsen ZPHS01B manual V1.3 (2020-07-13): UART 9600 8N1, 3 V TTL levels\n# (3.3 V compatible), 5 V supply. Question-and-answer only: the module sends\n# nothing until the host asks.\n# Read command: FF 01 86 00 00 00 00 00 79\n# Reply, 26 bytes (big-endian 16-bit fields):\n#   0 FF  1 86  2-3 PM1.0  4-5 PM2.5  6-7 PM10 (ug/m3)  8-9 CO2 (ppm)\n#   10 VOC grade 0-3  11-12 temperature ((raw-500) x 0.1 C)  13-14 RH (%)\n#   15-16 CH2O (x0.001 mg/m3)  17-18 CO (x0.1 ppm)  19-20 O3 (x0.01 ppm)\n#   21-22 NO2 (x0.01 ppm)  23-24 reserved  25 check\n# Check = (NOT(byte1 + ... + byte24)) + 1, low 8 bits.\nimport time\n\nCMD_READ = b'\\xff\\x01\\x86\\x00\\x00\\x00\\x00\\x00\\x79'\nFRAME_LEN = 26\n\n\ndef _checksum(frame):\n    return (~sum(frame[1:25]) + 1) & 0xFF\n\n\ndef _u16(f, i):\n    return (f[i] << 8) | f[i + 1]\n\n\nclass ZPHS01B:\n    def __init__(self, uart):\n        self.uart = uart\n\n    def _drain(self):\n        while self.uart.any():\n            self.uart.read()\n\n    def read_raw(self, timeout_ms=1000):\n        \"\"\"Send the read command and return the verified 26-byte reply.\"\"\"\n        self._drain()\n        self.uart.write(CMD_READ)\n        t0 = time.ticks_ms()\n        buf = b''\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            n = self.uart.any()\n            if n:\n                buf += self.uart.read(n)\n                while len(buf) >= FRAME_LEN:\n                    if buf[0] == 0xFF and buf[1] == 0x86 and _checksum(buf) == buf[25]:\n                        return buf[:FRAME_LEN]\n                    buf = buf[1:]\n            else:\n                time.sleep_ms(10)\n        raise OSError('ZPHS01B: no valid reply (check TXD/RXD wiring, 5 V supply, 9600 baud)')\n\n    def read(self, timeout_ms=1000):\n        \"\"\"All readings as a dict, in the datasheet units.\"\"\"\n        f = self.read_raw(timeout_ms)\n        return {\n            'pm1_0': _u16(f, 2),            # ug/m3\n            'pm2_5': _u16(f, 4),            # ug/m3\n            'pm10': _u16(f, 6),             # ug/m3\n            'co2': _u16(f, 8),              # ppm\n            'voc': f[10],                   # grade 0-3\n            'temperature': (_u16(f, 11) - 500) / 10,  # deg C\n            'humidity': _u16(f, 13),        # %RH\n            'ch2o': _u16(f, 15) / 1000,     # mg/m3\n            'co': _u16(f, 17) / 10,         # ppm\n            'o3': _u16(f, 19) / 100,        # ppm\n            'no2': _u16(f, 21) / 100,       # ppm\n        }\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom zphs01b import ZPHS01B\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\nsensor = ZPHS01B(uart)\nwhile True:\n    r = sensor.read()\n    print('CO2=%d PM2.5=%d T=%.1f RH=%d' % (r['co2'], r['pm2_5'], r['temperature'], r['humidity']))\n    print('CH2O=%.3f CO=%.1f O3=%.2f NO2=%.2f VOC=%d' % (r['ch2o'], r['co'], r['o3'], r['no2'], r['voc']))\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2, PM2.5, temperature, humidity and gas readings set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm25",
+          "value": 57
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 23.4
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 61
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ch2o",
+          "value": 0.123
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "co",
+          "value": 12.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "o3",
+          "value": 1.23
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "no2",
+          "value": 2.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "voc",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1234 PM2.5=57 T=23.4 RH=61",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH2O=0.123 CO=12.3 O3=1.23 NO2=2.50 VOC=2",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf",
+    "https://www.winsen-sensor.com/product/zphs01b.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (10 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:43:06.391Z",
+    "verifiedSources": [
+      "https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf",
+      "https://www.winsen-sensor.com/product/zphs01b.html"
+    ]
+  }
+}

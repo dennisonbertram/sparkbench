@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bmi323",
+  "board": "7Semi BMI323 IMU Breakout Board - 6DOF Accelerometer + Gyroscope with Qwiic (ES-12252)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC). The driver follows the datasheet: 16-bit little-endian words, 2 dummy bytes before every I2C read, chip ID 0x43, soft reset 0xDEAF, ACC_CONF 0x4028 (+/-8 g) and GYR_CONF 0x4048 (+/-2000 dps), and T = raw/512 + 23. The sim uses regWidth 16 + wordOrder lsb with each data word stored one word above its real address, so the word at the read pointer stands in for the 2 dummy bytes. Caveats: register writes are not read back, the sim does not follow range changes (the driver fixes the ranges), and the default address is unconfirmed (vendor page says 0x69, vendor example uses 0x68; the driver scans both, the sim uses 0x68).",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi323-ds000.pdf",
+  "breakoutPinoutSource": "7Semi ES-12252 pinout reference image https://cdn11.bigcommerce.com/s-e7ighpotvb/images/stencil/original/image-manager/es-12252-.jpg?t=1786187810 and board photos on https://7semi.com/7semi-bmi323-imu-sensor-breakout-board-6dof-qwiic-spi-i2c/ (VIN, 3V3, GND, SCL, SDA, SDO, CS, IT1, IT2)",
+  "checkRuns": 1
+}

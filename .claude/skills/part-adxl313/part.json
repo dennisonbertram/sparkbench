@@ -1,0 +1,215 @@
+{
+  "type": "custom-adxl313",
+  "name": "ADXL313 3-axis accelerometer",
+  "mpn": "ADXL313",
+  "category": "sensor",
+  "description": "Analog Devices low-noise 3-axis MEMS accelerometer with selectable ±0.5/±1/±2/±4 g range, 1024 LSB/g (0.98 mg/LSB) in full-resolution mode, 32-sample FIFO, activity/inactivity interrupts and I2C/SPI interfaces. Chip and board run on 2.0-3.6 V. Sold as: SparkFun Triple Axis Digital Accelerometer Breakout - ADXL313 (Qwiic), SEN-17241 (6-pin header GND, 3.3V, SDA, SCL, ADR, CS plus 2-pin header INT2, INT1 on the opposite edge, two Qwiic connectors, 4.7 kΩ I2C pull-ups, no regulator, 3.3 V only), I2C address 0x1D (0x53 with ADR low).",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, along three directions (X, Y and Z), very finely.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 2.0-3.6 V (3.3 V nominal). No regulator on the board: never feed 5 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kOhm pull-up to 3.3 V on the board, I2C jumper); also SPI SDI. 3.3 V logic",
+      "required": true,
+      "boardPullUp": 4700
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kOhm pull-up to 3.3 V on the board, I2C jumper); also SPI SCLK. 3.3 V logic",
+      "required": true,
+      "boardPullUp": 4700
+    },
+    {
+      "name": "ADR",
+      "role": "io",
+      "description": "SDO / ALT ADDRESS: 10 kOhm pull-up on the board = 0x1D; pull to GND (or close the ADR jumper) for 0x53. SPI SDO in SPI mode",
+      "required": false,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Chip select: 10 kOhm pull-up on the board = I2C mode. Leave unconnected for I2C; low selects SPI",
+      "required": false,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "INT2 interrupt output, push-pull 3.3 V logic (separate 2-pin header on the opposite edge), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "INT1 interrupt output, push-pull 3.3 V logic (separate 2-pin header on the opposite edge), not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2,
+  "vmax": 3.6,
+  "currentMa": 2,
+  "i2cAddress": 29,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl313.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "SparkFun SEN-17241 ADXL313 Qwiic accelerometer breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl313.pdf",
+    "https://cdn.sparkfun.com/assets/1/d/a/8/8/ADXL313_datasheet.pdf",
+    "https://cdn.sparkfun.com/assets/9/b/0/1/5/SparkFun_Qwiic_ADXL313.pdf",
+    "https://learn.sparkfun.com/tutorials/sparkfun-qwiic-3-axis-accelerometer-adxl313-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/1/3/9/6/Qwiic_ADXL313_breakout_pins.jpg",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/1/3/9/6/Qwiic_ADXL313_spi_bottom.jpg",
+    "https://www.sparkfun.com/products/17241"
+  ],
+  "buildNotes": [
+    "The chip powers up in standby with all outputs reading 0: set the Measure bit (0x08) in POWER_CTL (0x2D) before reading, and keep bit 6 (I2C_DISABLE) at 0 or the chip stops answering on I2C.",
+    "Check DEVID_0 (0x00) = 0xAD, DEVID_1 (0x01) = 0x1D and PARTID (0x02) = 0xCB first; anything else means a wrong address or a loose wire.",
+    "Set FULL_RES (bit 3 of DATA_FORMAT, 0x31) so every range reads 1024 LSB/g; in the default 10-bit mode the sensitivity halves with each range step (1024, 512, 256, 128 LSB/g).",
+    "Read all six data bytes 0x32-0x37 in one burst so X, Y and Z come from the same sample; each axis is little-endian twos complement.",
+    "Default address 0x1D (ADR pulled up on the board). Pull ADR to GND or close the ADR jumper for 0x53. Leave CS unconnected (pulled high = I2C).",
+    "3.3 V only: there is no regulator or level shifter, so never connect 5 V to 3.3V or any signal pin.",
+    "The maximum range is ±4 g; harder shocks clip at about ±4 g (the chip survives 10,000 g)."
+  ],
+  "keywords": [
+    "adxl313",
+    "accelerometer",
+    "tilt",
+    "motion",
+    "vibration",
+    "imu",
+    "g-force",
+    "analog devices",
+    "sparkfun",
+    "qwiic",
+    "sen-17241"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Acceleration X",
+    "unit": "g",
+    "min": -4,
+    "max": 4,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -4,
+        "max": 4,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Acceleration Z",
+        "unit": "g",
+        "min": -4,
+        "max": 4,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x00": 173,
+      "0x01": 29,
+      "0x02": 203,
+      "0x2c": 10,
+      "0x2d": 0,
+      "0x30": 2,
+      "0x31": 0
+    },
+    "measures": [
+      {
+        "reg": "0x32",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x34",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x36",
+        "bytes": 2,
+        "scale": 0.0009765625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "adxl313.py",
+    "code": "# MicroPython driver for the Analog Devices ADXL313 3-axis accelerometer (I2C).\n# Written from the ADXL313 data sheet, Rev. C:\n#   register map table 14: DEVID_0 0x00 = 0xAD, DEVID_1 0x01 = 0x1D, PARTID 0x02 = 0xCB,\n#   SOFT_RESET 0x18 (write 0x52), BW_RATE 0x2C (reset 0x0A = 100 Hz),\n#   POWER_CTL 0x2D (I2C_DISABLE bit 6 must stay 0, Measure = bit 3),\n#   DATA_FORMAT 0x31 (FULL_RES bit 3, Justify bit 2, Range bits 1:0: 0.5/1/2/4 g),\n#   DATA_X0..DATA_Z1 0x32-0x37 (twos complement, DATA_x0 = least significant byte),\n#   full-resolution sensitivity 1024 LSB/g in every range (table 1).\nimport time\n\nREG_DEVID_0 = 0x00      # reads 0xAD\nREG_DEVID_1 = 0x01      # reads 0x1D\nREG_PARTID = 0x02       # reads 0xCB\nREG_SOFT_RESET = 0x18   # write 0x52 to reset\nREG_BW_RATE = 0x2C      # LOW_POWER bit 4, Rate bits 3:0\nREG_POWER_CTL = 0x2D    # I2C_DISABLE 6, Link 5, AUTO_SLEEP 4, Measure 3, Sleep 2, Wake-up 1:0\nREG_DATA_FORMAT = 0x31  # SELF_TEST 7, SPI 6, INT_INVERT 5, FULL_RES 3, Justify 2, Range 1:0\nREG_DATAX0 = 0x32       # 0x32..0x37: X0 X1 Y0 Y1 Z0 Z1\n\nFULL_RES = 0x08\nMEASURE = 0x08\nLSB_PER_G = 1024        # full resolution, any range\nSTANDARD_GRAVITY = 9.80665\n\n_RANGE_BITS = {0.5: 0, 1: 1, 2: 2, 4: 3}\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v > 32767 else v\n\n\nclass ADXL313:\n    def __init__(self, i2c, addr=0x1D, g_range=4, rate=0x0A):\n        \"\"\"addr 0x1D with SDO/ADR high (SparkFun board default, ADR jumper open),\n        0x53 with ADR pulled to GND (jumper closed).\n        g_range: 0.5, 1, 2 or 4 g. Full resolution keeps 1024 LSB/g in every range.\n        rate: BW_RATE code (0x0A = 100 Hz, 0x0F = 3200 Hz).\"\"\"\n        if g_range not in _RANGE_BITS:\n            raise ValueError(\"g_range must be 0.5, 1, 2 or 4\")\n        self.i2c = i2c\n        self.addr = addr\n        ids = self._r(REG_DEVID_0, 3)\n        if ids[0] != 0xAD or ids[1] != 0x1D or ids[2] != 0xCB:\n            raise OSError(\"ADXL313 not found at 0x%02X (IDs %02X %02X %02X, expected AD 1D CB)\"\n                          % (addr, ids[0], ids[1], ids[2]))\n        self._w(REG_POWER_CTL, 0x00)  # standby while configuring (I2C_DISABLE stays 0)\n        self._w(REG_BW_RATE, rate & 0x0F)  # normal power (LOW_POWER = 0)\n        # Full resolution, right-justified with sign extension, interrupts active high.\n        self._w(REG_DATA_FORMAT, FULL_RES | _RANGE_BITS[g_range])\n        self._w(REG_POWER_CTL, MEASURE)\n        # Turn-on time is about 1.1 ms + 1/ODR: 11.1 ms at 100 Hz.\n        time.sleep_ms(20)\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def soft_reset(self):\n        \"\"\"Write 0x52 to SOFT_RESET; all registers return to reset values (standby).\"\"\"\n        self._w(REG_SOFT_RESET, 0x52)\n        time.sleep_ms(2)\n\n    def raw(self):\n        \"\"\"(x, y, z) in LSB. One 6-byte burst read so the axes come from the same sample.\"\"\"\n        d = self._r(REG_DATAX0, 6)\n        return _s16(d[0], d[1]), _s16(d[2], d[3]), _s16(d[4], d[5])\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        x, y, z = self.raw()\n        return x / LSB_PER_G, y / LSB_PER_G, z / LSB_PER_G\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        x, y, z = self.read()\n        return x * STANDARD_GRAVITY, y * STANDARD_GRAVITY, z * STANDARD_GRAVITY\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom adxl313 import ADXL313\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = ADXL313(i2c, addr=0x1D)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.2f Y=%.2f Z=%.2f g' % (x, y, z))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -1.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 2.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.75 Y=-1.50 Z=2.25 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:56:21.751Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/1/d/a/8/8/ADXL313_datasheet.pdf",
+      "https://cdn.sparkfun.com/assets/9/b/0/1/5/SparkFun_Qwiic_ADXL313.pdf",
+      "https://www.sparkfun.com/products/17241"
+    ]
+  }
+}

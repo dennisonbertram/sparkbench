@@ -1,0 +1,79 @@
+{
+  "type": "custom-cytron-mdd10a",
+  "mpn": "MDD10A",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "11 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; U2.PWM1 → D25 (GPIO25). U2.DIR1 → D26 (GPIO26). Added a separate 12 V supply for POWER+ (it needs 5–30 V and up to 20 A, more than the board can give); its − joins the board's GND. Added the mdd10a.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor 1 runs forward, reverse, then brakes: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "11 pins, pwm"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; U2.PWM1 → GP2 (GPIO2). U2.DIR1 → GP3 (GPIO3). Added a separate 12 V supply for POWER+ (it needs 5–30 V and up to 20 A, more than the board can give); its − joins the board's GND. Added the mdd10a.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor 1 runs forward, reverse, then brakes: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x11_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:53:46.935Z"
+}

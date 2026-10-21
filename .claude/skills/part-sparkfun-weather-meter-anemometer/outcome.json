@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sparkfun-weather-meter-anemometer",
+  "board": "SparkFun Weather Meter Kit SEN-15901 cup anemometer (reed switch on RJ11 pins 2 and 3 of the cable shared with the wind vane)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test reading 30 km/h = 12.5 closures/s, PCB DRC). Modelled as a selfPowered pulse-sensor with openDrain (passive reed switch, GPIO pull-up gives the high), hzPerUnit 1/2.4 per the datasheet; driver times first-to-last closure in a window with a 4 ms bounce lockout.",
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf",
+  "breakoutPinoutSource": "https://learn.sparkfun.com/tutorials/weather-meter-hookup-guide/all",
+  "checkRuns": 1
+}

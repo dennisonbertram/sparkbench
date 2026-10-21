@@ -1,0 +1,180 @@
+{
+  "type": "custom-cytron-md10c",
+  "name": "Cytron MD10C 13 A DC motor driver",
+  "mpn": "MD10C",
+  "category": "actuator",
+  "description": "Cytron MD10C R3.0 single-channel brushed DC motor driver: a full NMOS H-bridge running one motor forwards, backwards or braked from two logic inputs (PWM for speed up to 20 kHz, DIR for direction; 3.3 V or 5 V logic), motor supply 5-30 V, 13 A continuous, 30 A peak for 10 s. Powered from the motor supply only (no logic supply pin), no reverse-polarity protection, test buttons and A/B direction LEDs on board. Sold as: Cytron MD10C R3.0 10Amp 5V-30V DC Motor Driver, 3-pin control header (1 GND, 2 PWM, 3 DIR) plus a POWER screw terminal (1 +, 2 -) and a MOTOR screw terminal (3 A, 4 B) on the opposite edge.",
+  "eli5": "A strong switch box that lets your board run one big DC motor forwards or backwards at any speed, using a separate battery for the motor.",
+  "refPrefix": "U",
+  "interface": "pwm",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Control header pin 1: logic ground; connect to the microcontroller GND (common with the motor supply -)"
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "fn": "pwm",
+      "required": true,
+      "description": "Control header pin 2: speed input. High = drive, low = brake (both outputs low). PWM up to 20 kHz; logic high 3-5.5 V, low 0-0.5 V. Not for RC-receiver servo pulses"
+    },
+    {
+      "name": "DIR",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Control header pin 3: direction input. Low = forward (output A high, B low), high = reverse (A low, B high); logic high 3-5.5 V"
+    },
+    {
+      "name": "POWER+",
+      "role": "power",
+      "required": true,
+      "description": "POWER screw terminal 1: motor supply + (5-30 V DC) from a battery/PSU able to supply the motor current. Also powers the board. NO reverse-polarity protection. Never connect to the microcontroller",
+      "supply": {
+        "vmin": 5,
+        "vmax": 30,
+        "currentMa": 13000
+      }
+    },
+    {
+      "name": "POWER-",
+      "role": "gnd",
+      "required": true,
+      "description": "POWER screw terminal 2: motor supply - (ground)"
+    },
+    {
+      "name": "MOTOR_A",
+      "role": "io",
+      "required": false,
+      "description": "MOTOR screw terminal 3: motor output A; connect the motor, never the microcontroller"
+    },
+    {
+      "name": "MOTOR_B",
+      "role": "io",
+      "required": false,
+      "description": "MOTOR screw terminal 4: motor output B"
+    }
+  ],
+  "vmin": 5,
+  "vmax": 30,
+  "currentMa": 10,
+  "datasheetUrl": "https://robu.in/wp-content/uploads/2014/12/MD10C-Rev3.0-Users-Manual.pdf",
+  "priceUsd": 13,
+  "supplierQuery": "Cytron MD10C R3 10A DC motor driver",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Truth table (Cytron MD10C R3.0 user's manual, 3G): PWM low = brake (A and B low); PWM high + DIR low = forward (A high, B low); PWM high + DIR high = reverse (A low, B high). There is no coast state.",
+    "Sign-magnitude control: PWM duty on the PWM pin sets speed, DIR sets direction. Locked-antiphase also works: hold PWM high and feed the PWM signal to DIR (50 % duty = stop).",
+    "Motor supply 5-30 V DC into the POWER terminal; the board needs no other supply. Check polarity: there is no reverse-polarity protection.",
+    "Join the control header GND to the microcontroller GND.",
+    "Logic inputs: high 3-5.5 V, low 0-0.5 V, so 3.3 V GPIOs (ESP32, Pico) drive them directly.",
+    "PWM frequency at most 20 kHz; the output switches at the input frequency. Use a microcontroller PWM, not an RC receiver.",
+    "13 A continuous (25 C, no heatsink or airflow), 30 A peak for at most 10 s. Use thick wires and a fuse sized for the motor."
+  ],
+  "keywords": [
+    "md10c",
+    "cytron",
+    "motor driver",
+    "h-bridge",
+    "dc motor",
+    "13a",
+    "10a",
+    "pwm dir",
+    "sign-magnitude",
+    "locked-antiphase"
+  ],
+  "sources": [
+    "https://robu.in/wp-content/uploads/2014/12/MD10C-Rev3.0-Users-Manual.pdf",
+    "https://www.cytron.io/p-10amp-5v-30v-dc-motor-driver"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "PWM",
+      "DIR"
+    ]
+  },
+  "driver": {
+    "filename": "md10c.py",
+    "code": "# Cytron MD10C R3.0 13 A DC motor driver, MicroPython driver.\n# One H-bridge (4 NMOS), one brushed DC motor, powered from the motor supply only (5-30 V).\n# Control header (Cytron MD10C R3.0 user's manual, section 3G): 1 GND, 2 PWM, 3 DIR.\n# Truth table (same section):\n#   PWM = 0, DIR = X -> A low,  B low : brake (low-side)\n#   PWM = 1, DIR = 0 -> A high, B low : forward (current A -> B)\n#   PWM = 1, DIR = 1 -> A low,  B high: reverse (current B -> A)\n# Sign-magnitude PWM: PWM pin carries the speed duty, DIR selects the direction.\n# The off part of each PWM period brakes (slow decay), so speed is roughly proportional to duty.\n# PWM frequency at most 20 kHz (output frequency = input frequency); 10 kHz default.\n# Inputs: high 3-5.5 V, low 0-0.5 V, so 3.3 V GPIOs drive them directly.\n# (Locked-antiphase mode, PWM held high and the PWM signal on DIR with 50 % = stop, is also supported by the\n#  board; this driver uses sign-magnitude.)\nfrom machine import Pin, PWM\n\nMAX_FREQ = 20000\n\n\nclass MD10C:\n    def __init__(self, pwm, dir, freq=10000):\n        \"\"\"pwm, dir: GPIO numbers wired to the PWM and DIR header pins. freq: PWM frequency, <= 20 kHz.\"\"\"\n        if freq > MAX_FREQ:\n            raise ValueError('MD10C PWM frequency must be <= 20 kHz')\n        self.dir = Pin(dir, Pin.OUT, value=0)\n        self.pwm = PWM(Pin(pwm), freq=freq, duty_u16=0)\n\n    @staticmethod\n    def _duty(speed):\n        speed = max(0, min(100, speed))\n        return speed * 65535 // 100\n\n    def forward(self, speed=100):\n        \"\"\"DIR low, PWM = speed %: output A high, B low while PWM is high.\"\"\"\n        self.pwm.duty_u16(0)\n        self.dir.value(0)\n        self.pwm.duty_u16(self._duty(speed))\n\n    def reverse(self, speed=100):\n        \"\"\"DIR high, PWM = speed %: output A low, B high while PWM is high.\"\"\"\n        self.pwm.duty_u16(0)\n        self.dir.value(1)\n        self.pwm.duty_u16(self._duty(speed))\n\n    def drive(self, speed):\n        \"\"\"speed -100..100: positive = forward, negative = reverse, 0 = brake.\"\"\"\n        if speed > 0:\n            self.forward(speed)\n        elif speed < 0:\n            self.reverse(-speed)\n        else:\n            self.brake()\n\n    def brake(self):\n        \"\"\"PWM low: both outputs low, the motor is shorted and stops quickly. (The MD10C has no coast state.)\"\"\"\n        self.pwm.duty_u16(0)\n\n    def stop(self):\n        self.brake()\n"
+  },
+  "example": {
+    "code": "import time\nfrom md10c import MD10C\n\nmotor = MD10C({PWM}, {DIR})\nwhile True:\n    motor.forward(100)\n    print('forward')\n    time.sleep(1)\n    motor.brake()\n    print('brake')\n    time.sleep(1)\n    motor.reverse(100)\n    print('reverse')\n    time.sleep(1)\n    motor.brake()\n    print('brake')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor runs forward, brakes, then runs in reverse",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "brake",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "reverse",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:52:20.709Z",
+    "verifiedSources": [
+      "https://www.robot-maker.com/shop/img/cms/348%20-%20Driver%20MD10C%20Cytron/MD10C%20Rev3-0%20Users%20Manual.pdf",
+      "https://makerselectronics.com/product/cytron-md10c-single-channel-dc-mot/"
+    ]
+  }
+}

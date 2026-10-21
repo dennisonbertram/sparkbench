@@ -1,0 +1,106 @@
+{
+  "type": "custom-ds18s20",
+  "name": "DS18S20 1-Wire digital thermometer",
+  "mpn": "DS18S20+",
+  "category": "sensor",
+  "description": "Maxim/Analog Devices high-precision 1-Wire digital thermometer, -55 to +125 °C (±0.5 °C from -10 to +85 °C, ±2 °C over the full range), fixed 9-bit reading (0.5 °C per LSB) plus COUNT_REMAIN / COUNT_PER_C bytes for extended resolution (1/16 °C steps), 750 ms conversion, unique 64-bit ROM code with family code 10h. Runs on 3.0-5.5 V. Sold as: DS18S20+ in a 3-pin TO-92 through-hole package (datasheet bottom view; with the flat face towards you and legs down: GND, DQ, VDD), needing an external 4.7 kΩ pull-up from DQ to VDD.",
+  "eli5": "A small thermometer chip that sends the temperature as a number down a single wire; several can share the same wire.",
+  "refPrefix": "U",
+  "interface": "onewire",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (TO-92 pin 1, left with the flat face towards you)",
+      "required": true
+    },
+    {
+      "name": "DQ",
+      "role": "io",
+      "fn": "onewire",
+      "description": "1-Wire data in/out, open-drain (TO-92 pin 2, middle); needs a 4.7 kΩ pull-up to VDD",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.0-5.5 V (TO-92 pin 3, right). Use 3.3 V with an ESP32 or Pico so the pull-up keeps DQ at 3.3 V logic",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/DS18S20.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "DS18S20+ TO-92 1-Wire digital thermometer",
+  "footprint": "Package_TO_SOT_THT:TO-92_Inline",
+  "buildNotes": [
+    "Pin order with the flat face towards you, legs down: left = GND, middle = DQ, right = VDD (the datasheet drawing is a bottom view). Wired backwards it gets hot fast: unplug it at once.",
+    "Fit a 4.7 kΩ pull-up from DQ to VDD and power VDD from 3.3 V when DQ goes to an ESP32 or Pico.",
+    "Send Convert T (44h), then wait at least 750 ms before Read Scratchpad (BEh); MicroPython's ds18x20 module does the commands and the CRC check (it recognises family 10h), your code does the wait.",
+    "The temperature register is 0.5 °C per LSB (0032h = +25.0 °C, FFCEh = -25.0 °C). ds18x20 adds the datasheet's extended-resolution formula: T = TEMP_READ - 0.25 + (COUNT_PER_C - COUNT_REMAIN) / COUNT_PER_C, COUNT_PER_C = 16, giving 1/16 °C steps.",
+    "A reading of exactly 85 °C (00AAh) is the power-on value: the conversion did not finish or the sensor lost power.",
+    "The DS18S20 is not the DS18B20: it has no resolution setting (always 750 ms) and a different register format. Code that decodes the scratchpad by hand must check the family code (10h vs 28h).",
+    "Use VDD (external power), not parasite power: parasite mode needs VDD grounded and a strong pull-up during every conversion."
+  ],
+  "keywords": [
+    "ds18s20",
+    "ds18s20+",
+    "ds1820",
+    "1-wire",
+    "onewire",
+    "temperature",
+    "thermometer",
+    "dallas",
+    "maxim",
+    "to-92"
+  ],
+  "sim": {
+    "kind": "onewire-temp",
+    "family": 16,
+    "outputPin": "DQ",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 125,
+    "default": 21
+  },
+  "example": {
+    "code": "import machine, onewire, ds18x20, time\n\nds = ds18x20.DS18X20(onewire.OneWire(machine.Pin({DQ})))\nroms = ds.scan()\nprint('found', len(roms))\nwhile True:\n    ds.convert_temp()\n    time.sleep_ms(750)  # conversion takes up to 750 ms\n    print('T=%.2fC' % ds.read_temp(roms[0]))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 23.75
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=23.75C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/DS18S20.pdf",
+    "http://web.archive.org/web/2020id_/https://datasheets.maximintegrated.com/en/ds/DS18S20.pdf",
+    "https://github.com/micropython/micropython-lib/blob/master/micropython/drivers/sensor/ds18x20/ds18x20.py"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:50:25.368Z",
+    "verifiedSources": [
+      "https://www.rlocman.ru/i/File/2015/06/05/DS18S20.pdf",
+      "https://www.radiolocman.com/datasheet/data.html?di=160355"
+    ]
+  }
+}

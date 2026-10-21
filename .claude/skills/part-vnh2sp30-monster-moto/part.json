@@ -1,0 +1,277 @@
+{
+  "type": "custom-vnh2sp30-monster-moto",
+  "name": "VNH2SP30 Monster Moto dual motor shield",
+  "mpn": "VNH2SP30-E",
+  "category": "actuator",
+  "description": "Arduino-format shield with two ST VNH2SP30-E full-bridge drivers: runs two brushed DC motors forwards, backwards, braked or coasting with PWM up to 20 kHz, 30 A max per channel (about 14 A practical continuous), with current-sense outputs, thermal, under- and over-voltage shutdown. Motor supply 5.5-16 V on the power terminal; 5 V-logic inputs (VIH 3.25 V min). Sold as: SparkFun Monster Moto Shield (DEV-10182, 2x VNH2SP30), Arduino headers A0 EN1, A1 EN2, A2 CS1, A3 CS2, D4 INA2, D5 PWM1, D6 PWM2, D7 INA1, D8 INB1, D9 INB2, screw terminals VIN +/-, motor 1 A/B, motor 2 A/B.",
+  "eli5": "A pair of heavy-duty switch boxes that let your board run two big motors forwards or backwards, at any speed, from a big battery.",
+  "refPrefix": "U",
+  "interface": "pwm",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "5V",
+      "role": "power",
+      "required": true,
+      "description": "Arduino power header 5V: feeds only the 4.7 kOhm pull-ups on EN1/EN2 (about 2 mA). Connect to the board's 5 V. It does not power the motors"
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Arduino power header GND: logic ground, common with the motor supply ground"
+    },
+    {
+      "name": "EN1",
+      "role": "io",
+      "fn": "digital-in",
+      "required": false,
+      "boardPullUp": 4700,
+      "description": "Arduino A0: motor 1 ENA/DIAGA + ENB/DIAGB (joined), 1 kOhm series, pulled up to 5V with 4.7 kOhm. High = enabled; the chip pulls it low on a fault (open drain). Leave unconnected for basic use; it sits at 5 V, so wire it to a 3.3 V board only through a level shifter"
+    },
+    {
+      "name": "EN2",
+      "role": "io",
+      "fn": "digital-in",
+      "required": false,
+      "boardPullUp": 4700,
+      "description": "Arduino A1: motor 2 enable/diagnostic, same as EN1. Leave unconnected for basic use"
+    },
+    {
+      "name": "CS1",
+      "role": "io",
+      "fn": "adc",
+      "required": false,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      },
+      "description": "Arduino A2: motor 1 current sense: I_out/11370 into the shield's 1.5 kOhm resistor (0.132 V per amp), then 10 kOhm + 33 nF. Exceeds 3.3 V above about 25 A, so it goes through a 10k/20k divider; valid only while driving CW/CCW. Optional"
+    },
+    {
+      "name": "CS2",
+      "role": "io",
+      "fn": "adc",
+      "required": false,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      },
+      "description": "Arduino A3: motor 2 current sense, same scale as CS1. Optional"
+    },
+    {
+      "name": "INA2",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Arduino D4: motor 2 INA (1 kOhm series). VIH 3.25 V min, 2.7 V typ."
+    },
+    {
+      "name": "PWM1",
+      "role": "io",
+      "fn": "pwm",
+      "required": true,
+      "description": "Arduino D5: motor 1 PWM (speed), 1 kOhm series and 1 kOhm pull-down; 0-20 kHz. Low = both low-side switches off"
+    },
+    {
+      "name": "PWM2",
+      "role": "io",
+      "fn": "pwm",
+      "required": true,
+      "description": "Arduino D6: motor 2 PWM (speed), 1 kOhm series and 1 kOhm pull-down; 0-20 kHz"
+    },
+    {
+      "name": "INA1",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Arduino D7: motor 1 INA (1 kOhm series). INA=1, INB=0 -> clockwise"
+    },
+    {
+      "name": "INB1",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Arduino D8: motor 1 INB (1 kOhm series). INA=0, INB=1 -> counterclockwise"
+    },
+    {
+      "name": "INB2",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Arduino D9: motor 2 INB (1 kOhm series)"
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "required": true,
+      "supply": {
+        "vmin": 5.5,
+        "vmax": 16,
+        "currentMa": 20000
+      },
+      "description": "Power screw terminal +: motor supply 5.5-16 V (VNH2SP30 operating range; over-voltage shutdown from 16 V), through the shield's reverse-polarity MOSFET. Use a battery/PSU sized for both motors; never the microcontroller's pins"
+    },
+    {
+      "name": "PGND",
+      "role": "gnd",
+      "required": true,
+      "description": "Power screw terminal -: motor supply ground (common with GND)"
+    },
+    {
+      "name": "OUTA1",
+      "role": "passive",
+      "required": false,
+      "description": "Motor 1 screw terminal A: OUTA of U1, connect the motor"
+    },
+    {
+      "name": "OUTB1",
+      "role": "passive",
+      "required": false,
+      "description": "Motor 1 screw terminal B: OUTB of U1"
+    },
+    {
+      "name": "OUTA2",
+      "role": "passive",
+      "required": false,
+      "description": "Motor 2 screw terminal A: OUTA of U2"
+    },
+    {
+      "name": "OUTB2",
+      "role": "passive",
+      "required": false,
+      "description": "Motor 2 screw terminal B: OUTB of U2"
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 3,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/vnh2sp30-e.pdf",
+  "priceUsd": 65,
+  "supplierQuery": "Monster Moto Shield VNH2SP30",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x18_P2.54mm_Vertical",
+  "buildNotes": [
+    "Truth table per motor (ST datasheet Table 12, EN high): INA=1 INB=0 -> clockwise (OUTA high, OUTB low); INA=0 INB=1 -> counterclockwise; INA=INB=0 -> brake to GND; INA=INB=1 -> brake to VCC. PWM sets speed by switching the low side: PWM=0 turns both low sides off, so INA=INB=0 with PWM=0 coasts.",
+    "Pins (SparkFun example sketch and schematic v12): motor 1 INA1=D7, INB1=D8, PWM1=D5, EN1=A0, CS1=A2; motor 2 INA2=D4, INB2=D9, PWM2=D6, EN2=A1, CS2=A3.",
+    "Logic levels: the VNH2SP30 inputs need VIH >= 3.25 V guaranteed (2.7 V typical). 3.3 V GPIOs (ESP32, Pico) usually work but sit at the edge of the spec, and the 1 kOhm pull-down on PWM loads the pin with 3.3 mA; for guaranteed operation drive INA/INB/PWM through a 5 V buffer such as a 74AHCT125.",
+    "Motor supply on the VIN/- screw terminal: 5.5-16 V (under-voltage shutdown at 5.5 V max, over-voltage shutdown 16-22 V). The 5V header pin powers only the EN pull-ups; join GND to the microcontroller GND.",
+    "EN1/EN2 are pulled up to 5 V on the shield (4.7 kOhm), so leave them unconnected on a 3.3 V board unless you level-shift; the chip pulls them low on over-temperature or a short and the faulty leg latches off until INA/INB go low and high again.",
+    "CS: I_sense = I_out / 11370 (K 9665-13075) into 1.5 kOhm = 0.132 V per amp, valid only in CW/CCW. With the 10k/20k divider after the shield's 10 kOhm series resistor the ADC sees about 0.064 V per amp; the driver's current() does this maths.",
+    "PWM at most 20 kHz (driver default 20 kHz). ST recommends about 500 uF bulk capacitance per 10 A; the shield has 560 uF per chip."
+  ],
+  "keywords": [
+    "vnh2sp30",
+    "vnh2sp30-e",
+    "monster moto",
+    "monster moto shield",
+    "dev-10182",
+    "h-bridge",
+    "dual motor driver",
+    "high current",
+    "dc motor",
+    "sparkfun"
+  ],
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/vnh2sp30-e.pdf",
+    "https://cdn.sparkfun.com/datasheets/Dev/Arduino/Shields/MonsterMoto-Shield-v12.pdf",
+    "https://github.com/sparkfun/Monster_Moto_Shield",
+    "https://raw.githubusercontent.com/sparkfun/Monster_Moto_Shield/master/Firmware/MonsterMoto_Shield_Example_Sketch/MonsterMoto_Shield_Example_Sketch.ino"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "INA1",
+      "INB1",
+      "PWM1",
+      "INA2",
+      "INB2",
+      "PWM2"
+    ]
+  },
+  "driver": {
+    "filename": "vnh2sp30.py",
+    "code": "# VNH2SP30-E full-bridge motor driver (ST), MicroPython driver.\n# Written for the SparkFun Monster Moto Shield (DEV-10182): two VNH2SP30s, one per motor.\n# Shield wiring (MonsterMoto-Shield-v12 schematic): INA, INB and PWM reach the chip through 1 kOhm series\n# resistors, PWM also has a 1 kOhm pull-down; ENA/DIAGA and ENB/DIAGB are tied together and pulled up to the\n# shield's 5V pin with 4.7 kOhm (EN1/EN2); CS feeds a 1.5 kOhm sense resistor to GND, then 10 kOhm + 33 nF.\n#\n# Truth table (ST datasheet Table 12, EN/DIAG high):\n#   INA INB  OUTA OUTB  mode\n#    1   1    H    H    brake to VCC\n#    1   0    H    L    clockwise (CW)\n#    0   1    L    H    counterclockwise (CCW)\n#    0   0    L    L    brake to GND\n# \"A 0 on the PWM pin turns off both LSA and LSB\" (datasheet section 3): PWM modulates the low-side switch, so\n# speed = PWM duty, and INA = INB = 0 with PWM = 0 leaves every switch off (the motor coasts).\n# PWM frequency: 0-20 kHz (datasheet Table 9); this driver uses 20 kHz by default.\n# Logic thresholds: VIH 3.25 V min (2.7 V typical), VIL 1.25 V max. A 3.3 V GPIO is at the edge of the\n# guaranteed range; for guaranteed operation put a 5 V buffer (e.g. 74AHCT125) in front of INA/INB/PWM.\n#\n# Current sense: I_sense = I_out / K, K = 11370 typ. (9665-13075 at 30 A, Table 11), into the shield's 1.5 kOhm\n# resistor: 0.132 V per amp at the CS pin. CS is only valid in CW/CCW (high impedance while braking).\n# Above about 25 A the CS pin exceeds 3.3 V, so feed a 3.3 V ADC through a divider (top -> ADC pin, bottom -> GND)\n# and pass its resistors; the driver accounts for the shield's own 10 kOhm series resistor.\nfrom machine import Pin, PWM, ADC\n\nK_SENSE = 11370       # I_out / I_sense, datasheet typical\nR_SENSE = 1500        # shield sense resistor (R6 / R15)\nR_SERIES = 10000      # shield series resistor to the A2/A3 header (R5 / R14)\n\n\nclass VNH2SP30:\n    def __init__(self, ina, inb, pwm, freq=20000, cs=None, cs_top=10000, cs_bottom=20000, vref=3.3, en=None):\n        \"\"\"ina, inb, pwm: GPIO numbers. cs: optional ADC GPIO on the CS line; cs_top/cs_bottom: the divider in\n        front of it (cs_bottom=None when CS goes straight to the ADC). en: optional GPIO on EN/DIAG. It is pulled up\n        to 5 V on the shield, so only wire it through a level shifter.\"\"\"\n        if freq > 20000:\n            raise ValueError('VNH2SP30 PWM is limited to 20 kHz')\n        self.ina = Pin(ina, Pin.OUT, value=0)\n        self.inb = Pin(inb, Pin.OUT, value=0)\n        self.pwm = PWM(Pin(pwm), freq=freq, duty_u16=0)\n        self.cs = ADC(Pin(cs)) if cs is not None else None\n        self.cs_top = cs_top\n        self.cs_bottom = cs_bottom\n        self.vref = vref\n        self.en = Pin(en, Pin.IN) if en is not None else None\n\n    @staticmethod\n    def _duty(speed):\n        speed = max(0, min(100, speed))\n        return speed * 65535 // 100\n\n    def cw(self, speed=100):\n        \"\"\"Clockwise: INA = 1, INB = 0 (OUTA high, OUTB low), PWM = speed %.\"\"\"\n        self.inb.value(0)\n        self.ina.value(1)\n        self.pwm.duty_u16(self._duty(speed))\n\n    def ccw(self, speed=100):\n        \"\"\"Counterclockwise: INA = 0, INB = 1, PWM = speed %.\"\"\"\n        self.ina.value(0)\n        self.inb.value(1)\n        self.pwm.duty_u16(self._duty(speed))\n\n    def drive(self, speed):\n        \"\"\"speed -100..100: positive = CW, negative = CCW, 0 = brake to GND.\"\"\"\n        if speed > 0:\n            self.cw(speed)\n        elif speed < 0:\n            self.ccw(-speed)\n        else:\n            self.brake()\n\n    def brake(self, strength=100):\n        \"\"\"Brake to GND: INA = INB = 0, both low sides on for `strength` % of the time (PWM).\"\"\"\n        self.ina.value(0)\n        self.inb.value(0)\n        self.pwm.duty_u16(self._duty(strength))\n\n    def brake_vcc(self):\n        \"\"\"Brake to VCC: INA = INB = 1, both high sides on.\"\"\"\n        self.ina.value(1)\n        self.inb.value(1)\n        self.pwm.duty_u16(65535)\n\n    def coast(self):\n        \"\"\"INA = INB = 0 and PWM = 0: every switch off, the motor runs down freely.\"\"\"\n        self.ina.value(0)\n        self.inb.value(0)\n        self.pwm.duty_u16(0)\n\n    def stop(self):\n        self.brake()\n\n    def fault(self):\n        \"\"\"True when the chip pulls EN/DIAG low (over-temperature or short), None without an EN pin.\n        Clear a latched fault by taking INA/INB low and back high (datasheet section 3).\"\"\"\n        if self.en is None:\n            return None\n        return self.en.value() == 0\n\n    def current(self):\n        \"\"\"Approximate motor current in amps (only meaningful while driving CW/CCW), or None without a CS pin.\"\"\"\n        if self.cs is None:\n            return None\n        v_adc = self.cs.read_u16() * self.vref / 65535\n        if self.cs_bottom is None:\n            i_sense = v_adc / R_SENSE\n        else:\n            i_chain = v_adc / self.cs_bottom\n            v_cs = i_chain * (R_SERIES + self.cs_top + self.cs_bottom)\n            i_sense = v_cs / R_SENSE + i_chain\n        return i_sense * K_SENSE\n\n\nclass MonsterMoto:\n    \"\"\"Both channels of the Monster Moto Shield: m1 = INA1/INB1/PWM1, m2 = INA2/INB2/PWM2.\"\"\"\n\n    def __init__(self, ina1, inb1, pwm1, ina2, inb2, pwm2, freq=20000, cs1=None, cs2=None, **kw):\n        self.m1 = VNH2SP30(ina1, inb1, pwm1, freq=freq, cs=cs1, **kw)\n        self.m2 = VNH2SP30(ina2, inb2, pwm2, freq=freq, cs=cs2, **kw)\n\n    def stop(self):\n        self.m1.brake()\n        self.m2.brake()\n"
+  },
+  "example": {
+    "code": "import time\nfrom vnh2sp30 import MonsterMoto\n\nmoto = MonsterMoto({INA1}, {INB1}, {PWM1}, {INA2}, {INB2}, {PWM2})\nmoto.m2.coast()\nwhile True:\n    moto.m1.cw(100)\n    print('motor 1 cw')\n    time.sleep(1)\n    moto.m1.brake()\n    print('motor 1 brake')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor 1 runs clockwise, then brakes to GND",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "INA1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "INB1",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM1",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor 1 cw",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "INA1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "INB1",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM1",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM2",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor 1 brake",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:53:59.050Z",
+    "verifiedSources": [
+      "https://github.com/sparkfun/Monster_Moto_Shield",
+      "https://www.sparkfun.com/products/10182"
+    ]
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "type": "custom-lm75b",
+  "name": "LM75B temperature sensor",
+  "mpn": "LM75B",
+  "category": "sensor",
+  "description": "NXP digital temperature sensor and thermal watchdog, -55 to 125 °C with 0.125 °C resolution (±2 °C from -25 to 100 °C), on an I2C bus, plus an open-drain over-temperature (OS) output. Runs on 2.8–5.5 V. Sold as: Switch Science LM75B breakout board (SSCI-018133, 5-pin header VCC, OS, SCL, SDA, GND; 10k pull-ups on SDA/SCL/OS), I2C address 0x48 as shipped (A0–A2 solder jumpers closed to GND, 0x48–0x4F).",
+  "eli5": "A small thermometer chip your board asks for the temperature over two wires; it can also flip a pin when it gets too hot.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.8–5.5 V (use the microcontroller's 3.3 V: the board's pull-ups go to VCC)",
+      "required": true
+    },
+    {
+      "name": "OS",
+      "role": "io",
+      "description": "Over-temperature output, open-drain, active low by default (10k pull-up to VCC on the board); not needed for basic use",
+      "required": false,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up to VCC on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up to VCC on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2.8,
+  "vmax": 5.5,
+  "currentMa": 0.3,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/LM75B.pdf",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/LM75B.pdf",
+    "https://international.switch-science.com/catalog/1813/",
+    "http://doc.switch-science.com/schematic/LM75B_breakout/LM75B_breakout.pdf",
+    "https://international.switch-science.com/do/imagecontent/LM75B2_500.jpg"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "Switch Science LM75B breakout board",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "The board ships with no header: solder a 5-pin 2.54 mm header (VCC, OS, SCL, SDA, GND).",
+    "Address 0x48 as shipped: A0, A1 and A2 are tied to GND by closed solder jumpers SJ1–SJ3. To set a bit, cut its jumper on the back and fit a 10k 0603 resistor at R4 (A0), R5 (A1) or R6 (A2) to VCC (0x48–0x4F).",
+    "Temperature is register 0x00, two bytes MSB first: an 11-bit two's complement value in bits 15–5, 0.125 °C per step. T = (signed 16-bit raw >> 5) × 0.125.",
+    "The first temperature reading after power-up is wrong and must be ignored (datasheet 7.4.1); the driver discards it. A conversion takes 10 ms every 100 ms.",
+    "OS goes low when the temperature passes Tos (80 °C at power-up) and releases below Thyst (75 °C); both are 9-bit values in 0.5 °C steps in registers 0x03 and 0x02.",
+    "The 10k pull-ups on SDA, SCL and OS go to VCC, so power it from 3.3 V on a 3.3 V microcontroller.",
+    "There is no chip-ID register, so a scan showing 0x48–0x4F is the only presence check."
+  ],
+  "keywords": [
+    "lm75b",
+    "lm75",
+    "switch science",
+    "temperature",
+    "thermometer",
+    "thermostat",
+    "nxp"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 125,
+    "default": 21,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 0,
+      "0x02": 19200,
+      "0x03": 20480
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 0.125,
+      "shift": 5,
+      "signed": true
+    }
+  },
+  "driver": {
+    "filename": "lm75b.py",
+    "code": "# LM75B digital temperature sensor and thermal watchdog (NXP LM75B Rev. 6.1), MicroPython driver.\n# Pointer byte selects the register: 0x00 Temp (read-only, 2 bytes), 0x01 Conf (1 byte),\n# 0x02 Thyst (2 bytes, POR 0x4B00 = 75 degC), 0x03 Tos (2 bytes, POR 0x5000 = 80 degC).\n# Temp: 11-bit two's complement in bits 15..5, 0.125 degC per LSB (datasheet section 7.4.3).\n# Tos/Thyst: 9-bit two's complement in bits 15..7, 0.5 degC per LSB (section 7.4.4).\nimport time\n\n_REG_TEMP = 0x00\n_REG_CONF = 0x01\n_REG_THYST = 0x02\n_REG_TOS = 0x03\n\n\nclass LM75B:\n    def __init__(self, i2c, addr=0x48):\n        self.i2c = i2c\n        self.addr = addr\n        # Section 7.4.1: the first temperature reading after power-up is incorrect and\n        # must be ignored. Wait for a conversion (10 ms every 100 ms) and discard one read.\n        time.sleep_ms(120)\n        self._read16(_REG_TEMP)\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)  # MSByte first\n        raw = (d[0] << 8) | d[1]\n        return raw - 0x10000 if raw & 0x8000 else raw\n\n    def _write16(self, reg, value):\n        value &= 0xFFFF\n        self.i2c.writeto_mem(self.addr, reg, bytes([value >> 8, value & 0xFF]))\n\n    def temperature(self):\n        \"\"\"Temperature in degC, 0.125 degC resolution.\"\"\"\n        return (self._read16(_REG_TEMP) >> 5) * 0.125\n\n    def config(self, value=None):\n        \"\"\"Read (no argument) or write the configuration register (bits 7..5 reserved, keep 0).\"\"\"\n        if value is None:\n            return self.i2c.readfrom_mem(self.addr, _REG_CONF, 1)[0]\n        self.i2c.writeto_mem(self.addr, _REG_CONF, bytes([value & 0x1F]))\n\n    def shutdown(self, off=True):\n        \"\"\"Conf bit 0: 1 = shutdown (about 0.2 uA, Temp keeps the last result), 0 = normal.\"\"\"\n        c = self.config()\n        self.config((c | 0x01) if off else (c & ~0x01))\n        if not off:\n            time.sleep_ms(110)  # wait for a fresh conversion\n\n    def tos(self, value=None):\n        \"\"\"Overtemperature shutdown threshold in degC (0.5 degC steps, power-up 80).\"\"\"\n        if value is None:\n            return (self._read16(_REG_TOS) >> 7) * 0.5\n        self._write16(_REG_TOS, int(round(value * 2)) << 7)\n\n    def thyst(self, value=None):\n        \"\"\"Hysteresis threshold in degC (0.5 degC steps, power-up 75).\"\"\"\n        if value is None:\n            return (self._read16(_REG_THYST) >> 7) * 0.5\n        self._write16(_REG_THYST, int(round(value * 2)) << 7)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lm75b import LM75B\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = LM75B(i2c)  # 0x48 as shipped (A0-A2 jumpers to GND)\nwhile True:\n    print('T=%.3fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -17.625
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-17.625C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:47:48.905Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/LM75B.pdf",
+      "https://www.switch-science.com/products/1813"
+    ]
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "type": "custom-cytron-mdd10a",
+  "name": "Cytron MDD10A dual 10 A DC motor driver",
+  "mpn": "MDD10A",
+  "category": "actuator",
+  "description": "Dual-channel brushed DC motor driver with two full-NMOS H-bridges: 10 A continuous and 30 A peak (10 s) per channel from a 5-30 V supply (Rev2.0), each motor controlled by a PWM (speed, up to 20 kHz) and a DIR (direction) input that accept 3.3 V or 5 V logic; supports sign-magnitude and locked-antiphase PWM, with test buttons and direction LEDs. Sold as: Cytron MDD10A Rev2.0 10Amp 5V-30V DC Motor Driver (2 Channels) (5-way input header GND PWM2 DIR2 PWM1 DIR1, screw terminal M1B M1A POWER+ POWER- M2A M2B).",
+  "eli5": "A strong double switch box that lets your board run two big motors forwards or backwards at any speed from a battery.",
+  "refPrefix": "U",
+  "interface": "pwm",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Input header pin 1: ground, common with POWER-; connect to the microcontroller GND"
+    },
+    {
+      "name": "PWM2",
+      "role": "io",
+      "description": "Input header pin 2: motor 2 speed, PWM up to 20 kHz (TTL PWM, not RC). Low = brake. Logic high 3-5.5 V",
+      "required": false,
+      "fn": "pwm"
+    },
+    {
+      "name": "DIR2",
+      "role": "io",
+      "description": "Input header pin 3: motor 2 direction: low = Output A high/B low, high = A low/B high",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "PWM1",
+      "role": "io",
+      "description": "Input header pin 4: motor 1 speed, PWM up to 20 kHz (TTL PWM, not RC). Low = brake. Logic high 3-5.5 V, low 0-0.5 V",
+      "required": true,
+      "fn": "pwm"
+    },
+    {
+      "name": "DIR1",
+      "role": "io",
+      "description": "Input header pin 5: motor 1 direction: low = Output A high/B low, high = A low/B high",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "M1B",
+      "role": "io",
+      "description": "Screw terminal 1: motor 1 output B; connect the motor, never the microcontroller",
+      "required": false
+    },
+    {
+      "name": "M1A",
+      "role": "io",
+      "description": "Screw terminal 2: motor 1 output A",
+      "required": false
+    },
+    {
+      "name": "POWER+",
+      "role": "power",
+      "required": true,
+      "description": "Screw terminal 3: motor supply +, 5-30 V (Rev2.0) from a battery able to deliver the motor current (10 A continuous per channel). Also powers the board's logic. No reverse-polarity protection. Never connect to the microcontroller",
+      "supply": {
+        "vmin": 5,
+        "vmax": 30,
+        "currentMa": 20000
+      }
+    },
+    {
+      "name": "POWER-",
+      "role": "gnd",
+      "required": true,
+      "description": "Screw terminal 4: motor supply - (ground, common with header GND)"
+    },
+    {
+      "name": "M2A",
+      "role": "io",
+      "description": "Screw terminal 5: motor 2 output A",
+      "required": false
+    },
+    {
+      "name": "M2B",
+      "role": "io",
+      "description": "Screw terminal 6: motor 2 output B",
+      "required": false
+    }
+  ],
+  "vmin": 5,
+  "vmax": 30,
+  "currentMa": 10,
+  "datasheetUrl": "https://docs.google.com/document/d/1ol8nICCTTw5dAHHE_hju08cCVH2GN5_Y3cGC6B4Gbas/edit",
+  "priceUsd": 17,
+  "supplierQuery": "Cytron MDD10A dual channel 10A DC motor driver",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x11_P2.54mm_Vertical",
+  "buildNotes": [
+    "Truth table (manual V2.0): PWM low -> both outputs low (brake); PWM high + DIR low -> Output A high, B low; PWM high + DIR high -> A low, B high.",
+    "Motor supply POWER+/POWER- is 5-30 V on Rev2.0 (Rev1.0 boards: 25 V max). There is no logic supply pin: the board powers its logic from POWER+.",
+    "Logic inputs: high 3-5.5 V, low 0-0.5 V, so 3.3 V GPIOs work directly.",
+    "PWM at most 20 kHz (output frequency follows the input). Not for RC-receiver servo pulses.",
+    "10 A continuous, 30 A peak for at most 10 s per channel. Use thick wires and a fuse.",
+    "Use a battery: switching power supplies can shut down on the motor's regenerative current.",
+    "Always join the header GND to the microcontroller GND."
+  ],
+  "keywords": [
+    "mdd10a",
+    "cytron",
+    "md10c",
+    "dual motor driver",
+    "h-bridge",
+    "10a",
+    "dc motor",
+    "pwm dir",
+    "sign-magnitude"
+  ],
+  "sources": [
+    "https://docs.google.com/document/d/1ol8nICCTTw5dAHHE_hju08cCVH2GN5_Y3cGC6B4Gbas/edit",
+    "https://botland.store/drivers-dc-motors/15818-cytron-mdd10a-dual-channel-30v-10a-motor-controller.html"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "PWM1",
+      "DIR1",
+      "PWM2",
+      "DIR2"
+    ]
+  },
+  "driver": {
+    "filename": "mdd10a.py",
+    "code": "# Cytron MDD10A (Rev2.0) dual-channel 10 A DC motor driver, MicroPython driver.\n# Written from the Cytron MDD10A User's Manual V2.0 (June 2017).\n# Each channel has a PWM input (speed) and a DIR input (direction). Truth table (manual section 5, item 6):\n#   PWM low            -> Output A low,  Output B low   (both low = motor terminals shorted: brake)\n#   PWM high, DIR low  -> Output A high, Output B low   (current A -> B)\n#   PWM high, DIR high -> Output A low,  Output B high  (current B -> A)\n# This is sign-magnitude PWM: duty on PWM = speed, DIR = direction. PWM up to 20 kHz (TTL PWM only, not RC\n# servo pulses). Logic high 3-5.5 V, low 0-0.5 V, so 3.3 V GPIOs drive it directly.\n# Locked-antiphase (PWM pin held high, PWM on DIR, 50 % = stop) is also supported by the board; see\n# LockedAntiphase below.\nfrom machine import Pin, PWM\n\nMAX_FREQ = 20000  # manual: maximum PWM frequency 20 kHz\n\n\nclass Motor:\n    \"\"\"One MDD10A channel: pwm = GPIO wired to PWMn, dir = GPIO wired to DIRn.\"\"\"\n\n    def __init__(self, pwm, dir, freq=MAX_FREQ):\n        if freq > MAX_FREQ:\n            raise ValueError('MDD10A PWM frequency is at most 20 kHz')\n        self.dir = Pin(dir, Pin.OUT, value=0)\n        self.pwm = PWM(Pin(pwm), freq=freq, duty_u16=0)\n\n    def speed(self, s):\n        \"\"\"s from -100 to 100 (%). Positive: DIR low, current flows Output A -> B.\n        Negative: DIR high, current flows B -> A. 0: brake (both outputs low).\"\"\"\n        s = max(-100, min(100, s))\n        if s == 0:\n            self.pwm.duty_u16(0)\n            return\n        self.dir.value(0 if s > 0 else 1)\n        self.pwm.duty_u16(abs(s) * 65535 // 100)\n\n    def forward(self, s=100):\n        self.speed(abs(s))\n\n    def reverse(self, s=100):\n        self.speed(-abs(s))\n\n    def brake(self):\n        \"\"\"PWM low: both outputs low, the motor is shorted through the low-side MOSFETs and stops fast.\n        (The MDD10A has no coast/high-impedance state.)\"\"\"\n        self.pwm.duty_u16(0)\n\n    stop = brake\n\n\nclass LockedAntiphase:\n    \"\"\"Locked-antiphase mode for one channel: PWMn held high, PWM fed to DIRn.\n    50 % duty = stop, below 50 % one way (Output A -> B), above 50 % the other way.\"\"\"\n\n    def __init__(self, pwm, dir, freq=MAX_FREQ):\n        if freq > MAX_FREQ:\n            raise ValueError('MDD10A PWM frequency is at most 20 kHz')\n        self.en = Pin(pwm, Pin.OUT, value=0)\n        self.dir = PWM(Pin(dir), freq=freq, duty_u16=32768)\n        self.en.value(1)\n\n    def speed(self, s):\n        \"\"\"s from -100 to 100 (%): positive = DIR mostly low = current A -> B.\"\"\"\n        s = max(-100, min(100, s))\n        self.dir.duty_u16((100 - s) * 65535 // 200)\n\n    def stop(self):\n        self.speed(0)\n\n\nclass MDD10A:\n    \"\"\"Both channels: MDD10A(pwm1, dir1, pwm2, dir2). Channel 2 pins are optional.\"\"\"\n\n    def __init__(self, pwm1, dir1, pwm2=None, dir2=None, freq=MAX_FREQ):\n        self.m1 = Motor(pwm1, dir1, freq)\n        self.m2 = Motor(pwm2, dir2, freq) if pwm2 is not None and dir2 is not None else None\n\n    def drive(self, s1, s2=0):\n        self.m1.speed(s1)\n        if self.m2 is not None:\n            self.m2.speed(s2)\n\n    def brake(self):\n        self.m1.brake()\n        if self.m2 is not None:\n            self.m2.brake()\n\n    stop = brake\n"
+  },
+  "example": {
+    "code": "import time\nfrom mdd10a import MDD10A\n\nd = MDD10A({PWM1}, {DIR1})  # motor 1 only\nwhile True:\n    d.m1.speed(100)\n    print('M1 forward')\n    time.sleep(1)\n    d.m1.speed(-100)\n    print('M1 reverse')\n    time.sleep(1)\n    d.m1.brake()\n    print('M1 brake')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor 1 runs forward, reverse, then brakes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR1",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "M1 forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM1",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "M1 reverse",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PWM1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR1",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "M1 brake",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:53:46.935Z",
+    "verifiedSources": [
+      "https://makermotor.com/content/cytron/pn00218-cyt4/MDD10A%20User's%20Manual.pdf"
+    ]
+  }
+}

@@ -1,0 +1,271 @@
+{
+  "type": "custom-sn-gcja5",
+  "name": "SN-GCJA5 laser particulate matter sensor (I2C)",
+  "mpn": "SN-GCJA5",
+  "category": "sensor",
+  "description": "Panasonic laser-scattering PM sensor with I2C (address 0x33, fixed) and a UART TX output: reports PM1.0, PM2.5 and PM10 mass density (ug/m3, 0.001 resolution, +/-10 % from 35 to 1000 ug/m3) and particle counts in six size bins, refreshed every second. Runs from 5 V (+/-10 %, under 100 mA); its I2C and TX lines are 3.3 V logic with internal 10 kOhm pull-ups to the sensor's own 3.3 V. Sold as: SparkFun Particle Sensor - SN-GCJA5 (SPX-17123), 5-pin JST GH connector TX, SDA, SCL, GND, VDD (pin 1 to 5), wired with a JST GH 5-pin jumper cable.",
+  "eli5": "A little fan pulls air past a laser and the sensor counts the dust and smoke specks, telling your board over two wires how dirty the air is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "TX",
+      "role": "io",
+      "description": "Pin 1: UART TX, 9600 baud 8E1, 3.3 V logic, one 32-byte frame per second. Not needed when using I2C; leave unconnected.",
+      "required": false,
+      "levelV": 3.3
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "Pin 2: I2C data, 3.3 V logic, 10 kOhm pull-up inside the sensor to its own 3.3 V (no external pull-up needed)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "Pin 3: I2C clock, 3.3 V logic, 10 kOhm pull-up inside the sensor to its own 3.3 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 4: Ground (the metal shell is also tied to GND)",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Pin 5: Supply 5 V +/-10 % (4.5-5.5 V), under 100 mA. Feed it from the board's 5V/VBUS pin, not 3V3.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 100,
+  "i2cAddress": 51,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/e/b/d/4/5/SN-GCJA5_Product_Specification.pdf",
+  "priceUsd": 30,
+  "supplierQuery": "SparkFun Particle Sensor SN-GCJA5 SPX-17123",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VDD from 5 V (the board's 5V/VBUS pin); the sensor makes its own 3.3 V, and SDA/SCL/TX are 3.3 V logic, so they connect straight to an ESP32 or Pico.",
+    "The sensor already has 10 kOhm pull-ups on SDA and SCL to its internal 3.3 V. Do not add pull-ups to 5 V.",
+    "I2C address 0x33 (fixed), up to 400 kHz. Multi-byte values are little-endian: PM registers 0x00/0x04/0x08 are 4 bytes each, value / 1000 = ug/m3.",
+    "Registers update once per second. The first reading comes about 8 s after power-up and readings settle after about 28 s; STATE (0x26) fan bits read 2 during initial calibration.",
+    "Connector is a JST GH 5-pin (SM05B-GHS-TB); pin 1 is TX, pin 5 is VDD. Use a GH-to-jumper cable and check the colours against the pin numbers.",
+    "Keep the air inlet and outlet clear and out of strong drafts; do not short the grounded metal shell to anything but GND."
+  ],
+  "keywords": [
+    "sn-gcja5",
+    "gcja5",
+    "panasonic",
+    "pm2.5",
+    "pm10",
+    "pm1.0",
+    "particulate",
+    "dust",
+    "air quality",
+    "sparkfun spx-17123",
+    "i2c"
+  ],
+  "sources": [
+    "https://cdn.sparkfun.com/assets/e/b/d/4/5/SN-GCJA5_Product_Specification.pdf",
+    "https://cdn.sparkfun.com/assets/d/d/2/a/e/SN-GCJA5_Communication_Specification.pdf",
+    "https://cdn.sparkfun.com/assets/3/b/2/e/0/SN-GCAJA5_User_Manual.pdf",
+    "https://www.sparkfun.com/products/17123",
+    "https://github.com/sparkfun/SparkFun_Particle_Sensor_SN-GCJA5_Arduino_Library"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "PM2.5",
+    "unit": "ug/m3",
+    "min": 0,
+    "max": 2000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0",
+        "unit": "ug/m3",
+        "min": 0,
+        "max": 2000,
+        "default": 8
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10",
+        "unit": "ug/m3",
+        "min": 0,
+        "max": 2000,
+        "default": 15
+      },
+      {
+        "key": "c05",
+        "quantity": "Particles 0.3-0.5 um",
+        "unit": "count",
+        "min": 0,
+        "max": 65535,
+        "default": 300
+      },
+      {
+        "key": "c10",
+        "quantity": "Particles 0.5-1.0 um",
+        "unit": "count",
+        "min": 0,
+        "max": 65535,
+        "default": 60
+      },
+      {
+        "key": "c25",
+        "quantity": "Particles 1.0-2.5 um",
+        "unit": "count",
+        "min": 0,
+        "max": 65535,
+        "default": 10
+      },
+      {
+        "key": "c50",
+        "quantity": "Particles 2.5-5.0 um",
+        "unit": "count",
+        "min": 0,
+        "max": 65535,
+        "default": 2
+      },
+      {
+        "key": "c75",
+        "quantity": "Particles 5.0-7.5 um",
+        "unit": "count",
+        "min": 0,
+        "max": 65535,
+        "default": 1
+      },
+      {
+        "key": "c100",
+        "quantity": "Particles 7.5-10 um",
+        "unit": "count",
+        "min": 0,
+        "max": 65535,
+        "default": 0
+      }
+    ],
+    "registers": {
+      "0x26": 0
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 4,
+        "scale": 0.001,
+        "littleEndian": true,
+        "control": "pm1"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 4,
+        "scale": 0.001,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x08",
+        "bytes": 4,
+        "scale": 0.001,
+        "littleEndian": true,
+        "control": "pm10"
+      },
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "c05"
+      },
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "c10"
+      },
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "c25"
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "c50"
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "c75"
+      },
+      {
+        "reg": "0x18",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "c100"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sn_gcja5.py",
+    "code": "# Panasonic SN-GCJA5 laser particulate matter sensor (I2C), MicroPython driver.\n# From the SN-GCJA5 Communication Specifications (JA5-SSP-COMM-E1.0):\n#   I2C address 0x33 (fixed), up to 400 kHz, 8-bit register address, repeated-start reads.\n#   Multi-byte values are little-endian (low byte first).\n#   0x00/0x04/0x08: PM1.0 / PM2.5 / PM10 mass density, 4 bytes each, value = raw / 1000 ug/m3.\n#   0x0C 0x0E 0x10 0x14 0x16 0x18: particle counts, 2 bytes each\n#     (0.3-0.5, 0.5-1.0, 1.0-2.5, 2.5-5.0, 5.0-7.5, 7.5-10 um).\n#   0x26 STATE: [7:6] sensor, [5:4] PD, [3:2] LD, [1:0] fan status (0 = normal).\n# All registers refresh once per second. First reading about 8 s after power-up,\n# stable readings after about 28 s.\n\n\nclass SNGCJA5:\n    ADDR = 0x33\n    REG_PM1_0 = 0x00\n    REG_PM2_5 = 0x04\n    REG_PM10 = 0x08\n    REG_COUNTS = (0x0C, 0x0E, 0x10, 0x14, 0x16, 0x18)\n    REG_STATE = 0x26\n\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _u32(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 4)\n        return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24)\n\n    def _u16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)\n\n    def pm(self):\n        \"\"\"Return (PM1.0, PM2.5, PM10) mass density in ug/m3 (0.001 resolution).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, self.REG_PM1_0, 12)\n        v = [d[i] | (d[i + 1] << 8) | (d[i + 2] << 16) | (d[i + 3] << 24) for i in (0, 4, 8)]\n        return v[0] / 1000, v[1] / 1000, v[2] / 1000\n\n    def pm1_0(self):\n        return self._u32(self.REG_PM1_0) / 1000\n\n    def pm2_5(self):\n        return self._u32(self.REG_PM2_5) / 1000\n\n    def pm10(self):\n        return self._u32(self.REG_PM10) / 1000\n\n    def counts(self):\n        \"\"\"Particle counts per size bin: 0.3-0.5, 0.5-1.0, 1.0-2.5, 2.5-5.0, 5.0-7.5, 7.5-10 um.\"\"\"\n        return tuple(self._u16(r) for r in self.REG_COUNTS)\n\n    def state(self):\n        \"\"\"Raw STATE byte (0 = everything normal).\"\"\"\n        return self.i2c.readfrom_mem(self.addr, self.REG_STATE, 1)[0]\n\n    def status(self):\n        \"\"\"Return dict of 2-bit status fields: sensor, pd, ld, fan (0 = normal, fan 2 = initial calibration).\"\"\"\n        s = self.state()\n        return {'sensor': (s >> 6) & 3, 'pd': (s >> 4) & 3, 'ld': (s >> 2) & 3, 'fan': s & 3}\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sn_gcja5 import SNGCJA5\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = SNGCJA5(i2c)\nwhile True:\n    try:\n        pm1, pm25, pm10 = sensor.pm()\n        print('PM1=%.1f PM2.5=%.1f PM10=%.1f ug/m3' % (pm1, pm25, pm10))\n    except OSError as e:\n        print('waiting for sensor:', e)\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM1.0, PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1",
+          "value": 20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 50
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1=20.0 PM2.5=35.0 PM10=50.0 ug/m3",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:43:30.552Z",
+    "verifiedSources": [
+      "https://static.chipdip.ru/lib/446/DOC012446825.pdf",
+      "https://cdn.sparkfun.com/assets/d/d/2/a/e/SN-GCJA5_Communication_Specification.pdf",
+      "https://www.sparkfun.com/particle-sensor-sn-gcja5.html"
+    ]
+  }
+}

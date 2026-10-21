@@ -1,0 +1,3 @@
+{"diffs":[
+{"diff":"CO2 ppm: datasheet reading gives 1 per count, the part's model has none","verdict":"part-correct","evidence":"Winsen MH-Z16 manual, command 0x86 reply 'FF 86 HIGH LOW', 'CO2 concentration = HIGH * 256 + LOW' (example FF 86 02 20 ... -> '2*256+32=544ppm'), i.e. 1 ppm per count; the part models exactly this with a 16-bit 'value' field of scale 1 in sim.uartReplies and the driver returns buf[2]*256+buf[3] (the gate printed 'none' only because its extractor reads sim.responses/measure, not sim.uartReplies).","source":"https://www.winsen-sensor.com/d/files/MH-Z16.pdf"}
+]}

@@ -1,0 +1,64 @@
+{
+  "diffs": [
+    {
+      "diff": "PM1.0 ug/m3: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte2*256+Byte3) ug/m3= 101ug/m3' (scale 1, matching uartReplies pm1 scale 1 and driver _u16(f, 2)).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "PM2.5 ug/m3: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte4*256+Byte5) ug/m3= 54ug/m3' (scale 1, matching uartReplies pm25 scale 1 and driver _u16(f, 4)).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "PM10 ug/m3: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte6*256+Byte7) ug/m3= 150ug/m3' (scale 1, matching uartReplies pm10 scale 1 and driver _u16(f, 6)).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "CO2 ppm: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte8*256+Byte9) ppm=410ppm' (scale 1, matching uartReplies value scale 1 and driver _u16(f, 8)).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "Temperature C: datasheet reading gives 0.1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '((Byte11*256+Byte12)-500)*0.1' (scale 0.1, offset -50 C, matching uartReplies temperature scale 0.1 offset -50 and driver (_u16(f, 11) - 500) / 10).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "Humidity %RH: datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte13*256+Byte14)%RH=40%RH' (scale 1, matching uartReplies humidity scale 1 and driver _u16(f, 13)).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "CH2O mg/m3: datasheet reading gives 0.001 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte15*256+Byte16)*0.001mg/m3=0.040mg/m3' (scale 0.001, matching uartReplies ch2o scale 0.001 and driver _u16(f, 15) / 1000).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "CO ppm: datasheet reading gives 0.1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte17*256+Byte18)*0.1ppm=0.5ppm' (scale 0.1, matching uartReplies co scale 0.1 and driver _u16(f, 17) / 10).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "O3 ppm: datasheet reading gives 0.01 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte19*256+Byte20)*0.01ppm=0.32ppm' (scale 0.01, matching uartReplies o3 scale 0.01 and driver _u16(f, 19) / 100).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    },
+    {
+      "diff": "NO2 ppm: datasheet reading gives 0.01 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "The gate only scans sim.responses, but the model sim.uartReplies and driver use exactly the datasheet scale for this field; the Winsen ZPHS01B manual gives '(Byte21*256+Byte22)*0.01ppm=0.80ppm' (scale 0.01, matching uartReplies no2 scale 0.01 and driver _u16(f, 21) / 100).",
+      "source": "https://www.winsen-sensor.com/d/files/zphs01b-english-version1_1-20200713.pdf ; https://www.winsen-sensor.com/d/files/manual/zphs01b.pdf"
+    }
+  ]
+}

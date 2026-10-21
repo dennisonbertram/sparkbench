@@ -1,0 +1,349 @@
+{
+  "type": "custom-adxl355",
+  "name": "ADXL355 low-noise 3-axis accelerometer",
+  "mpn": "ADXL355",
+  "category": "sensor",
+  "description": "Analog Devices low-noise (25 µg/√Hz), low-drift 3-axis MEMS accelerometer with programmable ±2/±4/±8 g range, 20-bit digital output (3.9 µg/LSB at ±2 g), on-chip temperature sensor, 96-sample FIFO and an SPI/I2C interface that detects the bus by itself; for tilt/inclination, vibration and structural monitoring. The chip runs on 2.25–3.6 V. Sold as: Analog Devices EVAL-ADXL355-PMDZ Pmod board (12-pin extended SPI Pmod header CS, MOSI, MISO, SCLK, DGND, VDD, INT1, NC, INT2, DRDY, DGND, VDD; 3.3 V only, no regulator, no I2C pull-ups), wired for I2C (CS = SCL, MOSI = SDA, SCLK and MISO/ASEL to GND), I2C address 0x1D (0x53 with ASEL high).",
+  "eli5": "A very quiet, very precise sensor that feels gravity and vibration along three directions (X, Y and Z), good for measuring tiny tilts.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "i2c.scl",
+      "pullUp": 4700,
+      "description": "Pmod pin 1, chip CS/SCL: in I2C mode this is the I2C clock SCL. The Pmod is built for SPI and has no I2C pull-up, so add 4.7 kΩ to 3.3 V",
+      "required": true
+    },
+    {
+      "name": "MOSI",
+      "role": "io",
+      "fn": "i2c.sda",
+      "pullUp": 4700,
+      "description": "Pmod pin 2, chip MOSI/SDA: in I2C mode this is the I2C data line SDA (add a 4.7 kΩ pull-up to 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "MISO",
+      "role": "gnd",
+      "description": "Pmod pin 3, chip MISO/ASEL: in I2C mode it selects the address; tie to GND for 0x1D (or to 3.3 V for 0x53). Never leave it floating",
+      "required": true
+    },
+    {
+      "name": "SCLK",
+      "role": "gnd",
+      "description": "Pmod pin 4, chip SCLK/VSSIO: the data sheet says connect it to ground (VSSIO) for I2C",
+      "required": true
+    },
+    {
+      "name": "DGND",
+      "role": "gnd",
+      "description": "Pmod pin 5, ground",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Pmod pin 6, 3.3 V supply (VSUPPLY and VDDIO of the chip, 2.25–3.6 V). No regulator: never 5 V",
+      "required": true
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Pmod pin 7, interrupt 1 output (3.3 V logic, active low by default), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Pmod pin 8, not connected",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Pmod pin 9, interrupt 2 output (3.3 V logic), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Pmod pin 10, data-ready output (3.3 V logic; held low during power-up), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "DGND2",
+      "role": "gnd",
+      "description": "Pmod pin 11, ground (printed DGND, joined to pin 5 on the board)",
+      "required": false
+    },
+    {
+      "name": "VDD2",
+      "role": "power",
+      "description": "Pmod pin 12, 3.3 V supply (printed VDD, joined to pin 6 on the board)",
+      "required": false
+    }
+  ],
+  "vmin": 2.25,
+  "vmax": 3.6,
+  "currentMa": 0.2,
+  "i2cAddress": 29,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl354_adxl355.pdf",
+  "priceUsd": 45,
+  "supplierQuery": "Analog Devices EVAL-ADXL355-PMDZ ADXL355 Pmod accelerometer board",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl354_adxl355.pdf",
+    "https://www.zeuthen.desy.de/~sulanke/Projects/ICECUBE/mDOM/mainboard/datasheets/sensor_inclino_accelero_adxl354_355.pdf",
+    "https://wiki.analog.com/resources/eval/user-guides/circuits-from-the-lab/eval-adxl355-pmdz",
+    "https://analogdevicesinc.github.io/system-level/solutions/reference-designs/adxl355-pmdz/",
+    "https://kernelsources.org/source/xref/linux/drivers/iio/accel/adxl355_core.c"
+  ],
+  "buildNotes": [
+    "The Pmod is wired for SPI; the ADXL355 picks I2C by itself when SCLK/VSSIO (Pmod pin 4) is tied to GND. Then CS is SCL and MOSI is SDA.",
+    "Tie MISO/ASEL (Pmod pin 3) to GND for address 0x1D, or to 3.3 V for 0x53. A floating ASEL gives a random address.",
+    "The board has no I2C pull-ups: fit 4.7 kΩ from SDA and SCL to 3.3 V (Sparkbench adds them).",
+    "3.3 V only: VDD feeds the chip directly (2.25–3.6 V). Do not power it from 5 V or drive its pins with 5 V logic.",
+    "The chip powers up in standby (POWER_CTL 0x2D = 0x01) and reads 0: write 0x00 to start measuring. Change Range/Filter only while in standby.",
+    "Clear I2C_HS (bit 7 of Range 0x2C, reset value 1) on a normal 100/400 kHz bus.",
+    "Read XDATA3..ZDATA1 (0x08–0x10) in one 9-byte burst: each axis is 20-bit twos complement, left justified, most significant byte first.",
+    "Scale: 256000 LSB/g at ±2 g, 128000 at ±4 g, 64000 at ±8 g. Check the IDs 0xAD, 0x1D, 0xED at 0x00–0x02 first."
+  ],
+  "keywords": [
+    "adxl355",
+    "adxl354",
+    "accelerometer",
+    "low noise",
+    "inclinometer",
+    "tilt",
+    "vibration",
+    "imu",
+    "analog devices",
+    "eval-adxl355-pmdz",
+    "pmod"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Acceleration X",
+    "unit": "g",
+    "min": -8,
+    "max": 8,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -8,
+        "max": 8,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Acceleration Z",
+        "unit": "g",
+        "min": -8,
+        "max": 8,
+        "default": 1
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 125,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x00": 173,
+      "0x01": 29,
+      "0x02": 237,
+      "0x03": 1,
+      "0x04": 1,
+      "0x28": 0,
+      "0x2c": 129,
+      "0x2d": 1
+    },
+    "measures": [
+      {
+        "reg": "0x08",
+        "bytes": 3,
+        "scale": 0.00000390625,
+        "signed": true,
+        "shift": 4,
+        "control": "value",
+        "when": {
+          "reg": "0x2c",
+          "equals": 1,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0b",
+        "bytes": 3,
+        "scale": 0.00000390625,
+        "signed": true,
+        "shift": 4,
+        "control": "y",
+        "when": {
+          "reg": "0x2c",
+          "equals": 1,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0e",
+        "bytes": 3,
+        "scale": 0.00000390625,
+        "signed": true,
+        "shift": 4,
+        "control": "z",
+        "when": {
+          "reg": "0x2c",
+          "equals": 1,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x08",
+        "bytes": 3,
+        "scale": 0.0000078125,
+        "signed": true,
+        "shift": 4,
+        "control": "value",
+        "when": {
+          "reg": "0x2c",
+          "equals": 2,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0b",
+        "bytes": 3,
+        "scale": 0.0000078125,
+        "signed": true,
+        "shift": 4,
+        "control": "y",
+        "when": {
+          "reg": "0x2c",
+          "equals": 2,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0e",
+        "bytes": 3,
+        "scale": 0.0000078125,
+        "signed": true,
+        "shift": 4,
+        "control": "z",
+        "when": {
+          "reg": "0x2c",
+          "equals": 2,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x08",
+        "bytes": 3,
+        "scale": 0.000015625,
+        "signed": true,
+        "shift": 4,
+        "control": "value",
+        "when": {
+          "reg": "0x2c",
+          "equals": 3,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0b",
+        "bytes": 3,
+        "scale": 0.000015625,
+        "signed": true,
+        "shift": 4,
+        "control": "y",
+        "when": {
+          "reg": "0x2c",
+          "equals": 3,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0e",
+        "bytes": 3,
+        "scale": 0.000015625,
+        "signed": true,
+        "shift": 4,
+        "control": "z",
+        "when": {
+          "reg": "0x2c",
+          "equals": 3,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "scale": -0.11049723756906077,
+        "offset": 233.28729281767954,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "adxl355.py",
+    "code": "# MicroPython driver for the Analog Devices ADXL355 low-noise 3-axis accelerometer (I2C).\n# Written from the ADXL354/ADXL355 data sheet (register map table 14, register definitions):\n#   DEVID_AD 0x00 = 0xAD, DEVID_MST 0x01 = 0x1D, PARTID 0x02 = 0xED,\n#   TEMP2 0x06 (bits 11:8) / TEMP1 0x07 (bits 7:0), 12-bit unsigned, right justified,\n#   XDATA3..ZDATA1 0x08-0x10: 20-bit twos complement, left justified, MSB first\n#     (DATA3 = bits 19:12, DATA2 = bits 11:4, DATA1 bits 7:4 = bits 3:0),\n#   Filter 0x28 (ODR_LPF bits 3:0), Range 0x2C (I2C_HS bit 7, INT_POL bit 6, range bits 1:0),\n#   POWER_CTL 0x2D (STANDBY bit 0, reset value 0x01 = standby), Reset 0x2F (write 0x52).\n#   Sensitivity: 256000 LSB/g (+-2 g), 128000 (+-4 g), 64000 (+-8 g).\n#   Temperature: 1885 LSB at 25 C, -9.05 LSB/C (Rev. C; Rev. A printed 1852 LSB).\n#   I2C address 0x1D with ASEL (MISO) low, 0x53 with it high. SCLK/VSSIO must be tied to ground for I2C.\nimport time\n\nREG_DEVID_AD = 0x00\nREG_DEVID_MST = 0x01\nREG_PARTID = 0x02\nREG_STATUS = 0x04      # bit 0 DATA_RDY\nREG_TEMP2 = 0x06\nREG_XDATA3 = 0x08      # 0x08..0x10: X3 X2 X1 Y3 Y2 Y1 Z3 Z2 Z1\nREG_FILTER = 0x28\nREG_RANGE = 0x2C\nREG_POWER_CTL = 0x2D\nREG_RESET = 0x2F\n\nRESET_CODE = 0x52\n_RANGE_BITS = {2: 0x01, 4: 0x02, 8: 0x03}\n_LSB_PER_G = {2: 256000.0, 4: 128000.0, 8: 64000.0}\nTEMP_INTERCEPT_LSB = 1885.0   # at 25 C\nTEMP_SLOPE_LSB_PER_C = -9.05\nSTANDARD_GRAVITY = 9.80665\n\n\ndef _s20(b3, b2, b1):\n    v = (b3 << 12) | (b2 << 4) | (b1 >> 4)\n    return v - 0x100000 if v & 0x80000 else v\n\n\nclass ADXL355:\n    def __init__(self, i2c, addr=0x1D, g_range=2, odr_lpf=0x05):\n        \"\"\"addr 0x1D with ASEL/MISO tied low, 0x53 with it tied high.\n        g_range: 2, 4 or 8. odr_lpf: Filter register ODR_LPF code (0x00 = 4000 Hz ... 0x05 = 125 Hz ... 0x0A = 3.9 Hz).\"\"\"\n        if g_range not in _RANGE_BITS:\n            raise ValueError(\"g_range must be 2, 4 or 8\")\n        self.i2c = i2c\n        self.addr = addr\n        ids = self._r(REG_DEVID_AD, 3)\n        if ids[0] != 0xAD or ids[1] != 0x1D or ids[2] != 0xED:\n            raise OSError(\"ADXL355 not found at 0x%02X (IDs %02X %02X %02X, expected AD 1D ED)\" % (addr, ids[0], ids[1], ids[2]))\n        self._w(REG_RESET, RESET_CODE)  # soft reset, like power-on (back to standby)\n        time.sleep_ms(10)\n        # Configuration may only change while STANDBY = 1.\n        self._w(REG_POWER_CTL, 0x01)\n        self._w(REG_FILTER, odr_lpf & 0x0F)  # no high-pass filter\n        # I2C_HS = 0 (fast mode, 100/400 kHz bus), INT_POL = 0, range bits.\n        self._w(REG_RANGE, _RANGE_BITS[g_range])\n        self.lsb_per_g = _LSB_PER_G[g_range]\n        self._w(REG_POWER_CTL, 0x00)  # measurement mode, temperature on\n        time.sleep_ms(20)  # turn-on time < 10 ms, plus the first sample\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def data_ready(self):\n        return bool(self._r(REG_STATUS, 1)[0] & 0x01)\n\n    def raw(self):\n        \"\"\"(x, y, z) as signed 20-bit counts, read in one 9-byte burst (the address auto-increments).\"\"\"\n        d = self._r(REG_XDATA3, 9)\n        return _s20(d[0], d[1], d[2]), _s20(d[3], d[4], d[5]), _s20(d[6], d[7], d[8])\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        x, y, z = self.raw()\n        s = self.lsb_per_g\n        return x / s, y / s, z / s\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        x, y, z = self.read()\n        return x * STANDARD_GRAVITY, y * STANDARD_GRAVITY, z * STANDARD_GRAVITY\n\n    def temperature(self):\n        \"\"\"Die temperature in C (typical calibration; good for drift compensation, not as a thermometer).\"\"\"\n        d = self._r(REG_TEMP2, 2)\n        raw = ((d[0] & 0x0F) << 8) | d[1]\n        return 25.0 + (raw - TEMP_INTERCEPT_LSB) / TEMP_SLOPE_LSB_PER_C\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom adxl355 import ADXL355\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\naccel = ADXL355(i2c, addr=0x1D, g_range=2)\nwhile True:\n    x, y, z = accel.read()\n    t = accel.temperature()\n    print('X=%.3f Y=%.3f Z=%.3f g T=%.1fC' % (x, y, z, t))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration and chip temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -1.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.500 Y=-1.250 Z=1.750 g T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:55:12.472Z",
+    "verifiedSources": [
+      "https://www.farnell.com/datasheets/2310319.pdf",
+      "https://www.radiolocman.com/datasheet/pdf.html?di=130145"
+    ]
+  }
+}

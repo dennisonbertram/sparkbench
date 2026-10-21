@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-cytron-md10c",
+  "board": "Cytron MD10C R3.0 10Amp 5V-30V DC Motor Driver (13 A continuous; control header 1 GND, 2 PWM, 3 DIR; POWER and MOTOR screw terminals)",
+  "reason": "Modelled as an actuator with PWM and DIR inputs. The driver follows Cytron's sign-magnitude truth table: PWM low brakes, PWM high with DIR low runs forward, PWM high with DIR high runs in reverse; it uses 10 kHz PWM, under the 20 kHz limit. POWER+ takes an external 5-30 V supply. The part check passed on the first run on ESP32 and Pico, covering spec, wiring, design checks, breadboard, simulator, PCB DRC and footprint.",
+  "datasheetUrl": "https://robu.in/wp-content/uploads/2014/12/MD10C-Rev3.0-Users-Manual.pdf",
+  "breakoutPinoutSource": "https://robu.in/wp-content/uploads/2014/12/MD10C-Rev3.0-Users-Manual.pdf",
+  "checkRuns": 1
+}

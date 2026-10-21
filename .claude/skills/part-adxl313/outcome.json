@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-adxl313",
+  "board": "SparkFun Triple Axis Digital Accelerometer Breakout - ADXL313 (Qwiic), SEN-17241",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test X=0.75 Y=-1.50 Z=2.25 g, circuit board, footprint, LCSC). Modelled as an i2c-device with IDs 0xAD/0x1D/0xCB and little-endian signed X/Y/Z at 0x32-0x37 at 1024 LSB/g (full resolution); the driver checks IDs and sets FULL_RES and Measure per the datasheet.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/adxl313.pdf",
+  "breakoutPinoutSource": "SparkFun hookup guide breakout-pin photos (Qwiic_ADXL313_breakout_pins.jpg, Qwiic_ADXL313_spi_bottom.jpg) and SparkFun_Qwiic_ADXL313.pdf schematic (J5 GND,3.3V,SDA,SCL; J7 CS,SDO/ADR; J1 INT1,INT2)",
+  "checkRuns": 1
+}

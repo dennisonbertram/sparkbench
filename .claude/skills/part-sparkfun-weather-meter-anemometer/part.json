@@ -1,0 +1,111 @@
+{
+  "type": "custom-sparkfun-weather-meter-anemometer",
+  "name": "SparkFun Weather Meter anemometer",
+  "mpn": "SEN-15901 anemometer",
+  "category": "sensor",
+  "description": "Cup anemometer from the SparkFun Weather Meter Kit: a magnet on the rotor closes a sealed reed switch, and a wind speed of 2.4 km/h (1.492 mph) closes it once per second, so wind speed (km/h) = closure frequency (Hz) x 2.4. Passive, not polarised, no supply: wire one switch lead to GND and the other to a GPIO with a pull-up and time the falling edges with an interrupt. Sold as: SparkFun Weather Meter Kit SEN-15901 (made by Shenzhen Fine Offset), anemometer whose switch is on the inner conductors (pins 2 and 3) of the RJ11 cable it shares with the wind vane (WIND, GND).",
+  "eli5": "Little cups that spin in the wind. Each turn a magnet clicks a switch, and the faster the wind, the faster the clicks: one click every second means 2.4 km/h of wind. Your board times the clicks to work out the wind speed.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "WIND",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "description": "RJ11 pin 2 (inner conductor of the cable shared with the wind vane): to a GPIO with the internal pull-up on (or a pull-up to 3.3 V). Idles at 1, pulls to 0 once per switch closure; 1 closure/s = 2.4 km/h"
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "RJ11 pin 3 (the other inner conductor): connect to ground (the switch is not polarised). Pins 1 and 4 of the same cable are the wind vane."
+    }
+  ],
+  "vmin": 0,
+  "vmax": 5,
+  "currentMa": 0.1,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf",
+    "https://learn.sparkfun.com/tutorials/weather-meter-hookup-guide/all",
+    "https://www.sparkfun.com/products/15901"
+  ],
+  "priceUsd": 79.95,
+  "supplierQuery": "SparkFun Weather Meter Kit SEN-15901",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "Plug the anemometer's short cable into the wind vane; the vane's RJ11 cable then carries the anemometer on its inner pair (pins 2 and 3) and the vane on the outer pair (1 and 4). Use an RJ11 breakout (e.g. SparkFun BOB-14021) or a weather carrier board.",
+    "Not polarised: either inner wire to GND, the other to the GPIO with Pin.PULL_UP. Pull up to 3.3 V, never 5 V; on long cables add a 10 kOhm pull-up to 3.3 V.",
+    "Wind speed: 1 closure per second = 2.4 km/h = 1.492 mph. km/h = Hz x 2.4.",
+    "Time the falling edges with Pin.irq; the driver measures the interval between the first and last closure in a window, ignoring bounce within 4 ms.",
+    "Mount the arm high and clear of obstructions; the rain gauge goes lower on the mast so the sensors don't drip into it."
+  ],
+  "keywords": [
+    "anemometer",
+    "wind speed",
+    "wind",
+    "weather meter",
+    "weather station",
+    "sen-15901",
+    "sparkfun",
+    "reed switch",
+    "cup anemometer",
+    "pulse"
+  ],
+  "sim": {
+    "kind": "pulse-sensor",
+    "outputPin": "WIND",
+    "selfPowered": true,
+    "quantity": "Wind speed",
+    "unit": "km/h",
+    "min": 0,
+    "max": 200,
+    "default": 0,
+    "pulse": {
+      "hzPerUnit": 0.4166666666666667,
+      "openDrain": true
+    }
+  },
+  "driver": {
+    "filename": "anemometer.py",
+    "code": "# SparkFun Weather Meter Kit (SEN-15901) cup anemometer, MicroPython driver.\n# The anemometer is passive: a magnet on the rotor closes a sealed reed switch, and a wind\n# speed of 2.4 km/h (1.492 mph) closes it once per second (SparkFun datasheet / hookup guide).\n# Its switch is on the two inner conductors (pins 2 and 3) of the RJ11 cable it shares with\n# the wind vane. Not polarised, no supply, no chip: wire one conductor to GND and the other to\n# a GPIO with a pull-up; each closure pulls the pin low.\n# Speed is measured from the time between the first and last falling edge inside a window,\n# so there is no +/-1 pulse quantisation error. Reed contacts bounce for well under a\n# millisecond, so edges closer than lockout_us (default 4 ms, i.e. up to 250 Hz = 600 km/h)\n# to the previous counted edge are ignored.\nimport machine\nfrom machine import Pin\nimport time\n\nKMH_PER_HZ = 2.4      # 1 closure per second = 2.4 km/h\nMPH_PER_HZ = 1.492    # 1 closure per second = 1.492 mph\n\n\nclass Anemometer:\n    def __init__(self, pin, lockout_us=4000, pull_up=True):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.lockout_us = lockout_us\n        self._count = 0\n        self._first = 0\n        self._last = 0\n        self._total = 0\n        self.pin.irq(trigger=Pin.IRQ_FALLING, handler=self._on_edge)\n\n    def _on_edge(self, p):\n        now = time.ticks_us()\n        if self._count and time.ticks_diff(now, self._last) < self.lockout_us:\n            return  # contact bounce\n        if self._count == 0:\n            self._first = now\n        self._last = now\n        self._count += 1\n        self._total += 1\n\n    def _restart(self):\n        s = machine.disable_irq()\n        self._count = 0\n        machine.enable_irq(s)\n\n    def _snapshot(self):\n        s = machine.disable_irq()\n        n, t0, t1 = self._count, self._first, self._last\n        machine.enable_irq(s)\n        return n, t0, t1\n\n    def frequency(self, window_ms=2000):\n        \"\"\"Measure for window_ms and return switch closures per second (Hz).\n        Needs at least two closures in the window, else returns 0 (below 2.4 / (window_ms/1000) km/h).\"\"\"\n        self._restart()\n        time.sleep_ms(window_ms)\n        n, t0, t1 = self._snapshot()\n        dt = time.ticks_diff(t1, t0)\n        if n < 2 or dt <= 0:\n            return 0.0\n        return (n - 1) * 1000000 / dt\n\n    def speed_kmh(self, window_ms=2000):\n        \"\"\"Wind speed in km/h (Hz x 2.4).\"\"\"\n        return self.frequency(window_ms) * KMH_PER_HZ\n\n    def speed_mph(self, window_ms=2000):\n        \"\"\"Wind speed in mph (Hz x 1.492).\"\"\"\n        return self.frequency(window_ms) * MPH_PER_HZ\n\n    def speed_ms(self, window_ms=2000):\n        \"\"\"Wind speed in m/s (km/h / 3.6).\"\"\"\n        return self.speed_kmh(window_ms) / 3.6\n\n    def closures(self):\n        \"\"\"Total switch closures since start-up (for wind-run / averaging over long periods).\"\"\"\n        return self._total\n"
+  },
+  "skill": "---\nname: part-sparkfun-weather-meter-anemometer\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the SparkFun Weather Meter Kit (SEN-15901) cup anemometer (reed switch, one closure per second = 2.4 km/h / 1.492 mph, on RJ11 pins 2 and 3 of the cable shared with the wind vane). Use when designing, wiring, simulating or writing code for a reed-switch wind speed sensor / anemometer in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# SparkFun Weather Meter anemometer (SEN-15901 kit)\n\n## Overview\nThe cup anemometer from the **SparkFun Weather Meter Kit (SEN-15901)** spins a magnet past a sealed **reed switch**. A wind speed of **2.4 km/h (1.492 mph) closes the switch once per second**, so wind speed is just a frequency. There are no electronics in it: count the closures with a GPIO interrupt.\n- Wind speed (km/h) = closures per second x 2.4; mph = Hz x 1.492; m/s = km/h / 3.6\n- Passive, not polarised, no supply pin. It needs a pull-up so the closures can be seen.\n- Its short cable plugs into the wind vane; the vane's RJ11 cable carries the anemometer on the **inner two conductors (pins 2 and 3)** and the vane on the outer pair (pins 1 and 4).\n\n## Pinout (inner pair of the shared RJ11 plug, not polarised)\n| Sparkbench pin | Wire | Function |\n|---|---|---|\n| WIND | RJ11 pin 2 (inner conductor) | Switch lead: to a GPIO with the internal pull-up on |\n| GND | RJ11 pin 3 (inner conductor) | Other switch lead: to ground |\n\nEither inner wire can be GND. Use an RJ11 breakout / jack (SparkFun BOB-14021 or a weather carrier board) or cut the plug off; it is wired with jumper leads, not plugged into the breadboard.\n\n## Electrical limits\n- Just a reed switch: with a 3.3 V GPIO pull-up only microamps flow. Pull up to 3.3 V, never 5 V, on an ESP32 / Pico.\n- No supply needed. The ESP32 / Pico internal pull-up (about 50 kOhm) is enough on a short cable; on a long cable add a 10 kOhm pull-up to 3.3 V (and optionally a small capacitor to GND) against noise.\n\n## Interface details\n- Pulled up: WIND reads 1 while the switch is open, 0 while it is closed; one falling edge per closure.\n- 1 Hz = 2.4 km/h, so even a gale (100 km/h) is only about 42 Hz: easy for `Pin.irq`.\n- The driver times the interval between the first and last closure inside a window (default 2 s), so the result has no +/-1 pulse error. Below 2 closures in the window (under about 1.2 km/h for 2 s) it reports 0.\n- Contact bounce is ignored with a 4 ms lockout (good up to 250 Hz = 600 km/h).\n\n## Wiring\n| Anemometer | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| WIND | GPIO4 (pull-up on) | GP14 (pull-up on) | GPIO27 (pull-up on) |\n| GND | GND | GND | GND |\n\n## Using the driver\n```python\nfrom anemometer import Anemometer\nwind = Anemometer(4)                  # GPIO the WIND wire is on, internal pull-up enabled\nwhile True:\n    print('Wind=%d km/h' % round(wind.speed_kmh(2000)))   # blocks for the 2 s window\n```\n`speed_mph()`, `speed_ms()` and `frequency()` use the same window; `closures()` is the running total (wind run = closures x 2.4 km/h x 1 s / 3600 = km).\n\n## Gotchas\n- The anemometer has no cable to your board of its own: plug it into the wind vane and take the combined RJ11 from the vane. Pins 2/3 are wind speed, pins 1/4 are wind direction.\n- Gusts: a short window (1-3 s) shows gusts, average over minutes for mean wind speed (weather services use 10 min).\n- Mount it above roof turbulence and away from obstructions; tighten the set screw so the cups don't slip.\n\n## Datasheet\nhttps://cdn.sparkfun.com/assets/d/1/e/0/6/DS-15901-Weather_Meter.pdf and https://learn.sparkfun.com/tutorials/weather-meter-hookup-guide\n",
+  "example": {
+    "code": "from anemometer import Anemometer\n\nwind = Anemometer({WIND})  # internal pull-up on; each switch closure pulls WIND low\nwhile True:\n    print('Wind=%d km/h' % round(wind.speed_kmh(2000)))  # 1 closure/s = 2.4 km/h\n",
+    "test": {
+      "id": "wind",
+      "title": "Reports 30 km/h of wind (12.5 closures per second)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "wait",
+          "ms": 4500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Wind=30 km/h",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:42:39.396Z",
+    "verifiedSources": [
+      "https://www.sparkfun.com/datasheets/Sensors/Weather/Weather%20Sensor%20Assembly..pdf",
+      "https://www.sparkfun.com/products/15901"
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+{"diffs":[
+{"diff":"pin count: part has 8 (GND 3.3V SDA SCL ADR CS INT2 INT1), datasheet reading has 4 (INT1 INT2 CS SDO)","verdict":"part-correct","evidence":"The second reading listed only the extra signal pins (INT1, INT2, CS, SDO) and omitted the power and I2C header pins; the SparkFun SEN-17241 hookup guide says the board is powered via 'the breakout pins ( 3.3V and GND ) provided' and that 'The interrupt pins are also broken out to use for triggered events', and the SDO pin is labelled ADR ('pulling the ADR pin low' selects 0x53), so the model's 8 pins GND, 3.3V, SDA, SCL, ADR(=SDO), CS, INT2, INT1 match the board.","source":"https://learn.sparkfun.com/tutorials/sparkfun-qwiic-3-axis-accelerometer-adxl313-hookup-guide/all"}
+]}

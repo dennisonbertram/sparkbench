@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lm75b",
+  "board": "Switch Science LM75B breakout board (SSCI-018133, 5-pin header VCC, OS, SCL, SDA, GND)",
+  "reason": "Check PASS on esp32 and pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). Temp register 0x00 is modelled bit-exact as an 11-bit two's complement value in bits 15-5 at 0.125 C, decoded by the driver per datasheet 7.4.3, which also discards the invalid first reading after power-up (7.4.1); Conf/Thyst/Tos hold their POR values 0x00/0x4B00/0x5000.",
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/LM75B.pdf",
+  "breakoutPinoutSource": "Switch Science product photo (international.switch-science.com/do/imagecontent/LM75B2_500.jpg) silkscreen VCC, OS, SCL, SDA, GND and the official schematic (doc.switch-science.com/schematic/LM75B_breakout/LM75B_breakout.pdf): JP1 1=GND 2=SDA 3=SCL 4=OS 5=VCC, 10k pull-ups on SDA/SCL/OS, A0-A2 jumpered to GND",
+  "checkRuns": 1
+}

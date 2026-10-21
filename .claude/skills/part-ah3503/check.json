@@ -1,0 +1,79 @@
+{
+  "type": "custom-ah3503",
+  "mpn": "AH3503",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; AH3503 linear Hall sensor needs at least 4.5 V, so it is powered from 5 V. U2.OUT → D32 (GPIO32) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on OUT: it swings to 5 V, and the D32 pin takes 3.3 V at most. Added the ah3503.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the magnetic field set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "46.5×73.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; AH3503 linear Hall sensor needs at least 4.5 V, so it is powered from 5 V. U2.OUT → GP28 (GPIO28) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on OUT: it swings to 5 V, and the GP28 pin takes 3.3 V at most. Added the ah3503.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the magnetic field set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_TO_SOT_THT:TO-92_Inline"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T18:57:13.759Z"
+}

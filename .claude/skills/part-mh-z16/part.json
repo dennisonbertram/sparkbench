@@ -1,0 +1,158 @@
+{
+  "type": "custom-mh-z16",
+  "name": "MH-Z16 NDIR CO2 sensor",
+  "mpn": "MH-Z16",
+  "category": "sensor",
+  "description": "Winsen tube-shaped infrared (NDIR) CO2 module, range settable from 0-2000 ppm up to 0-15 %vol (0-5000 ppm modelled), accuracy ±(100 ppm + 6 % of reading), temperature compensated. UART at 9600 baud with 3.3 V interface level, plus PWM and 0.4-2 V analog outputs; needs a 4.5-5.5 V supply that can deliver 150 mA. Sold as: Winsen MH-Z16 with its 7-wire cable on the 7-pin connector (pins 1-7: HD, Vout, GND, Vin, RXD, TXD, PWM).",
+  "eli5": "Measures how much carbon dioxide is in the air, so you know when a room needs fresh air.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "HD",
+      "role": "io",
+      "description": "Pin 1, manual zero calibration: pull low for more than 7 s in 400 ppm air; leave unconnected otherwise",
+      "required": false
+    },
+    {
+      "name": "Vout",
+      "role": "io",
+      "fn": "analog",
+      "description": "Pin 2, analog output 0.4-2 V for 0 to full range (0 V on fault)",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 3, ground",
+      "required": true
+    },
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Pin 4, supply 4.5-5.5 V, at least 150 mA (use 5 V, not 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Pin 5, UART data into the sensor (3.3 V TTL): wire to the microcontroller's TX",
+      "required": true
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Pin 6, UART data out of the sensor (3.3 V TTL): wire to the microcontroller's RX",
+      "required": true,
+      "levelV": 3.3
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "description": "Pin 7, PWM output (3.3 V level), 1004 ms cycle, high time proportional to CO2",
+      "required": false,
+      "levelV": 3.3
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 85,
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/MH-Z16.pdf",
+  "priceUsd": 45,
+  "supplierQuery": "Winsen MH-Z16 NDIR CO2 sensor UART",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power Vin from 5 V (ESP32 VIN/5V, Pico VBUS); a 3.3 V supply makes it read low or not at all. The supply must deliver at least 150 mA.",
+    "Cross the serial lines: microcontroller TX to sensor RXD, microcontroller RX to sensor TXD. 9600 baud, 8N1.",
+    "Read CO2 by sending FF 01 86 00 00 00 00 00 79; the reply is FF 86 HIGH LOW x x x x checksum, CO2 = HIGH*256 + LOW ppm.",
+    "Check the checksum: (0xFF - (byte1+...+byte7)) + 1. A mismatch usually means a loose wire or the wrong baud rate.",
+    "Allow 3 minutes of warm-up before trusting readings. Leave HD unconnected unless you are doing a manual zero calibration in fresh air."
+  ],
+  "keywords": [
+    "mh-z16",
+    "mhz16",
+    "co2",
+    "carbon dioxide",
+    "ndir",
+    "air quality",
+    "winsen"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "CO2 concentration",
+    "unit": "ppm",
+    "min": 0,
+    "max": 5000,
+    "default": 400,
+    "uartReplies": [
+      {
+        "match": "ff 01 86 00 00 00 00 00 79",
+        "bytes": [
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 134,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "const": 0,
+            "bits": 32
+          },
+          {
+            "crc": "mhz19",
+            "over": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mhz16.py",
+    "code": "# Winsen MH-Z16 NDIR CO2 sensor, MicroPython driver (UART, 9600 8N1).\n# Frames are 9 bytes: 0xFF, sensor number / command, 6 data bytes, checksum.\n# Checksum = (0xFF - (byte1 + ... + byte7)) + 1, as in the Winsen MH-Z16 manual V2.4.\nimport time\n\n\ndef _checksum(frame):\n    return (0xFF - (sum(frame[1:8]) & 0xFF) + 1) & 0xFF\n\n\nclass MHZ16:\n    def __init__(self, uart, timeout_ms=200):\n        \"\"\"uart: machine.UART at 9600 baud, 8N1, wired MCU TX -> sensor RXD, MCU RX <- sensor TXD.\"\"\"\n        self.uart = uart\n        self.timeout_ms = timeout_ms\n\n    def _send(self, cmd, b3=0, b4=0, b5=0, b6=0, b7=0):\n        f = bytearray([0xFF, 0x01, cmd, b3, b4, b5, b6, b7, 0])\n        f[8] = _checksum(f)\n        self.uart.write(f)\n\n    def _drain(self):\n        while self.uart.any():\n            self.uart.read()\n\n    def read_co2(self):\n        \"\"\"Send command 0x86 and return the CO2 concentration in ppm (HIGH * 256 + LOW).\"\"\"\n        self._drain()\n        self._send(0x86)\n        buf = b''\n        t0 = time.ticks_ms()\n        while len(buf) < 9 and time.ticks_diff(time.ticks_ms(), t0) < self.timeout_ms:\n            if self.uart.any():\n                buf += self.uart.read(9 - len(buf))\n            else:\n                time.sleep_ms(5)\n        if len(buf) < 9:\n            raise OSError('MH-Z16: no reply (check TX/RX are crossed and Vin is 5 V)')\n        if buf[0] != 0xFF or buf[1] != 0x86:\n            raise OSError('MH-Z16: bad frame start')\n        if _checksum(buf) != buf[8]:\n            raise OSError('MH-Z16: checksum mismatch')\n        return buf[2] * 256 + buf[3]\n\n    def zero_calibrate(self):\n        \"\"\"Command 0x87: set the current reading as 400 ppm. Only after >= 20 min in fresh (400 ppm) air. No reply.\"\"\"\n        self._send(0x87)\n\n    def span_calibrate(self, ppm=2000):\n        \"\"\"Command 0x88: span calibration at a known concentration (zero-calibrate first). No reply.\"\"\"\n        self._send(0x88, ppm // 256, ppm % 256)\n\n    def set_abc(self, on):\n        \"\"\"Command 0x79: automatic baseline (self) calibration on (0xA0) or off (0x00). No reply.\"\"\"\n        self._send(0x79, 0xA0 if on else 0x00)\n\n    def set_range(self, ppm):\n        \"\"\"Command 0x99: detection range in ppm, sent in bytes 4-7 (big-endian). No reply.\"\"\"\n        if not 0 < ppm <= 150000:\n            raise ValueError('range must be 1..150000 ppm')\n        self._send(0x99, 0, (ppm >> 24) & 0xFF, (ppm >> 16) & 0xFF, (ppm >> 8) & 0xFF, ppm & 0xFF)\n"
+  },
+  "skill": "---\nname: part-mh-z16\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MH-Z16 NDIR CO2 sensor (Winsen MH-Z16). Use when designing, wiring, simulating or writing code for an MH-Z16 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MH-Z16 NDIR CO2 sensor (MH-Z16)\n\n## Overview\nThe **MH-Z16** from Winsen is a tube-shaped infrared (NDIR) CO2 module (97 × 20 × 17 mm, gold-plated optical chamber) with built-in temperature compensation. Its range is set by command, from 0–2000 ppm up to 0–15 %vol, with accuracy ±(100 ppm + 6 % of reading). It has three outputs: UART (9600 baud, 3.3 V interface level), PWM, and an analog voltage (0.4–2 V). It **needs a 5 V supply** that can deliver 150 mA. Hobbyists buy the **Winsen MH-Z16 with its 7-wire cable** plugged into the 7-pin connector on the end board (pins 1–7). That is the part modelled here.\n\n## Pinout (MH-Z16 7-pin connector, Winsen manual V2.4 section 6)\n| Pin | Name | Function |\n|---|---|---|\n| 1 | HD | Manual zero calibration: pull low for > 7 s in 400 ppm air |\n| 2 | Vout | Analog output, 0.4–2 V = 0 to full range |\n| 3 | GND | Ground |\n| 4 | Vin | Supply, 4.5–5.5 V |\n| 5 | RXD | UART data input (wire to the microcontroller's TX) |\n| 6 | TXD | UART data output (wire to the microcontroller's RX) |\n| 7 | PWM | PWM output, 1004 ms cycle |\n\n## Electrical limits\n- Supply: 4.5–5.5 V DC. Average current < 85 mA, but the supply must deliver at least 150 mA. Outside this range the reading goes low or the sensor stops working.\n- Interface level 3.3 V, so RXD/TXD connect straight to an ESP32 or Pico.\n- Preheat 3 min. Response T90 < 30 s. Working range −10 to 50 °C, 0–95 % RH (no condensation).\n\n## Interface details\n- UART 9600 baud, 8 data bits, 1 stop bit, no parity. Every frame is 9 bytes.\n- Read CO2: send `FF 01 86 00 00 00 00 00 79`. The reply is `FF 86 HIGH LOW - - - - CS`, and CO2 (ppm) = HIGH × 256 + LOW. Datasheet example: `FF 86 02 20 00 00 00 00 58` = 544 ppm.\n- Checksum = (0xFF − (byte1 + … + byte7)) + 1, low 8 bits.\n- Other commands, none of which reply:\n  - Zero calibration 0x87 (`FF 01 87 00 00 00 00 00 78`).\n  - Span calibration 0x88 with the span in bytes 3–4 (`FF 01 88 07 D0 00 00 00 A0` = 2000 ppm).\n  - Self-calibration (ABC) on/off 0x79 (byte3 0xA0 on / 0x00 off).\n  - Detection range 0x99 with the range in bytes 4–7.\n- Analog: C = (Vo − 0.4 V) × full scale / 1.6 V. Vo is 0 V if the self-check finds a fault.\n- PWM (0–2000 ppm range): C = 2000 × (TH − 2 ms) / (TH + TL − 4 ms).\n\n## Wiring\n- ESP32: Vin → 5V (VIN/USB), GND → GND, RXD → GPIO17 (UART2 TX), TXD → GPIO16 (UART2 RX).\n- Pico: Vin → VBUS (pin 40), GND → GND, RXD → GP4 (UART1 TX), TXD → GP5 (UART1 RX).\n- Raspberry Pi 4: Vin → pin 2 (5 V), GND → pin 6, RXD → pin 8 (TXD), TXD → pin 10 (RXD).\n- HD, Vout and PWM can stay unconnected for UART use.\n\n## Using the driver\n```python\nfrom machine import UART, Pin\nfrom mhz16 import MHZ16\nu = UART(2, baudrate=9600, tx=Pin(17), rx=Pin(16))\nprint('CO2=%d ppm' % MHZ16(u).read_co2())\n```\n\n## Gotchas\n- TX and RX cross over: microcontroller TX → sensor RXD, microcontroller RX ← sensor TXD.\n- Do not power it from 3.3 V. Readings go low or stop.\n- Readings are meaningless for the first 3 minutes after power-up.\n- Self-calibration sets the zero point (400 ppm) every 24 h. Turn it off (`set_abc(False)`) in greenhouses, farms, fridges or rooms that never get fresh air.\n- Only zero-calibrate (by command, or by holding HD low for 7 s) after at least 20 minutes in fresh (400 ppm) air. Never tie HD to GND permanently.\n- The reply is a 16-bit count, so on the 10 % and 15 % ranges, readings above 65535 ppm cannot be returned. Check the range your unit was shipped with.\n- Do not press on the gold-plated chamber. Recalibrate at least every 6 months.\n\n## Datasheet\nhttps://www.winsen-sensor.com/d/files/MH-Z16.pdf\n",
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom mhz16 import MHZ16\n\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\nsensor = MHZ16(u)\nwhile True:\n    try:\n        print('CO2=%d ppm' % sensor.read_co2())\n    except OSError as e:\n        print(e)\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2 concentration set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2347
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=2347 ppm",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.winsen-sensor.com/d/files/MH-Z16.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T18:44:48.563Z",
+    "verifiedSources": [
+      "https://www.winsen-sensor.com/d/files/MH-Z16.pdf",
+      "https://files.seeedstudio.com/wiki/Grove-CO2_Sensor/res/MH-Z16_CO2_datasheet_EN.pdf"
+    ]
+  }
+}
