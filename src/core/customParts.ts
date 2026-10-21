@@ -179,7 +179,9 @@ export interface CustomSim {
    * freqControl × freqScale (e.g. BPM × 1/60). shape 'sine', or 'pulse' (a short peak once per period). */
   wave?: { ampControl: string; voltsPerUnit: number; centerV: number; freqHz?: number; freqControl?: string; freqScale?: number; shape?: 'sine' | 'pulse' };
   /** analog-sensor with no supply pin whose output comes from outside (a passive divider fed by the measured voltage,
-   * a piezo disc): the output is referenced to GND and NOT clamped to any supply, so overvoltage on a pin shows up. */
+   * a piezo disc): the output is referenced to GND and NOT clamped to any supply, so overvoltage on a pin shows up.
+   * pulse-sensor with pulse.openDrain and no supply pin: a passive contact (a reed-switch anemometer) that closes to GND
+   * at the pulse rate; the board's pull-up gives the high level. */
   selfPowered?: boolean;
   /** analog-sensor: the output's source resistance in ohms (default 1000): a few ohms for an op-amp or buffered output,
    * the divider's Thevenin resistance for a passive divider (R1·R2/(R1+R2)). It matters once a divider or load hangs on it. */
@@ -505,7 +507,9 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     names.add(p.name);
   }
   if (!spec.pins?.some((p) => p.role === 'gnd') && spec.interface !== 'passive') errs.push('no ground pin');
-  if (spec.sim?.selfPowered && (spec.sim.kind !== 'analog-sensor' || spec.sim.vAtMin === undefined || spec.sim.vAtMax === undefined)) errs.push('selfPowered is only for an analog-sensor with vAtMin and vAtMax');
+  if (spec.sim?.selfPowered && spec.sim.kind === 'pulse-sensor') {
+    if (!spec.sim.pulse?.openDrain) errs.push('a selfPowered pulse-sensor is a passive contact: set pulse.openDrain');
+  } else if (spec.sim?.selfPowered && (spec.sim.kind !== 'analog-sensor' || spec.sim.vAtMin === undefined || spec.sim.vAtMax === undefined)) errs.push('selfPowered is only for an analog-sensor with vAtMin and vAtMax, or a passive pulse contact');
   const s = spec.sim;
   const keys = new Set(['value', 'active', ...(s.controls ?? []).map((c) => c.key), ...(s.digitalOutputs ?? []).map((d) => d.control), ...(s.inputBits ?? []).map((d) => d.control)]);
   if (s.outputPin && !names.has(s.outputPin)) errs.push(`sim.outputPin ${s.outputPin} is not a pin`);

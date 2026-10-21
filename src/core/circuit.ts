@@ -232,6 +232,11 @@ export class ElectricalModel {
           (kp.sim.resistive ?? []).forEach((r, i) => (els[`res:${i}`] = c.add(new Resistor(`${id}.r${i}`, n(r.pin), lo(r.to), 10000))));
           if (kp.sim.shunt) els.shunt = c.add(new ShuntRef(`${id}.shunt`, n(kp.sim.shunt.pin), lo(kp.sim.shunt.to), kp.sim.shunt.vAtMin, kp.sim.shunt.rz ?? 1));
         }
+        // A passive pulse contact (reed switch): closes to GND at the pulse rate, no supply of its own.
+        if (kp?.sim.kind === 'pulse-sensor' && kp.sim.selfPowered && kp.sim.outputPin) {
+          const gp = kp.pins.find((p) => p.role === 'gnd')?.name;
+          els.out = c.add(new Switch(`${id}.out`, n(kp.sim.outputPin), gp ? n(gp) : -1, false));
+        }
         if (kp?.sim.kind === 'keypad-matrix')
           (kp.sim.rowPins ?? []).forEach((r, ri) => (kp.sim.colPins ?? []).forEach((col, ci) => (els[`key:${ri}:${ci}`] = c.add(new Switch(`${id}.k${ri}.${ci}`, n(r), n(col), false)))));
         // Modules: model their supply draw as a resistor, plus signal-pin behaviour.
@@ -585,6 +590,7 @@ export class ElectricalModel {
     const part = this.project.parts.find((p) => p.id === partId);
     if (!part) return false;
     const def = partDef(part.type);
+    if (customSpec(part.type)?.sim.selfPowered) return true;
     this.solve();
     // Pins fed from a separate supply (a motor driver's VMOT) must be within their own range too;
     // below it the chip's under-voltage lockout keeps it off.

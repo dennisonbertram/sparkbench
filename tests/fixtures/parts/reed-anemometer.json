@@ -1,0 +1,68 @@
+{
+ "type": "custom-reed-anemo-test",
+ "name": "Reed anemometer test",
+ "mpn": "ANEMO",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "digital-in",
+ "priceUsd": 3,
+ "supplierQuery": "anemometer",
+ "pins": [
+  {
+   "name": "WIND",
+   "role": "io",
+   "fn": "digital-in",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  }
+ ],
+ "vmin": 0,
+ "vmax": 24,
+ "currentMa": 0,
+ "sim": {
+  "kind": "pulse-sensor",
+  "outputPin": "WIND",
+  "selfPowered": true,
+  "quantity": "Wind speed",
+  "unit": "km/h",
+  "min": 0,
+  "max": 100,
+  "default": 0,
+  "pulse": {
+   "hzPerUnit": 0.4166666666666667,
+   "openDrain": true
+  }
+ },
+ "example": {
+  "code": "from machine import Pin\nimport time\nn = 0\ndef cb(p):\n    global n\n    n += 1\np = Pin({WIND}, Pin.IN, Pin.PULL_UP)\np.irq(trigger=Pin.IRQ_FALLING, handler=cb)\nwhile True:\n    n = 0\n    time.sleep(2)\n    print('WIND=%d' % round(n / 2 * 2.4))\n",
+  "test": {
+   "id": "t",
+   "title": "flow",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 24
+    },
+    {
+     "kind": "wait",
+     "ms": 2500
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "WIND=24",
+     "within": 5000
+    }
+   ]
+  }
+ }
+}
