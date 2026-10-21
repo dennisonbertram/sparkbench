@@ -131,3 +131,10 @@ describe('command-selected results', () => {
     expect(dev.read(2)).toEqual([23843 >> 8, 23843 & 0xff]);
   });
 });
+
+describe('Modbus CRC', () => {
+  it('matches CRC-16/MODBUS (read holding register request 01 03 00 00 00 0A → C5 CD)', () => {
+    const b = packResponse([{ const: 0x01, bits: 8 }, { const: 0x03, bits: 8 }, { const: 0, bits: 16 }, { const: 0x0a, bits: 16 }, { crc: 'modbus16', over: 6 }], () => 0);
+    expect(b.slice(6)).toEqual([0xc5, 0xcd]);
+  });
+});

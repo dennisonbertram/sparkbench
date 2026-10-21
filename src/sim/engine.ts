@@ -5,7 +5,7 @@ import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
 import { ocr } from './ocr';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, TFTDevice, segText, packResponse, type I2CDevice } from './devices';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, TFTDevice, HT16K33Device, segText, packResponse, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
 import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
@@ -141,6 +141,7 @@ export class SimEngine {
       if (part.type === 'ssd1306') this.devices.push({ dev: new SSD1306Device(part.id), part });
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
       const cs = customSpec(part.type);
+      if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'ht16k33') this.devices.push({ dev: new HT16K33Device(part.id, cs.i2cAddress ?? 0x70), part });
       if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller, rows: cs.sim.rows }), part });
       if (cs?.sim.kind === 'i2c-device')
         for (const sd of cs.sim.subDevices ?? [])
@@ -688,15 +689,21 @@ export class SimEngine {
     this.buses.push({ sda, scl });
     return this.buses.length - 1;
   }
+  /** A part's I2C pin names: datasheet parts use whatever their board prints, marked by fn. */
+  private i2cPins(part: PartInstance): [string, string] {
+    const cs = customSpec(part.type);
+    return [cs?.pins.find((p) => p.fn === 'i2c.sda')?.name ?? 'SDA', cs?.pins.find((p) => p.fn === 'i2c.scl')?.name ?? 'SCL'];
+  }
   private devicesOn(bus: number) {
     const b = this.buses[bus];
     if (!b) return [];
     const via = ['level-shifter'];
     const shifterOk = () => this.project.parts.filter((p) => p.type === 'level-shifter').every((p) => this.model.modulePowered(p.id));
     return this.devices.filter(({ part }) => {
-      const sda = this.model.gpiosReachable(part.id, 'SDA', 0, via);
-      const scl = this.model.gpiosReachable(part.id, 'SCL', 0, via);
-      const direct = this.model.gpiosOnNet(part.id, 'SDA').includes(b.sda);
+      const [SDA, SCL] = this.i2cPins(part);
+      const sda = this.model.gpiosReachable(part.id, SDA, 0, via);
+      const scl = this.model.gpiosReachable(part.id, SCL, 0, via);
+      const direct = this.model.gpiosOnNet(part.id, SDA).includes(b.sda);
       return sda.includes(b.sda) && scl.includes(b.scl) && this.model.modulePowered(part.id) && (direct || shifterOk());
     });
   }
@@ -706,8 +713,9 @@ export class SimEngine {
     const hex = `0x${addr.toString(16).padStart(2, '0')}`;
     let why = `Nothing answered at I2C address ${hex} on SDA=GPIO${b.sda}, SCL=GPIO${b.scl}.`;
     for (const { part } of cand) {
-      const sdaG = this.model.gpiosOnNet(part.id, 'SDA');
-      const sclG = this.model.gpiosOnNet(part.id, 'SCL');
+      const [SDA, SCL] = this.i2cPins(part);
+      const sdaG = this.model.gpiosOnNet(part.id, SDA);
+      const sclG = this.model.gpiosOnNet(part.id, SCL);
       const name = part.ref ?? part.id;
       if (!this.model.modulePowered(part.id)) why += ` ${name} (${partDef(part.type).name}) has no power — check its VCC/GND wires.`;
       else if (sdaG.includes(b.scl) && sclG.includes(b.sda)) why += ` ${name}'s SDA and SCL wires are swapped.`;
@@ -1150,7 +1158,12 @@ export class SimEngine {
             v.powered = m.modulePowered(part.id);
             v.pixels = v.powered ? (this.pixels.get(part.id) ?? []).slice(0, (cs.sim.count ?? 1) * 3) : [];
           }
-          if (cs?.sim.kind === 'segment-display') {
+          if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'ht16k33') {
+            v.powered = m.modulePowered(part.id);
+            const d = this.devices.find((x) => x.part.id === part.id && x.dev instanceof HT16K33Device)?.dev as HT16K33Device | undefined;
+            v.segOn = !!v.powered && !!d?.on;
+            v.segText = v.segOn && d ? segText((cs.sim.digitMap ?? []).map((i) => d.ram[i] ?? 0)) : '';
+          } else if (cs?.sim.kind === 'segment-display') {
             v.powered = m.modulePowered(part.id);
             const d = this.segDev(part)!;
             if (d instanceof TM1637Device) {

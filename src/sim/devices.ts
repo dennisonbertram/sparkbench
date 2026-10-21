@@ -643,6 +643,15 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
       const sum = prev.reduce((a, b) => a + b, 0);
       if (s.crc === 'sum16') push(sum & 0xffff, 16);
       else if (s.crc === 'neg16') push(-sum & 0xffff, 16);
+      else if (s.crc === 'modbus16') {
+        let crc = 0xffff;
+        for (const b of prev) {
+          crc ^= b;
+          for (let i = 0; i < 8; i++) crc = crc & 1 ? (crc >> 1) ^ 0xa001 : crc >> 1;
+        }
+        push(crc & 0xff, 8);
+        push(crc >> 8, 8);
+      }
       else if (s.crc === 'sum8') push(sum & 0xff, 8);
       else if (s.crc === 'mhz19') push((0xff - (prev.slice(1).reduce((a, b) => a + b, 0) & 0xff) + 1) & 0xff, 8);
       else push(crc8Sensirion(prev, s.crc === 'htu21d' ? 0 : 0xff), 8);
@@ -857,5 +866,21 @@ export class TFTDevice {
         out.push(((p >> 11) & 0x1f) << 3, ((p >> 5) & 0x3f) << 2, (p & 0x1f) << 3);
       }
     return out;
+  }
+}
+
+/** HT16K33 LED backpack (I2C): 16 bytes of display RAM, oscillator (0x21), display setup (0x80 | on), dimming (0xE0 | n). */
+export class HT16K33Device implements I2CDevice {
+  ram = new Array(16).fill(0);
+  on = false;
+  constructor(public partId: string, public addr: number) {}
+  write(bytes: number[]) {
+    if (!bytes.length) return;
+    const c = bytes[0];
+    if (c < 0x10) bytes.slice(1).forEach((b, i) => (this.ram[(c + i) & 0x0f] = b));
+    else if ((c & 0xf0) === 0x80) this.on = (c & 0x01) === 1;
+  }
+  read(n: number) {
+    return new Array(n).fill(0);
   }
 }

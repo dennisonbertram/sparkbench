@@ -37,7 +37,7 @@ export interface CustomSim {
   count?: number;
   /** segment-display: TM1637 (pins CLK + DIO, fn digital-out) or MAX7219 (SPI: fn spi.sck, spi.mosi, spi.cs as LOAD);
    * digits = how many digit positions the module shows; matrix = an 8×8 dot matrix instead of 7-segment digits. */
-  protocol?: 'tm1637' | 'max7219';
+  protocol?: 'tm1637' | 'max7219' | 'ht16k33';
   digits?: number;
   matrix?: boolean;
   /** segment-display: which RAM position drives each digit, left to right (e.g. [2,1,0,5,4,3] on common 6-digit TM1637 modules). */
@@ -154,7 +154,7 @@ export interface I2CMeasure {
 /** One field of a command response, packed MSB-first into the reply's bit stream. */
 /** Bits a reply occupies (checksums are 8 bits except sum16). */
 export function segBits(segs: ResponseSegment[]): number {
-  return segs.reduce((n, b) => n + ('crc' in b ? (b.crc === 'sum16' || b.crc === 'neg16' ? 16 : 8) : b.bits), 0);
+  return segs.reduce((n, b) => n + ('crc' in b ? (['sum16', 'neg16', 'modbus16'].includes(b.crc) ? 16 : 8) : b.bits), 0);
 }
 
 export type ResponseSegment =
@@ -167,8 +167,8 @@ export type ResponseSegment =
   /** CRC-8 over the previous `over` bytes, poly 0x31: 'sensirion' starts at 0xFF (SHT3x/4x, SCD4x, AHT20), 'htu21d' at 0x00 (HTU21D, Si7021). */
   | { crc: 'sensirion' | 'htu21d'; over: number }
   /** Checksums of serial sensors over the previous `over` bytes: 'sum16' = 16-bit sum, big-endian (PMS5003);
-   * 'mhz19' = 0xFF − (sum of bytes after the first) + 1 (MH-Z19, SDS011-style); 'neg16' = −sum as 16 bits, big-endian (DFPlayer). */
-  | { crc: 'sum16' | 'mhz19' | 'sum8' | 'neg16'; over: number };
+   * 'mhz19' = 0xFF − (sum of bytes after the first) + 1 (MH-Z19, SDS011-style); 'neg16' = −sum as 16 bits, big-endian (DFPlayer); 'modbus16' = CRC-16/MODBUS, low byte first (Senseair S8, Modbus sensors). */
+  | { crc: 'sum16' | 'mhz19' | 'sum8' | 'neg16' | 'modbus16'; over: number };
 
 export interface CustomPartSpec {
   type: string; // "custom-bme280"
@@ -333,7 +333,8 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.kind === 'segment-display') {
     if (s.protocol === 'tm1637' && !(names.has('CLK') && names.has('DIO'))) errs.push('a TM1637 display needs pins named CLK and DIO');
     if (s.protocol === 'max7219' && !(['spi.sck', 'spi.mosi', 'spi.cs'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('a MAX7219 display needs pins with fn spi.sck, spi.mosi and spi.cs');
-    if (!s.protocol) errs.push('segment-display needs protocol tm1637 or max7219');
+    if (s.protocol === 'ht16k33' && (spec.i2cAddress === undefined || !s.digitMap?.length)) errs.push('an HT16K33 display needs i2cAddress and digitMap (the RAM byte of each digit, e.g. [0,2,6,8])');
+    if (!s.protocol) errs.push('segment-display needs protocol tm1637, max7219 or ht16k33');
   }
   if (s.kind === 'hx711' && (!s.outputPin || !s.clockPin || !names.has(s.clockPin) || !s.countsPerUnit)) errs.push('hx711 needs outputPin (DOUT), clockPin (PD_SCK) and countsPerUnit');
   if (s.kind === 'onewire-temp' && s.family !== undefined && ![0x10, 0x22, 0x28, 0x3b, 0x42].includes(s.family)) errs.push(`1-Wire family 0x${s.family.toString(16)} is not a DS18x20-type thermometer`);
