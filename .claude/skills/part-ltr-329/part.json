@@ -1,0 +1,163 @@
+{
+  "type": "custom-ltr-329",
+  "name": "LTR-329 ambient light sensor",
+  "mpn": "LTR-329ALS-01",
+  "category": "sensor",
+  "description": "Lite-On digital ambient light sensor with two 16-bit channels (visible+infrared and infrared), gains 1x-96x and 50-400 ms integration, covering about 0.01 to 64k lux, I2C at fixed address 0x29; the chip runs on 2.4-3.6 V. Sold as: Adafruit LTR-329 Light Sensor - STEMMA QT / Qwiic (#5591), 5-pin header VIN, 3Vo, GND, SCL, SDA with a 3.3 V regulator and I2C level shifting for 3-5 V.",
+  "eli5": "Tells your board how bright the light around it is, from a dark room to full sunlight.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (on-board regulator makes 3.3 V for the chip)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up and level shifter on board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.25,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://optoelectronics.liteon.com/upload/download/DS86-2014-0006/LTR-329ALS-01_DS_V1.pdf",
+  "priceUsd": 4.5,
+  "supplierQuery": "LTR-329 ambient light sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wait at least 100 ms after power-up, then write ALS_CONTR (0x80) = (gain << 2) | 1 to leave standby; the first result is ready 10 ms wake-up plus one integration later.",
+    "ALS_MEAS_RATE (0x85) = (integration code << 3) | repeat-rate code; the default 0x03 is 100 ms integration every 500 ms. Integration time must not exceed the repeat rate.",
+    "Read the data as one 4-byte block from 0x88: CH1 (infrared) low, high, then CH0 (visible + infrared) low, high. Reading CH1 first is required: the registers stay locked until 0x8B is read.",
+    "ALS_STATUS (0x8C) bit 2 = new data, bit 7 = data invalid (discard and wait).",
+    "Lux (Lite-On Appendix A): ratio = CH1/(CH0+CH1); below 0.45: 1.7743*CH0 + 1.1059*CH1; below 0.64: 4.2785*CH0 - 1.9548*CH1; below 0.85: 0.5926*CH0 + 0.1185*CH1; else 0. Divide by gain and by integration time in units of 100 ms.",
+    "A channel at 65535 is saturated: lower the gain (1x covers up to about 64k lux). Use 48x or 96x only for dim indoor light.",
+    "The address 0x29 is fixed: one LTR-329 per I2C bus (the TSL2591 and VL53L0X also use 0x29)."
+  ],
+  "keywords": [
+    "ltr-329",
+    "ltr329",
+    "ltr-329als",
+    "ltr-303",
+    "lux",
+    "light",
+    "ambient light",
+    "lite-on",
+    "illuminance"
+  ],
+  "sources": [
+    "https://optoelectronics.liteon.com/upload/download/DS86-2014-0006/LTR-329ALS-01_DS_V1.pdf",
+    "https://www.adafruit.com/product/5591",
+    "https://learn.adafruit.com/adafruit-ltr-329-ltr-303/pinouts",
+    "https://github.com/adafruit/Adafruit-LTR-329-LTR-303-PCB",
+    "https://github.com/adafruit/Adafruit_CircuitPython_LTR329_LTR303",
+    "https://github.com/pycom/pycom-libraries/blob/master/shields/lib/LTR329ALS01.py"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Visible + infrared light (CH0)",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 1000,
+    "controls": [
+      {
+        "key": "ir",
+        "quantity": "Infrared light (CH1)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 250
+      }
+    ],
+    "registers": {
+      "0x85": 3,
+      "0x86": 160,
+      "0x87": 5,
+      "0x8C": 4
+    },
+    "measures": [
+      {
+        "reg": "0x88",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      },
+      {
+        "reg": "0x8A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ltr329.py",
+    "code": "# LTR-329 ambient light sensor (Lite-On LTR-329ALS-01, datasheet DS86-2014-0006), MicroPython driver.\n# I2C address 0x29 (fixed), 8-bit registers. Two 16-bit ADC channels, LSB first:\n#   CH1 (infrared) at 0x88/0x89, CH0 (visible + infrared) at 0x8A/0x8B.\n# The datasheet says to read 0x88..0x8B in order (CH1 first): the four data registers are locked\n# until 0x8B has been read, so both channels come from the same measurement. We read all four in one go.\n# Lux uses the Lite-On \"Appendix A\" formula (ratio = CH1 / (CH0 + CH1)), divided by gain and\n# integration time in units of 100 ms.\nimport time\n\n_ALS_CONTR = 0x80\n_ALS_MEAS_RATE = 0x85\n_PART_ID = 0x86\n_MANUFAC_ID = 0x87\n_ALS_DATA_CH1_0 = 0x88\n_ALS_STATUS = 0x8C\n\n# ALS gain codes (ALS_CONTR bits 4:2); 4 and 5 are reserved\nGAIN_1X = 0\nGAIN_2X = 1\nGAIN_4X = 2\nGAIN_8X = 3\nGAIN_48X = 6\nGAIN_96X = 7\n_GAIN_X = {0: 1, 1: 2, 2: 4, 3: 8, 6: 48, 7: 96}\n\n# Integration time codes (ALS_MEAS_RATE bits 5:3) -> milliseconds\nINT_100MS = 0\nINT_50MS = 1\nINT_200MS = 2\nINT_400MS = 3\nINT_150MS = 4\nINT_250MS = 5\nINT_300MS = 6\nINT_350MS = 7\n_INT_MS = (100, 50, 200, 400, 150, 250, 300, 350)\n\n# Measurement repeat rate codes (ALS_MEAS_RATE bits 2:0) -> milliseconds\nRATE_50MS = 0\nRATE_100MS = 1\nRATE_200MS = 2\nRATE_500MS = 3\nRATE_1000MS = 4\nRATE_2000MS = 5\n_RATE_MS = (50, 100, 200, 500, 1000, 2000)\n\n\nclass LTR329:\n    def __init__(self, i2c, addr=0x29, gain=GAIN_1X, integration=INT_100MS, rate=RATE_500MS):\n        if gain not in _GAIN_X or integration not in range(8) or rate not in range(6):\n            raise ValueError('use the GAIN_, INT_ and RATE_ constants')\n        self.i2c = i2c\n        self.addr = addr\n        self.gain = gain\n        self.integration = integration\n        self.rate = rate\n        time.sleep_ms(100)  # initial start-up time after power is applied (datasheet: 100 ms)\n        if self._r8(_PART_ID) >> 4 != 0xA or self._r8(_MANUFAC_ID) != 0x05:\n            raise OSError('LTR-329 not found at 0x%02X (check the wiring)' % addr)\n        # Integration time must not exceed the repeat rate, or the chip clamps it to the rate.\n        self._w8(_ALS_MEAS_RATE, (integration << 3) | rate)\n        self._w8(_ALS_CONTR, (gain << 2) | 0x01)  # gain + active mode\n        time.sleep_ms(10)  # wake-up time from standby (max 10 ms)\n        self._wait_ms = 10 + max(_INT_MS[integration], _RATE_MS[rate])\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def channels(self):\n        \"\"\"Wait for a fresh, valid measurement and return (ch0, ch1) counts:\n        ch0 = visible + infrared, ch1 = infrared only.\"\"\"\n        t0 = time.ticks_ms()\n        while True:\n            st = self._r8(_ALS_STATUS)\n            if st & 0x04 and not st & 0x80:  # bit 2: new data, bit 7: data invalid\n                break\n            if time.ticks_diff(time.ticks_ms(), t0) > 2 * self._wait_ms + 500:\n                raise OSError('LTR-329: no new data (check the wiring)')\n            time.sleep_ms(10)\n        d = self.i2c.readfrom_mem(self.addr, _ALS_DATA_CH1_0, 4)  # 0x88, 0x89, 0x8A, 0x8B in order\n        ch1 = d[0] | (d[1] << 8)\n        ch0 = d[2] | (d[3] << 8)\n        return ch0, ch1\n\n    def lux(self, ch0=None, ch1=None):\n        \"\"\"Illuminance in lux (Lite-On Appendix A). Returns 0 in the dark or for IR-dominated light,\n        None if a channel is saturated (65535: lower the gain or integration time).\"\"\"\n        if ch0 is None:\n            ch0, ch1 = self.channels()\n        if ch0 >= 65535 or ch1 >= 65535:\n            return None\n        if ch0 + ch1 == 0:\n            return 0.0\n        ratio = ch1 / (ch0 + ch1)\n        if ratio < 0.45:\n            lux = 1.7743 * ch0 + 1.1059 * ch1\n        elif ratio < 0.64:\n            lux = 4.2785 * ch0 - 1.9548 * ch1\n        elif ratio < 0.85:\n            lux = 0.5926 * ch0 + 0.1185 * ch1\n        else:\n            return 0.0\n        return lux / _GAIN_X[self.gain] / (_INT_MS[self.integration] / 100)\n\n    def standby(self):\n        \"\"\"Stop measuring (about 5 uA).\"\"\"\n        self._w8(_ALS_CONTR, self.gain << 2)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ltr329 import LTR329, GAIN_1X, INT_100MS, RATE_500MS\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = LTR329(i2c, gain=GAIN_1X, integration=INT_100MS, rate=RATE_500MS)\nwhile True:\n    ch0, ch1 = sensor.channels()\n    print('CH0=%d CH1=%d Lux=%.1f' % (ch0, ch1, sensor.lux(ch0, ch1)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the channel counts set on the sliders and the lux they give",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 600
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=2000 CH1=600 Lux=4212.1",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:28:51.086Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/115/507/original/LTR-329ALS-01_DS_V1.5.PDF?1664491404",
+      "https://learn.adafruit.com/adafruit-ltr-329-ltr-303/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/115/503/large1024/light_LTR-329_fab_print.png",
+      "https://www.adafruit.com/product/5591"
+    ]
+  }
+}

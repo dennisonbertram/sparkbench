@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-toggle-switch",
+  "board": "Generic MTS-102 miniature toggle switch (SPDT ON-ON, 3 solder lugs L1/COM/L2 at 4.7 mm pitch, 6 A 125 VAC / 3 A 250 VAC, 1/4-40 (6 mm) bushing)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator L1=CLOSED then L1=OPEN, PCB DRC clean, footprint). The passive SPDT switch is modelled as a 1x2 keypad-matrix (COM row, L1/L2 columns; slider 1 = COM-L1, 2 = COM-L2, 0 = mid-travel), since digital-sensor needs a supply pin; ratings and SPDT ON-ON contact form come from the MTS series datasheet.",
+  "datasheetUrl": "https://ok1if.hamqth.com/PIXANC/MTS-SMTS-Series.pdf",
+  "breakoutPinoutSource": "MTS series datasheet SPDT 3P drawings (three lugs in a row at 4.7 mm, middle = common) and Fritzing core basic-toggle-switch.fzp pin order L1, COM, L2; seller listings (phippselectronics.com, sigmanortec.ro) confirm the 3-pin SPDT ON-ON MTS-102",
+  "checkRuns": 2
+}

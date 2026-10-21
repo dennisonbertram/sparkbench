@@ -1,0 +1,101 @@
+{
+  "type": "custom-ky-002",
+  "name": "KY-002 vibration switch module",
+  "mpn": "KY-002",
+  "category": "sensor",
+  "description": "Passive vibration / shock switch: a spring inside a metal tube that shorts the signal pin to ground for a few milliseconds when the board is shaken or knocked, with an on-board 10 kΩ pull-up from S to the + pin, so S idles high and pulses low (active low) on vibration. Runs on 3.3–5 V; S idles at the supply voltage. Sold as: Keyes / Joy-IT KY-002 vibration switch module (SEN-KY002, also HW-513; 3-pin header S, + (middle), -).",
+  "eli5": "A tiny spring in a tube that rattles when the board is shaken, and tells your board each time it is jolted.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "description": "Signal: high at rest (10 kΩ pull-up to +), low while the spring touches the tube during a shake",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply for the pull-up, middle pin, 3.3–5 V (use 3.3 V with an ESP32 or Pico: S idles at this voltage)",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (spring/tube common)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-002",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-002",
+    "https://arduinomodules.info/ky-002-vibration-switch-module/",
+    "https://zazuzx.wordpress.com/2016/09/07/ky-002-vibration-sensor/",
+    "https://www.espboards.dev/sensors/ky-002/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-002 vibration switch module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: S, + (middle), -. The middle pin is always the supply.",
+    "Power + from 3.3 V on an ESP32 or Pico: S is pulled up to + by the on-board 10 kΩ resistor.",
+    "Active low: S reads 1 at rest and 0 while the spring touches the tube. No external pull-up needed.",
+    "The pulse lasts only milliseconds and bounces: use a falling-edge interrupt with ~100 ms debounce rather than slow polling.",
+    "Fix the module to the object whose shaking you want to detect."
+  ],
+  "keywords": [
+    "ky-002",
+    "ky002",
+    "hw-513",
+    "vibration",
+    "shock",
+    "shake",
+    "spring switch",
+    "knock"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Vibration (spring contact closed)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "ky002.py",
+    "code": "# KY-002 vibration switch module (Keyes / Joy-IT SEN-KY002), MicroPython driver.\n# The module is a spring-in-tube vibration switch between S and GND with a 10 kOhm\n# pull-up from S to the middle (+) pin. At rest S reads 1; a shake or knock makes the\n# spring touch the tube for a few milliseconds and S pulses low (falling edge).\n# The contact bounces, so shakes are debounced in software.\nfrom machine import Pin\nimport time\n\n\nclass KY002:\n    def __init__(self, pin, debounce_ms=100):\n        # The board already has a 10 k pull-up; the internal pull-up does no harm and keeps\n        # S defined if the + pin is left unconnected by mistake.\n        self.pin = Pin(pin, Pin.IN, Pin.PULL_UP) if isinstance(pin, int) else pin\n        self.debounce_ms = debounce_ms\n        self.count = 0\n        self._last = time.ticks_add(time.ticks_ms(), -debounce_ms)\n        self.pin.irq(handler=self._edge, trigger=Pin.IRQ_FALLING)\n\n    def _edge(self, pin):\n        now = time.ticks_ms()\n        if time.ticks_diff(now, self._last) >= self.debounce_ms:\n            self._last = now\n            self.count += 1\n\n    def value(self):\n        \"\"\"Raw level on S: 1 at rest, 0 while the spring touches the tube.\"\"\"\n        return self.pin.value()\n\n    def vibrating(self):\n        \"\"\"True while the spring contact is closed (S low).\"\"\"\n        return self.pin.value() == 0\n\n    def shakes(self):\n        \"\"\"Debounced number of shakes (falling edges on S) since the last call.\"\"\"\n        n = self.count\n        self.count = 0\n        return n\n"
+  },
+  "skill": "---\nname: part-ky-002\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-002 vibration switch module (spring-in-tube shock switch with 10 kΩ pull-up). Use when designing, wiring, simulating or writing code for a KY-002 vibration / shock sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-002 vibration switch module (KY-002)\n\n## Overview\nThe **KY-002** is a passive vibration (shock) switch from the 37-in-1 sensor kits: a metal tube with a light spring inside it, a 10 kΩ resistor and a 3-pin header. Shaking or knocking the board makes the spring touch the tube for a few milliseconds, which shorts the signal pin to ground. There is no chip, no LED and no sensitivity adjustment; it reports *that* it was shaken, not how hard. Modelled board: **Keyes / Joy-IT KY-002 vibration switch module (SEN-KY002)**, also sold as HW-513.\n\n## Pinout (3-pin header: S, middle +, -)\n| Pin | Function |\n|---|---|\n| S | Signal. Pulled up to + by the on-board 10 kΩ; pulled to GND by the spring during a shake |\n| + | Supply for the pull-up (middle pin), 3.3–5 V |\n| - | Ground (spring/tube common) |\n\n## Electrical limits\n- Supply: 3.3–5 V. S idles at the supply voltage, so **use 3.3 V with an ESP32 or Pico**.\n- Current: about 0.33 mA at 3.3 V (0.5 mA at 5 V) only while the contact is closed; zero at rest.\n- Purely passive: a mechanical switch plus a resistor.\n\n## Interface details\n- Plain digital input, **active low**: S = 1 at rest, S = 0 while the spring touches (Joy-IT's examples enable a pull-up, test `== LOW` and trigger on the falling edge).\n- The pulse is short (milliseconds) and bounces: catch it with a falling-edge interrupt and debounce (about 100 ms), don't rely on slow polling.\n- No external pull-up needed (10 kΩ fitted between + and S); enabling the GPIO's internal pull-up as well is harmless.\n\n## Wiring\n- ESP32: + → 3V3, - → GND, S → GPIO4.\n- Pico: + → 3V3(OUT), - → GND, S → GP26.\n- Raspberry Pi 4: + → pin 1 (3.3 V), - → pin 6, S → GPIO24 (pin 18).\n\n## Using the driver\n```python\nfrom ky002 import KY002\nimport time\nv = KY002(4)               # GPIO wired to S\nwhile True:\n    n = v.shakes()          # debounced shakes since last call (IRQ on falling edge)\n    if n:\n        print('Shake x%d' % n)\n    time.sleep_ms(100)\n```\n`vibrating()` gives the live contact state; `value()` the raw S level.\n\n## Gotchas\n- Powered from 5 V, S idles at 5 V: too much for an ESP32/Pico pin.\n- Some web pages say \"high on vibration\"; on the Keyes/Joy-IT board the 10 kΩ goes from + to S and the spring shorts S to -, so it is **low on vibration**. If a clone behaves the other way, measure resistance between S and the middle pin (about 10 kΩ on this board).\n- Joy-IT's Pico example uses a pull-down; with this board's own 10 kΩ pull-up that internal pull-down is overridden, so use a pull-up (or none).\n- One shake gives several bounces; the driver's debounce merges them into one count.\n\n## Datasheet\nhttps://sensorkit.joy-it.net/en/sensors/ky-002\n",
+  "example": {
+    "code": "from ky002 import KY002\nimport time\n\nv = KY002({S})\ntotal = 0\nwhile True:\n    total += v.shakes()\n    print('S=%d vibrating=%d total=%d' % (v.value(), v.vibrating(), total))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports a shake when the spring contact closes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "S=0 vibrating=1 total=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:37:32.322Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-002"
+    ]
+  }
+}

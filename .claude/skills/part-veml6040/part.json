@@ -1,0 +1,191 @@
+{
+  "type": "custom-veml6040",
+  "name": "VEML6040 RGBW colour sensor",
+  "mpn": "VEML6040",
+  "category": "sensor",
+  "description": "Vishay RGBW colour sensor: 16-bit red, green, blue and white channels, ambient light in lux from the green channel (0.007865 lx/count up to 515 lx at 1280 ms, up to 16 496 lx at 40 ms) and colour temperature from R, G, B. I2C at the fixed address 0x10; the chip runs on 2.5-3.6 V. Sold as: VEML6040 RGBW colour sensor module (purple 4-pin clone board shared with the VEML6075, silkscreen 6075/6040, header VIN GND SCL SDA), with a 3.3 V regulator and I2C level shifting so it runs from 3.3-5 V.",
+  "eli5": "Sees how much red, green, blue and white light falls on it, so your board can tell colours, brightness and how warm or cool a light is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (regulated to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up and level shifter on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up and level shifter on board)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.2,
+  "i2cAddress": 16,
+  "datasheetUrl": "https://www.vishay.com/docs/84276/veml6040.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "VEML6040 RGBW color sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Registers are 16-bit and travel LSB first: write [command, LSB, MSB]; read the command code with a repeated start (no stop) and get LSB then MSB.",
+    "CONF (0x00) low byte: IT in bits 6:4 (40/80/160/320/640/1280 ms), TRIG bit 2, AF bit 1, SD bit 0; high byte 0. Write SD = 0 to start measuring and wait one integration time before the first reading.",
+    "Results: R 0x08, G 0x09, B 0x0A, W 0x0B. Lux = G counts x sensitivity: 0.25168 lx/count at 40 ms, halving for each doubling of IT down to 0.007865 at 1280 ms.",
+    "Choose the integration time for the brightest light expected: 160 ms saturates (65535 counts) at about 4124 lx; use 40 ms outdoors.",
+    "Colour temperature (app note, empirical): CCT = 4278.6 x ((R - B) / G + 0.5)^-1.2455 K in open air; a cover glass changes the 0.5 offset.",
+    "The address is fixed at 0x10, the same as the VEML7700 and VEML6075: only one of them per I2C bus without a multiplexer.",
+    "The bright white LED on many of these modules shines into the sensor's surroundings; for ambient readings keep it from lighting the sensor, for colour-of-object readings hold the object a few mm away."
+  ],
+  "keywords": [
+    "veml6040",
+    "rgbw",
+    "rgb",
+    "colour",
+    "color",
+    "color sensor",
+    "light",
+    "lux",
+    "cct",
+    "colour temperature",
+    "vishay"
+  ],
+  "sources": [
+    "https://www.vishay.com/docs/84276/veml6040.pdf",
+    "https://www.vishay.com/docs/84331/designingveml6040.pdf",
+    "https://github.com/thewknd/VEML6040",
+    "https://raw.githubusercontent.com/thewknd/VEML6040/master/extras/breakout_1_.jpg"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Light level (green channel)",
+    "unit": "lx",
+    "min": 0,
+    "max": 4123,
+    "default": 300,
+    "controls": [
+      {
+        "key": "red",
+        "quantity": "Red channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 4000
+      },
+      {
+        "key": "blue",
+        "quantity": "Blue channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 3000
+      },
+      {
+        "key": "white",
+        "quantity": "White channel counts",
+        "min": 0,
+        "max": 65535,
+        "default": 10000
+      }
+    ],
+    "regWidth": 16,
+    "registers": {
+      "0x00": 0
+    },
+    "measures": [
+      {
+        "reg": "0x08",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "red"
+      },
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 0.06292,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x0A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "blue"
+      },
+      {
+        "reg": "0x0B",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "white"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "veml6040.py",
+    "code": "# VEML6040 RGBW colour sensor (Vishay, datasheet doc 84276 + app note 84331), MicroPython driver.\n# I2C address 0x10 (fixed). 16-bit registers (\"command codes\"), sent and received LSB first:\n#   write: [command code, data LSB, data MSB]; read: command code, repeated start, LSB, MSB.\n# 0x00 CONF (low byte: IT2..IT0 in bits 6:4, TRIG bit 2, AF bit 1, SD bit 0; high byte reserved = 0)\n# 0x08 R, 0x09 G, 0x0A B, 0x0B W result counts (0..65535).\n# Lux = G counts x G sensitivity for the integration time (datasheet table 6).\nimport time\n\n_CONF = 0x00\n_R = 0x08\n_G = 0x09\n_B = 0x0A\n_W = 0x0B\n\n_SD = 0x01    # 1 = colour sensor shut down\n_AF = 0x02    # 1 = active force (single measurement) mode, 0 = auto mode\n_TRIG = 0x04  # 1 = start one measurement in force mode\n\n# integration time in ms -> (IT bits, G sensitivity in lx/count), datasheet table 6\n_IT = {\n    40: (0b000, 0.25168),\n    80: (0b001, 0.12584),\n    160: (0b010, 0.06292),\n    320: (0b011, 0.03146),\n    640: (0b100, 0.01573),\n    1280: (0b101, 0.007865),\n}\n\n\nclass VEML6040:\n    def __init__(self, i2c, addr=0x10, it_ms=160, force=False):\n        self.i2c = i2c\n        self.addr = addr\n        self.configure(it_ms, force)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)  # repeated start, as the datasheet requires\n        return d[0] | (d[1] << 8)  # LSB first\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF, (value >> 8) & 0xFF]))\n\n    def configure(self, it_ms=160, force=False):\n        \"\"\"Integration time 40/80/160/320/640/1280 ms; force=True for single measurements on demand.\n\n        Auto mode (default) measures continuously. Max lux before the G channel saturates:\n        40 ms 16496, 80 ms 8248, 160 ms 4124, 320 ms 2062, 640 ms 1031, 1280 ms 515.4.\"\"\"\n        if it_ms not in _IT:\n            raise ValueError('it_ms must be 40, 80, 160, 320, 640 or 1280')\n        self.it_ms = it_ms\n        self.force = force\n        self.sensitivity = _IT[it_ms][1]\n        self._conf = (_IT[it_ms][0] << 4) | (_AF if force else 0)\n        self._write(_CONF, self._conf | _SD)  # shut down while changing settings (app note sequence)\n        self._write(_CONF, self._conf)        # SD = 0: enable\n        if not force:\n            time.sleep_ms(it_ms + it_ms // 10 + 5)  # wait for the first complete integration\n\n    def measure(self):\n        \"\"\"Force mode only: trigger one measurement and wait for it to finish.\"\"\"\n        self._write(_CONF, self._conf | _TRIG)\n        time.sleep_ms(self.it_ms + self.it_ms // 10 + 5)\n\n    def rgbw(self):\n        \"\"\"Raw (R, G, B, W) counts, 0..65535 each. In force mode call measure() first.\"\"\"\n        return self._read(_R), self._read(_G), self._read(_B), self._read(_W)\n\n    def red(self):\n        return self._read(_R)\n\n    def green(self):\n        return self._read(_G)\n\n    def blue(self):\n        return self._read(_B)\n\n    def white(self):\n        return self._read(_W)\n\n    def lux(self, g=None):\n        \"\"\"Ambient light in lx: G counts x sensitivity for the integration time (app note 84331).\"\"\"\n        if g is None:\n            g = self._read(_G)\n        return g * self.sensitivity\n\n    @staticmethod\n    def cct(r, g, b, offset=0.5):\n        \"\"\"Correlated colour temperature in K, app note empirical formula:\n        CCT = 4278.6 x ((R - B) / G + offset) ^ -1.2455, offset 0.5 in open air.\n        Returns None when it cannot be computed (no green light, or a very blue source).\"\"\"\n        if g == 0:\n            return None\n        ccti = (r - b) / g + offset\n        if ccti <= 0:\n            return None\n        return 4278.6 * ccti ** -1.2455\n\n    def shutdown(self, off=True):\n        \"\"\"SD bit: off=True stops measuring (about 0.8 uA); the last results stay readable.\"\"\"\n        if off:\n            self._write(_CONF, self._conf | _SD)\n        else:\n            self._write(_CONF, self._conf)\n            if not self.force:\n                time.sleep_ms(self.it_ms + self.it_ms // 10 + 5)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom veml6040 import VEML6040\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = VEML6040(i2c, it_ms=160)  # 0.06292 lx per G count, up to 4124 lx\nwhile True:\n    r, g, b, w = sensor.rgbw()\n    cct = VEML6040.cct(r, g, b)\n    print('Lux=%.2f R=%d G=%d B=%d W=%d CCT=%s' % (sensor.lux(g), r, g, b, w, '%.0fK' % cct if cct else '-'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level, the four colour channels and the colour temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 503.36
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 6000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "blue",
+          "value": 2000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "white",
+          "value": 9000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=503.36 R=6000 G=8000 B=2000 W=9000 CCT=4279K",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:23:38.667Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/84276/veml6040.pdf"
+    ]
+  }
+}

@@ -1,0 +1,673 @@
+{
+  "type": "custom-amg8833",
+  "name": "AMG8833 8x8 thermal camera (Grid-EYE)",
+  "mpn": "AMG8833",
+  "category": "sensor",
+  "description": "Panasonic Grid-EYE 8x8 infrared thermopile array: 64 pixel temperatures (0-80 °C objects, 0.25 °C steps, ±2.5 °C typical, 60° field of view) plus an on-chip thermistor, read over I2C at 10 frames/s. Chip runs on 3.3 V. Sold as: Adafruit AMG8833 IR Thermal Camera Breakout (#3538, STEMMA QT version; 6-pin: VIN, 3Vo, GND, SCL, SDA, INT), 3-5 V on VIN, I2C address 0x69 (0x68 with the Addr jumper soldered).",
+  "eli5": "A tiny heat camera: it sees how warm things are in an 8 by 8 grid, so it can spot a person or a hot cup without touching them.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (onboard 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the onboard regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (3 V logic), not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 4.5,
+  "i2cAddress": 105,
+  "datasheetUrl": "https://cdn-learn.adafruit.com/assets/assets/000/043/261/original/Grid-EYE_SPECIFICATIONS%28Reference%29.pdf",
+  "priceUsd": 45,
+  "supplierQuery": "Adafruit AMG8833 IR thermal camera breakout 3538",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Solder only the bottom 6-pin header (VIN, 3Vo, GND, SCL, SDA, INT); the top row of holes is for support and is not connected.",
+    "Init: PCTL 0x00 = 0x00 (normal), RST 0x01 = 0x3F (initial reset), FPSC 0x02 = 0x00 (10 fps), then wait about 100 ms.",
+    "Read all 64 pixels in one 128-byte read from 0x80: low byte first, 12-bit two's complement, 0.25 °C per LSB.",
+    "The thermistor at 0x0E/0x0F is sign + magnitude with 0.0625 °C per LSB, a different format from the pixels.",
+    "Readings settle about 15 s after power-up; nothing (not even glass) may cover the lens.",
+    "Default address 0x69; solder the Addr jumper for 0x68 to use two cameras on one bus."
+  ],
+  "keywords": [
+    "amg8833",
+    "amg88xx",
+    "grid-eye",
+    "grideye",
+    "thermal camera",
+    "infrared array",
+    "ir camera",
+    "thermopile",
+    "panasonic",
+    "presence"
+  ],
+  "sources": [
+    "https://cdn-learn.adafruit.com/assets/assets/000/043/261/original/Grid-EYE_SPECIFICATIONS%28Reference%29.pdf",
+    "https://learn.adafruit.com/adafruit-amg8833-8x8-thermal-camera-sensor/pinouts",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-amg8833-8x8-thermal-camera-sensor.pdf",
+    "https://www.adafruit.com/product/3538"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Scene temperature (all 64 pixels)",
+    "unit": "°C",
+    "min": 0,
+    "max": 80,
+    "default": 22,
+    "controls": [
+      {
+        "key": "thermistor",
+        "quantity": "Sensor (thermistor) temperature",
+        "unit": "°C",
+        "min": 0,
+        "max": 80,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x00": 0,
+      "0x02": 0,
+      "0x03": 0,
+      "0x04": 0,
+      "0x07": 0
+    },
+    "measures": [
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 0.0625,
+        "littleEndian": true,
+        "control": "thermistor"
+      },
+      {
+        "reg": "0x80",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x82",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x84",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x86",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x88",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x8A",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x8C",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x8E",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x90",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x92",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x94",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x96",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x98",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x9A",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x9C",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x9E",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xA0",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xA2",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xA4",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xA6",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xA8",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xAA",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xAC",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xAE",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB0",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB2",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB4",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB6",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB8",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xBA",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xBC",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xBE",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xC0",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xC2",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xC4",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xC6",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xC8",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xCA",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xCC",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xCE",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xD0",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xD2",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xD4",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xD6",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xD8",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xDA",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xDC",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xDE",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xE0",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xE2",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xE4",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xE6",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xE8",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xEA",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xEC",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xEE",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xF0",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xF2",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xF4",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xF6",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xF8",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xFA",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xFC",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xFE",
+        "bytes": 2,
+        "scale": 0.25,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "amg8833.py",
+    "code": "# AMG8833 8x8 infrared array (\"Grid-EYE\", Panasonic), MicroPython driver.\n# Register map from the Panasonic Grid-EYE specification:\n#   0x00 PCTL (0x00 = normal mode), 0x01 RST (0x3F = initial reset),\n#   0x02 FPSC (0 = 10 fps, 1 = 1 fps), 0x03 INTC (0 = INT pin off),\n#   0x0E/0x0F thermistor: 12 bits, sign + absolute value, 0.0625 C per LSB,\n#   0x80..0xFF pixels 1..64: low byte then high byte, 12-bit two's complement,\n#   0.25 C per LSB. All 128 pixel bytes are read in one transfer so a frame is never mixed.\nimport time\n\n_PCTL = 0x00\n_RST = 0x01\n_FPSC = 0x02\n_INTC = 0x03\n_TTHL = 0x0E\n_T01L = 0x80\n\n\nclass AMG8833:\n    def __init__(self, i2c, addr=0x69):\n        \"\"\"addr 0x69 = AD_SELECT high (Adafruit default); 0x68 with the Addr jumper soldered.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(50)  # setup time after power-up before I2C works\n        self._w(_PCTL, 0x00)  # normal mode\n        self._w(_RST, 0x3F)  # initial reset: back to default settings\n        self._w(_INTC, 0x00)  # interrupt output off\n        self._w(_FPSC, 0x00)  # 10 frames per second\n        time.sleep_ms(100)  # let the first frame complete\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def thermistor(self):\n        \"\"\"On-chip thermistor (board) temperature in C, 0.0625 C resolution.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _TTHL, 2)\n        raw = ((d[1] << 8) | d[0]) & 0x0FFF\n        if raw & 0x800:  # sign + magnitude, not two's complement\n            return -(raw & 0x7FF) * 0.0625\n        return raw * 0.0625\n\n    def pixels(self):\n        \"\"\"List of 64 pixel temperatures in C (row by row, pixel 1 first), 0.25 C resolution.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _T01L, 128)\n        out = []\n        for i in range(64):\n            raw = ((d[2 * i + 1] << 8) | d[2 * i]) & 0x0FFF\n            if raw & 0x800:  # 12-bit two's complement\n                raw -= 0x1000\n            out.append(raw * 0.25)\n        return out\n\n    def grid(self):\n        \"\"\"The 64 pixels as 8 rows of 8.\"\"\"\n        p = self.pixels()\n        return [p[r * 8:(r + 1) * 8] for r in range(8)]\n"
+  },
+  "skill": "---\nname: part-amg8833\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the AMG8833 8x8 infrared thermal camera (Panasonic Grid-EYE, AMG8833). Use when designing, wiring, simulating or writing code for an AMG8833 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# AMG8833 8x8 thermal camera (AMG8833)\n\n## Overview\nThe **AMG8833** (Panasonic Grid-EYE, high-gain 3.3 V version) is an 8×8 array of thermopile pixels: it reports 64 temperatures (0–80 °C objects, 0.25 °C steps, about ±2.5 °C) over a 60° field of view, plus its own thermistor temperature. It talks I2C. Hobbyists buy it on the **Adafruit AMG8833 IR Thermal Camera Breakout (#3538, STEMMA QT version)**, which has a 3.3 V regulator, level-shifted SDA/SCL with 10 kΩ pull-ups, and accepts 3–5 V on VIN.\n\n## Pinout (Adafruit #3538 STEMMA QT version, bottom header, left to right)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3–5 V (onboard 3.3 V regulator) |\n| 3Vo | 3.3 V regulator output (up to 100 mA); not an input, leave unconnected |\n| GND | Ground |\n| SCL | I2C clock (10 kΩ pull-up, level shifted) |\n| SDA | I2C data (10 kΩ pull-up, level shifted) |\n| INT | Interrupt output (optional) |\n\nThe top row of 6 holes is for mechanical support only and is not connected. The older blue board prints SDA before SCL (VIN, 3Vo, GND, SDA, SCL, INT): check the labels on your board.\n\n## Electrical limits\n- Chip: 3.3 V ± 0.3 V (absolute max 6.5 V); the breakout's regulator takes 3–5 V on VIN.\n- Current: about 4.5 mA in normal mode, 0.2 mA asleep.\n- I2C fast mode (400 kHz).\n- Output is stable about 15 s after power-up; I2C works after about 50 ms.\n\n## Interface details\n- **I2C address 0x69** on the Adafruit board (AD_SELECT high); 0x68 with the \"Addr\" jumper soldered.\n- Init: PCTL (0x00) = 0x00 normal mode; RST (0x01) = 0x3F initial reset; INTC (0x03) = 0x00; FPSC (0x02) = 0x00 for 10 fps (0x01 = 1 fps).\n- Pixels: 0x80–0xFF, two bytes per pixel, low byte first. 12-bit **two's complement**, 0.25 °C per LSB (0x064 = 25 °C, 0xFFF = −0.25 °C). Read all 128 bytes in one transfer so the frame is never mixed.\n- Thermistor: 0x0E (low), 0x0F (high). 12 bits, **sign + magnitude** (bit 11 = sign), 0.0625 °C per LSB (0x190 = 25 °C, 0x804 = −0.25 °C).\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VIN → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom amg8833 import AMG8833\ni2c = I2C(0, sda=Pin(21), scl=Pin(22), freq=400000)\ncam = AMG8833(i2c)\npx = cam.pixels()\nprint('Max=%.2fC Board=%.2fC' % (max(px), cam.thermistor()))\n```\n\n## Gotchas\n- It is not a camera with a picture: 64 pixels only. Interpolate in software for a smoother image.\n- Pixels and thermistor use different formats (two's complement vs sign + magnitude) and different LSB sizes.\n- The reading drifts for the first ~15 s after power-up.\n- Glass and clear plastic block far-infrared; nothing may sit in front of the lens.\n\n## Datasheet\nhttps://cdn-learn.adafruit.com/assets/assets/000/043/261/original/Grid-EYE_SPECIFICATIONS%28Reference%29.pdf\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom amg8833 import AMG8833\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\ncam = AMG8833(i2c)\nwhile True:\n    px = cam.pixels()\n    print('Max=%.2fC Avg=%.2fC Board=%.2fC' % (max(px), sum(px) / len(px), cam.thermistor()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the scene and sensor temperatures set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 36
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "thermistor",
+          "value": 28
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Max=36.00C Avg=36.00C Board=28.00C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:28:48.563Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/043/261/original/Grid-EYE_SPECIFICATIONS%28Reference%29.pdf",
+      "https://learn.adafruit.com/adafruit-amg8833-8x8-thermal-camera-sensor/pinouts",
+      "https://www.adafruit.com/product/3538"
+    ]
+  }
+}

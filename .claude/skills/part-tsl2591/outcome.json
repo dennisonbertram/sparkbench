@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tsl2591",
+  "board": "Adafruit TSL2591 High Dynamic Range Digital Light Sensor (#1980, STEMMA QT version)",
+  "reason": "Check printed PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test CH0=20000 CH1=4000 Lux=2193.4, PCB DRC clean). Driver follows the ams datasheet: command byte 0xA0|reg, ID 0x50, ENABLE PON+AEN, CONFIG gain/ATIME, AVALID polling, 4-byte LSB-first read of CH0/CH1 from 0x14 with saturation at 37888/65535; lux is Adafruit's uncalibrated approximation because the datasheet gives no lux formula.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/TSL25911_Datasheet_EN_v1.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-TSL2591-Breakout-PCB (Adafruit TSL2591.brd: JP1 pads 1-6 = VCC, 3.3V, GND, SCL, SDA, INT; silkscreen VIN 3Vo GND SCL SDA INT)",
+  "checkRuns": 1
+}

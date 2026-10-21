@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-dps310",
+  "board": "Adafruit DPS310 Precision Barometric Pressure / Altitude Sensor breakout (#4494, STEMMA QT)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). The driver uses command mode with the datasheet's coefficient decoding, table 9 scale factors and the sec. 4.9 compensation formulas; the sim encodes raw values with the same formulas. The board's SCK/SDI pins are named SCL/SDA because the simulator only recognises those names for I2C.",
+  "datasheetUrl": "https://community.infineon.com/gfawx74859/attachments/gfawx74859/KnowledgeBaseArticles/10104/3/Infineon-DPS310-DataSheet.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-DPS310-PCB/blob/master/Adafruit%20DPS310.brd (silkscreen order VIN, 3Vo, GND, SCK, SDO, SDI, CS) and https://learn.adafruit.com/adafruit-dps310-precision-barometric-pressure-sensor/pinouts",
+  "checkRuns": 2
+}

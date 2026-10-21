@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-veml6075",
+  "board": "Adafruit VEML6075 UVA UVB and UV Index Sensor Breakout (product 3964; header VIN, 3Vo, GND, SCL, SDA)",
+  "reason": "Check passed on ESP32 and Pico: 16-bit little-endian registers (UVA 0x07, UVB 0x09, UVcomp1 0x0A, UVcomp2 0x0B, ID 0x0C=0x26) at fixed address 0x10, and the driver computes the UV index with the Vishay application-note open-air coefficients; the test sets all four channel sliders and expects UVA=1000 UVB=1200 UVI=1.58.",
+  "datasheetUrl": "https://www.vishay.com/docs/84304/veml6075.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-VEML6075-UV-Sensor-PCB (Eagle .brd silkscreen VIN, 3Vo, GND, SCL, SDA by x position on JP2 1X05), confirmed by https://learn.adafruit.com/adafruit-veml6075-uva-uvb-uv-index-sensor/pinouts and the Fritzing part 3964",
+  "checkRuns": 1
+}

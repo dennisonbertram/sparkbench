@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ml8511",
+  "board": "GY-8511 ML8511 UV analog sensor breakout module (5-pin: VIN, 3V3, GND, OUT, EN)",
+  "reason": "Check passed on ESP32 and Pico (slider 6 mW/cm2 prints 'V=1.72 UV=6.0mW/cm2'), and the footprint stage passed too. OUT is modelled linearly from the datasheet's 1.0 V dark and 2.2 V at 10 mW/cm2 (0.12 V per mW/cm2), and the driver drives EN high and waits 1 ms (TSU) before reading. Header order VIN, 3V3, GND, OUT, EN comes from Einstronic's GY-8511 wiring table and Fritzing diagram, and agrees with Tinytronics' pin list.",
+  "datasheetUrl": "https://cdn.sparkfun.com/datasheets/Sensors/LightImaging/ML8511_3-8-13.pdf",
+  "breakoutPinoutSource": "https://einstronic.com/product/gy-8511-ml8511-uv-analog-sensor-breakout-module/ (wiring table and connection-Uno-to-GY-8511.png Fritzing diagram)",
+  "checkRuns": 2
+}

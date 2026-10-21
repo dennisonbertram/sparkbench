@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-veml6040",
+  "board": "VEML6040 RGBW colour sensor module (purple 4-pin clone board shared with the VEML6075, silkscreen 6075/6040, header VIN GND SCL SDA)",
+  "reason": "Modelled from the Vishay VEML6040 datasheet (84276 Rev 1.7) and app note 84331: fixed address 0x10, 16-bit LSB-first registers, CONF 0x00 (IT/TRIG/AF/SD), R/G/B/W results at 0x08-0x0B, lux = G x 0.06292 at 160 ms, plus the app note's empirical CCT formula. Header order VIN, GND, SCL, SDA comes from the board photo in the thewknd/VEML6040 library. The part check printed PASS on ESP32 and Pico (sim test 'Lux=503.36 R=6000 G=8000 B=2000 W=9000 CCT=4279K', PCB DRC clean).",
+  "datasheetUrl": "https://www.vishay.com/docs/84276/veml6040.pdf",
+  "breakoutPinoutSource": "https://github.com/thewknd/VEML6040 (README wiring VIN, GND, SCL, SDA and board photo extras/breakout_1_.jpg showing the silkscreen VIN GND SCL SDA in one row)",
+  "checkRuns": 1
+}

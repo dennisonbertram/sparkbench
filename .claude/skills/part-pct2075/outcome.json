@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-pct2075",
+  "board": "Adafruit PCT2075 Temperature Sensor - STEMMA QT / Qwiic (#4369)",
+  "reason": "Part check PASS on esp32 and pico: the LM75-style 16-bit Temp register at 0x00 (11-bit two's complement in bits 15-5, 0.125 C/LSB, per NXP Table 11) decodes to T=36.625C. Pinout taken from Adafruit's Eagle board file (VCC, GND, SCL, SDA, INT header plus A0, A1, A2 header on the opposite edge, so the part is marked cabled). Default address is 0x37 with the address pins floating.",
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/PCT2075.pdf",
+  "breakoutPinoutSource": "https://raw.githubusercontent.com/adafruit/Adafruit-PCT2075-PCB/master/Adafruit_PCT2075.brd",
+  "checkRuns": 1
+}

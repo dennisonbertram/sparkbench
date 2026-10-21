@@ -1,0 +1,112 @@
+{
+  "type": "custom-ky-021",
+  "name": "KY-021 mini magnetic reed switch module",
+  "mpn": "KY-021",
+  "category": "sensor",
+  "description": "Magnet detector: a normally-open glass reed switch between S and GND with a 10 kOhm pull-up resistor from S to the + pin. S is HIGH with no magnet and goes LOW while a magnet (about 10-20 mm away, depending on its strength) closes the reed contacts (active low). It only reports on/off, not field strength. Runs on 3.3-5 V. Sold as: Keyes / Joy-IT KY-021 mini reed magnet module (black 3-pin sensor-kit board with glass reed switch, also sold as HW-497; header S, + (middle), -).",
+  "eli5": "Two tiny metal strips inside a glass tube touch when a magnet comes close, so your board can tell a door or lid has shut.",
+  "refPrefix": "SW",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Signal (pin 1): HIGH with no magnet, LOW while a magnet closes the reed switch. Pulled up to + by the on-board 10 kOhm resistor.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Middle pin: supply for the pull-up, 3.3-5 V. Use 3V3 with an ESP32 or Pico, because S is pulled up to this voltage.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-021",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-021",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-021/KY-021.png",
+    "https://arduinomodules.info/ky-021-mini-magnetic-reed-switch-module/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-021 mini reed switch magnetic module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: S, + (middle), -.",
+    "On an ESP32 or Pico connect + to 3V3: the on-board 10 kOhm pull-up takes S to the + voltage, so 5 V on + puts 5 V on the GPIO.",
+    "S is active LOW: 1 with no magnet, 0 while a magnet closes the reed switch.",
+    "The reeds bounce briefly when they make or break; debounce for about 20 ms (the driver's magnet() does this).",
+    "The glass reed is fragile: do not bend its leads close to the glass.",
+    "If S never changes, check that S and - are not swapped and bring the magnet alongside the glass tube."
+  ],
+  "keywords": [
+    "ky-021",
+    "ky021",
+    "hw-497",
+    "reed",
+    "reed switch",
+    "magnet",
+    "magnetic",
+    "door sensor",
+    "window alarm",
+    "proximity"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Magnet near (reed closed)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "ky021.py",
+    "code": "# KY-021 mini magnetic reed switch module, MicroPython driver.\n# The module is a normally-open glass reed switch between S and GND (-) plus a\n# 10 kOhm pull-up resistor (marked 103) from S to the middle + pin. So S is:\n#   HIGH (1) with no magnet nearby (reeds apart, switch open)\n#   LOW  (0) while a magnet pulls the reeds together (switch closed) -> \"magnet\"\n# The reeds bounce for a few milliseconds when they make or break, so readings\n# are debounced. Power + from 3.3 V on a 3.3 V board: the pull-up takes S up to\n# the + supply.\nfrom machine import Pin\nimport time\n\n\nclass KY021:\n    def __init__(self, pin, debounce_ms=20):\n        # The board has its own 10k pull-up; an internal pull-up is harmless and\n        # keeps the input defined if + is left unconnected.\n        self.pin = Pin(pin, Pin.IN, Pin.PULL_UP) if isinstance(pin, int) else pin\n        self.debounce_ms = debounce_ms\n\n    def raw(self):\n        \"\"\"Logic level on S right now: 0 = reed closed (magnet), 1 = open.\"\"\"\n        return self.pin.value()\n\n    def closed(self):\n        \"\"\"True while the reed contacts are closed (S pulled LOW).\"\"\"\n        return self.pin.value() == 0\n\n    def magnet(self):\n        \"\"\"Debounced: True if S stays LOW (magnet present) for debounce_ms.\"\"\"\n        state = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            v = self.pin.value()\n            if v != state:\n                state = v\n                t0 = time.ticks_ms()\n            time.sleep_ms(2)\n        return state == 0\n\n    def irq(self, handler, on_close=True):\n        \"\"\"Call handler(pin) when the reed closes (falling edge, magnet arrives) or\n        opens (rising edge, magnet leaves). Expect extra calls from contact bounce.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_close else Pin.IRQ_RISING)\n"
+  },
+  "example": {
+    "code": "from ky021 import KY021\nimport time\n\nreed = KY021({S})\nwhile True:\n    print('Magnet: %s' % ('YES' if reed.magnet() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a magnet when the reed switch closes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Magnet: no",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Magnet: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:37:13.234Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-021",
+      "https://eclass.uth.gr/modules/document/file.php/E-CE_U_269/Sensors/Sensors_%20Datasheets/KY-021-Joy-IT.pdf",
+      "https://www.espboards.dev/sensors/ky-021/",
+      "https://phippselectronics.com/using-the-mini-magnetic-reed-module-ky-021-with-arduino"
+    ]
+  }
+}

@@ -1132,7 +1132,8 @@ export class SimEngine {
             const gnd = cs.pins.find((p) => p.role === 'gnd')?.name;
             // Some modules (e.g. KY-012 buzzers) have no supply pin: the signal itself powers them.
             const supplied = cs.pins.some((p) => p.role === 'power') ? !!v.powered : true;
-            const high = (pin: string) => supplied && m.pinVoltage(part.id, pin) - (gnd ? m.pinVoltage(part.id, gnd) : 0) > 1.5;
+            const lv = (pin: string) => m.pinVoltage(part.id, pin) - (gnd ? m.pinVoltage(part.id, gnd) : 0);
+            const high = (pin: string) => supplied && (cs.sim.inputsActiveLow ? lv(pin) < 1.5 : lv(pin) > 1.5);
             const pins = [...new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])];
             v.inputs = Object.fromEntries(pins.map((p) => [p, high(p)]));
             v.active = pins.some(high);

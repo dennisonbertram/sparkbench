@@ -1,0 +1,114 @@
+{
+  "type": "custom-arcade-button",
+  "name": "30 mm arcade push button",
+  "mpn": "OBSF-30",
+  "category": "sensor",
+  "description": "30 mm snap-in arcade push button with a normally open microswitch on two quick-connect tabs. Passive, not polarised, no supply: wire one tab to GND and the other to a GPIO with the internal pull-up, so it reads 0 while pressed and 1 when released. Switch rated 12 V DC 100 mA (Sanwa SW-68). Sold as: Sanwa OBSF-30 30 mm snap-in arcade pushbutton (stock Sanwa SW-68 microswitch, normally open, two .110\"/2.8 mm quick-connect tabs).",
+  "eli5": "The big round button from arcade games. Press it and it joins two wires together, so your board knows you hit it.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "One microswitch tab (either one; the switch is not polarised): connect to ground",
+      "required": true
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Other microswitch tab: connect to a GPIO with the internal pull-up on (or 10 kOhm to 3.3 V). Reads 0 while pressed, 1 when released",
+      "required": true
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://focusattack.com/sanwa-sw-68-button-micro-switch",
+  "sources": [
+    "https://focusattack.com/sanwa-sw-68-button-micro-switch",
+    "https://www.arcaderenovations.com/sanwa-snap-in-button-red-obsf-30-r.html",
+    "https://www.arcadexpress.com/en/arcade-pushbuttons/104-sanwa-obsf-30-japanese-arcade-button.html",
+    "https://core-electronics.com.au/sanwa-round-30mm-snap-in-arcade-button-blue.html",
+    "https://manuals.plus/asin/B01FWHAKLY"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "Sanwa OBSF-30 30mm snap-in arcade button",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two .110\" (2.8 mm) tabs on the SW-68 microswitch, not polarised: crimp 2.8 mm female spade connectors onto two wires and bring them to a 2-pin header.",
+    "Snap the button into a 30 mm hole in a 2-4 mm panel; the microswitch clips onto the bottom of the button.",
+    "Wire one tab to GND and the other to the GPIO with Pin.PULL_UP: 0 = pressed, 1 = released. Never pull up to 5 V on an ESP32/Pico.",
+    "Contacts bounce for a few milliseconds: debounce in software (the driver waits 10 ms of stable readings).",
+    "Rated 12 V DC 100 mA: switch logic inputs only, never a motor or LED strip directly."
+  ],
+  "keywords": [
+    "arcade button",
+    "arcade",
+    "push button",
+    "pushbutton",
+    "sanwa",
+    "obsf-30",
+    "obsf",
+    "sw-68",
+    "microswitch",
+    "game button",
+    "30mm button"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "GND"
+    ],
+    "colPins": [
+      "SIG"
+    ],
+    "keys": [
+      [
+        "PRESSED"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "arcade_button.py",
+    "code": "# 30 mm arcade push button (Sanwa OBSF-30 snap-in button with its SW-68 microswitch), MicroPython driver.\n# The microswitch has two .110\" (2.8 mm) quick-connect tabs and one normally open contact:\n# released = open, pressed = closed. No chip, no supply, not polarised.\n# SW-68 ratings (seller spec sheet): 12 V DC 100 mA, contact resistance < 50 mOhm, life 1 million\n# presses at 5 V DC 10 mA, -20 to +60 C.\n# Wiring: one tab to GND, the other to a GPIO with the internal pull-up on.\n#   pressed -> pin reads 0;  released -> pin reads 1.\n# Microswitch contacts bounce for a few milliseconds, so readings are debounced.\nfrom machine import Pin\nimport time\n\n\nclass ArcadeButton:\n    def __init__(self, pin, pull_up=True, debounce_ms=10):\n        \"\"\"pin: GPIO number (or Pin) wired to the SIG tab; the other tab goes to GND.\"\"\"\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.debounce_ms = debounce_ms\n        self._last = 1\n\n    def value(self):\n        \"\"\"Raw level on the GPIO: 0 = pressed, 1 = released.\"\"\"\n        return self.pin.value()\n\n    def _stable(self):\n        v = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            n = self.pin.value()\n            if n != v:\n                v = n\n                t0 = time.ticks_ms()\n        return v\n\n    def is_pressed(self):\n        \"\"\"True while the button is held down. Debounced.\"\"\"\n        return self._stable() == 0\n\n    def was_pressed(self):\n        \"\"\"True once for each new press (released -> pressed edge); call it often in a loop.\"\"\"\n        v = self._stable()\n        edge = self._last == 1 and v == 0\n        self._last = v\n        return edge\n\n    def irq(self, handler, on_press=True):\n        \"\"\"Call handler(pin) when pressed (or released with on_press=False).\n        Contacts bounce: handlers may fire more than once per press.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_press else Pin.IRQ_RISING)\n"
+  },
+  "skill": "---\nname: part-arcade-button\ndescription: Pinout, electrical limits, wiring and MicroPython driver for a 30 mm arcade push button (Sanwa OBSF-30 with SW-68 microswitch, 2 terminals). Use when designing, wiring, simulating or writing code for an arcade button in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# 30 mm arcade push button (Sanwa OBSF-30)\n\n## Overview\nA **30 mm arcade push button** snaps into a 30 mm hole in a 2-4 mm thick panel and has a small **microswitch** clipped to the bottom. Hobbyists buy it as the **Sanwa OBSF-30** (many colours, suffix -R, -B, -W ...), which ships with the **Sanwa SW-68** microswitch: two **.110\" (2.8 mm) quick-connect tabs**, one **normally open** contact. No chip, no supply, not polarised.\n\n## Pinout (two tabs, not polarised)\n| Tab | Function |\n|---|---|\n| GND | Either tab: connect to ground |\n| SIG | The other tab: connect to a GPIO with the internal pull-up on |\n\n## Electrical limits\n- SW-68 rating: **12 V DC, 100 mA** max; contact resistance under 50 mOhm; life 1 million presses (at 5 V 10 mA); -20 to +60 C.\n- Logic-level use only: switch a GPIO, never a motor, solenoid or LED strip directly.\n- With the 3.3 V internal pull-up only tens of microamps flow.\n\n## Interface details\n- Plain normally-open switch. With SIG pulled up: **0 = pressed, 1 = released**.\n- Contacts bounce for a few milliseconds: the driver waits 10 ms of stable level.\n- Some replacement microswitches (e.g. Omron B2R, Happ/Cherry types) have three tabs COM/NO/NC: then use COM and NO.\n\n## Wiring\n- ESP32: GND tab -> GND, SIG tab -> GPIO4 (internal pull-up on).\n- Pico: GND tab -> GND, SIG tab -> GP15 (internal pull-up on).\n- Raspberry Pi 4: GND tab -> pin 6, SIG tab -> GPIO17 (pin 11) with the internal pull-up.\n- Use 2.8 mm (.110\") female crimp connectors (not the 4.8 mm .187\" size used by Happ buttons).\n\n## Using the driver\n```python\nfrom arcade_button import ArcadeButton\nimport time\nbtn = ArcadeButton(4)    # GPIO wired to SIG, internal pull-up on\nwhile True:\n    print('BUTTON=%s' % ('DOWN' if btn.is_pressed() else 'UP'))\n    time.sleep(0.2)\n```\n`btn.was_pressed()` returns True once per new press; `btn.irq(handler)` calls `handler(pin)` on press.\n\n## Gotchas\n- Random readings: the pull-up is missing; the switch only connects to ground, it never drives high.\n- Never pull SIG up to 5 V on an ESP32 or Pico.\n- Several presses counted for one: contact bounce; debounce in software (the driver does).\n- Wrong crimp size: OBSF-30 tabs are 2.8 mm; 4.8 mm connectors fall off.\n- The LED versions (Adafruit/generic \"arcade button with LED\") have 4 tabs; this part covers the plain 2-tab button.\n\n## Datasheet\nhttps://focusattack.com/sanwa-sw-68-button-micro-switch\n",
+  "example": {
+    "code": "from arcade_button import ArcadeButton\nimport time\n\nbtn = ArcadeButton({SIG})  # one tab to GND, the other to this GPIO with pull-up: 0 = pressed\nwhile True:\n    print('BUTTON=%s' % ('DOWN' if btn.is_pressed() else 'UP'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the button down while it is pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=UP",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=DOWN",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:40:07.166Z",
+    "verifiedSources": [
+      "https://paradisearcadeshop.com/products/sanwa-obsf-30-snap-in-button-red",
+      "https://www.arcadexpress.com/en/buttons/104-boton-arcade-sanwa-obsf-30.html",
+      "https://mayflash.com/product/SANWA_OBSF_30_Original_Push_Button.html"
+    ]
+  }
+}

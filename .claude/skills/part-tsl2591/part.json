@@ -1,0 +1,165 @@
+{
+  "type": "custom-tsl2591",
+  "name": "TSL2591 high dynamic range light sensor",
+  "mpn": "TSL2591",
+  "category": "sensor",
+  "description": "ams light-to-digital converter with a full-spectrum (visible + IR) and an infrared photodiode, two 16-bit integrating ADCs with gain 1x/25x/428x/9876x and 100-600 ms integration (600M:1 dynamic range) and an I2C interface at fixed address 0x29. Chip runs on 2.7-3.6 V. Sold as: Adafruit TSL2591 High Dynamic Range Digital Light Sensor (#1980, STEMMA QT version, 6-pin header: VIN, 3Vo, GND, SCL, SDA, INT) with AP2112 3.3 V regulator and BSS138 I2C level shifters, I2C address 0x29.",
+  "eli5": "Measures how bright the light is, from starlight to bright sunshine, and how much of it is infrared.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Board supply, 3-5 V (on-board AP2112K 3.3 V regulator). The SDA/SCL pull-ups go to VIN, so power it from 3.3 V with an ESP32 or Pico",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V OUTPUT of the on-board regulator, not a supply input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (BSS138 level shifter with 10k pull-up to VIN on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (BSS138 level shifter with 10k pull-up to VIN on board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low, straight from the chip with no pull-up on the board (3.3 V max; add a 10k pull-up to 3.3 V if used). Not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.4,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/TSL25911_Datasheet_EN_v1.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "TSL2591 high dynamic range light sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every register access starts with a command byte 0xA0 | register (CMD bit + normal transaction). The ID register (0xB2) reads 0x50.",
+    "Write ENABLE (0xA0) = 0x03 (PON + AEN) to start measuring. CONFIG (0xA1): bits 5:4 gain (00 1x, 01 25x, 10 428x, 11 9876x), bits 2:0 integration time (000 = 100 ms ... 101 = 600 ms).",
+    "Wait one integration (up to 108 ms per 100 ms step) or until STATUS (0xB3) bit 0 AVALID is set, then read 4 bytes from 0xB4: CH0 low, CH0 high, CH1 low, CH1 high (full spectrum, then infrared).",
+    "Saturation: 37888 counts at 100 ms, 65535 at 200-600 ms. Lower the gain or time in bright light.",
+    "The datasheet has no lux equation; the driver's lux() is Adafruit's uncalibrated approximation. Visible light is roughly CH0 - CH1.",
+    "The I2C address 0x29 cannot be changed: only one TSL2591 per bus (it also clashes with a VL53L0X/VL53L1X or TSL2561 strapped to 0x29).",
+    "Power VIN from 3.3 V with an ESP32 or Pico (the level shifter pulls SDA/SCL up to VIN). INT goes straight to the 3.3 V chip: never pull it up to 5 V."
+  ],
+  "keywords": [
+    "tsl2591",
+    "tsl25911",
+    "lux",
+    "light",
+    "luminosity",
+    "ambient light",
+    "infrared",
+    "ams",
+    "high dynamic range"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/TSL25911_Datasheet_EN_v1.pdf",
+    "https://github.com/adafruit/Adafruit-TSL2591-Breakout-PCB (Adafruit TSL2591.brd: JP1 pads 1-6 = VCC, 3.3V, GND, SCL, SDA, INT; silkscreen VIN 3Vo GND SCL SDA INT; schematic AP2112K-3.3, BSS138, 10K pull-ups)",
+    "https://www.adafruit.com/product/1980",
+    "https://learn.adafruit.com/adafruit-tsl2591",
+    "https://github.com/adafruit/Adafruit_CircuitPython_TSL2591 (lux approximation constants)"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "CH0 full-spectrum light (ADC counts)",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 1000,
+    "controls": [
+      {
+        "key": "ir",
+        "quantity": "CH1 infrared light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 200
+      }
+    ],
+    "registers": {
+      "0xB2": 80,
+      "0xB1": 0,
+      "0xB3": 1
+    },
+    "measures": [
+      {
+        "reg": "0xB4",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xB6",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tsl2591.py",
+    "code": "# TSL2591 high dynamic range light-to-digital converter (ams TSL25911FN), MicroPython driver.\n# Written from the ams TSL2591 datasheet (ams163.5, Apr. 2013):\n#  - I2C address 0x29 (fixed); every register access starts with a COMMAND byte:\n#    bit 7 CMD = 1, bits 6:5 TRANSACTION = 01 (normal operation), bits 4:0 register address,\n#    so register r is addressed as 0xA0 | r. TRANSACTION 11 = special functions (0xE7 clears interrupts).\n#  - ENABLE (0x00): bit 0 PON (oscillator on), bit 1 AEN (ALS on). Write 0x03 to start measuring, 0x00 to sleep.\n#  - CONFIG/CONTROL (0x01): bits 5:4 AGAIN (00 low 1x, 01 medium 25x, 10 high 428x, 11 max 9876x),\n#    bits 2:0 ATIME (000 100 ms ... 101 600 ms); bit 7 SRESET.\n#  - ID (0x12) reads 0x50. STATUS (0x13) bit 0 AVALID = an integration has completed since AEN was set.\n#  - C0DATAL/H (0x14/0x15, full spectrum) and C1DATAL/H (0x16/0x17, infrared) are 16-bit, low byte first;\n#    read all four bytes in one auto-increment read so both channels come from the same cycle.\n#  - Max count: 37888 at 100 ms, 65535 at 200-600 ms (a reading at max count means saturation).\n# The datasheet gives no lux equation. lux() uses Adafruit's empirical, uncalibrated formula\n# (LUX_DF = 408, coefficients 1.64 / 0.59 / 0.86, as in the Adafruit TSL2591 libraries).\nimport time\n\n_CMD = 0xA0  # CMD bit + normal transaction\n_ENABLE = 0x00\n_CONFIG = 0x01\n_ID = 0x12\n_STATUS = 0x13\n_C0DATAL = 0x14\n\n_PON = 0x01\n_AEN = 0x02\n\nGAIN_LOW = 0x00   # 1x\nGAIN_MED = 0x10   # 25x\nGAIN_HIGH = 0x20  # 428x\nGAIN_MAX = 0x30   # 9876x\n_GAIN_X = {GAIN_LOW: 1.0, GAIN_MED: 25.0, GAIN_HIGH: 428.0, GAIN_MAX: 9876.0}\n\n_LUX_DF = 408.0\n_LUX_COEFB = 1.64\n_LUX_COEFC = 0.59\n_LUX_COEFD = 0.86\n\n\nclass TSL2591:\n    def __init__(self, i2c, addr=0x29, gain=GAIN_MED, integration_ms=100):\n        \"\"\"gain: GAIN_LOW, GAIN_MED, GAIN_HIGH or GAIN_MAX.\n        integration_ms: 100, 200, 300, 400, 500 or 600.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        chip_id = self._read8(_ID)\n        if chip_id != 0x50:\n            raise OSError('No TSL2591 at 0x%02X (ID 0x%02X): check the wiring' % (addr, chip_id))\n        self.configure(gain, integration_ms)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto_mem(self.addr, _CMD | reg, bytes((value & 0xFF,)))\n\n    def _read8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, _CMD | reg, 1)[0]\n\n    def configure(self, gain=GAIN_MED, integration_ms=100):\n        if gain not in _GAIN_X:\n            raise ValueError('gain must be GAIN_LOW, GAIN_MED, GAIN_HIGH or GAIN_MAX')\n        if integration_ms not in (100, 200, 300, 400, 500, 600):\n            raise ValueError('integration_ms must be 100, 200, 300, 400, 500 or 600')\n        self.gain = gain\n        self.integration_ms = integration_ms\n        atime = integration_ms // 100 - 1\n        # Stop the ALS, set gain and time, then restart so AVALID marks a cycle with the new settings.\n        self._write8(_ENABLE, 0x00)\n        self._write8(_CONFIG, gain | atime)\n        self._write8(_ENABLE, _PON | _AEN)\n        self._started = time.ticks_ms()\n\n    def _wait_valid(self):\n        # One integration step is up to 108 ms per 100 ms (datasheet), then poll AVALID.\n        need = self.integration_ms * 108 // 100 + 5\n        wait = need - time.ticks_diff(time.ticks_ms(), self._started)\n        if wait > 0:\n            time.sleep_ms(wait)\n        for _ in range(50):\n            if self._read8(_STATUS) & 0x01:\n                return\n            time.sleep_ms(10)\n        raise OSError('TSL2591 did not finish a measurement')\n\n    def max_count(self):\n        return 37888 if self.integration_ms == 100 else 65535\n\n    def raw(self):\n        \"\"\"Return (CH0 full-spectrum counts, CH1 infrared counts) from one integration cycle.\"\"\"\n        self._wait_valid()\n        d = self.i2c.readfrom_mem(self.addr, _CMD | _C0DATAL, 4)\n        return d[0] | (d[1] << 8), d[2] | (d[3] << 8)\n\n    def saturated(self, ch0, ch1):\n        m = self.max_count()\n        return ch0 >= m or ch1 >= m\n\n    def lux(self, ch0=None, ch1=None):\n        \"\"\"Approximate lux (Adafruit's uncalibrated formula), or None when a channel is saturated.\"\"\"\n        if ch0 is None:\n            ch0, ch1 = self.raw()\n        if self.saturated(ch0, ch1):\n            return None\n        cpl = (self.integration_ms * _GAIN_X[self.gain]) / _LUX_DF\n        lux1 = (ch0 - _LUX_COEFB * ch1) / cpl\n        lux2 = (_LUX_COEFC * ch0 - _LUX_COEFD * ch1) / cpl\n        return max(lux1, lux2, 0.0)\n\n    def clear_interrupt(self):\n        # Special function 0x07: clear ALS and no-persist ALS interrupts.\n        self.i2c.writeto(self.addr, bytes((0xE7,)))\n\n    def power_down(self):\n        self._write8(_ENABLE, 0x00)\n\n    def power_up(self):\n        self._write8(_ENABLE, _PON | _AEN)\n        self._started = time.ticks_ms()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tsl2591 import TSL2591\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TSL2591(i2c)  # medium gain (25x), 100 ms\nwhile True:\n    ch0, ch1 = sensor.raw()\n    lux = sensor.lux(ch0, ch1)\n    print('CH0=%d CH1=%d Lux=%s' % (ch0, ch1, 'saturated' if lux is None else '%.1f' % lux))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the channel counts set on the sliders and the approximate lux",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 20000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CH0=20000 CH1=4000 Lux=2193.4",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:23:15.067Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/TSL25911_Datasheet_EN_v1.pdf",
+      "https://learn.adafruit.com/adafruit-tsl2591/pinouts"
+    ]
+  }
+}

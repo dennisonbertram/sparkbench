@@ -1,0 +1,177 @@
+{
+  "type": "custom-ina260",
+  "name": "INA260 current, voltage & power sensor",
+  "mpn": "INA260",
+  "category": "sensor",
+  "description": "Texas Instruments 16-bit current, bus-voltage and power monitor with a built-in 2 mΩ shunt: measures up to ±15 A (1.25 mA steps) on a 0–36 V bus (1.25 mV steps) over I2C. Runs on 2.7–5.5 V. Sold as: Adafruit INA260 High or Low Side Voltage, Current, Power Sensor (#4226), 8-pin header VCC, GND, SCL, SDA, Alert, VBus, Vin+, Vin- plus a 2-pin screw terminal for Vin+/Vin-, I2C address 0x40 (0x41/0x44/0x45 with the A0/A1 jumpers).",
+  "eli5": "Sits in the wire to a motor, LED strip or battery and tells your board how many amps are flowing, at what voltage, and how much power that is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Logic supply 2.7–5.5 V; use the same voltage as your microcontroller (3.3 V on ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (common with the measured circuit's ground)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "Alert",
+      "role": "io",
+      "description": "Alert/conversion-ready output (open-drain, pulled up to VCC on the board); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "VBus",
+      "role": "passive",
+      "description": "Bus-voltage sense input, 0–36 V; tied to Vin+ by the VB jumper (cut it for low-side sensing)",
+      "required": false
+    },
+    {
+      "name": "Vin+",
+      "role": "passive",
+      "description": "Current input: from the supply (high side), max 36 V, ±15 A; same net as the screw terminal's Vin+",
+      "required": false
+    },
+    {
+      "name": "Vin-",
+      "role": "passive",
+      "description": "Current output: to the load (high side); same net as the screw terminal's Vin-",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.42,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina260.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Adafruit INA260 current voltage power sensor breakout 4226",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Put the INA260 in series with the load: supply + to Vin+, Vin- to the load's +. The board's GND must be joined to the measured circuit's ground.",
+    "The measured circuit may be 0–36 V and up to ±15 A, independent of VCC; carry high current through the screw terminal with thick wire, never through breadboard rows or the header pins.",
+    "Registers are 16-bit, MSB first. Current (0x01) is two's complement × 1.25 mA; bus voltage (0x02) × 1.25 mV; power (0x03) × 10 mW. Manufacturer ID (0xFE) reads 0x5449.",
+    "Default address 0x40; bridge A0 for 0x41, A1 for 0x44, both for 0x45.",
+    "For low-side sensing cut the VB jumper and wire VBus to the supply rail, otherwise the voltage and power readings are wrong."
+  ],
+  "keywords": [
+    "ina260",
+    "current sensor",
+    "power monitor",
+    "voltage",
+    "ammeter",
+    "wattmeter",
+    "texas instruments",
+    "adafruit 4226"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Bus voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 36,
+    "default": 5,
+    "regWidth": 16,
+    "controls": [
+      {
+        "key": "current",
+        "quantity": "Current through the shunt",
+        "unit": "mA",
+        "min": -15000,
+        "max": 15000,
+        "default": 100
+      }
+    ],
+    "registers": {
+      "0x00": 24871,
+      "0x06": 0,
+      "0x07": 0,
+      "0xFE": 21577,
+      "0xFF": 8816
+    },
+    "measures": [
+      {
+        "reg": "0x01",
+        "bytes": 2,
+        "scale": 1.25,
+        "signed": true,
+        "control": "current"
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.00125,
+        "control": "value"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ina260.py",
+    "code": "# INA260 precision current, voltage & power monitor (Texas Instruments), MicroPython driver.\n# Written from the TI datasheet (SBOS656C): 16-bit registers sent MSB first, fixed LSBs:\n# current 1.25 mA (two's complement), bus voltage 1.25 mV, power 10 mW.\nimport time\n\n_REG_CONFIG = 0x00\n_REG_CURRENT = 0x01\n_REG_BUS_VOLTAGE = 0x02\n_REG_POWER = 0x03\n_REG_MASK_ENABLE = 0x06\n_REG_ALERT_LIMIT = 0x07\n_REG_MANUFACTURER_ID = 0xFE\n_REG_DIE_ID = 0xFF\n\n_MANUFACTURER_ID = 0x5449  # \"TI\"\n\n\nclass INA260:\n    def __init__(self, i2c, addr=0x40):\n        self.i2c = i2c\n        self.addr = addr\n        if self._read(_REG_MANUFACTURER_ID) != _MANUFACTURER_ID:\n            raise OSError('INA260 not found at 0x%02X: check wiring and the A0/A1 address jumpers' % addr)\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _write(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(value >> 8) & 0xFF, value & 0xFF]))\n\n    def reset(self):\n        \"\"\"Reset all registers to their power-on values (config bit 15).\"\"\"\n        self._write(_REG_CONFIG, 0x8000)\n        time.sleep_ms(2)\n\n    def configure(self, avg=0, vbus_ct=4, ishunt_ct=4, mode=7):\n        \"\"\"avg 0-7 (1,4,16,64,128,256,512,1024 samples), conversion-time codes 0-7\n        (140 us ... 8.244 ms, 4 = 1.1 ms), mode 7 = continuous current and voltage (power-on default).\"\"\"\n        self._write(_REG_CONFIG, 0x6000 | ((avg & 7) << 9) | ((vbus_ct & 7) << 6) | ((ishunt_ct & 7) << 3) | (mode & 7))\n\n    def current(self):\n        \"\"\"Current through the integrated 2 mOhm shunt in mA (positive = Vin+ to Vin-).\"\"\"\n        raw = self._read(_REG_CURRENT)\n        if raw & 0x8000:\n            raw -= 0x10000\n        return raw * 1.25\n\n    def voltage(self):\n        \"\"\"Bus voltage on VBus in volts (0-36 V).\"\"\"\n        return (self._read(_REG_BUS_VOLTAGE) & 0x7FFF) * 0.00125\n\n    def power(self):\n        \"\"\"Power in mW as computed by the chip (|current| x bus voltage).\"\"\"\n        return self._read(_REG_POWER) * 10\n\n    def conversion_ready(self):\n        \"\"\"True once a new conversion is complete (reading clears the flag).\"\"\"\n        return bool(self._read(_REG_MASK_ENABLE) & 0x0008)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ina260 import INA260\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = INA260(i2c)\nwhile True:\n    print('V=%.3fV I=%.1fmA' % (sensor.voltage(), sensor.current()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the bus voltage and current set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "current",
+          "value": -1500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=12.000V I=-1500.0mA",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ina260.pdf",
+    "https://learn.adafruit.com/adafruit-ina260-current-voltage-power-sensor-breakout/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/074/115/large1024/sensors_ina260_fab_frint.png",
+    "https://cdn-shop.adafruit.com/640x480/4226-12.jpg",
+    "https://github.com/adafruit/Adafruit-INA260-PCB"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:29:45.615Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ina260.pdf",
+      "https://learn.adafruit.com/adafruit-ina260-current-voltage-power-sensor-breakout/pinouts"
+    ]
+  }
+}

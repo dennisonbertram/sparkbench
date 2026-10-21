@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ad8232",
+  "board": "SparkFun AD8232 Single Lead Heart Rate Monitor (SEN-12650)",
+  "reason": "Pin order GND, 3.3v, OUTPUT, LO-, LO+, SDN taken from SparkFun's Eagle board file and hookup guide; 2.0-3.5 V supply from the ADI datasheet. Modeled as an analog-sensor with a BPM-driven pulse wave on OUTPUT plus LO+/LO- toggles; check passed on the first run (ESP32 and Pico read BPM=72).",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/ad8232.pdf",
+  "breakoutPinoutSource": "https://github.com/sparkfun/AD8232_Heart_Rate_Monitor/blob/master/Hardware/AD8232_Heart_Rate_Monitor.brd",
+  "checkRuns": 1
+}

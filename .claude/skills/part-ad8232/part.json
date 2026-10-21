@@ -1,0 +1,169 @@
+{
+  "type": "custom-ad8232",
+  "name": "AD8232 heart rate (ECG) monitor",
+  "mpn": "AD8232",
+  "category": "sensor",
+  "description": "Analog Devices single-lead heart-rate / ECG front end: it amplifies the tiny electrical signal of the heart picked up by three skin electrodes (gain 1100, 0.5-40 Hz band on the SparkFun board) to an analog OUTPUT centred on half the supply, and flags a loose electrode on LO+ / LO-. Runs on 2.0-3.5 V only (3.6 V absolute maximum, never 5 V). Not a medical device. Sold as: SparkFun AD8232 Single Lead Heart Rate Monitor (SEN-12650, 6-pin header GND, 3.3v, OUTPUT, LO-, LO+, SDN, plus a 3.5 mm electrode-cable jack), and the many red/purple clone modules with the same header.",
+  "eli5": "Stick three pads on your chest or arms and it turns your heartbeat into a wiggly voltage your board can read and count.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "3.3v",
+      "role": "power",
+      "description": "Supply, 2.0-3.5 V (pin 2), straight to the AD8232's +VS with no regulator. Use 3.3 V; 5 V destroys the chip.",
+      "required": true
+    },
+    {
+      "name": "OUTPUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog ECG signal (pin 3): rests near VS/2 (1.65 V) and swings toward the rails (0.1 V to VS-0.1 V) with each heartbeat. Connect to an ADC pin. Also lights the on-board LED through 1 kOhm.",
+      "required": true
+    },
+    {
+      "name": "LO-",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Leads-off output for -IN, the RA (right arm) electrode (pin 4): HIGH when that electrode is disconnected, LOW when attached (DC leads-off mode, AC/DC tied to GND on the board).",
+      "required": true
+    },
+    {
+      "name": "LO+",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Leads-off output for +IN, the LA (left arm) electrode (pin 5): HIGH when that electrode is disconnected, LOW when attached.",
+      "required": true
+    },
+    {
+      "name": "SDN",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Shutdown input, active low (pin 6, printed with an overbar): pulled up to 3.3 V by 10 kOhm on the board, so leave it unconnected to run; drive LOW for the 40 nA shutdown mode.",
+      "required": false
+    }
+  ],
+  "vmin": 2,
+  "vmax": 3.5,
+  "currentMa": 0.2,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/ad8232.pdf",
+  "priceUsd": 21.5,
+  "supplierQuery": "AD8232 heart rate monitor ECG module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power it from 3.3 V only: the AD8232 is rated 2.0-3.5 V (3.6 V absolute maximum) and the board has no regulator.",
+    "Electrodes: red = RA (right arm / right chest), yellow = LA (left arm / left chest), green = RL (right leg / lower right abdomen) on the usual SparkFun/clone cable; the RA, LA, RL pads on the board are the same three signals.",
+    "OUTPUT rests near 1.65 V; each heartbeat makes a sharp R-peak of roughly 1 V. Count beats by timing rising crossings of a threshold, not by fixed voltages, because the baseline wanders with breathing and movement.",
+    "LO+ or LO- HIGH means an electrode is off (DC leads-off mode); ignore OUTPUT then, it drifts to a rail.",
+    "Leave SDN unconnected (pulled up on the board) unless you want to power the front end down.",
+    "Use a battery-powered or USB-from-laptop-on-battery setup when electrodes are on a person, keep still, and use fresh gel pads. It is a hobby sensor, not a medical device."
+  ],
+  "keywords": [
+    "ad8232",
+    "ecg",
+    "ekg",
+    "heart rate",
+    "heartbeat",
+    "pulse",
+    "bpm",
+    "biometric",
+    "sparkfun sen-12650"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUTPUT",
+    "quantity": "Heart rate",
+    "unit": "BPM",
+    "min": 30,
+    "max": 200,
+    "default": 70,
+    "vAtMin": 1.65,
+    "vAtMax": 1.65,
+    "controls": [
+      {
+        "key": "amplitude",
+        "quantity": "Heartbeat size at OUTPUT (V peak-to-peak)",
+        "unit": "V",
+        "min": 0,
+        "max": 3,
+        "default": 1
+      }
+    ],
+    "wave": {
+      "ampControl": "amplitude",
+      "voltsPerUnit": 1,
+      "centerV": 1.65,
+      "freqControl": "value",
+      "freqScale": 0.016666666666666666,
+      "shape": "pulse"
+    },
+    "digitalOutputs": [
+      {
+        "pin": "LO+",
+        "control": "lo_plus",
+        "label": "LA electrode off (LO+ high)",
+        "activeHigh": true
+      },
+      {
+        "pin": "LO-",
+        "control": "lo_minus",
+        "label": "RA electrode off (LO- high)",
+        "activeHigh": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ad8232.py",
+    "code": "# AD8232 single-lead heart rate (ECG) monitor, MicroPython driver.\n# Written for the SparkFun AD8232 Single Lead Heart Rate Monitor (SEN-12650) and its clones:\n# OUTPUT is the analog ECG (centred on REFOUT = VS/2, gain 1100, 0.5-40 Hz band),\n# LO+ / LO- are the DC leads-off comparator outputs (high = that electrode is off),\n# SDN is the active-low shutdown input (pulled up by 10 k on the board).\nimport time\nfrom machine import ADC, Pin\n\n\nclass AD8232:\n    def __init__(self, output, lo_plus=None, lo_minus=None, sdn=None):\n        self.adc = ADC(Pin(output))\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range\n        except AttributeError:\n            pass\n        self.lo_plus = Pin(lo_plus, Pin.IN) if lo_plus is not None else None\n        self.lo_minus = Pin(lo_minus, Pin.IN) if lo_minus is not None else None\n        self.sdn = Pin(sdn, Pin.OUT, value=1) if sdn is not None else None\n\n    def voltage(self):\n        \"\"\"OUTPUT pin voltage in volts (about 1.65 V at rest on a 3.3 V supply).\"\"\"\n        return self.adc.read_u16() * 3.3 / 65535\n\n    def leads_off(self):\n        \"\"\"True when LO+ or LO- is high (DC leads-off mode: an electrode is disconnected).\"\"\"\n        for p in (self.lo_plus, self.lo_minus):\n            if p is not None and p.value():\n                return True\n        return False\n\n    def shutdown(self, off=True):\n        \"\"\"Drive SDN low (off=True) for the 40 nA shutdown mode, high to run again.\"\"\"\n        if self.sdn is None:\n            raise ValueError('SDN pin not given')\n        self.sdn.value(0 if off else 1)\n\n    def bpm(self, beats=4, learn_ms=2000, timeout_ms=10000, period_ms=4):\n        \"\"\"Heart rate in beats per minute from the time between R-peaks, or None if no clear beat.\n\n        Learns the signal's low and high level first, then times `beats` intervals between\n        rising crossings of a threshold at 60 % of that range (re-armed below 40 %),\n        ignoring crossings closer than 250 ms (faster than 240 BPM).\"\"\"\n        if self.leads_off():\n            return None\n        lo, hi = 65535, 0\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < learn_ms:\n            v = self.adc.read_u16()\n            lo = min(lo, v)\n            hi = max(hi, v)\n            time.sleep_ms(period_ms)\n        if hi - lo < 3000:  # under about 0.15 V of swing: no usable ECG\n            return None\n        up = lo + (hi - lo) * 6 // 10\n        down = lo + (hi - lo) * 4 // 10\n        armed = False\n        edges = []\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            v = self.adc.read_u16()\n            now = time.ticks_ms()\n            if not armed and v < down:\n                armed = True\n            elif armed and v > up:\n                armed = False\n                if not edges or time.ticks_diff(now, edges[-1]) > 250:\n                    edges.append(now)\n                    if len(edges) > beats:\n                        return 60000 * beats / time.ticks_diff(edges[-1], edges[0])\n            time.sleep_ms(period_ms)\n        return None\n"
+  },
+  "example": {
+    "code": "from ad8232 import AD8232\nimport time\n\necg = AD8232({OUTPUT})\nwhile True:\n    bpm = ecg.bpm()\n    if bpm is None:\n        print('No heartbeat')\n    else:\n        print('BPM=%d' % round(bpm))\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "bpm",
+      "title": "Counts the heart rate set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 72
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "amplitude",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BPM=72",
+          "within": 15000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/ad8232.pdf",
+    "https://cdn.sparkfun.com/datasheets/Sensors/Biometric/AD8232.pdf",
+    "https://www.sparkfun.com/products/12650",
+    "https://learn.sparkfun.com/tutorials/ad8232-heart-rate-monitor-hookup-guide/all",
+    "https://github.com/sparkfun/AD8232_Heart_Rate_Monitor/blob/master/Hardware/AD8232_Heart_Rate_Monitor.brd"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:33:34.987Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/ad8232.pdf",
+      "https://www.sparkfun.com/products/12650"
+    ]
+  }
+}

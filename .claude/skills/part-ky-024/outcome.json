@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-024",
+  "board": "Joy-IT SensorKit KY-024 linear magnetic Hall sensor module (black 4-pin header printed AO, G, +, DO; AH49E + LM393; identical generic 37-in-1 kit KY-024)",
+  "reason": "Modelled as an analog-sensor: a gauss slider (-1000..+1000 G) drives AO using the AH49E's null of VCC/2 and 1.6 mV/G at 5 V, scaled to a 3.3 V supply (0.594-2.706 V). DO is a toggle, active HIGH as Joy-IT documents. The check passed on ESP32 and Pico on run 2; run 1 failed only because DO was marked optional, so it was not wired.",
+  "datasheetUrl": "https://www.diodes.com/assets/Datasheets/AH49E.pdf",
+  "breakoutPinoutSource": "https://sensorkit.joy-it.net/files/files/sensors/KY-024/KY-024.png (board photo, silkscreen DO, +, G, AO) and https://sensorkit.joy-it.net/en/sensors/ky-024",
+  "checkRuns": 2
+}

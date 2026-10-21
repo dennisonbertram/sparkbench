@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-arcade-button",
+  "board": "Sanwa OBSF-30 30 mm snap-in arcade pushbutton (stock Sanwa SW-68 microswitch, normally open, two .110\"/2.8 mm quick-connect tabs)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator BUTTON=UP then BUTTON=DOWN, PCB DRC clean, footprint). The passive 2-tab normally-open microswitch is modelled as a 1x1 keypad-matrix between GND and SIG (closed while pressed); Sanwa publishes no PDF datasheet, so the SW-68 ratings (12 V DC 100 mA) come from the seller spec sheet.",
+  "datasheetUrl": "https://focusattack.com/sanwa-sw-68-button-micro-switch",
+  "breakoutPinoutSource": "Two unlabelled, non-polarised .110\" (2.8 mm) tabs on the SW-68 microswitch per seller pages (https://www.arcaderenovations.com/sanwa-snap-in-button-red-obsf-30-r.html, https://focusattack.com/sanwa-sw-68-button-micro-switch); one-tab-to-GND, one-to-signal wiring per https://manuals.plus/asin/B01FWHAKLY",
+  "checkRuns": 1
+}

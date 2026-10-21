@@ -1,0 +1,292 @@
+{
+  "type": "custom-lsm303agr",
+  "name": "LSM303AGR accelerometer & magnetometer",
+  "mpn": "LSM303AGR",
+  "category": "sensor",
+  "description": "STMicroelectronics 3-axis accelerometer (±2/4/8/16 g) and 3-axis magnetometer (±50 gauss) in one package, read over I2C as two chips: accelerometer at 0x19, magnetometer at 0x1E. Used for tilt sensing and as an electronic compass. Sold as: Adafruit LSM303AGR Accelerometer Magnetometer - STEMMA QT / Qwiic (product 4413), 3-5 V with on-board regulator and level shifting, 6-pin header (VIN, 3V, GND, SCL, SDA, INTM) plus 4-pin header (CSM, CSA, IA1, IA2).",
+  "eli5": "Feels which way is down and which way is north, so your project knows how it is tilted and where it is pointing.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (on-board 3.3 V regulator; I2C is level-shifted)",
+      "required": true
+    },
+    {
+      "name": "3V",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "INTM",
+      "role": "io",
+      "description": "Magnetometer interrupt / data-ready output, 3.3 V logic only (optional)",
+      "required": false
+    },
+    {
+      "name": "CSM",
+      "role": "io",
+      "description": "Magnetometer SPI chip select, pulled up for I2C; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "CSA",
+      "role": "io",
+      "description": "Accelerometer SPI chip select, pulled up for I2C; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "IA1",
+      "role": "io",
+      "description": "Accelerometer interrupt 1 output, 3.3 V logic only (optional)",
+      "required": false
+    },
+    {
+      "name": "IA2",
+      "role": "io",
+      "description": "Accelerometer interrupt 2 output, 3.3 V logic only (optional)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1.5,
+  "i2cAddress": 25,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lsm303agr.pdf",
+  "priceUsd": 12.5,
+  "supplierQuery": "Adafruit LSM303AGR accelerometer magnetometer breakout 4413",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two I2C addresses: accelerometer 0x19, magnetometer 0x1E. Both share SDA/SCL; the board has 10 kΩ pull-ups.",
+    "Accelerometer: write CTRL_REG1_A (0x20) = 0x57 (100 Hz, X/Y/Z on) and CTRL_REG4_A (0x23) = 0x88 (BDU, ±2 g, high-resolution). Read 6 bytes from 0x28 with bit 7 set (0xA8) to auto-increment.",
+    "Accelerometer data is 12-bit two's complement, left-justified, low byte first: shift right by 4, then 0.98 mg per LSB at ±2 g.",
+    "Magnetometer: write CFG_REG_A_M (0x60) = 0x80 (temperature compensation must be on, continuous 10 Hz) and CFG_REG_C_M (0x62) = 0x10 (BDU). Read 6 bytes from 0x68, low byte first, 1.5 mgauss per LSB.",
+    "WHO_AM_I: 0x0F on 0x19 reads 0x33; 0x4F on 0x1E reads 0x40.",
+    "The interrupt and CS pins are 3.3 V logic only; leave CSA/CSM unconnected for I2C (pulled up on the board).",
+    "For a compass, keep the board away from motors, speakers, magnets and wires carrying more than about 10 mA, and calibrate hard-iron offsets."
+  ],
+  "keywords": [
+    "lsm303agr",
+    "lsm303",
+    "accelerometer",
+    "magnetometer",
+    "compass",
+    "imu",
+    "tilt",
+    "adafruit 4413"
+  ],
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lsm303agr.pdf",
+    "https://learn.adafruit.com/lsm303-accelerometer-slash-compass-breakout/pinouts",
+    "https://github.com/adafruit/Adafruit-LSM303AGR-PCB",
+    "https://www.adafruit.com/product/4413"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "autoIncrementBit7": true,
+    "quantity": "Acceleration X",
+    "unit": "mg",
+    "min": -2000,
+    "max": 2000,
+    "default": 0,
+    "controls": [
+      {
+        "key": "accel_y",
+        "quantity": "Acceleration Y",
+        "unit": "mg",
+        "min": -2000,
+        "max": 2000,
+        "default": 0
+      },
+      {
+        "key": "accel_z",
+        "quantity": "Acceleration Z",
+        "unit": "mg",
+        "min": -2000,
+        "max": 2000,
+        "default": 1000
+      },
+      {
+        "key": "mag_x",
+        "quantity": "Magnetic field X",
+        "unit": "mgauss",
+        "min": -1500,
+        "max": 1500,
+        "default": 200
+      },
+      {
+        "key": "mag_y",
+        "quantity": "Magnetic field Y",
+        "unit": "mgauss",
+        "min": -1500,
+        "max": 1500,
+        "default": 0
+      },
+      {
+        "key": "mag_z",
+        "quantity": "Magnetic field Z",
+        "unit": "mgauss",
+        "min": -1500,
+        "max": 1500,
+        "default": -400
+      }
+    ],
+    "registers": {
+      "0x0F": 51,
+      "0x27": 15
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.98,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 4
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.98,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 4,
+        "control": "accel_y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.98,
+        "signed": true,
+        "littleEndian": true,
+        "shift": 4,
+        "control": "accel_z"
+      }
+    ],
+    "subDevices": [
+      {
+        "i2cAddress": 30,
+        "registers": {
+          "0x4F": 64,
+          "0x67": 15
+        },
+        "measures": [
+          {
+            "reg": "0x68",
+            "bytes": 2,
+            "scale": 1.5,
+            "signed": true,
+            "littleEndian": true,
+            "control": "mag_x"
+          },
+          {
+            "reg": "0x6A",
+            "bytes": 2,
+            "scale": 1.5,
+            "signed": true,
+            "littleEndian": true,
+            "control": "mag_y"
+          },
+          {
+            "reg": "0x6C",
+            "bytes": 2,
+            "scale": 1.5,
+            "signed": true,
+            "littleEndian": true,
+            "control": "mag_z"
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lsm303agr.py",
+    "code": "# LSM303AGR 3-axis accelerometer + 3-axis magnetometer (STMicroelectronics), MicroPython driver.\n# Written from the ST datasheet DocID027765 Rev 11. Two I2C chips in one package:\n#   accelerometer at 0x19 (registers 0x00-0x3F), magnetometer at 0x1E (registers 0x40-0x6F).\n# Accelerometer: high-resolution mode (12-bit, left-justified), +/-2 g, 0.98 mg/LSB, 100 Hz.\n# Magnetometer: continuous mode, 10 Hz, high resolution, temperature compensation on, 1.5 mgauss/LSB.\nimport time\n\nACC_ADDR = 0x19\nMAG_ADDR = 0x1E\n\nWHO_AM_I_A = 0x0F    # reads 0x33\nCTRL_REG1_A = 0x20\nCTRL_REG4_A = 0x23\nSTATUS_REG_A = 0x27\nOUT_X_L_A = 0x28\nWHO_AM_I_M = 0x4F    # reads 0x40\nCFG_REG_A_M = 0x60\nCFG_REG_C_M = 0x62\nSTATUS_REG_M = 0x67\nOUTX_L_REG_M = 0x68\n\nACC_MG_PER_LSB = 0.98   # +/-2 g, high-resolution mode (datasheet Table 3)\nMAG_MG_PER_LSB = 1.5    # mgauss per LSB (datasheet Table 3)\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass LSM303AGR:\n    def __init__(self, i2c, acc_addr=ACC_ADDR, mag_addr=MAG_ADDR):\n        self.i2c = i2c\n        self.acc = acc_addr\n        self.mag = mag_addr\n        if self.i2c.readfrom_mem(self.acc, WHO_AM_I_A, 1)[0] != 0x33:\n            raise OSError('LSM303AGR accelerometer not found at 0x%02X' % self.acc)\n        if self.i2c.readfrom_mem(self.mag, WHO_AM_I_M, 1)[0] != 0x40:\n            raise OSError('LSM303AGR magnetometer not found at 0x%02X' % self.mag)\n        # Accelerometer: ODR 100 Hz, LPen = 0, X/Y/Z enabled.\n        self.i2c.writeto_mem(self.acc, CTRL_REG1_A, b'\\x57')\n        # BDU = 1, FS = +/-2 g, HR = 1 (12-bit high-resolution mode).\n        self.i2c.writeto_mem(self.acc, CTRL_REG4_A, b'\\x88')\n        # Magnetometer: COMP_TEMP_EN = 1 (required), HR, 10 Hz, continuous mode.\n        self.i2c.writeto_mem(self.mag, CFG_REG_A_M, b'\\x80')\n        # BDU = 1.\n        self.i2c.writeto_mem(self.mag, CFG_REG_C_M, b'\\x10')\n        time.sleep_ms(100)  # HR accel turn-on 7/ODR = 70 ms; mag turn-on 9.4 ms + first sample\n\n    def _wait(self, addr, reg, timeout_ms=200):\n        t0 = time.ticks_ms()\n        while not (self.i2c.readfrom_mem(addr, reg, 1)[0] & 0x08):  # ZYXDA\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('LSM303AGR: no new data')\n            time.sleep_ms(2)\n\n    def acceleration(self):\n        \"\"\"(x, y, z) in mg.\"\"\"\n        self._wait(self.acc, STATUS_REG_A)\n        # Set the MSB of the register address to auto-increment over the six output bytes.\n        d = self.i2c.readfrom_mem(self.acc, OUT_X_L_A | 0x80, 6)\n        # 12-bit two's complement, left-justified in 16 bits: shift right by 4.\n        return tuple((_s16(d[i], d[i + 1]) >> 4) * ACC_MG_PER_LSB for i in (0, 2, 4))\n\n    def magnetic(self):\n        \"\"\"(x, y, z) in mgauss.\"\"\"\n        self._wait(self.mag, STATUS_REG_M)\n        d = self.i2c.readfrom_mem(self.mag, OUTX_L_REG_M, 6)\n        return tuple(_s16(d[i], d[i + 1]) * MAG_MG_PER_LSB for i in (0, 2, 4))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lsm303agr import LSM303AGR\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = LSM303AGR(i2c)\nwhile True:\n    ax, ay, az = imu.acceleration()\n    mx, my, mz = imu.magnetic()\n    print('A=%.0f,%.0f,%.0f mg M=%.0f,%.0f,%.0f mG' % (ax, ay, az, mx, my, mz))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration and magnetic field set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "accel_y",
+          "value": 250
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "accel_z",
+          "value": 980
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mag_x",
+          "value": 300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mag_y",
+          "value": -150
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mag_z",
+          "value": -450
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=-500,250,980 mg M=300,-150,-450 mG",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:54:41.191Z",
+    "verifiedSources": [
+      "https://www.st.com/resource/en/datasheet/lsm303agr.pdf",
+      "https://www.adafruit.com/product/4413",
+      "https://cdn-shop.adafruit.com/970x728/4413-07.jpg",
+      "https://learn.adafruit.com/lsm303-accelerometer-slash-compass-breakout/pinouts"
+    ]
+  }
+}

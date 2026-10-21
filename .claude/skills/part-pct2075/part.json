@@ -1,0 +1,153 @@
+{
+  "type": "custom-pct2075",
+  "name": "PCT2075 temperature sensor",
+  "mpn": "PCT2075",
+  "category": "sensor",
+  "description": "NXP LM75-compatible digital temperature sensor and thermal watchdog, -55 to 125 °C with 0.125 °C resolution (±1 °C from -25 to 100 °C), on an I2C bus (up to 1 MHz), plus an open-drain over-temperature output. Runs on 2.7–5.5 V. Sold as: Adafruit PCT2075 Temperature Sensor - STEMMA QT / Qwiic (product 4369; 5-pin header VCC, GND, SCL, SDA, INT and a 3-pin header A0, A1, A2 on the opposite edge), I2C address 0x37 with A0/A1/A2 left floating (27 addresses possible).",
+  "eli5": "A small thermometer chip your board asks for the temperature over two wires; it can also flip a pin when it gets too hot.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7–5.5 V, no regulator (use the microcontroller's 3.3 V: the board's SDA/SCL pull-ups go to VCC)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "OS over-temperature output, open-drain, active low by default; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address bit 0 (other header): leave floating, tie to GND or VCC; sampled at power-up",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Address bit 1: leave floating, tie to GND or VCC; sampled at power-up",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Address bit 2: leave floating, tie to GND or VCC; sampled at power-up",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.4,
+  "i2cAddress": 55,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/PCT2075.pdf",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/PCT2075.pdf",
+    "https://learn.adafruit.com/adafruit-pct2075-temperature-sensor/pinouts",
+    "https://github.com/adafruit/Adafruit-PCT2075-PCB",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-PCT2075-PCB/master/Adafruit_PCT2075.brd"
+  ],
+  "priceUsd": 5,
+  "supplierQuery": "Adafruit PCT2075 temperature sensor STEMMA QT 4369",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "The board has two headers on opposite edges (VCC, GND, SCL, SDA, INT and A0, A1, A2), so wire it with jumper leads; only VCC, GND, SCL and SDA are needed.",
+    "With A0, A1 and A2 left floating (as shipped) the address is 0x37. Each pin can be floating, low or high, giving 27 addresses (datasheet Table 5); the pins are sampled only at power-up.",
+    "Temperature is register 0x00, two bytes MSB first: an 11-bit two's complement value in bits 15–5, 0.125 °C per step. Read both bytes; T = (signed 16-bit raw >> 5) × 0.125.",
+    "A conversion takes about 28 ms and repeats every 100 ms by default (Tidle register 0x04 sets 100 ms–3.1 s); the first reading is valid about 100 ms after power-up.",
+    "INT (OS) goes low when the temperature passes Tos (80 °C at power-up) and releases below Thyst (75 °C); both are 9-bit values in 0.5 °C steps in registers 0x03 and 0x02.",
+    "The SDA/SCL pull-ups go to VCC, so power the board from 3.3 V on a 3.3 V microcontroller. There is no chip-ID register."
+  ],
+  "keywords": [
+    "pct2075",
+    "lm75",
+    "temperature",
+    "thermometer",
+    "thermostat",
+    "nxp",
+    "adafruit",
+    "stemma qt"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 125,
+    "default": 21,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 0,
+      "0x02": 19200,
+      "0x03": 20480,
+      "0x04": 0
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 0.125,
+      "shift": 5,
+      "signed": true
+    }
+  },
+  "driver": {
+    "filename": "pct2075.py",
+    "code": "# PCT2075 I2C-bus Fm+ digital temperature sensor and thermal watchdog (NXP PCT2075 Rev. 10.1), MicroPython driver.\n# Register pointer: 0x00 Temp (read-only, 2 bytes), 0x01 Conf (1 byte), 0x02 Thyst (2 bytes),\n# 0x03 Tos (2 bytes), 0x04 Tidle (1 byte).\n# Temp: 11-bit two's complement in bits 15..5, 0.125 degC per LSB; the 5 low bits read as 0.\n# Tos/Thyst: 9-bit two's complement in bits 15..7, 0.5 degC per LSB.\nimport time\n\n_REG_TEMP = 0x00\n_REG_CONF = 0x01\n_REG_THYST = 0x02\n_REG_TOS = 0x03\n_REG_TIDLE = 0x04\n\n\nclass PCT2075:\n    def __init__(self, i2c, addr=0x37):\n        # 0x37 = A0, A1, A2 all floating (Adafruit breakout default); see datasheet Table 5.\n        self.i2c = i2c\n        self.addr = addr\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        raw = (d[0] << 8) | d[1]\n        return raw - 0x10000 if raw & 0x8000 else raw\n\n    def _write16(self, reg, value):\n        value &= 0xFFFF\n        self.i2c.writeto_mem(self.addr, reg, bytes([value >> 8, value & 0xFF]))\n\n    def temperature(self):\n        \"\"\"Temperature in degC, 0.125 degC resolution (datasheet section 7.4.3).\"\"\"\n        return (self._read16(_REG_TEMP) >> 5) * 0.125\n\n    def config(self, value=None):\n        \"\"\"Read (no argument) or write the 8-bit Conf register.\n        B4:3 OS fault queue, B2 OS polarity (1 = active high), B1 1 = interrupt mode, B0 1 = shutdown.\"\"\"\n        if value is None:\n            return self.i2c.readfrom_mem(self.addr, _REG_CONF, 1)[0]\n        self.i2c.writeto_mem(self.addr, _REG_CONF, bytes([value & 0x1F]))\n\n    def shutdown(self, off=True):\n        \"\"\"Conf bit 0: 1 = shutdown (under 1 uA, Temp keeps the last result), 0 = normal.\"\"\"\n        c = self.config()\n        self.config((c | 0x01) if off else (c & ~0x01))\n        if not off:\n            time.sleep_ms(100)  # first new conversion (28 ms) completes within one 100 ms period\n\n    def tos(self, value=None):\n        \"\"\"Overtemperature shutdown threshold in degC (0.5 degC steps, power-up 80).\"\"\"\n        if value is None:\n            return (self._read16(_REG_TOS) >> 7) * 0.5\n        self._write16(_REG_TOS, int(round(value * 2)) << 7)\n\n    def thyst(self, value=None):\n        \"\"\"Hysteresis threshold in degC (0.5 degC steps, power-up 75).\"\"\"\n        if value is None:\n            return (self._read16(_REG_THYST) >> 7) * 0.5\n        self._write16(_REG_THYST, int(round(value * 2)) << 7)\n\n    def idle_time(self, value=None):\n        \"\"\"Sampling period in 100 ms steps (Tidle[4:0], 1-31; 0 behaves as 1 = 100 ms).\"\"\"\n        if value is None:\n            return self.i2c.readfrom_mem(self.addr, _REG_TIDLE, 1)[0] & 0x1F\n        self.i2c.writeto_mem(self.addr, _REG_TIDLE, bytes([value & 0x1F]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pct2075 import PCT2075\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = PCT2075(i2c)  # 0x37 with A0, A1, A2 floating\ntime.sleep_ms(150)  # first conversion is ready within 100 ms of power-up\nwhile True:\n    print('T=%.3fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 36.625
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=36.625C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:22:08.996Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCT2075.pdf",
+      "https://learn.adafruit.com/adafruit-pct2075-temperature-sensor/pinouts",
+      "https://www.adafruit.com/product/4369"
+    ]
+  }
+}

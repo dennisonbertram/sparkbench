@@ -1,0 +1,110 @@
+{
+  "type": "custom-ky-018",
+  "name": "KY-018 photoresistor light sensor module",
+  "mpn": "KY-018",
+  "category": "sensor",
+  "description": "Analog light sensor module: a 5 mm CdS photoresistor (GL55 series, GL5528-class: about 10–20 kΩ at 10 lux, ≥ 1 MΩ dark) in a voltage divider with a fixed 10 kΩ resistor (+V → 10 kΩ → S → LDR → GND). S drops as the light gets brighter and rises towards the supply in the dark; convert with the divider equation. No comparator or digital output. Runs on 3.3–5 V. Sold as: Joy-IT SensorKit KY-018 photoresistor (SEN-KY018, black 3-pin module, header S, + (middle), −), also the identical generic KY-018 from 37-in-1 sensor kits.",
+  "eli5": "A little resistor whose value drops when light shines on it. The module turns that into a voltage on its S pin: lower voltage means brighter light.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "adc",
+      "description": "Signal (pin 1): divider output, Vcc × R_ldr / (R_ldr + 10 kΩ). Low in bright light, near the supply in the dark. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (pin 2, middle, unmarked on the board; +V in Joy-IT's drawing). Use 3.3 V with an ESP32, Pico or Raspberry Pi so S stays below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3, marked −).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://www.kth.se/social/files/54ef17dbf27654753f437c56/GL5537.pdf",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-018",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-018/KY-018.svg",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-018/018-Pico.svg",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-018/KY-018.png",
+    "https://www.kth.se/social/files/54ef17dbf27654753f437c56/GL5537.pdf"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-018 photoresistor LDR light sensor module 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: S, + (middle, unmarked), −.",
+    "Power + from 3.3 V on an ESP32, Pico or Raspberry Pi: S rises to nearly the supply voltage in the dark.",
+    "Resistance: R_ldr = 10 kΩ × V / (Vcc − V). Brighter light = lower voltage on S (a higher reading means darker).",
+    "Check the direction: cover the LDR with your finger and the voltage should rise. If it falls, your clone has the divider the other way round: swap the + and − wires.",
+    "Lux from an uncalibrated CdS cell is only a rough estimate (lux ≈ 10 × (15 kΩ / R)^(1/0.6)); use a threshold measured in your own room for dark/light decisions.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) and average many samples; the Raspberry Pi has no ADC, so add one (e.g. KY-053 / ADS1115)."
+  ],
+  "keywords": [
+    "ky-018",
+    "ky018",
+    "ldr",
+    "photoresistor",
+    "photocell",
+    "light",
+    "cds",
+    "gl5528",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "S",
+    "quantity": "S voltage (photoresistor divider, lower = brighter)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.65,
+    "vAtMin": 0,
+    "vAtMax": 3.3
+  },
+  "driver": {
+    "filename": "ky018.py",
+    "code": "# KY-018 photoresistor module (5 mm CdS LDR, GL55 series, in a divider with a fixed 10 kOhm\n# resistor), MicroPython driver.\n# Circuit (Joy-IT KY-018 documentation and code): +V -- 10 kOhm -- S -- LDR -- GND, so\n#   V_S = Vcc * R_ldr / (R_ldr + 10 kOhm)   ->   R_ldr = 10 kOhm * V_S / (Vcc - V_S)\n# Brighter = lower LDR resistance = LOWER voltage on S.\n# Approximate illuminance from the GL55-series gamma definition (gamma = lg(R10/R100)):\n#   lux ~= 10 * (R10 / R_ldr) ** (1 / gamma)\n# with GL5528 values R10 = 10-20 kOhm (15 kOhm used) and gamma = 0.6. Only a rough estimate:\n# the cell's R10 alone varies by a factor of 2 from part to part.\nfrom machine import ADC, Pin\n\n\nclass KY018:\n    R_FIXED = 10000.0  # ohms, fixed resistor from +V to S\n\n    def __init__(self, pin, vcc=3.3, samples=32, vref=3.3, r10=15000.0, gamma=0.6):\n        \"\"\"pin: GPIO number (or Pin) wired to S. vcc: the voltage on the module's + pin.\n        vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico).\n        r10, gamma: LDR resistance at 10 lux and gamma value, for the rough lux() estimate.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.samples = samples\n        self.vref = vref\n        self.r10 = r10\n        self.gamma = gamma\n\n    def voltage(self):\n        \"\"\"Averaged voltage on S in volts (lower = brighter).\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def resistance(self):\n        \"\"\"LDR resistance in ohms, from the divider equation (Joy-IT formula).\"\"\"\n        v = self.voltage()\n        if v <= 0:\n            return 0.0  # S shorted to GND or extremely bright\n        if v >= self.vcc:\n            return float('inf')  # LDR open / not connected / total darkness\n        return self.R_FIXED * v / (self.vcc - v)\n\n    def lux(self):\n        \"\"\"Rough illuminance in lux (GL5528-class cell assumed; +-50 % or worse).\"\"\"\n        r = self.resistance()\n        if r <= 0:\n            return float('inf')\n        if r == float('inf'):\n            return 0.0\n        return 10.0 * (self.r10 / r) ** (1.0 / self.gamma)\n\n    def brightness(self):\n        \"\"\"0-100 % relative brightness (100 = S at 0 V). Handy for thresholds.\"\"\"\n        return max(0.0, min(100.0, 100.0 * (1.0 - self.voltage() / self.vcc)))\n"
+  },
+  "skill": "---\nname: part-ky-018\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-018 photoresistor (LDR) light sensor module (CdS cell in a 10 kΩ divider, analog output). Use when designing, wiring, simulating or writing code for a KY-018 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-018 photoresistor module (KY-018)\n\n## Overview\nThe **KY-018** is a small black 3-pin module from the 37-in-1 / 40-in-1 sensor kits, for example the **Joy-IT SensorKit KY-018 photoresistor (SEN-KY018)**. It carries a 5 mm **CdS light-dependent resistor** (GL55 series, GL5528-class) and a fixed **10 kΩ** resistor (marked 103) wired as a voltage divider. There is no chip, no comparator and no LED: S is the divider's middle point.\n- Circuit (Joy-IT formula): **+V → 10 kΩ → S → LDR → GND**\n- Brighter = lower LDR resistance = **lower voltage on S**. Dark = S close to the supply.\n- The response is **not linear** and not calibrated: good for \"is it dark?\", only rough for lux.\n\n## Pinout (module header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | S | Signal: divider output, connect to an ADC pin |\n| 2 | + (middle, unmarked; Joy-IT calls it +V) | Supply, 3.3–5 V |\n| 3 | − | Ground |\n\n## Electrical limits\n- Supply: **3.3–5 V** (Joy-IT). The divider draws Vcc / (10 kΩ + R_ldr): at most 0.33 mA on 3.3 V (0.5 mA on 5 V) in bright light, a few µA in the dark.\n- LDR: max 150 V, 100 mW, −30 to +70 °C (GL55 datasheet); the module never comes close (≤ 0.63 mW at 5 V).\n- S swings between about 0 V and the supply. **On an ESP32, Pico or Raspberry Pi, power + from 3.3 V** so S can never go above 3.3 V.\n\n## Interface details\n```\nR_ldr = 10 kΩ × V_S / (Vcc − V_S)          (Joy-IT KY-018 code)\nlux ≈ 10 × (R10 / R_ldr) ^ (1 / γ)          (from γ = lg(R10/R100), GL55 datasheet)\n```\nGL5528: R10 (resistance at 10 lux) = 10–20 kΩ, γ = 0.6, dark resistance ≥ 1 MΩ. The driver uses R10 = 15 kΩ, so its lux value is only a rough estimate.\nExamples at Vcc = 3.3 V: 1.10 V → 5.00 kΩ (≈ 62 lux), 1.65 V → 10 kΩ (≈ 20 lux), 3.0 V → 100 kΩ (≈ 0.4 lux, dim room).\nThe result is ratiometric: use the actual voltage on the + pin as Vcc.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + (middle) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| − | GND | GND | GND (pin 6) |\n| S | GPIO32–39 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. KY-053 / ADS1115 A0) |\n\nOn the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi has no ADC.\n\n## Using the driver\n```python\nfrom ky018 import KY018\nimport time\nldr = KY018(26)               # GPIO number of the ADC pin S is wired to; vcc=3.3 by default\nwhile True:\n    print('R=%.2fk lux~%.0f' % (ldr.resistance() / 1000, ldr.lux()))\n    time.sleep(1)\n```\n`voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V / 65535), `resistance()` gives the LDR resistance in Ω, `lux()` a rough lux estimate, `brightness()` 0–100 % (100 % = S at 0 V). If the module runs from 5 V through an external ADC, pass `vcc=5.0`.\n\n## Gotchas\n- **Inverted sense**: a *higher* ADC reading means *darker*. Compare against a threshold measured in your own room rather than a fixed lux value.\n- **Backwards clones**: if covering the LDR makes the reading go *down*, your board has the divider the other way round: swap the + and − wires (harmless on this purely resistive divider) or invert the formula.\n- **5 V supply + 3.3 V board** can put almost 5 V on the ADC pin in the dark. Use 3.3 V.\n- **ESP32 ADC** is nonlinear near 0 V and near the top, so very bright and very dark readings are poor.\n- CdS cells are slow (20–30 ms) and lag after darkness; they also do not see infrared well. Lights flickering at 100/120 Hz show up as noise: average several samples.\n- Joy-IT has replaced the KY-018 with the KY-054 phototransistor in revision 2 of its kit.\n\n## Datasheet\nhttps://www.kth.se/social/files/54ef17dbf27654753f437c56/GL5537.pdf (GL55 series CdS photoresistor manual). Module documentation: https://sensorkit.joy-it.net/en/sensors/ky-018\n",
+  "example": {
+    "code": "from ky018 import KY018\nimport time\n\nldr = KY018({S})\nwhile True:\n    print('R=%.2fk' % (ldr.resistance() / 1000))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Converts the S voltage set on the slider to LDR resistance (1.10 V on 3.3 V = 5.00 kΩ)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=5.00k",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:32:23.847Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-018"
+    ]
+  }
+}

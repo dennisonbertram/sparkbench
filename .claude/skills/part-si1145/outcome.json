@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-si1145",
+  "board": "Adafruit SI1145 Breakout Board (#1777)",
+  "reason": "Modelled as an i2c-device at 0x60 (PART_ID 0x45) with little-endian VIS (0x22), IR (0x24) and UV index x100 (0x2C) registers per the Si1145 datasheet; forced-mode driver (HW_KEY, UCOEF, CHLIST via PARAM_SET, ALS_FORCE) passes the part check on ESP32 and Pico.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/Si1145-46-47.pdf",
+  "breakoutPinoutSource": "Adafruit Eagle board file (github.com/adafruit/Adafruit-Si1145-Light-Sensor-PCB): JP1 pads 1-7 = Vin, GND, 3Vo, INT, LED, SCL, SDA",
+  "checkRuns": 1
+}

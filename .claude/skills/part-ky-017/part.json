@@ -1,0 +1,111 @@
+{
+  "type": "custom-ky-017",
+  "name": "KY-017 tilt switch module",
+  "mpn": "KY-017",
+  "category": "sensor",
+  "description": "Tilt detector: a tilt switch (mercury capsule on the original Keyes board) between S and GND, with an indicator LED and 680 Ohm resistor from the + pin to S. The switch shorts S to GND and lights the LED when the board is tipped into its closed position (S reads LOW, active low); while open, S is only weakly pulled up through the LED, so enable the GPIO's internal pull-up. It only reports on/off, not the angle. Runs on 3.3-5 V. Sold as: Keyes / Joy-IT KY-017 tilt switch module (black 3-pin sensor-kit board with tilt-switch capsule, 680 Ohm resistor and indicator LED; header S, + (middle), -).",
+  "eli5": "A tiny blob inside the tube rolls when you tip the board, closing a switch and lighting a little LED, and your board can tell it has been tipped.",
+  "refPrefix": "SW",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Signal (pin 1): LOW while the switch is closed (LED lit), HIGH while open. Only weakly pulled up through the LED and 680 Ohm resistor, so use the GPIO's internal pull-up.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Middle pin: feeds the LED/680 Ohm path to S, 3.3-5 V. Use 3V3 with an ESP32 or Pico.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 3)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 5,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-017",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-017",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-017/KY-017.png",
+    "https://cdn-reichelt.de/documents/datenblatt/A300/SEN-KIT02_ANL.pdf",
+    "https://arduinomodules.info/ky-017-mercury-switch-module/",
+    "https://uelectronics.com/producto/sensor-interruptor-mercurio-ky-017/",
+    "https://www.electroniclinic.com/ky-017-mercury-tilt-sensor-switch-with-arduino-circuit-diagram-code/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-017 tilt switch module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: S, + (middle), -.",
+    "On an ESP32 or Pico connect + to 3V3: S is fed from the + pin through the LED, so 5 V on + can push current into a 3.3 V GPIO.",
+    "Enable the GPIO's internal pull-up (the driver does): the LED path alone leaves S about one LED drop below +, which is not a reliable HIGH at 3.3 V.",
+    "S is active LOW: 0 and LED on while the switch is closed, 1 and LED off while it is open. Which tilt closes it depends on how the board is mounted; invert in code if needed.",
+    "The contacts bounce at each change; debounce for about 50 ms (the driver's tilted() does this).",
+    "The original KY-017 capsule contains mercury: do not break it, and dispose of it as hazardous waste."
+  ],
+  "keywords": [
+    "ky-017",
+    "ky017",
+    "tilt",
+    "tilt switch",
+    "mercury switch",
+    "mercury tilt",
+    "orientation",
+    "tip-over",
+    "alarm"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Tilted (switch closed)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "ky017.py",
+    "code": "# KY-017 tilt switch module, MicroPython driver.\n# The module is a two-terminal tilt switch (mercury capsule on the Keyes board, a\n# sealed ball capsule on newer Joy-IT boards) between S and GND (-), plus an\n# indicator LED in series with a 680 Ohm resistor from the + pin to S.\n#   switch open   -> no LED current, S floats up towards + through the LED -> reads 1\n#   switch closed -> S shorted to GND, LED lights                          -> reads 0\n# The LED path is only a very weak pull-up (S sits one LED drop below + when\n# almost no current flows), so the GPIO's internal pull-up is enabled to give a\n# clean logic 1. Power + from 3.3 V on a 3.3 V board.\n# Which orientation closes the switch depends on how the board is mounted.\n# The contacts bounce for a few milliseconds at each change, so readings are debounced.\nfrom machine import Pin\nimport time\n\n\nclass KY017:\n    def __init__(self, pin, debounce_ms=50):\n        self.pin = Pin(pin, Pin.IN, Pin.PULL_UP) if isinstance(pin, int) else pin\n        self.debounce_ms = debounce_ms\n\n    def raw(self):\n        \"\"\"Logic level on S right now: 0 = switch closed (LED on), 1 = open.\"\"\"\n        return self.pin.value()\n\n    def closed(self):\n        \"\"\"True while the switch contacts are closed (S pulled LOW).\"\"\"\n        return self.pin.value() == 0\n\n    def tilted(self):\n        \"\"\"Debounced: True if S stays LOW (switch closed) for debounce_ms.\"\"\"\n        state = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            v = self.pin.value()\n            if v != state:\n                state = v\n                t0 = time.ticks_ms()\n            time.sleep_ms(2)\n        return state == 0\n\n    def irq(self, handler, on_close=True):\n        \"\"\"Call handler(pin) when the switch closes (falling edge) or opens (rising edge).\n        Expect several calls per change because the contacts bounce.\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if on_close else Pin.IRQ_RISING)\n"
+  },
+  "example": {
+    "code": "from ky017 import KY017\nimport time\n\ntilt = KY017({S})\nwhile True:\n    print('Tilt: %s' % ('YES' if tilt.tilted() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports a tilt when the switch closes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Tilt: no",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Tilt: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:42:17.777Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-017"
+    ]
+  }
+}

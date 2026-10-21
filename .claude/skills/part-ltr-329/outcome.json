@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ltr-329",
+  "board": "Adafruit LTR-329 Light Sensor - STEMMA QT / Qwiic (#5591)",
+  "reason": "Modelled from the Lite-On LTR-329ALS-01 datasheet (DS86-2014-0006): address 0x29, PART_ID 0xA0, ALS_CONTR/ALS_MEAS_RATE setup, status bit 2, CH1-then-CH0 little-endian 16-bit data at 0x88-0x8B, and the Appendix A lux formula (cross-checked with Pycom's driver); header order VIN,3Vo,GND,SCL,SDA from Adafruit's Eagle board file. Part check printed PASS on ESP32 and Pico (CH0=2000 CH1=600 Lux=4212.1, DRC clean).",
+  "datasheetUrl": "https://optoelectronics.liteon.com/upload/download/DS86-2014-0006/LTR-329ALS-01_DS_V1.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-LTR-329-LTR-303-PCB (Adafruit LTR-329.brd: JP2 pads 1-5 = VCC/3.3V/GND/SCL/SDA, silkscreen VIN 3Vo GND SCL SDA); https://learn.adafruit.com/adafruit-ltr-329-ltr-303/pinouts",
+  "checkRuns": 1
+}

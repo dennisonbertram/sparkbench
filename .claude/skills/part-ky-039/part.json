@@ -1,0 +1,140 @@
+{
+  "type": "custom-ky-039",
+  "name": "KY-039 heartbeat sensor",
+  "mpn": "KY-039",
+  "category": "sensor",
+  "description": "Finger heartbeat sensor: an IR LED shines through a fingertip onto a phototransistor with a resistor from +V to its collector (S). No chip or amplifier: S is a DC level that shows a small sharp positive peak (a few hundred mV) at each heartbeat, so count peaks to get beats per minute. Runs on 3.3 V or 5 V. Not a medical device. Sold as: Joy-IT SensorKit KY-039 heartbeat sensor (SEN-KY039HS, round black board on a 3-wire lead with Dupont pins: - grey, + white, S black).",
+  "eli5": "Put your fingertip on it: invisible infrared light shines through your skin, and each heartbeat makes your finger a tiny bit darker. The board turns that into a little bump in voltage, and the code counts the bumps.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (pin 1, grey wire, marked −).",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3 V or 5 V (pin 2, white wire, marked +). Use 3.3 V with an ESP32, Pico or Raspberry Pi so S stays below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "adc",
+      "description": "Signal (pin 3, black wire): phototransistor collector. Near +V in the dark, lower in light; a small positive peak at each heartbeat. Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "datasheetUrl": "https://joy-it.net/files/files/Produkte/SEN-KY039HS/SEN-KY039HS-Manual-21-05-19.pdf",
+  "sources": [
+    "https://joy-it.net/files/files/Produkte/SEN-KY039HS/SEN-KY039HS-Manual-21-05-19.pdf",
+    "https://www.joy-it.net/en/products/SEN-KY039HS",
+    "https://sensorkit.joy-it.net/en/sensors/ky-039",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-039/039-Pico.svg",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-039/KY-039-02.png",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-039/KY-039-Phototransistor.svg",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-039/NewFile1.jpg",
+    "https://www.espboards.dev/sensors/ky-039"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "KY-039 heartbeat sensor module finger pulse IR",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Lead order as printed on the board: − (grey), + (white), S (black).",
+    "Power + from 3.3 V on an ESP32, Pico or Raspberry Pi: S rises towards the supply when the phototransistor is dark.",
+    "Rest a fingertip lightly over the IR LED and phototransistor and keep still; Joy-IT recommends taping it to the tip of the little finger.",
+    "Shade it from room light and sunlight, which swamp the small heartbeat signal.",
+    "Sample S every 10 ms or so, follow its recent min and max, and count a beat each time it rises through 60 % of that span.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39); the Raspberry Pi has no ADC, so add one (e.g. KY-053 / ADS1115).",
+    "A hobby pulse detector, not a medical device."
+  ],
+  "keywords": [
+    "ky-039",
+    "ky039",
+    "heartbeat",
+    "heart rate",
+    "pulse",
+    "bpm",
+    "ppg",
+    "finger",
+    "infrared",
+    "phototransistor",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "S",
+    "quantity": "Heartbeat peak size (V peak-to-peak on S)",
+    "unit": "V",
+    "min": 0,
+    "max": 1,
+    "default": 0.3,
+    "vAtMin": 1.65,
+    "vAtMax": 1.65,
+    "controls": [
+      {
+        "key": "bpm",
+        "quantity": "Heart rate",
+        "unit": "BPM",
+        "min": 40,
+        "max": 180,
+        "default": 70
+      }
+    ],
+    "wave": {
+      "ampControl": "value",
+      "voltsPerUnit": 1,
+      "centerV": 1.65,
+      "freqControl": "bpm",
+      "freqScale": 0.016666666666666666,
+      "shape": "pulse"
+    }
+  },
+  "driver": {
+    "filename": "ky039.py",
+    "code": "# KY-039 heartbeat sensor (IR LED + phototransistor), MicroPython driver.\n# The module has no chip: an IR LED shines through a fingertip onto a phototransistor that has a\n# resistor R from +V to its collector (Joy-IT KY-039 documentation). S is the collector voltage:\n# more light -> transistor conducts more -> S lower; less light -> S closer to +V.\n# Each heartbeat pushes more blood into the fingertip, which absorbs more IR, so S shows a small\n# sharp positive peak once per beat (a few hundred mV on Joy-IT's oscilloscope trace) riding on a\n# DC level that depends on the finger and ambient light.\n# This driver samples S, tracks the signal's recent minimum and maximum, and counts a beat each\n# time S rises through 60 % of that span (re-armed below 40 %). Heart rate = beats per minute\n# from the average time between beats.\nimport time\nfrom machine import ADC, Pin\n\n\nclass KY039:\n    def __init__(self, pin, vref=3.3, sample_ms=10):\n        \"\"\"pin: GPIO number (or Pin) wired to S. vref: ADC full scale in volts (3.3 V on the\n        ESP32 with 11 dB attenuation and on the Pico). sample_ms: time between samples.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vref = vref\n        self.sample_ms = sample_ms\n        self.pp = 0.0  # last measured peak-to-peak swing of S, volts\n\n    def voltage(self):\n        \"\"\"One reading of S in volts.\"\"\"\n        return self.adc.read_u16() * self.vref / 65535\n\n    def bpm(self, beats=5, timeout_ms=15000, settle_ms=2000, min_pp=0.02, decay=0.003):\n        \"\"\"Measure the heart rate: wait settle_ms for the tracker to learn the signal, then time\n        `beats` beat-to-beat intervals. Returns beats per minute, or None if no steady pulse\n        (finger missing, swing below min_pp volts) was found within timeout_ms.\"\"\"\n        v = self.voltage()\n        hi = lo = v\n        armed = False\n        times = []\n        last_beat = None\n        start = time.ticks_ms()\n        while True:\n            now = time.ticks_ms()\n            el = time.ticks_diff(now, start)\n            if el > timeout_ms:\n                return None\n            v = self.voltage()\n            # Peak/valley trackers that slowly relax toward each other so the\n            # threshold follows drift in the DC level.\n            span = hi - lo\n            hi = v if v > hi else hi - span * decay\n            lo = v if v < lo else lo + span * decay\n            span = hi - lo\n            self.pp = span\n            if span >= min_pp:\n                if armed and v > lo + 0.6 * span:\n                    armed = False\n                    # Ignore a second trigger within 250 ms (above 240 BPM it is noise).\n                    if el >= settle_ms and (last_beat is None or time.ticks_diff(now, last_beat) > 250):\n                        times.append(now)\n                        if len(times) > beats:\n                            total = time.ticks_diff(times[-1], times[0])\n                            return 60000 * beats / total\n                    last_beat = now\n                elif not armed and v < lo + 0.4 * span:\n                    armed = True\n            time.sleep_ms(self.sample_ms)\n"
+  },
+  "skill": "---\nname: part-ky-039\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-039 heartbeat sensor (IR LED + phototransistor, analog pulse output). Use when designing, wiring, simulating or writing code for a KY-039 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-039 heartbeat sensor (KY-039)\n\n## Overview\nThe **KY-039** detects your pulse by shining infrared light through a fingertip. This page models the **Joy-IT SensorKit KY-039 heartbeat sensor (SEN-KY039HS)**: a small round black board with an IR LED and a phototransistor on it, on a 3-wire lead ending in three male Dupont pins. There is no chip, no amplifier and no filter: S is simply the phototransistor's collector.\n- Circuit (Joy-IT): **+V → R → S → phototransistor → GND**, plus the IR LED with its own resistor.\n- More light = transistor conducts more = **S lower**; less light = S closer to +V.\n- Each heartbeat fills the fingertip with blood, which absorbs IR, so **S shows a sharp positive peak once per beat** riding on a DC level. Joy-IT's oscilloscope trace shows peaks of only a few hundred mV, followed by a slower dip and recovery.\n- It is a hobby pulse detector, **not a medical device**.\n\n## Pinout (lead order, as printed on the board)\n| Pin | Name | Wire (Joy-IT) | Function |\n|-----|------|------|----------|\n| 1 | − | grey | Ground |\n| 2 | + | white | Supply, 3.3–5 V |\n| 3 | S | black | Signal: phototransistor collector, connect to an ADC pin |\n\nGeneric rectangular KY-039 boards from other 37-in-1 kits may order their header pins differently. Always follow the − / + / S marks on your own board.\n\n## Electrical limits\n- Supply: **3.3 V or 5 V** (Joy-IT). The IR LED takes most of the current, roughly 20 mA.\n- S swings up to the supply voltage when the transistor is dark. **On an ESP32, Pico or Raspberry Pi, power + from 3.3 V** so S cannot go above 3.3 V.\n\n## Interface details\nS is an analog voltage. To get a heart rate:\n1. Sample S every ~10 ms (Joy-IT's example: at least 5 samples per beat, 60 ms or faster for up to 200 BPM).\n2. Track the recent minimum and maximum; count a beat when S rises through 60 % of that span, re-arm below 40 %.\n3. BPM = 60000 × beats / (time between the first and last counted beat, ms).\n\nTypical numbers: 0.2–0.6 V peak-to-peak per beat, 50–100 BPM at rest.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + (white) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| − (grey) | GND | GND | GND (pin 6) |\n| S (black) | GPIO32–39 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. KY-053 / ADS1115 A0) |\n\nOn the ESP32 use an ADC1 pin (ADC2 does not work while Wi-Fi is on). The Raspberry Pi has no ADC.\n\n## Using the driver\n```python\nfrom ky039 import KY039\ns = KY039(26)                  # GPIO number of the ADC pin S is wired to\nwhile True:\n    bpm = s.bpm()               # blocks: ~2 s to settle, then times 5 beats\n    print('BPM=%d' % round(bpm) if bpm else 'no pulse')\n```\n`voltage()` returns one reading of S in volts. `bpm(beats=5, timeout_ms=15000)` returns beats per minute, or `None` when it finds no steady pulse (no finger, or the swing is below `min_pp` = 20 mV). After a call, `pp` holds the swing it saw in volts.\n\n## Gotchas\n- **Keep still.** Moving the finger shifts the DC level far more than a heartbeat does; the reading settles again after a couple of seconds.\n- **Ambient light** (sunlight, lamps) swamps the phototransistor. Shade it, or tape the sensor to a fingertip as Joy-IT recommends (the little finger works well).\n- Press lightly: squeezing hard pushes the blood out and the pulse disappears.\n- The signal is small: the ESP32's 12-bit ADC is enough, but the Raspberry Pi needs an external ADC.\n- Not a medical instrument: do not use it for health decisions.\n\n## Datasheet\nhttps://joy-it.net/files/files/Produkte/SEN-KY039HS/SEN-KY039HS-Manual-21-05-19.pdf (Joy-IT SEN-KY039HS manual). Module documentation: https://sensorkit.joy-it.net/en/sensors/ky-039\n",
+  "example": {
+    "code": "from ky039 import KY039\n\nsensor = KY039({S})\nwhile True:\n    bpm = sensor.bpm()\n    if bpm:\n        print('BPM=%d' % round(bpm))\n    else:\n        print('no pulse')\n",
+    "test": {
+      "id": "reads",
+      "title": "Counts the heartbeat peaks on S and prints the heart rate (75 BPM, 0.5 V peaks)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "bpm",
+          "value": 75
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BPM=75",
+          "within": 15000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:34:02.967Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-039"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ina260",
+  "board": "Adafruit INA260 High or Low Side Voltage, Current, Power Sensor (#4226)",
+  "reason": "Check passed on ESP32 and Pico: the simulator encodes current (signed, 1.25 mA LSB) and bus voltage (1.25 mV LSB) as 16-bit MSB-first registers per the TI datasheet, and the datasheet-based driver decodes them. The chip-computed power register (0x03 = |I| x V) is not modelled in the simulator (reads 0) and is documented as such.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina260.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-ina260-current-voltage-power-sensor-breakout/pinouts (with fab print https://cdn-learn.adafruit.com/assets/assets/000/074/115/large1024/sensors_ina260_fab_frint.png showing header order VCC, GND, SCL, SDA, Alert, VBus, Vin+, Vin-)",
+  "checkRuns": 1
+}

@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "UVA irradiance (uW/cm2) at IT=50ms: datasheet reading gives 1.0753 per count, the part's model has 1, 1, 1, 1",
+      "verdict": "part-correct",
+      "evidence": "Different but equivalent units. Vishay datasheet doc 84304 rev 1.2 p.2: 'UVA responsivity  IT = 50 ms (1)  0.93 counts/uW/cm2' (typ., note (1) Nichia NCSU033X 365 nm LED); 1/0.93 = 1.0753 uW/cm2 per count, so the second reading is the inverse of the datasheet's typical responsivity. The model's UVA slider is in raw counts (quantity 'UVA counts', unit 'counts'), and register 0x07 holds exactly those counts (datasheet p.7: '0x07_L UVA LSB output data', '0x07_H UVA MSB output data'), so scale 1 is the correct register encoding. The driver converts counts to UV index with the application note's open-air responsivity (doc 84339 table 'UV coefficients and responsivity': No teflon 2.22, 1.33, 2.95, 1.74, 0.001461, 0.002591), not with an irradiance factor, so nothing in the model uses or contradicts 0.93 counts/uW/cm2.",
+      "source": "https://cdn.sparkfun.com/assets/3/c/3/2/f/veml6075.pdf"
+    },
+    {
+      "diff": "UVB irradiance (uW/cm2) at IT=50ms: datasheet reading gives 0.4762 per count, the part's model has 1, 1, 1, 1",
+      "verdict": "part-correct",
+      "evidence": "Different but equivalent units. Vishay datasheet doc 84304 rev 1.2 p.2: 'UVB responsivity  IT = 50 ms (2)  2.1 counts/uW/cm2' (typ., note (2) UVTOP310TO39HS 315 nm LED); 1/2.1 = 0.4762 uW/cm2 per count. The model's UVB control is in raw counts (quantity 'UVB counts', unit 'counts') and register 0x09 holds those counts ('0x09_L UVB LSB output data', '0x09_H UVB MSB output data'), so scale 1 is correct; the UV index comes from the app-note responsivity 0.002591 UVI/count (open air, IT = 100 ms), which the driver applies.",
+      "source": "https://cdn.sparkfun.com/assets/3/c/3/2/f/veml6075.pdf"
+    },
+    {
+      "diff": "chip ID register 0xc: part 9728, datasheet reading 38",
+      "verdict": "part-correct",
+      "evidence": "Same value, different byte-order encoding. Datasheet doc 84304 p.7: '0x0C_L (0x0C data byte low) Default = 0x26, device ID LSB byte'; '0x0C_H ... device ID MSB byte' = 0x00, so the 16-bit word is 0x0026 = 38, and p.6/7: 'Data byte low represents LSB and data byte high represents MSB' with the low byte sent first on the bus. The simulator's 16-bit register store (src/sim/devices.ts setReg: [(v >> 8) & 0xff, v & 0xff]) sends the high byte of a configured value first, so to put 0x26 then 0x00 on the wire like the real chip the model must configure 0x2600 = 9728. Setting 38 would make the simulated chip send 0x00 then 0x26, i.e. the wrong byte order. The driver reads 2 bytes and checks the first (low) byte == 0x26, matching the datasheet.",
+      "source": "https://cdn.sparkfun.com/assets/3/c/3/2/f/veml6075.pdf"
+    }
+  ]
+}

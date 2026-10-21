@@ -1,0 +1,200 @@
+{
+  "type": "custom-veml6075",
+  "name": "VEML6075 UVA/UVB light sensor",
+  "mpn": "VEML6075",
+  "category": "sensor",
+  "description": "Vishay UVA (365 nm) and UVB (330 nm) light sensor with 16-bit counts per channel plus visible and infrared compensation channels, from which the UV index is calculated. I2C address 0x10 (fixed). Chip runs on 1.7-3.6 V. Sold as: Adafruit VEML6075 UVA UVB and UV Index Sensor Breakout (product 3964; 5-pin header VIN, 3Vo, GND, SCL, SDA, 3.3 V regulator and level shifting on board, 3-5 V supply).",
+  "eli5": "Measures the invisible ultraviolet light from the sun, so your board can work out the UV index and tell you when to put on sunscreen.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (on-board MIC5225 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to about 100 mA); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kOhm pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kOhm pull-up and level shifter on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "i2cAddress": 16,
+  "datasheetUrl": "https://www.vishay.com/docs/84304/veml6075.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "VEML6075 UVA UVB UV index sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "I2C address 0x10 is fixed: only one VEML6075 per I2C bus.",
+    "Every register is 16 bits, low byte first. Write UV_CONF (0x00) = 0x10 0x00 to power on with a 100 ms integration time, then wait two integration times before the first reading.",
+    "Read UVA (0x07), UVB (0x09), UVcomp1 (0x0A) and UVcomp2 (0x0B); the ID register 0x0C reads 0x26 in its low byte.",
+    "UV index (Vishay application note, open air): UVAcalc = UVA - 2.22 x UVcomp1 - 1.33 x UVcomp2, UVBcalc = UVB - 2.95 x UVcomp1 - 1.74 x UVcomp2, UVI = (UVAcalc x 0.001461 + UVBcalc x 0.002591) / 2 at IT = 100 ms.",
+    "Ordinary window glass and most plastics block UVB: the sensor must see the sky directly or through a PTFE (teflon) diffuser, and a diffuser changes the coefficients (see the application note table).",
+    "Leave 3Vo unconnected; it is the board's regulator output, not an input."
+  ],
+  "keywords": [
+    "veml6075",
+    "uv",
+    "uva",
+    "uvb",
+    "uv index",
+    "ultraviolet",
+    "sunlight",
+    "vishay"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "regWidth": 16,
+    "quantity": "UVA counts",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 400,
+    "controls": [
+      {
+        "key": "uvb",
+        "quantity": "UVB counts",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 450
+      },
+      {
+        "key": "uvcomp1",
+        "quantity": "UVcomp1 (visible light) counts",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 40
+      },
+      {
+        "key": "uvcomp2",
+        "quantity": "UVcomp2 (infrared) counts",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 20
+      }
+    ],
+    "registers": {
+      "0x0C": 9728
+    },
+    "measures": [
+      {
+        "reg": "0x07",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "uvb"
+      },
+      {
+        "reg": "0x0A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "uvcomp1"
+      },
+      {
+        "reg": "0x0B",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "uvcomp2"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "veml6075.py",
+    "code": "# VEML6075 UVA/UVB light sensor (Vishay), MicroPython driver.\n# Registers are 16 bits wide, sent low byte first (datasheet: \"Data byte low\" then \"Data byte high\").\n# UV index from the Vishay application note \"Designing the VEML6075 into an Application\"\n# (open-air coefficients, responsivity given for IT = 100 ms, normal dynamic).\nimport time\n\n_UV_CONF = 0x00\n_UVA = 0x07\n_UVB = 0x09\n_UVCOMP1 = 0x0A\n_UVCOMP2 = 0x0B\n_ID = 0x0C\n\n_IT_MS = {50: 0, 100: 1, 200: 2, 400: 3, 800: 4}\n\n\nclass VEML6075:\n    # Coefficients for no diffusor / open air (application note, table \"UV coefficients and responsivity\").\n    A = 2.22\n    B = 1.33\n    C = 2.95\n    D = 1.74\n    UVA_RESP = 0.001461\n    UVB_RESP = 0.002591\n\n    def __init__(self, i2c, addr=0x10, it_ms=100):\n        self.i2c = i2c\n        self.addr = addr\n        if self._read16(_ID) & 0xFF != 0x26:\n            raise OSError('VEML6075 not found at 0x%02X: check the wiring' % addr)\n        if it_ms not in _IT_MS:\n            raise ValueError('integration time must be 50, 100, 200, 400 or 800 ms')\n        self.it_ms = it_ms\n        # UV_IT in bits 6:4, HD = 0 (normal dynamic), UV_AF = 0 (continuous), SD = 0 (power on).\n        self._write16(_UV_CONF, _IT_MS[it_ms] << 4)\n        time.sleep_ms(2 * it_ms + 10)  # let the first full integration finish\n\n    def _write16(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF, (value >> 8) & 0xFF]))\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)\n\n    def raw(self):\n        \"\"\"Return the raw counts (UVA, UVB, UVcomp1, UVcomp2).\"\"\"\n        return (self._read16(_UVA), self._read16(_UVB),\n                self._read16(_UVCOMP1), self._read16(_UVCOMP2))\n\n    def read(self):\n        \"\"\"Return (UVA counts compensated, UVB counts compensated, UV index).\"\"\"\n        uva, uvb, c1, c2 = self.raw()\n        uva_calc = uva - self.A * c1 - self.B * c2\n        uvb_calc = uvb - self.C * c1 - self.D * c2\n        # Responsivity values are for IT = 100 ms; scale for other integration times.\n        k = 100 / self.it_ms\n        uvi = (uva_calc * self.UVA_RESP * k + uvb_calc * self.UVB_RESP * k) / 2\n        return uva_calc, uvb_calc, max(0.0, uvi)\n\n    def uv_index(self):\n        return self.read()[2]\n\n    def shutdown(self):\n        self._write16(_UV_CONF, (_IT_MS[self.it_ms] << 4) | 0x01)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom veml6075 import VEML6075\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nuv = VEML6075(i2c)\nwhile True:\n    uva, uvb, c1, c2 = uv.raw()\n    print('UVA=%d UVB=%d UVI=%.2f' % (uva, uvb, uv.uv_index()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the UVA and UVB counts and the UV index from the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "uvb",
+          "value": 1200
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "uvcomp1",
+          "value": 100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "uvcomp2",
+          "value": 50
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "UVA=1000 UVB=1200 UVI=1.58",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.vishay.com/docs/84304/veml6075.pdf",
+    "https://cdn.sparkfun.com/assets/3/c/3/2/f/veml6075.pdf",
+    "https://www.vishay.com/docs/84339/designingveml6075.pdf",
+    "https://cdn.sparkfun.com/assets/3/9/d/4/1/designingveml6075.pdf",
+    "https://learn.adafruit.com/adafruit-veml6075-uva-uvb-uv-index-sensor/pinouts",
+    "https://github.com/adafruit/Adafruit-VEML6075-UV-Sensor-PCB",
+    "https://www.adafruit.com/product/3964"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:24:17.250Z",
+    "verifiedSources": [
+      "https://pdf.direnc.net/upload/veml6075-datasheet.pdf",
+      "https://learn.adafruit.com/adafruit-veml6075-uva-uvb-uv-index-sensor/pinouts"
+    ]
+  }
+}

@@ -98,6 +98,9 @@ export interface CustomSim {
   digitalOutputs?: { pin: string; control: string; label?: string; activeHigh?: boolean }[];
   /** actuator with several control inputs (e.g. a motor driver's IN1/IN2); each shows as on/off. */
   inputPins?: string[];
+  /** actuator inputs that switch on when pulled LOW (most optocoupler relay boards): each input is pulled up to the
+   * module's supply through the opto LED, and counts as on below about 1.5 V. */
+  inputsActiveLow?: boolean;
   /** i2c-device: register width in bits. 16 = each register address holds a 16-bit word (INA219, ADS1115, LM75…). */
   regWidth?: 8 | 16;
   /** i2c-device: register address width in bits (16 for e.g. VL53L1X, VL6180X). */

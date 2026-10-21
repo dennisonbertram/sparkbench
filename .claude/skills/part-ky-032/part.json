@@ -1,0 +1,112 @@
+{
+  "type": "custom-ky-032",
+  "name": "KY-032 IR obstacle avoidance module",
+  "mpn": "KY-032",
+  "category": "sensor",
+  "description": "Infrared obstacle detector: an NE555 pulses an IR LED at about 38 kHz and an HS0038-type 38 kHz IR receiver drives the output, which goes low (active low) while an object 2–40 cm away reflects the light back. Two trimmers set range and sensitivity; an EN pin with a jumper lets a GPIO switch the emitter. Runs on 3.3–5 V; OUT idles at the supply voltage. Sold as: Keyes / Joy-IT KY-032 IR obstacle avoidance module (SEN-KY032IR, 4-pin header GND, +, Out, EN).",
+  "eli5": "Shines invisible light forward and tells your board when something is right in front of it, like a robot's whiskers.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (use 3.3 V with an ESP32 or Pico: OUT idles at this voltage)",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Signal output: low while an obstacle is detected, high when clear",
+      "required": true
+    },
+    {
+      "name": "EN",
+      "role": "io",
+      "description": "Enable (active high); only used with the EN jumper removed. Leave unconnected with the jumper fitted",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 15,
+  "datasheetUrl": "https://joy-it.net/files/files/Produkte/SEN-KY032/SEN-KY032IR_Manual_2024-04-25.pdf",
+  "sources": [
+    "https://joy-it.net/files/files/Produkte/SEN-KY032/SEN-KY032IR_Manual_2024-04-25.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-032",
+    "https://arduinomodules.info/ky-032-infrared-obstacle-avoidance-sensor-module/",
+    "https://www.ti.com/lit/ds/symlink/ne555.pdf"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "KY-032 IR obstacle avoidance sensor module 4 pin EN",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: GND, +, OUT, EN (as printed on the Keyes/Joy-IT board). Check the silkscreen: some clones differ.",
+    "Power + from 3.3 V on an ESP32 or Pico: OUT idles at the supply voltage.",
+    "Active low: OUT reads 0 while an obstacle is seen and 1 when clear; the status LED lights on detection.",
+    "Leave the EN jumper fitted and EN unconnected for always-on detection; remove the jumper to switch the emitter from a GPIO on EN (active high per Joy-IT).",
+    "Adjust the two trimmers so the status LED is off with nothing in front and comes on at the distance you want."
+  ],
+  "keywords": [
+    "ky-032",
+    "ky032",
+    "obstacle",
+    "avoidance",
+    "infrared",
+    "ir",
+    "proximity",
+    "robot",
+    "ne555",
+    "hs0038"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Obstacle in front",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "ky032.py",
+    "code": "# KY-032 IR obstacle avoidance module (Keyes / Joy-IT SEN-KY032IR), MicroPython driver.\n# An NE555 pulses the IR LED at about 38 kHz; an HS0038-type 38 kHz IR receiver drives OUT\n# directly. OUT is active LOW: 0 while an obstacle reflects the IR back, 1 when the path is clear.\n# EN (active high per the Joy-IT manual) only matters with the EN jumper removed; with the\n# jumper fitted the emitter runs all the time and EN is left unconnected.\nfrom machine import Pin\n\n\nclass KY032:\n    def __init__(self, out_pin, en_pin=None):\n        # The receiver output already idles high at the module supply; the internal\n        # pull-up just keeps OUT defined if the module is unpowered.\n        self.out = Pin(out_pin, Pin.IN, Pin.PULL_UP) if isinstance(out_pin, int) else out_pin\n        self.en = None\n        if en_pin is not None:\n            self.en = Pin(en_pin, Pin.OUT, value=1) if isinstance(en_pin, int) else en_pin\n\n    def value(self):\n        \"\"\"Raw level on OUT: 0 = obstacle, 1 = clear.\"\"\"\n        return self.out.value()\n\n    def obstacle(self):\n        \"\"\"True while an obstacle is detected (OUT low).\"\"\"\n        return self.out.value() == 0\n\n    def enable(self, on=True):\n        \"\"\"Switch the IR emitter on/off via EN (EN jumper must be removed).\"\"\"\n        if self.en is None:\n            raise ValueError('no EN pin given')\n        self.en.value(1 if on else 0)\n"
+  },
+  "skill": "---\nname: part-ky-032\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-032 IR obstacle avoidance module with enable pin (NE555 38 kHz emitter + HS0038-type receiver). Use when designing, wiring, simulating or writing code for a KY-032 obstacle / proximity sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-032 IR obstacle avoidance module (KY-032)\n\n## Overview\nThe **KY-032** detects an object in front of it (about 2–40 cm, depending on the trimmers and the surface) by bouncing infrared light off it. An **NE555** pulses an IR LED at about 38 kHz and an **HS0038-type 38 kHz IR receiver** picks up the reflection and drives the output directly, so it ignores steady daylight better than the simpler KY-033/FC-51 boards. It reports only *obstacle / no obstacle*, not the distance. Modelled board: **Keyes / Joy-IT KY-032 IR obstacle avoidance module (SEN-KY032IR, 4-pin header GND, +, Out, EN)**.\n\n## Pinout (4-pin header, in board order)\n| Pin | Function |\n|---|---|\n| GND | Ground |\n| + | Supply, 3.3–5 V |\n| OUT | Signal output: LOW = obstacle, HIGH = clear (status LED lights on obstacle) |\n| EN | Enable (active high per Joy-IT); only used when the EN jumper is removed. Leave unconnected with the jumper fitted |\n\n## Electrical limits\n- Supply: 3.3–5 V (Joy-IT: 3–5 V). OUT idles at the supply voltage, so **use 3.3 V with an ESP32 or Pico**.\n- The NE555 is specified from 4.5 V; at 3.3 V most boards still work but the range can be shorter.\n- Current: roughly 10–20 mA (IR LED, power LED and status LED).\n\n## Interface details\n- Plain digital input, **active low**: OUT = 0 while an obstacle is seen, 1 when clear (Joy-IT example: `HIGH` → \"No obstacle\").\n- EN jumper fitted (as shipped): the emitter runs permanently. Remove the jumper to switch the emitter from a GPIO on EN (Joy-IT: active high). Some vendor listings state the opposite polarity; test your board.\n- Two trimmers: one sets the emitter frequency/strength (range), the other the receiver sensitivity. If OUT is stuck low with nothing in front, turn them back until the status LED goes out.\n\n## Wiring\n- ESP32: + → 3V3, GND → GND, OUT → GPIO4, EN unconnected (jumper fitted).\n- Pico: + → 3V3(OUT), GND → GND, OUT → GP18.\n- Raspberry Pi 4: + → pin 1 (3.3 V), GND → pin 6, OUT → GPIO24 (pin 18).\n\n## Using the driver\n```python\nfrom ky032 import KY032\nimport time\ns = KY032(4)               # GPIO wired to OUT\nwhile True:\n    print('Obstacle' if s.obstacle() else 'Clear')\n    time.sleep(0.2)\n```\nWith the EN jumper removed: `KY032(4, en_pin=5)` and `s.enable(False)` / `s.enable(True)`.\n\n## Gotchas\n- Powered from 5 V, OUT idles at 5 V: too much for an ESP32/Pico pin.\n- Sunlight and black or shiny surfaces reduce the range; white objects are seen furthest.\n- Pin order differs on some clones: read the silkscreen (GND, +, out, EN on the Keyes/Joy-IT board).\n- Nothing is detected with the jumper removed and EN floating or driven to the disabling level.\n\n## Datasheet\nhttps://joy-it.net/files/files/Produkte/SEN-KY032/SEN-KY032IR_Manual_2024-04-25.pdf (module); https://www.ti.com/lit/ds/symlink/ne555.pdf (NE555)\n",
+  "example": {
+    "code": "from ky032 import KY032\nimport time\n\nsensor = KY032({OUT})\nwhile True:\n    print('OUT=%d obstacle=%d' % (sensor.value(), sensor.obstacle()))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports an obstacle when one is placed in front",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "OUT=0 obstacle=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:37:32.498Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-032",
+      "https://sensorkit.joy-it.net/files/files/sensors/KY-032/KY-032.svg",
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+      "https://www.ti.com/lit/ds/symlink/ne555.pdf"
+    ]
+  }
+}

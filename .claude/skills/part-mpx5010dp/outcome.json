@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mpx5010dp",
+  "board": "NXP MPX5010DP bare sensor, 6-pin unibody package (case 867C), pins VOUT, GND, VCC, V1, V2, VEX",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test, PCB DRC, footprint, LCSC). Model uses the datasheet transfer function Vout = VS(0.09P + 0.04), 0.2-4.7 V at 5 V, and the docs warn that VOUT needs a 10k/20k divider above about 6.9 kPa on 3.3 V boards.",
+  "datasheetUrl": "https://ece-classes.usc.edu/ee459/library/datasheets/MPX5010.pdf",
+  "breakoutPinoutSource": "MPX5010 datasheet (Freescale Rev 13 and Rev 11), case 867C-05 STYLE 1: pin 1 VOUT, 2 GROUND, 3 VCC, 4 V1, 5 V2, 6 VEX (pins 4-6 no connect on unibody, Fig. 1), 2.54 mm pitch",
+  "checkRuns": 1
+}

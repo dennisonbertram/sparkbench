@@ -1,0 +1,144 @@
+{
+  "type": "custom-ky-027",
+  "name": "KY-027 magic light cup module (tilt switch + LED)",
+  "mpn": "KY-027",
+  "category": "sensor",
+  "description": "A mercury tilt switch and a 5 mm LED on one board, sold in pairs for the 'pouring light' trick. The switch sits between S and G with a 10 kOhm pull-up from S to +, so S is HIGH while the switch is open and LOW while the mercury closes it (which tilt closes it depends on how you hold the board). The LED is wired from L (anode) to G with NO series resistor on the board: add 120 Ohm at 3.3 V or 220 Ohm at 5 V. Runs on 3.3-5 V. Sold as: Keyes KY-027 / HW-499 magic light cup module (black 4-pin sensor-kit board with glass mercury switch, 10k resistor R1 and LED LD1; header G, +, S, L).",
+  "eli5": "A tilt switch and a little light on one board. Your program can tell when the board is tipped and turn the light on or fade it.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "G",
+      "role": "gnd",
+      "description": "Ground: return for the tilt switch and the LED cathode",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply for the 10 kOhm pull-up on S, 3.3-5 V. Use 3V3 with an ESP32 or Pico, because S is pulled up to this voltage.",
+      "required": true
+    },
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Tilt switch output: HIGH while the switch is open, LOW while the mercury closes it to G",
+      "required": true
+    },
+    {
+      "name": "L",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "LED anode: HIGH (or PWM) lights the LED. No resistor on the board: fit 120 Ohm (3.3 V) or 220 Ohm (5 V) in series",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 12,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-027",
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-027",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-027/KY-027.png",
+    "https://arduinomodules.info/ky-027-magic-light-cup-module/",
+    "https://arduinomodules.info/wp-content/uploads/KY-027_fritzing_custom_part_image-231x240.png",
+    "https://www.codrey.com/arduino-projects/magic-cup-light-module-quick-tries/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-027 magic light cup module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: G, +, S, L.",
+    "Put a 120 Ohm resistor (3.3 V GPIO) or 220 Ohm (5 V) between the GPIO and L: the board has no LED resistor, and wiring a GPIO straight to L overloads the LED and the pin.",
+    "On an ESP32 or Pico connect + to 3V3: the on-board 10 kOhm pull-up takes S to the + voltage, so 5 V on + puts 5 V on the GPIO.",
+    "S is LOW while the switch is closed and HIGH while it is open. Which tilt closes it depends on how the board is held; invert in code if needed.",
+    "The mercury bead bounces at each change; debounce for about 50 ms (the driver's closed() does this).",
+    "Drive L from a PWM-capable pin if you want to fade the LED (the 'pouring light' effect with two modules).",
+    "The switch contains mercury: do not break the glass, and dispose of a damaged board as hazardous waste."
+  ],
+  "keywords": [
+    "ky-027",
+    "ky027",
+    "hw-499",
+    "magic light cup",
+    "light cup",
+    "mercury switch",
+    "tilt switch",
+    "tilt",
+    "led"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "L"
+    ],
+    "digitalOutputs": [
+      {
+        "pin": "S",
+        "control": "closed",
+        "label": "Tilt switch closed",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ky027.py",
+    "code": "# KY-027 magic light cup module, MicroPython driver.\n# The board carries two independent circuits on a 4-pin header G, +, S, L:\n#  * a mercury tilt switch between S and G (GND) with a 10 kOhm pull-up (marked 103)\n#    from S to +. S is HIGH while the switch is open and LOW while the mercury\n#    bridges the contacts. Which tilt closes it depends on how the board is held.\n#  * an LED whose anode is L and whose cathode is G. There is NO series resistor on\n#    the board: put 120 Ohm (3.3 V) or 220 Ohm (5 V) between the GPIO and L.\n# Power + from 3.3 V on a 3.3 V board: the pull-up takes S up to the + supply.\nfrom machine import Pin, PWM\nimport time\n\n\nclass KY027:\n    def __init__(self, s_pin, l_pin, debounce_ms=50):\n        # The board has its own 10k pull-up; an internal pull-up is harmless and\n        # keeps S defined if + is left unconnected.\n        self.s = Pin(s_pin, Pin.IN, Pin.PULL_UP)\n        self.l_num = l_pin\n        self.l = Pin(l_pin, Pin.OUT, value=0)\n        self._pwm = None\n        self.debounce_ms = debounce_ms\n\n    def raw(self):\n        \"\"\"Logic level on S right now: 0 = switch closed, 1 = open.\"\"\"\n        return self.s.value()\n\n    def closed(self):\n        \"\"\"Debounced: True if S stays LOW (switch closed) for debounce_ms.\"\"\"\n        state = self.s.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            v = self.s.value()\n            if v != state:\n                state = v\n                t0 = time.ticks_ms()\n            time.sleep_ms(2)\n        return state == 0\n\n    def led(self, on):\n        \"\"\"Switch the LED fully on or off.\"\"\"\n        if self._pwm is not None:\n            self._pwm.deinit()\n            self._pwm = None\n            self.l = Pin(self.l_num, Pin.OUT)\n        self.l.value(1 if on else 0)\n\n    def brightness(self, level, freq=1000):\n        \"\"\"Dim the LED with PWM: level 0..255 (the 'pouring light' effect).\"\"\"\n        level = max(0, min(255, int(level)))\n        if self._pwm is None:\n            self._pwm = PWM(Pin(self.l_num), freq=freq)\n        self._pwm.duty_u16(level * 65535 // 255)\n"
+  },
+  "example": {
+    "code": "from ky027 import KY027\nimport time\n\n# 120 Ohm resistor between the GPIO and L (no LED resistor on the board).\ncup = KY027({S}, {L})\nwhile True:\n    c = cup.closed()\n    cup.led(c)\n    print('Switch: %s' % ('closed' if c else 'open'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "follows-switch",
+      "title": "Lights the LED and reports it while the tilt switch is closed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Switch: open",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "L",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "closed",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Switch: closed",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "L",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:40:31.887Z",
+    "verifiedSources": [
+      "https://www.espboards.dev/sensors/ky-027/",
+      "https://sensorkit.joy-it.net/en/sensors/ky-027",
+      "https://makerselectronics.com/product/magic-cup-tilt-switch-module-ky027"
+    ]
+  }
+}

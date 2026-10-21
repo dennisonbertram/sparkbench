@@ -1,0 +1,121 @@
+{
+  "type": "custom-1-channel-relay-module-3-3v",
+  "name": "1-channel 3.3 V relay module (high/low trigger)",
+  "mpn": "SRD-03VDC-SL-C",
+  "category": "actuator",
+  "description": "One Songle SRD-03VDC-SL-C 3 V relay (SPDT, form C) driven by an optocoupler and transistor with a flyback diode, so the whole module runs from a 3.3 V rail and a 3.3 V GPIO switches a lamp, pump or fan. Contacts rated 10 A 125 VAC / 7 A 240 VAC / 7 A 28 VDC (form C, resistive). Module supply 3.3 V; the energised coil draws about 130 mA (25 ohm coil, 120 mA at 3 V). Modelled with the trigger jumper on H (high level trigger: IN high = relay on). Sold as: 1-channel 3.3V relay module with optocoupler, high and low level trigger selectable by jumper (e.g. Abra RM-1-3.3V-T; input terminal DC+, DC-, IN; output NO/COM/NC screw terminal).",
+  "eli5": "An electrically controlled switch that runs on 3.3 V: when your board sets IN high, a little click connects your lamp, pump or fan to its own power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "DC+",
+      "role": "power",
+      "description": "Module supply, 3.3 V (powers the optocoupler and the 3 V relay coil, about 130 mA when on). Use 3V3; never 5 V (the coil's maximum is 3.6 V).",
+      "required": true
+    },
+    {
+      "name": "DC-",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "IN",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay control input. With the jumper on H: high = relay on (NO connected to COM), low = off. Optocoupler input, about 5 mA; 3.3 V logic.",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 140,
+  "datasheetUrl": "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "1 channel 3.3V relay module optocoupler high low level trigger",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Set the trigger jumper to H (COM-H, high level trigger) before use. On L the logic is inverted: IN low = relay on, so it clicks on while the board boots.",
+    "Power DC+ from 3.3 V and share DC- with the microcontroller's GND. The SRD-03VDC-SL-C coil is a 3 V type: 25 ohm, 120 mA at 3 V, pull-in at 2.25 V, maximum 3.6 V, so never connect DC+ to 5 V.",
+    "The coil draws about 130 mA from the 3V3 rail: fine for an ESP32 DevKit or a Pico, but don't run several from a small regulator.",
+    "Contacts (form C): 10 A 125 VAC, 7 A 240 VAC, 7 A 28 VDC resistive; inductive loads (motors, pumps) 3 A. Use NO for a load that should be off by default.",
+    "The relay switches in up to 10 ms and releases in up to 5 ms, and the datasheet allows only about 30 operations per minute under load: never PWM a relay.",
+    "Mains wiring on the screw terminal is dangerous: keep it in a closed insulated box and leave mains to an adult/qualified person. For a first project switch a low-voltage DC load.",
+    "Set the GPIO low at start-up (Pin(..., Pin.OUT, value=0)) so the relay does not click on while the program starts."
+  ],
+  "keywords": [
+    "relay",
+    "3.3v relay",
+    "3v relay",
+    "1 channel relay",
+    "relay module",
+    "srd-03vdc-sl-c",
+    "songle",
+    "optocoupler",
+    "esp32 relay",
+    "pump",
+    "fan",
+    "lamp",
+    "switch load"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "IN"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Trigger jumper on H: IN high = relay on.\nrelay = Pin({IN}, Pin.OUT, value=0)\nwhile True:\n    relay.value(1)\n    print('relay ON')\n    time.sleep(2)\n    relay.value(0)\n    print('relay OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The relay switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-1-channel-relay-module-3-3v\ndescription: Pinout, electrical limits, wiring and MicroPython code for the 1-channel 3.3 V relay module with optocoupler and high/low trigger jumper (Songle SRD-03VDC-SL-C relay, DC+/DC-/IN). Use when designing, wiring, simulating or writing code for a 3.3 V single relay module in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# 1-channel 3.3 V relay module (SRD-03VDC-SL-C)\n\n## Overview\nOne **Songle SRD-03VDC-SL-C** relay (3 V coil, SPDT / form C) driven through an optocoupler (PC817/EL817) and a transistor, with a flyback diode, a power LED and a relay LED. Because the coil is a 3 V type, the whole module runs from a 3.3 V rail, so an ESP32, ESP8266 or Pico can power and switch it with no 5 V supply. Hobbyists buy it as the **1-channel 3.3V relay module with optocoupler, high and low level trigger selectable by jumper** (e.g. Abra RM-1-3.3V-T): a 3-way input terminal/header (DC+, DC-, IN), a trigger jumper (H / COM / L) and a 3-way screw terminal (NO / COM / NC). This model assumes the **jumper on H** (IN high = relay on).\n\n## Pinout (input side, order printed on the board)\n| Pin | Function |\n|---|---|\n| DC+ | Module supply, 3.3 V (optocoupler + relay coil) |\n| DC- | Ground (share with the microcontroller) |\n| IN | Control: high = relay on (jumper on H) |\n\nOutput screw terminal: **NO** (connected to COM while the relay is on), **COM**, **NC** (connected to COM while the relay is off). The signal header and the screw terminal sit on opposite edges, so the module is wired with jumper leads, not plugged into the breadboard.\n\n## Electrical limits\n- Supply 3.3 V (3.0–3.6 V). SRD-03VDC-SL-C (high sensitivity, 0.36 W): 25 Ω ±10 % coil, 120 mA at 3 V (about 130 mA at 3.3 V), pull-in 2.25 V max (75 %), drop-out 0.3 V min (10 %), max 3.6 V (120 %).\n- IN: optocoupler LED, about 5 mA trigger current (vendor figure).\n- Contacts (form C, resistive): 10 A 125 VAC, 7 A 240 VAC, 7 A 28 VDC; inductive 3 A 120 VAC / 3 A 28 VDC. Max 250 VAC / 110 VDC.\n- Operate 10 ms max, release 5 ms max; electrically about 30 operations/min.\n\n## Interface details\n- Plain digital input: no driver, just `machine.Pin`.\n- Trigger jumper: COM-H = high level trigger, COM-L = low level trigger (inverted logic). Check it before use.\n\n## Wiring\n- ESP32: DC+ → 3V3, DC- → GND, IN → D26.\n- Pico: DC+ → 3V3(OUT), DC- → GND, IN → GP15.\n- Raspberry Pi 4: DC+ → pin 1 (3.3 V), DC- → pin 6, IN → pin 11 (GPIO17).\n- Load: supply + → COM, NO → load → supply −. Mains only by an adult or qualified person, in a closed insulated enclosure.\n\n## Using it\n```python\nfrom machine import Pin\nimport time\nrelay = Pin(26, Pin.OUT, value=0)  # IN, jumper on H\nrelay.value(1)   # load on (NO-COM closed)\ntime.sleep(2)\nrelay.value(0)   # load off\n```\n\n## Gotchas\n- **Check the jumper.** On L the logic is inverted: the relay is on whenever IN is low, including while the board boots.\n- The coil draws about 130 mA from 3V3. Fine for an ESP32 DevKit or a Pico; don't hang several of these on a weak 3.3 V regulator, and never power DC+ from 5 V (the 3 V coil's maximum is 3.6 V).\n- Initialise the pin with `value=0` so the relay stays off while the program starts.\n- Relays are slow and wear out: never PWM them.\n- Motors and pumps are inductive loads: derate the contacts to 3 A.\n\n## Datasheet\nhttps://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf (Songle SRD series, covers the 03 VDC coil)\n",
+  "sources": [
+    "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+    "https://abra-electronics.com/electromechanical/relays/relay-modules-shields/rm-1-3-3v-t-single-isolated-3-3v-relay-high-low-trigger-module-10a.html",
+    "https://elecbee.store/products/1-channel-3-3v-low-level-trigger-relay-module-optocoupler-isolation-terminal-for-arduino",
+    "https://scccltd.com/products/1-channel-relay-module-with-high-low-level-trigger",
+    "https://www.lcsc.com/product-detail/C24585.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:42:48.381Z",
+    "verifiedSources": [
+      "https://www.lcsc.com/product-detail/C24585.html",
+      "https://forum.allaboutcircuits.com/threads/solved-jumpers-3v-1-channel-relay-power-switch-module.166871/post-1476118",
+      "https://www.phippselectronics.com/support/users-guide-12v-1-channel-relay-module-high-low-trigger-optocoupler/"
+    ]
+  }
+}

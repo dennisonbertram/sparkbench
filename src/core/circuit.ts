@@ -226,7 +226,7 @@ export class ElectricalModel {
           if (cs?.sim.kind === 'analog-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 1000));
           for (const o of cs?.sim.kind === 'analog-sensor' ? (cs.sim.analogOutputs ?? []) : []) els[`out:${o.pin}`] = c.add(new VSource(`${id}.out.${o.pin}`, n(o.pin), g, 0, 1000));
           if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
-          if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), g, 10000));
+          if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), cs.sim.inputsActiveLow ? n(vccPin) : g, cs.sim.inputsActiveLow ? 1000 : 10000));
           for (const d of cs?.sim.digitalOutputs ?? []) els[`dout:${d.pin}`] = c.add(new VSource(`${id}.dout.${d.pin}`, n(d.pin), g, 0, 200));
           if (cs?.sim.kind === 'hx711' && cs.sim.outputPin && cs.sim.clockPin) {
             els.hxout = c.add(new VSource(`${id}.hxout`, n(cs.sim.outputPin), g, 0, 200));

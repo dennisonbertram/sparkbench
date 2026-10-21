@@ -1,0 +1,135 @@
+{
+  "type": "custom-max9814",
+  "name": "MAX9814 AGC electret microphone amplifier",
+  "mpn": "MAX9814",
+  "category": "sensor",
+  "description": "Electret microphone with a MAX9814 amplifier that has automatic gain control (AGC): loud sounds are turned down and quiet ones up. Out is the audio waveform on a DC bias of about 1.25 V, swinging at most about 2 Vpp, so it is safe for 3.3 V ADCs on any supply. Gain pin sets max gain (float 60 dB, GND 50 dB, Vdd 40 dB); AR pin sets attack/release ratio. Runs on 2.7–5.5 V. Sold as: Adafruit AGC Electret Microphone Amplifier - MAX9814 (product #1713, 5-pin header GND, Vdd, Gain, Out, AR (pin 1 = GND)), also generic MAX9814 microphone module clones.",
+  "eli5": "A tiny ear with a smart amplifier. Its Out pin sits at about 1.25 V when it's quiet and wiggles up and down with sound. It turns itself down for loud sounds and up for quiet ones, so the wiggle never gets too big.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "Vdd",
+      "role": "power",
+      "description": "Supply, 2.7–5.5 V (pin 2).",
+      "required": true
+    },
+    {
+      "name": "Gain",
+      "role": "io",
+      "description": "Max gain select (pin 3): open = 60 dB, GND = 50 dB, Vdd = 40 dB.",
+      "required": false
+    },
+    {
+      "name": "Out",
+      "role": "io",
+      "fn": "adc",
+      "description": "Audio output (pin 4): the microphone waveform on a ~1.25 V DC bias, up to about 2 Vpp. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "AR",
+      "role": "io",
+      "description": "Attack/release ratio (pin 5): leave open for 1:4000, tie to Vdd for 1:2000, to GND for 1:500.",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 3.1,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/MAX9814.pdf",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX9814.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/MAX9814.pdf",
+    "https://www.adafruit.com/product/1713",
+    "https://learn.adafruit.com/adafruit-agc-electret-microphone-amplifier-max9814",
+    "https://cdn-learn.adafruit.com/assets/assets/000/014/304/medium800/adafruit_products_1713_LRG.jpg",
+    "https://learn.adafruit.com/adafruit-agc-electret-microphone-amplifier-max9814/wiring-and-test"
+  ],
+  "priceUsd": 7.95,
+  "supplierQuery": "MAX9814 electret microphone amplifier AGC module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (Adafruit EAGLE file, J2 pads 1-5): GND, Vdd, Gain, Out, AR. Read the labels printed next to each pin; on the board the same row reads AR, Out, Gain, Vdd, GND from the other end.",
+    "Out goes straight to an ADC pin. It sits at ~1.25 V and swings at most ~2 Vpp, so it is safe for a 3.3 V ADC even with Vdd at 5 V.",
+    "Gain: leave open for 60 dB, tie to GND for 50 dB or Vdd for 40 dB (40 or 50 dB is usually less noisy).",
+    "AR can be left open (attack/release 1:4000).",
+    "Measure loudness as the peak-to-peak spread of fast samples over about 50 ms; the AGC compresses loud sounds.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39); the Raspberry Pi has no ADC, so add one."
+  ],
+  "keywords": [
+    "max9814",
+    "microphone",
+    "mic",
+    "electret",
+    "agc",
+    "automatic gain",
+    "sound",
+    "audio",
+    "loudness",
+    "clap",
+    "amplifier",
+    "adafruit 1713",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "Out",
+    "quantity": "Sound level (Out swing, V peak-to-peak)",
+    "unit": "V",
+    "min": 0,
+    "max": 2,
+    "default": 0.1,
+    "vAtMin": 1.23,
+    "vAtMax": 1.23,
+    "wave": {
+      "ampControl": "value",
+      "voltsPerUnit": 1,
+      "centerV": 1.23,
+      "freqHz": 440
+    }
+  },
+  "driver": {
+    "filename": "max9814.py",
+    "code": "# MAX9814 AGC electret microphone amplifier breakout (Adafruit #1713, header pins 1-5: GND, Vdd, Gain, Out, AR),\n# MicroPython driver.\n# The MAX9814 (Analog Devices/Maxim datasheet) is an analog mic preamp with automatic gain control:\n# no bus, no registers. Its output MICOUT sits at a DC bias of 1.23 V typical (1.14-1.32 V; the board\n# prints \"DC Offset: 1.25V\") and the audio rides on that level. Silence = a steady ~1.25 V; louder sound =\n# a bigger swing around it, about 2 Vpp at most (0.707 Vrms max output level). The bias and the maximum\n# swing do not depend on VDD, so Out stays below about 2.3 V even on a 5 V supply.\n# Max gain is set by the Gain pin (float 60 dB, GND 50 dB, Vdd 40 dB); the AGC turns loud sounds down.\n# Loudness is measured as the peak-to-peak spread of fast ADC samples over a short window\n# (50 ms covers frequencies down to 20 Hz).\nfrom machine import ADC, Pin\nimport time\n\n\nclass MAX9814:\n    def __init__(self, out, vref=3.3):\n        \"\"\"out: GPIO number (or Pin) wired to Out. vref: ADC full scale in volts, used when\n        read_uv() is not available (e.g. Pico, where full scale is the 3.3 V supply).\"\"\"\n        self.adc = ADC(Pin(out) if isinstance(out, int) else out)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"One Out reading in volts.\"\"\"\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def bias(self, n=64):\n        \"\"\"Average Out level in volts: the DC bias point (about 1.25 V).\"\"\"\n        total = 0\n        for _ in range(n):\n            total += self.voltage()\n        return total / n\n\n    def peak_to_peak(self, window_ms=50):\n        \"\"\"Spread (max - min) of Out over window_ms, in volts: the loudness figure.\n        About 0 in silence, up to about 2 V for loud sound.\"\"\"\n        lo = hi = self.voltage()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < window_ms:\n            v = self.voltage()\n            if v < lo:\n                lo = v\n            elif v > hi:\n                hi = v\n        return hi - lo\n"
+  },
+  "example": {
+    "code": "from max9814 import MAX9814\nimport time\n\nmic = MAX9814({OUT})\nwhile True:\n    print('PP=%.1fV' % mic.peak_to_peak())\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "loudness",
+      "title": "Reports the peak-to-peak swing set on the sound slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.4
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PP=1.4V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-max9814\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MAX9814 AGC electret microphone amplifier breakout (Adafruit #1713, GND/Vdd/Gain/Out/AR). Use when designing, wiring, simulating or writing code for a MAX9814 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MAX9814 AGC electret microphone amplifier (MAX9814)\n\n## Overview\nThe **MAX9814** (Analog Devices / Maxim) is a microphone amplifier with **automatic gain control (AGC)** and a built-in 2 V mic bias. Hobbyists buy it on the **Adafruit AGC Electret Microphone Amplifier - MAX9814 (product #1713)**: an electret mic and the MAX9814 on a small 5-pin board. Generic \"MAX9814 microphone module\" clones copy the same design, but check the order printed on your board.\n- **Out** carries the audio waveform on a **DC bias of about 1.25 V** (datasheet: 1.23 V typical, 1.14–1.32 V). In silence it sits steady at that level.\n- The swing is at most about **2 Vpp** (0.707 Vrms), whatever the supply, so Out stays within a 3.3 V ADC's range.\n- The AGC turns loud nearby sounds down and quiet far-away sounds up, so the swing does not tell you absolute loudness (dB).\n\n## Pinout (Adafruit #1713 header; pin numbers from Adafruit's EAGLE board file, J2)\nWire by the labels printed next to each pin. Pin 1 is GND; read from the other end the row is AR, Out, Gain, Vdd, GND.\n\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | GND | Ground |\n| 2 | Vdd | Supply, 2.7–5.5 V |\n| 3 | Gain | Max gain: float 60 dB, GND 50 dB, Vdd 40 dB |\n| 4 | Out | Audio out, biased at ~1.25 V |\n| 5 | AR | Attack/release ratio: float 1:4000, Vdd 1:2000, GND 1:500 |\n\n## Electrical limits\n- Supply: **2.7–5.5 V** (datasheet operating voltage).\n- Current: 3.1 mA typical, 6 mA max.\n- Out: ~1.25 V bias, up to ~2 Vpp, so about 0.25–2.25 V. Safe for 3.3 V ADCs even when Vdd is 5 V.\n- AR and Gain are three-level inputs: leave them floating, or tie them directly to Vdd or GND (not to a GPIO driving 3.3 V when Vdd is 5 V).\n\n## Interface details\n- Analog only: connect Out straight to an ADC pin. For line-in or headphones add a 1 µF series capacitor to block the DC bias.\n- Silence = ~1.25 V. Loudness = max − min of fast samples over ~50 ms (covers down to 20 Hz).\n- Gain floating (60 dB) can sound noisy; Adafruit suggests 40 or 50 dB for most uses.\n\n## Wiring\n| Board | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| Vdd | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| GND | GND | GND | GND (pin 6) |\n| Out | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (e.g. ADS1115/MCP3008) |\n| Gain | leave open, or to Vdd / GND | same | same |\n| AR | leave open | same | same |\n\nOn the ESP32 use ADC1 pins (ADC2 stops working while Wi-Fi is on). The Raspberry Pi has no ADC.\n\n## Using the driver\n```python\nfrom max9814 import MAX9814\nimport time\nmic = MAX9814(34)          # GPIO wired to Out\nwhile True:\n    print('bias=%.2fV p-p=%.2fV' % (mic.bias(), mic.peak_to_peak()))\n    time.sleep(0.2)\n```\n`peak_to_peak(window_ms=50)` returns the swing in volts; `bias()` averages the DC level; `voltage()` is one reading (`read_uv()` on ESP32, else `read_u16()` × 3.3 V).\n\n## Gotchas\n- **One reading means nothing**: the signal is a wave around 1.25 V. Use peak-to-peak.\n- **AGC hides loudness**: a shout and a distant voice can give similar swings. Use the MAX4466 if you need a fixed gain.\n- **Noisy supply = noisy audio**: USB power and Wi-Fi bursts show up on Out. Batteries or a clean 3.3 V work best.\n- **Bias is not VCC/2**: it is ~1.25 V on any supply, unlike the MAX4466.\n\n## Datasheet\nhttps://cdn-shop.adafruit.com/datasheets/MAX9814.pdf (Analog Devices MAX9814 datasheet). Board: https://www.adafruit.com/product/1713\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:47:03.823Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/MAX9814.pdf",
+      "https://learn.adafruit.com/adafruit-agc-electret-microphone-amplifier-max9814",
+      "https://github.com/adafruit/Adafruit-MAX9814-AGC-Microphone-PCB"
+    ]
+  }
+}

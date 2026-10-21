@@ -1,0 +1,133 @@
+{
+  "type": "custom-toggle-switch",
+  "name": "Mini toggle switch (SPDT)",
+  "mpn": "MTS-102",
+  "category": "sensor",
+  "description": "SPDT ON-ON miniature toggle switch: a latching bat lever whose middle lug (COM) is always joined to one of the two outer lugs (L1 or L2), break-before-make while the lever moves. Passive, no supply: wire COM to GND and L1 (and optionally L2) to GPIOs with the internal pull-up, so the closed side reads 0 and the open side 1. Contacts rated 6 A 125 VAC / 3 A 250 VAC, 20 mOhm. The simulator's slider picks the closed contact: 1 = COM-L1, 2 = COM-L2, 0 = lever mid-travel (neither). Sold as: Generic MTS-102 miniature toggle switch (SPDT ON-ON, 3 solder lugs L1/COM/L2 at 4.7 mm pitch, 6 A 125 VAC / 3 A 250 VAC, 1/4-40 (6 mm) bushing), also sold as the 3-pin mini toggle switch in hobby kits.",
+  "eli5": "A little lever you flip up or down. It stays where you leave it, and your board can tell which way it points.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "L1",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "description": "Outer lug: closes to COM in one lever position. Connect to a GPIO with the internal pull-up on (or 10 kOhm to 3.3 V): reads 0 while closed, 1 while open"
+    },
+    {
+      "name": "COM",
+      "role": "gnd",
+      "required": true,
+      "description": "Middle lug, common (moving) contact: connect to ground"
+    },
+    {
+      "name": "L2",
+      "role": "io",
+      "fn": "digital-in",
+      "required": false,
+      "description": "Other outer lug: closes to COM in the other lever position. Optional second GPIO with the pull-up on: reads 0 while closed"
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://ok1if.hamqth.com/PIXANC/MTS-SMTS-Series.pdf",
+  "sources": [
+    "https://ok1if.hamqth.com/PIXANC/MTS-SMTS-Series.pdf",
+    "https://asset.conrad.com/media10/add/160267/c1/-/en/001571811DS01/datasheet-1571811-tru-components-lb-601-2-toggle-switch-250-v-ac-3-a-1-x-onon-latch-1-pcs.pdf",
+    "https://www.phippselectronics.com/product/mts-102-red-mini-toggle-switch-pack-of-5/",
+    "https://sigmanortec.ro/en/switch-3a-250v-switch-mts-102",
+    "https://www.em.co.za/MTS-102",
+    "Fritzing core part basic-toggle-switch.fzp (pins L1, COM, L2)"
+  ],
+  "priceUsd": 0.4,
+  "supplierQuery": "MTS-102 mini toggle switch SPDT ON-ON 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "The lugs are 4.7 mm apart and do not fit a breadboard: solder a wire to each lug (L1, COM in the middle, L2) and bring them to a 3-pin header, or panel-mount the switch through a 6.5 mm hole.",
+    "Wire COM (middle lug) to GND and L1 (plus L2 if you want both positions) to GPIOs with Pin.PULL_UP: 0 = closed, 1 = open. Never pull up to 5 V on an ESP32/Pico.",
+    "On most toggle switches the lever points away from the lug it connects: check once with a multimeter and name the positions in code accordingly.",
+    "Contacts bounce for a few milliseconds: debounce in software (the driver waits 20 ms of stable readings).",
+    "Do not switch motors or mains through it on a hobby build; switch a relay or driver input instead."
+  ],
+  "keywords": [
+    "toggle switch",
+    "mini toggle",
+    "spdt",
+    "mts-102",
+    "on-on",
+    "lever switch",
+    "bat switch",
+    "switch",
+    "selector",
+    "panel switch"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "COM"
+    ],
+    "colPins": [
+      "L1",
+      "L2"
+    ],
+    "keys": [
+      [
+        "L1",
+        "L2"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "toggle_switch.py",
+    "code": "# MTS-102 miniature toggle switch (SPDT, ON-ON, 3 solder lugs), MicroPython driver.\n# Three terminals in a row: L1, COM (the middle lug, the moving contact), L2.\n# The lever always rests in one of two positions: COM-L1 closed, or COM-L2 closed\n# (break-before-make: for a moment while the lever travels, neither is closed).\n# No supply, no chip. On most toggle switches the lever points AWAY from the terminal it\n# connects (the contact rocks the other way), so check yours once with a multimeter.\n# Wiring used here: COM to GND, L1 and L2 each to a GPIO with the internal pull-up on.\n#   closed contact -> that pin reads 0;  open contact -> that pin reads 1.\n# (One-GPIO wiring also works: COM to GND, L1 to a pulled-up GPIO, L2 unconnected.)\n# Contacts bounce for a few milliseconds when switched, so readings are debounced.\nfrom machine import Pin\nimport time\n\n\nclass ToggleSwitch:\n    def __init__(self, l1, l2=None, pull_up=True, debounce_ms=20):\n        \"\"\"l1: GPIO number (or Pin) wired to L1. l2: GPIO wired to L2, or None. COM goes to GND.\"\"\"\n        pull = Pin.PULL_UP if pull_up else None\n        self.l1 = Pin(l1, Pin.IN, pull) if isinstance(l1, int) else l1\n        if l2 is None:\n            self.l2 = None\n        else:\n            self.l2 = Pin(l2, Pin.IN, pull) if isinstance(l2, int) else l2\n        self.debounce_ms = debounce_ms\n\n    def _raw(self):\n        return (self.l1.value(), self.l2.value() if self.l2 else 1)\n\n    def _stable(self):\n        v = self._raw()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            n = self._raw()\n            if n != v:\n                v = n\n                t0 = time.ticks_ms()\n        return v\n\n    def position(self):\n        \"\"\"'L1' while COM-L1 is closed, 'L2' while COM-L2 is closed, None if neither\n        (lever mid-travel, or L2 not wired and COM-L1 open). Debounced.\"\"\"\n        a, b = self._stable()\n        if a == 0 and b == 0:\n            raise OSError('L1 and L2 both read closed: check the wiring (is COM on the middle lug?)')\n        if a == 0:\n            return 'L1'\n        if b == 0:\n            return 'L2'\n        return None\n\n    def is_on(self):\n        \"\"\"True while COM-L1 is closed (single-GPIO use).\"\"\"\n        return self.position() == 'L1'\n"
+  },
+  "skill": "---\nname: part-toggle-switch\ndescription: Pinout, electrical limits, wiring and MicroPython driver for an SPDT miniature toggle switch (MTS-102, ON-ON, 3 lugs L1/COM/L2). Use when designing, wiring, simulating or writing code for a toggle switch in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Toggle switch (MTS-102 SPDT miniature toggle)\n\n## Overview\nThe **MTS-102** is the generic miniature toggle switch sold in every hobby kit: a bat lever on a 1/4-40 (about 6 mm) threaded bushing, a small red or blue body and **three solder lugs in a row, 4.7 mm apart**. It is **SPDT ON-ON**: the middle lug (COM) is the moving contact and it is always joined to one of the two outer lugs. It latches: the lever stays where you put it. No chip and no supply.\n\n- Lever one way: COM-L1 closed, COM-L2 open.\n- Lever the other way: COM-L2 closed, COM-L1 open.\n- Break-before-make: for a moment while the lever moves, neither is closed.\n\n## Pinout (lugs in a row; the lugs are not marked)\n| Lug | Function |\n|---|---|\n| L1 | Outer lug: closes to COM in one lever position. Connect to a GPIO with the internal pull-up |\n| COM | Middle lug, common contact: connect to GND |\n| L2 | Other outer lug: closes to COM in the other lever position. Optional second GPIO (pull-up on) |\n\n## Electrical limits\n- MTS series datasheet: **6 A 125 VAC / 3 A 250 VAC**, contact resistance 20 mOhm max, insulation 1000 MOhm at 500 VDC, dielectric 1500 VAC for 1 minute, -25 to +85 C, electrical life 10,000 cycles.\n- At a 3.3 V GPIO with the internal pull-up only microamps flow.\n- Lug pitch is 4.7 mm, not 2.54 mm: it does not plug into a breadboard. Solder wires to the lugs and bring them to a 3-pin header.\n\n## Interface details\n- With COM to GND and L1/L2 pulled up: **0 = that contact closed, 1 = open**. Exactly one reads 0 when the lever rests.\n- One GPIO is enough (L1 only): 0 = one position, 1 = the other.\n- On most toggle switches the lever points **away** from the outer lug it connects. Check yours with a multimeter.\n- Contacts bounce for a few ms: the driver waits 20 ms of stable readings.\n\n## Wiring\n- ESP32: COM -> GND, L1 -> GPIO4, L2 -> GPIO5 (internal pull-ups on).\n- Pico: COM -> GND, L1 -> GP14, L2 -> GP15 (internal pull-ups on).\n- Raspberry Pi 4: COM -> pin 6 (GND), L1 -> GPIO17 (pin 11), L2 -> GPIO27 (pin 13), pull-ups on.\n\n## Using the driver\n```python\nfrom toggle_switch import ToggleSwitch\nimport time\nsw = ToggleSwitch(4, 5)     # GPIOs wired to L1 and L2, COM to GND\nwhile True:\n    print('SWITCH=%s' % sw.position())    # 'L1', 'L2' or None while moving\n    time.sleep(0.2)\n```\nWith one wire: `ToggleSwitch(4)` and `sw.is_on()`.\n\n## Gotchas\n- Both pins read 0: COM is not on the middle lug (you grounded an outer lug).\n- Random readings: the pull-up is missing; the switch only connects to GND, it never drives high.\n- Never pull up to 5 V on an ESP32/Pico.\n- Do not switch motors or mains through it on a hobby build; switch a relay or driver input instead.\n- The MTS-103 (ON-OFF-ON) looks identical but has a centre-off position where neither lug is joined.\n\n## Datasheet\nhttps://ok1if.hamqth.com/PIXANC/MTS-SMTS-Series.pdf (MTS / SMTS series miniature toggle switches)\n",
+  "example": {
+    "code": "from toggle_switch import ToggleSwitch\nimport time\n\nsw = ToggleSwitch({L1})  # COM to GND, L1 to this GPIO with pull-up: 0 = COM-L1 closed\nwhile True:\n    print('L1=%s' % ('CLOSED' if sw.is_on() else 'OPEN'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the COM-L1 contact closing and opening as the lever flips",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L1=CLOSED",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L1=OPEN",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:42:15.848Z",
+    "verifiedSources": [
+      "https://ok1if.hamqth.com/PIXANC/MTS-SMTS-Series.pdf",
+      "https://www.em.co.za/MTS-102",
+      "https://besomi.com/jo_en/mts-102miniature-toggle-switchblueon-on6a125vac.html"
+    ]
+  }
+}

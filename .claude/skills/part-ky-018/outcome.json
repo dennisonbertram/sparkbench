@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-018",
+  "board": "Joy-IT SensorKit KY-018 photoresistor (SEN-KY018, 3-pin module: S, + (middle), -)",
+  "reason": "Check passed on ESP32 and Pico on the first run. The slider sets the S divider voltage and the driver converts it with Joy-IT's divider formula (R = 10 kOhm x V / (Vcc - V)), so 1.10 V on 3.3 V prints R=5.00k. The slider is the S voltage, not lux, because the LDR response is nonlinear and the cell is uncalibrated; the lux estimate from the GL55 gamma figure is documented as rough.",
+  "datasheetUrl": "https://www.kth.se/social/files/54ef17dbf27654753f437c56/GL5537.pdf",
+  "breakoutPinoutSource": "https://sensorkit.joy-it.net/en/sensors/ky-018 (KY-018.svg pin drawing: Signal, +V (middle), GND; 018-Pico.svg wiring; KY-018.png photo)",
+  "checkRuns": 1
+}

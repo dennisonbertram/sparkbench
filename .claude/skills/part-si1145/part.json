@@ -1,0 +1,193 @@
+{
+  "type": "custom-si1145",
+  "name": "SI1145 UV index / IR / visible light sensor",
+  "mpn": "SI1145",
+  "category": "sensor",
+  "description": "Silicon Labs Si1145 light sensor with an I2C interface: reports a calculated UV index (AUX_DATA / 100) plus visible and infrared light as raw 16-bit ADC counts; it can also drive an external IR LED for proximity sensing. The chip runs on 1.71–3.6 V; the breakout has a 3.3 V regulator and 10 kΩ pull-ups. Sold as: Adafruit SI1145 Breakout Board (product #1777, 7-pin header Vin, GND, 3Vo, INT, LED, SCL, SDA), I2C address 0x60.",
+  "eli5": "Tells your board how strong the sun's UV is (the UV index), and how much visible and infrared light it sees.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board MIC5225 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator; not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (open-drain, active low, pulled up on the board); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "LED",
+      "role": "io",
+      "description": "IR LED driver (connect an IR LED's cathode for proximity sensing); leave unconnected otherwise",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 4.3,
+  "i2cAddress": 96,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/Si1145-46-47.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Adafruit SI1145 UV index IR visible light sensor breakout 1777",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wait 25 ms after power-up, check PART_ID (0x00) reads 0x45, write 0x17 to HW_KEY (0x07) — the chip does not work properly without it.",
+    "For UV index: write UCOEF0..3 (0x13–0x16) = 0x29, 0x89, 0x02, 0x00 and set EN_UV in the CHLIST parameter (PARAM_WR 0x17 = 0xB0, then COMMAND 0x18 = 0xA1).",
+    "ALS_FORCE (COMMAND = 0x06) takes one reading; results are little-endian: VIS at 0x22/0x23, IR at 0x24/0x25, UV index × 100 at 0x2C/0x2D.",
+    "Visible and IR are raw ADC counts, not lux; in bright sunlight the default range can overflow and read 0xFFFF.",
+    "The UV index is calculated from visible and IR light, calibrated for sunlight; indoor lamps give meaningless UV readings. Keep the sensor window uncovered (glass or plastic changes the coefficients)."
+  ],
+  "keywords": [
+    "si1145",
+    "uv",
+    "uv index",
+    "ultraviolet",
+    "light",
+    "infrared",
+    "ir",
+    "visible",
+    "proximity",
+    "silicon labs"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/Si1145-46-47.pdf",
+    "https://www.silabs.com/documents/public/data-sheets/Si1145-46-47.pdf",
+    "https://www.adafruit.com/product/1777",
+    "https://learn.adafruit.com/adafruit-si1145-breakout-board-uv-ir-visible-sensor",
+    "https://github.com/adafruit/Adafruit-Si1145-Light-Sensor-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "UV index",
+    "unit": "",
+    "min": 0,
+    "max": 15,
+    "default": 1,
+    "registers": {
+      "0x00": 69,
+      "0x01": 0,
+      "0x02": 8,
+      "0x20": 0
+    },
+    "controls": [
+      {
+        "key": "visible",
+        "quantity": "Visible light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 260
+      },
+      {
+        "key": "ir",
+        "quantity": "Infrared light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 250
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.01,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x22",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "visible"
+      },
+      {
+        "reg": "0x24",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ir"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "si1145.py",
+    "code": "# SI1145 UV index / visible / IR light sensor (Silicon Labs Si1145/46/47), MicroPython driver.\n# Written from the Si1145/46/47 datasheet rev 1.1: forced (one-shot) ALS measurements.\n# Readings: visible and IR in raw ADC counts (the datasheet's unit, default gain),\n# UV index = AUX_DATA / 100.\nimport time\n\n_PART_ID = 0x00\n_HW_KEY = 0x07\n_MEAS_RATE0 = 0x08\n_MEAS_RATE1 = 0x09\n_UCOEF0 = 0x13\n_PARAM_WR = 0x17\n_COMMAND = 0x18\n_RESPONSE = 0x20\n_ALS_VIS_DATA0 = 0x22\n_ALS_IR_DATA0 = 0x24\n_AUX_DATA0 = 0x2C\n\n_CMD_NOP = 0x00\n_CMD_RESET = 0x01\n_CMD_ALS_FORCE = 0x06\n_CMD_PARAM_SET = 0xA0  # 101a aaaa: parameter offset in the low 5 bits\n\n_PARAM_CHLIST = 0x01\n_CHLIST_EN_UV = 0x80\n_CHLIST_EN_ALS_IR = 0x20\n_CHLIST_EN_ALS_VIS = 0x10\n\n\nclass SI1145:\n    def __init__(self, i2c, addr=0x60):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(25)  # start-up time after power-up (datasheet Table 1)\n        pid = self._read8(_PART_ID)\n        if pid != 0x45:\n            raise OSError('SI1145 not found (PART_ID 0x%02x): check the wiring' % pid)\n        # Forced-measurement mode (MEAS_RATE = 0), then software reset.\n        self._write8(_MEAS_RATE0, 0)\n        self._write8(_MEAS_RATE1, 0)\n        self._command(_CMD_RESET)\n        time.sleep_ms(10)\n        self._write8(_HW_KEY, 0x17)  # required for proper operation\n        # UV index coefficients: datasheet defaults for an uncovered sensor.\n        for i, c in enumerate((0x29, 0x89, 0x02, 0x00)):\n            self._write8(_UCOEF0 + i, c)\n        # Measure UV index, visible and IR on every ALS_FORCE.\n        self._set_param(_PARAM_CHLIST, _CHLIST_EN_UV | _CHLIST_EN_ALS_IR | _CHLIST_EN_ALS_VIS)\n\n    def _write8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _read8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return d[0] | (d[1] << 8)  # DATA0 = low byte, DATA1 = high byte\n\n    def _command(self, cmd):\n        self._write8(_COMMAND, cmd)\n        time.sleep_ms(2)\n\n    def _set_param(self, param, value):\n        self._write8(_PARAM_WR, value)\n        self._command(_CMD_PARAM_SET | (param & 0x1F))\n\n    def read(self):\n        \"\"\"Measure once; return (UV index, visible counts, IR counts).\"\"\"\n        if self._read8(_RESPONSE) & 0x80:\n            self._command(_CMD_NOP)  # clear a previous error/overflow code\n        self._command(_CMD_ALS_FORCE)\n        time.sleep_ms(10)  # VIS + IR + UV conversions take well under 1 ms at default settings\n        # On ADC overflow (too bright for the default range) the data register reads 0xFFFF.\n        vis = self._read16(_ALS_VIS_DATA0)\n        ir = self._read16(_ALS_IR_DATA0)\n        uv = self._read16(_AUX_DATA0) / 100\n        return uv, vis, ir\n\n    def uv_index(self):\n        return self.read()[0]\n\n    def visible(self):\n        return self.read()[1]\n\n    def ir(self):\n        return self.read()[2]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom si1145 import SI1145\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SI1145(i2c)\nwhile True:\n    uv, vis, ir = sensor.read()\n    print('UV=%.2f VIS=%d IR=%d' % (uv, vis, ir))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the UV index, visible and IR counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "visible",
+          "value": 1200
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ir",
+          "value": 3400
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "UV=5.50 VIS=1200 IR=3400",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:29:44.378Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/Si1145-46-47.pdf",
+      "https://learn.adafruit.com/adafruit-si1145-breakout-board-uv-ir-visible-sensor/pinouts",
+      "https://www.adafruit.com/product/1777"
+    ]
+  }
+}

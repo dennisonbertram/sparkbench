@@ -1,0 +1,130 @@
+{
+  "type": "custom-mpx5010dp",
+  "name": "MPX5010DP differential pressure sensor",
+  "mpn": "MPX5010DP",
+  "category": "sensor",
+  "description": "Integrated silicon pressure sensor from NXP (formerly Freescale) measuring the difference in pressure between its two ports, 0 to 10 kPa, with an on-chip amplified, temperature-compensated analog output: Vout = VS × (0.09 × P + 0.04), 0.2 V to 4.7 V at a 5 V supply (4.75–5.25 V). Sold as: NXP MPX5010DP bare sensor in the 6-pin unibody package (case 867C) with two hose ports, pins VOUT, GND, VCC, V1, V2, VEX at 2.54 mm pitch.",
+  "eli5": "Connect tubes to its two little ports and it tells you how much harder one side is pushing than the other: its VOUT pin sits at 0.2 V with equal pressure and rises 0.45 V for every kilopascal of difference.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VOUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Pin 1. Analog output: Vout = VS × (0.09 × P + 0.04), 0.2 V at 0 kPa to 4.7 V at 10 kPa. It exceeds 3.3 V above about 6.9 kPa: on a 3.3 V board use a 10 kΩ / 20 kΩ divider for the full range.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 2. Ground.",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Pin 3. Supply VS, 4.75 V to 5.25 V: connect to 5 V (3.3 V is too low). Decouple with 1 µF + 10 nF to GND.",
+      "required": true
+    },
+    {
+      "name": "V1",
+      "role": "nc",
+      "description": "Pin 4. Internal test pin, no connect on the unibody package: leave unwired.",
+      "required": false
+    },
+    {
+      "name": "V2",
+      "role": "nc",
+      "description": "Pin 5. Internal test pin, no connect on the unibody package: leave unwired.",
+      "required": false
+    },
+    {
+      "name": "VEX",
+      "role": "nc",
+      "description": "Pin 6. Internal test pin, no connect on the unibody package: leave unwired.",
+      "required": false
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 10,
+  "datasheetUrl": "https://ece-classes.usc.edu/ee459/library/datasheets/MPX5010.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "MPX5010DP pressure sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Pin order from the notch (pin 1): VOUT, GND, VCC, V1, V2, VEX. Pins 4–6 are not connected inside the unibody package; leave them unwired.",
+    "Power VCC from 5 V (4.75–5.25 V). Put 1 µF and 10 nF from VCC to GND close to the sensor, and 470 pF from VOUT to GND (datasheet recommended circuit).",
+    "Pressure (kPa) = (Vout / VS − 0.04) / 0.09. With 5 V: 0.2 V = 0 kPa, 2.0 V = 4 kPa, 4.7 V = 10 kPa.",
+    "VOUT reaches 4.7 V, above a 3.3 V board's ADC limit, from about 6.9 kPa. For the full range add a 10 kΩ (VOUT to ADC pin) / 20 kΩ (ADC pin to GND) divider and pass divider=1.5 to the driver.",
+    "Port P1 (positive pressure) is on the side with the part marking; P2 is the reference/vacuum port. Keep P1 ≥ P2, never more than 40 kPa, and dry air only (no liquid in the ports).",
+    "The zero-pressure output varies from 0 to 0.425 V between parts: call calibrate_zero() once with both ports open to air."
+  ],
+  "keywords": [
+    "mpx5010dp",
+    "mpx5010",
+    "pressure",
+    "differential",
+    "kpa",
+    "water level",
+    "airflow",
+    "analog",
+    "sensor",
+    "nxp",
+    "freescale"
+  ],
+  "sources": [
+    "https://ece-classes.usc.edu/ee459/library/datasheets/MPX5010.pdf",
+    "https://static.chipdip.ru/lib/180/DOC000180387.pdf",
+    "https://www.lcsc.com/product-detail/C783034.html"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "VOUT",
+    "quantity": "Differential pressure",
+    "unit": "kPa",
+    "min": 0,
+    "max": 10,
+    "default": 0,
+    "vAtMin": 0.2,
+    "vAtMax": 4.7,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "mpx5010.py",
+    "code": "# MPX5010DP differential pressure sensor (NXP / Freescale), MicroPython driver.\n# Datasheet MPX5010 Rev 13: VS = 4.75-5.25 V (ratiometric), 0-10 kPa, output 0.2-4.7 V at VS = 5 V.\n# Nominal transfer function: Vout = VS x (0.09 x P + 0.04), P in kPa (P1 > P2)\n#   =>  P (kPa) = (Vout / VS - 0.04) / 0.09\n# Unibody case 867C pins: 1 VOUT, 2 GND, 3 VCC (VS), 4-6 no connect.\n# Vout reaches 4.7 V: on a 3.3 V board use a divider (e.g. 10k OUT->ADC, 20k ADC->GND, divider=1.5).\nfrom machine import ADC, Pin\n\n\nclass MPX5010:\n    def __init__(self, pin, vs=5.0, divider=1.0, samples=32, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to VOUT (through the divider if you use one).\n        vs: the sensor's supply voltage (output is ratiometric to it).\n        divider: Vout / Vadc, e.g. 1.5 for 10k (top) / 20k (bottom); 1.0 when wired directly.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vs = vs\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC full scale when read_uv() is not available (e.g. Pico)\n        self.offset = 0.04  # Vout / VS at 0 kPa (datasheet nominal: 0.2 V at 5 V)\n\n    def voltage(self):\n        \"\"\"Averaged sensor output voltage (V) at VOUT.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with both ports open to air (0 kPa): stores the real offset (0 to 0.425 V per datasheet).\"\"\"\n        self.offset = self.voltage() / self.vs\n        return self.offset * self.vs\n\n    def pressure_kpa(self):\n        \"\"\"Differential pressure P1 - P2 in kPa (datasheet transfer function).\"\"\"\n        return (self.voltage() / self.vs - self.offset) / 0.09\n\n    def pressure_mmh2o(self):\n        \"\"\"Pressure in mm of water (1 kPa = 101.97 mmH2O).\"\"\"\n        return self.pressure_kpa() * 101.97\n"
+  },
+  "skill": "---\nname: part-mpx5010dp\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MPX5010DP differential pressure sensor (NXP/Freescale, 0-10 kPa, analog output). Use when designing, wiring, simulating or writing code for an MPX5010DP in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MPX5010DP differential pressure sensor (0–10 kPa)\n\n## Overview\nThe **MPX5010DP** (NXP, formerly Freescale) is a piezoresistive silicon pressure sensor with on-chip amplification, temperature compensation and calibration. It gives an **analog voltage** proportional to the **difference** in pressure between its two ports (P1 − P2). Hobbyists buy the bare sensor in its six-pin **unibody package (case 867C)** with two hose barbs: port P1 (pressure, on the side with the part marking) and port P2 (vacuum).\n- Range: **0 to 10 kPa** (0 to 1.45 psi, about 0 to 1020 mm of water)\n- Output: **0.2 V at 0 kPa to 4.7 V at 10 kPa** with a 5 V supply (450 mV per kPa)\n- Transfer function: **Vout = VS × (0.09 × P + 0.04)**, ratiometric to the supply\n- Accuracy: ±5.0 % of full-scale span (0 to 85 °C); response time 1 ms, warm-up 20 ms\n- Supply: **4.75–5.25 V**, 5 mA typical (10 mA max)\n\nTypical uses: water level in a tank (via a tube), airflow across a filter, breath sensors.\n\n## Pinout (unibody case 867C, pins 2.54 mm apart)\nPin 1 is the lead with the notch. Read from pin 1:\n\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | VOUT | Analog output: 0.2 V at 0 kPa, +0.45 V per kPa (VS = 5 V) |\n| 2 | GND | Ground |\n| 3 | VCC | Supply VS, 4.75–5.25 V (use 5 V) |\n| 4 | V1 | Internal test pin: do not connect |\n| 5 | V2 | Internal test pin: do not connect |\n| 6 | VEX | Internal test pin: do not connect |\n\n## Electrical limits\n- Supply: 4.75 V min, 5.25 V max. **3.3 V is not enough.**\n- Maximum pressure: 40 kPa on P1 (P1 > P2 only). The sensor is designed for positive differential pressure: P1 must be higher than P2.\n- Pressure media: **dry air** only. Liquid in the ports damages it (for water level, use an air column in a tube).\n- Operating temperature −40 to +125 °C.\n- Output source current only 0.1 mA at full scale: use a high-impedance input (an ADC is fine).\n\n## Interface details\nConversion formula (datasheet, nominal):\n```\nP (kPa) = (Vout / VS − 0.04) / 0.09\n```\nWith VS = 5 V: 0.2 V = 0 kPa, 2.0 V = 4.0 kPa, 3.3 V = 6.9 kPa, 4.7 V = 10 kPa.\nThe zero-pressure output varies from 0 to 0.425 V between parts: call `calibrate_zero()` once with both ports open to air.\nThe datasheet's recommended circuit: 1.0 µF and 0.01 µF from VCC to GND, and 470 pF from VOUT to GND.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC (pin 3) | 5V / VIN (USB 5 V) | VBUS (pin 40) | 5V (pin 2) |\n| VOUT (pin 1) | GPIO34 (ADC1) via divider | GP26 / ADC0 (pin 31) via divider | External ADC (e.g. ADS1115 A0) |\n| GND (pin 2) | GND | GND | GND |\n\n**VOUT reaches 4.7 V**, and a 3.3 V board's ADC pin must stay below 3.3 V (3.6 V absolute max). Above about 6.9 kPa a direct connection over-drives the pin. For the full range, add a divider: **10 kΩ from VOUT to the ADC pin, 20 kΩ from the ADC pin to GND** (4.7 V becomes 3.13 V) and pass `divider=1.5` to the driver. Wired directly, only readings up to about 6.5 kPa are usable.\n\n## Using the driver\n```python\nfrom mpx5010 import MPX5010\nimport time\nsensor = MPX5010(26, divider=1.5)   # ADC GPIO wired to VOUT via a 10k/20k divider, VS = 5 V\nsensor.calibrate_zero()             # both ports open to air\nwhile True:\n    print('P=%.2f kPa' % sensor.pressure_kpa())\n    time.sleep(1)\n```\nThe driver averages 32 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535. Pass `vs=` if your 5 V rail is not 5.0 V. `pressure_mmh2o()` gives mm of water (1 kPa = 101.97 mmH2O).\n\n## Gotchas\n- **Power it from 5 V,** not 3.3 V. The output is ratiometric: a 4.8 V USB rail scales every reading by 0.96 unless you pass `vs=4.8`.\n- **Use a divider on 3.3 V boards** (see Wiring). Without it, pressures above about 6.9 kPa push VOUT past 3.3 V.\n- **Which port is which:** P1 (positive pressure) is the port on the side with the part marking. Reversed tubing gives a reading stuck at the 0 kPa output.\n- **Offset varies** up to 0.425 V between parts (up to about 0.5 kPa): calibrate the zero.\n- **ESP32 ADC** is nonlinear near the ends of its range; use ADC1 pins (ADC2 stops working with Wi-Fi on).\n- **Bending the leads** at the package body can crack the unibody seal; bend them a few mm away.\n\n## Datasheet\nhttps://ece-classes.usc.edu/ee459/library/datasheets/MPX5010.pdf (NXP/Freescale MPX5010 Rev 13)\n\n---\n*Generated by Sparkbench from the datasheet: https://ece-classes.usc.edu/ee459/library/datasheets/MPX5010.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from mpx5010 import MPX5010\nimport time\n\n# VOUT wired straight to the ADC pin: fine up to about 6.5 kPa.\n# For the full 0-10 kPa range use a 10k/20k divider and MPX5010(pin, divider=1.5).\nsensor = MPX5010({VOUT})\nwhile True:\n    print('P=%.1fkPa' % sensor.pressure_kpa())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 4
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=4.0kPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:36:58.444Z",
+    "verifiedSources": [
+      "https://ece-classes.usc.edu/ee459/library/datasheets/MPX5010.pdf",
+      "https://www.komponenten.es.aau.dk/fileadmin/komponenten/Data_Sheet/Sensorer/MPX5010.pdf"
+    ]
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "type": "custom-ky-037",
+  "name": "KY-037 high-sensitivity sound sensor module",
+  "mpn": "KY-037",
+  "category": "sensor",
+  "description": "High-sensitivity electret microphone module (large capsule) with an LM393 comparator and a sensitivity trimmer. AO is the raw microphone signal (a DC level with the audio on it, inverted); DO goes HIGH while the sound is past the trimmer threshold (LED2 lights). Runs on 3.3–5 V. Sold as: Joy-IT SensorKit KY-037 high-sensitivity microphone sound sensor (black 4-pin module, header AO, G, +, DO), also the identical generic KY-037 from 37-in-1 sensor kits.",
+  "eli5": "A sensitive ear for your board. Its DO pin jumps high when it hears a sound louder than the level you set with the little screw, and its AO pin lets you see the sound wave itself.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "AO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 1): the microphone signal, a DC level with the audio riding on it (inverted: louder = lower); swings up to the supply voltage. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "G",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (pin 3). Use 3.3 V with an ESP32, Pico or Raspberry Pi so AO and DO stay below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output from the LM393 comparator with the module pull-up (pin 4): HIGH while the sound is above the trimmer threshold (LED2 lit), LOW when quiet.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 5,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-037",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-037/KY-037.png",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-037/037-Pico.svg"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "KY-037 high sensitivity microphone sound sensor module LM393 4 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: AO, G, +, DO.",
+    "Power + from 3.3 V on an ESP32, Pico or Raspberry Pi: AO and DO swing up to the supply, so a 5 V supply would put 5 V on the GPIO pins.",
+    "Set the blue multi-turn trimmer first: turn it until LED2 just goes out in a quiet room. A clap then makes DO go HIGH briefly.",
+    "DO pulses are short (they follow the sound wave): poll it quickly or use a pin interrupt.",
+    "AO is a DC level plus the audio and is inverted (louder = lower dips). Use the peak-to-peak spread of many quick samples as loudness, not one reading.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) for AO; the Raspberry Pi has no ADC, so use DO only or add an ADC."
+  ],
+  "keywords": [
+    "ky-037",
+    "ky037",
+    "sound",
+    "microphone",
+    "mic",
+    "clap",
+    "noise",
+    "lm393",
+    "electret",
+    "high sensitivity",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "AO",
+    "quantity": "AO voltage (microphone signal)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.6,
+    "vAtMin": 0,
+    "vAtMax": 3.3,
+    "digitalOutputs": [
+      {
+        "pin": "DO",
+        "control": "sound",
+        "label": "Sound above threshold (DO high)",
+        "activeHigh": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ky037.py",
+    "code": "# KY-037 high-sensitivity sound sensor module (large electret microphone + LM393 comparator,\n# 4-pin AO/G/+/DO), MicroPython driver.\n# AO is the microphone signal from the electret/bias-resistor node: a DC level with the audio\n# riding on it (Joy-IT: the signal is inverted, louder sound = lower AO voltage). Loudness is best\n# measured as the peak-to-peak spread of fast samples, not as a single reading.\n# DO is the LM393 comparator output with the module's pull-up: HIGH while the signal is past the\n# threshold set on the blue trimmer (LED2 lit), LOW otherwise (Joy-IT KY-037 documentation).\nfrom machine import ADC, Pin\n\n\nclass KY037:\n    def __init__(self, ao=None, do=None, samples=32, vref=3.3):\n        \"\"\"ao/do: GPIO numbers (or Pin objects); either may be None if not wired.\n        vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico).\"\"\"\n        self.adc = None\n        if ao is not None:\n            self.adc = ADC(Pin(ao) if isinstance(ao, int) else ao)\n            try:\n                self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n            except AttributeError:\n                pass\n        self.do = None if do is None else (Pin(do, Pin.IN) if isinstance(do, int) else do)\n        self.samples = samples\n        self.vref = vref\n\n    def _read_v(self):\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def voltage(self):\n        \"\"\"AO voltage in volts, averaged over several samples (the DC level of the microphone node).\"\"\"\n        if self.adc is None:\n            raise ValueError('AO pin not given')\n        total = 0\n        for _ in range(self.samples):\n            total += self._read_v()\n        return total / self.samples\n\n    def peak_to_peak(self, n=200):\n        \"\"\"Spread (max - min) of n quick AO samples in volts: a rough loudness figure.\"\"\"\n        if self.adc is None:\n            raise ValueError('AO pin not given')\n        lo = hi = self._read_v()\n        for _ in range(n - 1):\n            v = self._read_v()\n            if v < lo:\n                lo = v\n            elif v > hi:\n                hi = v\n        return hi - lo\n\n    def detected(self):\n        \"\"\"True while DO is HIGH, i.e. the sound is past the trimmer threshold (LED2 lit).\"\"\"\n        if self.do is None:\n            raise ValueError('DO pin not given')\n        return self.do.value() == 1\n"
+  },
+  "example": {
+    "code": "from ky037 import KY037\nimport time\n\nmic = KY037({AO}, {DO})\nwhile True:\n    print('AO=%.1fV DO=%s' % (mic.voltage(), 'sound' if mic.detected() else 'quiet'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the AO voltage and the DO sound flag set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "sound",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "AO=2.2V DO=sound",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-ky-037\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-037 high-sensitivity sound sensor module (KY-037, AO + DO). Use when designing, wiring, simulating or writing code for a KY-037 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-037 high-sensitivity sound sensor module (KY-037)\n\n## Overview\nThe **KY-037** is a black 4-pin module with a **large (about 10 mm) electret microphone**, an **LM393 comparator**, a blue multi-turn trimmer (sensitivity), a power LED (LED1) and a \"sound\" LED (LED2). It is the high-sensitivity sibling of the KY-038 (same circuit, bigger microphone) and is sold in the 37-in-1 / 40-in-1 sensor kits, for example the **Joy-IT SensorKit KY-037**.\n- **AO**: the microphone signal itself, a DC level with the audio riding on it. Joy-IT notes it is inverted: a stronger signal gives a *lower* AO voltage.\n- **DO**: the LM393 output (with the module's pull-up). It goes **HIGH** while the sound is past the trimmer threshold and LED2 lights.\n- It detects \"loud or not\" (claps, knocks, voices). It is **not** a calibrated sound-level (dB) meter and is poor for recording audio.\n\n## Pinout (module header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | AO | Analog microphone signal |\n| 2 | G | Ground |\n| 3 | + | Supply, 3.3–5 V |\n| 4 | DO | Digital output, HIGH = sound above threshold |\n\n## Electrical limits\n- Supply: **3.3–5 V** (Joy-IT wires it to 5 V on Arduino and to 3.3 V on Raspberry Pi / Pico). The LM393 itself runs on 2–36 V.\n- Current: a few mA, mostly the two LEDs.\n- AO and DO swing up to the supply voltage. **On an ESP32, Pico or Raspberry Pi, power the module from 3.3 V** so neither output can go above 3.3 V.\n\n## Interface details\n- DO = LM393 comparing the microphone signal with the trimmer voltage. Turn the trimmer until LED2 just goes out in a quiet room; a clap then makes DO go HIGH for a moment. The pulses are short, so poll often or use an interrupt.\n- AO is a DC level plus audio. A single ADC reading says little: take many quick samples and use the **peak-to-peak** spread as loudness (`peak_to_peak()` in the driver), or the averaged level (`voltage()`).\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| G | GND | GND | GND (pin 6) |\n| DO | any GPIO, e.g. GPIO25 | any GP, e.g. GP2 | any GPIO, e.g. GPIO24 (pin 18) |\n| AO | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (e.g. KY-053 / ADS1115) |\n\nOn the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi has no ADC: use DO alone or add one.\n\n## Using the driver\n```python\nfrom ky037 import KY037\nimport time\nmic = KY037(32, 25)   # AO GPIO, DO GPIO\nwhile True:\n    print('AO=%.2fV p-p=%.2fV sound=%s' % (mic.voltage(), mic.peak_to_peak(), mic.detected()))\n    time.sleep(0.2)\n```\n`voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V). `detected()` is True while DO is HIGH.\n\n## Gotchas\n- **Trimmer first**: out of the box DO is often stuck HIGH or LOW. It is a 25-turn pot (3296), so turn it many times while watching LED2.\n- **DO is active HIGH** on the KY-037 (Joy-IT). Some other sound modules (3-pin boards) are active LOW, so check the LED.\n- **5 V supply + 3.3 V board** puts 5 V on the GPIO pins. Use 3.3 V.\n- **AO is inverted and noisy**: compare spreads, not single values.\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/lm393.pdf (LM393 comparator). Module documentation: https://sensorkit.joy-it.net/en/sensors/ky-037\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:33:08.645Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-037",
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf"
+    ]
+  }
+}
