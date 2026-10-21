@@ -1,5 +1,6 @@
 // Register-level models of I2C peripherals. They receive exactly the bytes the real
 // MicroPython / Python drivers put on the bus, so driver bugs show up in simulation too.
+import { makeSolver, withPromCrc, type Solver } from '../core/calibration';
 import type { I2CMeasure, ResponseSegment } from '../core/customParts';
 
 export interface I2CDevice {
@@ -470,6 +471,14 @@ export class EPaperDevice {
 }
 
 /** An I2C chip described by its datasheet: fixed registers plus one measured value. */
+/** One DAC output: 12-bit code, reference (0 = VDD, 1 = internal 2.048 V), gain 1/2, power-down mode (0 = on). */
+export interface DacChannel {
+  code: number;
+  vref: number;
+  gain: number;
+  pd: number;
+}
+
 export class GenericI2CDevice implements I2CDevice {
   ptr = 0;
   /** Bytes queued by a command (see responses); reads drain these before falling back to registers. */
@@ -481,11 +490,80 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
-    for (const [k, v] of Object.entries(registers)) this.setReg(Number(k), v);
+    // A declared PROM CRC-4 is filled in, so the driver's PROM check passes.
+    for (const [k, v] of Object.entries(withPromCrc(registers, layout.promCrc4))) this.setReg(Number(k), v);
+    if (measures.some((m) => m.solve)) this.solver = makeSolver(layout.constants, measures, (a) => (this.wide ? (this.byteAt(a, 0) << 8) | this.byteAt(a, 1) : this.byteAt(a, 0)));
+    const n = layout.dac?.protocol === 'mcp4728' ? 4 : layout.dac ? 1 : 0;
+    this.dacs = Array.from({ length: n }, () => ({ code: 0, vref: 0, gain: 1, pd: 0 }));
   }
+  private solver?: Solver;
+  /** DAC channels (input register = output: LDAC is taken as tied low). */
+  dacs: DacChannel[] = [];
+  private dacSet(ch: number, patch: Partial<DacChannel>, update = true) {
+    const d = this.dacs[ch];
+    if (!d) return;
+    Object.assign(d, patch);
+    if (update) this.layout.onDac?.(ch, { ...d });
+  }
+  /** MCP4725 / MCP4728 command decoding (see CustomSim.dac). */
+  private dacWrite(bytes: number[]) {
+    const proto = this.layout.dac!.protocol;
+    if (proto === 'mcp4725') {
+      const c = bytes[0] >> 5;
+      if (c >> 1 === 0) {
+        // Fast mode: pairs of (00 PD1 PD0 D11–D8, D7–D0); the last complete pair wins.
+        for (let i = 0; i + 1 < bytes.length; i += 2) this.dacSet(0, { pd: (bytes[i] >> 4) & 3, code: ((bytes[i] & 0x0f) << 8) | bytes[i + 1] });
+      } else if ((c === 2 || c === 3) && bytes.length >= 3) {
+        this.dacSet(0, { pd: (bytes[0] >> 1) & 3, code: (bytes[1] << 4) | (bytes[2] >> 4) });
+        if (c === 3) this.eeprom = { ...this.dacs[0] };
+      }
+      const d = this.dacs[0];
+      const e = this.eeprom ?? { code: 0, pd: 0 };
+      this.reply = [0xc0 | (d.pd << 1), d.code >> 4, (d.code & 0x0f) << 4, (e.pd << 5) | (e.code >> 8), e.code & 0xff];
+      return;
+    }
+    // MCP4728
+    let i = 0;
+    while (i < bytes.length) {
+      const b = bytes[i];
+      if (b >> 6 === 0) {
+        // Fast write: channel A, B, C, D in turn, two bytes each.
+        for (let ch = 0; ch < 4 && i + 1 < bytes.length && bytes[i] >> 6 === 0; ch++, i += 2) this.dacSet(ch, { pd: (bytes[i] >> 4) & 3, code: ((bytes[i] & 0x0f) << 8) | bytes[i + 1] });
+        return;
+      }
+      const top = b >> 3;
+      const ch = (b >> 1) & 3;
+      const udac = b & 1;
+      const word = (hi: number, lo: number) => ({ vref: hi >> 7, pd: (hi >> 5) & 3, gain: (hi >> 4) & 1 ? 2 : 1, code: ((hi & 0x0f) << 8) | lo });
+      if (top === 0b01000 && i + 2 < bytes.length) {
+        // Multi-write: (command, two data bytes) repeated.
+        this.dacSet(ch, word(bytes[i + 1], bytes[i + 2]), !udac);
+        i += 3;
+      } else if (top === 0b01010) {
+        // Sequential write from ch to D.
+        let c = ch;
+        for (i += 1; c < 4 && i + 1 < bytes.length; c++, i += 2) this.dacSet(c, word(bytes[i], bytes[i + 1]), !udac);
+        return;
+      } else if (top === 0b01011 && i + 2 < bytes.length) {
+        this.dacSet(ch, word(bytes[i + 1], bytes[i + 2]), !udac);
+        return;
+      } else if (b >> 4 === 0b1000) {
+        [3, 2, 1, 0].forEach((k, n) => this.dacSet(n, { vref: (b >> k) & 1 }));
+        return;
+      } else if (b >> 4 === 0b1100) {
+        [3, 2, 1, 0].forEach((k, n) => this.dacSet(n, { gain: (b >> k) & 1 ? 2 : 1 }));
+        return;
+      } else if (b >> 4 === 0b1010 && i + 1 < bytes.length) {
+        const pds = [(b >> 2) & 3, b & 3, (bytes[i + 1] >> 6) & 3, (bytes[i + 1] >> 4) & 3];
+        pds.forEach((pd, n) => this.dacSet(n, { pd }));
+        return;
+      } else return;
+    }
+  }
+  private eeprom?: { code: number; pd: number };
   private get wide() {
     return this.layout.regWidth === 16;
   }
@@ -532,6 +610,10 @@ export class GenericI2CDevice implements I2CDevice {
   }
   write(bytes: number[]) {
     if (!bytes.length) return;
+    if (this.layout.dac) return this.dacWrite(bytes);
+    // A bare command byte in the latch range is remembered (MS5611: which conversion ran).
+    const cl = this.layout.commandLatch;
+    if (cl && bytes.length === 1 && bytes[0] >= cl.from && bytes[0] <= cl.to) this.store.set(Number(cl.reg) & 0xffff, [bytes[0]]);
     const hit = this.responses.find((r) => {
       const m = r.match.split(' ').map((h) => parseInt(h, 16));
       return m.length <= bytes.length && m.every((b, i) => b === bytes[i]);
@@ -599,6 +681,8 @@ export class GenericI2CDevice implements I2CDevice {
   /** Bring the clock and measured values into the registers. */
   private refresh() {
     this.rtcMaterialize();
+    // Calibrated raws are solved together (later formulas use earlier raws), whatever `when` selects.
+    const solved = this.solver?.solve(this.value);
     for (const m of this.measures) {
       if (m.when && (this.byteAt(Number(m.when.reg), 0) & (m.when.mask ?? 0xff)) !== m.when.equals) continue;
       const reg = Number(m.reg);
@@ -630,7 +714,7 @@ export class GenericI2CDevice implements I2CDevice {
       }
       if (m.fields && m.bits) {
         // Spread the value's bits over (parts of) several registers.
-        let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1));
+        let raw = solved?.get(m) ?? Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1));
         raw = m.signed ? Math.max(-(2 ** (m.bits - 1)), Math.min(2 ** (m.bits - 1) - 1, raw)) : Math.max(0, Math.min(2 ** m.bits - 1, raw));
         if (raw < 0) raw += 2 ** m.bits;
         for (const f of m.fields) {
@@ -642,7 +726,7 @@ export class GenericI2CDevice implements I2CDevice {
         }
         continue;
       }
-      let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1)) * 2 ** (m.shift ?? 0);
+      let raw = (solved?.get(m) ?? Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1))) * 2 ** (m.shift ?? 0);
       const bits = m.bytes * 8;
       if (m.signed && raw < 0) raw += 2 ** bits;
       raw = Math.max(0, Math.min(2 ** bits - 1, raw));

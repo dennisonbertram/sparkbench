@@ -1,0 +1,102 @@
+{
+ "type": "custom-mcp4728-test",
+ "name": "MCP4728 test",
+ "mpn": "MCP4728",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  },
+  {
+   "name": "VA",
+   "role": "io",
+   "fn": "adc",
+   "required": true
+  },
+  {
+   "name": "VB",
+   "role": "io",
+   "fn": "adc",
+   "required": true
+  },
+  {
+   "name": "VC",
+   "role": "io",
+   "required": false
+  },
+  {
+   "name": "VD",
+   "role": "io",
+   "required": false
+  }
+ ],
+ "vmin": 2.7,
+ "vmax": 3.6,
+ "currentMa": 1,
+ "i2cAddress": 96,
+ "priceUsd": 5,
+ "supplierQuery": "MCP4728",
+ "sim": {
+  "kind": "i2c-device",
+  "dac": {
+   "protocol": "mcp4728",
+   "pins": [
+    "VA",
+    "VB",
+    "VC",
+    "VD"
+   ]
+  }
+ },
+ "example": {
+  "code": "from machine import I2C, Pin, ADC\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\na = ADC(Pin({VA}))\nb = ADC(Pin({VB}))\ndef v(x):\n    return x.read_u16() * 3.3 / 65535\n# Multi-write: A from VDD (code 1241), B from the internal 2.048 V reference x1 (code 2000)\ni2c.writeto(0x60, bytes([0x40, 0x00 | (1241 >> 8), 1241 & 0xFF, 0x42, 0x80 | (2000 >> 8), 2000 & 0xFF]))\ntime.sleep_ms(20)\nprint('A=%.2f B=%.2f' % (v(a), v(b)))\n# Gain x2 on all channels: B doubles\ni2c.writeto(0x60, bytes([0xCF]))\ntime.sleep_ms(20)\nprint('B2=%.2f' % v(b))\n# Fast write A=0, B=0 (power-down A)\ni2c.writeto(0x60, bytes([0x10, 0, 0, 0]))\ntime.sleep_ms(20)\nprint('A0=%.2f' % v(a))\n",
+  "test": {
+   "id": "t",
+   "title": "t",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "A=1.00 B=1.00",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "B2=2.00",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "A0=0.00",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

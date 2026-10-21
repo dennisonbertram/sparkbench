@@ -1,0 +1,159 @@
+{
+ "type": "custom-qmp6988-test",
+ "name": "QMP6988 test",
+ "mpn": "QMP6988",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  }
+ ],
+ "vmin": 1.71,
+ "vmax": 3.6,
+ "currentMa": 1,
+ "i2cAddress": 112,
+ "priceUsd": 5,
+ "supplierQuery": "QMP6988",
+ "sim": {
+  "kind": "i2c-device",
+  "quantity": "Pressure",
+  "unit": "hPa",
+  "min": 300,
+  "max": 1100,
+  "default": 1013.25,
+  "controls": [
+   {
+    "key": "temperature",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 25
+   }
+  ],
+  "registers": {
+   "0xd1": 92,
+   "0xa2": 19,
+   "0xa3": 136,
+   "0xa4": 244,
+   "0xa5": 72,
+   "0xa6": 15,
+   "0xa7": 160,
+   "0xa8": 7,
+   "0xa9": 208,
+   "0xaa": 252,
+   "0xab": 24,
+   "0xac": 1,
+   "0xad": 244,
+   "0xae": 254,
+   "0xaf": 12,
+   "0xb0": 1,
+   "0xb1": 44,
+   "0xb4": 248,
+   "0xb5": 48,
+   "0xb6": 3,
+   "0xb7": 232,
+   "0xa0": 26,
+   "0xa1": 43,
+   "0xb2": 255,
+   "0xb3": 240,
+   "0xb8": 48
+  },
+  "constants": {
+   "a0": "signed(reg(0xB2)*4096 + reg(0xB3)*16 + mod(reg(0xB8), 16), 20)/16",
+   "b00": "signed(reg(0xA0)*4096 + reg(0xA1)*16 + floor(reg(0xB8)/16), 20)/16",
+   "a1": "-0.0063 + 0.00043*signed(reg(0xb4)*256 + reg(0xb5), 16)/32767",
+   "a2": "-1.9e-11 + 1.2e-10*signed(reg(0xb6)*256 + reg(0xb7), 16)/32767",
+   "bt1": "0.1 + 0.091*signed(reg(0xa2)*256 + reg(0xa3), 16)/32767",
+   "bt2": "1.2e-08 + 1.2e-06*signed(reg(0xa4)*256 + reg(0xa5), 16)/32767",
+   "bp1": "0.033 + 0.019*signed(reg(0xa6)*256 + reg(0xa7), 16)/32767",
+   "b11": "2.1e-07 + 1.4e-07*signed(reg(0xa8)*256 + reg(0xa9), 16)/32767",
+   "bp2": "-6.3e-10 + 3.5e-10*signed(reg(0xaa)*256 + reg(0xab), 16)/32767",
+   "b12": "2.9e-13 + 7.6e-13*signed(reg(0xac)*256 + reg(0xad), 16)/32767",
+   "b21": "2.1e-15 + 1.2e-14*signed(reg(0xae)*256 + reg(0xaf), 16)/32767",
+   "bp3": "1.3e-16 + 7.9e-17*signed(reg(0xb0)*256 + reg(0xb1), 16)/32767"
+  },
+  "measures": [
+   {
+    "reg": "0xFA",
+    "bytes": 3,
+    "scale": 1,
+    "control": "temperature",
+    "solve": {
+     "raw": "RT",
+     "formula": "Dt = RT - 8388608; (a0 + a1*Dt + a2*Dt^2)/256",
+     "min": 0,
+     "max": 16777215
+    }
+   },
+   {
+    "reg": "0xF7",
+    "bytes": 3,
+    "scale": 1,
+    "solve": {
+     "raw": "RP",
+     "formula": "Dt = RT - 8388608; Tr = a0 + a1*Dt + a2*Dt^2; Dp = RP - 8388608; (b00 + bt1*Tr + bp1*Dp + b11*Tr*Dp + bt2*Tr^2 + bp2*Dp^2 + b12*Dp*Tr^2 + b21*Dp^2*Tr + bp3*Dp^3)/100",
+     "min": 0,
+     "max": 16777215
+    }
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nA = 0x70\nprint('ID', hex(i2c.readfrom_mem(A, 0xD1, 1)[0]))\nc = i2c.readfrom_mem(A, 0xA0, 25)\ndef s16(i):\n    v = c[i] << 8 | c[i + 1]\n    return v - 65536 if v > 32767 else v\ndef s20(v):\n    return v - 1048576 if v > 524287 else v\ndef K(a, s, i):\n    return a + s * s16(i) / 32767\nb00 = s20(c[0] << 12 | c[1] << 4 | c[24] >> 4) / 16\na0 = s20(c[18] << 12 | c[19] << 4 | (c[24] & 15)) / 16\nbt1 = K(1.0e-1, 9.1e-2, 2); bt2 = K(1.2e-8, 1.2e-6, 4); bp1 = K(3.3e-2, 1.9e-2, 6); b11 = K(2.1e-7, 1.4e-7, 8)\nbp2 = K(-6.3e-10, 3.5e-10, 10); b12 = K(2.9e-13, 7.6e-13, 12); b21 = K(2.1e-15, 1.2e-14, 14); bp3 = K(1.3e-16, 7.9e-17, 16)\na1 = K(-6.3e-3, 4.3e-4, 20); a2 = K(-1.9e-11, 1.2e-10, 22)\ni2c.writeto_mem(A, 0xF4, b'\\x27')\nwhile True:\n    d = i2c.readfrom_mem(A, 0xF7, 6)\n    Dp = (d[0] << 16 | d[1] << 8 | d[2]) - 8388608\n    Dt = (d[3] << 16 | d[4] << 8 | d[5]) - 8388608\n    Tr = a0 + a1 * Dt + a2 * Dt * Dt\n    Pr = b00 + bt1 * Tr + bp1 * Dp + b11 * Tr * Dp + bt2 * Tr * Tr + bp2 * Dp * Dp + b12 * Dp * Tr * Tr + b21 * Dp * Dp * Tr + bp3 * Dp * Dp * Dp\n    print('P=%.1f T=%.1f' % (Pr / 100, Tr / 256))\n    time.sleep_ms(500)\n",
+  "test": {
+   "id": "t",
+   "title": "t",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "ID 0x5c",
+     "within": 3000
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "temperature",
+     "value": 31.5
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 987.6
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "P=987.6 T=31.5",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

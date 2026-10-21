@@ -1,0 +1,161 @@
+{
+ "type": "custom-ms5611-test",
+ "name": "MS5611 test",
+ "mpn": "MS5611",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  }
+ ],
+ "vmin": 1.8,
+ "vmax": 3.6,
+ "currentMa": 1,
+ "i2cAddress": 119,
+ "priceUsd": 5,
+ "supplierQuery": "MS5611",
+ "sim": {
+  "kind": "i2c-device",
+  "quantity": "Pressure",
+  "unit": "mbar",
+  "min": 10,
+  "max": 1200,
+  "default": 1013.25,
+  "controls": [
+   {
+    "key": "temperature",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 20
+   }
+  ],
+  "registers": {
+   "0xa0": 0,
+   "0xa1": 0,
+   "0xa2": 156,
+   "0xa3": 191,
+   "0xa4": 144,
+   "0xa5": 60,
+   "0xa6": 91,
+   "0xa7": 21,
+   "0xa8": 90,
+   "0xa9": 242,
+   "0xaa": 130,
+   "0xab": 184,
+   "0xac": 110,
+   "0xad": 152,
+   "0xae": 0,
+   "0xaf": 0
+  },
+  "promCrc4": {
+   "reg": "0xA0"
+  },
+  "constants": {
+   "C1": "reg(0xa2)*256 + reg(0xa3)",
+   "C2": "reg(0xa4)*256 + reg(0xa5)",
+   "C3": "reg(0xa6)*256 + reg(0xa7)",
+   "C4": "reg(0xa8)*256 + reg(0xa9)",
+   "C5": "reg(0xaa)*256 + reg(0xab)",
+   "C6": "reg(0xac)*256 + reg(0xad)"
+  },
+  "commandLatch": {
+   "reg": "0x100",
+   "from": 64,
+   "to": 88
+  },
+  "measures": [
+   {
+    "reg": "0x00",
+    "bytes": 3,
+    "scale": 1,
+    "control": "temperature",
+    "when": {
+     "reg": "0x100",
+     "mask": 240,
+     "equals": 80
+    },
+    "solve": {
+     "raw": "D2",
+     "formula": "dT = D2 - C5*256; TEMP = 2000 + dT*C6/8388608; T2 = if(TEMP < 2000, dT*dT/2147483648, 0); (TEMP - T2)/100",
+     "min": 0,
+     "max": 16777215
+    }
+   },
+   {
+    "reg": "0x00",
+    "bytes": 3,
+    "scale": 1,
+    "when": {
+     "reg": "0x100",
+     "mask": 240,
+     "equals": 64
+    },
+    "solve": {
+     "raw": "D1",
+     "formula": "dT = D2 - C5*256; TEMP = 2000 + dT*C6/8388608; OFF = C2*65536 + C4*dT/128; SENS = C1*32768 + C3*dT/256; OFF2 = if(TEMP < 2000, 5*(TEMP - 2000)^2/2, 0) + if(TEMP < -1500, 7*(TEMP + 1500)^2, 0); SENS2 = if(TEMP < 2000, 5*(TEMP - 2000)^2/4, 0) + if(TEMP < -1500, 11*(TEMP + 1500)^2/2, 0); P = (D1*(SENS - SENS2)/2097152 - (OFF - OFF2))/32768; P/100",
+     "min": 0,
+     "max": 16777215
+    }
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nA = 0x77\ni2c.writeto(A, b'\\x1e')\ntime.sleep_ms(3)\nprom = []\nfor i in range(8):\n    i2c.writeto(A, bytes([0xA0 + 2 * i]))\n    b = i2c.readfrom(A, 2)\n    prom.append(b[0] << 8 | b[1])\ndef crc4(p):\n    p = list(p)\n    p[7] &= 0xFF00\n    r = 0\n    for c in range(16):\n        r ^= (p[c >> 1] & 0xFF) if c % 2 else (p[c >> 1] >> 8)\n        for _ in range(8):\n            r = ((r << 1) ^ 0x3000) & 0xFFFF if r & 0x8000 else (r << 1) & 0xFFFF\n    return (r >> 12) & 0xF\nprint('CRC ok' if crc4(prom) == prom[7] & 0xF else 'CRC bad')\nC = prom\ndef adc(cmd):\n    i2c.writeto(A, bytes([cmd]))\n    time.sleep_ms(10)\n    i2c.writeto(A, b'\\x00')\n    b = i2c.readfrom(A, 3)\n    return b[0] << 16 | b[1] << 8 | b[2]\nwhile True:\n    D1 = adc(0x48)\n    D2 = adc(0x58)\n    dT = D2 - C[5] * 256\n    TEMP = 2000 + dT * C[6] // 8388608\n    OFF = C[2] * 65536 + C[4] * dT // 128\n    SENS = C[1] * 32768 + C[3] * dT // 256\n    if TEMP < 2000:\n        T2 = dT * dT // 2147483648\n        OFF2 = 5 * (TEMP - 2000) ** 2 // 2\n        SENS2 = 5 * (TEMP - 2000) ** 2 // 4\n        if TEMP < -1500:\n            OFF2 += 7 * (TEMP + 1500) ** 2\n            SENS2 += 11 * (TEMP + 1500) ** 2 // 2\n        TEMP -= T2\n        OFF -= OFF2\n        SENS -= SENS2\n    P = (D1 * SENS // 2097152 - OFF) // 32768\n    print('P=%.1f T=%.1f' % (P / 100, TEMP / 100))\n    time.sleep_ms(500)\n",
+  "test": {
+   "id": "t",
+   "title": "t",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "CRC ok",
+     "within": 3000
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "temperature",
+     "value": 10
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 1000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "P=1000.0 T=10.0",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}
