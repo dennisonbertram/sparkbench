@@ -1,0 +1,708 @@
+{
+  "type": "custom-hc-05",
+  "name": "HC-05 Bluetooth serial module",
+  "mpn": "HC-05",
+  "category": "ic",
+  "description": "Classic Bluetooth 2.0+EDR serial-port (SPP) module built on the CSR BC417: a phone or PC pairs with it (PIN 1234) and the bytes appear on its UART. Master or slave, configured with AT commands at 38400 baud while its button is held at power-up. Supply 3.6-6 V through the on-board 3.3 V regulator; RXD/TXD are 3.3 V logic. Sold as: HC-05 ZS-040 breakout (6-pin header: STATE, RXD, TXD, GND, VCC, EN; AT-mode push button and status LED on the board).",
+  "eli5": "Lets your phone talk to your board over Bluetooth, like an invisible serial cable.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "STATE",
+      "role": "io",
+      "description": "Connection status output (BT module PIO1/pin 32): high while a Bluetooth link is up, low otherwise. 3.3 V logic",
+      "required": false
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module's UART input, 3.3 V logic only. Wire to the microcontroller's TX (use a 1k/2k divider from a 5 V board)",
+      "required": true
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module's UART output (3.3 V). Wire to the microcontroller's RX",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.6-6 V into the board's 3.3 V regulator (use 5 V, not 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "EN",
+      "role": "io",
+      "description": "EN/KEY: joined to the button that drives the module's pin 34 (KEY) to 3.3 V. High at power-up = full AT command mode at 38400 baud; leave unconnected for normal data mode",
+      "required": false
+    }
+  ],
+  "vmin": 3.6,
+  "vmax": 6,
+  "currentMa": 40,
+  "datasheetUrl": "https://components101.com/sites/default/files/component_datasheet/HC-05%20Datasheet.pdf",
+  "sources": [
+    "https://components101.com/sites/default/files/component_datasheet/HC-05%20Datasheet.pdf",
+    "https://www.martyncurrey.com/hc-05-and-hc-06-zs-040-bluetooth-modules-first-look/",
+    "https://www.martyncurrey.com/wp-content/uploads/2014/10/zs-040-BreakoutBoard_1200-584x607.jpg",
+    "https://www.martyncurrey.com/arduino-with-hc-05-bluetooth-module-at-mode/"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "HC-05 ZS-040 Bluetooth serial module 6 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 5 V (VIN/VBUS): the ZS-040 board's regulator needs at least 3.6 V, so the 3.3 V pin is not enough.",
+    "RXD and TXD are 3.3 V logic. ESP32 and Pico connect directly (cross over: board TX to RXD, board RX to TXD); from a 5 V Arduino put a 1k/2k divider on RXD.",
+    "AT mode: hold the little button (or tie EN to 3.3 V) while powering the module up; the LED blinks slowly (about every 2 s) and the module answers AT commands at 38400 baud, 8N1. Every command ends with \\r\\n.",
+    "In normal data mode (LED blinking fast) AT commands are not answered: the module just passes bytes to the paired phone, at the data baud (AT+UART?, often 9600 on ZS-040 boards).",
+    "Default pairing PIN is 1234 (some firmware: 0000). STATE goes high while a phone is connected."
+  ],
+  "keywords": [
+    "hc-05",
+    "hc05",
+    "bluetooth",
+    "spp",
+    "serial",
+    "zs-040",
+    "wireless",
+    "bc417"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 38400,
+    "quantity": "Paired devices remembered",
+    "unit": "",
+    "min": 0,
+    "max": 8,
+    "default": 0,
+    "uartReplies": [
+      {
+        "match": "41 54 0d 0a",
+        "bytes": [
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 56 45 52 53 49 4f 4e 3f 0d 0a",
+        "bytes": [
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 86,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 82,
+            "bits": 8
+          },
+          {
+            "const": 83,
+            "bits": 8
+          },
+          {
+            "const": 73,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 78,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 50,
+            "bits": 8
+          },
+          {
+            "const": 46,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 45,
+            "bits": 8
+          },
+          {
+            "const": 50,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 54,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 4e 41 4d 45 3f 0d 0a",
+        "bytes": [
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 78,
+            "bits": 8
+          },
+          {
+            "const": 65,
+            "bits": 8
+          },
+          {
+            "const": 77,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 72,
+            "bits": 8
+          },
+          {
+            "const": 67,
+            "bits": 8
+          },
+          {
+            "const": 45,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 53,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 52 4f 4c 45 3f 0d 0a",
+        "bytes": [
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 82,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 76,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 55 41 52 54 3f 0d 0a",
+        "bytes": [
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 85,
+            "bits": 8
+          },
+          {
+            "const": 65,
+            "bits": 8
+          },
+          {
+            "const": 82,
+            "bits": 8
+          },
+          {
+            "const": 84,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 51,
+            "bits": 8
+          },
+          {
+            "const": 56,
+            "bits": 8
+          },
+          {
+            "const": 52,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 44,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 44,
+            "bits": 8
+          },
+          {
+            "const": 48,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 50 53 57 44 3f 0d 0a",
+        "bytes": [
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 80,
+            "bits": 8
+          },
+          {
+            "const": 83,
+            "bits": 8
+          },
+          {
+            "const": 87,
+            "bits": 8
+          },
+          {
+            "const": 68,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 49,
+            "bits": 8
+          },
+          {
+            "const": 50,
+            "bits": 8
+          },
+          {
+            "const": 51,
+            "bits": 8
+          },
+          {
+            "const": 52,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 53 54 41 54 45 3f 0d 0a",
+        "bytes": [
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 83,
+            "bits": 8
+          },
+          {
+            "const": 84,
+            "bits": 8
+          },
+          {
+            "const": 65,
+            "bits": 8
+          },
+          {
+            "const": 84,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "const": 73,
+            "bits": 8
+          },
+          {
+            "const": 78,
+            "bits": 8
+          },
+          {
+            "const": 73,
+            "bits": 8
+          },
+          {
+            "const": 84,
+            "bits": 8
+          },
+          {
+            "const": 73,
+            "bits": 8
+          },
+          {
+            "const": 65,
+            "bits": 8
+          },
+          {
+            "const": 76,
+            "bits": 8
+          },
+          {
+            "const": 73,
+            "bits": 8
+          },
+          {
+            "const": 90,
+            "bits": 8
+          },
+          {
+            "const": 69,
+            "bits": 8
+          },
+          {
+            "const": 68,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "41 54 2b 41 44 43 4e 3f 0d 0a",
+        "bytes": [
+          {
+            "const": 43,
+            "bits": 8
+          },
+          {
+            "const": 65,
+            "bits": 8
+          },
+          {
+            "const": 68,
+            "bits": 8
+          },
+          {
+            "const": 67,
+            "bits": 8
+          },
+          {
+            "const": 78,
+            "bits": 8
+          },
+          {
+            "const": 58,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 8,
+            "scale": 1,
+            "offset": -48
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          },
+          {
+            "const": 79,
+            "bits": 8
+          },
+          {
+            "const": 75,
+            "bits": 8
+          },
+          {
+            "const": 13,
+            "bits": 8
+          },
+          {
+            "const": 10,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hc05.py",
+    "code": "# HC-05 Bluetooth SPP serial module (CSR BC417, ITead HC-05 AT command set), MicroPython driver.\n# Talks to the module in AT command mode: hold the board's button (or have EN/KEY high) while\n# powering the module up, then it answers at 38400 baud, 8N1, whatever its data baud is.\n# Every command ends with \\r\\n; the module answers with optional \"+CMD:<param>\" lines and then\n# \"OK\", or \"FAIL\" / \"ERROR:(<code>)\".\nimport time\n\n\nclass HC05:\n    def __init__(self, uart, timeout_ms=1000):\n        self.uart = uart\n        self.timeout_ms = timeout_ms\n\n    def _drain(self):\n        while self.uart.any():\n            self.uart.read()\n\n    def command(self, cmd, timeout_ms=None):\n        \"\"\"Send one AT command (without \\\\r\\\\n); return the lines before \"OK\".\"\"\"\n        self._drain()\n        self.uart.write(cmd.encode() + b'\\r\\n')\n        tmo = timeout_ms or self.timeout_ms\n        t0 = time.ticks_ms()\n        buf = b''\n        lines = []\n        while time.ticks_diff(time.ticks_ms(), t0) < tmo:\n            if self.uart.any():\n                got = self.uart.read()\n                if got:\n                    buf += got\n                while b'\\n' in buf:\n                    line, buf = buf.split(b'\\n', 1)\n                    line = line.strip().decode()\n                    if not line:\n                        continue\n                    if line == 'OK':\n                        return lines\n                    if line == 'FAIL' or line.startswith('ERROR'):\n                        raise OSError('HC-05: %s -> %s' % (cmd, line))\n                    lines.append(line)\n            else:\n                time.sleep_ms(5)\n        raise OSError('HC-05: no reply to %s (AT mode needs the button held / EN high at power-up, 38400 baud)' % cmd)\n\n    def query(self, cmd):\n        \"\"\"Send a query such as \"AT+NAME?\" and return the text after \"+NAME:\".\"\"\"\n        for line in self.command(cmd):\n            if line.startswith('+') and ':' in line:\n                return line.split(':', 1)[1].strip()\n        raise OSError('HC-05: no +reply to %s' % cmd)\n\n    def ping(self):\n        self.command('AT')\n        return True\n\n    def version(self):\n        return self.query('AT+VERSION?')\n\n    def name(self):\n        return self.query('AT+NAME?')\n\n    def role(self):\n        \"\"\"0 = slave, 1 = master, 2 = slave-loop.\"\"\"\n        return int(self.query('AT+ROLE?'))\n\n    def uart_settings(self):\n        \"\"\"(baud, stop bit, parity) used in data mode.\"\"\"\n        return tuple(int(x) for x in self.query('AT+UART?').split(','))\n\n    def paired_count(self):\n        \"\"\"Number of authenticated (paired) devices in the module's pairing list.\"\"\"\n        return int(self.query('AT+ADCN?'))\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom hc05 import HC05\n\n# The module must be in AT mode: hold its button (or EN high) while powering it up.\nu = UART({UART_ID}, baudrate=38400, tx=Pin({RXD}), rx=Pin({TXD}))\nbt = HC05(u)\nwhile True:\n    try:\n        bt.ping()\n        print('VERSION=%s NAME=%s PAIRED=%d' % (bt.version(), bt.name(), bt.paired_count()))\n    except OSError as e:\n        print(e)\n    time.sleep(1)\n",
+    "test": {
+      "id": "at-replies",
+      "title": "Answers AT commands with its version, name and paired-device count",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VERSION=2.0-20100601 NAME=HC-05 PAIRED=3",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:39:00.589Z",
+    "verifiedSources": [
+      "https://components101.com/sites/default/files/component_datasheet/HC-05%20Datasheet.pdf",
+      "https://components101.com/wireless/hc-05-bluetooth-module"
+    ]
+  }
+}

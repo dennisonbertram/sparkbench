@@ -1,0 +1,161 @@
+{
+  "type": "custom-adt7410",
+  "name": "ADT7410 precision temperature sensor",
+  "mpn": "ADT7410",
+  "category": "sensor",
+  "description": "Analog Devices 16-bit digital temperature sensor (−55 to 150 °C, ±0.5 °C from −40 to 105 °C at 3 V; 0.0078 °C resolution in 16-bit mode) with an I2C interface. Runs on 2.7–5.5 V. Sold as: Adafruit ADT7410 High Accuracy I2C Temperature Sensor Breakout (#4089, STEMMA QT version; 6-pin: VIN, GND, SCL, SDA, INT, CT), I2C address 0x48 (0x49–0x4B with the A0/A1 jumpers on the back).",
+  "eli5": "A very accurate thermometer chip that tells your board the temperature to a fraction of a degree.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 2.7–5.5 V, goes straight to the chip (no regulator) and to the 10 kΩ I2C pull-ups: use 3.3 V with a 3.3 V board",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Over/under-temperature interrupt output, open-drain, active low by default (10 kΩ pull-up on the board); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "CT",
+      "role": "io",
+      "description": "Critical-temperature output, open-drain, active low by default (10 kΩ pull-up on the board); not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.25,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7410.pdf",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7410.pdf",
+    "https://www.radiolocman.com/datasheet/pdf.html?di=168111",
+    "https://learn.adafruit.com/adt7410-breakout/pinouts",
+    "https://github.com/adafruit/Adafruit-ADT7410-PCB",
+    "https://www.adafruit.com/product/4089"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "Adafruit ADT7410 I2C temperature sensor breakout 4089",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from 3.3 V when using an ESP32 or Pico: the board's SDA/SCL pull-ups go to VIN, so 5 V on VIN would put 5 V on the microcontroller's pins.",
+    "The temperature is in registers 0x00 (MSB) and 0x01 (LSB), twos complement; read both bytes in one transfer starting at 0x00.",
+    "Power-up default is 13-bit (0.0625 °C, low 3 bits are alarm flags); write 0x80 to configuration register 0x03 for 16-bit mode, where °C = signed code / 128.",
+    "A conversion takes about 240 ms in continuous mode, so wait at least that long after changing the configuration.",
+    "Default address 0x48; close the A0 and/or A1 jumpers on the back for 0x49, 0x4A or 0x4B.",
+    "Keep the sensor away from the regulator and the microcontroller, which warm the air around them."
+  ],
+  "keywords": [
+    "adt7410",
+    "temperature",
+    "precision",
+    "analog devices",
+    "i2c thermometer"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 150,
+    "default": 25,
+    "registers": {
+      "0x02": 0,
+      "0x03": 0,
+      "0x04": 32,
+      "0x05": 0,
+      "0x06": 5,
+      "0x07": 0,
+      "0x08": 73,
+      "0x09": 128,
+      "0x0A": 5,
+      "0x0B": 200
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "scale": 0.0625,
+        "shift": 3,
+        "signed": true,
+        "when": {
+          "reg": "0x03",
+          "equals": 0,
+          "mask": 128
+        }
+      },
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "scale": 0.0078125,
+        "signed": true,
+        "when": {
+          "reg": "0x03",
+          "equals": 128,
+          "mask": 128
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "adt7410.py",
+    "code": "# ADT7410 16-bit I2C temperature sensor (Analog Devices), MicroPython driver.\n# Written from the ADT7410 data sheet Rev. C: register 0x00/0x01 = temperature MSB/LSB\n# (twos complement, MSB first, pointer auto-increments), 0x03 = configuration,\n# 0x0B = ID (bits 7:3 = 11001). 16-bit mode: T = code / 128 (code signed);\n# 13-bit mode: T = (code >> 3) / 16, bits 2:0 are TCRIT/THIGH/TLOW flags.\nimport time\n\n_REG_TEMP = 0x00\n_REG_CONFIG = 0x03\n_REG_ID = 0x0B\n\n\nclass ADT7410:\n    def __init__(self, i2c, addr=0x48, high_res=True):\n        self.i2c = i2c\n        self.addr = addr\n        if (self.i2c.readfrom_mem(addr, _REG_ID, 1)[0] & 0xF8) != 0xC8:\n            raise OSError('ADT7410 not found at 0x%02X: check the wiring and A0/A1' % addr)\n        self.high_res = high_res\n        # Bit 7 = resolution (1 = 16-bit), bits 6:5 = 00 continuous conversion.\n        self.i2c.writeto_mem(addr, _REG_CONFIG, bytes([0x80 if high_res else 0x00]))\n        time.sleep_ms(250)  # a conversion takes 240 ms (typ) in continuous mode\n\n    def temperature(self):\n        \"\"\"Last converted temperature in °C.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _REG_TEMP, 2)\n        code = (d[0] << 8) | d[1]\n        if code & 0x8000:\n            code -= 65536\n        if self.high_res:\n            return code / 128\n        return (code >> 3) / 16  # arithmetic shift keeps the sign; drops the 3 flag bits\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom adt7410 import ADT7410\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = ADT7410(i2c)\nwhile True:\n    print('T=%.2fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider, below zero too",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -12
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-12.00C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:53:25.513Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7410.pdf",
+      "https://learn.adafruit.com/adt7410-breakout/pinouts",
+      "https://github.com/adafruit/Adafruit-ADT7410-PCB"
+    ]
+  }
+}

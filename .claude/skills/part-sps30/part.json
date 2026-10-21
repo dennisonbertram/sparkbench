@@ -1,0 +1,412 @@
+{
+  "type": "custom-sps30",
+  "name": "SPS30 particulate matter sensor",
+  "mpn": "SPS30",
+  "category": "sensor",
+  "description": "Sensirion laser-scattering particulate matter sensor: mass concentration PM1.0/PM2.5/PM4.0/PM10 (0–1000 µg/m³), number concentration PM0.5–PM10 and typical particle size, a new reading every second, with a built-in fan. Runs on 4.5–5.5 V; I2C mode (SEL to GND) at address 0x69, 3.3 V logic levels. Sold as: Sensirion SPS30 with its 5-wire JST ZHR-5 cable (e.g. SparkFun SEN-15103), connector pins VDD, SDA, SCL, SEL, GND; no pull-up resistors on the sensor.",
+  "eli5": "Sucks in air with a tiny fan and counts the dust and smoke particles in it with a laser, so you know how clean the air is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 5 V ± 10 % (4.5–5.5 V); draws 55 mA (80 mA peak at fan start)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pin 2, RX in UART mode). Open-drain, needs an external pull-up (10 kΩ) to 3.3 V; 5 V tolerant",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pin 3, TX in UART mode). Open-drain, needs an external pull-up (10 kΩ) to 3.3 V; 5 V tolerant",
+      "required": true
+    },
+    {
+      "name": "SEL",
+      "role": "gnd",
+      "description": "Interface select: tie to GND (before power-up) for I2C; floating selects UART. Never connect to 5 V (max 4.0 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (connected to the metal housing)",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 55,
+  "i2cAddress": 105,
+  "datasheetUrl": "https://sensirion.com/media/documents/8600FF88/64A3B8D6/Sensirion_PM_Sensors_Datasheet_SPS30.pdf",
+  "sources": [
+    "https://sensirion.com/media/documents/8600FF88/64A3B8D6/Sensirion_PM_Sensors_Datasheet_SPS30.pdf",
+    "https://www.sparkfun.com/products/15103"
+  ],
+  "priceUsd": 45,
+  "supplierQuery": "Sensirion SPS30 particulate matter sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VDD from 5 V (4.5–5.5 V); the fan will not run reliably on 3.3 V. Budget 80 mA for the first 200 ms after a measurement starts.",
+    "SEL (pin 4) must be tied to GND before or at power-up to choose I2C; left floating the sensor talks UART instead. SEL is rated for 4.0 V max, so never tie it to 5 V.",
+    "SDA and SCL are open-drain and the sensor has no pull-ups: fit 10 kΩ resistors from SDA and from SCL to the board's 3.3 V (not 5 V, which would overdrive ESP32/Pico pins). The sensor accepts 3.3 V logic (VIH 2.31 V).",
+    "I2C is limited to 100 kHz and the datasheet recommends cables under 10 cm (use UART for longer runs).",
+    "Start Measurement is pointer 0x0010 with data 0x03 0x00 + CRC 0xAC (float output); poll 0x0202 for data ready, then read 60 bytes from 0x0300: ten big-endian floats, CRC-8 (poly 0x31, init 0xFF) after every 2 bytes.",
+    "Keep the metal housing floating: it is internally connected to GND."
+  ],
+  "keywords": [
+    "sps30",
+    "particulate",
+    "pm2.5",
+    "pm10",
+    "dust",
+    "air quality",
+    "sensirion"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "PM2.5 mass concentration",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1_0",
+        "quantity": "PM1.0 mass concentration",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm4_0",
+        "quantity": "PM4.0 mass concentration",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 14
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10 mass concentration",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      },
+      {
+        "key": "nc0_5",
+        "quantity": "PM0.5 number concentration",
+        "unit": "#/cm³",
+        "min": 0,
+        "max": 3000,
+        "default": 60
+      },
+      {
+        "key": "nc1_0",
+        "quantity": "PM1.0 number concentration",
+        "unit": "#/cm³",
+        "min": 0,
+        "max": 3000,
+        "default": 70
+      },
+      {
+        "key": "nc2_5",
+        "quantity": "PM2.5 number concentration",
+        "unit": "#/cm³",
+        "min": 0,
+        "max": 3000,
+        "default": 72
+      },
+      {
+        "key": "nc4_0",
+        "quantity": "PM4.0 number concentration",
+        "unit": "#/cm³",
+        "min": 0,
+        "max": 3000,
+        "default": 72
+      },
+      {
+        "key": "nc10",
+        "quantity": "PM10 number concentration",
+        "unit": "#/cm³",
+        "min": 0,
+        "max": 3000,
+        "default": 72
+      },
+      {
+        "key": "typical_size",
+        "quantity": "Typical particle size",
+        "unit": "µm",
+        "min": 0,
+        "max": 10,
+        "default": 0.6
+      }
+    ],
+    "responses": [
+      {
+        "match": "02 02",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "03 00",
+        "bytes": [
+          {
+            "control": "pm1_0",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "pm1_0",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "value",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "value",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "pm4_0",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "pm4_0",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "pm10",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "pm10",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc0_5",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc0_5",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc1_0",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc1_0",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc2_5",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc2_5",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc4_0",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc4_0",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc10",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "nc10",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "typical_size",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "typical_size",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sps30.py",
+    "code": "# Sensirion SPS30 particulate matter sensor, MicroPython driver (I2C mode).\n# Written from the SPS30 datasheet (v2.0, June 2023), section 6: I2C address 0x69, 16-bit command\n# pointers sent MSB first without CRC, a CRC-8 (poly 0x31, init 0xFF) after every 2 data bytes,\n# max 100 kHz, no clock stretching. The SEL pin must be tied to GND before power-up to select I2C.\nimport struct\nimport time\n\nFIELDS = ('pm1_0', 'pm2_5', 'pm4_0', 'pm10',            # mass concentration, ug/m3\n          'nc0_5', 'nc1_0', 'nc2_5', 'nc4_0', 'nc10',    # number concentration, #/cm3\n          'typical_size')                                # typical particle size, um\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SPS30:\n    def __init__(self, i2c, addr=0x69):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _cmd(self, ptr, data=b''):\n        buf = bytearray([ptr >> 8, ptr & 0xFF])\n        for i in range(0, len(data), 2):\n            w = data[i:i + 2]\n            buf += w + bytes([_crc8(w)])\n        self.i2c.writeto(self.addr, buf)\n\n    def _read(self, ptr, n_words):\n        self._cmd(ptr)\n        d = self.i2c.readfrom(self.addr, n_words * 3)\n        out = bytearray()\n        for i in range(0, n_words * 3, 3):\n            if _crc8(d[i:i + 2]) != d[i + 2]:\n                raise OSError('SPS30 CRC mismatch: check the wiring and pull-ups')\n            out += d[i:i + 2]\n        return out\n\n    def start(self):\n        \"\"\"Enter Measurement-Mode with big-endian IEEE754 float output (format 0x03).\"\"\"\n        self._cmd(0x0010, b'\\x03\\x00')\n        time.sleep_ms(20)\n\n    def stop(self):\n        self._cmd(0x0104)\n        time.sleep_ms(20)\n\n    def reset(self):\n        self._cmd(0xD304)\n        time.sleep_ms(100)\n\n    def start_fan_cleaning(self):\n        self._cmd(0x5607)\n        time.sleep_ms(5)\n\n    def data_ready(self):\n        return self._read(0x0202, 1)[1] == 0x01\n\n    def read(self, timeout_ms=3000):\n        \"\"\"Wait for a new measurement (one per second) and return a dict of the ten values.\"\"\"\n        t0 = time.ticks_ms()\n        while not self.data_ready():\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('SPS30: no data (was start() called?)')\n            time.sleep_ms(100)\n        raw = self._read(0x0300, 20)\n        vals = struct.unpack('>10f', raw)\n        return dict(zip(FIELDS, vals))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sps30 import SPS30\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = SPS30(i2c)\nsensor.start()\nwhile True:\n    m = sensor.read()\n    print('PM1.0=%.1f PM2.5=%.1f PM10=%.1f ug/m3 size=%.2f um' % (m['pm1_0'], m['pm2_5'], m['pm10'], m['typical_size']))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the particle readings set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1_0",
+          "value": 20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 80
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "typical_size",
+          "value": 1.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1.0=20.0 PM2.5=35.0 PM10=80.0 ug/m3 size=1.25 um",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:37:57.780Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/4/e/e/f/8/Sensirion_PM_Sensors_Datasheet_SPS30.pdf",
+      "https://www.sparkfun.com/products/15103"
+    ]
+  }
+}

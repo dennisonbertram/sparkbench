@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ens160",
+  "board": "Adafruit ENS160 MOX Gas Sensor breakout (product 5606)",
+  "reason": "Check passed on ESP32 and Pico. The model uses the datasheet register map: PART_ID 0x0160, OPMODE 0x02 gates the data, and AQI, TVOC and eCO2 are little-endian at 0x21-0x25. The driver resets the chip, sets standard mode and waits for NEWDAT; the I2C pins are named SCL/SDA (printed SCK/SDI) because the simulator needs those names.",
+  "datasheetUrl": "https://www.sciosense.com/wp-content/uploads/2023/12/ENS160-Datasheet.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-ENS160-PCB (board silkscreen x-order: VIN, 3Vo, GND, SCK, SDO, SDI, CS, INT) and https://learn.adafruit.com/adafruit-ens160-mox-gas-sensor/pinouts",
+  "checkRuns": 2
+}

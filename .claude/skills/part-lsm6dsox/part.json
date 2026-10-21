@@ -1,0 +1,300 @@
+{
+  "type": "custom-lsm6dsox",
+  "name": "LSM6DSOX accelerometer & gyroscope",
+  "mpn": "LSM6DSOX",
+  "category": "sensor",
+  "description": "STMicroelectronics 6-axis IMU with machine-learning core: 3-axis accelerometer (±2/4/8/16 g) and 3-axis gyroscope (±125–2000 dps) plus a die temperature sensor, read over I2C (or SPI). The chip runs on 1.71–3.6 V; the breakout adds a 3.3 V regulator and level shifting so it takes 3–5 V. Sold as: Adafruit LSM6DSOX 6 DoF Accelerometer and Gyroscope (#4438), main 9-pin header VIN, 3Vo, GND, SCL, SDA, DO, CS, I1, I2 (5-pin auxiliary SCX, SDX, CS, DO, GND header not modelled), STEMMA QT connectors, I2C address 0x6A (0x6B with DO high or the AD0 jumper bridged), 10 kΩ I2C pull-ups fitted.",
+  "eli5": "Feels which way it is tilted and how fast it is spinning, so your project knows how it is moving.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3–5 V into the on-board 3.3 V regulator (use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); level shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI); level shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "description": "I2C address bit SDO/SA0: low or unconnected = 0x6A, high = 0x6B (SPI data out); leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Mode select: leave unconnected (pulled up = I2C mode); SPI chip select",
+      "required": false
+    },
+    {
+      "name": "I1",
+      "role": "io",
+      "description": "INT1 interrupt output (e.g. data ready), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "I2",
+      "role": "io",
+      "description": "INT2 interrupt output, not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.55,
+  "i2cAddress": 106,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lsm6dsox.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "Adafruit LSM6DSOX 6 DoF accelerometer gyroscope 4438",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lsm6dsox.pdf",
+    "https://cdn.sparkfun.com/assets/6/f/b/6/b/lsm6dsox.pdf",
+    "https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts",
+    "https://github.com/adafruit/Adafruit-LSM6DSOX-PCB/blob/master/Adafruit_LSM6DSOX.brd",
+    "https://www.adafruit.com/product/4438"
+  ],
+  "buildNotes": [
+    "Power VIN with 3.3 V or 5 V (the board regulates to 3.3 V and level-shifts SCL/SDA); never feed 3Vo.",
+    "Leave CS unconnected so the chip stays in I2C mode, and leave DO unconnected for address 0x6A (pull DO high or bridge AD0 for 0x6B, e.g. for a second IMU).",
+    "Check WHO_AM_I (register 0x0F) reads 0x6C first; then write CTRL3_C = 0x44 (BDU + auto-increment), CTRL1_XL = 0x40 (104 Hz, ±2 g) and CTRL2_G = 0x40 (104 Hz, ±250 dps). Both sensors are powered down until you do.",
+    "Outputs are 16-bit two's complement, low byte first: accel 0x28–0x2D (0.061 mg/LSB at ±2 g), gyro 0x22–0x27 (8.75 mdps/LSB at ±250 dps), temperature 0x20–0x21 (25 °C + raw/256).",
+    "The full-scale bits are not in numeric order: FS_XL 01 means ±16 g, and gyro FS 00/01/10/11 = 250/500/1000/2000 dps (FS_125 bit for ±125 dps).",
+    "The temperature output is the die temperature (±15 °C offset), not an air thermometer."
+  ],
+  "keywords": [
+    "lsm6dsox",
+    "lsm6dso",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "6dof",
+    "6-axis",
+    "motion",
+    "tilt",
+    "adafruit 4438"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Chip temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 25,
+    "registers": {
+      "0x0F": 108,
+      "0x10": 0,
+      "0x11": 0,
+      "0x12": 4,
+      "0x1E": 7
+    },
+    "controls": [
+      {
+        "key": "ax",
+        "quantity": "Acceleration X",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "ay",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "az",
+        "quantity": "Acceleration Z",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      },
+      {
+        "key": "gx",
+        "quantity": "Rotation rate X",
+        "unit": "dps",
+        "min": -250,
+        "max": 250,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Rotation rate Y",
+        "unit": "dps",
+        "min": -250,
+        "max": 250,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Rotation rate Z",
+        "unit": "dps",
+        "min": -250,
+        "max": 250,
+        "default": 0
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x20",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "offset": 25
+      },
+      {
+        "reg": "0x22",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x24",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x26",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz"
+      },
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "az"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lsm6dsox.py",
+    "code": "# LSM6DSOX accelerometer + gyroscope (STMicroelectronics DS12814), MicroPython driver.\n# Register map from the datasheet: WHO_AM_I 0x0F = 0x6C, CTRL1_XL 0x10, CTRL2_G 0x11, CTRL3_C 0x12,\n# STATUS_REG 0x1E, OUT_TEMP 0x20-0x21, OUTX_L_G 0x22-0x27, OUTX_L_A 0x28-0x2D (16-bit two's complement,\n# low byte first). Temperature: 256 LSB/degC, 0 LSB = 25 degC.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL1_XL = 0x10\n_CTRL2_G = 0x11\n_CTRL3_C = 0x12\n_STATUS = 0x1E\n_OUT_TEMP_L = 0x20\n_OUTX_L_G = 0x22\n_OUTX_L_A = 0x28\n\n# Full scale -> (FS[1:0]_XL for CTRL1_XL[3:2], sensitivity in g/LSB). Note the coding: 01 = 16 g.\n_ACC_FS = {2: (0b00, 0.061e-3), 4: (0b10, 0.122e-3), 8: (0b11, 0.244e-3), 16: (0b01, 0.488e-3)}\n# Full scale -> (CTRL2_G[3:1] = FS1_G FS0_G FS_125, sensitivity in dps/LSB).\n_GYR_FS = {125: (0b001, 4.375e-3), 250: (0b000, 8.75e-3), 500: (0b010, 17.5e-3),\n           1000: (0b100, 35e-3), 2000: (0b110, 70e-3)}\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass LSM6DSOX:\n    def __init__(self, i2c, addr=0x6A, accel_fs=2, gyro_fs=250):\n        \"\"\"addr: 0x6A with SDO/SA0 low (Adafruit default), 0x6B with DO pulled high / AD0 jumper bridged.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        who = self._r(_WHO_AM_I, 1)[0]\n        if who != 0x6C:\n            raise OSError('LSM6DSOX not found at 0x%02X (WHO_AM_I=0x%02X)' % (addr, who))\n        fa, self._acc_s = _ACC_FS[accel_fs]\n        fg, self._gyr_s = _GYR_FS[gyro_fs]\n        # BDU=1 (MSB and LSB from the same sample), IF_INC=1 (auto-increment for burst reads).\n        self._w(_CTRL3_C, 0x44)\n        # ODR_XL = 0100 (104 Hz), chosen full scale, LPF2 off.\n        self._w(_CTRL1_XL, 0x40 | (fa << 2))\n        # ODR_G = 0100 (104 Hz), chosen full scale; bit 0 must be 0.\n        self._w(_CTRL2_G, 0x40 | (fg << 1))\n        time.sleep_ms(100)  # gyroscope turn-on time is 35 ms typ., then the first samples arrive\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _xyz(self, reg, scale):\n        d = self._r(reg, 6)\n        return (_s16(d[0], d[1]) * scale, _s16(d[2], d[3]) * scale, _s16(d[4], d[5]) * scale)\n\n    def data_ready(self):\n        \"\"\"(accel, gyro, temperature) new-data flags from STATUS_REG.\"\"\"\n        s = self._r(_STATUS, 1)[0]\n        return bool(s & 1), bool(s & 2), bool(s & 4)\n\n    def acceleration(self):\n        \"\"\"(x, y, z) in g.\"\"\"\n        return self._xyz(_OUTX_L_A, self._acc_s)\n\n    def gyro(self):\n        \"\"\"(x, y, z) angular rate in degrees per second.\"\"\"\n        return self._xyz(_OUTX_L_G, self._gyr_s)\n\n    def temperature(self):\n        \"\"\"Die temperature in degC (offset up to +/-15 degC: not an air thermometer).\"\"\"\n        d = self._r(_OUT_TEMP_L, 2)\n        return 25 + _s16(d[0], d[1]) / 256\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lsm6dsox import LSM6DSOX\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = LSM6DSOX(i2c)  # 0x6A: Adafruit default (DO low)\nwhile True:\n    ax, ay, az = imu.acceleration()\n    gx, gy, gz = imu.gyro()\n    t = imu.temperature()\n    print('A=%.2f,%.2f,%.2fg G=%.1f,%.1f,%.1fdps T=%.1fC' % (ax, ay, az, gx, gy, gz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the tilt, rotation and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ax",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "az",
+          "value": 0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": 10
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gy",
+          "value": -20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,-0.25,0.75g G=10.0,-20.0,30.0dps T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:44:25.605Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J1899/lsm6dsox.pdf",
+      "https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/094/954/medium640/sensors__6dsox_pinouts4438_top_ORIG_2019_12.png",
+      "https://raw.githubusercontent.com/STMicroelectronics/lsm6dsox-pid/master/lsm6dsox_reg.h"
+    ]
+  }
+}

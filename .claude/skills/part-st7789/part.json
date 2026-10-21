@@ -1,0 +1,135 @@
+{
+  "type": "custom-st7789",
+  "name": "ST7789 1.3\" 240×240 IPS colour TFT (SPI, 7-pin)",
+  "mpn": "ST7789",
+  "category": "display",
+  "description": "1.3 inch 240×240 IPS colour TFT driven by a Sitronix ST7789(VW) controller over write-only 4-wire SPI (SCL clock, SDA data, DC data/command, RES reset). Chip select is tied low on the board, so the display needs SPI mode 3 and its own SPI bus. 3.3 V supply and 3.3 V logic only. Sold as: generic 1.3\" 240x240 IPS TFT LCD module ST7789 SPI with 7-pin header GND, VCC, SCL, SDA, RES, DC, BLK (no CS pin), e.g. Probots 1.3 inch 240x240 IPS TFT LCD Module ST7789 SPI, universal-solder SKU 26469, ShillehTek TFT LCD 1.3\" 240x240 ST7789.",
+  "eli5": "A small, bright full-colour screen that your board can draw text, shapes and pictures on using a few fast wires.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V only (ST7789 VDD max 3.3 V; no level shifting on the module)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (named SCL but this is SPI, not I2C); 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (MOSI); 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "RES",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (hold low >= 10 us, then wait 120 ms)",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select: low = command, high = data",
+      "required": true
+    },
+    {
+      "name": "BLK",
+      "role": "io",
+      "description": "Backlight control; pulled up on most boards so the backlight is on when left unconnected. Drive or PWM it to dim; check your board, a few are wired active-low.",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.3,
+  "currentMa": 40,
+  "datasheetUrl": "https://www.rhydolabz.com/documents/33/ST7789.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "1.3 inch IPS 240x240 ST7789 SPI 7 pin module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "3.3 V only: power VCC from the 3V3 pin and use 3.3 V logic. A 5 V Arduino needs level shifters on SCL, SDA, RES and DC.",
+    "SCL/SDA here are SPI clock and SPI data, not I2C. Wire them to the SPI SCK and MOSI pins of your board.",
+    "There is no CS pin (it is tied low on the board): use SPI mode 3 (polarity=1, phase=1) or the screen stays black, and don't share this SPI bus with other devices.",
+    "IPS panels on these modules need display inversion on (command 0x21) to show true colours; the driver sends it.",
+    "The ST7789 has 240×320 RAM: when rotated 180° or 270° the picture starts 80 pixels in. The driver applies the offset for each rotation.",
+    "A full 240×240 frame is 115 200 bytes; draw in rows or small areas rather than one big buffer on a Pico or ESP32 without PSRAM."
+  ],
+  "keywords": [
+    "st7789",
+    "st7789vw",
+    "tft",
+    "ips",
+    "1.3 inch",
+    "1.3\"",
+    "240x240",
+    "colour display",
+    "color display",
+    "lcd",
+    "spi display",
+    "screen"
+  ],
+  "sources": [
+    "https://www.rhydolabz.com/documents/33/ST7789.pdf",
+    "https://newhavendisplay.com/content/datasheets/ST7789V.pdf",
+    "https://probots.co.in/1-3-inch-240x240-ips-tft-lcd-module-st7789-spi.html",
+    "https://universal-solder.ca/26469",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/tft-lcd-1-3-240x240-st7789-esp32-arduino-manual"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 240,
+    "height": 240
+  },
+  "driver": {
+    "filename": "st7789.py",
+    "code": "# ST7789 / ST7789VW colour TFT controller (Sitronix), MicroPython SPI driver for the common\n# 1.3\" 240x240 IPS module with a 7-pin header GND VCC SCL SDA RES DC BLK (CS tied low on the board).\n# From the ST7789VW datasheet V1.0:\n#   4-line serial: D/CX low = command byte, high = parameter/pixel bytes, MSB first.\n#   Write clock cycle >= 16 ns (max ~62 MHz). With CS tied low these modules need SPI mode 3\n#   (polarity=1, phase=1), so build the bus as SPI(..., polarity=1, phase=1).\n#   RESX low >= 10 us, then wait 120 ms (reset cancel) before Sleep Out.\n#   SWRESET (01h): wait 5 ms, and 120 ms before SLPOUT. SLPOUT (11h): wait 120 ms before SLPIN,\n#   and 5 ms before the next command.\n#   COLMOD (3Ah) = 55h: 16 bit/pixel RGB565. MADCTL (36h) sets orientation. INVON (21h): IPS panels\n#   on these modules need inversion on to show true colours. NORON (13h), DISPON (29h).\n#   CASET (2Ah) / RASET (2Bh): start and end address, 16-bit each, MSB first. RAMWR (2Ch): pixels.\n# The controller has 240x320 RAM; the 240x240 panel shows RAM rows 0-239, so rotations 180/270\n# need an 80-pixel offset.\nfrom machine import Pin\nimport framebuf\nimport time\n\n_SWRESET = 0x01\n_SLPOUT = 0x11\n_NORON = 0x13\n_INVON = 0x21\n_DISPOFF = 0x28\n_DISPON = 0x29\n_CASET = 0x2A\n_RASET = 0x2B\n_RAMWR = 0x2C\n_MADCTL = 0x36\n_COLMOD = 0x3A\n\n# rotation -> (MADCTL, x offset, y offset) for a 240x240 panel on 240x320 RAM\n_ROT = ((0x00, 0, 0), (0x60, 0, 0), (0xC0, 0, 80), (0xA0, 80, 0))\n\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\n\n\ndef color565(r, g, b):\n    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)\n\n\nclass ST7789:\n    def __init__(self, spi, dc, rst=None, cs=None, blk=None, width=240, height=240, rotation=0):\n        # spi: machine.SPI built with polarity=1, phase=1 for the CS-less 7-pin module.\n        # dc, rst, cs, blk: GPIO numbers (cs/blk None when not wired).\n        self.spi = spi\n        self.width = width\n        self.height = height\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1) if rst is not None else None\n        self.cs = Pin(cs, Pin.OUT, value=1) if cs is not None else None\n        self.blk = Pin(blk, Pin.OUT, value=1) if blk is not None else None\n        self._xo = 0\n        self._yo = 0\n        self.reset()\n        self._cmd(_SWRESET)\n        time.sleep_ms(150)          # 5 ms after SWRESET, 120 ms before SLPOUT\n        self._cmd(_SLPOUT)\n        time.sleep_ms(120)          # sleep out settles in 120 ms\n        self._cmd(_COLMOD, b'\\x55')  # 16 bit/pixel\n        time.sleep_ms(10)\n        self.rotation(rotation)\n        self._cmd(_INVON)\n        time.sleep_ms(10)\n        self._cmd(_NORON)\n        time.sleep_ms(10)\n        self.fill(BLACK)\n        self._cmd(_DISPON)\n        time.sleep_ms(10)\n\n    def reset(self):\n        if self.rst is None:\n            return\n        self.rst(1)\n        time.sleep_ms(5)\n        self.rst(0)\n        time.sleep_ms(1)            # >= 10 us low\n        self.rst(1)\n        time.sleep_ms(120)          # reset cancel time\n\n    def _cmd(self, c, data=None):\n        if self.cs:\n            self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        if self.cs:\n            self.cs(1)\n\n    def _data(self, buf):\n        if self.cs:\n            self.cs(0)\n        self.dc(1)\n        self.spi.write(buf)\n        if self.cs:\n            self.cs(1)\n\n    def rotation(self, r):\n        mad, self._xo, self._yo = _ROT[r & 3]\n        self._cmd(_MADCTL, bytes([mad]))\n\n    def window(self, x0, y0, x1, y1):\n        x0 += self._xo\n        x1 += self._xo\n        y0 += self._yo\n        y1 += self._yo\n        self._cmd(_CASET, bytes([x0 >> 8, x0 & 0xFF, x1 >> 8, x1 & 0xFF]))\n        self._cmd(_RASET, bytes([y0 >> 8, y0 & 0xFF, y1 >> 8, y1 & 0xFF]))\n        self._cmd(_RAMWR)\n\n    def fill_rect(self, x, y, w, h, color):\n        if w <= 0 or h <= 0:\n            return\n        self.window(x, y, x + w - 1, y + h - 1)\n        line = bytes([color >> 8, color & 0xFF]) * w\n        for _ in range(h):          # one row at a time keeps RAM use small\n            self._data(line)\n\n    def fill(self, color):\n        self.fill_rect(0, 0, self.width, self.height, color)\n\n    def pixel(self, x, y, color):\n        self.window(x, y, x, y)\n        self._data(bytes([color >> 8, color & 0xFF]))\n\n    def blit_buffer(self, buf, x, y, w, h):\n        # buf: w*h RGB565 pixels, high byte first (the order the ST7789 expects).\n        self.window(x, y, x + w - 1, y + h - 1)\n        self._data(buf)\n\n    def text(self, s, x, y, color=WHITE, background=BLACK):\n        # 8x8 framebuf font. framebuf stores RGB565 little-endian, so swap the bytes of each colour\n        # to get the high byte first on the wire.\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        sw = lambda c: ((c & 0xFF) << 8) | (c >> 8)\n        fb.fill(sw(background))\n        fb.text(s, 0, 0, sw(color))\n        self.blit_buffer(buf, x, y, w, 8)\n\n    def on(self):\n        self._cmd(_DISPON)\n        if self.blk:\n            self.blk(1)\n\n    def off(self):\n        self._cmd(_DISPOFF)\n        if self.blk:\n            self.blk(0)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom st7789 import ST7789, WHITE, YELLOW, BLACK\n\n# CS is tied low on this module, so it needs SPI mode 3 (polarity=1, phase=1).\nspi = SPI(1, baudrate=20000000, polarity=1, phase=1, sck=Pin({SCL}), mosi=Pin({SDA}))\ntft = ST7789(spi, dc={DC}, rst={RES})\ntft.text('HELLO ST7789', 20, 40, WHITE, BLACK)\ntft.text('240x240 IPS', 20, 60, YELLOW, BLACK)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Draws text on the 1.3\" ST7789 TFT",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "HELLO ST7789",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:33:21.542Z",
+    "verifiedSources": [
+      "https://www.rhydolabz.com/documents/33/ST7789.pdf",
+      "https://probots.co.in/ST7789-1-3-inch-240x240-IPS-TFT-LCD-Module"
+    ]
+  }
+}

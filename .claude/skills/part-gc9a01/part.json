@@ -1,0 +1,139 @@
+{
+  "type": "custom-gc9a01",
+  "name": "GC9A01 1.28\" round IPS TFT display (240x240)",
+  "mpn": "GC9A01",
+  "category": "display",
+  "description": "1.28-inch round 240x240 colour IPS TFT driven by the Galaxycore GC9A01 controller over write-only 4-line SPI (RGB565). The module has an XC6206 3.3 V regulator, so VCC takes 3.3-5 V, but the signal pins are 3.3 V logic only. Sold as: LCDwiki/QDtech MSP1281 1.28inch IPS SPI module (8-pin 2.54 mm header: GND, VCC, SCL, SDA, RES, DC, CS, BLK), the common blue round GC9A01 clone module.",
+  "eli5": "A small round colour screen, like a watch face, that your board can draw text and pictures on.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3-5 V (on-board XC6206 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (3.3 V logic)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in, MOSI (3.3 V logic; the display cannot be read back)",
+      "required": true
+    },
+    {
+      "name": "RES",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (10k pull-up and RC power-on reset on the board)",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select: low = command, high = data",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low",
+      "required": true
+    },
+    {
+      "name": "BLK",
+      "role": "io",
+      "description": "Backlight: high or unconnected = on (10k pull-up to 3.3 V drives an S8050 transistor), low = off; PWM to dim",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 45,
+  "datasheetUrl": "https://www.lcdwiki.com/res/MSP1281/GC9A01_Datasheet_REV.1.0.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "GC9A01 1.28 inch round IPS TFT 240x240 SPI module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Signal pins are 3.3 V logic only (just 100 ohm series resistors, no level shifter): drive them from a 3.3 V board such as an ESP32 or Pico.",
+    "SCL and SDA are the SPI clock and MOSI, not I2C. Put them on the hardware SPI pins (ESP32 SPI2/HSPI: SCK 14, MOSI 13 or VSPI: SCK 18, MOSI 23; Pico SPI0: SCK GP18, MOSI GP19).",
+    "After a hardware reset wait 120 ms, send the panel set-up table, then Sleep Out (0x11), wait 120 ms, then Display On (0x29).",
+    "Pixels are RGB565 sent high byte first; MicroPython framebuf stores them low byte first, so swap the bytes of each colour.",
+    "Video RAM holds random data at power-up: clear the screen (fill black) before drawing.",
+    "Leave BLK unconnected for an always-on backlight; it draws about 28 mA."
+  ],
+  "keywords": [
+    "gc9a01",
+    "round display",
+    "round lcd",
+    "tft",
+    "ips",
+    "240x240",
+    "1.28 inch",
+    "watch face",
+    "spi display"
+  ],
+  "sources": [
+    "https://www.lcdwiki.com/res/MSP1281/GC9A01_Datasheet_REV.1.0.pdf",
+    "https://lcdwiki.com/1.28inch_IPS_Module",
+    "https://www.lcdwiki.com/res/MSP1281/1.28IPS_MSP1281_Schematic.pdf",
+    "https://github.com/adafruit/Adafruit_GC9A01A/blob/main/Adafruit_GC9A01A.cpp"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 240,
+    "height": 240
+  },
+  "driver": {
+    "filename": "gc9a01.py",
+    "code": "# GC9A01 240x240 round IPS TFT driver (4-line SPI, write-only).\n# Command set from the Galaxycore GC9A01 datasheet V1.0; the panel set-up table is the\n# manufacturer's initialisation sequence (as used by Waveshare / Adafruit_GC9A01A).\nfrom machine import Pin\nimport framebuf\nimport time\n\n_INIT = (\n    (0xEF, b''), (0xEB, b'\\x14'), (0xFE, b''), (0xEF, b''), (0xEB, b'\\x14'),\n    (0x84, b'\\x40'), (0x85, b'\\xff'), (0x86, b'\\xff'), (0x87, b'\\xff'), (0x88, b'\\x0a'),\n    (0x89, b'\\x21'), (0x8A, b'\\x00'), (0x8B, b'\\x80'), (0x8C, b'\\x01'), (0x8D, b'\\x01'),\n    (0x8E, b'\\xff'), (0x8F, b'\\xff'), (0xB6, b'\\x00\\x00'),\n    (0x36, b'\\x48'),                      # MADCTL: MX + BGR (upright on the round panel)\n    (0x3A, b'\\x05'),                      # COLMOD: 16 bits/pixel (RGB565) on the MCU interface\n    (0x90, b'\\x08\\x08\\x08\\x08'), (0xBD, b'\\x06'), (0xBC, b'\\x00'), (0xFF, b'\\x60\\x01\\x04'),\n    (0xC3, b'\\x13'), (0xC4, b'\\x13'), (0xC9, b'\\x22'), (0xBE, b'\\x11'), (0xE1, b'\\x10\\x0e'),\n    (0xDF, b'\\x21\\x0c\\x02'),\n    (0xF0, b'\\x45\\x09\\x08\\x08\\x26\\x2a'), (0xF1, b'\\x43\\x70\\x72\\x36\\x37\\x6f'),\n    (0xF2, b'\\x45\\x09\\x08\\x08\\x26\\x2a'), (0xF3, b'\\x43\\x70\\x72\\x36\\x37\\x6f'),\n    (0xED, b'\\x1b\\x0b'), (0xAE, b'\\x77'), (0xCD, b'\\x63'), (0xE8, b'\\x34'),\n    (0x62, b'\\x18\\x0d\\x71\\xed\\x70\\x70\\x18\\x0f\\x71\\xef\\x70\\x70'),\n    (0x63, b'\\x18\\x11\\x71\\xf1\\x70\\x70\\x18\\x13\\x71\\xf3\\x70\\x70'),\n    (0x64, b'\\x28\\x29\\xf1\\x01\\xf1\\x00\\x07'),\n    (0x66, b'\\x3c\\x00\\xcd\\x67\\x45\\x45\\x10\\x00\\x00\\x00'),\n    (0x67, b'\\x00\\x3c\\x00\\x00\\x00\\x01\\x54\\x10\\x32\\x98'),\n    (0x74, b'\\x10\\x85\\x80\\x00\\x00\\x4e\\x00'), (0x98, b'\\x3e\\x07'),\n    (0x35, b''),                          # tearing effect line on\n    (0x21, b''),                          # display inversion on (IPS panel)\n)\n\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\n\n\nclass GC9A01:\n    def __init__(self, spi, dc, cs, rst, width=240, height=240):\n        self.spi, self.width, self.height = spi, width, height\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1)\n        # Hardware reset (RESX active low), then wait 120 ms before sending commands.\n        self.rst(0)\n        time.sleep_ms(10)\n        self.rst(1)\n        time.sleep_ms(120)\n        for c, a in _INIT:\n            self._cmd(c, a)\n        self._cmd(0x11)          # Sleep Out: wait 120 ms (datasheet 6.2.4)\n        time.sleep_ms(120)\n        self._cmd(0x29)          # Display ON\n        time.sleep_ms(20)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        self.cs(1)\n\n    def _window(self, x0, y0, x1, y1):\n        self._cmd(0x2A, bytes([x0 >> 8, x0 & 255, x1 >> 8, x1 & 255]))  # CASET\n        self._cmd(0x2B, bytes([y0 >> 8, y0 & 255, y1 >> 8, y1 & 255]))  # RASET\n\n    def blit(self, buf, x, y, w, h):\n        \"\"\"Write w*h RGB565 pixels (2 bytes each, high byte first) at x, y.\"\"\"\n        self._window(x, y, x + w - 1, y + h - 1)\n        self._cmd(0x2C, buf)                                           # RAMWR\n\n    def fill_rect(self, x, y, w, h, colour):\n        self._window(x, y, x + w - 1, y + h - 1)\n        line = bytes([colour >> 8, colour & 255]) * w\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(b'\\x2c')\n        self.dc(1)\n        for _ in range(h):\n            self.spi.write(line)\n        self.cs(1)\n\n    def fill(self, colour):\n        self.fill_rect(0, 0, self.width, self.height, colour)\n\n    def text(self, s, x, y, colour=WHITE, bg=BLACK):\n        \"\"\"8x8 font text. RGB565 goes on the wire high byte first, so swap bytes for framebuf.\"\"\"\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        sw = lambda c: ((c & 255) << 8) | (c >> 8)\n        fb.fill(sw(bg))\n        fb.text(s, 0, 0, sw(colour))\n        self.blit(buf, x, y, w, 8)\n\n    def off(self):\n        self._cmd(0x28)\n\n    def on(self):\n        self._cmd(0x29)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nfrom gc9a01 import GC9A01, BLACK, WHITE\nimport time\n\nspi = SPI(1, baudrate=20000000, polarity=0, phase=0, sck=Pin({SCL}), mosi=Pin({SDA}))\ntft = GC9A01(spi, dc={DC}, cs={CS}, rst={RES})\ntft.fill(BLACK)\ntft.text('HELLO 42', 88, 116, WHITE)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "text",
+      "title": "Draws text on the round screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "HELLO 42",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:11:50.563Z",
+    "verifiedSources": [
+      "https://www.waveshare.com/w/upload/5/5e/GC9A01A.pdf",
+      "https://www.lcdwiki.com/1.28inch_IPS_Module"
+    ]
+  }
+}

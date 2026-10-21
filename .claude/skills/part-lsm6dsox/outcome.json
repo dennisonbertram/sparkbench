@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lsm6dsox",
+  "board": "Adafruit LSM6DSOX 6 DoF Accelerometer and Gyroscope (#4438)",
+  "reason": "Check PASSED on esp32 and pico. The model is a byte-register map (WHO_AM_I 0x6C, address 0x6A) with little-endian signed outputs at the datasheet sensitivities: 0.061 mg/LSB (±2 g), 8.75 mdps/LSB (±250 dps) and 25 + raw/256 °C. The driver configures CTRL3_C, CTRL1_XL and CTRL2_G per DS12814. Only the 9-pin main header is modelled; the 5-pin aux header is not.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lsm6dsox.pdf",
+  "breakoutPinoutSource": "Adafruit Eagle board file https://github.com/adafruit/Adafruit-LSM6DSOX-PCB/blob/master/Adafruit_LSM6DSOX.brd (JP1 1x09 silkscreen: VIN, 3Vo, GND, SCL, SDA, DO, CS, I1, I2) plus https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts",
+  "checkRuns": 1
+}

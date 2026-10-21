@@ -1,0 +1,152 @@
+{
+  "type": "custom-st7735",
+  "name": "ST7735S 1.8\" 128x160 colour TFT",
+  "mpn": "ST7735S",
+  "category": "display",
+  "description": "Sitronix ST7735S driver with a 1.8-inch 128×160-pixel colour TFT (65K colours, RGB565) on a 4-wire SPI bus (write-only, up to about 15 MHz). The board has no regulator: its VCC pin feeds the chip's VDD and VDDI directly, so power it from 3.3 V. Sold as: Waveshare 1.8inch LCD Module (ST7735S, 128×160, 8-pin header VCC, GND, DIN, CLK, CS, DC, RST, BL, plus the same signals on a PH2.0 cable socket).",
+  "eli5": "A small colour screen you can draw text, shapes and pictures on.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V (goes straight to the ST7735S VDD/VDDI, no regulator)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (MOSI, the chip's SDA)",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (the chip's SCL)",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select: low = command, high = data (the chip's A0 / D/CX)",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low",
+      "required": true
+    },
+    {
+      "name": "BL",
+      "role": "io",
+      "description": "Backlight: high or unconnected = on (10 kΩ pull-up and transistor on the board), low = off; PWM to dim",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 40,
+  "datasheetUrl": "https://www.lcdwiki.com/res/MSP1803/ST7735S_V1.1_20111121.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "1.8 inch TFT LCD module ST7735S 128x160 SPI",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V. The vendor page says 3.3 V/5 V, but the schematic has no regulator and the ST7735S I/O supply (VDDI) is rated to 3.7 V at most.",
+    "Init order from the datasheet: hardware reset (RST low ≥ 10 µs, then wait 120 ms), SWRESET 0x01 + 120 ms, SLPOUT 0x11 + 120 ms, COLMOD 0x3A = 0x05 (16-bit), MADCTL 0x36, DISPON 0x29.",
+    "The ST7735S RAM is 132×162 but the glass is 128×160: on this module the picture starts at RAM column 2, row 1 (portrait). Without the offset you get a stripe of random pixels along two edges.",
+    "Pixels are RGB565 sent high byte first. MicroPython's framebuf.RGB565 stores the low byte first, so swap the colour bytes before drawing into a framebuf.",
+    "SPI mode 0, write-only (no MISO). 10 MHz is safe on breadboard wires; the datasheet minimum write clock period is 66 ns (about 15 MHz).",
+    "Leave BL unconnected for a permanently lit backlight, or drive it with PWM to dim it."
+  ],
+  "keywords": [
+    "st7735",
+    "st7735s",
+    "tft",
+    "lcd",
+    "1.8 inch",
+    "128x160",
+    "color display",
+    "spi display",
+    "waveshare"
+  ],
+  "sources": [
+    "https://www.lcdwiki.com/res/MSP1803/ST7735S_V1.1_20111121.pdf",
+    "https://www.waveshare.com/wiki/1.8inch_LCD_Module",
+    "https://files.waveshare.com/upload/9/95/1.8inch-LCD-Module-Schematic.pdf",
+    "https://files.waveshare.com/upload/8/8d/LCD_Module_code.zip"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 128,
+    "height": 160
+  },
+  "driver": {
+    "filename": "st7735.py",
+    "code": "# ST7735S 1.8\" 128x160 colour TFT (Waveshare 1.8inch LCD Module), MicroPython driver.\n# Written from the Sitronix ST7735S V1.1 datasheet: 4-wire SPI (mode 0), D/C low = command,\n# 16-bit RGB565 pixels (COLMOD 0x3A = 0x05), sent most-significant byte first.\n# The panel is 128x160 but the ST7735S RAM is 132x162, so on this module the visible area\n# starts at RAM column 2, row 1 (portrait). In landscape the two offsets swap.\nfrom machine import Pin\nimport framebuf\nimport time\n\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\n\n\ndef rgb(r, g, b):\n    \"\"\"24-bit colour -> RGB565.\"\"\"\n    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)\n\n\nclass ST7735:\n    def __init__(self, spi, dc, cs, rst=None, landscape=False, xoff=2, yoff=1):\n        self.spi = spi\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1) if rst is not None else None\n        if landscape:\n            self.width, self.height = 160, 128\n            self.xoff, self.yoff = yoff, xoff\n            madctl = 0x60  # MV (row/column exchange) + MX\n        else:\n            self.width, self.height = 128, 160\n            self.xoff, self.yoff = xoff, yoff\n            madctl = 0x00  # MY=MX=MV=0, RGB order\n        if self.rst:\n            # RESX low >= 10 us resets the chip; wait 120 ms before Sleep Out (datasheet 9.15).\n            self.rst(0)\n            time.sleep_ms(10)\n            self.rst(1)\n            time.sleep_ms(120)\n        self._cmd(0x01)  # SWRESET: wait 120 ms before the next command\n        time.sleep_ms(150)\n        self._cmd(0x11)  # SLPOUT: booster and oscillator start, wait 120 ms\n        time.sleep_ms(120)\n        self._cmd(0xB1, b'\\x01\\x2C\\x2D')  # FRMCTR1 frame rate (normal mode)\n        self._cmd(0xB2, b'\\x01\\x2C\\x2D')  # FRMCTR2 (idle mode)\n        self._cmd(0xB3, b'\\x01\\x2C\\x2D\\x01\\x2C\\x2D')  # FRMCTR3 (partial mode)\n        self._cmd(0xB4, b'\\x07')  # INVCTR: column inversion\n        self._cmd(0xC0, b'\\xA2\\x02\\x84')  # PWCTR1: AVDD 5.0 V, GVDD 4.6 V, AUTO mode\n        self._cmd(0xC1, b'\\xC5')  # PWCTR2: VGH/VGL\n        self._cmd(0xC2, b'\\x0A\\x00')  # PWCTR3 (normal mode)\n        self._cmd(0xC3, b'\\x8A\\x2A')  # PWCTR4 (idle mode)\n        self._cmd(0xC4, b'\\x8A\\xEE')  # PWCTR5 (partial mode)\n        self._cmd(0xC5, b'\\x0E')  # VMCTR1: VCOM\n        self._cmd(0xE0, b'\\x0F\\x1A\\x0F\\x18\\x2F\\x28\\x20\\x22\\x1F\\x1B\\x23\\x37\\x00\\x07\\x02\\x10')  # gamma +\n        self._cmd(0xE1, b'\\x0F\\x1B\\x0F\\x17\\x33\\x2C\\x29\\x2E\\x30\\x30\\x39\\x3F\\x00\\x07\\x03\\x10')  # gamma -\n        self._cmd(0x3A, b'\\x05')  # COLMOD: 16 bits per pixel\n        self._cmd(0x36, bytes([madctl]))  # MADCTL: scan direction / orientation\n        self._cmd(0x13)  # NORON: normal display mode\n        self.fill(BLACK)\n        self._cmd(0x29)  # DISPON\n        time.sleep_ms(10)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        self.cs(1)\n\n    def _window(self, x, y, w, h):\n        x0, y0 = x + self.xoff, y + self.yoff\n        x1, y1 = x0 + w - 1, y0 + h - 1\n        self._cmd(0x2A, bytes([x0 >> 8, x0 & 255, x1 >> 8, x1 & 255]))  # CASET\n        self._cmd(0x2B, bytes([y0 >> 8, y0 & 255, y1 >> 8, y1 & 255]))  # RASET\n\n    def blit(self, buf, x, y, w, h):\n        \"\"\"Write w*h big-endian RGB565 pixels (2 bytes each) at (x, y).\"\"\"\n        self._window(x, y, w, h)\n        self._cmd(0x2C, buf)  # RAMWR\n\n    def fill_rect(self, x, y, w, h, colour):\n        x, y = max(0, x), max(0, y)\n        w, h = min(w, self.width - x), min(h, self.height - y)\n        if w <= 0 or h <= 0:\n            return\n        self._window(x, y, w, h)\n        line = bytes([colour >> 8, colour & 255]) * w\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(b'\\x2C')\n        self.dc(1)\n        for _ in range(h):\n            self.spi.write(line)\n        self.cs(1)\n\n    def fill(self, colour):\n        self.fill_rect(0, 0, self.width, self.height, colour)\n\n    def pixel(self, x, y, colour):\n        self.fill_rect(x, y, 1, 1, colour)\n\n    def text(self, s, x, y, colour=WHITE, bg=BLACK):\n        \"\"\"Draw text with MicroPython's built-in 8x8 font.\"\"\"\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        # framebuf stores RGB565 little-endian; the ST7735 wants the high byte first, so swap.\n        sw = lambda c: ((c & 0xFF) << 8) | (c >> 8)\n        fb.fill(sw(bg))\n        fb.text(s, 0, 0, sw(colour))\n        self.blit(buf, x, y, w, 8)\n\n    def display(self, on=True):\n        self._cmd(0x29 if on else 0x28)  # DISPON / DISPOFF\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport sys\nimport time\nfrom st7735 import ST7735, WHITE, YELLOW\n\n# Pico: GP18/GP19 belong to SPI0. ESP32: any pins work on SPI(2).\nspi_id = 0 if sys.platform == 'rp2' else 2\nspi = SPI(spi_id, baudrate=10000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}))\ntft = ST7735(spi, dc={DC}, cs={CS}, rst={RST})\ntime.sleep(1)\ntft.text('SPARKBENCH', 24, 40, YELLOW)\ntft.text('ST7735 OK', 28, 60, WHITE)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "text",
+      "title": "Draws two lines of text on the screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SPARKBENCH",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "ST7735 OK",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:34:55.912Z",
+    "verifiedSources": [
+      "https://www.displayfuture.com/Display/datasheet/controller/ST7735.pdf",
+      "https://www.waveshare.com/wiki/1.8inch_LCD_Module"
+    ]
+  }
+}

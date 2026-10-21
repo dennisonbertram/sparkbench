@@ -1,0 +1,136 @@
+{
+  "type": "custom-pcf8563",
+  "name": "PCF8563 real-time clock module",
+  "mpn": "PCF8563",
+  "category": "ic",
+  "description": "NXP PCF8563 real-time clock/calendar: seconds to years in BCD with leap-year handling, alarm, countdown timer and a programmable CLKOUT square wave, on a 400 kHz I2C bus at address 0x51. Chip runs on 1.8-5.5 V with the I2C bus active and draws about 0.25 uA when timekeeping. Sold as: HW-689 / HZ-8563 blue PCF8563 RTC module (6-pin header INT, COT, SCL, SDA, GND, VCC; coin-cell holder, no I2C pull-ups), I2C address 0x51.",
+  "eli5": "A tiny clock that keeps the date and time, even while your board is switched off if a coin cell is fitted.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output for alarm/timer, open-drain, active LOW. Needs a 10 kOhm pull-up if used; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "COT",
+      "role": "io",
+      "description": "CLKOUT square-wave output (32.768 kHz at power-on), open-drain; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, up to 400 kHz. The module has no pull-up: fit 4.7 kOhm to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, open-drain. The module has no pull-up: fit 4.7 kOhm to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.2-5.5 V (3.3 V recommended with a 3.3 V board)",
+      "required": true
+    }
+  ],
+  "vmin": 2.2,
+  "vmax": 5.5,
+  "currentMa": 0.05,
+  "i2cAddress": 81,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/PCF8563.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "PCF8563 RTC module I2C real time clock",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/PCF8563.pdf",
+    "https://www.bg-electronics.de/datenblaetter/Schaltkreise/PCF8563.pdf",
+    "https://electropeak.com/learn/interfacing-pcf8563-real-time-clock-rtc-module-with-arduino/",
+    "https://electropeak.com/learn/wp-content/uploads/2024/06/PCF8563-Pin.jpg"
+  ],
+  "buildNotes": [
+    "Fixed I2C address 0x51 (A2h write / A3h read in 8-bit form); only one PCF8563 per bus.",
+    "The HW-689 module has no SDA/SCL pull-ups: fit 4.7 kOhm from each to 3.3 V.",
+    "Power VCC from 3.3 V when the board is a 3.3 V ESP32 or Pico: at VCC = 5 V the chip needs SDA/SCL above 0.7 x VDD, which a 3.3 V bus barely reaches.",
+    "Read all seven time registers (02h-08h) in one burst; the chip freezes its counters during the access so the fields stay consistent.",
+    "Bit 7 of the seconds register (VL) is set at first power-up or after a brown-out: the time is invalid until you set it. Setting the time clears it.",
+    "Write control/status 1 (00h) = 0x00 once after power-up: the reset value 0x08 leaves TESTC set.",
+    "CLKOUT runs at 32.768 kHz from power-up; write 0x00 to register 0Dh to switch it off and save current."
+  ],
+  "keywords": [
+    "pcf8563",
+    "bm8563",
+    "rtc",
+    "real time clock",
+    "clock",
+    "calendar",
+    "hw-689"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "rtc": {
+      "reg": "0x02",
+      "order": "pcf8563"
+    },
+    "registers": {
+      "0x00": 8,
+      "0x01": 0,
+      "0x09": 128,
+      "0x0A": 128,
+      "0x0B": 128,
+      "0x0C": 128,
+      "0x0D": 128,
+      "0x0E": 3,
+      "0x0F": 0
+    }
+  },
+  "driver": {
+    "filename": "pcf8563.py",
+    "code": "# PCF8563 real-time clock/calendar (NXP), MicroPython driver.\n# I2C address 0x51 (write A2h / read A3h). Registers per the NXP datasheet:\n# 00h control/status 1, 01h control/status 2, 02h-08h seconds..years (BCD, auto-increment),\n# 09h-0Ch alarms (bit 7 AE = 1 disables that field), 0Dh CLKOUT control, 0Eh/0Fh timer.\n_ADDR = 0x51\n_CTRL1 = 0x00\n_CTRL2 = 0x01\n_SECONDS = 0x02\n_ALARM = 0x09\n_CLKOUT = 0x0D\n\n\ndef _bcd(n):\n    return ((n // 10) << 4) | (n % 10)\n\n\ndef _dec(b):\n    return (b >> 4) * 10 + (b & 0x0F)\n\n\ndef _weekday(y, m, d):\n    # 0 = Sunday ... 6 = Saturday, the PCF8563's own weekday coding (Table 14).\n    t = (0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4)\n    if m < 3:\n        y -= 1\n    return (y + y // 4 - y // 100 + y // 400 + t[m - 1] + d) % 7\n\n\nclass PCF8563:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def datetime(self, dt=None):\n        \"\"\"Read or set the time.\n        Read returns (year, month, day, weekday, hour, minute, second), weekday 0 = Sunday.\n        Set with (year, month, day, hour, minute, second); the weekday is worked out for you.\"\"\"\n        if dt is None:\n            r = self.i2c.readfrom_mem(self.addr, _SECONDS, 7)  # one burst: the chip freezes the counters while it is read\n            # Century bit (07h bit 7) is ignored: years are taken as 2000-2099.\n            return (2000 + _dec(r[6]), _dec(r[5] & 0x1F), _dec(r[3] & 0x3F), r[4] & 0x07,\n                    _dec(r[2] & 0x3F), _dec(r[1] & 0x7F), _dec(r[0] & 0x7F))\n        y, mo, d, h, mi, s = dt[:6]\n        if not 2000 <= y <= 2099:\n            raise ValueError('year must be 2000-2099')\n        self.i2c.writeto_mem(self.addr, _CTRL1, b'\\x20')  # STOP = 1: hold the divider chain while setting\n        self.i2c.writeto_mem(self.addr, _SECONDS, bytes([\n            _bcd(s),  # writing VL = 0 clears the voltage-low flag\n            _bcd(mi), _bcd(h), _bcd(d), _weekday(y, mo, d),\n            _bcd(mo),  # century bit 0 = 20xx\n            _bcd(y - 2000)]))\n        self.i2c.writeto_mem(self.addr, _CTRL1, b'\\x00')  # STOP = 0, TESTC = 0: clock runs, normal mode\n\n    def lost_power(self):\n        \"\"\"True if VL is set: the supply dropped too low and the time may be wrong (also true on first power-up).\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _SECONDS, 1)[0] & 0x80)\n\n    def clkout(self, hz):\n        \"\"\"Square wave on CLKOUT (open-drain): 32768, 1024, 32, 1, or 0/None to switch it off (saves current).\"\"\"\n        codes = {32768: 0, 1024: 1, 32: 2, 1: 3}\n        v = 0x00 if not hz else 0x80 | codes[hz]\n        self.i2c.writeto_mem(self.addr, _CLKOUT, bytes([v]))\n\n    def set_alarm(self, minute=None, hour=None, day=None, weekday=None, interrupt=True):\n        \"\"\"Alarm on the fields given (None = ignore that field). AF is set on a match; INT goes low if interrupt.\"\"\"\n        f = lambda v: 0x80 if v is None else _bcd(v)\n        self.i2c.writeto_mem(self.addr, _ALARM, bytes([f(minute), f(hour), f(day), 0x80 if weekday is None else weekday & 0x07]))\n        c2 = self.i2c.readfrom_mem(self.addr, _CTRL2, 1)[0] & 0x11  # keep TI/TP and TIE\n        # AF written 0 clears it; TF written 1 leaves it unchanged.\n        self.i2c.writeto_mem(self.addr, _CTRL2, bytes([c2 | 0x04 | (0x02 if interrupt else 0)]))\n\n    def alarm_fired(self):\n        return bool(self.i2c.readfrom_mem(self.addr, _CTRL2, 1)[0] & 0x08)\n\n    def clear_alarm(self):\n        \"\"\"Clear AF (INT is released) and leave the alarm armed.\"\"\"\n        c2 = self.i2c.readfrom_mem(self.addr, _CTRL2, 1)[0] & 0x13\n        self.i2c.writeto_mem(self.addr, _CTRL2, bytes([c2 | 0x04]))  # AF = 0 clears, TF = 1 unchanged\n\n    def disable_alarm(self):\n        self.i2c.writeto_mem(self.addr, _ALARM, b'\\x80\\x80\\x80\\x80')\n        c2 = self.i2c.readfrom_mem(self.addr, _CTRL2, 1)[0] & 0x11  # keep TI/TP, TIE; AIE off\n        self.i2c.writeto_mem(self.addr, _CTRL2, bytes([c2 | 0x04]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pcf8563 import PCF8563\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nrtc = PCF8563(i2c)\nrtc.datetime((2026, 12, 31, 23, 59, 57))  # Thursday 31 Dec 2026, 23:59:57\nwhile True:\n    y, mo, d, wd, h, mi, s = rtc.datetime()\n    print('wd=%d %04d-%02d-%02d %02d:%02d:%02d' % (wd, y, mo, d, h, mi, s))\n    time.sleep(1)\n",
+    "test": {
+      "id": "new-year",
+      "title": "Keeps the time it was set to and rolls over into 2027",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=4 2026-12-31 23:59:5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=5 2027-01-01 00:00:0",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:34:24.105Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCF8563.pdf"
+    ]
+  }
+}

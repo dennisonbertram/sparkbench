@@ -1,0 +1,229 @@
+{
+  "type": "custom-l3gd20h",
+  "name": "L3GD20H 3-axis gyroscope",
+  "mpn": "L3GD20H",
+  "category": "sensor",
+  "description": "STMicroelectronics 3-axis digital gyroscope (angular rate sensor), ±245/±500/±2000 dps selectable, 16-bit output (8.75 mdps/digit at ±245 dps), I2C or SPI. Chip supply 2.2–3.6 V. Sold as: Adafruit L3GD20H Triple-Axis Gyro Breakout Board (#1032), one 9-pin header SCL, SDA, SA0, CS, DRDY, INT1, GND, 3Vo, Vin (3.3 V regulator and level shifting, 3–5 V supply, 10 kΩ I2C pull-ups, I2C address 0x6B with SA0 pulled high).",
+  "eli5": "Feels how fast it is spinning around each of its three axes, so your project can tell when it turns.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock / SPI clock (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data / SPI data in (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "SA0",
+      "role": "io",
+      "description": "I2C address bit / SPI data out: pulled high on the board = 0x6B; tie to GND for 0x6A. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Interface select: pulled high on the board = I2C; pull low only for SPI. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Data-ready / INT2 output (3.3 V), optional",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Programmable interrupt 1 output (3.3 V), optional",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator; not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board 3.3 V regulator feeds the chip; use the same voltage as your board's logic)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 5,
+  "i2cAddress": 107,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/l3gd20h.pdf",
+  "priceUsd": 12.5,
+  "supplierQuery": "Adafruit L3GD20H triple-axis gyro breakout 1032",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/l3gd20h.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/L3GD20H.pdf",
+    "https://www.adafruit.com/product/1032",
+    "https://cdn-shop.adafruit.com/970x728/1032-05.jpg",
+    "https://learn.adafruit.com/adafruit-triple-axis-gyro-breakout/assembly-and-wiring"
+  ],
+  "buildNotes": [
+    "Power Vin from 3–5 V (the same as your board's logic); the board's regulator and level shifters keep the chip at 3.3 V. Leave 3Vo unconnected.",
+    "Leave SA0 and CS unconnected: both are pulled high on the board, so the chip is in I2C mode at address 0x6B.",
+    "The chip starts powered down (CTRL1 PD = 0). Check WHO_AM_I (0x0F) = 0xD7, write CTRL4 (0x23) = 0x80 (block data update, ±245 dps) and CTRL1 (0x20) = 0x0F (100 Hz, normal mode, X/Y/Z on), then wait 50 ms.",
+    "Read 6 bytes from 0x28 | 0x80 (the MSB of the register address turns on auto-increment): X, Y, Z as 16-bit two's complement, low byte first. Multiply by 8.75 / 17.5 / 70 mdps per digit at ±245 / 500 / 2000 dps.",
+    "A still gyro still reads a few dps (zero-rate offset): average some readings at rest and subtract them."
+  ],
+  "keywords": [
+    "l3gd20h",
+    "l3gd20",
+    "gyro",
+    "gyroscope",
+    "angular rate",
+    "rotation",
+    "3-axis",
+    "imu"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Rotation rate X",
+    "unit": "dps",
+    "min": -245,
+    "max": 245,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Rotation rate Y",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Rotation rate Z",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      }
+    ],
+    "registers": {
+      "0x0F": 215,
+      "0x20": 7,
+      "0x27": 15
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      },
+      {
+        "reg": "0xA8",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0xAA",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0xAC",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "l3gd20h.py",
+    "code": "# L3GD20H 3-axis gyroscope (STMicroelectronics, DocID023469 Rev 2), MicroPython driver for I2C.\n# From the datasheet:\n#   WHO_AM_I 0x0F = 0xD7. CTRL1 0x20 (DR[7:6] BW[5:4] PD bit 3, Zen/Yen/Xen bits 2:0; PD = 0 at reset,\n#   so the chip starts powered down), CTRL4 0x23 (BDU bit 7, BLE bit 6, FS[5:4]: 00 = 245, 01 = 500,\n#   1x = 2000 dps), STATUS 0x27 (ZYXDA bit 3), LOW_ODR 0x39 (Low_ODR bit 0).\n#   OUT_X_L..OUT_Z_H 0x28-0x2D: 16-bit two's complement, low byte at the lower address (BLE = 0).\n#   Sensitivity 8.75 / 17.50 / 70.00 mdps per digit at +-245 / 500 / 2000 dps.\n#   Setting the MSB of the register sub-address (0x28 | 0x80) auto-increments for burst reads.\n#   Turn-on time 50 ms after leaving power-down.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL1 = 0x20\n_CTRL4 = 0x23\n_STATUS = 0x27\n_OUT_X_L = 0x28\n_LOW_ODR = 0x39\n_AUTO_INC = 0x80\n\n# Full scale (dps) -> (FS bits for CTRL4[5:4], sensitivity in dps per digit)\n_FS = {245: (0b00, 0.00875), 500: (0b01, 0.0175), 2000: (0b10, 0.070)}\n\n\nclass L3GD20H:\n    def __init__(self, i2c, addr=0x6B, fs=245):\n        \"\"\"addr: 0x6B with SDO/SA0 high (Adafruit board default, SA0 pulled up), 0x6A with SA0 to GND.\n        fs: full scale 245, 500 or 2000 degrees per second.\"\"\"\n        if fs not in _FS:\n            raise ValueError('fs must be 245, 500 or 2000')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0xD7:\n            # 0xD4 is the older L3GD20 / L3G4200D: similar but not the same chip\n            raise OSError('L3GD20H not found (WHO_AM_I 0x%02X, expected 0xD7): check wiring' % who)\n        bits, self._dps = _FS[fs]\n        self._w(_LOW_ODR, 0x00)                 # Low_ODR = 0, I2C enabled, DRDY active high\n        self._w(_CTRL4, 0x80 | (bits << 4))     # BDU = 1, little endian, full scale, normal (no self-test)\n        self._w(_CTRL1, 0x0F)                   # DR = 00, BW = 00 -> 100 Hz; PD = 1 normal mode; X, Y, Z on\n        time.sleep_ms(60)                       # turn-on time is 50 ms\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when STATUS ZYXDA says a new X/Y/Z set is available.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _STATUS, 1)[0] & 0x08)\n\n    def raw(self):\n        \"\"\"(x, y, z) raw 16-bit counts, read in one 6-byte auto-increment burst from OUT_X_L.\"\"\"\n        for _ in range(25):  # wait up to ~25 ms (two samples at 100 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _OUT_X_L | _AUTO_INC, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)\n            if v & 0x8000:\n                v -= 65536\n            out.append(v)\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) angular rate in degrees per second.\"\"\"\n        x, y, z = self.raw()\n        k = self._dps\n        return x * k, y * k, z * k\n\n    def read_rads(self):\n        \"\"\"(x, y, z) angular rate in radians per second.\"\"\"\n        return tuple(v * 0.017453292519943295 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom l3gd20h import L3GD20H\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ngyro = L3GD20H(i2c)  # 0x6B: SA0 is pulled high on the Adafruit board\nwhile True:\n    x, y, z = gyro.read()\n    print('X=%.1f Y=%.1f Z=%.1f dps' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the rotation rates set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=100.0 Y=-50.0 Z=30.0 dps",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:48:57.097Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J731/L3GD20H.pdf",
+      "https://cdn-shop.adafruit.com/970x728/1032-05.jpg",
+      "https://www.adafruit.com/product/1032"
+    ]
+  }
+}

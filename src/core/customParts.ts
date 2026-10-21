@@ -110,6 +110,12 @@ export interface CustomSim {
    * (12-bit counts; bit 4 of ON_H = full on, bit 4 of OFF_H = full off). Each shows as on when its duty is above 0,
    * testable with expect what:"active" text:"CH<n>". */
   pwmChannels?: { base: string; count: number };
+  /** i2c-device: ST-style register auto-increment — the top bit of the register address only asks for
+   * auto-increment, so 0xA8 means register 0x28. */
+  autoIncrementBit7?: boolean;
+  /** i2c-device: more chips in the same package at their own addresses (e.g. LSM303AGR accelerometer 0x19 + magnetometer 0x1E),
+   * each with its own registers, measures, regWidth and autoIncrementBit7. */
+  subDevices?: { i2cAddress: number; registers?: Record<string, number>; measures?: I2CMeasure[]; regWidth?: 8 | 16; autoIncrementBit7?: boolean }[];
   /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
   pointerless?: boolean;
   /** i2c-device: register bits that are output pins (e.g. an expander's P0…P7), shown as on/off and testable
@@ -318,6 +324,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (m.control && !keys.has(m.control)) errs.push(`measure control ${m.control} is not a control`);
     if (!(m.bytes >= 1 && m.bytes <= 4) || !m.scale) errs.push(`measure at ${m.reg} needs 1-4 bytes and a non-zero scale`);
   }
+  for (const d of s.subDevices ?? []) for (const m of d.measures ?? []) if (m.control && !keys.has(m.control)) errs.push(`sub-device measure control ${m.control} is not a control`);
   for (const r of s.responses ?? []) {
     if (!/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`response match "${r.match}" must be hex bytes like "24 00"`);
     const bits = segBits(r.bytes);

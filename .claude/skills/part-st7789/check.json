@@ -1,0 +1,79 @@
+{
+  "type": "custom-st7789",
+  "mpn": "ST7789",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; DS1.RES → D25 (GPIO25). DS1.DC → D26 (GPIO26). Added the st7789.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Draws text on the 1.3\" ST7789 TFT: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; DS1.RES → GP2 (GPIO2). DS1.DC → GP3 (GPIO3). Added the st7789.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Draws text on the 1.3\" ST7789 TFT: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C5329582 HS20HS072RX (937 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:33:21.542Z"
+}

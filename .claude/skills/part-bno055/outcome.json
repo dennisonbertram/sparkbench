@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bno055",
+  "board": "Adafruit 9-DOF Absolute Orientation IMU Fusion Breakout - BNO055 (#2472)",
+  "reason": "Check passed on the first run (ESP32 and Pico: spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC). Euler heading/roll/pitch are modelled as signed little-endian words at 0x1A/0x1C/0x1E (1 deg = 16 LSB) that only read non-zero once OPR_MODE is set to a fusion mode, as on the real chip.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bno055-ds000.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-BNO055-Breakout-PCB/blob/master/Adafruit%20BNO055.brd (silkscreen: JP1 Vin,3vo,GND,SDA,SCL,RST; JP2 PS0,PS1,INT,ADR) and https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor/pinouts",
+  "checkRuns": 1
+}

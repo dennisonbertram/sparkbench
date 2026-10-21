@@ -1,0 +1,309 @@
+{
+  "type": "custom-icm-20948",
+  "name": "ICM-20948 9-DoF IMU",
+  "mpn": "ICM-20948",
+  "category": "sensor",
+  "description": "TDK InvenSense 9-axis motion sensor: 3-axis accelerometer (±2/4/8/16 g, 16384 LSB/g at ±2 g), 3-axis gyroscope (±250/500/1000/2000 °/s, 131 LSB/(°/s) at ±250 °/s), temperature sensor (333.87 LSB/°C, 0 LSB at 21 °C) and an AK09916 3-axis magnetometer (0.15 µT/LSB, ±4900 µT) reached through I2C bypass at 0x0C. The chip runs at 1.8 V. Sold as: Adafruit ICM-20948 9-DoF IMU breakout (#4554, STEMMA QT) with a 1.8 V regulator and level shifting, 3–5 V supply, two 6-pin headers (VIN, 1V8, GND, SCL, SDA, INT and FS, AD, AC, G, SDO, CS), I2C address 0x69 (0x68 with SDO low).",
+  "eli5": "Tells your board which way it is tilted, how fast it is turning and which way is north.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V, into the on-board 1.8 V regulator; use the same voltage as your board's logic",
+      "required": true
+    },
+    {
+      "name": "1V8",
+      "role": "nc",
+      "description": "1.8 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); level-shifted for 3–5 V logic, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI); level-shifted for 3–5 V logic, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (level-shifted), optional",
+      "required": false
+    },
+    {
+      "name": "FS",
+      "role": "io",
+      "description": "FSYNC frame-sync input, 1.8 V logic only; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "AD",
+      "role": "io",
+      "description": "Auxiliary I2C data (AUX_DA) for external sensors, 1.8 V logic only; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "AC",
+      "role": "io",
+      "description": "Auxiliary I2C clock (AUX_CL) for external sensors, 1.8 V logic only; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "G",
+      "role": "gnd",
+      "description": "Second ground pin on the top header",
+      "required": false
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "Address select (SPI SDO): pulled high on the board = 0x69; tie to GND (or bridge the back jumper) for 0x68",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select, pulled high on the board for I2C; leave unconnected (low selects SPI)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3.5,
+  "i2cAddress": 105,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/7/f/e/c/d/DS-000189-ICM-20948-v1.3.pdf",
+  "priceUsd": 14.95,
+  "supplierQuery": "Adafruit ICM-20948 9-DoF IMU breakout 4554",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "The board has two 6-pin headers on opposite edges, so wire it with jumper leads. Only VIN, GND, SCL and SDA are needed for I2C.",
+    "WHO_AM_I (bank 0, 0x00) reads 0xEA. Registers are split into four banks chosen by REG_BANK_SEL (0x7F, bank number in bits 5:4); the sensor data is in bank 0, the range settings in bank 2.",
+    "The chip powers up asleep (PWR_MGMT_1 = 0x41): write PWR_MGMT_1 (0x06) = 0x01 to wake it with the auto clock, then wait about 35 ms for gyro data.",
+    "Read 0x2D..0x3A in one 14-byte burst: seven big-endian signed words, accel X/Y/Z, gyro X/Y/Z, then temperature (note the temperature comes last, unlike the MPU-9250). At ±2 g and ±250 °/s: 16384 LSB/g, 131 LSB/(°/s); temperature = raw / 333.87 + 21 °C.",
+    "For the magnetometer, clear I2C_MST_EN (USER_CTRL 0x03 bit 5) and set BYPASS_EN (INT_PIN_CFG 0x0F bit 1); the AK09916 then answers at 0x0C (WIA2 = 0x09). Set CNTL2 (0x31) = 0x08 for continuous 100 Hz, read 0x11..0x18 (little-endian X/Y/Z, then ST2 last). The Sparkbench simulator models the accelerometer, gyroscope and temperature only, not the AK09916.",
+    "FS, AD and AC are 1.8 V logic only: never connect them to 3.3 V or 5 V. Leave CS unconnected for I2C (low switches the chip to SPI).",
+    "Default address is 0x69 (SDO pulled high on the board); tie SDO to GND or bridge the back jumper for 0x68 to use two boards on one bus."
+  ],
+  "keywords": [
+    "icm-20948",
+    "icm20948",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "magnetometer",
+    "compass",
+    "9-dof",
+    "ak09916",
+    "invensense",
+    "tdk"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 1.99,
+    "default": 0,
+    "controls": [
+      {
+        "key": "ay",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 1.99,
+        "default": 0
+      },
+      {
+        "key": "az",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 1.99,
+        "default": 1
+      },
+      {
+        "key": "gx",
+        "quantity": "X rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Y rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Z rotation rate",
+        "unit": "°/s",
+        "min": -250,
+        "max": 249,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x00": 234,
+      "0x06": 65,
+      "0x7F": 0
+    },
+    "measures": [
+      {
+        "reg": "0x2D",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2F",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x31",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "control": "az"
+      },
+      {
+        "reg": "0x33",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x35",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x37",
+        "bytes": 2,
+        "scale": 0.007633587786259542,
+        "signed": true,
+        "control": "gz"
+      },
+      {
+        "reg": "0x39",
+        "bytes": 2,
+        "scale": 0.0029951777638002816,
+        "offset": 21,
+        "signed": true,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "icm20948.py",
+    "code": "# ICM-20948 9-axis IMU (TDK InvenSense DS-000189 v1.3), MicroPython driver.\n# Accelerometer, gyroscope and temperature from user bank 0; the AK09916 magnetometer is read\n# through the interface bypass (INT_PIN_CFG.BYPASS_EN) at I2C address 0x0C.\nimport time\n\n_REG_BANK_SEL = 0x7F   # all banks: USER_BANK[1:0] in bits 5:4\n# User bank 0\n_WHO_AM_I = 0x00       # reads 0xEA\n_USER_CTRL = 0x03\n_PWR_MGMT_1 = 0x06     # reset value 0x41 (asleep)\n_PWR_MGMT_2 = 0x07\n_INT_PIN_CFG = 0x0F\n_ACCEL_XOUT_H = 0x2D   # 0x2D..0x3A: accel X/Y/Z, gyro X/Y/Z, temperature (big-endian words)\n# User bank 2\n_GYRO_CONFIG_1 = 0x01\n_ACCEL_CONFIG = 0x14\n\n_ACCEL_LSB_PER_G = (16384, 8192, 4096, 2048)        # ACCEL_FS_SEL 0..3 = ±2/4/8/16 g\n_GYRO_LSB_PER_DPS = (131.0, 65.5, 32.8, 16.4)       # GYRO_FS_SEL 0..3 = ±250/500/1000/2000 dps\n_TEMP_SENSITIVITY = 333.87                          # LSB/°C, room-temperature offset 0 LSB at 21 °C\n\n_MAG_ADDR = 0x0C       # AK09916\n_MAG_WIA2 = 0x01       # reads 0x09\n_MAG_ST1 = 0x10\n_MAG_HXL = 0x11\n_MAG_CNTL2 = 0x31\n_MAG_CNTL3 = 0x32\n_MAG_UT_PER_LSB = 0.15\n\n\ndef _s16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 65536 if v & 0x8000 else v\n\n\nclass ICM20948:\n    def __init__(self, i2c, addr=0x69, accel_fs=0, gyro_fs=0):\n        \"\"\"addr 0x69 with SDO/AD0 high (Adafruit default), 0x68 with it low.\n        accel_fs 0..3 = ±2/4/8/16 g, gyro_fs 0..3 = ±250/500/1000/2000 dps.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self._bank(0)\n        who = self._r8(_WHO_AM_I)\n        if who != 0xEA:\n            raise OSError('ICM-20948 not found (WHO_AM_I=0x%02X): check wiring and address' % who)\n        self._w8(_PWR_MGMT_1, 0x80)   # DEVICE_RESET (auto-clears); registers back to defaults\n        time.sleep_ms(100)            # register access start-up time up to 100 ms\n        self._bank(0)\n        self._w8(_PWR_MGMT_1, 0x01)   # wake (SLEEP=0), CLKSEL=1: PLL when ready\n        time.sleep_ms(40)             # gyro start-up 35 ms\n        self._w8(_PWR_MGMT_2, 0x00)   # accelerometer and gyroscope axes all on\n        self._bank(2)\n        self._w8(_GYRO_CONFIG_1, ((gyro_fs & 3) << 1) | 0x01)   # DLPF on (GYRO_FCHOICE=1)\n        self._w8(_ACCEL_CONFIG, ((accel_fs & 3) << 1) | 0x01)   # DLPF on (ACCEL_FCHOICE=1)\n        self._bank(0)\n        self._a_lsb = _ACCEL_LSB_PER_G[accel_fs & 3]\n        self._g_lsb = _GYRO_LSB_PER_DPS[gyro_fs & 3]\n        self._mag_ready = False\n\n    def _bank(self, n):\n        self._w8(_REG_BANK_SEL, (n & 3) << 4)\n\n    def _w8(self, reg, v):\n        self.i2c.writeto_mem(self.addr, reg, bytes([v]))\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def read(self):\n        \"\"\"Return ((ax, ay, az) in g, (gx, gy, gz) in °/s, temperature in °C).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _ACCEL_XOUT_H, 14)\n        w = [_s16(d[i], d[i + 1]) for i in range(0, 14, 2)]\n        a = (w[0] / self._a_lsb, w[1] / self._a_lsb, w[2] / self._a_lsb)\n        g = (w[3] / self._g_lsb, w[4] / self._g_lsb, w[5] / self._g_lsb)\n        t = w[6] / _TEMP_SENSITIVITY + 21\n        return a, g, t\n\n    def acceleration(self):\n        return self.read()[0]\n\n    def gyro(self):\n        return self.read()[1]\n\n    def temperature(self):\n        return self.read()[2]\n\n    def _mag_init(self):\n        self._w8(_USER_CTRL, self._r8(_USER_CTRL) & ~0x20)        # I2C_MST_EN = 0\n        self._w8(_INT_PIN_CFG, self._r8(_INT_PIN_CFG) | 0x02)     # BYPASS_EN = 1\n        if self.i2c.readfrom_mem(_MAG_ADDR, _MAG_WIA2, 1)[0] != 0x09:\n            raise OSError('AK09916 magnetometer not found at 0x0C')\n        self.i2c.writeto_mem(_MAG_ADDR, _MAG_CNTL3, b'\\x01')      # soft reset\n        time.sleep_ms(10)\n        self.i2c.writeto_mem(_MAG_ADDR, _MAG_CNTL2, b'\\x08')      # continuous mode 4 (100 Hz)\n        time.sleep_ms(20)\n        self._mag_ready = True\n\n    def magnetic(self):\n        \"\"\"Return (mx, my, mz) in µT from the AK09916 (axes as in the datasheet's magnetometer frame).\"\"\"\n        if not self._mag_ready:\n            self._mag_init()\n        for _ in range(50):\n            if self.i2c.readfrom_mem(_MAG_ADDR, _MAG_ST1, 1)[0] & 0x01:   # DRDY\n                break\n            time.sleep_ms(2)\n        # HXL..HZH, TMPS, ST2: ST2 must be read last to end the read in continuous mode.\n        d = self.i2c.readfrom_mem(_MAG_ADDR, _MAG_HXL, 8)\n        if d[7] & 0x08:\n            raise OSError('AK09916 magnetic sensor overflow (HOFL)')\n        return tuple(_s16(d[i + 1], d[i]) * _MAG_UT_PER_LSB for i in (0, 2, 4))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom icm20948 import ICM20948\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = ICM20948(i2c)\nwhile True:\n    (ax, ay, az), (gx, gy, gz), t = imu.read()\n    print('A=%.2f,%.2f,%.2f g G=%.1f,%.1f,%.1f dps T=%.1fC' % (ax, ay, az, gx, gy, gz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation rate and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -0.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "az",
+          "value": 0.8
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": 46
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gy",
+          "value": 10
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": -120
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,-0.30,0.80 g G=46.0,10.0,-120.0 dps T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn.sparkfun.com/assets/7/f/e/c/d/DS-000189-ICM-20948-v1.3.pdf",
+    "https://learn.adafruit.com/adafruit-tdk-invensense-icm-20948-9-dof-imu/pinouts",
+    "https://github.com/adafruit/Adafruit-ICM20948-PCB",
+    "https://www.adafruit.com/product/4554"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:45:19.436Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/8/4/6/4/2/ds-000189-icm-20948-datasheet-2024.pdf",
+      "https://learn.adafruit.com/adafruit-tdk-invensense-icm-20948-9-dof-imu/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/093/838/large1024/sensors_edit4554_top_ORIG_02020_08-2.png"
+    ]
+  }
+}

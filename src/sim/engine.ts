@@ -142,13 +142,16 @@ export class SimEngine {
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
       const cs = customSpec(part.type);
       if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller, rows: cs.sim.rows }), part });
+      if (cs?.sim.kind === 'i2c-device')
+        for (const sd of cs.sim.subDevices ?? [])
+          this.devices.push({ part, dev: new GenericI2CDevice(part.id, sd.i2cAddress, sd.registers ?? {}, sd.measures ?? [], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, [], { regWidth: sd.regWidth, autoIncrementBit7: sd.autoIncrementBit7 }) });
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
         for (const al of cs.sim.i2cAliases ?? []) {
-          const owner = () => this.devices.find((x) => x.part.id === part.id && x.dev instanceof GenericI2CDevice)?.dev as GenericI2CDevice | undefined;
+          const owner = () => this.devices.find((x) => x.part.id === part.id && x.dev instanceof GenericI2CDevice && x.dev.addr === cs.i2cAddress)?.dev as GenericI2CDevice | undefined;
           this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
         }
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, pointerless: cs.sim.pointerless, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000 }), part });
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000 }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
@@ -1069,7 +1072,7 @@ export class SimEngine {
           if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
           const cs = customSpec(part.type);
           if (cs?.sim.kind === 'i2c-device' && (cs.sim.outputBits?.length || cs.sim.pwmChannels)) {
-            const d = this.devices.find((x) => x.part.id === part.id)?.dev;
+            const d = this.devices.find((x) => x.part.id === part.id && x.dev instanceof GenericI2CDevice && x.dev.addr === cs.i2cAddress)?.dev;
             if (d instanceof GenericI2CDevice) {
               v.powered = m.modulePowered(part.id);
               const pc = cs.sim.pwmChannels;

@@ -1,0 +1,300 @@
+{
+  "type": "custom-bmi160",
+  "name": "BMI160 6-axis IMU (accelerometer + gyroscope)",
+  "mpn": "BMI160",
+  "category": "sensor",
+  "description": "Bosch Sensortec 16-bit 3-axis accelerometer (±2/4/8/16 g) and 3-axis gyroscope (±125 to ±2000 °/s) with an I2C/SPI interface and an on-chip temperature sensor. Sold as: GY-BMI160 purple module (12 pins on two edges: VIN, 3V3, GND, SCL, SDA, CS, SAO and OCS, INT2, INT1, SCX, SDX; 3.3 V LDO and 10 kΩ pull-ups on SDA, SCL, CS and SAO), I2C address 0x69 (0x68 with SAO tied to GND).",
+  "eli5": "Feels which way is down and how fast it is turning, so your board knows tilt, shakes and spins.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply into the on-board 3.3 V regulator, 3.3–5 V (vendor rating 3–5 V)",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Regulator output / direct 3.3 V supply to the chip (max 3.6 V). Leave unconnected when VIN is used",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); 10 kΩ pull-up to 3.3 V on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI MOSI); 10 kΩ pull-up to 3.3 V on the board",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Chip select (CSB). Pulled up on the board = I2C mode; leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "SAO",
+      "role": "io",
+      "description": "Address select (chip SDO, SPI MISO): pulled up on the board = 0x69, tie to GND for 0x68",
+      "required": false
+    },
+    {
+      "name": "OCS",
+      "role": "io",
+      "description": "OCSB, secondary (OIS) SPI chip select. Not used for basic use",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Interrupt output 2 (programmable). Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Interrupt output 1 (programmable). Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SCX",
+      "role": "io",
+      "description": "ASCX, auxiliary magnetometer interface clock. Not used for basic use",
+      "required": false
+    },
+    {
+      "name": "SDX",
+      "role": "io",
+      "description": "ASDX, auxiliary magnetometer interface data. Not used for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 105,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi160-ds000.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "GY-BMI160 BMI160 6-axis accelerometer gyroscope module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "The GY-BMI160 pulls SAO up, so it answers at 0x69. Tie SAO to GND for 0x68 (e.g. a second sensor on the bus at the other address).",
+    "Both sensors start in suspend mode and read zero until you write 0x11 (accel normal, wait 3.8 ms) and 0x15 (gyro normal, wait 80 ms) to CMD register 0x7E.",
+    "Data is little-endian, two's complement: gyro X/Y/Z at 0x0C-0x11, accel X/Y/Z at 0x12-0x17. Default ranges ±2 g (16384 LSB/g) and ±2000 °/s (16.4 LSB/°/s).",
+    "Power it from VIN (3.3–5 V) or from 3V3 (3.3 V only, max 3.6 V), not both. Leave CS unconnected for I2C: the board pulls it high.",
+    "The temperature register (0x20) is the die temperature, 23 °C + raw/512, valid only while the gyro runs."
+  ],
+  "keywords": [
+    "bmi160",
+    "gy-bmi160",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "6dof",
+    "6-axis",
+    "bosch"
+  ],
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi160-ds000.pdf",
+    "https://github.com/hanyazou/BMI160-Arduino/blob/master/files/wiring3.png",
+    "https://github.com/hanyazou/BMI160-Arduino/issues/2",
+    "https://mc.dfrobot.com.cn/thread-310371-1-1.html",
+    "https://imagemc.dfrobot.com.cn/data/attachment/forum/202108/27/201820i6cmqmvc5umqmvmc.jpg"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Acceleration Z",
+    "unit": "g",
+    "min": -1.99,
+    "max": 1.99,
+    "default": 1,
+    "registers": {
+      "0x00": 209,
+      "0x41": 3,
+      "0x43": 0
+    },
+    "controls": [
+      {
+        "key": "ax",
+        "quantity": "Acceleration X",
+        "unit": "g",
+        "min": -1.99,
+        "max": 1.99,
+        "default": 0
+      },
+      {
+        "key": "ay",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -1.99,
+        "max": 1.99,
+        "default": 0
+      },
+      {
+        "key": "gx",
+        "quantity": "Rotation rate X",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Rotation rate Y",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Rotation rate Z",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 0.06097560975609757,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 0.06097560975609757,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "scale": 0.06097560975609757,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz"
+      },
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax"
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x20",
+        "bytes": 2,
+        "scale": 0.001953125,
+        "offset": 23,
+        "signed": true,
+        "littleEndian": true,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmi160.py",
+    "code": "# BMI160 6-axis IMU (Bosch Sensortec BMI160), MicroPython I2C driver.\n# Written from the datasheet BST-BMI160-DS000-09: chip id 0xD1 in register 0x00,\n# CMD register 0x7E (softreset 0xB6, accel normal 0x11, gyro normal 0x15),\n# data registers 0x0C-0x17 (gyro X,Y,Z then accel X,Y,Z, 16-bit two's complement, LSB first),\n# temperature 0x20-0x21 (0x0000 = 23 degC, 1/512 K per LSB, valid while the gyro is in normal mode).\nimport time\n\n_CHIP_ID = 0x00\n_DATA_GYR = 0x0C\n_TEMP = 0x20\n_ACC_RANGE = 0x41\n_GYR_RANGE = 0x43\n_CMD = 0x7E\n\n# ACC_RANGE code -> LSB per g; GYR_RANGE code -> LSB per deg/s (datasheet tables)\n_ACC = {2: (0x03, 16384.0), 4: (0x05, 8192.0), 8: (0x08, 4096.0), 16: (0x0C, 2048.0)}\n_GYR = {2000: (0x00, 16.4), 1000: (0x01, 32.8), 500: (0x02, 65.6), 250: (0x03, 131.2), 125: (0x04, 262.4)}\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass BMI160:\n    def __init__(self, i2c, addr=0x69, accel_range=2, gyro_range=2000):\n        # GY-BMI160: SAO is pulled up on the board, so the address is 0x69 unless SAO is tied to GND (0x68).\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(_CHIP_ID, 1)[0]\n        if cid != 0xD1:\n            raise OSError('BMI160 not found (chip id 0x%02X): check wiring and address' % cid)\n        self._w(_CMD, 0xB6)      # softreset\n        time.sleep_ms(10)\n        self._w(_CMD, 0x11)      # accelerometer -> normal mode (max 3.8 ms)\n        time.sleep_ms(5)\n        self._w(_CMD, 0x15)      # gyroscope -> normal mode (max 80 ms)\n        time.sleep_ms(100)\n        code, self._acc_lsb = _ACC[accel_range]\n        self._w(_ACC_RANGE, code)\n        code, self._gyr_lsb = _GYR[gyro_range]\n        self._w(_GYR_RANGE, code)\n        time.sleep_ms(10)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def read(self):\n        \"\"\"Return ((ax, ay, az) in g, (gx, gy, gz) in deg/s), read in one burst.\"\"\"\n        d = self._r(_DATA_GYR, 12)\n        g = tuple(_s16(d[i], d[i + 1]) / self._gyr_lsb for i in (0, 2, 4))\n        a = tuple(_s16(d[i], d[i + 1]) / self._acc_lsb for i in (6, 8, 10))\n        return a, g\n\n    def acceleration(self):\n        return self.read()[0]\n\n    def gyro(self):\n        return self.read()[1]\n\n    def temperature(self):\n        \"\"\"Die temperature in degC.\"\"\"\n        d = self._r(_TEMP, 2)\n        return 23 + _s16(d[0], d[1]) / 512\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmi160 import BMI160\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = BMI160(i2c)  # 0x69 on the GY-BMI160 (SAO pulled up)\nwhile True:\n    (ax, ay, az), (gx, gy, gz) = imu.read()\n    print('A=%.2f,%.2f,%.2fg G=%.1f,%.1f,%.1fdps T=%.1fC' % (ax, ay, az, gx, gy, gz, imu.temperature()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ax",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": -100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,0.00,-1.00g G=-100.0,0.0,500.0dps T=30.0C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T08:12:54.682Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi160-ds000.pdf",
+      "https://developer.ridgerun.com/wiki/index.php/RidgeRun_Video_Stabilization_Library/Useful_Links/BMI160_Setup"
+    ]
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "type": "custom-tmp117",
+  "name": "TMP117 high-accuracy temperature sensor",
+  "mpn": "TMP117",
+  "category": "sensor",
+  "description": "Texas Instruments high-accuracy digital temperature sensor, -55 to 150 °C with ±0.1 °C max accuracy from -20 to 50 °C and 7.8125 m°C (16-bit) resolution, on an I2C bus. Runs on 1.7–5.5 V. Sold as: Adafruit TMP117 ±0.1°C High Accuracy I2C Temperature Sensor (product 4821, STEMMA QT, 6-pin header in order: VIN, GND, SCL, SDA, INT, ADDR), I2C address 0x48 (0x49 with ADDR high or the back jumper bridged).",
+  "eli5": "A very precise thermometer chip: tells your board the temperature to about a tenth of a degree.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 1.7–5.5 V, goes straight to the TMP117 (no regulator); use the same voltage as your board's logic (3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "TMP117 ALERT output (open-drain, 10 kΩ pull-up): alert or data-ready, not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "ADDR",
+      "role": "io",
+      "description": "TMP117 ADD0 address select (10 kΩ pull-down): GND = 0x48, VIN = 0x49, SDA = 0x4A, SCL = 0x4B",
+      "required": false
+    }
+  ],
+  "vmin": 1.7,
+  "vmax": 5.5,
+  "currentMa": 0.22,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/tmp117.pdf",
+  "priceUsd": 11.5,
+  "supplierQuery": "Adafruit TMP117 high accuracy I2C temperature sensor breakout 4821",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from 3.3 V: it feeds the chip and the SDA/SCL pull-ups directly, so 5 V on VIN would pull the I2C lines to 5 V.",
+    "Temperature register 0x00: 16-bit two's complement, MSB first, 7.8125 m°C per LSB (T = raw × 0.0078125 °C).",
+    "Out of the box it converts continuously (8 averages, one new result per second). The register reads 0x8000 (-256 °C) until the first result, about 125 ms after power-up.",
+    "Device ID register 0x0F reads 0x0117; reading the configuration register (0x01) clears its Data_Ready and alert flags.",
+    "ADDR is pulled to GND (0x48); bridge the back jumper or tie ADDR to VIN for 0x49, to SDA for 0x4A or SCL for 0x4B.",
+    "Keep the sensor away from the regulator and the microcontroller, and avoid fast polling with averaging off: self-heating spoils the ±0.1 °C accuracy."
+  ],
+  "keywords": [
+    "tmp117",
+    "temperature",
+    "precision",
+    "high accuracy",
+    "texas instruments",
+    "stemma qt",
+    "i2c"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -55,
+    "max": 150,
+    "default": 21,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 544,
+      "0x02": 24576,
+      "0x03": 32768,
+      "0x04": 0,
+      "0x07": 0,
+      "0x0F": 279
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 0.0078125,
+      "signed": true
+    }
+  },
+  "driver": {
+    "filename": "tmp117.py",
+    "code": "# TMP117 high-accuracy digital temperature sensor (Texas Instruments SNOSD82D), MicroPython driver.\n# 16-bit registers, MSB first; the first byte written is the register pointer:\n#   0x00 Temp_Result (read-only, two's complement, 7.8125 m°C per LSB, reads 0x8000 = -256 °C\n#        until the first conversion after power-up or reset)\n#   0x01 Configuration (factory default 0x0220: continuous conversion, 8 averages, 1 s cycle)\n#   0x02 THigh_Limit, 0x03 TLow_Limit, 0x07 Temp_Offset (all 7.8125 m°C per LSB)\n#   0x0F Device_ID (bits 11..0 = 0x117, bits 15..12 = revision)\nimport time\n\n_REG_TEMP = 0x00\n_REG_CONFIG = 0x01\n_REG_THIGH = 0x02\n_REG_TLOW = 0x03\n_REG_OFFSET = 0x07\n_REG_DEVICE_ID = 0x0F\n\n_LSB = 0.0078125      # °C per LSB (7.8125 m°C)\n_RESET_VALUE = 0x8000  # Temp_Result before the first conversion (-256 °C)\n\n_CFG_HIGH_ALERT = 0x8000\n_CFG_LOW_ALERT = 0x4000\n_CFG_DATA_READY = 0x2000\n_CFG_EEPROM_BUSY = 0x1000\n_CFG_MOD = 0x0C00      # MOD[1:0]: 00 continuous, 01 shutdown, 11 one-shot\n_CFG_CONV = 0x0380     # CONV[2:0]\n_CFG_AVG = 0x0060      # AVG[1:0]\n_CFG_SOFT_RESET = 0x0002\n\nMODE_CONTINUOUS = 0\nMODE_SHUTDOWN = 1\nMODE_ONE_SHOT = 3\n\nAVG_1 = 0   # no averaging, 15.5 ms per conversion\nAVG_8 = 1   # factory default, 124 ms active time\nAVG_32 = 2\nAVG_64 = 3\n\n_AVG_MS = (16, 125, 500, 1000)  # active conversion time for each AVG setting (15.5 ms x N)\n\n\ndef _to_signed(raw):\n    return raw - 0x10000 if raw & 0x8000 else raw\n\n\nclass TMP117:\n    def __init__(self, i2c, addr=0x48):\n        self.i2c = i2c\n        self.addr = addr\n        dev = self._read16(_REG_DEVICE_ID)\n        if dev & 0x0FFF != 0x117:\n            raise OSError('TMP117 not found at 0x%02X (device ID 0x%04X)' % (addr, dev))\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _write16(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(value >> 8) & 0xFF, value & 0xFF]))\n\n    def temperature(self):\n        \"\"\"Latest conversion in °C (continuous mode). After power-up the register holds -256 °C\n        until the first conversion finishes (1.5 ms power-up + 124 ms with the default 8 averages).\"\"\"\n        t0 = time.ticks_ms()\n        while True:\n            raw = self._read16(_REG_TEMP)\n            if raw != _RESET_VALUE:\n                return _to_signed(raw) * _LSB\n            if time.ticks_diff(time.ticks_ms(), t0) > 1100:\n                raise OSError('TMP117 has no conversion result yet (shut down?)')\n            time.sleep_ms(20)\n\n    def config(self):\n        \"\"\"Raw configuration register. Note: reading it clears Data_Ready and the alert flags.\"\"\"\n        return self._read16(_REG_CONFIG)\n\n    def set_mode(self, mode=MODE_CONTINUOUS, averaging=None, conv=None):\n        \"\"\"Write MOD (and optionally AVG[1:0] / CONV[2:0]) without touching the other bits.\"\"\"\n        cfg = self._read16(_REG_CONFIG) & 0x03FC & ~_CFG_SOFT_RESET\n        cfg = (cfg & ~_CFG_MOD) | ((mode & 3) << 10)\n        if averaging is not None:\n            cfg = (cfg & ~_CFG_AVG) | ((averaging & 3) << 5)\n        if conv is not None:\n            cfg = (cfg & ~_CFG_CONV) | ((conv & 7) << 7)\n        self._write16(_REG_CONFIG, cfg)\n\n    def one_shot(self, timeout_ms=1500):\n        \"\"\"Start a one-shot conversion (MOD = 11), wait for Data_Ready, return °C.\n        The device returns to shutdown afterwards.\"\"\"\n        self.set_mode(MODE_ONE_SHOT)\n        avg = (self._read16(_REG_CONFIG) & _CFG_AVG) >> 5\n        t0 = time.ticks_ms()\n        time.sleep_ms(_AVG_MS[avg])\n        while not (self._read16(_REG_CONFIG) & _CFG_DATA_READY):\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('TMP117 one-shot conversion timed out')\n            time.sleep_ms(5)\n        return _to_signed(self._read16(_REG_TEMP)) * _LSB\n\n    def soft_reset(self):\n        \"\"\"Soft reset (config bit 1): reloads EEPROM defaults, takes about 2 ms.\"\"\"\n        self._write16(_REG_CONFIG, _CFG_SOFT_RESET)\n        time.sleep_ms(3)\n\n    def limits(self):\n        \"\"\"(low, high) alert limits in °C; factory values are -256 and 192.\"\"\"\n        return _to_signed(self._read16(_REG_TLOW)) * _LSB, _to_signed(self._read16(_REG_THIGH)) * _LSB\n\n    def set_limits(self, low, high):\n        \"\"\"Write the alert limits (volatile; not stored in EEPROM).\"\"\"\n        self._write16(_REG_TLOW, int(round(low / _LSB)) & 0xFFFF)\n        self._write16(_REG_THIGH, int(round(high / _LSB)) & 0xFFFF)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tmp117 import TMP117\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TMP117(i2c)  # address 0x48 with ADDR at its default (pulled to GND)\nwhile True:\n    print('T=%.2fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=37.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/tmp117.pdf",
+    "https://learn.adafruit.com/adafruit-tmp117-high-accuracy-i2c-temperature-monitor/pinouts",
+    "https://github.com/adafruit/Adafruit-TMP117-PCB/blob/main/Adafruit_TMP117.brd",
+    "https://www.adafruit.com/product/4821"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:48:57.053Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/tmp117.pdf",
+      "https://learn.adafruit.com/adafruit-tmp117-high-accuracy-i2c-temperature-monitor/pinouts",
+      "https://www.adafruit.com/product/4821"
+    ]
+  }
+}

@@ -1,0 +1,207 @@
+{
+  "type": "custom-ens160",
+  "name": "ENS160 air quality sensor (eCO2/TVOC/AQI)",
+  "mpn": "ENS160",
+  "category": "sensor",
+  "description": "ScioSense digital metal-oxide multi-gas sensor that reports equivalent CO2 (400–65,000 ppm), TVOC (0–65,000 ppb) and the UBA air quality index (1–5) over I2C, with on-chip algorithms. The chip runs on 1.8 V; the breakout adds 1.8 V/3.3 V regulators and level shifting for 3–5 V. Sold as: Adafruit ENS160 MOX Gas Sensor breakout (product 5606; 8-pin: VIN, 3Vo, GND, SCK (= SCL), SDO, SDI (= SDA), CS, INT), I2C address 0x53 (0x52 with SDO tied to GND).",
+  "eli5": "Sniffs the air and tells your board how stuffy or polluted it is, as a CO2-like number, a VOC number and a 1-to-5 score.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board regulators make 1.8 V and 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, printed SCK on the board (SPI clock); level shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select (SPI MISO): pulled high on the board = 0x53, tie to GND for 0x52",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, printed SDI on the board (SPI data in); level shifted, 10 kΩ pull-up on the board",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select; pulled high on the board, which selects I2C. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (configured in CONFIG 0x11), not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 30,
+  "i2cAddress": 83,
+  "datasheetUrl": "https://www.sciosense.com/wp-content/uploads/2023/12/ENS160-Datasheet.pdf",
+  "sources": [
+    "https://www.sciosense.com/wp-content/uploads/2023/12/ENS160-Datasheet.pdf",
+    "https://learn.adafruit.com/adafruit-ens160-mox-gas-sensor/pinouts",
+    "https://github.com/adafruit/Adafruit-ENS160-PCB",
+    "https://www.adafruit.com/product/5606"
+  ],
+  "priceUsd": 22,
+  "supplierQuery": "Adafruit ENS160 MOX gas sensor breakout eCO2 TVOC AQI I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check PART_ID (registers 0x00–0x01, little endian) reads 0x0160, then write OPMODE 0x10 = 0x02 (STANDARD) to start gas sensing; the chip powers up in IDLE and reports nothing until then.",
+    "Poll DEVICE_STATUS 0x20 for NEWDAT (bit 1), then read 5 bytes from 0x21: AQI (bits 2:0), TVOC ppb (LSB, MSB), eCO2 ppm (LSB, MSB). New results arrive once a second.",
+    "Validity flag (DEVICE_STATUS bits 3:2): 1 = warm-up (about 3 minutes after every power-on), 2 = initial start-up (first hour of the sensor's life). Readings before then are not reliable.",
+    "For better accuracy write the ambient temperature to TEMP_IN 0x13 as (°C + 273.15) × 64 and humidity to RH_IN 0x15 as %RH × 512, LSB first.",
+    "The heater draws about 29 mA (79 mA peaks): power VIN from the 3V3 or 5 V rail, not from a GPIO.",
+    "Leave CS unconnected (pulled high on the board) so the chip stays in I2C mode."
+  ],
+  "keywords": [
+    "ens160",
+    "eco2",
+    "tvoc",
+    "aqi",
+    "air quality",
+    "voc",
+    "gas",
+    "sciosense",
+    "ccs811"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "eCO2",
+    "unit": "ppm",
+    "min": 400,
+    "max": 65000,
+    "default": 450,
+    "registers": {
+      "0x00": 96,
+      "0x01": 1,
+      "0x10": 1,
+      "0x20": 130
+    },
+    "controls": [
+      {
+        "key": "tvoc",
+        "quantity": "TVOC",
+        "unit": "ppb",
+        "min": 0,
+        "max": 65000,
+        "default": 50
+      },
+      {
+        "key": "aqi",
+        "quantity": "Air quality index (UBA, 1–5)",
+        "min": 1,
+        "max": 5,
+        "default": 1
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x21",
+        "bytes": 1,
+        "scale": 1,
+        "control": "aqi",
+        "when": {
+          "reg": "0x10",
+          "equals": 2
+        }
+      },
+      {
+        "reg": "0x22",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "tvoc",
+        "when": {
+          "reg": "0x10",
+          "equals": 2
+        }
+      },
+      {
+        "reg": "0x24",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value",
+        "when": {
+          "reg": "0x10",
+          "equals": 2
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ens160.py",
+    "code": "# ENS160 digital metal-oxide multi-gas sensor (ScioSense), MicroPython driver.\n# Register map, formats and operating modes from the ScioSense ENS160 datasheet v1.3.\n# All multi-byte registers are little endian (LSB at the lower address).\nimport time\n\n_PART_ID = 0x00        # 2 bytes, reads 0x0160 (0x60, 0x01)\n_OPMODE = 0x10         # 0x00 deep sleep, 0x01 idle, 0x02 standard, 0xF0 reset\n_CONFIG = 0x11\n_COMMAND = 0x12\n_TEMP_IN = 0x13        # 2 bytes: (T[°C] + 273.15) * 64\n_RH_IN = 0x15          # 2 bytes: RH[%] * 512\n_DEVICE_STATUS = 0x20  # bit7 STATAS, bit6 STATER, bits3:2 validity, bit1 NEWDAT, bit0 NEWGPR\n_DATA_AQI = 0x21       # bits 2:0 = AQI-UBA 1..5, then TVOC (0x22, ppb) and eCO2 (0x24, ppm)\n\nMODE_DEEP_SLEEP = 0x00\nMODE_IDLE = 0x01\nMODE_STANDARD = 0x02\n_MODE_RESET = 0xF0\n\nVALIDITY = ('normal', 'warm-up', 'initial start-up', 'invalid')\n\n\nclass ENS160:\n    def __init__(self, i2c, addr=0x53):\n        \"\"\"addr 0x53 with ADDR/SDO high (Adafruit default), 0x52 with it tied to GND.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.validity = 3\n        pid = self.i2c.readfrom_mem(self.addr, _PART_ID, 2)\n        if pid[0] | (pid[1] << 8) != 0x0160:\n            raise OSError('ENS160 not found (PART_ID 0x%04X)' % (pid[0] | (pid[1] << 8)))\n        self._mode(_MODE_RESET)\n        time.sleep_ms(10)\n        self._mode(MODE_IDLE)\n        time.sleep_ms(10)\n        self._mode(MODE_STANDARD)\n        time.sleep_ms(50)\n\n    def _mode(self, m):\n        self.i2c.writeto_mem(self.addr, _OPMODE, bytes([m]))\n\n    def sleep(self):\n        \"\"\"Deep sleep (about 10 µA); call wake() to resume gas sensing.\"\"\"\n        self._mode(MODE_DEEP_SLEEP)\n\n    def wake(self):\n        self._mode(MODE_STANDARD)\n        time.sleep_ms(50)\n\n    def set_compensation(self, temp_c, rh):\n        \"\"\"Tell the sensor the ambient temperature (°C) and humidity (%) for better accuracy.\"\"\"\n        t = int((temp_c + 273.15) * 64 + 0.5) & 0xFFFF\n        h = int(rh * 512 + 0.5) & 0xFFFF\n        # LSB first: the chip takes the new value when the MSB is written.\n        self.i2c.writeto_mem(self.addr, _TEMP_IN, bytes([t & 0xFF, t >> 8, h & 0xFF, h >> 8]))\n\n    def status(self):\n        return self.i2c.readfrom_mem(self.addr, _DEVICE_STATUS, 1)[0]\n\n    def read(self, timeout_ms=3000):\n        \"\"\"Wait for new data (one result per second in standard mode) and return\n        (AQI-UBA 1-5, TVOC in ppb, eCO2 in ppm). self.validity is set from the status:\n        0 normal, 1 warm-up (first 3 min), 2 initial start-up (first hour ever), 3 invalid.\"\"\"\n        t0 = time.ticks_ms()\n        while True:\n            st = self.status()\n            if st & 0x40:\n                raise OSError('ENS160 error flag (STATER) set')\n            if st & 0x02:\n                break\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('ENS160: no new data (is it in standard mode?)')\n            time.sleep_ms(50)\n        self.validity = (st >> 2) & 0x03\n        d = self.i2c.readfrom_mem(self.addr, _DATA_AQI, 5)\n        aqi = d[0] & 0x07\n        tvoc = d[1] | (d[2] << 8)\n        eco2 = d[3] | (d[4] << 8)\n        return aqi, tvoc, eco2\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ens160 import ENS160\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = ENS160(i2c)\nwhile True:\n    aqi, tvoc, eco2 = sensor.read()\n    print('AQI=%d TVOC=%dppb eCO2=%dppm' % (aqi, tvoc, eco2))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the eCO2, TVOC and AQI set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 850
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "tvoc",
+          "value": 320
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "aqi",
+          "value": 3
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "AQI=3 TVOC=320ppb eCO2=850ppm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:47:11.308Z",
+    "verifiedSources": [
+      "https://www.sciosense.com/wp-content/uploads/2023/12/ENS160-Datasheet.pdf",
+      "https://learn.adafruit.com/adafruit-ens160-mox-gas-sensor/pinouts"
+    ]
+  }
+}

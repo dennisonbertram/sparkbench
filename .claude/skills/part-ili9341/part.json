@@ -1,0 +1,178 @@
+{
+  "type": "custom-ili9341",
+  "name": "ILI9341 2.8\" 240×320 SPI colour TFT",
+  "mpn": "ILI9341",
+  "category": "display",
+  "description": "2.8-inch 240×320 colour TFT LCD (65K colours, RGB565) driven by an Ilitek ILI9341 controller over 4-wire SPI with a separate data/command (DC) line. Logic is 3.3 V only; VCC takes 3.3–5 V through an on-board regulator. Sold as: LCDwiki/Hiletgo-style red 2.8\" SPI TFT module MSP2806 (no touch; 14-pin header VCC, GND, CS, RESET, DC/RS, SDI(MOSI), SCK, LED, SDO(MISO), T_CLK, T_CS, T_DIN, T_DO, T_IRQ — the T_ pins are unused), same PCB as the touch version MSP2807.",
+  "eli5": "A small colour screen, about the size of a matchbox lid, that your board can draw text, shapes and pictures on.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3–5 V (on-board XC6206 3.3 V regulator; short jumper J1 only when feeding 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "LCD chip select, active low (3.3 V logic)",
+      "required": true
+    },
+    {
+      "name": "RESET",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "LCD reset, active low",
+      "required": true
+    },
+    {
+      "name": "DC/RS",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select (ILI9341 D/CX): low = command, high = parameter/pixel data",
+      "required": true
+    },
+    {
+      "name": "SDI(MOSI)",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data into the display",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (datasheet: write cycle ≥ 100 ns, i.e. ≤ 10 MHz guaranteed)",
+      "required": true
+    },
+    {
+      "name": "LED",
+      "role": "io",
+      "description": "Backlight enable via S8050 transistor: high = on (tie to 3.3 V for always on, or PWM to dim)",
+      "required": true
+    },
+    {
+      "name": "SDO(MISO)",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "SPI data out of the display, only for reading registers/GRAM",
+      "required": false
+    },
+    {
+      "name": "T_CLK",
+      "role": "nc",
+      "description": "Touch SPI clock — not connected on the no-touch MSP2806",
+      "required": false
+    },
+    {
+      "name": "T_CS",
+      "role": "nc",
+      "description": "Touch chip select — not connected on the no-touch MSP2806",
+      "required": false
+    },
+    {
+      "name": "T_DIN",
+      "role": "nc",
+      "description": "Touch SPI data in — not connected on the no-touch MSP2806",
+      "required": false
+    },
+    {
+      "name": "T_DO",
+      "role": "nc",
+      "description": "Touch SPI data out — not connected on the no-touch MSP2806",
+      "required": false
+    },
+    {
+      "name": "T_IRQ",
+      "role": "nc",
+      "description": "Touch interrupt — not connected on the no-touch MSP2806",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 90,
+  "datasheetUrl": "https://www.lcdwiki.com/res/MSP2807/ILI9341%20Datasheet.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "2.8 inch ILI9341 SPI TFT 240x320 module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x14_P2.54mm_Vertical",
+  "buildNotes": [
+    "Signal pins are 3.3 V logic only (no level shifter on the module): wire them straight to an ESP32 or Pico, never to a 5 V Arduino without a level shifter.",
+    "VCC can be 5 V or 3.3 V. Jumper J1 bypasses the on-board 3.3 V regulator: leave it open for 5 V, only short it when VCC is 3.3 V.",
+    "The backlight stays dark unless LED is high: drive it from a GPIO (or PWM to dim) or tie it to 3.3 V.",
+    "DC/RS low = command byte, high = parameters and pixel data (ILI9341 D/CX). The LCDwiki pin table has this backwards.",
+    "After reset wait at least 5 ms (120 ms before Sleep Out), and wait 120 ms after Sleep Out (0x11) before Display On (0x29).",
+    "Send 0x3A 0x55 for 16-bit RGB565: the chip powers up in 18-bit mode. The panel is BGR, so MADCTL (0x36) needs the BGR bit (0x08 portrait).",
+    "The datasheet guarantees SPI writes up to 10 MHz (100 ns cycle); many modules run faster, but drop back to 10 MHz if the picture is garbled. Keep jumper wires short.",
+    "The SD-card header (SD_CS, SD_MOSI, SD_MISO, SD_SCK) on the other edge is unpopulated by default and is not modelled here."
+  ],
+  "keywords": [
+    "ili9341",
+    "tft",
+    "lcd",
+    "2.8 inch",
+    "240x320",
+    "spi display",
+    "colour display",
+    "msp2806",
+    "msp2807"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 240,
+    "height": 320
+  },
+  "driver": {
+    "filename": "ili9341.py",
+    "code": "# MicroPython driver for the ILI9341 240x320 SPI colour TFT (4-line serial interface II:\n# SCL, SDI, D/CX, CSX). Command sequences and timings from the Ilitek ILI9341 datasheet V1.11;\n# power/gamma values from the module vendor's (LCDwiki MSP2806/MSP2807) init code.\nfrom machine import Pin\nimport framebuf\nimport time\n\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\n\n\ndef rgb565(r, g, b):\n    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)\n\n\n# (command, parameters, delay ms after)\n_INIT = (\n    (0xCF, b'\\x00\\xC9\\x30', 0),   # Power control B\n    (0xED, b'\\x64\\x03\\x12\\x81', 0),  # Power on sequence control\n    (0xE8, b'\\x85\\x10\\x7A', 0),   # Driver timing control A\n    (0xCB, b'\\x39\\x2C\\x00\\x34\\x02', 0),  # Power control A\n    (0xF7, b'\\x20', 0),           # Pump ratio control\n    (0xEA, b'\\x00\\x00', 0),       # Driver timing control B\n    (0xC0, b'\\x1B', 0),           # Power control 1 (VRH)\n    (0xC1, b'\\x00', 0),           # Power control 2\n    (0xC5, b'\\x30\\x30', 0),       # VCOM control 1\n    (0xC7, b'\\xB7', 0),           # VCOM control 2\n    (0x3A, b'\\x55', 0),           # Pixel format: 16 bits/pixel (default is 18)\n    (0xB1, b'\\x00\\x1A', 0),       # Frame rate control\n    (0xB6, b'\\x0A\\xA2', 0),       # Display function control\n    (0xF2, b'\\x00', 0),           # 3-gamma off\n    (0x26, b'\\x01', 0),           # Gamma curve 1\n    (0xE0, b'\\x0F\\x2A\\x28\\x08\\x0E\\x08\\x54\\xA9\\x43\\x0A\\x0F\\x00\\x00\\x00\\x00', 0),\n    (0xE1, b'\\x00\\x15\\x17\\x07\\x11\\x06\\x2B\\x56\\x3C\\x05\\x10\\x0F\\x3F\\x3F\\x0F', 0),\n    (0x11, b'', 120),             # Sleep out: wait 120 ms (datasheet 8.2.12)\n    (0x29, b'', 0),               # Display on\n)\n\n\nclass ILI9341:\n    # MADCTL (36h): BGR panel; rotation 0/2 portrait 240x320, 1/3 landscape 320x240 (MV set).\n    _MADCTL = (0x08, 0x68, 0xC8, 0xA8)\n\n    def __init__(self, spi, dc, cs, rst=None, rotation=0):\n        self.spi = spi\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        if rst is not None:\n            self.rst = Pin(rst, Pin.OUT, value=1)\n            time.sleep_ms(5)\n            self.rst(0)\n            time.sleep_ms(1)          # tRW >= 10 us\n            self.rst(1)\n            time.sleep_ms(120)        # >= 5 ms before commands, 120 ms before Sleep Out\n        self._cmd(0x01)               # software reset\n        time.sleep_ms(120)\n        for c, a, d in _INIT:\n            self._cmd(c, a)\n            if d:\n                time.sleep_ms(d)\n        self.rotation(rotation)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)                    # D/CX low = command\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)                # D/CX high = parameter / pixel data\n            self.spi.write(data)\n        self.cs(1)\n\n    def rotation(self, r):\n        r &= 3\n        self.width, self.height = (240, 320) if r in (0, 2) else (320, 240)\n        self._cmd(0x36, bytes([self._MADCTL[r]]))\n\n    def _window(self, x, y, w, h):\n        x1, y1 = x + w - 1, y + h - 1\n        self._cmd(0x2A, bytes([x >> 8, x & 255, x1 >> 8, x1 & 255]))\n        self._cmd(0x2B, bytes([y >> 8, y & 255, y1 >> 8, y1 & 255]))\n\n    def blit(self, buf, x, y, w, h):\n        \"\"\"Write w*h big-endian RGB565 pixels from buf at (x, y).\"\"\"\n        self._window(x, y, w, h)\n        self._cmd(0x2C, buf)\n\n    def fill_rect(self, x, y, w, h, colour):\n        self._window(x, y, w, h)\n        line = bytes([colour >> 8, colour & 255]) * w\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(b'\\x2C')\n        self.dc(1)\n        for _ in range(h):\n            self.spi.write(line)\n        self.cs(1)\n\n    def fill(self, colour):\n        self.fill_rect(0, 0, self.width, self.height, colour)\n\n    def pixel(self, x, y, colour):\n        self.blit(bytes([colour >> 8, colour & 255]), x, y, 1, 1)\n\n    def text(self, s, x, y, colour=WHITE, bg=BLACK):\n        \"\"\"8x8 font text. framebuf stores RGB565 little-endian, the ILI9341 wants MSB first,\n        so colours are byte-swapped before drawing.\"\"\"\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        sw = lambda c: ((c & 255) << 8) | (c >> 8)\n        fb.fill(sw(bg))\n        fb.text(s, 0, 0, sw(colour))\n        self.blit(buf, x, y, w, 8)\n\n    def off(self):\n        self._cmd(0x28)\n\n    def on(self):\n        self._cmd(0x29)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom ili9341 import ILI9341, BLACK, WHITE, YELLOW\n\nPin({LED}, Pin.OUT, value=1)  # backlight on\nspi = SPI(1, baudrate=10000000, sck=Pin({SCK}), mosi=Pin({SDI_MOSI_}), miso=Pin({SDO_MISO_}))\ntft = ILI9341(spi, dc={DC_RS}, cs={CS}, rst={RESET})\ntft.fill(BLACK)\ntft.text('HELLO ILI9341', 20, 40, WHITE)\ntft.text('240x320', 20, 60, YELLOW)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "draws-text",
+      "title": "Draws text on the screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "HELLO ILI9341",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.lcdwiki.com/2.8inch_SPI_Module_ILI9341_SKU:MSP2807",
+    "https://www.lcdwiki.com/res/MSP2807/MSP2806_Size.pdf",
+    "https://www.lcdwiki.com/res/MSP2807/MSP2807-2.8-SPI.pdf",
+    "https://www.lcdwiki.com/res/MSP2807/ILI9341%20Datasheet.pdf",
+    "https://www.lcdwiki.com/res/Program/Common_SPI/2.8inch/SPI_ILI9341_MSP2807_V1.1/2.8inch_SPI_Module_ILI9341_MSP2807_V1.1.zip"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:35:13.015Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/ILI9341.pdf",
+      "https://akizukidenshi.com/goodsaffix/msp2807.pdf"
+    ]
+  }
+}

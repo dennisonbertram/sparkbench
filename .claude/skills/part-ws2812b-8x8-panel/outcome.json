@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ws2812b-8x8-panel",
+  "board": "BTF-LIGHTING WS2812B 8x8 64-pixel flexible LED panel (80x80 mm FPC, 3-pin JST-SM input 5V, DIN, GND)",
+  "reason": "The 64-LED addressable-led model and a neopixel-based 8x8 helper driver (WS2812B GRB, 800 kbit/s, zig-zag xy mapping, 10% default brightness cap) passed the part check on ESP32 and Pico. The lookup flagged the built-in neopixel-ring only because it matched the word WS2812B; that is a different product (a 12-LED ring), so this was not treated as a duplicate. currentMa is 420 mA, which assumes the driver's brightness cap; full white draws about 3.8 A, and the build notes say this.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+  "breakoutPinoutSource": "https://cdn.sparkfun.com/datasheets/Components/LED/P256V5.pdf (iPixel/BTF flexible WS2812B panel drawing: input JST-SM 5V, DIN, GND; output 5V, DOUT, GND); https://pmdway.com/products/flexible-ws2812b-rgb-led-panel",
+  "checkRuns": 2
+}

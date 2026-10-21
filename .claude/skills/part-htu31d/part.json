@@ -1,0 +1,181 @@
+{
+  "type": "custom-htu31d",
+  "name": "HTU31D temperature & humidity sensor",
+  "mpn": "HTU31D",
+  "category": "sensor",
+  "description": "TE Connectivity HTU31D digital temperature (-40 to 125 °C, ±0.2 °C typical) and relative humidity (0–100 %, ±2 % typical) sensor with an I2C interface at address 0x40 (0x41 with ADDR high), CRC-checked readings and a built-in heater. The chip runs on 3.0–5.5 V. Sold as: Adafruit HTU31 Temperature & Humidity Sensor Breakout Board - STEMMA QT / Qwiic (#4832; 6-pin header VIN, GND, SCL, SDA, RST, ADDR, plus two STEMMA QT sockets).",
+  "eli5": "Tells your board how warm the air is and how damp it is, very accurately.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V, wired straight to the chip (no regulator); use the same voltage as your board's logic",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Reset input, active low (10 kΩ pull-up on the board); leave unconnected for basic use",
+      "required": false
+    },
+    {
+      "name": "ADDR",
+      "role": "io",
+      "description": "Address select (10 kΩ pull-down on the board): low/unconnected = 0x40, high = 0x41",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.45,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.farnell.com/datasheets/3049619.pdf",
+  "priceUsd": 6.95,
+  "supplierQuery": "Adafruit HTU31D temperature humidity sensor breakout STEMMA QT 4832",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Measure in two steps: send a Conversion command (0x5E = finest resolution for both), wait at least 20.3 ms (25 ms or more is safe), then send Read T&RH (0x00) and read 6 bytes: temperature MSB, LSB, CRC, humidity MSB, LSB, CRC.",
+    "Check each CRC (poly 0x31, init 0x00). A mismatch almost always means a loose SDA/SCL wire.",
+    "T = -40 + 165 × S / 65535 °C and RH = 100 × S / 65535 %.",
+    "Leave ADDR unconnected for address 0x40; tie it to VIN (or close the solder jumper on the back) for 0x41, e.g. for a second sensor.",
+    "VIN goes straight to the chip and the pull-ups, so power it from the same 3.3 V as an ESP32 or Pico.",
+    "Keep the heater off (it is off after reset) when you want accurate temperature readings."
+  ],
+  "keywords": [
+    "htu31d",
+    "htu31",
+    "htu21d",
+    "temperature",
+    "humidity",
+    "te connectivity",
+    "meas"
+  ],
+  "sources": [
+    "https://www.farnell.com/datasheets/3049619.pdf",
+    "https://www.adafruit.com/product/4832",
+    "https://github.com/adafruit/Adafruit-HTU31-PCB",
+    "https://github.com/adafruit/Adafruit_CircuitPython_HTU31D"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "00",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.0025177386129549098,
+            "offset": -40
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0015259021896696422
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "10",
+        "bytes": [
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0015259021896696422
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "htu31d.py",
+    "code": "# HTU31D temperature & humidity sensor (TE Connectivity HTU31D RH/T sensor IC), MicroPython driver.\n# Measurement sequence from the datasheet: send a Conversion command (0x40 | OSR_RH<<3 | OSR_T<<1),\n# wait for the conversion, then send Read T&RH (0x00) and read 6 bytes: T MSB, T LSB, CRC, RH MSB, RH LSB, CRC.\n# CRC-8: polynomial x^8 + x^5 + x^4 + 1 (0x31), initialisation 0x00.\n# Conversion: T = -40 + 165 * S_T / (2^16 - 1) degC, RH = 100 * S_RH / (2^16 - 1) %RH.\nimport time\n\n_CMD_RESET = 0x1E\n_CMD_HEATER_ON = 0x04\n_CMD_HEATER_OFF = 0x02\n_CMD_READ_T_RH = 0x00\n_CMD_READ_RH = 0x10\n_CMD_CONVERSION = 0x40\n_CMD_READ_DIAG = 0x08\n_CMD_READ_SERIAL = 0x0A\n\n# Typical conversion times in ms at OSR 0..3 (datasheet Table 5); the wait adds margin.\n_T_CONV_MS = (1.57, 3.06, 6.03, 11.98)\n_RH_CONV_MS = (1.11, 2.14, 4.21, 8.34)\n\n\ndef _crc8(data):\n    crc = 0x00\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass HTU31D:\n    def __init__(self, i2c, addr=0x40, osr_rh=3, osr_t=3):\n        \"\"\"addr 0x40 with the ADDR pin low (board default), 0x41 with it high.\n        osr_rh / osr_t: resolution 0 (fastest) .. 3 (finest, default).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.osr_rh = osr_rh & 3\n        self.osr_t = osr_t & 3\n        time.sleep_ms(10)  # power-up time, max 10 ms\n        self.reset()\n\n    def reset(self):\n        \"\"\"Soft reset (0x1E): back to defaults, heater off. Takes up to 15 ms.\"\"\"\n        self.i2c.writeto(self.addr, bytes([_CMD_RESET]))\n        time.sleep_ms(15)\n\n    def heater(self, on):\n        self.i2c.writeto(self.addr, bytes([_CMD_HEATER_ON if on else _CMD_HEATER_OFF]))\n\n    def serial_number(self):\n        \"\"\"24-bit serial number (followed by a CRC over the three bytes).\"\"\"\n        self.i2c.writeto(self.addr, bytes([_CMD_READ_SERIAL]))\n        d = self.i2c.readfrom(self.addr, 4)\n        if _crc8(d[0:3]) != d[3]:\n            raise OSError('HTU31D CRC mismatch: check the wiring')\n        return (d[0] << 16) | (d[1] << 8) | d[2]\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in degC, relative humidity in %).\"\"\"\n        cmd = _CMD_CONVERSION | (self.osr_rh << 3) | (self.osr_t << 1)\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        wait = _T_CONV_MS[self.osr_t] + _RH_CONV_MS[self.osr_rh]\n        time.sleep_ms(int(wait * 1.25) + 2)  # typical times only: leave margin\n        self.i2c.writeto(self.addr, bytes([_CMD_READ_T_RH]))\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('HTU31D CRC mismatch: check the wiring')\n        s_t = (d[0] << 8) | d[1]\n        s_rh = (d[3] << 8) | d[4]\n        t = -40 + 165 * s_t / 65535\n        rh = 100 * s_rh / 65535\n        return t, rh\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom htu31d import HTU31D\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = HTU31D(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 42
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.5C H=42%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:43:09.238Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/0/8/1/7/2/ENG_DS_HTU31_RHT_SENSOR_IC_3.pdf",
+      "https://www.adafruit.com/product/4832",
+      "https://github.com/adafruit/Adafruit-HTU31-PCB"
+    ]
+  }
+}

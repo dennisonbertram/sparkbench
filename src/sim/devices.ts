@@ -463,7 +463,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; pointerless?: boolean; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     for (const [k, v] of Object.entries(registers)) this.setReg(Number(k), v);
@@ -527,7 +527,7 @@ export class GenericI2CDevice implements I2CDevice {
       return;
     }
     const aw = this.layout.addrWidth === 16 ? 2 : 1;
-    this.ptr = aw === 2 ? ((bytes[0] << 8) | (bytes[1] ?? 0)) : bytes[0];
+    this.ptr = aw === 2 ? ((bytes[0] << 8) | (bytes[1] ?? 0)) : this.layout.autoIncrementBit7 ? bytes[0] & 0x7f : bytes[0];
     const data = bytes.slice(aw);
     const rtcBase = this.layout.rtc ? Number(this.layout.rtc.reg) : -1;
     const touchesRtc = rtcBase >= 0 && data.length > 0 && this.ptr < rtcBase + 7 && this.ptr + data.length > rtcBase;

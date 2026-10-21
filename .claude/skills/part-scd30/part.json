@@ -1,0 +1,250 @@
+{
+  "type": "custom-scd30",
+  "name": "SCD30 CO2 sensor module",
+  "mpn": "SCD30",
+  "category": "sensor",
+  "description": "Sensirion NDIR CO2 sensor module (0-40000 ppm output, ±(30 ppm + 3 %) from 400-10000 ppm) with on-board temperature and relative humidity sensing, I2C interface (results as 32-bit floats), new reading every 2 s by default. Runs on 3.3-5.5 V; SDA/SCL have 45 k pull-ups to 3 V inside the module. Sold as: Sensirion SCD30 sensor module (article 1-101625-10, also sold by SparkFun as SEN-15112; 7-pin 2.54 mm row VDD, GND, TX/SCL, RX/SDA, RDY, PWM, SEL), I2C address 0x61 (fixed).",
+  "eli5": "Measures how much carbon dioxide is in the room (plus temperature and humidity), so you can tell when it is time to open a window.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.3-5.5 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "Printed TX/SCL on the module. I2C clock (internal 45 k pull-up to 3 V; do not pull above 3.0 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "Printed RX/SDA on the module. I2C data (internal 45 k pull-up to 3 V; do not pull above 3.0 V)",
+      "required": true
+    },
+    {
+      "name": "RDY",
+      "role": "io",
+      "description": "Data-ready output, high when a new reading is waiting (optional)",
+      "required": false
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "description": "PWM output of the CO2 reading, 0-5000 ppm (not used with I2C)",
+      "required": false
+    },
+    {
+      "name": "SEL",
+      "role": "io",
+      "description": "Interface select: leave floating or tie to GND for I2C (high = Modbus UART)",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 19,
+  "i2cAddress": 97,
+  "datasheetUrl": "https://sensirion.com/media/documents/4EAF6AF8/61652C3C/Sensirion_CO2_Sensors_SCD30_Datasheet.pdf",
+  "priceUsd": 55,
+  "supplierQuery": "Sensirion SCD30 CO2 sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "The SCD30 is slow on I2C: run the bus at 50 kHz or less (freq=50000) and let the sensor stretch the clock (up to 30 ms, 150 ms about once a day). It does not support repeated start, so write the command and read in two separate transfers.",
+    "Start continuous measurement with 0x0010 + pressure word + CRC (0x00 0x10 0x00 0x00 0x81 = no pressure compensation). It keeps measuring after power cycles; new reading every 2 s by default (0x4600 sets 2-1800 s).",
+    "Poll get_data_ready_status 0x0202 (wait >3 ms, read 3 bytes; word = 1 when ready), then read_measurement 0x0300 (wait >3 ms, read 18 bytes): CO2, temperature, humidity as big-endian IEEE-754 floats, a CRC after every 16-bit half.",
+    "CRC-8 poly 0x31, init 0xFF (CRC(0xBEEF) = 0x92). Commands with an argument need the CRC of the argument too.",
+    "SDA/SCL have 45 k pull-ups to 3 V inside the module and the inputs only tolerate 3.0 V: with a 5 V supply, never pull the I2C lines up to 5 V (use a level shifter on a 5 V board).",
+    "Leave SEL floating (or on GND) for I2C. Draws about 19 mA on average, peaks of 75 mA while measuring.",
+    "The sensor needs up to 2 s after power-up before it answers. Do not touch the optical cavity; keep it away from the regulator and microcontroller, which warm the air."
+  ],
+  "keywords": [
+    "scd30",
+    "co2",
+    "carbon dioxide",
+    "air quality",
+    "ndir",
+    "sensirion",
+    "temperature",
+    "humidity"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "CO2",
+    "unit": "ppm",
+    "min": 0,
+    "max": 10000,
+    "default": 600,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 70,
+        "default": 21
+      },
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "02 02",
+        "bytes": [
+          {
+            "const": 1,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "03 00",
+        "bytes": [
+          {
+            "control": "value",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "value",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "temperature",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "temperature",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "float32": "hi",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "float32": "lo",
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "d1 00",
+        "bytes": [
+          {
+            "const": 834,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "scd30.py",
+    "code": "# SCD30 CO2, temperature & humidity sensor module (Sensirion), MicroPython driver.\n# I2C protocol from the SCD30 Interface Description v1.0 (May 2020):\n#   address 0x61, max 100 kHz (50 kHz recommended), the master must allow clock stretching\n#   (30 ms normally, up to 150 ms about once a day), no repeated start.\n#   trigger_continuous_measurement 0x0010 + pressure [mbar] (0 = no compensation)\n#   stop_continuous_measurement    0x0104\n#   set_measurement_interval       0x4600 + seconds (2...1800)\n#   get_data_ready_status          0x0202 -> 1 when a new reading is waiting\n#   read_measurement               0x0300 -> CO2, T, RH as big-endian IEEE-754 floats\n# Every 16-bit word, in either direction, is followed by a CRC-8 (poly 0x31, init 0xFF).\n# Wait more than 3 ms between writing a command and reading its answer.\nimport struct\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SCD30:\n    def __init__(self, i2c, addr=0x61, pressure=0, interval=None, start=True):\n        self.i2c = i2c\n        self.addr = addr\n        if interval is not None:\n            self.set_interval(interval)\n        if start:\n            self.start(pressure)\n\n    def _write(self, cmd, arg=None):\n        buf = bytes([cmd >> 8, cmd & 0xFF])\n        if arg is not None:\n            a = bytes([(arg >> 8) & 0xFF, arg & 0xFF])\n            buf += a + bytes([_crc8(a)])\n        # The sensor boots in under 2 s and NACKs until then; it may also stretch the\n        # clock beyond the I2C timeout during its daily calibration. Retry for up to 2 s.\n        t0 = time.ticks_ms()\n        while True:\n            try:\n                self.i2c.writeto(self.addr, buf)\n                return\n            except OSError:\n                if time.ticks_diff(time.ticks_ms(), t0) > 2000:\n                    raise\n                time.sleep_ms(100)\n\n    def _read_words(self, cmd, n):\n        self._write(cmd)\n        time.sleep_ms(4)  # read header must follow the write by more than 3 ms\n        d = self.i2c.readfrom(self.addr, 3 * n)\n        out = bytearray()\n        for i in range(n):\n            w = d[3 * i:3 * i + 2]\n            if _crc8(w) != d[3 * i + 2]:\n                raise OSError('SCD30 CRC mismatch: check the wiring')\n            out += w\n        return out\n\n    def start(self, pressure=0):\n        \"\"\"Start continuous measurement; pressure in mbar (700-1400) or 0 for none.\"\"\"\n        self._write(0x0010, pressure)\n\n    def stop(self):\n        self._write(0x0104)\n\n    def set_interval(self, seconds):\n        \"\"\"Measurement interval, 2-1800 s (stored in the sensor's flash).\"\"\"\n        self._write(0x4600, seconds)\n\n    def set_auto_calibration(self, on):\n        self._write(0x5306, 1 if on else 0)\n\n    def set_temperature_offset(self, degrees):\n        \"\"\"Offset subtracted from the temperature, in °C (unit 0.01 °C).\"\"\"\n        self._write(0x5403, max(0, round(degrees * 100)))\n\n    def set_altitude(self, metres):\n        self._write(0x5102, metres)\n\n    def force_recalibration(self, ppm):\n        \"\"\"Tell the sensor the true CO2 level now (400-2000 ppm).\"\"\"\n        self._write(0x5204, ppm)\n\n    def firmware(self):\n        d = self._read_words(0xD100, 1)\n        return d[0], d[1]\n\n    def soft_reset(self):\n        self._write(0xD304)\n\n    def data_ready(self):\n        d = self._read_words(0x0202, 1)\n        return ((d[0] << 8) | d[1]) == 1\n\n    def read(self, timeout_ms=5000):\n        \"\"\"Wait for the next reading and return (CO2 in ppm, temperature in °C, relative humidity in %).\"\"\"\n        t0 = time.ticks_ms()\n        while not self.data_ready():\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('SCD30: no measurement ready (was start() called?)')\n            time.sleep_ms(100)\n        d = self._read_words(0x0300, 6)\n        return struct.unpack('>fff', d)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom scd30 import SCD30\n\n# The SCD30 wants a slow bus (50 kHz) and stretches the clock.\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=50000)\nsensor = SCD30(i2c)\nwhile True:\n    co2, t, h = sensor.read()  # waits for the next 2-second reading\n    print('CO2=%dppm T=%.1fC H=%.0f%%' % (co2, t, h))\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2, temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1250
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 27.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 62
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1250ppm T=27.5C H=62%",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensirion.com/media/documents/4EAF6AF8/61652C3C/Sensirion_CO2_Sensors_SCD30_Datasheet.pdf",
+    "https://sensirion.com/media/documents/D7CEEF4A/6165372F/Sensirion_CO2_Sensors_SCD30_Interface_Description.pdf",
+    "https://www.sparkfun.com/products/15112",
+    "https://sensirion.com/products/catalog/SCD30"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:40:27.119Z",
+    "verifiedSources": [
+      "https://sensirion.com/media/documents/4EAF6AF8/61652C3C/Sensirion_CO2_Sensors_SCD30_Datasheet.pdf",
+      "https://cdn.sparkfun.com/assets/d/c/0/7/2/SCD30_Interface_Description.pdf",
+      "https://done.land/components/data/sensor/airquality/scd30/"
+    ]
+  }
+}

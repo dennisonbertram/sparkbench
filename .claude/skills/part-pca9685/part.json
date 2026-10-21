@@ -1,0 +1,157 @@
+{
+  "type": "custom-pca9685",
+  "name": "PCA9685 16-channel PWM / servo driver",
+  "mpn": "PCA9685",
+  "category": "ic",
+  "description": "NXP 16-channel, 12-bit PWM controller on I2C (address 0x40-0x7F, default 0x40) with an internal 25 MHz oscillator; all channels share one frequency, 24-1526 Hz. Drives hobby servos at 50 Hz or LEDs; outputs sink up to 25 mA. Logic supply 3-5 V on this board; servos take separate power on V+. Sold as: Adafruit 16-Channel 12-bit PWM/Servo Driver - I2C interface - PCA9685 (#815), control header GND, OE, SCL, SDA, VCC, V+ (repeated on the opposite edge for chaining), 16 three-pin servo outputs (PWM, V+, GND), address jumpers A0-A5; also the many PCA9685 clone modules with the same header.",
+  "eli5": "Lets your board control up to 16 servo motors or LEDs using just two wires, so the board doesn't have to make all those pulses itself.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground for logic and servos, must be connected",
+      "required": true
+    },
+    {
+      "name": "OE",
+      "role": "io",
+      "description": "Output enable, active low: pulled low on the board (outputs on); drive high to disable all outputs",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kOhm pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kOhm pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Logic supply for the PCA9685, 3-5 V; match your microcontroller (3.3 V for ESP32/Pico) since it also feeds the I2C pull-ups",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "io",
+      "description": "Servo power in, 5-6 V from a separate supply (not used by the chip); leave unconnected if not driving servos. Never connect to VCC or a 3.3 V pin",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 10,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf",
+    "https://www.adafruit.com/product/815",
+    "https://learn.adafruit.com/16-channel-pwm-servo-driver/pinouts"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "PCA9685 16 channel PWM servo driver board I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power the servos from a separate 5-6 V supply on V+ (or the screw terminal), sharing GND with the microcontroller. Never power servos from the 3.3 V pin.",
+    "VCC is the chip's logic supply and feeds the SDA/SCL pull-ups: use 3.3 V with an ESP32 or Pico.",
+    "The chip powers up asleep (MODE1 = 0x11). PRE_SCALE (0xFE) can only be written while SLEEP is set; prescale = round(25 MHz / (4096 x f)) - 1, so 121 for 50 Hz.",
+    "After clearing SLEEP wait 500 us for the oscillator before touching the PWM registers; set MODE1 AI (bit 5) to write the four LEDn bytes in one go.",
+    "Channel n uses LEDn_ON_L/H, LEDn_OFF_L/H at 0x06 + 4n (12-bit counts out of 4096); bit 4 of OFF_H = fully off, bit 4 of ON_H = fully on.",
+    "Address 0x40 by default; bridge A0-A5 solder jumpers for 0x41-0x7F to chain up to 62 boards."
+  ],
+  "keywords": [
+    "pca9685",
+    "servo",
+    "pwm",
+    "16-channel",
+    "servo driver",
+    "led driver",
+    "adafruit 815"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "pwmChannels": {
+      "base": "0x06",
+      "count": 16
+    },
+    "registers": {
+      "0x00": 17,
+      "0x01": 4,
+      "0x02": 226,
+      "0x03": 228,
+      "0x04": 232,
+      "0x05": 224,
+      "0x09": 16,
+      "0x0d": 16,
+      "0x11": 16,
+      "0x15": 16,
+      "0x19": 16,
+      "0x1d": 16,
+      "0x21": 16,
+      "0x25": 16,
+      "0x29": 16,
+      "0x2d": 16,
+      "0x31": 16,
+      "0x35": 16,
+      "0x39": 16,
+      "0x3d": 16,
+      "0x41": 16,
+      "0x45": 16,
+      "0xfe": 30
+    }
+  },
+  "driver": {
+    "filename": "pca9685.py",
+    "code": "# PCA9685 16-channel 12-bit PWM / servo driver (NXP PCA9685), MicroPython driver.\n# Written from the NXP PCA9685 datasheet Rev. 4: MODE1 0x00, MODE2 0x01, LEDn_ON_L/H, LEDn_OFF_L/H at\n# 0x06 + 4*n, ALL_LED at 0xFA, PRE_SCALE 0xFE (writable only while SLEEP=1),\n# prescale = round(osc / (4096 * f)) - 1, clamped to 3..255; oscillator needs 500 us after wake.\nimport time\n\n_MODE1 = 0x00\n_MODE2 = 0x01\n_LED0 = 0x06\n_ALL_LED = 0xFA\n_PRESCALE = 0xFE\n_RESTART = 0x80\n_AI = 0x20\n_SLEEP = 0x10\n_ALLCALL = 0x01\n_OUTDRV = 0x04\n_FULL = 0x10  # bit 4 of LEDn_ON_H (full on) / LEDn_OFF_H (full off)\n\n\nclass PCA9685:\n    def __init__(self, i2c, addr=0x40, freq=50, osc=25000000):\n        self.i2c = i2c\n        self.addr = addr\n        self.osc = osc  # internal oscillator, 25 MHz typical (real chips vary by a few %)\n        self._freq = freq\n        self._w(_MODE2, _OUTDRV)  # totem-pole outputs (POR default; needed by the Adafruit board)\n        self._w(_ALL_LED + 2, 0)  # ALL_LED_OFF_L\n        self._w(_ALL_LED + 3, _FULL)  # ALL_LED_OFF_H: every channel fully off\n        self._w(_MODE1, _AI | _ALLCALL)  # wake, register auto-increment on\n        time.sleep_us(500)  # oscillator start-up, datasheet MODE1 note [2]\n        self.freq(freq)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def freq(self, hz=None):\n        \"\"\"Set (or return) the PWM frequency, 24..1526 Hz, shared by all 16 channels.\"\"\"\n        if hz is None:\n            return self.osc / (4096 * (self._r(_PRESCALE) + 1))\n        pre = int(self.osc / (4096 * hz) + 0.5) - 1\n        pre = max(3, min(255, pre))\n        old = self._r(_MODE1) & ~_RESTART & 0xFF\n        self._w(_MODE1, old | _SLEEP)  # PRE_SCALE can only be written while asleep\n        self._w(_PRESCALE, pre)\n        self._w(_MODE1, (old & ~_SLEEP) | _AI)\n        time.sleep_us(500)\n        if self._r(_MODE1) & _RESTART:  # restart channels that were running (section 7.3.1.1)\n            self._w(_MODE1, (old & ~_SLEEP) | _AI | _RESTART)\n        self._freq = hz\n        return pre\n\n    def prescale(self):\n        return self._r(_PRESCALE)\n\n    def pwm(self, ch, on, off):\n        \"\"\"Raw 12-bit counts: output goes high at count `on` and low at count `off` (0..4095).\"\"\"\n        if not 0 <= ch <= 15:\n            raise ValueError('channel 0..15')\n        self.i2c.writeto_mem(self.addr, _LED0 + 4 * ch,\n                             bytes([on & 0xFF, (on >> 8) & 0x0F, off & 0xFF, (off >> 8) & 0x0F]))\n\n    def duty(self, ch, value):\n        \"\"\"Duty cycle as 0..4095; 0 = fully off, 4095 = fully on.\"\"\"\n        if value <= 0:\n            self.off(ch)\n        elif value >= 4095:\n            self.i2c.writeto_mem(self.addr, _LED0 + 4 * ch, bytes([0, _FULL, 0, 0]))\n        else:\n            self.pwm(ch, 0, value)\n\n    def off(self, ch):\n        self.i2c.writeto_mem(self.addr, _LED0 + 4 * ch, bytes([0, 0, 0, _FULL]))\n\n    def pulse_us(self, ch, us):\n        \"\"\"High pulse of `us` microseconds each period (servos: about 500..2500 us at 50 Hz).\"\"\"\n        counts = int(us * self._freq * 4096 / 1000000 + 0.5)\n        self.duty(ch, counts)\n        return counts\n\n    def servo(self, ch, angle, min_us=500, max_us=2500):\n        \"\"\"Move a hobby servo to 0..180 degrees. Check your servo's pulse range before going to the ends.\"\"\"\n        angle = max(0, min(180, angle))\n        return self.pulse_us(ch, min_us + (max_us - min_us) * angle / 180)\n\n    def all_off(self):\n        self.i2c.writeto_mem(self.addr, _ALL_LED, bytes([0, 0, 0, _FULL]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pca9685 import PCA9685\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\npwm = PCA9685(i2c, freq=50)  # 50 Hz for hobby servos\ncounts = pwm.pulse_us(0, 1500)  # servo on channel 0 to centre\npwm.off(1)  # channel 1 fully off\nprint('prescale=%d ch0=%d' % (pwm.prescale(), counts))\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "servo-pulse",
+      "title": "Sets 50 Hz, drives channel 0 with a 1.5 ms servo pulse and keeps channel 1 off",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "prescale=121 ch0=307",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "CH0",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "CH1",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:31:47.978Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCA9685.pdf",
+      "https://learn.adafruit.com/16-channel-pwm-servo-driver/pinouts"
+    ]
+  }
+}

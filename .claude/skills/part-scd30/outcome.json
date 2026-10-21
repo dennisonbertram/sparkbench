@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-scd30",
+  "board": "Sensirion SCD30 sensor module (article 1-101625-10, also sold as SparkFun SEN-15112)",
+  "reason": "Modelled from the Sensirion SCD30 datasheet and I2C interface description v1.0. It uses address 0x61, start 0x0010, data-ready 0x0202 and read 0x0300, which returns three big-endian float32 values with a CRC after every word. The driver's CRC and float decoding match the datasheet examples (0xBEEF -> 0x92; 43DB8C2E -> 439.1 ppm). The check passed on ESP32 and Pico. The I2C pins are printed TX/SCL and RX/SDA on the module; they are named SCL and SDA because the simulator finds the bus only by those names. Header order is unchanged.",
+  "datasheetUrl": "https://sensirion.com/media/documents/4EAF6AF8/61652C3C/Sensirion_CO2_Sensors_SCD30_Datasheet.pdf",
+  "breakoutPinoutSource": "Sensirion SCD30 datasheet v1.0, Figure 1 (single row of 7 holes at 2.54 mm) and Figure 2 pin-out: VDD, GND, TX/SCL, RX/SDA, RDY, PWM, SEL",
+  "checkRuns": 2
+}

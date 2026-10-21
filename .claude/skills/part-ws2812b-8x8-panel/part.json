@@ -1,0 +1,111 @@
+{
+  "type": "custom-ws2812b-8x8-panel",
+  "name": "WS2812B 8x8 LED panel (64 pixels)",
+  "mpn": "WS2812B 8x8 panel",
+  "category": "output",
+  "description": "Flexible 8×8 matrix of 64 individually addressable WS2812B RGB LEDs (Worldsemi, 24-bit GRB, 800 kbit/s single-wire data) chained in a zig-zag. Runs on 5 V (3.5–5.3 V); about 60 mA per LED at full white, up to 3.8 A for the whole panel. Sold as: BTF-LIGHTING WS2812B 8x8 64-pixel flexible LED panel (80×80 mm FPC, 3-pin JST-SM input 5V, DIN, GND; matching 5V, DOUT, GND output for chaining).",
+  "eli5": "A soft square of 64 colour lights you can set one by one, like a tiny screen, using just one data wire.",
+  "refPrefix": "D",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "LED supply, 5 V (3.5–5.3 V). Up to 3.8 A at full white: use a separate 5 V supply above low brightness.",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Data in to the first LED (needs at least 0.7 × the supply voltage as a high; a 300–500 Ω series resistor helps)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    }
+  ],
+  "vmin": 3.5,
+  "vmax": 5.3,
+  "currentMa": 420,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "WS2812B 8x8 64 pixel flexible LED panel 5V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire the 3-pin JST-SM INPUT connector (5V, DIN, GND printed next to the pads); the output connector (5V, DOUT, GND) on the other side only chains to another panel.",
+    "currentMa (420 mA) assumes the driver's default 10 % brightness cap: 64 LEDs × (6 mA + about 0.6 mA idle) at full white. Uncapped full white draws about 3.8 A, more than any board's USB 5 V pin can give: raise brightness only with a separate 5 V 4 A supply whose GND joins the board's GND.",
+    "Put a 1000 µF capacitor across 5V and GND at the panel and a 300–500 Ω resistor in series with DIN.",
+    "WS2812B wants a data high of at least 0.7 × VDD (3.5 V at 5 V): 3.3 V data usually works on short wires; if the panel flickers, add a 74AHCT125 level shifter.",
+    "Never exceed 5.3 V on the panel's supply (datasheet absolute maximum)."
+  ],
+  "keywords": [
+    "ws2812b",
+    "ws2812",
+    "neopixel",
+    "8x8",
+    "led matrix",
+    "led panel",
+    "addressable",
+    "rgb matrix",
+    "64 led"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+    "https://cdn.sparkfun.com/datasheets/Components/LED/P256V5.pdf",
+    "https://pmdway.com/products/flexible-ws2812b-rgb-led-panel",
+    "https://www.btf-lighting.com/products/ws2812b-panel-screen-8-8-16-16-8-32-pixel-256-pixels-digital-flexible-led-programmed-individually-addressable-full-color-dc5v",
+    "https://docs.micropython.org/en/latest/library/neopixel.html"
+  ],
+  "sim": {
+    "kind": "addressable-led",
+    "inputPin": "DIN",
+    "count": 64
+  },
+  "driver": {
+    "filename": "ws2812b_matrix.py",
+    "code": "# WS2812B 8x8 LED panel (64 pixels), MicroPython helper.\n# Uses MicroPython's built-in neopixel module, which produces the WS2812B's\n# 800 kbit/s single-wire code (T0H 0.4 us, T1H 0.8 us) and sends each pixel as\n# 24 bits in G-R-B order, MSB first, exactly as the Worldsemi datasheet requires.\n# A low gap of more than 50 us after write() latches the new colours.\n#\n# The flexible 8x8 panels are wired in a zig-zag (serpentine): row 0 runs left to\n# right from the DIN corner, row 1 runs back right to left, and so on. If your panel\n# is wired row-by-row in one direction instead, pass serpentine=False.\n#\n# brightness scales every colour (0.0-1.0). Each LED draws about 60 mA at full white,\n# so the whole panel can pull about 3.8 A at 5 V. The default of 0.1 keeps it near\n# 0.4 A, safe on a USB-powered board; raise it only with a separate 5 V supply.\nimport neopixel\n\n\nclass Matrix8x8:\n    WIDTH = 8\n    HEIGHT = 8\n\n    def __init__(self, pin, serpentine=True, brightness=0.1):\n        self.np = neopixel.NeoPixel(pin, 64)\n        self.serpentine = serpentine\n        self.brightness = max(0.0, min(1.0, brightness))\n\n    def index(self, x, y):\n        \"\"\"Chain position of the pixel at column x, row y (0,0 = first LED after DIN).\"\"\"\n        if not (0 <= x < 8 and 0 <= y < 8):\n            raise ValueError('x and y must be 0-7')\n        if self.serpentine and y & 1:\n            x = 7 - x\n        return y * 8 + x\n\n    def _scale(self, color):\n        b = self.brightness\n        return (int(color[0] * b), int(color[1] * b), int(color[2] * b))\n\n    def pixel(self, x, y, color):\n        \"\"\"Set one pixel to color = (r, g, b), 0-255 each. Call show() to send.\"\"\"\n        self.np[self.index(x, y)] = self._scale(color)\n\n    def fill(self, color):\n        self.np.fill(self._scale(color))\n\n    def clear(self):\n        self.np.fill((0, 0, 0))\n\n    def show(self):\n        self.np.write()\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom ws2812b_matrix import Matrix8x8\n\nm = Matrix8x8(Pin({DIN}), brightness=0.1)\nm.clear()\nm.show()\ntime.sleep(1)\nfor y in range(8):\n    for x in range(8):\n        m.pixel(x, y, (255, 0, 0) if x == y else (0, 0, 255))\nm.show()\nprint('panel lit: red diagonal on blue')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "lights",
+      "title": "The panel starts dark, then lights up and reports it",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "panel lit: red diagonal on blue",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:33:40.543Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+      "https://probots.co.in/ws2812b-8x8-addressable-flexible-led-matrix-panel.html"
+    ]
+  }
+}

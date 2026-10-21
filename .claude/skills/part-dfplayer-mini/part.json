@@ -1,0 +1,433 @@
+{
+  "type": "custom-dfplayer-mini",
+  "name": "DFPlayer Mini MP3 player",
+  "mpn": "DFR0299",
+  "category": "output",
+  "description": "Serial MP3/WAV player that plays numbered files from a micro SD card (FAT16/FAT32, up to 32 GB) and drives a speaker under 3 W directly (or headphones / an amplifier from DAC_L/DAC_R). Controlled at 9600 baud with 10-byte frames (0x7E FF 06 CMD FB MSB LSB, 16-bit checksum = minus the sum of the 6 middle bytes, 0xEF); query commands return volume, track count, current track and play state. Supply 3.2-5.0 V, 3.3 V logic. Sold as: DFRobot DFPlayer Mini MP3 player (DFR0299, and the many same-pinout clone modules), 16 pins in two rows: VCC RX TX DAC_R DAC_L SPK_1 GND SPK_2, opposite side bottom to top IO_1 GND IO_2 ADKEY_1 ADKEY_2 USB+ USB- BUSY.",
+  "eli5": "A tiny music box: put MP3 files on a memory card, plug in a speaker, and your board tells it which song to play and how loud.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.2-5.0 V (typ. 4.2 V; 5 V gives the most speaker power)",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module serial input (3.3 V TTL): wire to the board's UART TX, through a 1 kOhm resistor",
+      "required": true
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module serial output (3.3 V TTL, 9600 baud): wire to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "DAC_R",
+      "role": "io",
+      "description": "Line/headphone audio out, right channel (to an amplifier or earphone)",
+      "required": false
+    },
+    {
+      "name": "DAC_L",
+      "role": "io",
+      "description": "Line/headphone audio out, left channel (to an amplifier or earphone)",
+      "required": false
+    },
+    {
+      "name": "SPK_1",
+      "role": "io",
+      "description": "Speaker output (mono, under 3 W, 4-8 Ohm), to one speaker wire; never connect to ground",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SPK_2",
+      "role": "io",
+      "description": "Speaker output, to the other speaker wire; never connect to ground",
+      "required": false
+    },
+    {
+      "name": "IO_1",
+      "role": "io",
+      "description": "Button input to GND: short press = previous track, long press = volume down",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (second pin, same net)",
+      "required": false
+    },
+    {
+      "name": "IO_2",
+      "role": "io",
+      "description": "Button input to GND: short press = next track, long press = volume up",
+      "required": false
+    },
+    {
+      "name": "ADKEY_1",
+      "role": "io",
+      "description": "Resistor-ladder button input 1 (AD key mode)",
+      "required": false
+    },
+    {
+      "name": "ADKEY_2",
+      "role": "io",
+      "description": "Resistor-ladder button input 2 (AD key mode)",
+      "required": false
+    },
+    {
+      "name": "USB+",
+      "role": "io",
+      "description": "USB D+ for a USB flash drive or PC",
+      "required": false
+    },
+    {
+      "name": "USB-",
+      "role": "io",
+      "description": "USB D- for a USB flash drive or PC",
+      "required": false
+    },
+    {
+      "name": "BUSY",
+      "role": "io",
+      "description": "Play status output: low while playing, high when idle (3.3 V level)",
+      "required": false
+    }
+  ],
+  "vmin": 3.2,
+  "vmax": 5,
+  "currentMa": 200,
+  "datasheetUrl": "https://raw.githubusercontent.com/DFRobot/DFRobotDFPlayerMini/master/doc/FN-M16P%2BEmbedded%2BMP3%2BAudio%2BModule%2BDatasheet.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "DFPlayer Mini MP3 player module micro SD",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "Cross the serial wires: module TX -> board RX, board TX -> 1 kOhm resistor -> module RX (DFRobot's fix for noise and 5 V boards). 9600 baud 8N1.",
+    "Power from 5 V with a 100 uF+ capacitor across VCC/GND near the module: speaker peaks cause resets and clicks on a weak supply. The module draws under 15 mA idle, far more when driving a speaker.",
+    "A speaker (under 3 W, 4-8 Ohm) goes between SPK_1 and SPK_2; never tie either to GND. For headphones or an external amplifier use DAC_L/DAC_R with GND.",
+    "After power-on wait 0.5-1.5 s (the module sends 7E FF 06 3F ... when ready); commands sent earlier are ignored.",
+    "Frames are 7E FF 06 CMD FB MSB LSB CHK_H CHK_L EF; checksum = 0x10000 - (sum of the 6 bytes after 0x7E). Query commands (0x42 status, 0x43 volume, 0x48 SD track count, 0x4C current SD track) reply with the same CMD and the value in MSB/LSB.",
+    "Track numbers follow the order files were copied to the card, not their names: copy 0001.mp3, 0002.mp3... in order, or use folders 01-99 with 001.mp3-255.mp3 (command 0x0F) or a folder named MP3 with 0001.mp3... (command 0x12).",
+    "BUSY is low while a track plays; read it with a GPIO instead of polling the status query if you want.",
+    "In the simulator the query replies come from the sliders (SD track count, volume, current track, play state, EQ); playback commands are accepted but do not move the sliders."
+  ],
+  "keywords": [
+    "dfplayer",
+    "dfplayer mini",
+    "mp3",
+    "audio",
+    "sound",
+    "speaker",
+    "music",
+    "dfr0299",
+    "fn-m16p",
+    "yx5200"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Tracks in the SD card root",
+    "unit": "files",
+    "min": 0,
+    "max": 3000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "volume",
+        "quantity": "Volume (0-30)",
+        "min": 0,
+        "max": 30,
+        "default": 30
+      },
+      {
+        "key": "track",
+        "quantity": "Current SD track number",
+        "min": 0,
+        "max": 3000,
+        "default": 1
+      },
+      {
+        "key": "state",
+        "quantity": "Play state (0 stopped, 1 playing, 2 paused)",
+        "min": 0,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "eq",
+        "quantity": "EQ (0 Normal, 1 Pop, 2 Rock, 3 Jazz, 4 Classic, 5 Bass)",
+        "min": 0,
+        "max": 5,
+        "default": 0
+      }
+    ],
+    "uartReplies": [
+      {
+        "match": "7e ff 06 48 00 00 00 fe b3 ef",
+        "bytes": [
+          {
+            "const": 126,
+            "bits": 8
+          },
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 6,
+            "bits": 8
+          },
+          {
+            "const": 72,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "neg16",
+            "over": 6
+          },
+          {
+            "const": 239,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "7e ff 06 43 00 00 00 fe b8 ef",
+        "bytes": [
+          {
+            "const": 126,
+            "bits": 8
+          },
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 6,
+            "bits": 8
+          },
+          {
+            "const": 67,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "control": "volume",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "neg16",
+            "over": 6
+          },
+          {
+            "const": 239,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "7e ff 06 4c 00 00 00 fe af ef",
+        "bytes": [
+          {
+            "const": 126,
+            "bits": 8
+          },
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 6,
+            "bits": 8
+          },
+          {
+            "const": 76,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "control": "track",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "neg16",
+            "over": 6
+          },
+          {
+            "const": 239,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "7e ff 06 42 00 00 00 fe b9 ef",
+        "bytes": [
+          {
+            "const": 126,
+            "bits": 8
+          },
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 6,
+            "bits": 8
+          },
+          {
+            "const": 66,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 2,
+            "bits": 8
+          },
+          {
+            "control": "state",
+            "bits": 8,
+            "scale": 1
+          },
+          {
+            "crc": "neg16",
+            "over": 6
+          },
+          {
+            "const": 239,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "7e ff 06 44 00 00 00 fe b7 ef",
+        "bytes": [
+          {
+            "const": 126,
+            "bits": 8
+          },
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 6,
+            "bits": 8
+          },
+          {
+            "const": 68,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "control": "eq",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "neg16",
+            "over": 6
+          },
+          {
+            "const": 239,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "dfplayer.py",
+    "code": "# DFPlayer Mini (DFRobot DFR0299, FN-M16P-compatible) serial MP3 player, MicroPython driver.\n# Written from the FN-M16P Embedded MP3 Audio Module datasheet V1.0 (section 3):\n# 9600 baud, 8N1. Every frame, both ways, is 10 bytes:\n#   0x7E, version 0xFF, length 0x06, CMD, feedback (0x01 = send an ACK 0x41, 0x00 = no ACK),\n#   parameter MSB, parameter LSB, checksum MSB, checksum LSB, 0xEF\n#   checksum = 0xFFFF - (version + length + CMD + feedback + MSB + LSB) + 1   (i.e. minus the sum, 16 bits)\n# Query commands (0x3F-0x4F) are answered with a frame carrying the same CMD and the result in the parameter.\nimport time\n\n_START = 0x7E\n_END = 0xEF\n_VER = 0xFF\n_LEN = 0x06\n\n# Error codes the module returns with CMD 0x40 (datasheet 3.5.4)\nERRORS = {\n    1: 'module busy (still initialising)',\n    2: 'in sleep mode',\n    3: 'serial receiving error (incomplete frame)',\n    4: 'checksum incorrect',\n    5: 'track out of range',\n    6: 'track not found',\n    7: 'insertion error (nothing is playing)',\n    8: 'SD card reading failed',\n    10: 'entered sleep mode',\n}\n\nEQ_NORMAL, EQ_POP, EQ_ROCK, EQ_JAZZ, EQ_CLASSIC, EQ_BASS = 0, 1, 2, 3, 4, 5\nDEVICE_USB, DEVICE_SD = 1, 2\nSTOPPED, PLAYING, PAUSED = 0, 1, 2\n\n\ndef frame(cmd, param=0, feedback=0):\n    \"\"\"Build one 10-byte command frame with its checksum.\"\"\"\n    body = bytes((_VER, _LEN, cmd, 1 if feedback else 0, (param >> 8) & 0xFF, param & 0xFF))\n    chk = -sum(body) & 0xFFFF\n    return bytes((_START,)) + body + bytes((chk >> 8, chk & 0xFF, _END))\n\n\nclass DFPlayerError(OSError):\n    pass\n\n\nclass DFPlayer:\n    def __init__(self, uart):\n        \"\"\"uart: a machine.UART at 9600 baud; its TX goes to the module's RX (through 1 kOhm),\n        its RX to the module's TX.\"\"\"\n        self.uart = uart\n        self._buf = b''\n\n    # ---- low level -----------------------------------------------------------------------\n    def _flush(self):\n        while self.uart.any():\n            self.uart.read(self.uart.any())\n        self._buf = b''\n\n    def send(self, cmd, param=0, feedback=0):\n        self.uart.write(frame(cmd, param, feedback))\n\n    def read_frame(self, timeout_ms=500):\n        \"\"\"Return (cmd, param) of the next valid frame from the module, or None on timeout.\"\"\"\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while True:\n            while True:\n                i = self._buf.find(bytes((_START,)))\n                if i < 0:\n                    self._buf = b''\n                    break\n                self._buf = self._buf[i:]\n                if len(self._buf) < 10:\n                    break\n                f = self._buf[:10]\n                if f[1] == _VER and f[2] == _LEN and f[9] == _END and \\\n                        (sum(f[1:7]) + ((f[7] << 8) | f[8])) & 0xFFFF == 0:\n                    self._buf = self._buf[10:]\n                    return f[3], (f[5] << 8) | f[6]\n                self._buf = self._buf[1:]  # not a frame start (or corrupted): resync\n            if time.ticks_diff(deadline, time.ticks_ms()) <= 0:\n                return None\n            n = self.uart.any()\n            if n:\n                got = self.uart.read(n)\n                if got:\n                    self._buf += got\n            else:\n                time.sleep_ms(5)\n\n    def query(self, cmd, param=0, timeout_ms=500):\n        \"\"\"Send a query command and return the 16-bit parameter of the matching reply.\n        Other frames that arrive meanwhile (track-finished 0x3C/0x3D, card inserted 0x3A...) are skipped.\"\"\"\n        self._flush()\n        self.send(cmd, param)\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while True:\n            left = time.ticks_diff(deadline, time.ticks_ms())\n            if left <= 0:\n                break\n            r = self.read_frame(left)\n            if r is None:\n                break\n            c, p = r\n            if c == cmd:\n                return p\n            if c == 0x40:\n                raise DFPlayerError('DFPlayer error %d: %s' % (p, ERRORS.get(p, 'unknown')))\n        raise DFPlayerError('DFPlayer: no reply to 0x%02X (check TX/RX wiring, power, and the SD card)' % cmd)\n\n    def wait_ready(self, timeout_ms=3000):\n        \"\"\"After power-on the module needs 0.5-1.5 s and then sends 0x3F with the online devices\n        (1 = USB, 2 = SD, 4 = PC). Returns that bitmask, or None if nothing arrived.\"\"\"\n        deadline = time.ticks_add(time.ticks_ms(), timeout_ms)\n        while time.ticks_diff(deadline, time.ticks_ms()) > 0:\n            r = self.read_frame(time.ticks_diff(deadline, time.ticks_ms()))\n            if r and r[0] == 0x3F:\n                return r[1]\n        return None\n\n    # ---- control commands (3.3.1) --------------------------------------------------------\n    def next(self):\n        self.send(0x01)\n\n    def previous(self):\n        self.send(0x02)\n\n    def play(self, track=None):\n        \"\"\"play(n): play track n (1-3000) in the root, in the order files were copied to the card.\n        play(): resume.\"\"\"\n        if track is None:\n            self.send(0x0D)\n        else:\n            self.send(0x03, track)\n\n    def play_folder(self, folder, track):\n        \"\"\"Play track 1-255 (e.g. 001.mp3) in folder 1-99 (e.g. 01/).\"\"\"\n        self.send(0x0F, (folder << 8) | track)\n\n    def play_mp3_folder(self, track):\n        \"\"\"Play track 1-3000 (e.g. 0001.mp3) in the folder named MP3.\"\"\"\n        self.send(0x12, track)\n\n    def pause(self):\n        self.send(0x0E)\n\n    def stop(self):\n        self.send(0x16)\n\n    def set_volume(self, level):\n        \"\"\"Volume 0-30.\"\"\"\n        self.send(0x06, max(0, min(30, level)))\n\n    def volume_up(self):\n        self.send(0x04)\n\n    def volume_down(self):\n        self.send(0x05)\n\n    def set_eq(self, eq):\n        \"\"\"0 Normal, 1 Pop, 2 Rock, 3 Jazz, 4 Classic, 5 Bass.\"\"\"\n        self.send(0x07, eq)\n\n    def loop_track(self, track):\n        self.send(0x08, track)\n\n    def select_device(self, device=DEVICE_SD):\n        self.send(0x09, device)\n        time.sleep_ms(200)\n\n    def sleep(self):\n        self.send(0x0A)\n\n    def reset(self):\n        \"\"\"Software reset; the module re-initialises (wait_ready() afterwards).\"\"\"\n        self.send(0x0C)\n\n    # ---- query commands (3.3.2) ----------------------------------------------------------\n    def status(self):\n        \"\"\"Returns (device, state): device 1 USB / 2 SD / 0x10 sleeping; state 0 stopped, 1 playing, 2 paused.\"\"\"\n        p = self.query(0x42)\n        return p >> 8, p & 0xFF\n\n    def volume(self):\n        return self.query(0x43)\n\n    def eq(self):\n        return self.query(0x44)\n\n    def sd_track_count(self):\n        \"\"\"Number of tracks in the root of the micro SD card.\"\"\"\n        return self.query(0x48)\n\n    def usb_track_count(self):\n        return self.query(0x47)\n\n    def current_sd_track(self):\n        \"\"\"Track being played on the SD card (physical copy order).\"\"\"\n        return self.query(0x4C)\n\n    def folder_track_count(self, folder):\n        return self.query(0x4E, folder)\n\n    def folder_count(self):\n        return self.query(0x4F)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom dfplayer import DFPlayer\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\ntime.sleep_ms(1500)  # the module needs up to 1.5 s to read the card after power-on\ndf = DFPlayer(uart)\nnames = ('stopped', 'playing', 'paused')\nwhile True:\n    dev, st = df.status()\n    print('FILES=%d VOL=%d TRACK=%d %s' % (df.sd_track_count(), df.volume(), df.current_sd_track(), names[st] if st < 3 else '?'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "queries",
+      "title": "Reports the SD track count, volume, current track and play state set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 42
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "volume",
+          "value": 18
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "track",
+          "value": 7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "state",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "FILES=42 VOL=18 TRACK=7 playing",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://raw.githubusercontent.com/DFRobot/DFRobotDFPlayerMini/master/doc/FN-M16P%2BEmbedded%2BMP3%2BAudio%2BModule%2BDatasheet.pdf",
+    "https://wiki.dfrobot.com/DFPlayer_Mini_SKU_DFR0299",
+    "https://dfimg.dfrobot.com/nobody/wiki/77048a25b85b6e29438244020e7237e1_0x0.png",
+    "https://dfimg.dfrobot.com/nobody/wiki/c0ee0e83de43022bd0c17fe640290ed3_0x0.png"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:38:56.880Z",
+    "verifiedSources": [
+      "https://dfimg.dfrobot.com/wiki/20532/DFR0299_mp3-player-module_datasheet_V1.0.pdf",
+      "https://wiki.dfrobot.com/DFPlayer_Mini_SKU_DFR0299"
+    ]
+  }
+}

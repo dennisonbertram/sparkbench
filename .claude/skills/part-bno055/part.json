@@ -1,0 +1,233 @@
+{
+  "type": "custom-bno055",
+  "name": "BNO055 9-DOF absolute orientation sensor",
+  "mpn": "BNO055",
+  "category": "sensor",
+  "description": "Bosch 9-axis IMU (accelerometer, gyroscope, magnetometer) with an on-chip fusion processor that outputs absolute orientation as Euler angles (heading 0–360°, roll ±90°, pitch ±180°, 1° = 16 LSB) or quaternions over I2C. Chip runs on 2.4–3.6 V; the breakout has a 3.3 V regulator and level shifting for 3.3–5 V. Sold as: Adafruit 9-DOF Absolute Orientation IMU Fusion Breakout - BNO055 (#2472, 10 pins on two edges: VIN, 3Vo, GND, SDA, SCL, RST and PS0, PS1, INT, ADR), I2C address 0x28 (0x29 with ADR high).",
+  "eli5": "Tells your board which way it is pointing (compass heading) and how far it is tilted, already worked out for you.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (on-board 3.3 V regulator)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (about 50 mA spare); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifter on the board, 3–5 V logic)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifter on the board, 3–5 V logic)",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Reset, active low (pulled up on the board, 5 V safe); leave unconnected for basic use",
+      "required": false
+    },
+    {
+      "name": "PS0",
+      "role": "io",
+      "description": "Protocol select 0 (second header); leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "PS1",
+      "role": "io",
+      "description": "Protocol select 1; leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (3 V level), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "ADR",
+      "role": "io",
+      "description": "Address select: low/unconnected = 0x28, high (3.3 V) = 0x29",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 12.3,
+  "i2cAddress": 40,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bno055-ds000.pdf",
+  "priceUsd": 35,
+  "supplierQuery": "BNO055 9-DOF absolute orientation sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Headers on two edges (VIN, 3Vo, GND, SDA, SCL, RST on one; PS0, PS1, INT, ADR on the other): wire it with jumper leads. Only VIN, GND, SDA and SCL are needed.",
+    "After power-on wait up to 650 ms, check CHIP_ID (0x00) reads 0xA0, then write OPR_MODE (0x3D) = 0x0C (NDOF fusion) and wait at least 7 ms. In CONFIG mode (the reset state) every output reads 0.",
+    "Euler angles: 6 bytes from 0x1A, little-endian signed words heading, roll, pitch; degrees = raw / 16.",
+    "The BNO055 stretches the I2C clock; if reads fail on an ESP32, use I2C(..., freq=100000).",
+    "Heading only becomes accurate after the magnetometer calibrates (CALIB_STAT 0x35): move the board in a slow figure-eight. Keep it away from motors, magnets and steel."
+  ],
+  "keywords": [
+    "bno055",
+    "imu",
+    "orientation",
+    "euler",
+    "9-dof",
+    "9dof",
+    "compass",
+    "heading",
+    "gyroscope",
+    "accelerometer",
+    "magnetometer",
+    "bosch",
+    "adafruit 2472"
+  ],
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bno055-ds000.pdf",
+    "https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor/pinouts",
+    "https://github.com/adafruit/Adafruit-BNO055-Breakout-PCB/blob/master/Adafruit%20BNO055.brd",
+    "https://www.adafruit.com/product/2472"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Heading",
+    "unit": "°",
+    "min": 0,
+    "max": 360,
+    "default": 0,
+    "controls": [
+      {
+        "key": "roll",
+        "quantity": "Roll",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 0
+      },
+      {
+        "key": "pitch",
+        "quantity": "Pitch",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": 0
+      }
+    ],
+    "registers": {
+      "0x00": 160,
+      "0x01": 251,
+      "0x02": 50,
+      "0x03": 15,
+      "0x3B": 128,
+      "0x3D": 16
+    },
+    "measures": [
+      {
+        "reg": "0x1A",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "when": {
+          "reg": "0x3D",
+          "equals": 8,
+          "mask": 8
+        }
+      },
+      {
+        "reg": "0x1C",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "roll",
+        "when": {
+          "reg": "0x3D",
+          "equals": 8,
+          "mask": 8
+        }
+      },
+      {
+        "reg": "0x1E",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "pitch",
+        "when": {
+          "reg": "0x3D",
+          "equals": 8,
+          "mask": 8
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bno055.py",
+    "code": "# BNO055 9-DOF absolute orientation sensor (Bosch Sensortec), MicroPython driver.\n# Follows the BNO055 datasheet (BST-BNO055-DS000): CHIP_ID 0xA0 at 0x00, set up in CONFIG mode,\n# then switch OPR_MODE (0x3D) to NDOF fusion; Euler angles are signed 16-bit little-endian\n# words at 0x1A (heading), 0x1C (roll), 0x1E (pitch), 1 degree = 16 LSB.\n# The BNO055 stretches the I2C clock; if reads fail, create the bus with freq=100000.\nimport time\nimport struct\n\n_CHIP_ID = 0x00\n_PAGE_ID = 0x07\n_EUL_HEADING_LSB = 0x1A\n_TEMP = 0x34\n_CALIB_STAT = 0x35\n_SYS_STATUS = 0x39\n_UNIT_SEL = 0x3B\n_OPR_MODE = 0x3D\n_PWR_MODE = 0x3E\n_SYS_TRIGGER = 0x3F\n\nCONFIG_MODE = 0x00\nIMU_MODE = 0x08\nCOMPASS_MODE = 0x09\nM4G_MODE = 0x0A\nNDOF_FMC_OFF_MODE = 0x0B\nNDOF_MODE = 0x0C\n\n\nclass BNO055:\n    def __init__(self, i2c, addr=0x28, mode=NDOF_MODE):\n        self.i2c = i2c\n        self.addr = addr\n        # After power-on the chip needs up to 650 ms (POR time) before it answers.\n        for _ in range(20):\n            try:\n                if self._r8(_CHIP_ID) == 0xA0:\n                    break\n            except OSError:\n                pass\n            time.sleep_ms(50)\n        else:\n            raise OSError('BNO055 not found (chip id is not 0xA0): check wiring and ADR')\n        self.set_mode(CONFIG_MODE)\n        self._w8(_PAGE_ID, 0x00)      # register page 0\n        self._w8(_PWR_MODE, 0x00)     # normal power mode\n        # Android orientation format, degrees, Celsius, dps, m/s^2 (reset value 0x80, set explicitly).\n        self._w8(_UNIT_SEL, 0x80)\n        self._w8(_SYS_TRIGGER, 0x00)  # internal oscillator\n        time.sleep_ms(10)\n        self.set_mode(mode)\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def set_mode(self, mode):\n        \"\"\"Select an operating mode (Table 3-5). CONFIG->any takes 7 ms, any->CONFIG 19 ms.\"\"\"\n        self._w8(_OPR_MODE, mode & 0x0F)\n        time.sleep_ms(25 if mode == CONFIG_MODE else 20)\n\n    def euler(self):\n        \"\"\"(heading, roll, pitch) in degrees. Only valid in a fusion mode (IMU/COMPASS/M4G/NDOF).\"\"\"\n        h, r, p = struct.unpack('<hhh', self.i2c.readfrom_mem(self.addr, _EUL_HEADING_LSB, 6))\n        return h / 16, r / 16, p / 16\n\n    def temperature(self):\n        \"\"\"Chip temperature in °C (1 °C = 1 LSB, signed).\"\"\"\n        t = self._r8(_TEMP)\n        return t - 256 if t > 127 else t\n\n    def calibration_status(self):\n        \"\"\"(sys, gyro, accel, mag), each 0 (uncalibrated) to 3 (fully calibrated).\"\"\"\n        c = self._r8(_CALIB_STAT)\n        return (c >> 6) & 3, (c >> 4) & 3, (c >> 2) & 3, c & 3\n\n    def system_status(self):\n        \"\"\"SYS_STATUS: 5 = sensor fusion algorithm running.\"\"\"\n        return self._r8(_SYS_STATUS)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bno055 import BNO055\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nimu = BNO055(i2c)\nwhile True:\n    h, r, p = imu.euler()\n    print('H=%.1f R=%.1f P=%.1f' % (h, r, p))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the heading, roll and pitch set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 124
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "roll",
+          "value": -18
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pitch",
+          "value": 46
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "H=124.0 R=-18.0 P=46.0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:43:46.744Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/BST_BNO055_DS000_12.pdf",
+      "https://learn.adafruit.com/adafruit-bno055-absolute-orientation-sensor/pinouts"
+    ]
+  }
+}

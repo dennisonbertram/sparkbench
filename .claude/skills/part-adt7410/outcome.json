@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-adt7410",
+  "board": "Adafruit ADT7410 High Accuracy I2C Temperature Sensor Breakout (#4089, STEMMA QT version)",
+  "reason": "Check passed on ESP32 and Pico: the 6-pin header (VIN, GND, SCL, SDA, INT, CT) comes from Adafruit's board file, and the sim encodes the datasheet's 13-bit and 16-bit twos-complement formats, chosen by config bit 7. The driver selects 16-bit mode and decodes code/128.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7410.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-ADT7410-PCB (Adafruit ADT7410 STEMMA QT.brd, JP1 pads 1-6) and https://learn.adafruit.com/adt7410-breakout/pinouts",
+  "checkRuns": 1
+}

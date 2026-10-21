@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-dfplayer-mini",
+  "board": "DFRobot DFPlayer Mini MP3 player (DFR0299, and the many same-pinout clone modules)",
+  "reason": "Modelled from the FN-M16P datasheet V1.0 (DFRobot's protocol reference): 10-byte frames 7E FF 06 CMD FB MSB LSB with 16-bit checksum = -(sum of the 6 middle bytes) and 0xEF. The sim answers queries 0x42/0x43/0x44/0x48/0x4C, matching the datasheet's example frames. The driver checks every checksum, skips unsolicited frames and raises on 0x40 errors. The part check printed PASS on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://raw.githubusercontent.com/DFRobot/DFRobotDFPlayerMini/master/doc/FN-M16P%2BEmbedded%2BMP3%2BAudio%2BModule%2BDatasheet.pdf",
+  "breakoutPinoutSource": "https://wiki.dfrobot.com/DFPlayer_Mini_SKU_DFR0299 (pinout image https://dfimg.dfrobot.com/nobody/wiki/77048a25b85b6e29438244020e7237e1_0x0.png and pin table; DIP order 1-16 VCC RX TX DAC_R DAC_L SPK_1 GND SPK_2 IO_1 GND IO_2 ADKEY_1 ADKEY_2 USB+ USB- BUSY, matching the FN-M16P datasheet and the Fritzing part)",
+  "checkRuns": 1
+}
