@@ -1,0 +1,114 @@
+{
+  "type": "custom-irf520-mosfet-module",
+  "name": "IRF520 MOSFET driver module",
+  "mpn": "IRF520",
+  "category": "actuator",
+  "description": "Low-side switch module built around a Vishay/IR IRF520 N-channel power MOSFET (100 V, 9.2 A, RDS(on) 0.27 Ω at VGS = 10 V, VGS(th) 2–4 V). A GPIO high on SIG turns the MOSFET on and connects the load's V- terminal to ground, so a DC load (motor, LED strip, solenoid, pump) powered from a separate 0–24 V supply switches on. Supports PWM for dimming/speed control. Because VGS(th) can be up to 4 V, it is only partly on at 5 V logic and poorly on at 3.3 V: keep the load to about 1 A at 3.3 V logic. Sold as: common IRF520 MOSFET driver module (red PCB, green LED, 3-pin header SIG, VCC, GND; screw terminals VIN/GND for the load supply and V+/V- for the load), rated 0–24 V, up to 5 A with derating.",
+  "eli5": "An electronic switch for bigger DC things like a motor or LED strip: your board says on, and the module lets the big power supply's current flow through the load.",
+  "refPrefix": "Q",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Gate signal, active high: high = MOSFET on (load powered, green LED lit), low = off. Pulled down on the board so the load stays off while the GPIO floats. PWM-capable. 5 V logic drives it much harder than 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "nc",
+      "description": "Marked VCC but not connected to anything on this module; leave it unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller (joined on the board to the load supply's GND terminal and the MOSFET source)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 8,
+  "datasheetUrl": "https://www.vishay.com/docs/91017/irf520.pdf",
+  "priceUsd": 1.5,
+  "supplierQuery": "IRF520 MOSFET driver module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire SIG to a GPIO and GND to the microcontroller's GND. Leave the header's middle VCC pin unconnected: it goes nowhere on this board.",
+    "The load has its own supply: + of the supply to the VIN screw terminal, - to the GND screw terminal; the load goes across V+ and V-. Do not power a motor from the microcontroller's 3V3 or 5V pin.",
+    "This is a low-side switch: V- is switched to ground, V+ is always at the supply voltage. Never short V+ or V- to the microcontroller's pins.",
+    "Logic-level warning: the IRF520 is specified at VGS = 10 V and its threshold is 2–4 V. At 5 V logic it is only partly on (ProtoSupplies measured 3 A continuous giving a 56 °C tab without a heatsink); at 3.3 V logic (ESP32, Pico, Raspberry Pi) keep the load to about 1 A or use a logic-level MOSFET module (e.g. IRLZ44N, AOD4184).",
+    "Keep the load supply to 24 V or less on this module (the MOSFET itself is rated 100 V) and fit a heatsink above a few amps.",
+    "Motors, solenoids and relay coils need a flyback diode (e.g. 1N4007 or 1N5819) across the load, cathode to V+: the module has none.",
+    "PWM works for LED dimming and motor speed; keep the frequency modest (about 1 kHz) since a GPIO charges the gate slowly through the board's resistor."
+  ],
+  "keywords": [
+    "irf520",
+    "mosfet",
+    "mosfet module",
+    "mosfet driver",
+    "low side switch",
+    "n-channel",
+    "motor",
+    "led strip",
+    "pwm",
+    "solenoid",
+    "pump"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "SIG"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nmosfet = Pin({SIG}, Pin.OUT, value=0)  # SIG high = MOSFET on, load powered\nwhile True:\n    mosfet.value(1)\n    print('LOAD ON')\n    time.sleep(2)\n    mosfet.value(0)\n    print('LOAD OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The MOSFET switches the load on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LOAD ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LOAD OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.vishay.com/docs/91017/irf520.pdf",
+    "https://protosupplies.com/product/irf520-n-ch-mosfet-module/",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/irf520-mosfet-driver-module-arduino-raspberry-pi-esp32-manual"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:11:48.116Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/91017/irf520.pdf",
+      "https://protosupplies.com/product/irf520-mosfet-driver-module/"
+    ]
+  }
+}

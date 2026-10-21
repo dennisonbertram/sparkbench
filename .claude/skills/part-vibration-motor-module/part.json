@@ -1,0 +1,108 @@
+{
+  "type": "custom-vibration-motor-module",
+  "name": "Vibration motor module (DFR0440)",
+  "mpn": "DFR0440",
+  "category": "actuator",
+  "description": "Coin vibration motor on a small board with its own NPN transistor driver (8050 transistor, 1 kΩ base resistor, 10 kΩ pull-down, 1N4148 flyback diode, 10 Ω series resistor). The motor runs from the 5 V VCC pin; the Signal pin only switches the transistor, so a 3.3 V GPIO can drive it. High = vibrate, low or unconnected = off; PWM on Signal sets the strength. Sold as: DFRobot Gravity Vibration Motor Module (DFR0440), 3-pin Gravity connector Signal, VCC, GND.",
+  "eli5": "A tiny buzzing motor like the one in a phone: set the pin high and it shakes, set it low and it stops.",
+  "refPrefix": "M",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "Signal",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Control input: high (3.3–5 V) = vibrate, low = off; PWM sets the strength. Drives the transistor base through 1 kΩ (about 2.5 mA from a 3.3 V GPIO); 10 kΩ pull-down keeps the motor off when unconnected.",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Motor supply, 5 V (connect to the board's 5 V / VBUS pin, not 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    }
+  ],
+  "vmin": 5,
+  "vmax": 5,
+  "currentMa": 80,
+  "datasheetUrl": "https://dfimg.dfrobot.com/wiki/17591/DFR0440_vibration-motor-module_schematics_V1.0.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "DFRobot DFR0440 Gravity vibration motor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire VCC to 5 V (ESP32 VIN/5V, Pico VBUS), GND to GND and Signal to any GPIO. The motor current comes from VCC through the on-board transistor, never from the GPIO.",
+    "The board has a 2 mm PH2.0 Gravity socket; use the Gravity-to-Dupont cable that comes with it to reach a breadboard (green = Signal, red = VCC, black = GND).",
+    "High = vibrate, low = off. For gentler buzzing use PWM on Signal (e.g. machine.PWM at 1 kHz with a lower duty); very low duty may not start the motor.",
+    "The on-board 1N4148 flyback diode protects the transistor from the motor's back-EMF, so no extra diode is needed.",
+    "The motor draws tens of mA at 5 V and its brushes make electrical noise: power it from the 5 V rail and keep it away from analog sensor wiring."
+  ],
+  "keywords": [
+    "vibration",
+    "vibration motor",
+    "coin motor",
+    "haptic",
+    "buzz",
+    "dfr0440",
+    "gravity",
+    "dfrobot"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "Signal"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nmotor = Pin({SIGNAL}, Pin.OUT, value=0)  # Signal high = vibrate\nwhile True:\n    motor.value(1)\n    print('VIBRATE ON')\n    time.sleep(1)\n    motor.value(0)\n    print('VIBRATE OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "vibrates",
+      "title": "The motor switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VIBRATE ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "VIBRATE OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://wiki.dfrobot.com/dfr0440/",
+    "https://dfimg.dfrobot.com/wiki/17591/DFR0440_vibration-motor-module_schematics_V1.0.pdf",
+    "https://dfimg.dfrobot.com/wiki/17591/DFR0440_vibration-motor-module_dimension_V1.0.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:11:25.324Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/Gravity__Vibration_Module_SKU__DFR0440"
+    ]
+  }
+}

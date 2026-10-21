@@ -1,0 +1,10 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1 (+): part says io, datasheet reading says power",
+      "verdict": "part-correct",
+      "evidence": "Both readings name the same physical lead. The HNDZ TMB12A05 datasheet (p.2 dimension drawing) marks the leads '(+)' and '( )' 7.6 mm apart. Its TEST METHOD (p.3) applies VDC directly across the buzzer, with 'Operating Voltage (VDC) 3-7' and 'Operating Current(mA) <=30'. The mA-V curve shows about 12-13 mA at 3.3 V. This is a two-terminal active buzzer with no separate supply pin, so the + lead is both its supply and its on/off input. To make it beep on command, a GPIO drives + (high = beep, about 13 mA at 3.3 V, within the datasheet's 3-7 V range), or a transistor switches it. That is why the model gives + the role 'io' (fn digital-out), the same convention this catalog uses for a GPIO-driven LED anode in part-traffic-light-led-module. If + were 'power', it would be tied to a supply rail and the buzzer would sound all the time with no way to switch it off. The second reading describes the same + terminal and only classifies it as a supply. No pinout or electrical value differs: vmin 3 and vmax 7 match in both.",
+      "source": "https://www.electrokit.com/upload/quick/0a/0c/a15b_41037353-tds.pdf"
+    }
+  ]
+}

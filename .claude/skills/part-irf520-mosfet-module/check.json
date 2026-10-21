@@ -1,0 +1,79 @@
+{
+  "type": "custom-irf520-mosfet-module",
+  "mpn": "IRF520",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; Q1.SIG → D25 (GPIO25)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The MOSFET switches the load on, then off again: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; Q1.SIG → GP2 (GPIO2)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The MOSFET switches the load on, then off again: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C2597 IRF520PBF (59 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:11:48.116Z"
+}

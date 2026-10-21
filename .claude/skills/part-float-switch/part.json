@@ -1,0 +1,108 @@
+{
+  "type": "custom-float-switch",
+  "name": "Vertical float switch (water level)",
+  "mpn": "ZP4510",
+  "category": "sensor",
+  "description": "Vertical water level float switch: a reed switch sealed in a polypropylene stem and a float with a ring magnet that slides on it. Passive, not polarised, no supply: wire one lead to GND and the other to a GPIO with the internal pull-up, so it reads 0 while the contacts are closed and 1 while open. As usually fitted (normally open) the contacts close when water lifts the float; flipping the float on the stem reverses this. Rated 10 W, 100 V DC, 0.5 A max. Sold as: generic ZP4510 PP vertical float switch (white, M10 thread, about 35 cm two-wire lead with bare ends: GND, SIG), also sold as the Seeed Studio Water Level Switch.",
+  "eli5": "A little floating ring on a stick. When the water rises it lifts the ring, a magnet inside flips a switch, and your board knows the tank is full.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "One lead of the reed switch (either lead; the switch is not polarised): connect to ground",
+      "required": true
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Other lead: connect to a GPIO with the internal pull-up on (or 10 kOhm to 3.3 V). Reads 0 while the contacts are closed (float lifted, normally-open fitting), 1 while open",
+      "required": true
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://www.hobbyelectronica.nl/en/product/water-level-switch/",
+  "sources": [
+    "https://www.hobbyelectronica.nl/en/product/water-level-switch/",
+    "https://botland.store/the-liquid-level-sensors/7272-low-voltage-switch-switchs-45mm-line-35cm-10w.html",
+    "https://www.walmart.com/ip/351874475",
+    "https://cdn.automationdirect.com/static/specs/prosenseflsverticaltm.pdf",
+    "https://zbotic.in/float-switch-wiring-tank-level-control-with-arduino-relay/",
+    "https://www.seeedstudio.com/Water-Level-Switch-p-565.html",
+    "https://www.berrybase.de/en/vertical-float-switch"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "ZP4510 PP vertical float switch water level sensor M10",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two bare wires, not polarised: crimp or solder them to a 2-pin header (or use a screw terminal) and connect either one to GND, the other to the GPIO.",
+    "Turn on the GPIO's internal pull-up (Pin.PULL_UP); for long cable runs add 10 kOhm from SIG to 3.3 V (never 5 V on an ESP32/Pico).",
+    "Logic: 0 = contacts closed, 1 = open. Check once with a multimeter which float position closes them; flip the float on the stem (remove the clip) to reverse.",
+    "Mount through the tank lid with the float below the thread (bottom mounting reverses the action); seal with the supplied gasket and nut.",
+    "Contacts are rated 10 W, 100 V DC, 0.5 A, resistive: drive pumps through a relay or MOSFET, never through the switch."
+  ],
+  "keywords": [
+    "float switch",
+    "water level",
+    "level switch",
+    "liquid level",
+    "float sensor",
+    "zp4510",
+    "tank",
+    "reed switch",
+    "water level switch",
+    "sump"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "GND"
+    ],
+    "colPins": [
+      "SIG"
+    ],
+    "keys": [
+      [
+        "FLOAT_UP"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "float_switch.py",
+    "code": "# Vertical float switch (ZP4510-type PP float on an M10 stem), MicroPython driver.\n# Inside the stem is a glass reed switch; a ring magnet in the float closes it when the float\n# slides to the switching point. It is just two wires, not polarised, no supply and no chip.\n# Ratings (seller specs): 10 W max, 100 V DC max switching voltage, 0.5 A max switching current,\n# 100 mOhm max contact resistance.\n# Contact sense depends on which way round the float sits on the stem (remove the clip and flip\n# the float 180 degrees to reverse it, as in float-switch manufacturer datasheets). Most hobby units\n# are fitted \"normally open\": contacts OPEN when dry (float down), CLOSED when water lifts the float.\n# Check yours once with a multimeter; pass closed_when_high=False if yours is the other way round.\n# Wiring: one wire to GND, the other to a GPIO with the internal pull-up on.\n#   contacts closed -> pin reads 0;  contacts open -> pin reads 1.\n# The float bobs on ripples and the reed bounces, so readings are debounced.\nfrom machine import Pin\nimport time\n\n\nclass FloatSwitch:\n    def __init__(self, pin, pull_up=True, closed_when_high=True, debounce_ms=50):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.closed_when_high = closed_when_high\n        self.debounce_ms = debounce_ms\n\n    def value(self):\n        \"\"\"Raw level on the signal wire: 0 = contacts closed, 1 = contacts open.\"\"\"\n        return self.pin.value()\n\n    def is_closed(self):\n        \"\"\"True while the reed contacts are closed. Waits until the level is stable for debounce_ms.\"\"\"\n        v = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            n = self.pin.value()\n            if n != v:\n                v = n\n                t0 = time.ticks_ms()\n        return v == 0\n\n    def is_high(self):\n        \"\"\"True when the liquid has lifted the float (water at or above the switch point).\"\"\"\n        return self.is_closed() == self.closed_when_high\n\n    def is_low(self):\n        return not self.is_high()\n\n    def irq(self, handler, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING):\n        \"\"\"Call handler(pin) on a change of the contacts. The float bounces: expect several calls.\"\"\"\n        self.pin.irq(handler=handler, trigger=trigger)\n"
+  },
+  "skill": "---\nname: part-float-switch\ndescription: Pinout, electrical limits, wiring and MicroPython driver for a vertical float switch (ZP4510-type PP water level switch). Use when designing, wiring, simulating or writing code for a float switch / water level switch in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Vertical float switch (ZP4510-type PP water level switch)\n\n## Overview\nA **vertical float switch** is a plastic stem with a **reed switch** sealed inside and a hollow **float** carrying a ring magnet that slides up and down the stem. When the liquid lifts the float to the switching point the magnet operates the reed. Screw it through a hole in the tank lid or base (M10 thread, nut and gasket supplied). There is no chip and no supply: it is just two wires. Hobbyists buy it as the **generic ZP4510 PP vertical float switch**: white polypropylene, about 45-57 mm long, M10 thread, two leads of about 35 cm with bare ends.\n\n## Pinout (two wires, not polarised)\n| Wire | Function |\n|---|---|\n| GND | Either wire: connect to ground |\n| SIG | The other wire: connect to a GPIO with the internal pull-up on |\n\n## Electrical limits\n- Seller ratings: **10 W** max, **100 V DC** max switching voltage, **0.5 A** max switching current, 1.0 A carry, 100 mOhm contact resistance, about -10 to +80 C.\n- Ratings are for resistive loads: do **not** run a pump or solenoid through it, use a relay or MOSFET.\n- At a 3.3 V GPIO with the internal pull-up only microamps flow, far inside the rating.\n\n## Interface details\n- Plain on/off switch. With SIG pulled up: **0 = contacts closed, 1 = contacts open**.\n- Which float position closes the contacts depends on which way round the float sits on the stem. Most units ship **normally open**: open when dry (float down), **closed when water lifts the float**. Remove the clip and flip the float 180 degrees to reverse it. Mounting the switch upside down (from the tank bottom) also reverses it.\n- Check yours once with a multimeter; the driver's `closed_when_high=False` handles the reversed case.\n- The float bobs on ripples and the reed bounces: the driver waits for 50 ms of stable level.\n\n## Wiring\n- ESP32: GND wire -> GND, SIG wire -> GPIO4 (internal pull-up on).\n- Pico: GND wire -> GND, SIG wire -> GP15 (internal pull-up on).\n- Raspberry Pi 4: GND wire -> pin 6, SIG wire -> GPIO17 (pin 11) with the internal pull-up.\n\n## Using the driver\n```python\nfrom float_switch import FloatSwitch\nimport time\nlevel = FloatSwitch(4)    # GPIO wired to SIG, internal pull-up on\nwhile True:\n    print('WATER=%s' % ('HIGH' if level.is_high() else 'LOW'))\n    time.sleep(0.5)\n```\n`level.irq(handler)` calls `handler(pin)` on every change (expect several calls per change: debounce in the handler).\n\n## Gotchas\n- Readings reversed? The float is on the other way round (or the switch is bottom-mounted): flip the float or pass `closed_when_high=False`.\n- Random readings: the pull-up is missing; the switch only connects to ground, it never drives high.\n- Keep the electronics out of the water: only the stem goes in the tank, seal the thread with the gasket.\n- Use two switches (low and high) with hysteresis in code for pump control so the pump does not chatter.\n- Scale, algae or a stuck float give a permanent reading; clean the stem now and then.\n\n## Datasheet\nhttps://www.hobbyelectronica.nl/en/product/water-level-switch/\n",
+  "example": {
+    "code": "from float_switch import FloatSwitch\nimport time\n\nlevel = FloatSwitch({SIG})  # internal pull-up on: 0 = contacts closed (float lifted), 1 = open\nwhile True:\n    print('WATER=%s' % ('HIGH' if level.is_high() else 'LOW'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports high water when the float is lifted",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "WATER=HIGH",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:08:44.020Z",
+    "verifiedSources": [
+      "https://www.walmart.com/ip/351874475",
+      "https://www.olx.com.pk/item/plastic-small-float-switch-liquid-level-sensor-zp4510-iid-ev446283-1"
+    ]
+  }
+}

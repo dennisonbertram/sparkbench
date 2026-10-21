@@ -1,0 +1,106 @@
+{
+  "type": "custom-active-buzzer-5v",
+  "name": "Active buzzer 5 V (TMB12A05)",
+  "mpn": "TMB12A05",
+  "category": "actuator",
+  "description": "Bare 12 mm magnetic active buzzer with a built-in oscillator: apply DC between + and - and it beeps at about 2.4 kHz (2400 ± 300 Hz, at least 95 dB at 10 cm at 5 V). Rated 5 V DC, works from 3 to 7 V; draws at most 30 mA (about 22 mA at 5 V, about 13 mA at 3.3 V per the datasheet's mA-V curve). No tone generation or PWM needed: + high = beep, low = silent. Sold as: Jiangsu Huawha (HNDZ) TMB12A05 active buzzer, 12 × 9.5 mm, two leads 7.6 mm apart: + (long lead, marked + on the top sticker) and -.",
+  "eli5": "A little beeper with its own tone inside: give it power and it beeps, take it away and it goes quiet.",
+  "refPrefix": "BZ",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "+",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Positive lead (longer leg, + on the sticker). High (3–7 V) = beep, low = silent. Driven straight from a 3.3 V GPIO it draws about 13 mA; for full 5 V volume switch it with an NPN transistor.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Negative lead, to ground (shared with the microcontroller)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 7,
+  "currentMa": 30,
+  "datasheetUrl": "https://www.electrokit.com/upload/quick/0a/0c/a15b_41037353-tds.pdf",
+  "priceUsd": 0.3,
+  "supplierQuery": "TMB12A05 5V active buzzer 12x9.5mm",
+  "footprint": "Buzzer_Beeper:Buzzer_12x9.5RM7.6",
+  "buildNotes": [
+    "Polarity matters: the longer lead (and the + on the sticker) goes to the GPIO or + supply, the shorter lead to GND. Reversed, it stays silent.",
+    "Active buzzer: it makes its own ~2.4 kHz tone from plain DC. Drive the pin high or low; PWM or tone() will not set the pitch and only makes it crackle. For melodies use a passive buzzer.",
+    "From a 3.3 V GPIO it draws about 13 mA and is somewhat quieter (about 87 dB vs 90 dB at 5 V). That is fine for an ESP32 pin; a Raspberry Pi Pico pin is rated for about 12 mA, so on a Pico (or for full volume) power + from 5 V and switch - to GND with an NPN transistor (e.g. 2N2222/S8050, 1 kΩ base resistor) — the transistor then makes a GPIO high = beep.",
+    "Never exceed 7 V on it; the datasheet's operating range is 3–7 V DC.",
+    "It is loud (95 dB at 10 cm). Leave the 'remove seal after washing' sticker on for a little less volume; peel it off for full volume after soldering.",
+    "The leads are 7.6 mm apart, so it straddles three breadboard holes; bend nothing, just skip the holes in between."
+  ],
+  "keywords": [
+    "tmb12a05",
+    "buzzer",
+    "active buzzer",
+    "5v buzzer",
+    "beeper",
+    "alarm",
+    "sound",
+    "magnetic buzzer"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "+"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nbuzzer = Pin({_}, Pin.OUT, value=0)  # + high = beep (active buzzer)\nwhile True:\n    buzzer.value(1)\n    print('BEEP ON')\n    time.sleep(1)\n    buzzer.value(0)\n    print('BEEP OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "beeps",
+      "title": "The buzzer switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BEEP ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BEEP OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.electrokit.com/upload/quick/0a/0c/a15b_41037353-tds.pdf",
+    "https://www.electrokit.com/en/active-piezo-buzzer-95db-5vdc-pcb-12x9.5mm",
+    "https://www.lcsc.com/product-detail/C96093.html",
+    "https://www.thingbits.in/products/tmb12a05-5v-dc-active-buzzer-12-x-9-5mm"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:20:23.535Z",
+    "verifiedSources": [
+      "https://www.electrokit.com/upload/quick/0a/0c/a15b_41037353-tds.pdf",
+      "https://www.flux.ai/jecstronic/tmb12a05.md",
+      "https://www.hqonline.com/product-detail/alarm-buzzer-siren-hndz-tmb12a05-2500283794"
+    ]
+  }
+}

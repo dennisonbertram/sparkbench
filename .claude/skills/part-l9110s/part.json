@@ -1,0 +1,150 @@
+{
+  "type": "custom-l9110s",
+  "name": "L9110S dual-channel motor driver",
+  "mpn": "L9110S",
+  "category": "actuator",
+  "description": "Two ASIC L9110 push-pull bridge chips on one small board: drives two small DC motors (or one 4-wire bipolar stepper) forwards, backwards or stopped, 800 mA continuous per channel (1.5-2 A peak), with built-in clamp diodes. One supply of 2.5-12 V feeds both the chips and the motors; the inputs accept 3.3 V or 5 V logic. Sold as: L9110S 2-channel H-bridge motor driver module (HG7881-style 29 x 23 mm board, 6-pin header B-IA B-IB GND VCC A-IA A-IB, screw terminals MOTOR-A and MOTOR-B).",
+  "eli5": "Lets your board make two small motors spin forwards or backwards, using the motor battery's power rather than the board's own pins.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "B-IA",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Motor B input A (high = OA side driven; PWM for speed)",
+      "required": false
+    },
+    {
+      "name": "B-IB",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Motor B input B",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground: common to the motor supply and the microcontroller",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Chip and motor supply, 2.5-12 V (powers the motors, so use a supply that can deliver the motor current)",
+      "required": true
+    },
+    {
+      "name": "A-IA",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Motor A input A (input high >= 2.5 V, so 3.3 V GPIOs work)",
+      "required": true
+    },
+    {
+      "name": "A-IB",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Motor A input B",
+      "required": true
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 12,
+  "currentMa": 1,
+  "datasheetUrl": "https://www.elecrow.com/download/datasheet-l9110.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "L9110S 2 channel H-bridge motor driver module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Logic table (L9110 datasheet): IA high / IB low = forward, IA low / IB high = reverse, both low or both high = both outputs low (motor stopped).",
+    "There is no enable pin: for speed, PWM the input that is high and keep the other low (or PWM both pins and set one to 0 %).",
+    "VCC feeds the motors directly (2.5-12 V). Use a separate battery or supply for the motors and join its GND to the microcontroller GND; do not run motors from the board's 3V3 pin.",
+    "Each channel is rated 800 mA continuous (1.5-2 A peak). Small hobby/toy gear motors only; stalled motors can exceed this and overheat the SOP-8 chips.",
+    "Inputs need >= 2.5 V for high and <= 0.7 V for low, so 3.3 V and 5 V microcontrollers both drive them directly.",
+    "Vendors label the inputs B-IA/B-IB/A-IA/A-IB or B-1A/B-1B/A-1A/A-1B; they are the same pins in the same order."
+  ],
+  "keywords": [
+    "l9110s",
+    "l9110",
+    "hg7881",
+    "h-bridge",
+    "motor driver",
+    "dc motor",
+    "stepper",
+    "dual motor"
+  ],
+  "sources": [
+    "https://www.elecrow.com/download/datasheet-l9110.pdf",
+    "https://www.electrokit.com/upload/quick/6c/36/0143_41035908-tds.pdf",
+    "https://makerlab-electronics.com/products/l9110s-dual-channel-h-bridge-motor-driver-module",
+    "https://docs.sunfounder.com/projects/3in1-kit-r4/en/latest/components/component_l9110s.html"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "A-IA",
+      "A-IB",
+      "B-IA",
+      "B-IB"
+    ]
+  },
+  "driver": {
+    "filename": "l9110s.py",
+    "code": "# L9110S dual-channel motor driver module (two ASIC L9110 chips), MicroPython driver for ONE channel.\n# Make one L9110S object per motor: motor A = A-IA, A-IB; motor B = B-IA, B-IB.\n# Logic table from the L9110 datasheet (IA, IB -> OA, OB):\n#   H, L -> H, L   forward\n#   L, H -> L, H   reverse\n#   L, L -> L, L   both outputs low (motor stopped, braked)\n#   H, H -> L, L   both outputs low (motor stopped, braked)\n# The board has no enable pin: speed is set by PWM on the input that is high.\n# Inputs are TTL/CMOS: high >= 2.5 V, low <= 0.7 V, so 3.3 V GPIOs drive them directly.\nfrom machine import Pin, PWM\n\n\nclass L9110S:\n    def __init__(self, ia, ib, freq=1000):\n        \"\"\"ia, ib: GPIO numbers wired to the channel's IA and IB pins (A-IA/A-IB or B-IA/B-IB).\"\"\"\n        self.ia = PWM(Pin(ia, Pin.OUT), freq=freq, duty_u16=0)\n        self.ib = PWM(Pin(ib, Pin.OUT), freq=freq, duty_u16=0)\n\n    @staticmethod\n    def _duty(speed):\n        speed = max(0, min(100, speed))\n        return speed * 65535 // 100\n\n    def forward(self, speed=100):\n        \"\"\"IA driven (PWM duty = speed %), IB low -> OA high, OB low.\"\"\"\n        self.ib.duty_u16(0)\n        self.ia.duty_u16(self._duty(speed))\n\n    def reverse(self, speed=100):\n        \"\"\"IA low, IB driven (PWM duty = speed %) -> OA low, OB high.\"\"\"\n        self.ia.duty_u16(0)\n        self.ib.duty_u16(self._duty(speed))\n\n    def stop(self):\n        \"\"\"Both inputs low -> both outputs low: the motor stops.\"\"\"\n        self.ia.duty_u16(0)\n        self.ib.duty_u16(0)\n\n    def deinit(self):\n        self.stop()\n        self.ia.deinit()\n        self.ib.deinit()\n"
+  },
+  "example": {
+    "code": "import time\nfrom l9110s import L9110S\n\n# Motor A on A-IA / A-IB.\nmotor = L9110S({A_IA}, {A_IB})\nwhile True:\n    motor.forward()\n    print('motor A forward')\n    time.sleep(1)\n    motor.stop()\n    print('motor A stopped')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor A runs forward, then stops",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A-IA",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A-IB",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "A-IA",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A stopped",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:12:54.702Z",
+    "verifiedSources": [
+      "https://funduinoshop.com/en/electronic-modules/electric-motors-and-accessories/h-bridges/hg7881-l9110s-h-bridge/motor-driver-with-two-channels",
+      "https://makerlab-electronics.com/products/l9110s-dual-channel-h-bridge-motor-driver-module"
+    ]
+  }
+}

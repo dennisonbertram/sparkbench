@@ -1,0 +1,79 @@
+{
+  "type": "custom-h206",
+  "mpn": "H206",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.OUT → D25 (GPIO25). Added the h206.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Counts three spokes passing the slot and reports it blocked: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.OUT → GP2 (GPIO2). Added the h206.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Counts three spokes passing the slot and reports it blocked: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C45896871 FFSH2065A-HXY (16 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:07:33.085Z"
+}

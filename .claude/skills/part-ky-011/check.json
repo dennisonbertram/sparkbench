@@ -1,0 +1,79 @@
+{
+  "type": "custom-ky-011",
+  "mpn": "KY-011",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; D1.MID → D25 (GPIO25). D1.S → D26 (GPIO26)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The LED switches between red and green: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; D1.MID → GP2 (GPIO2). D1.S → GP3 (GPIO3)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The LED switches between red and green: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:15:48.644Z"
+}

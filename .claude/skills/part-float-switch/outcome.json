@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-float-switch",
+  "board": "Generic ZP4510 PP vertical float switch (white polypropylene, M10 thread, ~35 cm two-wire lead; wires GND, SIG)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator WATER=HIGH, PCB DRC clean, footprint). The passive two-wire reed float switch is modelled as a 1x1 keypad-matrix (a real switch between GND and SIG, closed while the float is lifted in the usual normally-open fitting), since digital-sensor needs a supply pin; no manufacturer PDF exists for this generic part, so ratings come from seller spec pages and the flip-the-float NO/NC behaviour from the AutomationDirect ProSense vertical float switch datasheet.",
+  "datasheetUrl": "https://www.hobbyelectronica.nl/en/product/water-level-switch/",
+  "breakoutPinoutSource": "Two unlabelled, non-polarised leads per seller pages (https://botland.store/the-liquid-level-sensors/7272-low-voltage-switch-switchs-45mm-line-35cm-10w.html, https://www.berrybase.de/en/vertical-float-switch); wire-to-GND / wire-to-pulled-up-GPIO wiring per https://zbotic.in/float-switch-wiring-tank-level-control-with-arduino-relay/",
+  "checkRuns": 1
+}

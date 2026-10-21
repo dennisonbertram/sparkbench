@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ld2410",
+  "board": "HLK-LD2410C module (Hi-Link, 16 x 22 mm, 5-pin 2.54 mm header TX, RX, OUT, GND, VCC)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring at 5 V, design checks, breadboard, simulator test PRESENCE=1, PCB DRC clean, footprint, LCSC). Modelled as an active-high digital-sensor on OUT per the Hi-Link LD2410C manual (OUT high = human present, 3.3 V IO level, 5-12 V supply, 79 mA average); TX/RX marked optional uart pins.",
+  "datasheetUrl": "https://www.sudo.is/docs/esphome/components/ld2410/HLK-LD2410C_manual_v1.00.pdf",
+  "breakoutPinoutSource": "Hi-Link HLK-LD2410C serial communication protocol v1.00, Figure 1 / Table 1 (https://www.sudo.is/docs/esphome/components/ld2410/HLK-LD2410C_Serial_communication_protocol_v1.00.pdf): silkscreen TX, RX, OUT, GND, VCC, pins 1-5",
+  "checkRuns": 1
+}

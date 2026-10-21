@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-h206",
+  "board": "H206 LM393 speed sensor module (common green 3-pin robot-car encoder board with the black WYC H206 slot sensor, header 5V, GND, OUT)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test counting three blocked edges 'pulses=3 slot=BLOCKED', PCB DRC clean, footprint). Modelled as a digital-sensor with active-high OUT (LM393 open-collector, 10k pull-up to VCC, high when slot blocked); the LCSC hit FFSH2065A is a name match, not this module.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "breakoutPinoutSource": "Board photo with silkscreen 5V, GND, OUT on the green WYC-H206 module at https://www.electronicshub.org/interfacing-lm393-speed-sensor-with-arduino/ (3-pin count confirmed by circuitdigest H206 article); blocked=HIGH from teachmemicro and makerlab.ph listings",
+  "checkRuns": 1
+}

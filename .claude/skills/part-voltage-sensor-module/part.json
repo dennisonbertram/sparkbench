@@ -1,0 +1,104 @@
+{
+  "type": "custom-voltage-sensor-module",
+  "name": "Voltage sensor module (0-25 V, 5:1 divider)",
+  "mpn": "Voltage sensor module 0-25V",
+  "category": "sensor",
+  "description": "Passive DC voltage sensor: a 30 kΩ / 7.5 kΩ resistive divider that scales the voltage on its screw terminal down by 5 (V(S) = Vin / 5), so an ADC can read up to 25 V with a 5 V reference (about 16 V on a 3.3 V board). No chip and no supply pin. Sold as: blue \"Voltage Sensor Module DC 0-25V\" (generic clone), screw terminal VCC/GND for the measured source and 3-pin header S, +, - (+ not connected).",
+  "eli5": "Two resistors that shrink a big voltage, like a 12 V battery, to one fifth so your board can measure it safely.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output, Vin / 5 (header pin 1). Wire to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "nc",
+      "description": "Not connected on the board (header pin 2).",
+      "required": false
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (header pin 3): MCU GND, same net as the screw terminal GND.",
+      "required": true
+    }
+  ],
+  "currentMa": 0.7,
+  "datasheetUrl": "https://components101.com/sensors/voltage-sensor-module",
+  "sources": [
+    "https://components101.com/sensors/voltage-sensor-module",
+    "https://microcontrollerslab.com/voltage-sensor-module-pinout-interfacing-arduino-features-working/",
+    "https://circuit.rocks/products/voltage-sensor-module-25v"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "voltage sensor module DC 0-25V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: S, +, -. The + pin is not connected; - is ground and must go to the MCU GND.",
+    "Measured source goes to the screw terminal: + to VCC, - to GND. DC only, observe polarity.",
+    "Vin = 5 × V(S) (R1 = 30 kΩ, R2 = 7.5 kΩ).",
+    "On a 3.3 V board keep Vin below about 15 V (ESP32) / 16.5 V (Pico), or S exceeds the ADC range and can damage the pin.",
+    "The measured source's negative is tied to the MCU ground through the module."
+  ],
+  "keywords": [
+    "voltage sensor",
+    "voltage divider",
+    "25v",
+    "battery voltage",
+    "dc voltage",
+    "30k 7.5k",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "selfPowered": true,
+    "outputPin": "S",
+    "quantity": "Measured voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 25,
+    "default": 5,
+    "vAtMin": 0,
+    "vAtMax": 5
+  },
+  "driver": {
+    "filename": "voltsense.py",
+    "code": "# 0-25 V voltage sensor module (5:1 resistive divider), MicroPython driver.\n# The module is just two resistors: R1 = 30 kOhm from the VCC screw terminal to S and\n# R2 = 7.5 kOhm from S to GND. So\n#   V(S)  = Vin * R2 / (R1 + R2) = Vin / 5\n#   Vin   = V(S) * (R1 + R2) / R2 = 5 * V(S)\n# The \"+\" header pin is not connected; \"-\" is ground, shared by the measured source and the MCU.\n# On a 3.3 V board the ADC limits what you can measure: Vin max = 5 x the ADC's full scale\n# (about 15.5 V on an ESP32 with 11 dB attenuation, 16.5 V on a Pico). Above that S exceeds the\n# ADC range and can damage the pin.\nfrom machine import ADC, Pin\n\n\nclass VoltageSensor:\n    def __init__(self, pin, r1=30000, r2=7500, vref=3.3, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: widest input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.ratio = (r1 + r2) / r2  # 5.0 for 30k / 7.5k\n        self.vref = vref  # ADC reference for ports without read_uv() (Pico: the 3.3 V rail)\n        self.samples = samples\n\n    def sense_volts(self):\n        \"\"\"Average several samples and return the voltage on the S pin, in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def volts(self):\n        \"\"\"The measured voltage across the VCC/GND screw terminals, in volts.\"\"\"\n        return self.sense_volts() * self.ratio\n"
+  },
+  "example": {
+    "code": "from voltsense import VoltageSensor\nimport time\n\nvs = VoltageSensor({S})\nwhile True:\n    print('V=%.1f' % vs.volts())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the voltage on the screw terminal",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=12.0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:05:18.175Z",
+    "verifiedSources": [
+      "https://components101.com/sensors/voltage-sensor-module",
+      "https://microcontrollerslab.com/voltage-sensor-module-pinout-interfacing-arduino-features-working/"
+    ]
+  }
+}

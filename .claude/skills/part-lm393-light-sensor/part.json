@@ -1,0 +1,105 @@
+{
+  "type": "custom-lm393-light-sensor",
+  "name": "LM393 light sensor module (DO)",
+  "mpn": "LM393",
+  "category": "sensor",
+  "description": "Light/dark switch: a photoresistor (LDR) divider and an LM393 comparator with a sensitivity trimmer, a power LED and a DO LED. DO is a digital threshold output: LOW (DO LED lit) when the light is brighter than the trimmer setting, HIGH when darker; the LM393's open-collector output is pulled up to VCC on the board. Runs on 3.3-5 V. Sold as: LM393 photosensitive LDR light sensor module, common blue 3-pin clone board (VCC, GND, DO), digital output only.",
+  "eli5": "A little board with a light-sensitive eye. Its DO pin tells your board whether it is light or dark, and you set where 'light' starts with the little blue knob.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin 1). With a 3.3 V board connect it to 3V3, because DO is pulled up to VCC.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 3): LOW when brighter than the trimmer threshold (DO LED lit), HIGH when darker. Pulled up to VCC on the board.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 10,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://probots.co.in/ldr-light-sensor-module-lm393-3pin-digital.html",
+    "https://zbotic.in/?p=480317",
+    "https://www.walmart.com/ip/LM393-Optical-Sensitive-Resistance-Sensor-Module-Photosensitive-Sensor-for-Arduino-4-pin/5664264983",
+    "https://openkits-wiki.easyeda.com/en/coloreasyduino/module/sensor/photoresistance-sensor.html"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "LM393 photosensitive light sensor module LDR 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: VCC, GND, DO.",
+    "On an ESP32 or Pico power VCC from 3V3: the board's pull-up takes DO to VCC, so a 5 V supply puts 5 V on the GPIO.",
+    "DO is active LOW on the common board: 0 = bright, 1 = dark. Some sellers' boards are reversed; check by covering the LDR (use active_low=False in the driver if needed).",
+    "Set the threshold: put the sensor in the light level you want to switch at and turn the trimmer until the DO LED just changes.",
+    "DO is only a threshold, not a light level. For lux use a BH1750/VEML7700, or the 4-pin module's AO with an ADC."
+  ],
+  "keywords": [
+    "lm393",
+    "ldr",
+    "photoresistor",
+    "light",
+    "dark",
+    "photosensitive",
+    "light sensor",
+    "day night"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "DO",
+    "quantity": "Light past threshold (DO low)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "lm393_light.py",
+    "code": "# LM393 light sensor module (LDR + LM393 comparator, 3-pin VCC/GND/DO), MicroPython driver.\n# The photoresistor (LDR) and a fixed resistor form a divider; one half of the LM393\n# (TI datasheet: open-collector output) compares it with the blue trimmer voltage.\n# The board pulls DO up to VCC, so on the common module DO is:\n#   LOW  (0) when the light is brighter than the trimmer threshold (DO-LED lit)\n#   HIGH (1) when it is darker than the threshold (DO-LED off)\n# Some sellers' boards are the other way round: pass active_low=False for those.\n# DO is only a yes/no threshold: it does not measure lux.\n# Power the module from 3.3 V when using a 3.3 V board, because DO is pulled up to VCC.\nfrom machine import Pin\n\n\nclass LM393Light:\n    def __init__(self, pin, active_low=True):\n        \"\"\"pin: GPIO number (or Pin) wired to DO.\n        active_low: True (common board) if DO goes LOW in bright light.\"\"\"\n        # The module has its own pull-up on DO; no internal pull needed.\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.active_low = active_low\n\n    def raw(self):\n        \"\"\"Logic level on DO right now (0 or 1).\"\"\"\n        return self.pin.value()\n\n    def bright(self):\n        \"\"\"True when the light is past the trimmer threshold.\"\"\"\n        return self.pin.value() == (0 if self.active_low else 1)\n\n    def dark(self):\n        \"\"\"True when the light is below the trimmer threshold.\"\"\"\n        return not self.bright()\n"
+  },
+  "example": {
+    "code": "from lm393_light import LM393Light\nimport time\n\ns = LM393Light({DO})\nwhile True:\n    print('Light: %s' % ('BRIGHT' if s.bright() else 'DARK'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports bright light when the light passes the threshold",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Light: BRIGHT",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-lm393-light-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the LM393 light sensor module (photoresistor + LM393 comparator, digital DO output only). Use when designing, wiring, simulating or writing code for an LM393 / LDR light sensor module in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# LM393 light sensor module (DO only)\n\n## Overview\nThe **LM393 photosensitive light sensor module** is a small blue board with:\n- a **photoresistor (LDR)** in a divider with a fixed resistor\n- an **LM393 comparator**, a blue **sensitivity trimmer**, a power LED and a DO LED\n\nIt has one output, **DO**, a yes/no light switch. On the common board:\n- **LOW** (DO LED lit) when the light is **brighter** than the trimmer threshold\n- **HIGH** (DO LED off) when it is **darker** than the threshold\n\nSome sellers' boards are the other way round. DO does not measure lux: it only says which side of the threshold the light is on.\n\n## Pinout (3-pin header as printed)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | VCC | Supply, 3.3–5 V |\n| 2 | GND | Ground |\n| 3 | DO | Digital output: LOW = bright, HIGH = dark (pulled up to VCC on the board) |\n\n## Electrical limits\n- Supply: **3.3–5 V** (module rating; the LM393 itself runs on 2–36 V). A few mA with the LEDs on.\n- The LM393 output is open-collector (TI datasheet: sinks at least 6 mA at 1.5 V); the board pulls DO up to VCC.\n- **On an ESP32 or Pico, power the module from 3.3 V** so DO never goes above 3.3 V.\n\n## Interface details\n- The comparator compares the LDR divider with the trimmer voltage and switches DO when the light crosses the threshold. Response is about 1 µs, so DO follows the light directly; no timing to respect.\n- There is no calibration or lux scale. Set the threshold with the trimmer.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| GND | GND | GND | GND (pin 6) |\n| DO | any GPIO, e.g. GPIO25 | any GP, e.g. GP2 | any GPIO, e.g. GPIO24 (pin 18) |\n\n## Using the driver\n```python\nfrom lm393_light import LM393Light\nimport time\ns = LM393Light(25)            # DO GPIO; active_low=False for boards whose DO goes HIGH in light\nwhile True:\n    print('Light: %s' % ('BRIGHT' if s.bright() else 'DARK'))\n    time.sleep(0.5)\n```\n\n## Gotchas\n- **DO is backwards**: LOW means bright on the common board. Check yours: cover the LDR and watch the DO LED and the pin.\n- **Set the threshold**: put the sensor in the light level you want to switch at and turn the trimmer until the DO LED just changes.\n- If DO flickers near the threshold (e.g. under mains-powered lamps), read it a few times or add a delay before acting.\n- Need an actual light level? Use the 4-pin version's AO pin with an ADC, or a lux sensor (BH1750, VEML7700).\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/lm393.pdf (LM393 comparator on the board).\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:06:27.086Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+      "https://probots.co.in/ldr-light-sensor-module-lm393-3pin-digital.html",
+      "https://docs.cirkitdesigner.com/component/d264e356-a78f-437d-aa97-8e1869fc7369/photoresistor-light-sensor-3pin-33v-5v-5mm-ldr-lm393"
+    ]
+  }
+}

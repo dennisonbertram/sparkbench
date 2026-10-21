@@ -1,0 +1,79 @@
+{
+  "type": "custom-traffic-light-led-module",
+  "mpn": "KS0310",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; D1.R → D25 (GPIO25). D1.Y → D26 (GPIO26). D1.G → D27 (GPIO27)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "9 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Green, yellow and red light up in turn: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; D1.R → GP2 (GPIO2). D1.Y → GP3 (GPIO3). D1.G → GP6 (GPIO6)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "9 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Green, yellow and red light up in turn: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:16:17.638Z"
+}

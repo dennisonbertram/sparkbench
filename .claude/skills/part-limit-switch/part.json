@@ -1,0 +1,118 @@
+{
+  "type": "custom-limit-switch",
+  "name": "KW11 micro limit switch",
+  "mpn": "KW11-3Z",
+  "category": "sensor",
+  "description": "Snap-action SPDT micro switch with a hinge lever, used as a limit switch or end-stop on CNC machines and 3D printers. Released: COM-NC closed; pressed: COM-NO closed. Passive, no supply: wire COM to GND and NO to a GPIO with the internal pull-up, so it reads 0 while pressed and 1 when released. Contacts rated 5 A 125/250 VAC (Omron SS-5 original: 5 A 125 VAC, 3 A 250 VAC, 5 A 30 VDC). The simulator models the COM-NO contact; NC is optional and not simulated. Sold as: Generic KW11-3Z micro limit switch (SPDT, hinge lever, 5 A 125/250 VAC, 20 x 10 x 6.4 mm, terminals C/NO/NC; Omron SS-5GL form factor).",
+  "eli5": "A tiny button with a metal arm. When something pushes the arm (like a printer head reaching the end of its track), the switch clicks and your board knows to stop.",
+  "refPrefix": "SW",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "COM",
+      "role": "gnd",
+      "description": "Common terminal (C): connect to ground",
+      "required": true
+    },
+    {
+      "name": "NO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Normally open terminal: closes to COM while the lever is pressed. Connect to a GPIO with the internal pull-up on (or 10 kOhm to 3.3 V): reads 0 pressed, 1 released",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "io",
+      "description": "Normally closed terminal: connected to COM while released, opens when pressed. Optional fail-safe wiring; not modelled by the simulator",
+      "required": false
+    }
+  ],
+  "currentMa": 0.1,
+  "datasheetUrl": "https://omronfs.omron.com/en_US/ecb/products/pdf/en-ss.pdf",
+  "sources": [
+    "https://omronfs.omron.com/en_US/ecb/products/pdf/en-ss.pdf",
+    "https://www.switch-china.com/kw11-micro-switch-series-product/",
+    "https://v6-file.globalso.com/upload/p/369/file/2024-07/southeast-micro-switch-series-kw11.pdf",
+    "https://robu.in/?p=53576",
+    "https://www.amazon.com/Antrader-10-Pack-KW12-KW11-Switches/dp/B07YQQ3R7W"
+  ],
+  "priceUsd": 0.5,
+  "supplierQuery": "KW11-3Z micro limit switch hinge lever 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Terminals along the body from the lever hinge end: COM, NO, NC (marked C, NO, NC on the case). Solder wires to them and bring them to a 3-pin header.",
+    "Wire COM to GND and NO to the GPIO with Pin.PULL_UP: 0 = pressed, 1 = released. Never pull up to 5 V on an ESP32/Pico.",
+    "For a fail-safe end-stop use NC instead of NO: then a broken wire reads the same as 'pressed' and the machine stops.",
+    "Contacts bounce for a few milliseconds: debounce in software (the driver waits 10 ms of stable readings).",
+    "Do not switch motors or mains through it on a hobby build; switch a relay or driver input instead."
+  ],
+  "keywords": [
+    "limit switch",
+    "micro switch",
+    "microswitch",
+    "kw11",
+    "kw11-3z",
+    "end stop",
+    "endstop",
+    "snap action",
+    "lever switch",
+    "ss-5gl"
+  ],
+  "sim": {
+    "kind": "keypad-matrix",
+    "rowPins": [
+      "COM"
+    ],
+    "colPins": [
+      "NO"
+    ],
+    "keys": [
+      [
+        "PRESSED"
+      ]
+    ]
+  },
+  "driver": {
+    "filename": "limit_switch.py",
+    "code": "# KW11-3Z micro limit switch (SPDT snap-action switch, Omron SS-5GL form factor), MicroPython driver.\n# Three terminals: COM, NO, NC. Lever released: COM-NC closed, COM-NO open.\n# Lever pressed (past the operating position): COM-NO closed, COM-NC open. No supply, no chip.\n# Wiring used here: COM to GND, NO to a GPIO with the internal pull-up on.\n#   pressed -> pin reads 0;  released -> pin reads 1.\n# (Fail-safe alternative: COM to GND, NC to the GPIO; then pressed reads 1 and a broken wire also reads 1.)\n# Snap-action contacts bounce for a few milliseconds when they change, so readings are debounced.\nfrom machine import Pin\nimport time\n\n\nclass LimitSwitch:\n    def __init__(self, pin, normally_closed=False, pull_up=True, debounce_ms=10):\n        \"\"\"pin: GPIO number (or Pin) wired to NO, or to NC with normally_closed=True. COM goes to GND.\"\"\"\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.nc = normally_closed\n        self.debounce_ms = debounce_ms\n\n    def value(self):\n        \"\"\"Raw level on the GPIO.\"\"\"\n        return self.pin.value()\n\n    def _stable(self):\n        v = self.pin.value()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < self.debounce_ms:\n            n = self.pin.value()\n            if n != v:\n                v = n\n                t0 = time.ticks_ms()\n        return v\n\n    def is_pressed(self):\n        \"\"\"True while the lever is pressed (switch actuated). Debounced.\"\"\"\n        v = self._stable()\n        # NO wiring: pressed closes COM-NO and pulls the pin to GND (0).\n        # NC wiring: pressed opens COM-NC and the pull-up takes the pin high (1).\n        return v == 1 if self.nc else v == 0\n\n    def irq(self, handler, on_press=True):\n        \"\"\"Call handler(pin) when the lever is pressed (or released with on_press=False).\n        Contacts bounce: handlers may fire more than once per movement.\"\"\"\n        falling = on_press != self.nc\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_FALLING if falling else Pin.IRQ_RISING)\n"
+  },
+  "skill": "---\nname: part-limit-switch\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KW11 micro limit switch (KW11-3Z SPDT snap-action switch, COM/NO/NC). Use when designing, wiring, simulating or writing code for a limit switch or end-stop in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Limit switch (KW11-3Z micro switch)\n\n## Overview\nThe **KW11-3Z** is the generic micro limit switch sold for CNC machines and 3D-printer end-stops: a snap-action **SPDT** switch about 20 × 10 × 6.4 mm with a hinge lever and three solder/quick-connect terminals marked **C (COM), NO, NC**. It is a clone of the Omron SS-5GL subminiature basic switch: same body, mounting holes and terminal arrangement. No chip and no supply: it is just a changeover contact.\n\n- Lever **released**: COM–NC closed, COM–NO open.\n- Lever **pressed**: COM–NO closed, COM–NC open.\n\n## Pinout (terminal order along the body, from the lever hinge end)\n| Terminal | Function |\n|---|---|\n| COM | Common contact: connect to GND |\n| NO | Normally open: closes to COM when pressed. Connect to a GPIO with the internal pull-up |\n| NC | Normally closed: opens when pressed. Optional (fail-safe end-stop wiring); not modelled by the simulator |\n\n## Electrical limits\n- Contact rating (seller listings for KW11-3Z): 5 A 125/250 VAC. The Omron SS-5 original is rated 5 A 125 VAC, 3 A 250 VAC, 5 A 30 VDC: use the lower figures.\n- Contact resistance ≤ 50 mΩ; insulation ≥ 100 MΩ.\n- Silver contacts: the Omron minimum applicable load is 5 VDC 160 mA. At GPIO currents (tens of µA) a silver contact can become unreliable over years; fine for hobby end-stops, but use a gold-contact (SS-01 type) switch for critical logic signals.\n- Operating force about 0.5 N (hinge lever), mechanical life ≥ 1,000,000 operations.\n\n## Interface details\n- Plain changeover switch. With COM to GND and NO pulled up: **0 = pressed, 1 = released**.\n- Fail-safe wiring (common on 3D printers): COM to GND, NC to the GPIO: 0 = released, 1 = pressed **or a broken wire**.\n- The GPIO **needs a pull-up** (`Pin.PULL_UP`, or 10 kΩ to **3.3 V**, never 5 V on an ESP32/Pico).\n- Contacts bounce for a few ms: the driver debounces (10 ms).\n\n## Wiring\n- ESP32: COM → GND, NO → GPIO4 (internal pull-up on).\n- Pico: COM → GND, NO → GP15 (internal pull-up on).\n- Raspberry Pi 4: COM → pin 6 (GND), NO → GPIO17 (pin 11) with the pull-up.\n\n## Using the driver\n```python\nfrom limit_switch import LimitSwitch\nimport time\nsw = LimitSwitch(4)          # GPIO wired to NO, COM to GND\nwhile True:\n    print('LIMIT=%s' % ('HIT' if sw.is_pressed() else 'CLEAR'))\n    time.sleep(0.2)\n```\nFor NC wiring use `LimitSwitch(4, normally_closed=True)`. `sw.irq(handler)` calls `handler(pin)` on each press.\n\n## Gotchas\n- Reading always 1: the wire goes to NC instead of NO (or vice versa); check the C/NO/NC marks moulded on the body.\n- Random readings: the pull-up is missing; the switch only connects to GND, it never drives high.\n- Do not run motors or mains through it directly on a hobby build; switch a relay or the driver's enable input instead.\n- Mount it so the carriage stops before the lever bottoms out (overtravel is only about 1 mm).\n\n## Datasheet\nhttps://omronfs.omron.com/en_US/ecb/products/pdf/en-ss.pdf (Omron SS, the original this generic KW11-3Z copies)\n",
+  "example": {
+    "code": "from limit_switch import LimitSwitch\nimport time\n\nsw = LimitSwitch({NO})  # COM to GND, NO to this GPIO with pull-up: 0 = pressed\nwhile True:\n    print('LIMIT=%s' % ('HIT' if sw.is_pressed() else 'CLEAR'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the limit hit while the lever is pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LIMIT=CLEAR",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LIMIT=HIT",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:07:07.904Z",
+    "verifiedSources": [
+      "https://zbotic.in/product/tact-switch-kw11-3z-5a-250v-micro-switch-round-handle-3-pin-n-o-n-c-for-3d-printers-2pcs/",
+      "https://robu.in/?p=53576"
+    ]
+  }
+}

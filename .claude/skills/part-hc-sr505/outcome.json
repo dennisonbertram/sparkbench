@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hc-sr505",
+  "board": "HC-SR505 mini PIR motion sensor module (10 x 23 mm green board with 10 mm white dome lens, 3-pin header +, OUT (S), -)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring powered from 5 V, design checks, breadboard, simulator test 'MOTION=1' with motion on, PCB DRC clean, footprint). Modelled as an active-high digital-sensor: 4.5-20 V supply, about 3.3 V output held ~8 s per repeatable trigger, per the HC-SR505 datasheet.",
+  "datasheetUrl": "https://robu.in/wp-content/uploads/2017/04/datasheet-1.pdf",
+  "breakoutPinoutSource": "Datasheet wiring photo (https://robu.in/wp-content/uploads/2017/04/datasheet-1.pdf, page 2) labels the header '+ S -' with signal in the middle; pin names + / S(OUT) / - confirmed at https://components101.com/sensors/hc-sr505-pir-sensor-pinout-datasheet and https://www.circuits-diy.com/pir-motion-sensor-module-hc-sr505/",
+  "checkRuns": 2
+}

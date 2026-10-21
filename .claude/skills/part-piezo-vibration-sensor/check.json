@@ -1,0 +1,79 @@
+{
+  "type": "custom-piezo-vibration-sensor",
+  "mpn": "DFR0052",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.Analog → D32 (GPIO32) — an analog-capable pin. Added the piezo_vibration.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the peak piezo voltage and a knock: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.Analog → GP28 (GPIO28) — an analog-capable pin. Added the piezo_vibration.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the peak piezo voltage and a knock: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:05:58.545Z"
+}

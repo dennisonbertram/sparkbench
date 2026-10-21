@@ -1,0 +1,145 @@
+{
+  "type": "custom-2-channel-relay-module",
+  "name": "2-channel 5 V relay module (high/low trigger)",
+  "mpn": "SRD-05VDC-SL-C",
+  "category": "actuator",
+  "description": "Two Songle SRD-05VDC-SL-C 5 V relays (SPDT, form C) on one board, each driven by an optocoupler and transistor with a flyback diode: a GPIO switches two separate loads such as lamps, pumps or fans. Contacts rated 10 A 125 VAC / 7 A 240 VAC / 7 A 28 VDC (form C, resistive). Module supply 5 V; each energised coil draws about 71 mA. Modelled with both trigger jumpers set to H (high level trigger: IN high = relay on). Sold as: 2-channel 5V relay module with optocoupler, high and low level trigger selectable by jumper (input header DC+, DC-, IN1, IN2; outputs NO/COM/NC screw terminals per channel).",
+  "eli5": "Two electrically controlled switches: when your board sets IN1 or IN2 high, a little click connects that channel's lamp, pump or fan to its own power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "DC+",
+      "role": "power",
+      "description": "Module supply, 5 V (powers the optocouplers and both relay coils, about 71 mA per energised relay); use the board's 5V/VBUS pin, not 3V3",
+      "required": true
+    },
+    {
+      "name": "DC-",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "IN1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 1 control input. With its jumper on H: high = relay 1 on (NO1 connected to COM1), low = off. Optocoupler input, a few mA; 3.3 V or 5 V logic.",
+      "required": true
+    },
+    {
+      "name": "IN2",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 2 control input. With its jumper on H: high = relay 2 on (NO2 connected to COM2), low = off. Optocoupler input, a few mA; 3.3 V or 5 V logic.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 150,
+  "datasheetUrl": "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "2 channel 5V relay module optocoupler high low level trigger",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Move BOTH trigger jumpers to H (high level trigger) before use: many boards ship set to L. On L the logic is inverted (IN low = relay on) and a 3.3 V GPIO may not switch the relay fully off.",
+    "Power DC+ from 5 V, not 3.3 V: the SRD-05VDC coil needs at least 3.75 V to pull in and draws about 71 mA per relay, which is too much for a GPIO or the 3V3 regulator. Share DC- with the microcontroller's GND.",
+    "Contacts (form C): 10 A 125 VAC, 7 A 240 VAC, 7 A 28 VDC resistive; inductive loads (motors, pumps) 3 A. Use the NO terminal for a load that should be off by default.",
+    "The relays switch in up to 10 ms and release in up to 5 ms, and the datasheet allows only about 30 operations per minute under load: never PWM a relay.",
+    "Mains wiring on the screw terminals is dangerous: keep it in a closed insulated box, never touch the board while it is plugged in, and leave mains to an adult/qualified person. For a first project switch a low-voltage DC load (a 12 V lamp or a 5 V pump).",
+    "Set the GPIO low at start-up (Pin(..., Pin.OUT, value=0)) so the relays do not click on while the board boots."
+  ],
+  "keywords": [
+    "relay",
+    "2 channel relay",
+    "dual relay",
+    "relay module",
+    "srd-05vdc-sl-c",
+    "songle",
+    "optocoupler",
+    "pump",
+    "fan",
+    "lamp",
+    "mains",
+    "switch load"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "IN1",
+      "IN2"
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Trigger jumpers on H: IN high = relay on.\nrelay1 = Pin({IN1}, Pin.OUT, value=0)\nrelay2 = Pin({IN2}, Pin.OUT, value=0)\nwhile True:\n    relay1.value(1)\n    relay2.value(0)\n    print('relay 1 ON, relay 2 OFF')\n    time.sleep(2)\n    relay1.value(0)\n    relay2.value(1)\n    print('relay 1 OFF, relay 2 ON')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "Relay 1 and relay 2 take turns switching on",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay 1 ON, relay 2 OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay 1 OFF, relay 2 ON",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+    "https://www.thingbits.in/products/2-channel-relay-module-with-high-low-trigger-optocoupler",
+    "https://makerselectronics.com/product/relay-module-2-channel-5v-with-high-low-level-trigger-selector/",
+    "https://www.tokopedia.com/arduino-robot/modul-relay-2-channel-5v-optocoupler-h-l-level-trigger",
+    "https://aws.robu.in/product/2-channel-5v-high-and-low-level-trigger-relay-module",
+    "https://kunkune.co.uk/shop/relay-modules/24v-1-2-4-8-channel-relay-module-high-low-level/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:14:09.172Z",
+    "verifiedSources": [
+      "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+      "https://components101.com/switches/5v-dual-channel-relay-module-pinout-features-applications-working-datasheet"
+    ]
+  }
+}

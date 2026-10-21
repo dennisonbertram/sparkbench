@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-036",
+  "board": "Joy-IT SensorKit KY-036 metal touch sensor module (black 4-pin: AO, G, +, DO; identical generic 37-in-1 kit KY-036)",
+  "reason": "Modelled as a digital-sensor: DO (LM393 output with board pull-up) goes HIGH while the metal tip is touched, per Joy-IT documentation; the driver samples DO over 40 ms to ride over mains-hum flicker. Part check passed on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "breakoutPinoutSource": "https://sensorkit.joy-it.net/en/sensors/ky-036 (board photo KY-036.png shows header AO, G, +, DO)",
+  "checkRuns": 1
+}

@@ -1,0 +1,121 @@
+{
+  "type": "custom-electromagnet-module",
+  "name": "Electromagnet module (KS0320, P20/15 magnet)",
+  "mpn": "KS0320",
+  "category": "actuator",
+  "description": "5 V holding electromagnet (20 mm x 15 mm P20/15 type, sold as KK-P20/15 or ZYE1-P20/15) on a small board with an on-board SOT-23 transistor switch and a flyback diode across the coil. The coil runs from the 5 V VCC pin; the SIG pin only switches the transistor, so a 3.3 V GPIO can drive it. SIG high = magnet on (holds about 1 kg of iron), low = off; PWM on SIG weakens the pull. Sold as: Keyestudio Electromagnet Module KS0320 (black board), 4-pin header GND, VCC, NC, SIG.",
+  "eli5": "A coil around an iron core that becomes a magnet only while switched on: set the pin high and it grabs a steel screw, set it low and the screw drops.",
+  "refPrefix": "M",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Coil supply, 5 V at up to about 0.3-0.4 A (connect to the board's 5 V / VBUS pin, never 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected on the board; leave it unwired",
+      "required": false
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Control input: high = magnet on, low = off; PWM (e.g. 1 kHz) sets the holding strength. Only drives the on-board transistor, so a 3.3 V GPIO is enough.",
+      "required": true
+    }
+  ],
+  "vmin": 5,
+  "vmax": 5,
+  "currentMa": 400,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Bazaar_file/101020073/ZYE1-P%20electro%20holding%20magnets.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Keyestudio KS0320 electromagnet module 5V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire VCC to 5 V (ESP32 VIN/5V, Pico VBUS), GND to GND and SIG to any GPIO; leave NC unconnected. The coil current comes from VCC through the on-board transistor, never from the GPIO.",
+    "The coil draws roughly 0.3-0.4 A at 5 V (Keyestudio: 0.3 A max, 3 W max; Seeed's module with the same P20/15 magnet: 400 mA). A USB port can supply that, but power several magnets or motors from a separate 5 V supply with a shared ground.",
+    "High = hold, low = release. PWM on SIG (machine.PWM, about 1 kHz) reduces the holding force; a brief full-on pulse then a lower duty saves power and heat once the object is held.",
+    "The coil gets warm if left on for long periods. Switch it off when not holding something.",
+    "The magnet holds best on flat, clean iron or steel at least 5 mm thick (P20/15 datasheet: 25 N rated holding force, about 1 kg in practice). Thin sheet, aluminium, brass and stainless steel hold weakly or not at all.",
+    "The on-board flyback diode across the coil absorbs the voltage spike at switch-off, so no extra diode is needed. Do not wire a bare electromagnet coil straight to a GPIO."
+  ],
+  "keywords": [
+    "electromagnet",
+    "magnet",
+    "holding magnet",
+    "solenoid",
+    "kk-p20/15",
+    "p20/15",
+    "zye1-p20/15",
+    "ks0320",
+    "keyestudio",
+    "lifting magnet"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "SIG"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nmagnet = Pin({SIG}, Pin.OUT, value=0)  # SIG high = magnet on\nwhile True:\n    magnet.value(1)\n    print('MAGNET ON')\n    time.sleep(2)\n    magnet.value(0)\n    print('MAGNET OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "magnet-switches",
+      "title": "The electromagnet switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MAGNET ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MAGNET OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://wiki.keyestudio.com/KS0320_Keyestudio_Electromagnet_Module_(Black_and_Environmental-friendly)",
+    "https://docs.keyestudio.com/projects/KS0320/en/latest/docs/KS0320.html",
+    "https://www.keyestudio.com/products/keyestudio-electromagnet-module-for-arduino-diy-projects",
+    "https://files.seeedstudio.com/wiki/Bazaar_file/101020073/ZYE1-P%20electro%20holding%20magnets.pdf",
+    "https://wiki.seeedstudio.com/Grove-Electromagnet/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:18:21.450Z",
+    "verifiedSources": [
+      "https://docs.keyestudio.com/projects/KS0320/en/latest/docs/KS0320.html",
+      "https://docs.keyestudio.com/projects/KS0320/en/latest/_images/image-20260113100007994.png",
+      "https://www.keyestudio.com/products/keyestudio-electromagnet-module-for-arduino-diy-projects"
+    ]
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "type": "custom-water-pump-mosfet-module",
+  "name": "Water pump MOSFET module (D4184)",
+  "mpn": "D4184",
+  "category": "actuator",
+  "description": "Opto-isolated low-side MOSFET switch for DC loads such as a 12 V water pump, solenoid valve, fan or LED strip: a PC817 optocoupler (1 kΩ series resistor) drives an AOD4184A-type 40 V N-channel MOSFET (7.6 mΩ typ at VGS 4.5 V) whose gate is biased to half the load supply and clamped by a Zener. Control input 2.5–20 V, active high, so 3.3 V and 5 V GPIOs both work; load supply 6–36 V DC, about 10 A continuous at 12 V. No flyback diode on the board. Sold as: D4184 MOSFET control module (black 35 x 16 mm board, e.g. ProtoSupplies MOD-126; 2-pin signal header PWM, GND; 3-pin load terminal +, LOAD, -).",
+  "eli5": "An electronic switch for a pump: your board's tiny signal turns on a big 12 V supply to the pump, without the two ever touching.",
+  "refPrefix": "Q",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "PWM",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Control input, active high (2.5–20 V): high = MOSFET on = load runs, low or unconnected = off. Feeds the PC817 LED through 1 kΩ, so it draws only about 2 mA from a 3.3 V GPIO. Can take PWM (keep it slow, about 1 kHz or less: the optocoupler is slow).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Signal ground, to the microcontroller's GND. Isolated from the load side '-' on this module.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "io",
+      "description": "Load supply + (screw terminal), 6–36 V DC from a separate supply, not the microcontroller. The load's + lead also goes here.",
+      "required": false
+    },
+    {
+      "name": "LOAD",
+      "role": "io",
+      "description": "Load - lead (screw terminal): the MOSFET drain, pulled to '-' when the module is on. Put a flyback diode across the pump/solenoid (stripe towards +).",
+      "required": false
+    },
+    {
+      "name": "-",
+      "role": "io",
+      "description": "Load supply - / ground (screw terminal, MOSFET source). Not connected to the signal GND on the module.",
+      "required": false
+    }
+  ],
+  "vmin": 6,
+  "vmax": 36,
+  "currentMa": 3,
+  "datasheetUrl": "https://www.aosmd.com/res/datasheets/AOD4184A.pdf",
+  "priceUsd": 1.3,
+  "supplierQuery": "D4184 MOSFET control module optocoupler PWM 400W",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two separate circuits: PWM and GND go to the microcontroller (GPIO and GND); +, LOAD and - go to the pump and its own 6–36 V supply. Pump + lead and supply + both on '+', pump - lead on LOAD, supply - on '-'.",
+    "The load supply must be at least 6 V (9 V or more for loads over a few amps): the gate is biased to half the supply, and the MOSFET's threshold is up to 2.6 V. A 3–5 V USB mini pump powered from 5 V will not switch reliably with this module; use a 12 V pump or a logic-level MOSFET driven directly.",
+    "There is no flyback diode on the board. A pump, solenoid valve or motor is inductive: fit a diode (e.g. 1N4007 or 1N5819) across the load, stripe to '+', or the voltage spike can destroy the MOSFET.",
+    "The input is opto-isolated (PC817, 1 kΩ series resistor): about 2 mA from a 3.3 V pin, 4 mA from 5 V. Signal GND and load '-' are not joined on the board; you may leave them separate.",
+    "About 10 A continuous at 12 V with no heatsink; the D4184 gets hot above that. Small 12 V pumps (0.2–1 A) barely warm it.",
+    "PWM speed control works, but the PC817 and the 4.7 kΩ gate resistors make switching slow: keep the PWM frequency low (about 1 kHz or less) to avoid heating the MOSFET.",
+    "The on-board LED lights when the MOSFET is on (and the load supply is connected).",
+    "Never run a pump dry for long, and keep the electronics above the water line."
+  ],
+  "keywords": [
+    "d4184",
+    "aod4184",
+    "aod4184a",
+    "mosfet module",
+    "mosfet switch",
+    "water pump",
+    "pump driver",
+    "solenoid valve",
+    "pc817",
+    "low side switch",
+    "pwm driver"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "PWM"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\npump = Pin({PWM}, Pin.OUT, value=0)  # PWM high = MOSFET on = pump runs\nwhile True:\n    pump.value(1)\n    print('PUMP ON')\n    time.sleep(2)\n    pump.value(0)\n    print('PUMP OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The pump switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PUMP ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PUMP OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://protosupplies.com/product/d4184-mosfet-control-module/",
+    "https://protosupplies.com/wp-content/uploads/2020/04/D4184-MOSFET-Control-Module-Top.jpg",
+    "https://protosupplies.com/wp-content/uploads/2020/04/D4184-MOSFET-Control-Module-Schematic-3.jpg",
+    "https://www.aosmd.com/res/datasheets/AOD4184A.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:19:21.673Z",
+    "verifiedSources": [
+      "https://www.aosmd.com/res/data_sheets/AOD4184A.pdf",
+      "https://www.protosupplies.com/product/d4184-mosfet-control-module/"
+    ]
+  }
+}

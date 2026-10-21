@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-irf520-mosfet-module",
+  "board": "Common IRF520 MOSFET driver module (3-pin header SIG, VCC (not connected), GND; screw terminals VIN/GND and V+/V-)",
+  "reason": "Modelled as an active-high actuator on SIG (low-side IRF520 switch), with VCC marked not connected per the ProtoSupplies module page and ratings taken from the Vishay IRF520 datasheet. The part check passed on ESP32 and Pico (simulated on/off test, clean PCB DRC). No driver is needed because it is a plain GPIO or PWM output. The notes warn about weak gate drive at 3.3 V.",
+  "datasheetUrl": "https://www.vishay.com/docs/91017/irf520.pdf",
+  "breakoutPinoutSource": "https://protosupplies.com/product/irf520-n-ch-mosfet-module/",
+  "checkRuns": 1
+}

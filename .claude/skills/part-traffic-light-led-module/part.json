@@ -1,0 +1,187 @@
+{
+  "type": "custom-traffic-light-led-module",
+  "name": "Traffic light LED module (red, yellow, green)",
+  "mpn": "KS0310",
+  "category": "actuator",
+  "description": "Three LEDs (red, yellow, green) arranged like a traffic light on one small board, each with its own on-board current-limiting resistor (marked 221/471, i.e. 220 Ω / 470 Ω) and a shared ground (common cathode). Drive R, Y or G high from a GPIO to light that LED; no supply pin and no driver chip. Works from 3.3–5 V logic. Sold as: Keyestudio KS0310 Traffic Light Module (black PCB, 4-pin header R, Y, G, GND), and the many look-alike traffic light LED modules with the same R/Y/G/GND header.",
+  "eli5": "A tiny traffic light: switch a pin on and the red, yellow or green light comes on, so you can make your own crossing signal.",
+  "refPrefix": "D",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "R",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Red LED anode through its on-board resistor: high = red on, low = off. A few mA from a 3.3 V GPIO.",
+      "required": true
+    },
+    {
+      "name": "Y",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Yellow LED anode through its on-board resistor: high = yellow on, low = off.",
+      "required": true
+    },
+    {
+      "name": "G",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Green LED anode through its on-board resistor: high = green on, low = off.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Common cathode of all three LEDs; connect to the microcontroller's GND.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 15,
+  "datasheetUrl": "https://docs.keyestudio.com/projects/KS0310/en/latest/docs/KS0310.html",
+  "priceUsd": 2,
+  "supplierQuery": "traffic light LED module R Y G GND red yellow green",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "There is no VCC pin: each LED is powered by the GPIO wired to R, Y or G, through the resistor already on the board. Only GND goes to the board's ground.",
+    "Logic level 3.3–5 V (Keyestudio rating). From a 3.3 V ESP32 or Pico the LEDs are a little dimmer than from 5 V, but each draws only a few mA, well within a GPIO's limit.",
+    "Do not add a resistor and do not wire R/Y/G to 5V or 3V3 directly unless you want that LED permanently on; never apply more than 5 V.",
+    "Create the pins with value=0 so all lights start off, then switch them in the sequence green -> yellow -> red."
+  ],
+  "keywords": [
+    "traffic light",
+    "traffic light module",
+    "led module",
+    "red yellow green",
+    "ks0310",
+    "keyestudio",
+    "rgy led",
+    "signal light",
+    "led"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "R",
+      "Y",
+      "G"
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Each LED has its own resistor on the module: GPIO high = LED on.\nred = Pin({R}, Pin.OUT, value=0)\nyellow = Pin({Y}, Pin.OUT, value=0)\ngreen = Pin({G}, Pin.OUT, value=0)\n\ndef show(r, y, g, name):\n    red.value(r)\n    yellow.value(y)\n    green.value(g)\n    print(name)\n\nwhile True:\n    show(0, 0, 1, 'GREEN')\n    time.sleep(2)\n    show(0, 1, 0, 'YELLOW')\n    time.sleep(1)\n    show(1, 0, 0, 'RED')\n    time.sleep(2)\n",
+    "test": {
+      "id": "sequence",
+      "title": "Green, yellow and red light up in turn",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "GREEN",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "G",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Y",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "YELLOW",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "G",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Y",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RED",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "G",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "Y",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://docs.keyestudio.com/projects/KS0310/en/latest/docs/KS0310.html",
+    "https://docs.keyestudio.com/projects/KS0310/en/latest/_images/image-20260113091912576.png",
+    "https://docs.keyestudio.com/projects/KS0310/en/latest/_images/image-20260113092115045.png",
+    "https://wiki.keyestudio.com/KS0310_Keyestudio_Traffic_Light_Module_(Black_and_Eco-friendly)",
+    "https://probots.co.in/led-traffic-light-signal-module.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:16:17.638Z",
+    "verifiedSources": [
+      "https://docs.keyestudio.com/projects/KS0310/en/latest/docs/KS0310.html",
+      "https://docs.keyestudio.com/projects/KS0310/en/latest/_sources/docs/KS0310.md.txt"
+    ]
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "type": "custom-h206",
+  "name": "H206 slotted speed sensor (LM393)",
+  "mpn": "H206",
+  "category": "sensor",
+  "description": "Slotted infrared photo-interrupter speed sensor: a WYC-H206 slotted optocoupler (IR LED facing a phototransistor across a ~6 mm slot) feeds an LM393 comparator, giving a digital pulse each time an encoder-wheel spoke passes through the slot. OUT is the LM393 open-collector output with a 10 kOhm pull-up to VCC: HIGH while the slot is blocked, LOW while clear. Runs on 3.3-5 V. Sold as: H206 LM393 speed sensor module (common green 3-pin robot-car encoder board with the black WYC H206 slot sensor, header 5V, GND, OUT), usually bundled with a 20-slot encoder disc.",
+  "eli5": "Counts the holes of a spinning wheel as they pass through its slot, so your board can work out how fast a motor turns.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin 1, printed 5V). On a 3.3 V board connect it to 3V3, because OUT is pulled up to this supply.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 3): HIGH when the slot is blocked, LOW when clear; open-collector LM393 output with 10 kOhm pull-up to VCC on the board",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 15,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://www.electronicshub.org/interfacing-lm393-speed-sensor-with-arduino/",
+    "https://circuitdigest.com/microcontroller-projects/speed-distance-and-angle-measurement-for-mobile-robots-using-arduino-and-lm393-h206",
+    "https://www.teachmemicro.com/lm393-ir-module-motor-speed-sensor/",
+    "https://makerlab.ph/products/photo-interrupter-speed-sensor-module-lm393",
+    "https://www.electroniclinic.com/lm393-speed-sensor-with-arduino-using-l9110-motor-driver-circuit-and-code-explained/"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "H206 LM393 slotted optocoupler speed sensor module encoder",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the green H206 board: 5V, GND, OUT.",
+    "On an ESP32 or Pico power the module from 3V3: OUT has a 10 kOhm pull-up to the module supply, so a 5 V supply puts 5 V on the GPIO.",
+    "OUT goes HIGH while a spoke blocks the slot and LOW while it is clear (the OUT LED lights when clear). Count rising edges with an interrupt; one wheel turn gives as many pulses as the disc has slots (20 on the usual disc).",
+    "The comparator has no hysteresis on this board, so a slow or partly blocked edge can chatter; if counts look too high, ignore edges closer than a few hundred microseconds.",
+    "Mount the encoder disc so it passes through the middle of the slot without rubbing; sunlight shining into the slot can stop it seeing spokes."
+  ],
+  "keywords": [
+    "h206",
+    "lm393",
+    "speed",
+    "encoder",
+    "tachometer",
+    "rpm",
+    "slotted",
+    "optocoupler",
+    "photo interrupter",
+    "odometry",
+    "robot car"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Slot blocked",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "h206.py",
+    "code": "# H206 / LM393 slotted (photo-interrupter) speed sensor module, MicroPython driver.\n# A WYC-H206 slotted optocoupler (IR LED facing an NPN phototransistor across a ~6 mm slot)\n# feeds an LM393 comparator. The LM393 output is open-collector with a 10 kOhm pull-up to VCC\n# on the board, so OUT is:\n#   HIGH (1) while something blocks the slot (an encoder-wheel spoke)\n#   LOW  (0) while the slot is clear (the OUT LED lights)\n# Power the module from 3.3 V on a 3.3 V board: OUT is pulled up to VCC.\nfrom machine import Pin\nimport time\n\n\nclass H206:\n    def __init__(self, pin, slots=20, min_us=0):\n        \"\"\"pin: GPIO number (or Pin) wired to OUT. slots: holes in the encoder\n        wheel (20 on the usual robot-car disc). min_us: ignore edges closer\n        together than this (the LM393 has no hysteresis on this board and can\n        chatter on a slow edge; try 200-500 us if counts look too high).\"\"\"\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.slots = slots\n        self.min_us = min_us\n        self._count = 0\n        self._last = time.ticks_us()\n        self.pin.irq(handler=self._edge, trigger=Pin.IRQ_RISING)\n\n    def _edge(self, pin):\n        now = time.ticks_us()\n        if self.min_us and time.ticks_diff(now, self._last) < self.min_us:\n            return\n        self._last = now\n        self._count += 1\n\n    def blocked(self):\n        \"\"\"True while something is in the slot (OUT high).\"\"\"\n        return self.pin.value() == 1\n\n    def count(self):\n        \"\"\"Blocked-edges counted since start or the last reset().\"\"\"\n        return self._count\n\n    def reset(self):\n        self._count = 0\n\n    def rpm(self, window_ms=1000):\n        \"\"\"Count pulses for window_ms and return wheel revolutions per minute.\"\"\"\n        start = self._count\n        time.sleep_ms(window_ms)\n        pulses = self._count - start\n        return pulses * 60000 / (self.slots * window_ms)\n"
+  },
+  "example": {
+    "code": "from h206 import H206\nimport time\n\nsensor = H206({OUT}, slots=20)\nwhile True:\n    print('pulses=%d slot=%s' % (sensor.count(), 'BLOCKED' if sensor.blocked() else 'clear'))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "counts",
+      "title": "Counts three spokes passing the slot and reports it blocked",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pulses=3 slot=BLOCKED",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:07:33.085Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+      "https://www.hackster.io/hardyedela/measurement-of-mobile-robots-with-arduino-and-lm393-sensors-16c5b6",
+      "https://docs.sunfounder.com/projects/pico-4wd-v2/en/latest/module/speed_intro.html"
+    ]
+  }
+}

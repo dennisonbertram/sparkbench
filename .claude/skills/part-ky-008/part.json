@@ -1,0 +1,109 @@
+{
+  "type": "custom-ky-008",
+  "name": "KY-008 laser transmitter module",
+  "mpn": "KY-008",
+  "category": "actuator",
+  "description": "650 nm red laser transmitter module (about 5 mW, Class 3R/IIIa): a 6 mm laser diode head with an on-board current-limiting resistor. Drive the S pin high (5 V nominal; works dimmer at 3.3 V) and it emits a red dot; low switches it off. The signal pin supplies the laser current (under 40 mA). Sold as: Keyes / HW-493 KY-008 laser transmitter module from the 37-in-1 sensor kits, 3-pin header S, (middle, unlabelled), -.",
+  "eli5": "A tiny laser pointer: set the pin high and a red dot appears, set it low and it goes off. Never shine it in anyone's eyes.",
+  "refPrefix": "LS",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Signal: high = laser on, low = off. This pin also supplies the laser current (under 40 mA).",
+      "required": true
+    },
+    {
+      "name": "MID",
+      "role": "nc",
+      "description": "Middle pin, unlabelled. VCC on some variants; leave it unconnected so S alone switches the laser (tying it to 5 V can keep the laser on permanently).",
+      "required": false
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 40,
+  "datasheetUrl": "https://arduinomodules.info/ky-008-laser-transmitter-module/",
+  "priceUsd": 1,
+  "supplierQuery": "KY-008 650nm laser transmitter module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire S to a GPIO and - to GND; leave the unlabelled middle pin unconnected. The GPIO powers the laser through the on-board resistor.",
+    "Laser safety: about 5 mW at 650 nm (Class 3R / IIIa). Never look into the beam or point it at people, pets, mirrors or vehicles.",
+    "The laser can draw close to 40 mA at 5 V. At 3.3 V GPIO level it draws less and is dimmer. An ESP32 pin copes; on a Raspberry Pi Pico or Raspberry Pi (about 12-16 mA per pin) switch it with an NPN transistor (e.g. 2N2222, 1 kOhm base resistor) with S fed from 5 V.",
+    "Never feed the module more than 5 V and never bypass the on-board resistor: the diode dies instantly.",
+    "Some clone boards differ; if S and - alone give no beam, check the silkscreen and your board's middle-pin wiring."
+  ],
+  "keywords": [
+    "ky-008",
+    "ky008",
+    "hw-493",
+    "laser",
+    "laser diode",
+    "laser transmitter",
+    "650nm",
+    "red laser",
+    "tripwire"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "S"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nlaser = Pin({S}, Pin.OUT, value=0)  # S high = laser on\nwhile True:\n    laser.value(1)\n    print('LASER ON')\n    time.sleep(1)\n    laser.value(0)\n    print('LASER OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "blinks",
+      "title": "The laser switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LASER ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LASER OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://arduinomodules.info/ky-008-laser-transmitter-module/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:22:35.546Z",
+    "verifiedSources": [
+      "https://www.espboards.dev/sensors/ky-008/",
+      "https://www.build-electronic-circuits.com/arduino-laser-module-ky-008/",
+      "https://docs.cirkitdesigner.com/component/4c33eb89-cee3-4753-abdb-a8d95c7f2141/ky-008"
+    ]
+  }
+}

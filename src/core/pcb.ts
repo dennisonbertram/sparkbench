@@ -4,6 +4,7 @@
 // with KiCad's own pcbnew + Freerouting, then checked with kicad-cli DRC.
 import type { Project } from './types';
 import { partDef, footprintOf } from './parts';
+import { customSpec } from './customParts';
 import { buildNets, annotate } from './netlist';
 import { pinNumber, defaultValue } from './symbols';
 import { kicadName } from './kicad';
@@ -106,7 +107,9 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       pinNames,
       role: ROLE[def.category] ?? 'passive',
       description: def.name,
-      ...(EDGE_TYPES.has(p.type) ? { edge: true } : {}),
+      // Datasheet modules with more than 8 pins are wired with a cable (the breadboard plan keeps them off-board too):
+      // their header is a cable connector at the board edge, not a socket the module plugs into.
+      ...(EDGE_TYPES.has(p.type) || (customSpec(p.type) && def.pins.length > 8) ? { edge: true } : {}),
       ...(p.type === 'esp32-devkit' ? { antenna: true, usbPads: ['15', '16'] as [string, string] } : {}),
       ...(p.type === 'pi-pico' ? { usbPads: ['1', '40'] as [string, string] } : {}),
       ...(p.type === 'usb-micro' ? { flushEdge: 2.6875 } : {}),

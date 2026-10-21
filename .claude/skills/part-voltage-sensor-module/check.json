@@ -1,0 +1,79 @@
+{
+  "type": "custom-voltage-sensor-module",
+  "mpn": "Voltage sensor module 0-25V",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.S → D32 (GPIO32) — an analog-capable pin. Added the voltsense.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the voltage on the screw terminal: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.S → GP28 (GPIO28) — an analog-capable pin. Added the voltsense.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the voltage on the screw terminal: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:05:18.175Z"
+}

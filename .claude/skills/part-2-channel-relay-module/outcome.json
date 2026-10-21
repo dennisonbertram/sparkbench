@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-2-channel-relay-module",
+  "board": "2-channel 5V relay module with optocoupler, high/low level trigger selectable by jumper (2x Songle SRD-05VDC-SL-C; header DC+, DC-, IN1, IN2), modelled with both jumpers on H",
+  "reason": "Check passed on ESP32 and Pico: IN1/IN2 modelled as independent active-high actuator inputs (jumpers on H), matching the vendor trigger tables; the common low-trigger-only HL-52S variant could not be modelled because the actuator sim is active-high only, so the jumper-selectable board was chosen and the jumper setting is documented.",
+  "datasheetUrl": "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+  "breakoutPinoutSource": "https://www.thingbits.in/products/2-channel-relay-module-with-high-low-trigger-optocoupler (D+, D-, IN header and H/COM/L jumper), with makerselectronics/tokopedia listings for DC+, DC-, IN1, IN2",
+  "checkRuns": 2
+}

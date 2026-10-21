@@ -1,0 +1,165 @@
+{
+  "type": "custom-ky-016",
+  "name": "KY-016 RGB LED module",
+  "mpn": "KY-016",
+  "category": "actuator",
+  "description": "Full-colour 5 mm RGB LED module: one common-cathode RGB LED with a current-limiting resistor (150 Ω on most boards) already fitted in series with each colour. Drive R, G and B high (3.3–5 V) to light red, green and blue; PWM each pin to mix colours. Red Vf about 1.8 V, green/blue about 2.8 V, 20 mA rated per colour. Sold as: KY-016 / HW-479 RGB LED module (common 37-in-1 kit clone, 3 × 150 Ω onboard resistors), 4-pin header -, R, G, B.",
+  "eli5": "Three little lights (red, green, blue) in one bulb: switch each colour on with its own pin, and mix them to make any colour.",
+  "refPrefix": "LED",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Common cathode of the RGB LED: connect to GND",
+      "required": true
+    },
+    {
+      "name": "R",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Red LED anode (through the onboard resistor): high = red on, PWM for brightness",
+      "required": true
+    },
+    {
+      "name": "G",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Green LED anode (through the onboard resistor): high = green on, PWM for brightness",
+      "required": true
+    },
+    {
+      "name": "B",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Blue LED anode (through the onboard resistor): high = blue on, PWM for brightness",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-016",
+  "priceUsd": 1,
+  "supplierQuery": "KY-016 RGB LED module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire - to GND and R, G, B to three GPIOs. The resistors are on the board, so no extra resistors are needed on the HW-479 / 150 Ω version.",
+    "From a 3.3 V GPIO with the 150 Ω resistors: red about (3.3 - 1.8) / 150 = 10 mA, green and blue only about 3 mA, so blue and green look dimmer than red. Lower the red PWM duty to balance white.",
+    "Some KY-016 boards use 1 kΩ resistors (marked 102) and are much dimmer; that is normal. The Joy-IT version is documented without onboard resistors: check for the three small SMD resistors, and if there are none add 180 Ω (red) and 100 Ω (green, blue) in series.",
+    "Common cathode: a GPIO high turns a colour ON. (Common-anode RGB LEDs are the other way round.)",
+    "Some clones print - G R B instead of - R G B. Read the silkscreen; if colours come out swapped, swap the pin numbers in code."
+  ],
+  "keywords": [
+    "ky-016",
+    "ky016",
+    "hw-479",
+    "rgb led",
+    "rgb",
+    "led",
+    "common cathode",
+    "full colour led",
+    "pwm"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "R",
+      "G",
+      "B"
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# KY-016 is common cathode: a pin HIGH turns that colour ON\nred = Pin({R}, Pin.OUT, value=0)\ngreen = Pin({G}, Pin.OUT, value=0)\nblue = Pin({B}, Pin.OUT, value=0)\n\ndef colour(r, g, b, name):\n    red.value(r)\n    green.value(g)\n    blue.value(b)\n    print(name)\n\nwhile True:\n    colour(1, 0, 0, 'RED')\n    time.sleep(1)\n    colour(0, 1, 0, 'GREEN')\n    time.sleep(1)\n    colour(0, 0, 1, 'BLUE')\n    time.sleep(1)\n    colour(0, 0, 0, 'OFF')\n    time.sleep(1)\n",
+    "test": {
+      "id": "colours",
+      "title": "Red, green and blue light in turn, then all go off",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RED",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "G",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "GREEN",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "G",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "R",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BLUE",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "B",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "B",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-016",
+    "https://arduinomodules.info/ky-016-rgb-full-color-led-module/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:15:48.697Z",
+    "verifiedSources": [
+      "https://arduinomodules.info/ky-016-rgb-full-color-led-module/"
+    ]
+  }
+}

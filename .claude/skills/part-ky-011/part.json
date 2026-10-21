@@ -1,0 +1,130 @@
+{
+  "type": "custom-ky-011",
+  "name": "KY-011 two-colour LED module (red/green)",
+  "mpn": "KY-011",
+  "category": "actuator",
+  "description": "5 mm bi-colour LED, red and green in one lens with a common cathode, on a 3-pin module. Each colour lights when its pin is driven high (forward voltage 2.0-2.5 V, 20 mA max); both on together gives yellow/orange, and PWM mixes shades. The module has NO current-limiting resistors fitted (the pads are empty), so each colour needs its own series resistor: 120 Ohm at 3.3 V, 220 Ohm at 5 V. Sold as: Joy-IT SEN-KY011LED / Keyes KY-011 2-colour 5 mm LED module from the 37-in-1 sensor kits, 3-pin header -, (middle, unlabelled = red), S (green).",
+  "eli5": "One light that can glow red, green or both. Each colour has its own wire, and each wire needs a small resistor so the LED does not burn out.",
+  "refPrefix": "D",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Common cathode of both LEDs: connect to GND",
+      "required": true
+    },
+    {
+      "name": "MID",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Middle pin (unlabelled): red LED anode. High = red on. Needs a series resistor (120 Ohm at 3.3 V, 220 Ohm at 5 V); none is fitted on the board",
+      "required": true
+    },
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Signal: green LED anode. High = green on. Needs a series resistor (120 Ohm at 3.3 V, 220 Ohm at 5 V); none is fitted on the board",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "datasheetUrl": "https://sensorkit.joy-it.net/en/sensors/ky-011",
+  "priceUsd": 1,
+  "supplierQuery": "KY-011 two colour red green 5mm LED module common cathode",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (Joy-IT drawing): - (GND), middle unlabelled pin = red anode, S = green anode. Both LEDs share the cathode on -.",
+    "Always fit a series resistor in each colour line: 120 Ohm from a 3.3 V GPIO (about 10 mA), 220 Ohm from 5 V. The board's resistor pads are empty, so wiring a GPIO straight to MID or S overloads the LED and the pin.",
+    "On a Raspberry Pi Pico or Raspberry Pi keep each pin under about 12 mA: 120-220 Ohm is fine; 220 Ohm (about 5 mA) is still clearly bright.",
+    "Red and green on together look yellow/orange; PWM each pin (e.g. 1 kHz) to mix shades.",
+    "If the colours come out swapped, your clone has the LED legs the other way round: just swap the two signal wires in code."
+  ],
+  "keywords": [
+    "ky-011",
+    "ky011",
+    "bicolor led",
+    "bi-colour led",
+    "two colour led",
+    "red green led",
+    "dual color led",
+    "common cathode",
+    "led module"
+  ],
+  "sources": [
+    "https://sensorkit.joy-it.net/en/sensors/ky-011",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-011/KY-011.png",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-011/011-ARD.svg"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "MID",
+      "S"
+    ]
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Each colour through its own 120-220 Ohm resistor.\nred = Pin({MID}, Pin.OUT, value=0)    # middle pin = red anode\ngreen = Pin({S}, Pin.OUT, value=0)    # S = green anode\nwhile True:\n    red.value(1)\n    green.value(0)\n    print('RED')\n    time.sleep(1)\n    red.value(0)\n    green.value(1)\n    print('GREEN')\n    time.sleep(1)\n",
+    "test": {
+      "id": "alternates",
+      "title": "The LED switches between red and green",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RED",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "MID",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "S",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "GREEN",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "S",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "MID",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:15:48.644Z",
+    "verifiedSources": [
+      "https://sensorkit.joy-it.net/en/sensors/ky-011"
+    ]
+  }
+}

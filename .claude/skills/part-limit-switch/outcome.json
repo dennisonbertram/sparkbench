@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-limit-switch",
+  "board": "Generic KW11-3Z micro limit switch (SPDT, hinge lever, 5 A 125/250 VAC, 20 x 10 x 6.4 mm, terminals C/NO/NC; Omron SS-5GL form factor)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator CLEAR then HIT, PCB DRC clean, footprint). The passive SPDT switch is modelled as a 1x1 keypad-matrix between COM and NO (closed while pressed); the NC contact is listed as an optional pin and is documented as not simulated, because the matrix can only close a contact when pressed. No KW11-3Z maker datasheet exists, so the Omron SS datasheet (the original this clone copies) supplies the terminal order and contact form.",
+  "datasheetUrl": "https://omronfs.omron.com/en_US/ecb/products/pdf/en-ss.pdf",
+  "breakoutPinoutSource": "Omron SS datasheet p.3 contact form (COM, NO, NC) and p.5 hinge-lever drawing showing terminals COM, NO, NC along the body from the hinge end; KW11-3Z seller listings (robu.in, Amazon Antrader) confirm the 3-pin C/NO/NC SPDT 5 A 125/250 VAC part",
+  "checkRuns": 1
+}

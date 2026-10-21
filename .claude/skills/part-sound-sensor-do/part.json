@@ -1,0 +1,107 @@
+{
+  "type": "custom-sound-sensor-do",
+  "name": "LM393 sound detection module (DO)",
+  "mpn": "LM393",
+  "category": "sensor",
+  "description": "Sound/clap detector: an electret microphone and an LM393 comparator with a sensitivity trimmer, a power LED and a status LED. OUT is a digital threshold output: HIGH when quiet, LOW (status LED lit) while the sound is louder than the trimmer setting; it follows the sound wave, so a clap gives a burst of short LOW pulses. The LM393's open-collector output is pulled up to VCC on the board. Runs on 3.3-5 V. Sold as: LM393 sound detection sensor module, common blue MH-sensor-series / FC-04 3-pin board (OUT, GND, VCC), digital output only.",
+  "eli5": "A little board with a microphone. Its OUT pin tells your board when something loud happens, like a clap. The little blue knob sets how loud is loud.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 1): HIGH when quiet, LOW while sound is past the trimmer threshold (status LED lit). Pulled up to VCC on the board.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin 3). With a 3.3 V board connect it to 3V3, because OUT is pulled up to VCC.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 10,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://lastminuteengineers.com/sound-sensor-arduino-tutorial/",
+    "https://lastminuteengineers.com/wp-content/uploads/arduino/Sound-Sensor-Module-Pinout.png",
+    "https://arduinogetstarted.com/tutorials/arduino-sound-sensor",
+    "https://othoba.com/microphone-sound-sensor-module-blue-zannat-engineering-1047896",
+    "https://forum.arduino.cc/t/operating-an-fc-04-sound-sensor/177967"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "LM393 sound detection sensor module microphone 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: OUT, GND, VCC. VCC is at the end, not the start, so check before plugging in.",
+    "On an ESP32 or Pico power VCC from 3V3: the board's pull-up takes OUT to VCC, so a 5 V supply puts 5 V on the GPIO.",
+    "OUT is active LOW: 1 = quiet, 0 = sound. It pulses with the sound wave, so watch it over a window (e.g. 50 ms) or use a falling-edge interrupt rather than one read.",
+    "Set the threshold: in silence turn the trimmer until the status LED just goes off, then a little further.",
+    "OUT is only a threshold, not a loudness level. For volume use a module with AO, or a MAX4466/MAX9814 microphone on an ADC."
+  ],
+  "keywords": [
+    "lm393",
+    "sound",
+    "microphone",
+    "clap",
+    "noise",
+    "sound detection",
+    "fc-04",
+    "mic",
+    "sound sensor"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Sound past threshold (OUT low)",
+    "activeHigh": false
+  },
+  "driver": {
+    "filename": "sound_do.py",
+    "code": "# LM393 sound detection module (electret microphone + LM393 comparator, 3-pin OUT/GND/VCC),\n# MicroPython driver.\n# The microphone signal goes to one half of the LM393 (TI datasheet: open-collector output),\n# compared with the voltage set on the blue trimmer. The board pulls OUT up to VCC, so:\n#   HIGH (1) when it is quiet (status LED off)\n#   LOW  (0) while the sound is louder than the trimmer threshold (status LED lit)\n# A sound does not hold OUT low steadily: OUT follows the audio waveform and pulses LOW\n# on its peaks (each pulse can be well under a millisecond). So sample OUT for a short\n# window and treat any LOW in that window as \"heard\". OUT says nothing about how loud it is.\n# Power the module from 3.3 V when using a 3.3 V board, because OUT is pulled up to VCC.\nfrom machine import Pin\nimport time\n\n\nclass SoundDO:\n    def __init__(self, pin, active_low=True):\n        \"\"\"pin: GPIO number (or Pin) wired to OUT.\n        active_low: True (common board) if OUT goes LOW on sound.\"\"\"\n        # The module has its own pull-up on OUT; no internal pull needed.\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self._on = 0 if active_low else 1\n\n    def raw(self):\n        \"\"\"Logic level on OUT right now (0 or 1).\"\"\"\n        return self.pin.value()\n\n    def loud_now(self):\n        \"\"\"True if OUT shows sound at this instant (may miss short pulses).\"\"\"\n        return self.pin.value() == self._on\n\n    def heard(self, window_ms=50):\n        \"\"\"Watch OUT for window_ms and return True if sound passed the threshold at any time.\"\"\"\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < window_ms:\n            if self.pin.value() == self._on:\n                return True\n        return False\n"
+  },
+  "example": {
+    "code": "from sound_do import SoundDO\nimport time\n\nmic = SoundDO({OUT})\nwhile True:\n    print('Sound: %s' % ('YES' if mic.heard(50) else 'quiet'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports sound when the sound passes the threshold",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Sound: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-sound-sensor-do\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the LM393 sound detection module (electret microphone + LM393 comparator, digital OUT only, FC-04 / MH-sensor style). Use when designing, wiring, simulating or writing code for a sound / clap / noise detector module in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# LM393 sound detection module (DO only)\n\n## Overview\nThe **LM393 sound detection module** (blue MH-sensor-series board, often sold as FC-04) has:\n- an **electret microphone**\n- an **LM393 comparator**, a blue **sensitivity trimmer**, a power LED and a status LED\n\nIt has one output, **OUT**, a yes/no \"is it loud?\" signal:\n- **HIGH** when it is quiet\n- **LOW** (status LED lit) while the sound is louder than the trimmer threshold\n\nOUT does not measure volume. It only says whether a sound crossed the threshold.\n\n## Pinout (3-pin header, as printed)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | OUT | Digital output: HIGH = quiet, LOW = sound (pulled up to VCC on the board) |\n| 2 | GND | Ground |\n| 3 | VCC | Supply, 3.3–5 V |\n\n## Electrical limits\n- Supply: **3.3–5 V** (module rating; the LM393 itself runs on 2–36 V). A few mA with the LEDs on.\n- The LM393 output is open-collector (TI datasheet: sinks at least 6 mA at 1.5 V); the board pulls OUT up to VCC.\n- **On an ESP32 or Pico, power the module from 3.3 V** so OUT never goes above 3.3 V.\n\n## Interface details\n- The comparator compares the microphone signal with the trimmer voltage. It switches in about 1 µs, so OUT follows the sound wave itself: a clap gives a burst of short LOW pulses, not one steady LOW.\n- So **sample OUT over a short window** (the driver's `heard(50)` watches it for 50 ms) or use a falling-edge interrupt. A single `value()` read can miss a sound.\n- There is no calibration or dB scale. Set the threshold with the trimmer.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| OUT | any GPIO, e.g. GPIO25 | any GP, e.g. GP2 | any GPIO, e.g. GPIO24 (pin 18) |\n| GND | GND | GND | GND (pin 6) |\n| VCC | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n\n## Using the driver\n```python\nfrom sound_do import SoundDO\nimport time\nmic = SoundDO(25)             # OUT GPIO; active_low=False for boards whose OUT goes HIGH on sound\nwhile True:\n    print('Sound: %s' % ('YES' if mic.heard(50) else 'quiet'))\n    time.sleep(0.2)\n```\n\n## Gotchas\n- **OUT is backwards**: LOW means sound. Check yours: clap and watch the status LED.\n- **Set the threshold**: in silence, turn the trimmer until the status LED just goes off, then back it off a little. Too sensitive and the LED stays on.\n- It only reacts to fairly loud, close sounds (claps, knocks, speech up close). It cannot tell you how loud it is: use a module with an AO pin or an analog microphone (MAX4466, MAX9814) for that.\n- The pin order is OUT, GND, VCC; plugging it in reversed puts the supply on OUT.\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/lm393.pdf (LM393 comparator on the board).\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:12:01.664Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+      "https://components101.com/modules/lm393-sound-detection-sensor-module",
+      "https://www.energiazero.org/cartelle/arduino_sensori/sound_sensor_module.pdf"
+    ]
+  }
+}

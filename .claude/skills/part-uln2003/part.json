@@ -1,0 +1,154 @@
+{
+  "type": "custom-uln2003",
+  "name": "ULN2003 stepper motor driver board",
+  "mpn": "ULN2003A",
+  "category": "actuator",
+  "description": "TI ULN2003A seven-channel Darlington sink driver (50 V, 500 mA per channel, built-in flyback diodes) on the small board that ships with the 28BYJ-48 5 V unipolar stepper: four inputs switch the four motor coils, with an LED per channel. Sold as: ULN2003 stepper motor driver board for 28BYJ-48 (common green/blue 35 x 32 mm clone module in 28BYJ-48 kits, e.g. Elegoo/Geeetech; header IN1 IN2 IN3 IN4, power header - + marked 5-12V, ON/OFF jumper, 5-pin JST-XH motor socket).",
+  "eli5": "Lets your board turn a small stepper motor a precise number of steps, by switching its four coils on and off in turn.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "IN1",
+      "role": "io",
+      "description": "Input 1 -> ULN2003 channel 1 -> motor coil 1 (LED A). High = coil on. 3.3 V logic is enough",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "IN2",
+      "role": "io",
+      "description": "Input 2 -> motor coil 2 (LED B)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "IN3",
+      "role": "io",
+      "description": "Input 3 -> motor coil 3 (LED C)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "IN4",
+      "role": "io",
+      "description": "Input 4 -> motor coil 4 (LED D)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Power header '-': ground, must also connect to the microcontroller GND",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Power header '+' (5-12V): motor supply, goes to the motor's red common wire and the chip's COM clamp pin. Use 5 V for the 5 V 28BYJ-48",
+      "required": true
+    }
+  ],
+  "vmin": 5,
+  "vmax": 12,
+  "currentMa": 240,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/uln2003a.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "ULN2003 stepper motor driver board 28BYJ-48",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Plug the 28BYJ-48 into the 5-pin white JST socket (it only fits one way); the red wire is the common, fed from VCC.",
+    "Power VCC/GND from a separate 5 V supply for the 5 V motor (it draws about 240 mA with two coils on); join that GND to the microcontroller GND. The board's 5-12V marking is for 12 V motor versions - 12 V on a 5 V 28BYJ-48 will overheat it.",
+    "The ON/OFF jumper next to the power header connects VCC to the motor; leave it fitted.",
+    "Inputs need no level shifting: the ULN2003A has a 2.7 kOhm series resistor and switches 250 mA with 2.7 V or more, so 3.3 V GPIOs work.",
+    "Drive IN1..IN4 in that order with the half-step sequence (1000, 1100, 0100, 0110, 0010, 0011, 0001, 1001). Arduino's Stepper library needs the pins given as IN1, IN3, IN2, IN4 - this driver does not.",
+    "Call release() when the motor is idle: energised coils hold position but draw full current and get hot.",
+    "About 4096 half-steps per output turn (64:1 gear); keep the step interval at 2 ms or more."
+  ],
+  "keywords": [
+    "uln2003",
+    "uln2003a",
+    "28byj-48",
+    "stepper",
+    "stepper driver",
+    "darlington",
+    "unipolar stepper"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/uln2003a.pdf",
+    "https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "IN1",
+      "IN2",
+      "IN3",
+      "IN4"
+    ]
+  },
+  "driver": {
+    "filename": "uln2003.py",
+    "code": "# ULN2003 stepper driver board + 28BYJ-48 unipolar stepper, MicroPython driver.\n# The ULN2003A (TI) is seven Darlington low-side switches: input high (>= 2.7 V at 250 mA,\n# 2.7 kOhm series resistor on chip) = that output sinks current = that motor coil is energised.\n# The board feeds the motor's red common wire from VCC (5 V for the 5 V 28BYJ-48) and OUT1-OUT4 to the\n# four coil ends, so driving IN1..IN4 is driving the four coils directly. 3.3 V GPIOs are enough.\n#\n# Half-step sequence (28BYJ-48 datasheet, 8 steps, one or two coils on at a time). Running the\n# table forwards turns the shaft one way, backwards the other. One output-shaft turn is about\n# 4096 half-steps (gear ratio 64:1 nominal, 63.68:1 actual, so 4076 is more exact).\n# The motor's idle in-traction frequency is > 600 Hz, so keep the step delay >= 2 ms.\nfrom machine import Pin\nimport time\n\nHALF_STEP = (\n    (1, 0, 0, 0),\n    (1, 1, 0, 0),\n    (0, 1, 0, 0),\n    (0, 1, 1, 0),\n    (0, 0, 1, 0),\n    (0, 0, 1, 1),\n    (0, 0, 0, 1),\n    (1, 0, 0, 1),\n)\n\nFULL_STEP = (\n    (1, 1, 0, 0),\n    (0, 1, 1, 0),\n    (0, 0, 1, 1),\n    (1, 0, 0, 1),\n)\n\nSTEPS_PER_REV_HALF = 4096\nSTEPS_PER_REV_FULL = 2048\n\n\nclass ULN2003Stepper:\n    def __init__(self, in1, in2, in3, in4, delay_ms=2, half_step=True):\n        \"\"\"in1..in4: GPIO numbers wired to the board's IN1..IN4 (in that order).\"\"\"\n        self.pins = [Pin(p, Pin.OUT, value=0) for p in (in1, in2, in3, in4)]\n        self.seq = HALF_STEP if half_step else FULL_STEP\n        self.delay_ms = max(2, delay_ms)\n        self.index = 0\n        self.position = 0\n\n    def _apply(self, pattern):\n        for pin, v in zip(self.pins, pattern):\n            pin.value(v)\n\n    def step(self, count):\n        \"\"\"Move count steps; a negative count turns the other way. Coils stay energised afterwards\n        (holding torque) until release() is called.\"\"\"\n        direction = 1 if count >= 0 else -1\n        n = len(self.seq)\n        for _ in range(abs(count)):\n            self.index = (self.index + direction) % n\n            self._apply(self.seq[self.index])\n            self.position += direction\n            time.sleep_ms(self.delay_ms)\n\n    def rotate(self, degrees):\n        \"\"\"Turn the output shaft by roughly this many degrees.\"\"\"\n        per_rev = STEPS_PER_REV_HALF if self.seq is HALF_STEP else STEPS_PER_REV_FULL\n        self.step(round(degrees * per_rev / 360))\n\n    def release(self):\n        \"\"\"Switch every coil off: no holding torque, no current draw, motor stays cool.\"\"\"\n        self._apply((0, 0, 0, 0))\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom uln2003 import ULN2003Stepper\n\n# 28BYJ-48 on the ULN2003 board: IN1..IN4 in order, half-step mode.\nmotor = ULN2003Stepper({IN1}, {IN2}, {IN3}, {IN4})\nwhile True:\n    motor.step(256)          # about 22.5 degrees of the output shaft\n    print('moved 256 steps, holding')\n    time.sleep(1)\n    motor.release()          # coils off so the motor does not heat up\n    print('released')\n    time.sleep(1)\n",
+    "test": {
+      "id": "steps",
+      "title": "Motor steps 256 half-steps, holds on IN1, then releases",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moved 256 steps, holding",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN4",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "released",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:14:49.179Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/uln2003a.pdf",
+      "https://lastminuteengineers.com/28byj48-stepper-motor-arduino-tutorial/"
+    ]
+  }
+}

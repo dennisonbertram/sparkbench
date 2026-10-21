@@ -1,0 +1,104 @@
+{
+  "type": "custom-hc-sr505",
+  "name": "HC-SR505 mini PIR motion sensor",
+  "mpn": "HC-SR505",
+  "category": "sensor",
+  "description": "Miniature passive-infrared motion sensor module: OUT goes high (about 3.3 V from the on-board regulator) when a warm body moves within about 3 m in a cone under 100 degrees, and stays high for about 8 s (+/-30 %), re-triggering while motion continues. Sensitivity and hold time are fixed. Draws under 60 uA and runs from 4.5-20 V. Sold as: HC-SR505 mini PIR motion sensor module (10 x 23 mm green board with 10 mm white dome lens, 3-pin header +, OUT (S), -).",
+  "eli5": "A tiny heat-motion detector: when a person or animal moves in front of it, it sets its output pin high for about 8 seconds.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 4.5-20 V (marked + on the board) (pin 1)",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Motion output (marked S or OUT): about 3.3 V for ~8 s per trigger, 0 V otherwise. Safe for 3.3 V GPIOs (middle pin 2).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (marked - on the board) (pin 3)",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 20,
+  "currentMa": 0.06,
+  "datasheetUrl": "https://robu.in/wp-content/uploads/2017/04/datasheet-1.pdf",
+  "sources": [
+    "https://robu.in/wp-content/uploads/2017/04/datasheet-1.pdf",
+    "https://components101.com/sensors/hc-sr505-pir-sensor-pinout-datasheet",
+    "https://www.circuits-diy.com/pir-motion-sensor-module-hc-sr505/",
+    "https://microcontrollerslab.com/hc-sr505-pir-motion-sensor-module"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "HC-SR505 mini PIR motion sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: + (VCC), S/OUT, - (GND). OUT is always the middle pin; check the + mark before powering.",
+    "Power it from 5V (VBUS/VIN), not 3V3: the module needs 4.5-20 V. OUT stays at about 3.3 V, so it connects straight to a GPIO.",
+    "OUT is active high: 1 for about 8 s after motion (re-triggered while motion continues), then 0. The hold time and sensitivity cannot be adjusted.",
+    "Give it up to a minute after power-up to settle before trusting the output.",
+    "Point the dome where people move across its view; it senses moving warm bodies, not still ones, and cannot see through glass."
+  ],
+  "keywords": [
+    "hc-sr505",
+    "hcsr505",
+    "sr505",
+    "pir",
+    "passive infrared",
+    "motion",
+    "presence",
+    "occupancy",
+    "mini pir",
+    "low power"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Motion detected",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "hc_sr505.py",
+    "code": "# HC-SR505 mini PIR motion sensor module, MicroPython driver.\n# The module has the PIR element, its detector IC and a 3.3 V regulator on board.\n# OUT is a push-pull logic output from the 3.3 V rail:\n#   HIGH (about 3.3 V) while motion is detected; it stays high for the hold time\n#   (default 8 s +/- 30 %) and re-triggers while motion continues (repeatable trigger).\n#   LOW (0 V) otherwise.\n# Because OUT comes from the on-board 3.3 V regulator it connects straight to a\n# 3.3 V GPIO even when the module is powered from 5 V. No pull-up/down is needed.\n# Supply 4.5-20 V on \"+\": it will not work reliably from 3.3 V.\nfrom machine import Pin\n\n\nclass HCSR505:\n    def __init__(self, out_pin):\n        self.pin = Pin(out_pin, Pin.IN) if isinstance(out_pin, int) else out_pin\n\n    def motion(self):\n        \"\"\"True while the sensor reports motion (OUT high).\"\"\"\n        return self.pin.value() == 1\n\n    def on_change(self, handler):\n        \"\"\"Call handler(motion: bool) on every edge of OUT. Pass None to stop.\"\"\"\n        if handler is None:\n            self.pin.irq(handler=None)\n            return\n        self.pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING,\n                     handler=lambda p: handler(p.value() == 1))\n"
+  },
+  "example": {
+    "code": "from hc_sr505 import HCSR505\nimport time\n\npir = HCSR505({OUT})\nwhile True:\n    print('MOTION=%d' % pir.motion())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports motion when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:10:09.191Z",
+    "verifiedSources": [
+      "https://www.sigmaelectronica.net/wp-content/uploads/2014/06/HC-SR505.pdf",
+      "https://longan-labs.cc/products/2030011",
+      "https://makerselectronics.com/product/hc-sr505-mini-pir-motion-sensor-module/"
+    ]
+  }
+}

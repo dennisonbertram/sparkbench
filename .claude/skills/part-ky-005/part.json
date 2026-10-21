@@ -1,0 +1,110 @@
+{
+  "type": "custom-ky-005",
+  "name": "KY-005 infrared LED transmitter module",
+  "mpn": "KY-005",
+  "category": "actuator",
+  "description": "940 nm infrared LED transmitter module: a single 5 mm IR LED with a series current-limiting resistor, no driver transistor. Drive the S pin high and the LED emits invisible infrared light; low switches it off. To control a TV or air-conditioner, switch it with 38 kHz carrier bursts in the remote's protocol timing (e.g. NEC). The LED current (about 20-30 mA from a GPIO) comes from the S pin. Sold as: Keyes / HW-489 KY-005 infrared transmitter module from the 37-in-1 sensor kits, 3-pin header S, (middle, unlabelled VCC), -.",
+  "eli5": "The light in a TV remote: set the pin high and it glows with infrared light your eyes cannot see (a phone camera can). Flick it on and off in the right pattern and a TV obeys it.",
+  "refPrefix": "IR",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Signal: high = IR LED on, low = off. Drives the LED through the on-board resistor, so this pin supplies the LED current.",
+      "required": true
+    },
+    {
+      "name": "MID",
+      "role": "power",
+      "description": "Middle pin, unlabelled VCC (3.3-5 V). The LED itself runs between S and -, so this pin is not needed to make it emit.",
+      "required": false
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (LED cathode), shared with the microcontroller",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 30,
+  "datasheetUrl": "https://arduinomodules.info/ky-005-infrared-transmitter-sensor-module/",
+  "priceUsd": 1,
+  "supplierQuery": "KY-005 infrared transmitter module 940nm",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire S to a GPIO and - to GND. The middle pin (VCC) is optional; the LED runs from S through the on-board resistor.",
+    "Check that your board has the small series resistor next to the LED. Some clones leave it out: then add a 100-220 Ohm resistor in series with S or the LED and the GPIO can be damaged.",
+    "Range is 1-3 m at GPIO current (20-30 mA). For more range switch it with an NPN transistor (2N2222 or BC547, 1 kOhm base resistor) and feed the LED from 5 V.",
+    "On a Raspberry Pi Pico or Raspberry Pi (about 12-16 mA per pin) use the transistor circuit for anything beyond a short-range test.",
+    "Infrared is invisible: point a phone camera at the LED to see it flash. Do not stare into it at close range."
+  ],
+  "keywords": [
+    "ky-005",
+    "ky005",
+    "hw-489",
+    "infrared",
+    "ir led",
+    "ir transmitter",
+    "ir remote",
+    "940nm",
+    "38khz",
+    "nec"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "S"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nir = Pin({S}, Pin.OUT, value=0)  # S high = IR LED on (check it with a phone camera)\nwhile True:\n    ir.value(1)\n    print('IR ON')\n    time.sleep(1)\n    ir.value(0)\n    print('IR OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "blinks",
+      "title": "The IR LED switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "IR ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "IR OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://arduinomodules.info/ky-005-infrared-transmitter-sensor-module/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:13:33.124Z",
+    "verifiedSources": [
+      "https://eclass.uth.gr/modules/document/file.php/E-CE_U_269/Sensors/Sensors_%20Datasheets/KY-005-Joy-IT.pdf",
+      "https://www.circuits-diy.com/infrared-ir-transmitter-module/",
+      "https://www.espboards.dev/sensors/ky-005"
+    ]
+  }
+}

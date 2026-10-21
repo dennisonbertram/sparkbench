@@ -1,0 +1,79 @@
+{
+  "type": "custom-2-channel-relay-module",
+  "mpn": "SRD-05VDC-SL-C",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; 2-channel 5 V relay module (high/low trigger) needs at least 4.5 V, so it is powered from 5 V. K1.IN1 → D25 (GPIO25). K1.IN2 → D26 (GPIO26)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Relay 1 and relay 2 take turns switching on: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; 2-channel 5 V relay module (high/low trigger) needs at least 4.5 V, so it is powered from 5 V. K1.IN1 → GP2 (GPIO2). K1.IN2 → GP3 (GPIO3)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Relay 1 and relay 2 take turns switching on: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C35449 SRD-05VDC-SL-C (92085 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:14:09.172Z"
+}
