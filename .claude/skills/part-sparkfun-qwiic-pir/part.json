@@ -1,0 +1,183 @@
+{
+  "type": "custom-sparkfun-qwiic-pir",
+  "name": "SparkFun Qwiic PIR (170 uA, EKMC4607112K)",
+  "mpn": "SEN-17374",
+  "category": "sensor",
+  "description": "Passive infrared motion sensor (Panasonic EKMC4607112K, 170 uA, digital output, detects people up to about 5-7 m) read over I2C through an ATtiny84 running SparkFun's Qwiic PIR firmware: it reports the live PIR output, debounced object-detected/removed events, time-stamped event queues and an active-low INT line. 3.3 V board with 2.2 kΩ I2C pull-ups. I2C address 0x12 (0x13 with the ADR jumper cut, or set in software). Sold as: SparkFun Qwiic PIR - 170uA (EKMC4607112K) (SEN-17374), 5-pin 0.1\" header INT, SCL, SDA, 3V3, GND plus two Qwiic connectors.",
+  "eli5": "Notices when a warm body like a person moves in front of it and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low (driven low by the ATtiny when an event is waiting and interrupts are enabled), 10 kΩ pull-up to 3.3 V on the board. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V (no regulator on the board; the Qwiic system is 3.3 V only)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 5,
+  "i2cAddress": 18,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/7/2/a/4/3/EKMC460711xK_Spec.pdf",
+  "priceUsd": 20,
+  "supplierQuery": "SparkFun Qwiic PIR 170uA EKMC4607112K SEN-17374",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://www.sparkfun.com/products/17374",
+    "https://learn.sparkfun.com/tutorials/qwiic-pir-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/1/3/9/8/SparkFun_Qwiic_PIR-I2C_PTH_Header.jpg",
+    "https://cdn.sparkfun.com/assets/6/0/b/7/6/Qwiic_PIR-Schematic.pdf",
+    "https://cdn.sparkfun.com/assets/7/2/a/4/3/EKMC460711xK_Spec.pdf",
+    "https://github.com/sparkfun/Qwiic_PIR/blob/master/Firmware/Qwiic_PIR/Qwiic_PIR.ino",
+    "https://github.com/sparkfun/Qwiic_PIR/blob/master/Firmware/Qwiic_PIR/interrupts.ino",
+    "https://github.com/sparkfun/Qwiic_PIR/blob/master/Firmware/Qwiic_PIR/registers.h",
+    "https://github.com/sparkfun/SparkFun_Qwiic_PIR_Arduino_Library/blob/master/src/SparkFun_Qwiic_PIR.cpp",
+    "https://github.com/sparkfun/Qwiic_PIR_Py/blob/main/qwiic_pir.py"
+  ],
+  "buildNotes": [
+    "Power it from 3.3 V only: the board has no regulator and its I2C pull-ups go to its own 3V3 pin. The EKMC4607112K needs at least 3.0 V.",
+    "After power-up the PIR output is undefined for up to 30 s (circuit stability time); ignore readings until then.",
+    "Register reads: write the register number, then read; 16- and 32-bit registers are little-endian. Register 0x00 must read 0x72.",
+    "Status register 0x03: bit 0 = live PIR output, bit 1 = new event, bit 2 = object removed, bit 3 = object detected; write the byte back with bits 1-3 cleared to clear the events.",
+    "Default address 0x12; cutting the ADR jumper gives 0x13. A software-set address (register 0x19) is kept in EEPROM.",
+    "INT is only needed for interrupt-driven code; it is active low with a 10 kΩ pull-up on the board."
+  ],
+  "keywords": [
+    "qwiic pir",
+    "sparkfun",
+    "pir",
+    "motion sensor",
+    "ekmc4607112k",
+    "panasonic",
+    "i2c pir",
+    "attiny84",
+    "sen-17374"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 114,
+      "0x01": 1,
+      "0x02": 1,
+      "0x03": 0,
+      "0x04": 3,
+      "0x05": 10,
+      "0x06": 0,
+      "0x07": 2,
+      "0x08": 0,
+      "0x09": 0,
+      "0x0A": 0,
+      "0x0B": 0,
+      "0x0C": 0,
+      "0x0D": 0,
+      "0x0E": 0,
+      "0x0F": 0,
+      "0x10": 2,
+      "0x11": 0,
+      "0x12": 0,
+      "0x13": 0,
+      "0x14": 0,
+      "0x15": 0,
+      "0x16": 0,
+      "0x17": 0,
+      "0x18": 0,
+      "0x19": 18
+    },
+    "inputBits": [
+      {
+        "reg": "0x03",
+        "bit": 0,
+        "control": "motion",
+        "label": "Motion in view"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_pir.py",
+    "code": "# SparkFun Qwiic PIR (SEN-17374, Panasonic EKMC4607112K 170 uA), MicroPython driver.\n# The board's ATtiny84 runs SparkFun's Qwiic_PIR firmware (v1.1), which exposes a byte-addressed\n# register map: write the register number, then read. Multi-byte registers are little-endian (AVR).\n# Device ID register 0x00 reads 0x72. Default address 0x12 (0x13 with the ADR jumper cut).\nfrom micropython import const\n\n_ID = const(0x00)\n_FW_MINOR = const(0x01)\n_FW_MAJOR = const(0x02)\n_STATUS = const(0x03)            # bit0 rawReading, bit1 eventAvailable, bit2 objectRemoved, bit3 objectDetected\n_INT_CONFIG = const(0x04)        # bit0 interruptEnable\n_DEBOUNCE = const(0x05)          # uint16 ms\n_DETECT_Q_STATUS = const(0x07)   # bit0 popRequest, bit1 isEmpty, bit2 isFull\n_DETECT_Q_FRONT = const(0x08)    # uint32 ms since newest detection\n_DETECT_Q_BACK = const(0x0C)     # uint32 ms since oldest detection\n_REMOVE_Q_STATUS = const(0x10)\n_REMOVE_Q_FRONT = const(0x11)\n_REMOVE_Q_BACK = const(0x15)\n_I2C_ADDRESS = const(0x19)\n\nDEVICE_ID = const(0x72)\nDEFAULT_ADDRESS = const(0x12)\n\n\nclass QwiicPIR:\n    def __init__(self, i2c, addr=DEFAULT_ADDRESS):\n        self.i2c = i2c\n        self.addr = addr\n        if self._read(_ID, 1)[0] != DEVICE_ID:\n            raise OSError('Qwiic PIR not found at 0x%02X (wrong ID)' % addr)\n\n    # --- low level: pointer write (with STOP) then read, as SparkFun's library does\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _write(self, reg, data):\n        self.i2c.writeto(self.addr, bytes([reg]) + bytes(data))\n\n    def _read_u16(self, reg):\n        d = self._read(reg, 2)\n        return d[0] | (d[1] << 8)\n\n    def _read_u32(self, reg):\n        d = self._read(reg, 4)\n        return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24)\n\n    # --- identity\n    def device_id(self):\n        return self._read(_ID, 1)[0]\n\n    def firmware_version(self):\n        return (self._read(_FW_MAJOR, 1)[0], self._read(_FW_MINOR, 1)[0])\n\n    # --- PIR state\n    def status(self):\n        return self._read(_STATUS, 1)[0]\n\n    def raw_reading(self):\n        \"\"\"Live (not debounced) PIR output: True while the sensor reports motion.\"\"\"\n        return bool(self.status() & 0x01)\n\n    def available(self):\n        \"\"\"True when a new debounced detect/remove event happened since clear_event_bits().\"\"\"\n        return bool(self.status() & 0x02)\n\n    def object_removed(self):\n        return bool(self.status() & 0x04)\n\n    def object_detected(self):\n        return bool(self.status() & 0x08)\n\n    def clear_event_bits(self):\n        \"\"\"Clear eventAvailable, objectRemoved and objectDetected (also releases INT).\"\"\"\n        self._write(_STATUS, (self.status() & ~0x0E & 0xFF,))\n\n    def debounce_ms(self):\n        return self._read_u16(_DEBOUNCE)\n\n    def set_debounce_ms(self, ms):\n        ms = max(0, min(0xFFFF, int(ms)))\n        self._write(_DEBOUNCE, (ms & 0xFF, (ms >> 8) & 0xFF))\n\n    # --- interrupt pin (INT, active low, open drain with 10 k pull-up on the board)\n    def enable_interrupt(self, on=True):\n        v = self._read(_INT_CONFIG, 1)[0]\n        v = (v | 0x01) if on else (v & ~0x01 & 0xFF)\n        self._write(_INT_CONFIG, (v,))\n\n    # --- event queues (timestamps are milliseconds ago)\n    def detected_queue_empty(self):\n        return bool(self._read(_DETECT_Q_STATUS, 1)[0] & 0x02)\n\n    def time_since_last_detect(self):\n        return self._read_u32(_DETECT_Q_FRONT)\n\n    def pop_detected_queue(self):\n        t = self._read_u32(_DETECT_Q_BACK)\n        s = self._read(_DETECT_Q_STATUS, 1)[0]\n        self._write(_DETECT_Q_STATUS, (s | 0x01,))\n        return t\n\n    def removed_queue_empty(self):\n        return bool(self._read(_REMOVE_Q_STATUS, 1)[0] & 0x02)\n\n    def time_since_last_remove(self):\n        return self._read_u32(_REMOVE_Q_FRONT)\n\n    def pop_removed_queue(self):\n        t = self._read_u32(_REMOVE_Q_BACK)\n        s = self._read(_REMOVE_Q_STATUS, 1)[0]\n        self._write(_REMOVE_Q_STATUS, (s | 0x01,))\n        return t\n\n    # --- address (kept in the ATtiny's EEPROM; a cut ADR jumper overrides it with 0x13)\n    def set_address(self, new_addr):\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._write(_I2C_ADDRESS, (new_addr,))\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_pir import QwiicPIR\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\npir = QwiicPIR(i2c)\nprint('ID=0x%02X' % pir.device_id())\n# The EKMC4607112K needs up to 30 s after power-up before its output is valid.\nevents = 0\nlast = None\nwhile True:\n    m = pir.raw_reading()\n    if m != last:\n        if m:\n            events += 1\n            print('MOTION %d' % events)\n        else:\n            print('CLEAR %d' % events)\n        last = m\n    time.sleep_ms(100)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports when motion starts and stops",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ID=0x72",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CLEAR 0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "motion",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION 1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "motion",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CLEAR 1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:19:55.886Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/7/2/a/4/3/EKMC460711xK_Spec.pdf",
+      "https://learn.sparkfun.com/tutorials/qwiic-pir-hookup-guide",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/1/3/9/8/SparkFun_Qwiic_PIR-I2C_PTH_Header.jpg",
+      "https://github.com/sparkfun/Qwiic_PIR_Py"
+    ]
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "type": "custom-gravity-ozone-sen0321",
+  "name": "Gravity I2C ozone sensor (DFRobot SEN0321)",
+  "mpn": "SEN0321",
+  "category": "sensor",
+  "description": "Electrochemical ozone (O3) sensor module, 0-10 ppm with 10 ppb resolution: a Winsen ZE27-O3 cell module read by an onboard STM8 that presents the concentration over I2C as a 16-bit ppb value. Supply 3.3-5.5 V (onboard boost and 3 V regulator), 3 min warm-up, response time <= 90 s. I2C address 0x70-0x73 set by the A0/A1 DIP switch. Sold as: DFRobot Gravity: I2C Ozone Sensor (0-10ppm), SKU SEN0321, 4-pin Gravity I2C connector SDA, SCL, GND, VCC.",
+  "eli5": "Smells the air for ozone, the sharp-smelling gas made by ozone generators, UV lamps and smog, and tells your board how much is there in parts per billion.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 10000,
+      "description": "I2C data (pin 1). MOSFET level shifter with a 10 kOhm pull-up to VCC on the board, so the bus idles at VCC.",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 10000,
+      "description": "I2C clock (pin 2). MOSFET level shifter with a 10 kOhm pull-up to VCC on the board.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 3, black wire)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3-5.5 V (pin 4, red wire). Use 3.3 V with an ESP32/Pico: the I2C pull-ups go to VCC.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 10,
+  "i2cAddress": 115,
+  "datasheetUrl": "https://dfimg.dfrobot.com/wiki/18659/SEN0321_iic-ozone-sensor_datasheet_v1.pdf",
+  "sources": [
+    "https://wiki.dfrobot.com/Gravity_IIC_Ozone_Sensor_%280-10ppm%29%20SKU_SEN0321",
+    "https://dfimg.dfrobot.com/wiki/18659/SEN0321_iic-ozone-sensor_schematics_v1.pdf",
+    "https://dfimg.dfrobot.com/wiki/18659/SEN0321_iic-ozone-sensor_datasheet_v1.pdf",
+    "https://github.com/DFRobot/DFRobot_OzoneSensor/blob/master/src/DFRobot_OzoneSensor.cpp",
+    "https://github.com/DFRobot/DFRobot_OzoneSensor/blob/master/python/raspberrypi/DFRobot_Ozone.py",
+    "https://github.com/DFRobot/DFRobot_OzoneSensor/blob/master/examples/ReadOzoneData/ReadOzoneData.ino"
+  ],
+  "priceUsd": 50,
+  "supplierQuery": "DFRobot SEN0321 Gravity I2C ozone sensor 0-10ppm",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Connector order (DFRobot pinout table and schematic P1): 1 SDA, 2 SCL, 3 GND, 4 VCC. The real board has a 4-pin PH2.0 Gravity socket; use the supplied cable or Dupont adapters.",
+    "Power VCC from 3.3 V on an ESP32 or Pico: SDA and SCL have 10 kOhm pull-ups to VCC behind the MOSFET level shifters, so a 5 V supply would put 5 V on the bus.",
+    "I2C address from the A0/A1 DIP switch: 0x70 [0 0], 0x71 [1 0], 0x72 [0 1], 0x73 [1 1]. DFRobot's example uses 0x73; run i2c.scan() if unsure.",
+    "Read sequence (DFRobot library): write 0x03 = 0x01 for passive mode once; then per reading write 0x04 = 0x01, wait 100 ms, write the pointer 0x07, wait 100 ms, read 2 bytes. ppb = high * 256 + low. In active mode (0x03 = 0x00) request with 0x04 = 0x00 and read from 0x09.",
+    "Let the electrochemical cell warm up at least 3 minutes after power-on before trusting readings; response and recovery take up to 90 s.",
+    "Ozone is toxic: the 8-hour workplace limit is around 0.1 ppm (100 ppb). Test with good ventilation and do not run ozone generators near people.",
+    "Do not expose the cell to high concentrations of alcohol or other interfering gases; keep it in 15-90 %RH, -20 to 50 C, no condensation."
+  ],
+  "keywords": [
+    "ozone",
+    "o3",
+    "gas",
+    "air quality",
+    "ppb",
+    "electrochemical",
+    "sen0321",
+    "ze27-o3",
+    "gravity",
+    "dfrobot",
+    "i2c"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Ozone concentration",
+    "unit": "ppb",
+    "min": 0,
+    "max": 10000,
+    "default": 20,
+    "registers": {
+      "0x03": 0,
+      "0x04": 0
+    },
+    "measures": [
+      {
+        "reg": "0x07",
+        "bytes": 2,
+        "scale": 1
+      },
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 1
+      }
+    ]
+  },
+  "driver": {
+    "filename": "gravity_ozone.py",
+    "code": "# DFRobot Gravity I2C ozone sensor (SEN0321, Winsen ZE27-O3 behind an STM8 I2C bridge), MicroPython driver.\n# Register map and sequences from DFRobot's DFRobot_OzoneSensor library:\n#   0x03 MODE      0x00 = active (sensor uploads every second), 0x01 = passive (read on request)\n#   0x04 REQUEST   write 0x00 in active mode, 0x01 in passive mode to fetch a new value\n#   0x07/0x08      passive-mode concentration, high byte first, ppb\n#   0x09/0x0A      active-mode concentration, high byte first, ppb\n# Ozone (ppb) = high * 256 + low; ppm = ppb / 1000. Range 0-10 ppm, resolution 10 ppb.\nimport time\n\nMODE_ACTIVE = 0x00\nMODE_PASSIVE = 0x01\n\n_REG_MODE = 0x03\n_REG_REQUEST = 0x04\n_REG_PASSIVE_DATA = 0x07\n_REG_ACTIVE_DATA = 0x09\n\n\nclass GravityOzone:\n    def __init__(self, i2c, addr=0x73, mode=MODE_PASSIVE):\n        self.i2c = i2c\n        self.addr = addr\n        self.set_mode(mode)\n\n    def set_mode(self, mode):\n        if mode not in (MODE_ACTIVE, MODE_PASSIVE):\n            raise ValueError('mode must be MODE_ACTIVE or MODE_PASSIVE')\n        self.i2c.writeto(self.addr, bytes([_REG_MODE, mode]))\n        time.sleep_ms(100)  # the bridge MCU forwards the mode command to the ZE27-O3 over UART\n        self.mode = mode\n\n    def _read_word(self, reg):\n        # Same sequence as DFRobot's library: set the register pointer (with STOP), wait, then read 2 bytes.\n        self.i2c.writeto(self.addr, bytes([reg]))\n        time.sleep_ms(100)\n        d = self.i2c.readfrom(self.addr, 2)\n        return (d[0] << 8) | d[1]\n\n    def read_ppb(self):\n        \"\"\"Ozone concentration in ppb (parts per billion).\"\"\"\n        if self.mode == MODE_PASSIVE:\n            self.i2c.writeto(self.addr, bytes([_REG_REQUEST, 0x01]))  # request one reading\n            time.sleep_ms(100)\n            return self._read_word(_REG_PASSIVE_DATA)\n        self.i2c.writeto(self.addr, bytes([_REG_REQUEST, 0x00]))\n        time.sleep_ms(100)\n        return self._read_word(_REG_ACTIVE_DATA)\n\n    def read_ppm(self):\n        return self.read_ppb() / 1000\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom gravity_ozone import GravityOzone\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = GravityOzone(i2c, addr=0x73)\nwhile True:\n    ppb = sensor.read_ppb()\n    print('O3=%dppb %.2fppm' % (ppb, ppb / 1000))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the ozone concentration set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1250
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "O3=1250ppb 1.25ppm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:23:34.871Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/sen0321/",
+      "https://github.com/DFRobot/DFRobot_OzoneSensor",
+      "https://esphome.io/components/sensor/sen0321/"
+    ]
+  }
+}

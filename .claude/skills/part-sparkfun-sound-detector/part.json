@@ -1,0 +1,157 @@
+{
+  "type": "custom-sparkfun-sound-detector",
+  "name": "SparkFun Sound Detector",
+  "mpn": "SEN-12642",
+  "category": "sensor",
+  "description": "Electret microphone and an LMV324 quad rail-to-rail op-amp with three outputs at once: AUDIO (the mic signal amplified x100, DC coupled on VCC/2), ENVELOPE (precision rectifier and peak hold: 0 V in silence, rising with loudness) and GATE (Schmitt trigger: LOW when quiet, HIGH while sound is present, red LED follows it). Each output leaves through 100 ohm and swings rail to rail, so on the 5 V supply each output used needs a divider to a 3.3 V pin. Runs on 3.5-5.5 V (5 V ideal). Sold as: SparkFun Sound Detector SEN-12642 (SEN-14262 with headers), 5-pin header GND, VCC, GATE, ENVELOPE, AUDIO.",
+  "eli5": "A little ear with three ways to talk. AUDIO wiggles with the sound, ENVELOPE rises when it is loud, and GATE switches on (with a red light) whenever it hears something.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.5-5.5 V, 5 V ideal (pin 2). Needs a clean supply.",
+      "required": true
+    },
+    {
+      "name": "GATE",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output (pin 3): LOW when quiet, HIGH while sound is present. Rail-to-rail op-amp output through 100 ohm, so it reaches VCC: use a 10k/15k divider to a 3.3 V pin.",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 15000
+      }
+    },
+    {
+      "name": "ENVELOPE",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 4): sound amplitude, 0 V in silence up to about VCC. Through 100 ohm; use a 10k/15k divider to a 3.3 V ADC pin.",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 15000
+      }
+    },
+    {
+      "name": "AUDIO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 5): amplified audio waveform on a VCC/2 bias. Through 100 ohm; use a 10k/15k divider to a 3.3 V ADC pin.",
+      "required": false,
+      "divider": {
+        "top": 10000,
+        "bottom": 15000
+      }
+    }
+  ],
+  "vmin": 3.5,
+  "vmax": 5.5,
+  "currentMa": 5,
+  "datasheetUrl": "http://cdn.sparkfun.com/datasheets/Sensors/Sound/LMV324.pdf",
+  "sources": [
+    "http://cdn.sparkfun.com/datasheets/Sensors/Sound/LMV324.pdf",
+    "https://www.sparkfun.com/products/12642",
+    "https://learn.sparkfun.com/tutorials/sound-detector-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/8/a/1/2/5/sound-detector-v11.pdf",
+    "https://cdn.sparkfun.com/assets/d/c/9/3/b/sound-detector-v11.zip"
+  ],
+  "priceUsd": 12.5,
+  "supplierQuery": "SparkFun Sound Detector SEN-12642",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order from SparkFun's v11 schematic (JP1 pins 1-5) and silkscreen: GND, VCC, GATE, ENVELOPE, AUDIO.",
+    "Power VCC from 5 V (SparkFun: 3.5-5.5 V, 5 V ideal). A noisy supply (USB from a PC) shows up as noise; batteries or a regulated 5 V are cleaner.",
+    "The LMV324 outputs swing rail to rail, so on 5 V every output can reach 5 V. On a 3.3 V board wire each output you use through a divider: 10 kOhm from the output to the pin, 15 kOhm from the pin to GND (x0.6). The driver multiplies back by 25/15.",
+    "ENVELOPE is a slow level: average a few readings. AUDIO is the waveform on VCC/2: use the peak-to-peak spread over about 50 ms. GATE is plain logic (no pull-up needed).",
+    "Unused outputs can be left unconnected. On the ESP32 use ADC1 pins (GPIO32-39); the Raspberry Pi has no ADC."
+  ],
+  "keywords": [
+    "sparkfun",
+    "sound detector",
+    "sen-12642",
+    "sen-14262",
+    "sound",
+    "microphone",
+    "mic",
+    "envelope",
+    "gate",
+    "clap",
+    "loudness",
+    "lmv324",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "ENVELOPE",
+    "quantity": "Sound amplitude (ENVELOPE voltage)",
+    "unit": "V",
+    "min": 0,
+    "max": 5,
+    "default": 0,
+    "vAtMin": 0,
+    "vAtMax": 5,
+    "outputOhms": 100,
+    "digitalOutputs": [
+      {
+        "pin": "GATE",
+        "control": "gate",
+        "label": "Sound detected (GATE high)",
+        "activeHigh": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sound_detector.py",
+    "code": "# SparkFun Sound Detector (SEN-12642 / SEN-14262 with headers, header JP1 pins 1-5: GND, VCC, GATE, ENVELOPE, AUDIO),\n# MicroPython driver.\n# No bus, no registers. From SparkFun's v11 schematic: an electret capsule (biased through 2.2k from VCC) feeds\n# IC1G1, an LMV324 inverting preamp (gain R3/R2 = 100k/1k = 100) referenced to VCC/2 (R5/R6 10k/10k), so:\n#   AUDIO    - the audio waveform riding on VCC/2 (2.5 V on 5 V), DC coupled, through 100 ohm (R19).\n#   ENVELOPE - precision rectifier + peak hold (C1 10 uF, R9 10k) + buffer: 0 V in silence, rises with loudness,\n#              through 100 ohm (R18).\n#   GATE     - Schmitt trigger on the envelope: LOW when quiet, HIGH while sound is present, through 100 ohm (R15).\n# The LMV324 has rail-to-rail outputs, so on a 5 V supply (SparkFun: 3.5-5.5 V, 5 V ideal) every output can reach\n# 5 V. With a 3.3 V board each output therefore goes through a resistor divider (10k top, 15k bottom: x0.6) and\n# this driver multiplies the ADC reading back by `scale` = (top + bottom) / bottom to give the module's own volts.\n# Pass scale=1 if an output is wired straight to an ADC that tolerates the supply (e.g. a 5 V Arduino).\nfrom machine import ADC, Pin\nimport time\n\n\ndef _adc(pin):\n    a = ADC(Pin(pin) if isinstance(pin, int) else pin)\n    try:\n        a.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V input range; other ports have no atten()\n    except AttributeError:\n        pass\n    return a\n\n\nclass SoundDetector:\n    def __init__(self, audio=None, envelope=None, gate=None, scale=25 / 15, vref=3.3):\n        \"\"\"audio / envelope: GPIO numbers (or Pins) of ADC pins wired to AUDIO / ENVELOPE (None if unused).\n        gate: GPIO number (or Pin) wired to GATE (None if unused).\n        scale: divider ratio to undo, (top + bottom) / bottom; 25/15 for 10k over 15k, 1 for no divider.\n        vref: ADC full scale in volts when read_uv() is not available (Pico: the 3.3 V supply).\"\"\"\n        self.audio = _adc(audio) if audio is not None else None\n        self.env = _adc(envelope) if envelope is not None else None\n        self.gate_pin = (Pin(gate, Pin.IN) if isinstance(gate, int) else gate) if gate is not None else None\n        self.scale = scale\n        self.vref = vref\n\n    def _volts(self, adc):\n        if hasattr(adc, 'read_uv'):\n            v = adc.read_uv() / 1e6\n        else:\n            v = adc.read_u16() * self.vref / 65535\n        return v * self.scale\n\n    def envelope(self, n=16):\n        \"\"\"ENVELOPE in volts at the module (mean of n readings): about 0 V when quiet, higher when louder.\"\"\"\n        total = 0.0\n        for _ in range(n):\n            total += self._volts(self.env)\n        return total / n\n\n    def gate(self):\n        \"\"\"1 while the module detects sound (GATE high, red LED lit), 0 when quiet.\"\"\"\n        return self.gate_pin.value()\n\n    def audio_volts(self):\n        \"\"\"One AUDIO reading in volts at the module (sits at VCC/2 in silence).\"\"\"\n        return self._volts(self.audio)\n\n    def peak_to_peak(self, window_ms=50):\n        \"\"\"Spread (max - min) of AUDIO over window_ms, in volts at the module. 50 ms covers down to 20 Hz.\"\"\"\n        lo = hi = self._volts(self.audio)\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < window_ms:\n            v = self._volts(self.audio)\n            if v < lo:\n                lo = v\n            elif v > hi:\n                hi = v\n        return hi - lo\n"
+  },
+  "example": {
+    "code": "from sound_detector import SoundDetector\nimport time\n\nsd = SoundDetector(envelope={ENVELOPE}, gate={GATE})\nwhile True:\n    print('ENV=%.1fV GATE=%d' % (sd.envelope(), sd.gate()))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "sound",
+      "title": "Reports the envelope level and gate state set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gate",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ENV=2.0V GATE=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-sparkfun-sound-detector\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the SparkFun Sound Detector (SEN-12642 / SEN-14262, electret mic + LMV324, AUDIO / ENVELOPE / GATE outputs, header GND/VCC/GATE/ENVELOPE/AUDIO). Use when designing, wiring, simulating or writing code for a SparkFun Sound Detector in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# SparkFun Sound Detector (LMV324)\n\n## Overview\nThe **SparkFun Sound Detector** (SEN-12642; SEN-14262 is the same board with headers fitted) is an electret microphone and an **LMV324** quad rail-to-rail op-amp. It gives three outputs at once (SparkFun v11 schematic and hookup guide):\n- **AUDIO**: the microphone signal amplified ×100 (inverting preamp, R3 100k / R2 1k), DC coupled and riding on **VCC/2** (2.5 V on 5 V). Loudness = peak-to-peak swing.\n- **ENVELOPE**: a precision rectifier (gain 2.2) and peak hold (10 µF / 10 kΩ, ~0.1 s decay) with a buffer: **0 V when quiet**, rising with loudness. Read it with an ADC.\n- **GATE**: a Schmitt trigger on the envelope: **LOW when quiet, HIGH while sound is present** (the red LED follows it). Read it with a digital input or an interrupt.\nEach output leaves the board through a 100 Ω resistor. The values are relative, not calibrated dB.\n\n## Pinout (header JP1, pin 1 to 5, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | GND | Ground |\n| 2 | VCC | Supply, 3.5–5.5 V (5 V ideal) |\n| 3 | GATE | Digital: HIGH while sound is detected |\n| 4 | ENVELOPE | Analog: amplitude of the sound, 0 V in silence |\n| 5 | AUDIO | Analog: audio waveform on VCC/2 |\n\n## Electrical limits\n- Supply: **3.5–5.5 V** (SparkFun; the LMV324 itself is rated 2.5–5.5 V, 6 V absolute max). Use a clean supply: ripple above ~10 mV makes it unstable.\n- Current: a few mA (LMV324 ~0.4 mA, mic bias and LED ~1–2 mA each).\n- Outputs are **rail-to-rail**: on 5 V, AUDIO, ENVELOPE and GATE can all reach 5 V. On a 3.3 V board put a **divider on each output used** (10 kΩ from the output to the pin, 15 kΩ from the pin to GND: ×0.6, 5 V → 3.0 V). SparkFun recommends 5 V for the module and level-translating the outputs rather than running it on 3.3 V.\n\n## Interface details\n- AUDIO: sample fast for ~50 ms and take max − min. In silence it reads VCC/2.\n- ENVELOPE: a slow DC level; average a few readings.\n- GATE: plain push-pull logic level, no pull-up needed. Threshold is fixed (R11/R12 from VCC, R14 hysteresis); change sensitivity with the preamp gain (fit R17 in parallel with R3 to lower it).\n- Unused outputs can be left unconnected.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 5V / VIN | VBUS (pin 40) | 5 V (pin 2) |\n| GND | GND | GND | GND (pin 6) |\n| GATE | any GPIO via 10k/15k divider | any GP via divider | any GPIO via divider |\n| ENVELOPE | GPIO32–39 (ADC1) via divider | GP26/27/28 via divider | external ADC |\n| AUDIO | GPIO32–39 (ADC1) via divider | GP26/27/28 via divider | external ADC |\n\n## Using the driver\n```python\nfrom sound_detector import SoundDetector\nimport time\nsd = SoundDetector(audio=34, envelope=35, gate=25)   # scale=25/15 undoes the 10k/15k dividers\nwhile True:\n    print('env=%.2fV gate=%d p-p=%.2fV' % (sd.envelope(), sd.gate(), sd.peak_to_peak()))\n    time.sleep(0.2)\n```\n`envelope()` and `peak_to_peak()` return volts at the module (the divider is undone with `scale`); pass `scale=1` if wired without dividers.\n\n## Gotchas\n- **5 V outputs**: powered from 5 V, all three outputs reach 5 V. Use the dividers on a 3.3 V board.\n- **Too sensitive**: air conditioning or music next door can trip GATE. Lower the gain with R17 (100k ∥ 100k = ×50, 33 dB).\n- **Noisy USB power** shows up as noise or a constant tone; batteries (3 × AA = 4.5 V) or a regulated 5 V work best.\n- Handling and wind noise are picked up; mount it on foam.\n\n## Datasheet\nLMV324: http://cdn.sparkfun.com/datasheets/Sensors/Sound/LMV324.pdf. Board: https://www.sparkfun.com/products/12642, schematic https://cdn.sparkfun.com/assets/8/a/1/2/5/sound-detector-v11.pdf, guide https://learn.sparkfun.com/tutorials/sound-detector-hookup-guide\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:21:39.494Z",
+    "verifiedSources": [
+      "https://learn.sparkfun.com/tutorials/sound-detector-hookup-guide",
+      "https://cdn.sparkfun.com/assets/8/a/1/2/5/sound-detector-v11.pdf",
+      "http://cdn.sparkfun.com/datasheets/Sensors/Sound/LMV324.pdf",
+      "https://www.sparkfun.com/products/12642"
+    ]
+  }
+}

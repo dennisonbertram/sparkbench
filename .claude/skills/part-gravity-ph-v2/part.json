@@ -1,0 +1,113 @@
+{
+  "type": "custom-gravity-ph-v2",
+  "name": "Gravity analog pH sensor V2 (DFRobot SEN0161-V2)",
+  "mpn": "SEN0161-V2",
+  "category": "sensor",
+  "description": "Analog pH meter kit: a signal conditioner board with an onboard regulator plus a lab-grade BNC pH glass electrode. The A output is 0-3.0 V on a 3.3-5.5 V supply: about 1.50 V at pH 7 and 2.03 V at pH 4 (DFRobot_PH defaults), rising about 177 mV per pH unit as the liquid gets more acidic. pH 0-14, +/-0.1 pH at 25 C after two-point calibration. Sold as: DFRobot Gravity: Analog pH Sensor / Meter Kit V2 (SEN0161-V2), 3-pin PH2.0 connector printed -, +, A, with BNC probe socket on the opposite edge.",
+  "eli5": "Dip the probe in a liquid and the board tells you how sour (acidic) or soapy (alkaline) it is. More acidic liquid gives a higher voltage on A; your board turns that voltage into a pH number.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Connector pin 1 (black wire): ground.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Connector pin 2 (red wire): supply 3.3-5.5 V (onboard regulator).",
+      "required": true
+    },
+    {
+      "name": "A",
+      "role": "io",
+      "fn": "adc",
+      "description": "Connector pin 3 (blue wire): analog pH output 0-3.0 V, about 1.5 V at pH 7, rising about 0.177 V per pH as pH falls. Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 5,
+  "datasheetUrl": "https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2",
+  "sources": [
+    "https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2",
+    "https://dfimg.dfrobot.com/wiki/20520/SEN0161-V2_analog-ph-sensor-v2_layout_V1.0.pdf",
+    "https://dfimg.dfrobot.com/wiki/20520/SEN0161-V2_analog-ph-sensor-v2_datasheet_V1.0.pdf",
+    "https://github.com/DFRobot/DFRobot_PH/blob/master/DFRobot_PH.cpp"
+  ],
+  "priceUsd": 40,
+  "supplierQuery": "DFRobot Gravity analog pH sensor meter kit V2 SEN0161-V2",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Connector order printed on the board: - (GND), + (VCC), A (signal). The real board has a 3-pin PH2.0 Gravity socket; the cable is black -, red +, blue A.",
+    "The probe plugs into the BNC socket on the opposite edge, so wire the board with the Gravity cable or jumper leads.",
+    "Power + from 3.3 V or 5 V (3.3-5.5 V). A stays within 0-3.0 V, so it can go straight to an ESP32 ADC1 pin (GPIO32-39) or a Pico ADC pin (GP26-28).",
+    "pH = 7 - 3 x (V - Vn) / (Va - Vn) with V, Vn (pH 7.00 buffer) and Va (pH 4.00 buffer) in mV; defaults Vn = 1500, Va = 2032.44 are typical only.",
+    "Calibrate with pH 7.00 and pH 4.00 buffers (rinse between them, let the reading settle) using calibrate(), then keep neutral_mv / acid_mv.",
+    "Keep the glass bulb wet in storage solution and the BNC plug clean and dry; supply current is not specified by DFRobot (a few mA)."
+  ],
+  "keywords": [
+    "ph",
+    "ph meter",
+    "ph probe",
+    "sen0161-v2",
+    "sen0161",
+    "gravity",
+    "dfrobot",
+    "acidity",
+    "water quality",
+    "bnc",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "A",
+    "quantity": "pH of the liquid (typical uncalibrated probe)",
+    "unit": "pH",
+    "min": 0,
+    "max": 14,
+    "default": 7,
+    "vAtMin": 2.74236,
+    "vAtMax": 0.25764,
+    "outputOhms": 100
+  },
+  "driver": {
+    "filename": "gravity_ph.py",
+    "code": "# DFRobot Gravity: Analog pH Sensor / Meter Kit V2 (SEN0161-V2), MicroPython driver.\n# The signal board has its own regulator, so the A output stays within 0-3.0 V on a 3.3-5.5 V supply.\n# A is about 1500 mV in pH 7.00 buffer and about 2032 mV in pH 4.00 buffer (DFRobot_PH library defaults),\n# i.e. A RISES as the liquid gets more acidic. DFRobot's two-point formula (DFRobot_PH.cpp readPH):\n#     slope     = (7.0 - 4.0) / ((Vn - 1500)/3 - (Va - 1500)/3)\n#     intercept = 7.0 - slope * (Vn - 1500)/3\n#     pH        = slope * (V - 1500)/3 + intercept           (all voltages in mV)\n# which is the same as pH = 7 - 3 * (V - Vn) / (Va - Vn).\n# Vn / Va = A voltage measured in pH 7.00 / pH 4.00 buffer. Calibrate them with calibrate() for real readings.\nfrom machine import ADC, Pin\n\nNEUTRAL_MV = 1500.0   # typical A voltage in pH 7.00 buffer at 25 C\nACID_MV = 2032.44     # typical A voltage in pH 4.00 buffer at 25 C\n\n\nclass GravityPH:\n    def __init__(self, a, neutral_mv=NEUTRAL_MV, acid_mv=ACID_MV, samples=20, vref=3.3):\n        \"\"\"a: GPIO number (or Pin) wired to the board's A pin.\n        neutral_mv / acid_mv: A voltage (mV) in pH 7.00 / pH 4.00 buffer (from calibrate()).\n        vref: ADC full scale in volts, used only when the port has no read_uv() (e.g. Pico: 3.3).\"\"\"\n        self.adc = ADC(Pin(a) if isinstance(a, int) else a)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.neutral_mv = neutral_mv\n        self.acid_mv = acid_mv\n        self.samples = samples\n        self.vref = vref\n\n    def millivolts(self):\n        \"\"\"A voltage in mV: median of several samples (the probe signal is high impedance and noisy).\"\"\"\n        vals = []\n        for _ in range(self.samples):\n            if hasattr(self.adc, 'read_uv'):\n                vals.append(self.adc.read_uv() / 1000)\n            else:\n                vals.append(self.adc.read_u16() * self.vref * 1000 / 65535)\n        vals.sort()\n        n = len(vals)\n        return vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2\n\n    def ph(self, mv=None):\n        \"\"\"pH from the A voltage (mV), DFRobot two-point line through (neutral_mv, 7.0) and (acid_mv, 4.0).\"\"\"\n        if mv is None:\n            mv = self.millivolts()\n        slope = (7.0 - 4.0) / ((self.neutral_mv - 1500.0) / 3.0 - (self.acid_mv - 1500.0) / 3.0)\n        intercept = 7.0 - slope * (self.neutral_mv - 1500.0) / 3.0\n        return slope * (mv - 1500.0) / 3.0 + intercept\n\n    def calibrate(self, mv=None):\n        \"\"\"Put the rinsed probe in pH 7.00 or pH 4.00 buffer, wait for the reading to settle, then call this.\n        Like DFRobot_PH, it recognises the buffer from the voltage window (7.00: 1322-1678 mV, 4.00: 1854-2210 mV),\n        stores it and returns 7.0 or 4.0. Save neutral_mv / acid_mv yourself (e.g. in a file) to reuse them.\"\"\"\n        if mv is None:\n            mv = self.millivolts()\n        if 1322 < mv < 1678:\n            self.neutral_mv = mv\n            return 7.0\n        if 1854 < mv < 2210:\n            self.acid_mv = mv\n            return 4.0\n        raise ValueError('%.0f mV is not a pH 7.00 or 4.00 buffer reading' % mv)\n"
+  },
+  "example": {
+    "code": "from gravity_ph import GravityPH\nimport time\n\nsensor = GravityPH({A})\nwhile True:\n    mv = sensor.millivolts()\n    print('A=%.2fV pH=%.1f' % (mv / 1000, sensor.ph(mv)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Converts the A voltage to pH (alkaline liquid)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 9.8
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=1.00V pH=9.8",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-gravity-ph-v2\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity Analog pH Sensor / Meter Kit V2 (SEN0161-V2, 3-pin PH2.0 -/+/A connector, BNC lab-grade pH probe). Use when designing, wiring, simulating or writing code for a Gravity pH meter V2 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Gravity Analog pH Sensor V2 (DFRobot SEN0161-V2)\n\n## Overview\nThe **DFRobot Gravity: Analog pH Sensor / Meter Kit V2** is a signal conditioner board plus a laboratory-grade BNC pH glass electrode. The board has an onboard voltage regulator, so it runs from **3.3–5.5 V** and its analog output **A stays within 0–3.0 V**, safe for a 3.3 V ADC.\n- pH range 0–14, accuracy ±0.1 pH at 25 °C (after calibration)\n- Probe: 5–60 °C liquid, zero point pH 7 ± 0.5, response < 2 min, internal resistance < 250 MΩ\n- A is about **1500 mV in pH 7.00** buffer and about **2032 mV in pH 4.00** buffer (DFRobot_PH library defaults): **A rises as the liquid gets more acidic**, about 177 mV per pH.\n- No chip to talk to: read A with an ADC.\n\n## Pinout (3-pin PH2.0 Gravity connector, order printed on the board)\n| Pin | Label | Function |\n|---|---|---|\n| 1 | - | Ground (black wire) |\n| 2 | + | Supply 3.3–5.5 V (red wire) |\n| 3 | A | Analog output 0–3.0 V (blue wire) |\n| — | BNC | pH probe socket on the opposite edge |\n\nThe probe plugs into the BNC socket on the other edge of the board, so the module is wired with the Gravity cable / jumper leads.\n\n## Electrical limits\n- Supply 3.3–5.5 V (onboard regulator). Supply current is not specified by DFRobot (a few mA).\n- A: 0–3.0 V, so it can go straight to an ESP32 / Pico ADC pin.\n- Keep the signal board and the BNC dry; only the probe goes in the liquid (5–60 °C).\n\n## Interface details\nDFRobot's two-point formula (DFRobot_PH.cpp), voltages in mV:\n```\nslope     = (7.0 - 4.0) / ((Vn - 1500)/3 - (Va - 1500)/3)\nintercept = 7.0 - slope * (Vn - 1500)/3\npH        = slope * (V - 1500)/3 + intercept        ( = 7 - 3·(V - Vn)/(Va - Vn) )\n```\nVn / Va = A in pH 7.00 / pH 4.00 buffer (defaults 1500 / 2032.44 mV). Example with the defaults: A = 1003 mV → pH 9.8.\n**Calibration**: rinse the probe, put it in pH 7.00 buffer, wait for the reading to settle, calibrate; rinse, repeat in pH 4.00. Like the library, the driver recognises the buffer from the voltage window (7.00: 1322–1678 mV, 4.00: 1854–2210 mV).\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 3V3 (or 5V) | 3V3(OUT) | 3.3 V (pin 1) |\n| - | GND | GND | GND |\n| A | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (ADS1115) |\n\nUse an ADC1 pin on the ESP32 (ADC2 stops working while Wi-Fi is on). The Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom gravity_ph import GravityPH\nph = GravityPH(34)                   # A on GPIO34\nmv = ph.millivolts()\nprint('A=%.2fV pH=%.1f' % (mv / 1000, ph.ph(mv)))\nph.calibrate()                       # probe in pH 7.00 buffer -> 7.0; then in pH 4.00 buffer -> 4.0\nprint(ph.neutral_mv, ph.acid_mv)     # save these and pass them to GravityPH(...) next time\n```\n\n## Gotchas\n- The defaults are typical values only; every probe differs and ages. Calibrate monthly (weekly with heavy use) with fresh buffers.\n- The DFRobot library takes a temperature argument but does not compensate with it; calibrate near the measuring temperature.\n- A pH probe and a TDS/EC probe in the same water interfere; measure one at a time or isolate them.\n- Never let the glass bulb dry out: store it in the cap with KCl (3 M) storage solution, and rinse with distilled water between liquids.\n- The probe has a very high internal resistance; keep the BNC plug clean and dry or readings drift.\n\n## Datasheet\nhttps://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2 (vendor specification, pinout and board layout); formula from https://github.com/DFRobot/DFRobot_PH\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:20:35.590Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/Gravity__Analog_pH_Sensor_Meter_Kit_V2_SKU_SEN0161-V2"
+    ]
+  }
+}

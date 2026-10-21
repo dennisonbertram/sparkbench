@@ -1,0 +1,197 @@
+{
+  "type": "custom-adafruit-neokey-1x4",
+  "name": "Adafruit NeoKey 1x4 QT I2C",
+  "mpn": "Adafruit 4980",
+  "category": "input",
+  "description": "Four Cherry MX-compatible key sockets with a WS2812B NeoPixel under each key, read and lit over I2C: an ATSAMD09 running Adafruit seesaw firmware reads the keys (seesaw pins 4-7, pressed = 0) and drives the NeoPixels (seesaw pin 3). Runs on 3-5 V (3.3 V regulator, level-shifted I2C with 10 k pull-ups). Sold as: Adafruit NeoKey 1x4 QT I2C - Four Mechanical Key Switches with NeoPixels - STEMMA QT / Qwiic (product 4980, 6-pin header VIN, 3, -, C, D, INT plus two STEMMA QT sockets), I2C address 0x30 (0x30-0x3F with jumpers A0-A3).",
+  "eli5": "Four clicky keyboard keys with colour lights under them; a tiny chip on the board tells your board which keys are pressed and sets the colours, all over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (use the same voltage as your board's logic); also powers the NeoPixels",
+      "required": true
+    },
+    {
+      "name": "3",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "C",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock SCL (10 k pull-up to VIN and level shifter on board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data SDA (10 k pull-up to VIN and level shifter on board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "seesaw interrupt output from the 3.3 V SAMD09, low on a key change (only when enabled); not needed for basic use",
+      "required": false,
+      "levelV": 3.3
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 250,
+  "i2cAddress": 48,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42414-SAM-D09_Datasheet.pdf",
+  "priceUsd": 7.5,
+  "supplierQuery": "Adafruit 4980 NeoKey 1x4 QT I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Every seesaw access is a write of two bytes, module base then function register; for a read wait a few ms, then read the bytes back, big-endian.",
+    "Keys A-D are seesaw pins 4-7: set them input with pull-up (DIRCLR_BULK 0x01 0x03, PULLENSET 0x01 0x0B, BULK_SET 0x01 0x05, mask 0xF0), then read GPIO_BULK (0x01 0x04, 4 bytes); a bit reads 0 while its key is pressed.",
+    "NeoPixels: base 0x0E, PIN 0x01 = 3, SPEED 0x02 = 1, BUF_LENGTH 0x03 = 12, BUF 0x04 = 2-byte offset + GRB bytes, SHOW 0x05.",
+    "Default address 0x30; close A0/A1/A2/A3 on the back to add 1/2/4/8 (up to 0x3F).",
+    "Key switches are not included: plug any Cherry MX-compatible switch into the hot-swap sockets.",
+    "Each NeoPixel can draw about 60 mA at full white; keep brightness low on a 3V3 supply."
+  ],
+  "keywords": [
+    "neokey",
+    "adafruit 4980",
+    "seesaw",
+    "mechanical keys",
+    "keyboard",
+    "neopixel",
+    "stemma qt",
+    "qwiic",
+    "i2c buttons"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16,
+    "registers": {
+      "0x0001": 85
+    },
+    "inputBits": [
+      {
+        "reg": "0x0107",
+        "bit": 4,
+        "control": "keyA",
+        "label": "Key A pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 5,
+        "control": "keyB",
+        "label": "Key B pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 6,
+        "control": "keyC",
+        "label": "Key C pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 7,
+        "control": "keyD",
+        "label": "Key D pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "neokey1x4.py",
+    "code": "# Adafruit NeoKey 1x4 QT I2C (product 4980, ATSAMD09 running seesaw firmware), MicroPython driver.\n# seesaw protocol: every access starts with a write of [module base, function register];\n# for a read, wait briefly, then read the bytes back (all values big-endian).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_SWRST = 0x7F\n_GPIO_BASE = 0x01\n_GPIO_DIRCLR_BULK = 0x03\n_GPIO_BULK = 0x04\n_GPIO_BULK_SET = 0x05\n_GPIO_INTENSET = 0x08\n_GPIO_INTENCLR = 0x09\n_GPIO_PULLENSET = 0x0B\n_NEOPIXEL_BASE = 0x0E\n_NEOPIXEL_PIN = 0x01\n_NEOPIXEL_SPEED = 0x02\n_NEOPIXEL_BUF_LENGTH = 0x03\n_NEOPIXEL_BUF = 0x04\n_NEOPIXEL_SHOW = 0x05\n\n_HW_IDS = (0x55, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89)  # SAMD09 (this board) and ATtiny8xx/16xx seesaw chips\n_KEY_MASK = 0xF0       # keys A-D are seesaw pins 4-7 (PA04-PA07), pressed = pulled to GND\n_NEOPIXEL_SEESAW_PIN = 3  # PA03 drives the 4 WS2812B through a 74AHCT1G125 buffer\n_NUM_KEYS = 4\n\n\nclass NeoKey1x4:\n    def __init__(self, i2c, addr=0x30, reset=True, interrupt=False):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self._write(_STATUS_BASE, _STATUS_SWRST, b'\\xff')\n            time.sleep_ms(500)  # seesaw restarts after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw not in _HW_IDS:\n            raise OSError('seesaw not found at 0x%02x (HW_ID 0x%02x): check the wiring' % (addr, hw))\n        # Keys: inputs with pull-ups (a pressed key shorts the pin to GND).\n        mask = _KEY_MASK.to_bytes(4, 'big')\n        self._write(_GPIO_BASE, _GPIO_DIRCLR_BULK, mask)\n        self._write(_GPIO_BASE, _GPIO_PULLENSET, mask)\n        self._write(_GPIO_BASE, _GPIO_BULK_SET, mask)\n        self._write(_GPIO_BASE, _GPIO_INTENSET if interrupt else _GPIO_INTENCLR, mask)\n        # NeoPixels: pin 3, 800 kHz, 4 pixels x 3 bytes (GRB).\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_PIN, bytes([_NEOPIXEL_SEESAW_PIN]))\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_SPEED, b'\\x01')\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF_LENGTH, (_NUM_KEYS * 3).to_bytes(2, 'big'))\n\n    def _write(self, base, reg, data=b''):\n        self.i2c.writeto(self.addr, bytes([base, reg]) + bytes(data))\n\n    def _read(self, base, reg, n, delay_us=8000):\n        self.i2c.writeto(self.addr, bytes([base, reg]))\n        time.sleep_us(delay_us)  # seesaw needs time to fetch the value before the read\n        return self.i2c.readfrom(self.addr, n)\n\n    def keys(self):\n        \"\"\"List of 4 booleans, True while key A, B, C, D (seesaw pins 4-7) is pressed.\"\"\"\n        b = self._read(_GPIO_BASE, _GPIO_BULK, 4)\n        bits = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return [not (bits >> (4 + i)) & 1 for i in range(_NUM_KEYS)]\n\n    def __getitem__(self, i):\n        return self.keys()[i]\n\n    def pixel(self, i, r, g, b, show=True):\n        \"\"\"Set the NeoPixel under key i (0-3) to r, g, b (0-255 each).\"\"\"\n        if not 0 <= i < _NUM_KEYS:\n            raise IndexError('key index 0-3')\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF, (i * 3).to_bytes(2, 'big') + bytes([g & 255, r & 255, b & 255]))\n        if show:\n            self.show()\n\n    def fill(self, r, g, b):\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF, b'\\x00\\x00' + bytes([g & 255, r & 255, b & 255]) * _NUM_KEYS)\n        self.show()\n\n    def show(self):\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_SHOW)\n"
+  },
+  "skill": "---\nname: part-adafruit-neokey-1x4\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit NeoKey 1x4 QT I2C (product 4980), four Cherry MX-compatible key sockets with a WS2812B NeoPixel under each key, read and lit over I2C by an ATSAMD09 running seesaw firmware. Use when designing, wiring, simulating or writing code for a NeoKey 1x4 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit NeoKey 1x4 QT I2C (Adafruit 4980)\n\n## Overview\nA strip of four hot-swap (Kailh) sockets for Cherry MX-compatible key switches, each with a WS2812B RGB NeoPixel under it. An **ATSAMD09D14** running Adafruit's **seesaw** firmware reads the keys and drives the NeoPixels, so the whole board needs only SDA and SCL. It has two STEMMA QT / Qwiic sockets, a 3.3 V regulator (AP2112K) and BSS138 level shifters on the I2C lines. Key switches are sold separately.\n\n## Pinout (header order, as printed on the board)\nThe 6-pin header appears twice (along both long edges, same signals), so the board does not sit in a breadboard as a single row: wire it with jumper leads to one header or with a STEMMA QT cable. Silkscreen labels, from pin 1:\n\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3-5 V (use your board's logic voltage); also powers the NeoPixels |\n| 3 | 3.3 V regulator output, up to 100 mA (leave unconnected) |\n| - | Ground |\n| C | I2C clock (SCL), 10 k pull-up to VIN, level-shifted |\n| D | I2C data (SDA), 10 k pull-up to VIN, level-shifted |\n| INT | seesaw interrupt output, goes low on a key change (only when enabled) |\n\n## Electrical limits\n- Supply: 3-5 V on VIN. The SAMD09 runs from the on-board 3.3 V regulator.\n- I2C is level-shifted with 10 k pull-ups to VIN, so power VIN from the same voltage as your board's logic (3V3 for ESP32/Pico/Pi).\n- Current: about 5 mA idle; each NeoPixel draws up to about 60 mA at full white, so up to about 250 mA with all four at full brightness. Keep brightness low when powered from a 3V3 pin.\n- INT is driven by the 3.3 V SAMD09.\n\n## Interface details\n- **I2C address 0x30** by default. Jumpers A0/A1/A2/A3 on the back add 1/2/4/8 (0x30-0x3F, up to 16 boards).\n- seesaw protocol: write `[module base, function register]` plus any data. To read, write the two bytes, wait (8 ms in this driver, as in Adafruit's libraries), then read. Big-endian.\n- STATUS base 0x00: HW_ID 0x01 reads **0x55** (SAMD09). SWRST 0x7F: write 0xFF, then wait about 500 ms.\n- Keys: SWITCHA-SWITCHD are seesaw pins **4, 5, 6, 7** (PA04-PA07) to GND. Set them up with DIRCLR_BULK (0x01 0x03), PULLENSET (0x01 0x0B) and BULK_SET (0x01 0x05), mask 0x000000F0. Read GPIO_BULK (0x01 0x04, 4 bytes); a bit reads 0 while its key is pressed. INTENSET (0x01 0x08) with the same mask enables INT.\n- NeoPixels: seesaw pin 3, NEOPIXEL base 0x0E. PIN 0x01 = 3, SPEED 0x02 = 1 (800 kHz), BUF_LENGTH 0x03 = 12 (2 bytes), BUF 0x04 = 2-byte offset then GRB bytes, SHOW 0x05.\n\n## Wiring\n- ESP32: VIN → 3V3, - → GND, D → D21, C → D22.\n- Pico: VIN → 3V3(OUT), - → GND, D → GP4, C → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), - → pin 6, D → pin 3, C → pin 5.\n- Or use a STEMMA QT / Qwiic cable.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom neokey1x4 import NeoKey1x4\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nnk = NeoKey1x4(i2c)               # address 0x30\nprint(nk.keys())                  # [A, B, C, D] True = pressed\nnk.pixel(0, 0, 40, 0)             # key A green\n```\n\n## Gotchas\n- Key A (seesaw pin 4, index 0) is the key at the VIN / \"on\" LED end of the board.\n- Always wait a few ms between the register write and the read, or you get stale bytes.\n- In the Sparkbench simulator the four keys are toggles; the NeoPixel colours are accepted but not shown.\n- Several boards on one bus: give each its own address with the A0-A3 jumpers.\n\n## Datasheet\n- SAMD09 (the chip): https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42414-SAM-D09_Datasheet.pdf\n- Board guide: https://learn.adafruit.com/neokey-1x4-qt-i2c\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom neokey1x4 import NeoKey1x4\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nnk = NeoKey1x4(i2c)\nwhile True:\n    k = nk.keys()\n    for i in range(4):\n        nk.pixel(i, 0, 40 if k[i] else 0, 0, show=False)\n    nk.show()\n    print('keys=%s' % ''.join('1' if p else '0' for p in k))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports which keys are pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "keyA",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "keyC",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "keys=1010",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "keyA",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "keyC",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "keyD",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "keys=0001",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.adafruit.com/product/4980",
+    "https://learn.adafruit.com/neokey-1x4-qt-i2c/pinouts",
+    "https://learn.adafruit.com/neokey-1x4-qt-i2c/downloads",
+    "https://cdn-learn.adafruit.com/assets/assets/000/103/087/original/adafruit_products_NK14_sch.png",
+    "https://cdn-learn.adafruit.com/assets/assets/000/103/086/original/adafruit_products_NK14_fab_print.png",
+    "https://github.com/adafruit/Adafruit_CircuitPython_NeoKey/blob/main/adafruit_neokey/neokey1x4.py",
+    "https://github.com/adafruit/Adafruit_Seesaw/blob/master/Adafruit_seesaw.h",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/neopixel.py",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42414-SAM-D09_Datasheet.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:25:32.006Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/neokey-1x4-qt-i2c/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/103/026/large1024/adafruit_products_NK14_top_pinouts.jpg",
+      "https://www.adafruit.com/product/4980",
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-42414-SAM-D09_Datasheet.pdf"
+    ]
+  }
+}

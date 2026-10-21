@@ -1,0 +1,205 @@
+{
+  "type": "custom-msa301",
+  "name": "MSA301 3-axis accelerometer",
+  "mpn": "MSA301",
+  "category": "sensor",
+  "description": "MEMSensing MSA301 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, 14-bit output (4096 LSB/g at ±2 g), output data rate 1–1000 Hz, I2C only, one interrupt pin. Chip supply 1.62–3.6 V. Sold as: Adafruit MSA301 Triple Axis Accelerometer breakout, STEMMA QT / Qwiic (#4344), 6-pin header VIN, 3Vo, GND, SCL, SDA, INT (AP2112K 3.3 V regulator, 3–5 V supply, BSS138 level shifter with 10 kΩ pull-ups to VIN, fixed I2C address 0x26).",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, on three axes.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V into the on-board AP2112K 3.3 V regulator. SDA/SCL are pulled up to this pin, so use your board's logic voltage (3.3 V for ESP32/Pico)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (BSS138 level shifter, 10 kΩ pull-up to VIN on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (BSS138 level shifter, 10 kΩ pull-up to VIN on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output straight from the chip (3.3 V push-pull by default; new data, motion, tap, orientation, free-fall), optional",
+      "required": false,
+      "levelV": 3.3
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 38,
+  "datasheetUrl": "https://github.com/adafruit/Adafruit_MSA301/blob/master/MSA301-V1.0-ENG.PDF",
+  "priceUsd": 5,
+  "supplierQuery": "Adafruit MSA301 triple axis accelerometer STEMMA QT 4344",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://github.com/adafruit/Adafruit_MSA301/blob/master/MSA301-V1.0-ENG.PDF",
+    "https://learn.adafruit.com/msa301-triple-axis-accelerometer/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/079/674/large1024/sensors_front_crop.jpg",
+    "https://github.com/adafruit/Adafruit-MSA301-PCB",
+    "https://github.com/adafruit/Fritzing-Library/raw/master/parts/Adafruit%20MSA301.fzpz"
+  ],
+  "buildNotes": [
+    "The chip powers up in SUSPEND mode (register 0x11 = 0x9E): clear PWR_MODE (bits 7:6) to 00 for normal mode before reading, or the axis registers never update.",
+    "Set the data rate in 0x10 (e.g. 0x07 = 125 Hz with X/Y/Z enabled) and resolution/range in 0x0F (0x00 = 14-bit, ±2 g).",
+    "Read ACC_X_LSB..ACC_Z_MSB (0x02-0x07) in one 6-byte burst. Each axis is low byte first, two's complement, left-justified: shift right by 2, then divide by 4096/2048/1024/512 LSB/g at ±2/4/8/16 g.",
+    "PARTID (0x01) must read 0x13; anything else means a wiring fault. The address is fixed at 0x26, so only one MSA301 fits on a bus.",
+    "The board's SDA/SCL pull-ups go to VIN: power it from 3.3 V when the microcontroller runs at 3.3 V (ESP32, Pico, Raspberry Pi).",
+    "Mount the board flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "msa301",
+    "accelerometer",
+    "tilt",
+    "vibration",
+    "tap",
+    "orientation",
+    "free-fall",
+    "3-axis",
+    "memsensing",
+    "adafruit 4344"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x01": 19,
+      "0x0F": 0,
+      "0x10": 15,
+      "0x11": 158,
+      "0x22": 9,
+      "0x23": 48,
+      "0x24": 1,
+      "0x28": 20,
+      "0x2A": 4,
+      "0x2B": 10,
+      "0x2C": 24,
+      "0x2D": 8
+    },
+    "measures": [
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "shift": 2,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "shift": 2,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x06",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "shift": 2,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "msa301.py",
+    "code": "# MSA301 3-axis accelerometer (MEMSensing Microsystems), MicroPython driver for I2C.\n# From the MSA301 datasheet (V1.0, register map section):\n#   I2C address 0b0100110 = 0x26. PARTID (0x01) reads 0x13.\n#   ACC_X/Y/Z 0x02-0x07: low byte first; 14-bit two's complement, bits 13:6 in the MSB\n#   register and bits 5:0 in bits 7:2 of the LSB register (left-justified in 16 bits).\n#   0x0F RESOLUTION[3:2] (00 = 14 bit) FS[1:0] (00/01/10/11 = +-2/4/8/16 g).\n#   Sensitivity (14 bit): 4096 / 2048 / 1024 / 512 LSB/g.\n#   0x10 X/Y/Z_AXIS_DIS bits 7:5, ODR[3:0]. 0x11 PWR_MODE bits 7:6 (00 normal,\n#   01 low power, 1x suspend); the power-on default 0x9E is SUSPEND, so the\n#   driver must switch to normal mode before any data is produced.\nimport time\n\n_ADDR = 0x26\n_PARTID = 0x01\n_ACC_X_LSB = 0x02\n_RES_RANGE = 0x0F\n_ODR = 0x10\n_PWR_MODE_BW = 0x11\n\n_FS = {2: (0b00, 4096), 4: (0b01, 2048), 8: (0b10, 1024), 16: (0b11, 512)}  # FS bits, LSB/g\n\n\nclass MSA301:\n    def __init__(self, i2c, addr=_ADDR, g_range=2):\n        \"\"\"g_range: 2, 4, 8 or 16 g full scale (14-bit resolution).\"\"\"\n        if g_range not in _FS:\n            raise ValueError('g_range must be 2, 4, 8 or 16')\n        self.i2c = i2c\n        self.addr = addr\n        pid = self.i2c.readfrom_mem(addr, _PARTID, 1)[0]\n        if pid != 0x13:\n            raise OSError('MSA301 not found (PARTID 0x%02X, expected 0x13): check wiring' % pid)\n        fs, self._lsb_per_g = _FS[g_range]\n        # Normal power mode (PWR_MODE = 00), keep the low-power bandwidth bits\n        pm = self.i2c.readfrom_mem(addr, _PWR_MODE_BW, 1)[0]\n        self._w(_PWR_MODE_BW, pm & 0x3F)\n        # All three axes enabled, ODR 0111 = 125 Hz\n        self._w(_ODR, 0x07)\n        # RESOLUTION = 00 (14 bit), FS as requested\n        self._w(_RES_RANGE, fs)\n        time.sleep_ms(20)  # wake-up 1 ms from power-down plus a couple of 8 ms samples\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def raw(self):\n        \"\"\"(x, y, z) 14-bit counts from one 6-byte burst starting at ACC_X_LSB (0x02).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _ACC_X_LSB, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # LSB register first, MSB register second\n            if v & 0x8000:\n                v -= 65536\n            out.append(v >> 2)  # 14-bit value sits in bits 15:2\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._lsb_per_g\n        x, y, z = self.raw()\n        return x / k, y / k, z / k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom msa301 import MSA301\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = MSA301(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.3f Y=%.3f Z=%.3f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.500 Y=-0.300 Z=1.200 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:13:46.554Z",
+    "verifiedSources": [
+      "https://github.com/adafruit/Adafruit_MSA301/raw/master/MSA301-V1.0-ENG.PDF",
+      "https://learn.adafruit.com/msa301-triple-axis-accelerometer/pinouts",
+      "https://www.adafruit.com/product/4344"
+    ]
+  }
+}

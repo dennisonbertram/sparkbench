@@ -1,0 +1,260 @@
+{
+  "type": "custom-adafruit-gamepad-qt",
+  "name": "Adafruit Gamepad QT (I2C joystick + 6 buttons)",
+  "mpn": "Adafruit 5743",
+  "category": "input",
+  "description": "Mini gamepad read over I2C: an ATtiny816 running Adafruit seesaw firmware reads a 2-axis analog thumbstick (10-bit ADC on seesaw pins 14/15) and six buttons (A, B, X, Y, Select, Start on seesaw GPIO pins 5, 1, 6, 2, 0, 16), so it needs only SDA/SCL. Runs on 3-5 V (no regulator: the ATtiny and the 10 k SDA/SCL pull-ups run from VIN, so power it at your board's logic voltage). Sold as: Adafruit Mini I2C STEMMA QT Gamepad with seesaw (product 5743), one STEMMA QT socket plus a 6-pin 0.1\" header UPDI, IRQ, SDA, SCL, GND, VIN, I2C address 0x50 (0x50-0x53 with the A0/A1 jumpers).",
+  "eli5": "A tiny game controller with a thumbstick and six buttons; a little chip on the board reads them all and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "UPDI",
+      "role": "nc",
+      "description": "ATtiny816 programming pin (UPDI); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "IRQ",
+      "role": "io",
+      "description": "Interrupt output, active low, signals button presses/releases once enabled in seesaw (GPIO_INTENSET); optional, leave unconnected for basic use",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up to VIN on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up to VIN on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V; use your board's logic voltage (3.3 V on ESP32/Pico) because the I2C pull-ups go to VIN",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 5,
+  "i2cAddress": 80,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/aemDocuments/documents/MCU08/ProductDocuments/DataSheets/ATtiny416-816-DataSheet-DS40001913C.pdf",
+  "sources": [
+    "https://www.adafruit.com/product/5743",
+    "https://learn.adafruit.com/gamepad-qt/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/122/065/large1024/adafruit_products_GPQT_pinouts_guide.jpg",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/examples/seesaw_gamepad_qt.py",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/seesaw.py",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/attinyx16.py",
+    "https://ww1.microchip.com/downloads/aemDocuments/documents/MCU08/ProductDocuments/DataSheets/ATtiny416-816-DataSheet-DS40001913C.pdf"
+  ],
+  "priceUsd": 9.95,
+  "supplierQuery": "Adafruit 5743 Mini I2C STEMMA QT Gamepad seesaw",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "The 0.1\" header comes loose: solder it on for a breadboard, or just use a STEMMA QT / Qwiic cable (VIN, GND, SDA, SCL).",
+    "Header order as printed on the back: UPDI, IRQ, SDA, SCL, GND, VIN (seen from the front it reads VIN ... UPDI).",
+    "seesaw protocol: write [base, function], wait about 8 ms, then read in a separate transaction; values are big-endian.",
+    "Buttons: seesaw GPIO pins A=5, B=1, X=6, Y=2, Select=0, Start=16. Set them input with pull-up (DIRCLR_BULK 0x01 0x03, PULLENSET 0x01 0x0B, BULK_SET 0x01 0x05 with the pin mask), then read GPIO_BULK (0x01 0x04, 4 bytes); a pressed button reads 0.",
+    "Joystick: ADC base 0x09, register 0x07 + pin (0x15 for X on pin 14, 0x16 for Y on pin 15), 2 bytes, 10-bit 0-1023. Adafruit's example uses 1023 - reading so right/up count up.",
+    "Default address 0x50; cut A0 (+1) and/or A1 (+2) on the back for 0x51-0x53."
+  ],
+  "keywords": [
+    "gamepad",
+    "joystick",
+    "seesaw",
+    "adafruit 5743",
+    "stemma qt",
+    "qwiic",
+    "buttons",
+    "game controller",
+    "attiny816"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16,
+    "quantity": "Joystick X (raw ADC count)",
+    "unit": "",
+    "min": 0,
+    "max": 1023,
+    "default": 512,
+    "controls": [
+      {
+        "key": "joyY",
+        "quantity": "Joystick Y (raw ADC count)",
+        "unit": "",
+        "min": 0,
+        "max": 1023,
+        "default": 512
+      }
+    ],
+    "registers": {
+      "0x0001": 134
+    },
+    "responses": [
+      {
+        "match": "09 15",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          }
+        ]
+      },
+      {
+        "match": "09 16",
+        "bytes": [
+          {
+            "control": "joyY",
+            "bits": 16,
+            "scale": 1
+          }
+        ]
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x0107",
+        "bit": 5,
+        "control": "btnA",
+        "label": "Button A pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 1,
+        "control": "btnB",
+        "label": "Button B pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 6,
+        "control": "btnX",
+        "label": "Button X pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 2,
+        "control": "btnY",
+        "label": "Button Y pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 0,
+        "control": "btnSelect",
+        "label": "Button Select pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0105",
+        "bit": 0,
+        "control": "btnStart",
+        "label": "Button Start pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "seesaw_gamepad.py",
+    "code": "# Adafruit Mini I2C STEMMA QT Gamepad (product 5743, ATtiny816 running seesaw firmware), MicroPython driver.\n# seesaw protocol: every access starts with a write of [module base, function register];\n# for a read, wait briefly (8 ms, as Adafruit's library does), then read the bytes back (big-endian).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_SWRST = 0x7F\n_GPIO_BASE = 0x01\n_GPIO_DIRCLR_BULK = 0x03\n_GPIO_BULK = 0x04\n_GPIO_BULK_SET = 0x05\n_GPIO_PULLENSET = 0x0B\n_ADC_BASE = 0x09\n_ADC_CHANNEL_OFFSET = 0x07  # on ATtiny seesaw chips the channel register is 0x07 + seesaw pin number\n\n_HW_IDS = (0x84, 0x85, 0x86, 0x87, 0x88, 0x89)  # ATtiny806/807/816/817/1616/1617 seesaw (this board: 0x86)\n\n# seesaw pin numbers on the Gamepad QT\nBUTTON_SELECT = 0\nBUTTON_B = 1\nBUTTON_Y = 2\nBUTTON_A = 5\nBUTTON_X = 6\nBUTTON_START = 16\nJOY_X_PIN = 14\nJOY_Y_PIN = 15\n\nBUTTONS = (('A', BUTTON_A), ('B', BUTTON_B), ('X', BUTTON_X), ('Y', BUTTON_Y),\n           ('SELECT', BUTTON_SELECT), ('START', BUTTON_START))\n_MASK = 0\nfor _n, _p in BUTTONS:\n    _MASK |= 1 << _p\n\n\nclass GamepadQT:\n    def __init__(self, i2c, addr=0x50, reset=True):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self._write(_STATUS_BASE, _STATUS_SWRST, b'\\xff')\n            time.sleep_ms(500)  # seesaw restarts after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw not in _HW_IDS:\n            raise OSError('seesaw not found at 0x%02x (HW_ID 0x%02x): check the wiring' % (addr, hw))\n        # All six buttons: inputs with pull-up (a press pulls the pin to GND).\n        mask = _MASK.to_bytes(4, 'big')\n        self._write(_GPIO_BASE, _GPIO_DIRCLR_BULK, mask)\n        self._write(_GPIO_BASE, _GPIO_PULLENSET, mask)\n        self._write(_GPIO_BASE, _GPIO_BULK_SET, mask)\n\n    def _write(self, base, reg, data=b''):\n        self.i2c.writeto(self.addr, bytes([base, reg]) + bytes(data))\n\n    def _read(self, base, reg, n, delay_us=8000):\n        self.i2c.writeto(self.addr, bytes([base, reg]))\n        time.sleep_us(delay_us)  # seesaw needs time to fetch the value before the read\n        return self.i2c.readfrom(self.addr, n)\n\n    def analog_read(self, pin):\n        \"\"\"Raw 10-bit ADC reading (0-1023) of a seesaw analog pin.\"\"\"\n        b = self._read(_ADC_BASE, _ADC_CHANNEL_OFFSET + pin, 2)\n        return (b[0] << 8) | b[1]\n\n    def joystick(self):\n        \"\"\"(x, y), each 0-1023, about 512 at rest. Like Adafruit's example this returns\n        1023 - raw ADC count, so x grows to the right and y grows upward.\"\"\"\n        return 1023 - self.analog_read(JOY_X_PIN), 1023 - self.analog_read(JOY_Y_PIN)\n\n    def buttons(self):\n        \"\"\"Set of the names of the buttons held down now ('A', 'B', 'X', 'Y', 'SELECT', 'START').\"\"\"\n        b = self._read(_GPIO_BASE, _GPIO_BULK, 4)\n        bits = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return set(name for name, pin in BUTTONS if not (bits >> pin) & 1)\n"
+  },
+  "skill": "---\nname: part-adafruit-gamepad-qt\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit Mini I2C STEMMA QT Gamepad (product 5743, ATtiny816 running seesaw firmware: 2-axis thumbstick + A/B/X/Y/Select/Start buttons). Use when designing, wiring, simulating or writing code for the Gamepad QT in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit Gamepad QT (Adafruit 5743)\n\n## Overview\nA small game controller read over I2C. An **ATtiny816** running Adafruit's **seesaw** firmware reads a 2-axis analog thumbstick with its 10-bit ADC and six buttons (A, B, X, Y, Select, Start), so you only need SDA and SCL. It has one STEMMA QT / Qwiic socket, a 6-pin 0.1\" header (shipped loose), a green power LED and a red IRQ LED.\n\n## Pinout (header order, as printed on the back)\n| Pin | Function |\n|---|---|\n| UPDI | ATtiny816 programming pin (leave unconnected) |\n| IRQ | Interrupt output, active low (optional; must be enabled in seesaw) |\n| SDA | I2C data (10 k pull-up to VIN on board) |\n| SCL | I2C clock (10 k pull-up to VIN on board) |\n| GND | Ground |\n| VIN | Supply, 3-5 V |\n\nSeen from the front (buttons up) the same header reads VIN, GND, SCL, SDA, IRQ, UPDI from left to right.\n\n## Electrical limits\n- Supply: 3-5 V on VIN (the ATtiny816 itself is rated 1.8-5.5 V). There is no regulator or level shifter: the chip and the SDA/SCL pull-ups run straight from VIN. **Power it from 3.3 V** on an ESP32, Pico or Raspberry Pi so the I2C lines never see 5 V.\n- Current: a few mA (plus the LEDs).\n\n## Interface details\n- **I2C address 0x50** by default. Cutting A0/A1 on the back adds 1/2, giving 0x51-0x53.\n- seesaw protocol: write `[module base, function register]` plus any data. To read, write the two bytes, wait about 8 ms, then read. Values are big-endian.\n- STATUS base 0x00: HW_ID 0x01 reads **0x86** (ATtiny816). SWRST 0x7F: write 0xFF, then wait about 500 ms.\n- Buttons are seesaw GPIO pins **A=5, B=1, X=6, Y=2, Select=0, Start=16**. Set them as inputs with pull-ups using DIRCLR_BULK (0x01 0x03), PULLENSET (0x01 0x0B) and BULK_SET (0x01 0x05), each with the pin mask. Then read GPIO_BULK (0x01 0x04, 4 bytes). A held button reads **0**.\n- Joystick: ADC base 0x09. On ATtiny seesaw the channel register is 0x07 + pin number: **0x15 = X (pin 14)** and **0x16 = Y (pin 15)**. Each returns 2 bytes, 0-1023, about 512 at rest. The raw count falls as you push right/up, so Adafruit's example (and `joystick()` here) reports `1023 - raw`.\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VIN → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n- Or simply use a STEMMA QT / Qwiic cable.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom seesaw_gamepad import GamepadQT\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\npad = GamepadQT(i2c)              # address 0x50\nprint(pad.joystick(), pad.buttons())   # (512, 511) {'A'}\n```\n\n## Gotchas\n- Always leave the short delay between the register write and the read. Reading too quickly returns stale or garbage bytes.\n- The stick does not centre at exactly 512, and it has some jitter. Use a dead zone (Adafruit's example ignores changes of 3 or less).\n- In the Sparkbench simulator, the sliders set the raw ADC counts that the chip returns, before the `1023 - raw` flip. The IRQ output is not modelled.\n- Using several pads on one bus: give each one its own address with the A0/A1 jumpers.\n\n## Datasheet\n- ATtiny816 (the chip): https://ww1.microchip.com/downloads/aemDocuments/documents/MCU08/ProductDocuments/DataSheets/ATtiny416-816-DataSheet-DS40001913C.pdf\n- Board guide: https://learn.adafruit.com/gamepad-qt\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom seesaw_gamepad import GamepadQT\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\npad = GamepadQT(i2c)\nwhile True:\n    x, y = pad.joystick()\n    held = ' '.join(sorted(pad.buttons())) or 'none'\n    print('x=%d y=%d buttons=%s' % (x, y, held))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the joystick position and the buttons held",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 900
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "joyY",
+          "value": 100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btnA",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btnStart",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "x=123 y=923 buttons=A START",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btnA",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btnStart",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "btnY",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 300
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "x=723 y=923 buttons=Y",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:17:17.682Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/gamepad-qt/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/122/065/large1024/adafruit_products_GPQT_pinouts_guide.jpg?1687470071"
+    ]
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "type": "custom-gravity-ec",
+  "name": "Gravity analog EC meter (DFRobot DFR0300, K=1)",
+  "mpn": "DFR0300",
+  "category": "sensor",
+  "description": "Analog electrical conductivity (EC) meter: a signal conditioner board drives a K=1 lab-grade probe (BNC) with AC excitation and outputs a filtered 0–3.4 V on A proportional to conductivity. Range 0–20 ms/cm (1–15 recommended), ±5 % F.S., supply 3.0–5.0 V. EC = V_mV / 820 / 200 × 1000 × K / (1 + 0.0185(T − 25)) ms/cm. Sold as: DFRobot Gravity Analog Electrical Conductivity Sensor/Meter V2 (K=1), SKU DFR0300, 3-pin PH2.0 header printed -, +, A.",
+  "eli5": "Dip its probe in water and it tells you how well the water conducts electricity, which shows how much salt or plant food is dissolved in it. More dissolved stuff gives a higher voltage on its A pin.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Power GND, 0 V (pin 1, black wire)",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Power VCC (pin 2, red wire), 3.0–5.0 V. Use 3.3 V when A goes straight to a 3.3 V ADC.",
+      "required": true
+    },
+    {
+      "name": "A",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog signal output (pin 3, blue wire), 0–3.4 V, about 0.164 V per ms/cm. Connect to an ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 10,
+  "datasheetUrl": "https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K%3D1__SKU_DFR0300",
+  "sources": [
+    "https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K%3D1__SKU_DFR0300",
+    "https://wiki.dfrobot.com/DFR0300",
+    "https://github.com/DFRobot/DFRobot_EC/blob/master/DFRobot_EC.cpp",
+    "https://github.com/DFRobot/DFRobot_EC/blob/master/DFRobot_EC.h",
+    "https://dfimg.dfrobot.com/wiki/20188/DFR0300_analog-conductivity-sensor-k1_layout_V1.0.pdf"
+  ],
+  "priceUsd": 23,
+  "supplierQuery": "DFRobot Gravity analog electrical conductivity sensor EC meter V2 K=1 DFR0300",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Connector order (DFRobot pinout table): 1 - (GND), 2 + (VCC 3.0–5.0 V), 3 A (analog out). The real board has a 3-pin PH2.0 Gravity socket (black -, red +, blue A) and a BNC socket for the probe.",
+    "A can reach 3.4 V, so power + from 3.3 V when A goes straight to an ESP32 (ADC1: GPIO32–39) or Pico (GP26–28) ADC pin; over the 0–20 ms/cm range A stays at or below 3.28 V. From 5 V, add a divider and tell the driver its ratio.",
+    "EC (ms/cm) = V_mV / 820 / 200 × 1000 × K / (1 + 0.0185 × (T − 25)), T = water temperature in °C, K = calibration factor (1.0 until calibrated).",
+    "Two-point calibration is required: 1413 µS/cm buffer sets K_low (used below 2 ms/cm), 12.88 ms/cm buffer sets K_high (used above 2.5 ms/cm). Valid K is 0.5–1.5.",
+    "Only the probe goes in the water (0–40 °C); keep the signal board dry. Rinse the probe with distilled water between solutions.",
+    "Measure the water temperature (e.g. a waterproof DS18B20) for compensation: conductivity changes about 1.85 % per °C."
+  ],
+  "keywords": [
+    "ec",
+    "electrical conductivity",
+    "conductivity",
+    "water quality",
+    "hydroponics",
+    "dfr0300",
+    "gravity",
+    "dfrobot",
+    "ms/cm",
+    "analog",
+    "nutrient"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "A",
+    "quantity": "Water conductivity (raw, K=1)",
+    "unit": "ms/cm",
+    "min": 0,
+    "max": 20,
+    "default": 1.41,
+    "vAtMin": 0,
+    "vAtMax": 3.28
+  },
+  "driver": {
+    "filename": "gravity_ec.py",
+    "code": "# DFRobot Gravity Analog Electrical Conductivity Sensor/Meter V2 (K=1), SKU DFR0300. MicroPython driver.\n# The signal conditioner board drives the K=1 probe (BNC) with AC excitation and outputs a filtered DC\n# voltage on A (0-3.4 V) proportional to the water's conductivity. Conversion is DFRobot's own\n# (DFRobot_EC library, RES2 = 820, ECREF = 200, V in mV):\n#   rawEC = 1000 * V_mV / 820 / 200                 (ms/cm, before calibration)\n#   EC    = rawEC * K                               (K from two-point calibration, default 1.0)\n#   EC25  = EC / (1 + 0.0185 * (T - 25))            (temperature compensation to 25 C)\n# Two K values: K_low (calibrated in 1413 uS/cm buffer) is used below 2.0 ms/cm, K_high (12.88 ms/cm\n# buffer) above 2.5 ms/cm, with hysteresis in between, exactly like the library's automatic range shift.\n# Supported range 0-20 ms/cm (1-15 ms/cm recommended), probe 0-40 C, +/-5 % F.S.\nfrom machine import ADC, Pin\n\nRES2 = 820.0\nECREF = 200.0\nTEMP_COEF = 0.0185\n\n\nclass GravityEC:\n    def __init__(self, a, k_low=1.0, k_high=1.0, temperature=25.0, samples=30, vref=3.3, divider=1.0):\n        \"\"\"a: GPIO number (or Pin) wired to the board's A pin. k_low/k_high: calibration factors\n        (see calibrate()). temperature: water temperature in C for compensation.\n        vref: ADC full scale used when read_uv() is unavailable (e.g. Pico: 3.3).\n        divider: (top + bottom) / bottom if you put a resistor divider between A and the ADC.\"\"\"\n        self.adc = ADC(Pin(a) if isinstance(a, int) else a)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: widest input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.k_low = k_low\n        self.k_high = k_high\n        self.k = k_low\n        self.temperature = temperature\n        self.samples = samples\n        self.vref = vref\n        self.divider = divider\n\n    def voltage(self):\n        \"\"\"Voltage on A in volts, median of several ADC samples.\"\"\"\n        vals = []\n        for _ in range(self.samples):\n            if hasattr(self.adc, 'read_uv'):\n                vals.append(self.adc.read_uv() / 1e6)\n            else:\n                vals.append(self.adc.read_u16() * self.vref / 65535)\n        vals.sort()\n        n = len(vals)\n        mid = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2\n        return mid * self.divider\n\n    @staticmethod\n    def raw_ec(v):\n        \"\"\"Uncalibrated conductivity in ms/cm for a voltage v (volts) on A.\"\"\"\n        return 1000.0 * (v * 1000.0) / RES2 / ECREF\n\n    def ec(self, v=None, temperature=None):\n        \"\"\"Conductivity in ms/cm, calibrated and compensated to 25 C.\"\"\"\n        if v is None:\n            v = self.voltage()\n        if temperature is None:\n            temperature = self.temperature\n        raw = self.raw_ec(v)\n        # automatic range shift (library: first range 0-2, second range 2-20 ms/cm)\n        tmp = raw * self.k\n        if tmp > 2.5:\n            self.k = self.k_high\n        elif tmp < 2.0:\n            self.k = self.k_low\n        return raw * self.k / (1.0 + TEMP_COEF * (temperature - 25.0))\n\n    def calibrate(self, temperature=None):\n        \"\"\"Put the probe in 1413 uS/cm or 12.88 ms/cm buffer, then call this. The buffer is recognised\n        from the reading (as the DFRobot library does); the matching K is stored and returned.\"\"\"\n        if temperature is None:\n            temperature = self.temperature\n        v = self.voltage()\n        raw = self.raw_ec(v)\n        if 0.9 < raw < 1.9:\n            sol, high = 1.413, False\n        elif 9.0 < raw < 16.8:\n            sol, high = 12.88, True\n        else:\n            raise ValueError('buffer solution not recognised (raw %.2f ms/cm)' % raw)\n        comp = sol * (1.0 + TEMP_COEF * (temperature - 25.0))\n        k = RES2 * ECREF * comp / 1000.0 / (v * 1000.0)\n        if not 0.5 < k < 1.5:\n            raise ValueError('K=%.2f out of range 0.5-1.5: try again with fresh buffer' % k)\n        if high:\n            self.k_high = k\n        else:\n            self.k_low = k\n        return k\n"
+  },
+  "example": {
+    "code": "from gravity_ec import GravityEC\nimport time\n\nsensor = GravityEC({A})\nwhile True:\n    v = sensor.voltage()\n    print('A=%.2fV EC=%.2fms/cm' % (v, sensor.ec(v, temperature=25.0)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the A voltage and the conductivity it converts to",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12.88
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=2.11V EC=12.88ms/cm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-gravity-ec\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity Analog Electrical Conductivity Sensor/Meter V2 (K=1), SKU DFR0300 (3-pin - + A signal board with a BNC lab-grade EC probe). Use when designing, wiring, simulating or writing code for an EC / conductivity meter in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build, e.g. hydroponics nutrient monitoring.\n---\n\n# Gravity analog EC meter (DFRobot DFR0300, K=1)\n\n## Overview\nThe **DFRobot Gravity Analog Electrical Conductivity Sensor/Meter V2 (K=1), DFR0300** measures how well water conducts electricity (EC, in ms/cm), which tracks how much salt / nutrient is dissolved in it. A signal conditioner board drives the lab-grade K=1 probe (BNC) with **AC excitation** (less polarisation, longer probe life) and outputs a hardware-filtered DC voltage on **A** proportional to conductivity.\n- Supported range **0–20 ms/cm**, recommended **1–15 ms/cm**, accuracy **±5 % F.S.**\n- Output **0–3.4 V** on A (about 0.164 V per ms/cm)\n- Probe 0–40 °C; the board itself is not waterproof\n- No chip to talk to: it is an analog sensor, read with an ADC\n\n## Pinout (signal board, PH2.0 3-pin Gravity connector, order from DFRobot's pinout table)\n| Pin | Name | Function |\n|---|---|---|\n| 1 | - | Power GND (0 V) |\n| 2 | + | Power VCC, 3.0–5.0 V |\n| 3 | A | Analog signal output, 0–3.4 V |\n\nThe probe plugs into the separate BNC socket. Gravity cable colours: black = -, red = +, blue = A.\n\n## Electrical limits\n- Supply: **3.0–5.0 V**.\n- Output: 0–3.4 V. 3.4 V is above a 3.3 V ADC's range, so **power the board from 3.3 V** when A goes straight to an ESP32 / Pico ADC (the output then cannot exceed the supply). Across the 0–20 ms/cm range the output stays at or below 3.28 V. If you power it from 5 V, add a divider (e.g. 10 kΩ / 20 kΩ) and pass `divider=1.5` to the driver.\n- Probe 0–40 °C.\n\n## Interface details\nDFRobot's conversion (DFRobot_EC library, RES2 = 820, ECREF = 200), V in mV on A:\n```\nrawEC = 1000 × V_mV / 820 / 200            ms/cm  (= V_mV / 164)\nEC    = rawEC × K                          K from calibration (default 1.0)\nEC25  = EC / (1 + 0.0185 × (T − 25))       temperature compensation to 25 °C\n```\nTwo K values: K_low (from the 1413 µS/cm buffer) is used below 2.0 ms/cm, K_high (from the 12.88 ms/cm buffer) above 2.5 ms/cm, with hysteresis in between.\nExample: V = 2.11 V at 25 °C → 12.88 ms/cm.\n**Calibration (two points, both required)**: put the probe in 1413 µS/cm buffer, call `calibrate(T)`; rinse, then in 12.88 ms/cm buffer, call `calibrate(T)` again. The buffer is recognised from rawEC (0.9–1.9 → 1.413, 9–16.8 → 12.88); K = 820 × 200 × EC_buffer × (1 + 0.0185(T − 25)) / 1000 / V_mV and must be 0.5–1.5. Save the two K values yourself (e.g. a file) and pass them as `k_low`, `k_high`.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| - | GND | GND | GND |\n| A | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (ADS1115 / MCP3008) |\n\nOn the ESP32 use ADC1 pins (ADC2 stops working while Wi-Fi is on). The Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom gravity_ec import GravityEC\nec = GravityEC(34, k_low=1.0, k_high=1.0)      # A on GPIO34\nv = ec.voltage()\nprint('A=%.2fV EC=%.2fms/cm' % (v, ec.ec(v, temperature=25.0)))\n```\n`voltage()` is the median of 30 ADC samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V).\n\n## Gotchas\n- **Temperature matters** (~1.85 %/°C): feed the real water temperature (e.g. a waterproof DS18B20).\n- **Calibrate both points** (DFRobot FAQ); recalibrate about monthly, weekly with heavy use, using fresh buffer.\n- **Two probes in one tank interfere** (e.g. EC and pH): don't measure them at the same time without isolation.\n- Rinse the probe with distilled water between solutions and dry it before storing.\n- The ESP32 ADC is non-linear above about 3.1 V even at 11 dB attenuation; readings near 19–20 ms/cm are less accurate.\n- This is the K=1 probe: for seawater-level conductivity use the K=10 version (DFR0300-H).\n\n## Datasheet\nhttps://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K%3D1__SKU_DFR0300\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:21:26.577Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/Gravity__Analog_Electrical_Conductivity_Sensor___Meter_V2__K%3D1__SKU_DFR0300"
+    ]
+  }
+}

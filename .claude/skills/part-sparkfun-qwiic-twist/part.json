@@ -1,0 +1,205 @@
+{
+  "type": "custom-sparkfun-qwiic-twist",
+  "name": "SparkFun Qwiic Twist",
+  "mpn": "DEV-15083",
+  "category": "input",
+  "description": "24-detent rotary encoder with a built-in RGB LED and push switch, read over I2C: an ATtiny84 running SparkFun's firmware keeps a signed 16-bit detent count, the turn difference, pressed/clicked/moved status and time stamps, sets the knob colour (kept in EEPROM) and drives an open-drain INT line. 3.3 V board (no regulator) with 2.2 kOhm SDA/SCL pull-ups. I2C address 0x3F (0x3E with the ADR jumper closed; any 0x08-0x77 can be set in software). Sold as: SparkFun Qwiic Twist - RGB Rotary Encoder Breakout (DEV-15083), 6-pin 0.1\" header GND, 3.3V, SDA, SCL, INT, RST plus two Qwiic connectors.",
+  "eli5": "A knob you can turn and push, with a coloured light inside; a little chip counts the clicks as you turn it and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 3.3 V only (no regulator; the I2C and INT pull-ups go to this pin)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kOhm pull-up to 3.3 V on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kOhm pull-up to 3.3 V on the board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low, open drain with a 10 kOhm pull-up to 3.3 V on the board (INT jumper); goes low on a button press/release or after the knob stops turning. Not needed for basic use",
+      "required": false,
+      "boardPullUp": 10000,
+      "levelV": 3.3
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "ATtiny84 reset input, active low (holds the Twist in reset while low). Leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.6,
+  "currentMa": 30,
+  "i2cAddress": 63,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf",
+  "priceUsd": 23.5,
+  "supplierQuery": "SparkFun Qwiic Twist RGB Rotary Encoder DEV-15083",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.sparkfun.com/products/15083",
+    "https://learn.sparkfun.com/tutorials/qwiic-twist-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/4/6/SparkFun-Qwiic-Twist-I2C.jpg",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/4/6/Qwiic-Twist-ADR-INT-2.jpg",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/4/6/Qwiic_Twist_Register_Map_-_Endianness_Fixed_.jpg",
+    "https://github.com/sparkfun/Qwiic_Twist/blob/master/Firmware/Qwiic_Twist/Qwiic_Twist.ino",
+    "https://github.com/sparkfun/Qwiic_Twist/blob/master/Firmware/Qwiic_Twist/interrupts.ino",
+    "https://github.com/sparkfun/Qwiic_Twist/blob/master/Firmware/Qwiic_Twist/nvm.h",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Twist_Arduino_Library/blob/master/src/SparkFun_Qwiic_Twist_Arduino_Library.cpp",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf"
+  ],
+  "buildNotes": [
+    "Power it from 3.3 V only: there is no regulator and the 2.2 kOhm SDA/SCL pull-ups go to its 3.3V pin.",
+    "Register reads: write the register number, then read; 16-bit values are little-endian (low byte first). Register 0x00 reads 0x5C.",
+    "Count: register 0x05, 2 bytes, signed 16-bit, one count per detent (24 per turn), clockwise counts up.",
+    "Status register 0x01: bit 1 = knob pressed now, bit 2 = clicked (pressed and released), bit 0 = moved; write 0 to clear clicked and moved (pressed is read-only).",
+    "Knob colour: write red, green, blue (0-255) to registers 0x0D-0x0F in one write; the firmware stores them in EEPROM.",
+    "Default address 0x3F; closing the ADR jumper forces 0x3E. A new address (0x08-0x77) written to register 0x18 is kept in EEPROM.",
+    "INT (open drain, 10 kOhm pull-up) and RST are only for advanced use; leave them unconnected otherwise."
+  ],
+  "keywords": [
+    "qwiic twist",
+    "sparkfun",
+    "rotary encoder",
+    "rgb encoder",
+    "i2c encoder",
+    "knob",
+    "attiny84",
+    "dev-15083"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Encoder count",
+    "unit": "detents",
+    "min": -500,
+    "max": 500,
+    "default": 0,
+    "registers": {
+      "0x00": 92,
+      "0x01": 0,
+      "0x02": 1,
+      "0x03": 2,
+      "0x04": 3,
+      "0x07": 0,
+      "0x08": 0,
+      "0x09": 0,
+      "0x0A": 0,
+      "0x0B": 0,
+      "0x0C": 0,
+      "0x0D": 255,
+      "0x0E": 255,
+      "0x0F": 255,
+      "0x10": 0,
+      "0x11": 0,
+      "0x12": 0,
+      "0x13": 0,
+      "0x14": 0,
+      "0x15": 0,
+      "0x16": 250,
+      "0x17": 0,
+      "0x18": 63,
+      "0x19": 0,
+      "0x1A": 0
+    },
+    "measures": [
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 1,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x01",
+        "bit": 1,
+        "control": "button",
+        "label": "Knob pressed"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_twist.py",
+    "code": "# SparkFun Qwiic Twist (DEV-15083, RGB rotary encoder), MicroPython driver.\n# An ATtiny84 running SparkFun's firmware (v1.2) counts the 24-detent encoder and reads its push\n# switch, and serves a byte register map (a packed AVR struct, so 16-bit values are little-endian):\n#   0x00 ID = 0x5C          0x01 status: bit2 clicked, bit1 pressed (live), bit0 moved\n#   0x02/0x03 firmware major/minor   0x04 interrupt enable: bit1 button, bit0 encoder\n#   0x05 count (int16)      0x07 difference since cleared (int16)\n#   0x09 ms since last turn (uint16)  0x0B ms since last button event (uint16)\n#   0x0D/0x0E/0x0F red/green/blue LED 0-255   0x10/0x12/0x14 connect red/green/blue (int16)\n#   0x16 turn interrupt timeout ms (uint16, default 250)  0x18 I2C address  0x19 rotation limit (uint16)\n# Read: write the register number, then read; the firmware streams bytes from that register on.\n# Write: register number followed by the data bytes (consecutive registers).\n# Only the clicked and moved status bits are writable (pressed is read-only and follows the switch).\n\nADDR = 0x3F          # 0x3E with the ADR jumper closed\nDEVICE_ID = 0x5C\n\n_ID = 0x00\n_STATUS = 0x01\n_VERSION = 0x02\n_INT_ENABLE = 0x04\n_COUNT = 0x05\n_DIFF = 0x07\n_LAST_TURN = 0x09\n_LAST_BUTTON = 0x0B\n_RED = 0x0D\n_CONNECT_RED = 0x10\n_TURN_INT_TIMEOUT = 0x16\n_I2C_ADDRESS = 0x18\n_LIMIT = 0x19\n\n_CLICKED = 0x04\n_PRESSED = 0x02\n_MOVED = 0x01\n\n\nclass QwiicTwist:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        ident = self._read(_ID, 1)[0]\n        if ident != DEVICE_ID:\n            raise OSError('Qwiic Twist not found at 0x%02X (ID 0x%02X)' % (addr, ident))\n\n    # --- low level\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _write(self, reg, data):\n        self.i2c.writeto(self.addr, bytes([reg]) + bytes(data))\n\n    def _u16(self, reg):\n        d = self._read(reg, 2)\n        return d[0] | (d[1] << 8)\n\n    def _s16(self, reg):\n        v = self._u16(reg)\n        return v - 0x10000 if v & 0x8000 else v\n\n    def _write16(self, reg, v):\n        v &= 0xFFFF\n        self._write(reg, (v & 0xFF, v >> 8))\n\n    # --- identity\n    def version(self):\n        d = self._read(_VERSION, 2)\n        return d[0], d[1]  # (major, minor)\n\n    # --- encoder\n    def count(self):\n        \"\"\"Detents turned since power-on (signed 16-bit; clockwise counts up).\"\"\"\n        return self._s16(_COUNT)\n\n    def set_count(self, n):\n        self._write16(_COUNT, n)\n\n    def diff(self, clear=True):\n        \"\"\"Detents turned since the difference was last cleared.\"\"\"\n        d = self._s16(_DIFF)\n        if clear:\n            self._write16(_DIFF, 0)\n        return d\n\n    def set_limit(self, limit):\n        \"\"\"0 = no limit; otherwise the count wraps within 0..limit (firmware 1.2+).\"\"\"\n        self._write16(_LIMIT, limit)\n\n    def time_since_turn(self):\n        return self._u16(_LAST_TURN)\n\n    def time_since_button(self):\n        return self._u16(_LAST_BUTTON)\n\n    # --- status / button\n    def status(self):\n        return self._read(_STATUS, 1)[0]\n\n    def pressed(self):\n        \"\"\"True while the knob is pushed in.\"\"\"\n        return bool(self.status() & _PRESSED)\n\n    def clicked(self):\n        \"\"\"True if the knob was pressed and released since the last call (clears the flag).\"\"\"\n        s = self.status()\n        if s & _CLICKED:\n            self._write(_STATUS, (s & ~_CLICKED & 0xFF,))\n            return True\n        return False\n\n    def moved(self):\n        \"\"\"True if the knob was turned since the last call (clears the flag).\"\"\"\n        s = self.status()\n        if s & _MOVED:\n            self._write(_STATUS, (s & ~_MOVED & 0xFF,))\n            return True\n        return False\n\n    def clear_interrupts(self):\n        \"\"\"Clear clicked and moved; the INT pin is released once no flag is set.\"\"\"\n        self._write(_STATUS, (0,))\n\n    def enable_interrupts(self, button=True, encoder=True):\n        self._write(_INT_ENABLE, ((2 if button else 0) | (1 if encoder else 0),))\n\n    def set_turn_timeout(self, ms):\n        \"\"\"Quiet time after turning before INT fires (default 250 ms).\"\"\"\n        self._write16(_TURN_INT_TIMEOUT, ms)\n\n    # --- RGB LED in the knob (values are kept in the ATtiny's EEPROM)\n    def set_color(self, r, g, b):\n        self._write(_RED, (r & 0xFF, g & 0xFF, b & 0xFF))\n\n    def color(self):\n        d = self._read(_RED, 3)\n        return d[0], d[1], d[2]\n\n    def connect_color(self, r, g, b):\n        \"\"\"Change each colour by this much per detent (negative allowed); 0 disconnects it.\"\"\"\n        data = []\n        for v in (r, g, b):\n            v &= 0xFFFF\n            data += [v & 0xFF, v >> 8]\n        self._write(_CONNECT_RED, data)\n\n    # --- address (stored in EEPROM; a closed ADR jumper forces 0x3E)\n    def set_address(self, new_addr):\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._write(_I2C_ADDRESS, (new_addr,))\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_twist import QwiicTwist\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ntwist = QwiicTwist(i2c)\nprint('ID ok, firmware %d.%d' % twist.version())\nwhile True:\n    print('count=%d pressed=%d' % (twist.count(), 1 if twist.pressed() else 0))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the encoder count and the knob switch",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "count=37 pressed=1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -12
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "count=-12 pressed=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:18:46.908Z",
+    "verifiedSources": [
+      "https://learn.sparkfun.com/tutorials/qwiic-twist-hookup-guide",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/8/4/6/Qwiic_Twist_Register_Map_-_Fixed_Endianness.pdf",
+      "https://cdn.sparkfun.com/assets/d/f/5/1/2/SparkFun_Qwiic_Twist.zip",
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf"
+    ]
+  }
+}

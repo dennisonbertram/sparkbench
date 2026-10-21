@@ -1,0 +1,79 @@
+{
+  "type": "custom-gravity-orp",
+  "mpn": "SEN0464",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Gravity ORP sensor (DFRobot Analog ORP Sensor PRO) needs at least 5 V, so it is powered from 5 V. U2.A → D32 (GPIO32) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on A: it swings to 5 V, and the D32 pin takes 3.3 V at most. Added the gravity_orp_pro.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Converts the A voltage to ORP (oxidising water): passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; Gravity ORP sensor (DFRobot Analog ORP Sensor PRO) needs at least 5 V, so it is powered from 5 V. U2.A → GP28 (GPIO28) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on A: it swings to 5 V, and the GP28 pin takes 3.3 V at most. Added the gravity_orp_pro.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Converts the A voltage to ORP (oxidising water): passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T17:26:39.335Z"
+}

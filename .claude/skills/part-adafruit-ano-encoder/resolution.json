@@ -1,0 +1,46 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says VIN, datasheet reading says UPDI",
+      "verdict": "part-correct",
+      "evidence": "The Adafruit EAGLE board file for product 5740 numbers header JP1 pads 1-6 as VCC(VIN), GND, SCL, SDA, INT, UPDI, so the model's pin order is right and the second reading listed the same six pads in reverse (right-to-left) order; the file shows '<signal name=\"VCC\"> <contactref element=\"CONN3\" pad=\"2\"/> <contactref element=\"CONN4\" pad=\"2\"/> <contactref element=\"C2\" pad=\"1\"/> <contactref element=\"X2\" pad=\"4\"/> <contactref element=\"R3\" pad=\"2\"/> <contactref element=\"C3\" pad=\"1\"/> <contactref element=\"C4\" pad=\"1\"/> <contactref element=\"JP1\" pad=\"1\"/>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-ANO-Rotary-Navigation-Encoder-to-I2C/main/Adafruit%20ANO%20Rotary%20Encoder%20to%20I2C.brd"
+    },
+    {
+      "diff": "header pin 2: part says GND, datasheet reading says INT",
+      "verdict": "part-correct",
+      "evidence": "The Adafruit EAGLE board file for product 5740 numbers header JP1 pads 1-6 as VCC(VIN), GND, SCL, SDA, INT, UPDI, so the model's pin order is right and the second reading listed the same six pads in reverse (right-to-left) order; the file shows '<pinref part=\"JP1\" gate=\"A\" pin=\"2\"/> <wire x1=\"160.02\" y1=\"157.48\" x2=\"170.18\" y2=\"157.48\" width=\"0.1524\" layer=\"91\"/> <pinref part=\"U$1\" gate=\"G$1\" pin=\"GND\"/>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-ANO-Rotary-Navigation-Encoder-to-I2C/main/Adafruit%20ANO%20Rotary%20Encoder%20to%20I2C.sch"
+    },
+    {
+      "diff": "header pin 3: part says SCL, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "The Adafruit EAGLE board file for product 5740 numbers header JP1 pads 1-6 as VCC(VIN), GND, SCL, SDA, INT, UPDI, so the model's pin order is right and the second reading listed the same six pads in reverse (right-to-left) order; the file shows '<signal name=\"SCL\"> <contactref element=\"CONN4\" pad=\"4\"/> <contactref element=\"CONN3\" pad=\"4\"/> <contactref element=\"X2\" pad=\"14\"/> <contactref element=\"JP1\" pad=\"3\"/>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-ANO-Rotary-Navigation-Encoder-to-I2C/main/Adafruit%20ANO%20Rotary%20Encoder%20to%20I2C.brd"
+    },
+    {
+      "diff": "header pin 4: part says SDA, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "The Adafruit EAGLE board file for product 5740 numbers header JP1 pads 1-6 as VCC(VIN), GND, SCL, SDA, INT, UPDI, so the model's pin order is right and the second reading listed the same six pads in reverse (right-to-left) order; the file shows '<signal name=\"SDA\"> <contactref element=\"CONN4\" pad=\"3\"/> <contactref element=\"CONN3\" pad=\"3\"/> <contactref element=\"X2\" pad=\"13\"/> <contactref element=\"JP1\" pad=\"4\"/>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-ANO-Rotary-Navigation-Encoder-to-I2C/main/Adafruit%20ANO%20Rotary%20Encoder%20to%20I2C.brd"
+    },
+    {
+      "diff": "header pin 5: part says INT, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "The Adafruit EAGLE board file for product 5740 numbers header JP1 pads 1-6 as VCC(VIN), GND, SCL, SDA, INT, UPDI, so the model's pin order is right and the second reading listed the same six pads in reverse (right-to-left) order; the file shows '<signal name=\"INT\"> <contactref element=\"JP1\" pad=\"5\"/>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-ANO-Rotary-Navigation-Encoder-to-I2C/main/Adafruit%20ANO%20Rotary%20Encoder%20to%20I2C.brd"
+    },
+    {
+      "diff": "header pin 6: part says UPDI, datasheet reading says VIN",
+      "verdict": "part-correct",
+      "evidence": "The Adafruit EAGLE board file for product 5740 numbers header JP1 pads 1-6 as VCC(VIN), GND, SCL, SDA, INT, UPDI, so the model's pin order is right and the second reading listed the same six pads in reverse (right-to-left) order; the file shows '<signal name=\"UPDI\"> <contactref element=\"R3\" pad=\"1\"/> <contactref element=\"X2\" pad=\"19\"/> <contactref element=\"JP1\" pad=\"6\"/>'.",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-ANO-Rotary-Navigation-Encoder-to-I2C/main/Adafruit%20ANO%20Rotary%20Encoder%20to%20I2C.brd"
+    },
+    {
+      "diff": "chip ID register 0x1: part 134, datasheet reading 135",
+      "verdict": "part-correct",
+      "evidence": "The Adafruit guide says the board carries 'the ATtiny816 running the seesaw firmware' and Adafruit_seesaw.h defines '#define SEESAW_HW_ID_CODE_TINY816 0x86' (=134), while 0x87 (135) is the ATtiny817 code, so HW_ID 134 is right.",
+      "source": "https://learn.adafruit.com/adafruit-ano-rotary-navigation-encoder-to-i2c-stemma-qt-adapter/pinouts ; https://raw.githubusercontent.com/adafruit/Adafruit_Seesaw/master/Adafruit_seesaw.h"
+    }
+  ]
+}

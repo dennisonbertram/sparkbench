@@ -1,0 +1,112 @@
+{
+  "type": "custom-gravity-co2-sen0219",
+  "name": "Gravity analog infrared CO2 sensor (SEN0219)",
+  "mpn": "SEN0219",
+  "category": "sensor",
+  "description": "DFRobot NDIR (non-dispersive infrared) CO2 sensor on a Gravity carrier, analog-output version: 0.4–2.0 V on Signal for 0–5000 ppm CO2 (linear, effective range 400–5000 ppm, ±(50 ppm + 5 % of reading)), 0 V when the self-check finds a fault. Temperature compensated, automatic zero calibration to 400 ppm every 24 h, preheat about 3 min, T90 < 120 s. Needs a 5 V supply (< 40 mA average, 125 mA peak). Sold as: DFRobot Gravity: Analog Infrared CO2 Sensor for Arduino (SKU SEN0219), 3-pin Gravity PH2.0 connector Signal, VCC, GND.",
+  "eli5": "A real CO2 meter: it shines infrared light through a little gold tube and measures how much the CO2 in the air soaks up. It turns the answer into a voltage between 0.4 V (no CO2) and 2 V (5000 ppm) that your board reads on an analog pin.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "Signal",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "description": "Analog output (Gravity pin 1): 0.4–2.0 V = 0–5000 ppm CO2, linear; 0 V = sensor fault; below 0.4 V while preheating. Never above 2 V, so it goes straight to a 3.3 V ADC pin."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply + (Gravity pin 2, red): 5 V (4.5–5.5 V), < 40 mA average, 125 mA peak. Use the board's 5V / VIN / VBUS, not 3V3."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground − (Gravity pin 3, black)."
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 40,
+  "datasheetUrl": "https://web.archive.org/web/20220504221542/https://wiki.dfrobot.com/Gravity__Infrared_CO2_Sensor_For_Arduino_SKU__SEN0219",
+  "sources": [
+    "https://web.archive.org/web/20220504221542/https://wiki.dfrobot.com/Gravity__Infrared_CO2_Sensor_For_Arduino_SKU__SEN0219",
+    "https://wiki.dfrobot.com/sen0219/",
+    "https://www.dfrobot.com/product-1549.html",
+    "https://www.dfrobot.com/forum/topic/2691",
+    "https://www.digikey.com/en/products/detail/dfrobot/SEN0219/7087189"
+  ],
+  "priceUsd": 58,
+  "supplierQuery": "DFRobot SEN0219 Gravity analog infrared CO2 sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Gravity connector order (DFRobot board overview): 1 Signal, 2 VCC (+), 3 GND (−). The board has a PH2.0 socket, not header pins: use the Gravity cable or a PH2.0-to-jumper lead.",
+    "Power it from 5 V (USB 5V / VIN / VBUS); it draws < 40 mA average and up to 125 mA in pulses. The 0.4–2.0 V signal is safe for a 3.3 V ADC pin without a divider (DFRobot FAQ: on a 3.3 V board convert with the 3.3 V reference).",
+    "ppm = (V − 0.4) × 5000 / 1.6 (DFRobot sample code: (mV − 400) × 50 / 16). 0 V means a fault; 0–0.4 V means it is still preheating. Wait at least 3 minutes after power-on.",
+    "Readings are noisy: average many samples. On an ESP32 use an ADC1 pin (GPIO32–39) with read_uv().",
+    "Manual zero calibration: after 20 minutes in fresh 400 ppm air, short the HD pad to GND for over 7 seconds. Otherwise it auto-calibrates to 400 ppm every 24 h, so let fresh air in once a day.",
+    "Boards printed \"Infrared CO2 Sensor V2.0\" (DFRobot's current SEN0219) output PWM instead; this part models the analog version."
+  ],
+  "keywords": [
+    "sen0219",
+    "co2",
+    "carbon dioxide",
+    "ndir",
+    "infrared",
+    "gravity",
+    "dfrobot",
+    "air quality",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "Signal",
+    "quantity": "CO2 concentration",
+    "unit": "ppm",
+    "min": 0,
+    "max": 5000,
+    "default": 600,
+    "vAtMin": 0.4,
+    "vAtMax": 2
+  },
+  "driver": {
+    "filename": "sen0219.py",
+    "code": "# DFRobot Gravity: Analog Infrared CO2 Sensor (SEN0219, analog-output version), MicroPython driver.\n# DFRobot wiki: with a 5 V supply the NDIR module outputs 0.4-2.0 V for 0-5000 ppm CO2, linear,\n# and 0 V when its self-check finds a fault. DFRobot's sample code:\n#     concentration = (mV - 400) * 50 / 16      (ppm)\n# Below 0.4 V (but above 0 V) the sensor is still preheating.\n# The output never exceeds 2.0 V, so it can go straight to a 3.3 V ADC pin; only the supply needs 5 V.\nfrom machine import ADC, Pin\n\nV_ZERO = 0.4      # V at 0 ppm\nV_SPAN = 1.6      # V from 0 to 5000 ppm\nPPM_SPAN = 5000\n\n\nclass SEN0219:\n    FAULT = 'fault'\n    PREHEAT = 'preheating'\n\n    def __init__(self, pin, samples=32, vref=3.3):\n        \"\"\"pin: GPIO number (or Pin) wired to the Signal pin. vref: ADC full scale when read_uv() is missing.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"Signal voltage in volts, averaged over several ADC samples (the output is noisy).\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def status(self, v=None):\n        \"\"\"'fault' (output ~0 V), 'preheating' (below 0.4 V) or 'ok'.\"\"\"\n        v = self.voltage() if v is None else v\n        if v < 0.05:\n            return self.FAULT\n        if v < V_ZERO - 0.01:\n            return self.PREHEAT\n        return 'ok'\n\n    def ppm(self):\n        \"\"\"CO2 concentration in ppm, or None while faulted / preheating.\"\"\"\n        v = self.voltage()\n        if self.status(v) != 'ok':\n            return None\n        return max(0.0, (v - V_ZERO) * PPM_SPAN / V_SPAN)\n"
+  },
+  "example": {
+    "code": "from sen0219 import SEN0219\nimport time\n\nco2 = SEN0219({SIGNAL})\nwhile True:\n    p = co2.ppm()\n    if p is None:\n        print(co2.status())\n    else:\n        print('CO2=%d ppm' % (round(p / 10) * 10))  # sensor accuracy is +/-50 ppm\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2 level set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1200
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1200 ppm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-gravity-co2-sen0219\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity analog infrared (NDIR) CO2 sensor SEN0219 (0.4-2 V = 0-5000 ppm). Use when designing, wiring, simulating or writing code for a SEN0219 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# DFRobot Gravity analog infrared CO2 sensor (SEN0219)\n\n## Overview\nThe **SEN0219** is an NDIR (non-dispersive infrared) CO2 module on a DFRobot Gravity carrier board. It measures real CO2 concentration (not a \"gas index\" like the MQ-135), with temperature compensation and automatic zero calibration to 400 ppm every 24 h.\n- Analog output: **0.4–2.0 V = 0–5000 ppm**, linear. **0 V = fault** found by the self-check.\n- Effective range 400–5000 ppm, accuracy ±(50 ppm + 5 % of reading), response T90 < 120 s.\n- Preheat: at least 3 minutes after power-on before readings are stable.\n- Later boards marked **\"Infrared CO2 Sensor V2.0\"** (DFRobot now sells SEN0219 as \"PWM\") output a PWM signal instead. This skill covers the **analog** version: check that your board's connector is marked analog (\"A\") and that it gives 0.4–2 V.\n\n## Pinout (Gravity 3-pin PH2.0 connector, DFRobot board overview)\n| Pin | Name | Wire | Function |\n|---|---|---|---|\n| 1 | Signal | blue/green | Analog output 0.4–2.0 V |\n| 2 | VCC | red | +5 V supply |\n| 3 | GND | black | Ground |\n\n## Electrical limits\n- Supply: **5 V** (DFRobot: 4.5–5.5 V on the analog version, 5.0 ±0.1 V on the V2.0 spec). It does **not** run on 3.3 V.\n- Current: < 40 mA average, about 125 mA peak (the IR lamp pulses). Feed it from USB 5 V / VIN / VBUS.\n- Signal tops out at 2.0 V, so it is safe for a 3.3 V ADC without a divider.\n- Operating −10 to 50 °C, 0–95 %RH non-condensing.\n\n## Interface details\nDFRobot's conversion (sample code):\n```\nppm = (mV − 400) × 50 / 16        # = (V − 0.4) × 5000 / 1.6\nV == 0        → fault\n0 < V < 0.4 V → preheating\n```\nDFRobot FAQ: on a 3.3 V microcontroller power the sensor from 5 V and convert the ADC reading with your 3.3 V reference.\nZero calibration by hand: after 20 min in 400 ppm (outdoor) air, short the board's **HD** pad to GND for more than 7 s.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| Signal | GPIO32–39 (ADC1) | GP26/27/28 | external ADC (ADS1115 / MCP3008) |\n| VCC | 5V / VIN | VBUS (pin 40) | 5V (pin 2) |\n| GND | GND | GND | GND |\n\nThe board has a Gravity socket, not header pins: use the supplied Gravity cable or a PH2.0-to-jumper lead.\n\n## Using the driver\n```python\nfrom sen0219 import SEN0219\nimport time\nco2 = SEN0219(34)\nwhile True:\n    p = co2.ppm()\n    print(co2.status() if p is None else 'CO2=%d ppm' % p)\n    time.sleep(2)\n```\n`voltage()` averages 32 samples (`read_uv()` on the ESP32, else `read_u16()` × 3.3 V). `ppm()` returns None while faulted or preheating.\n\n## Gotchas\n- **5 V supply, 2 V signal**: never power it from 3V3; the signal itself never needs a divider.\n- **Noisy readings**: average many samples (DFRobot forum advice) and allow the 120 s response time.\n- **Fresh-air baseline**: outdoor air is about 400 ppm; auto-calibration assumes the room sees fresh air once a day.\n- **ESP32 ADC accuracy**: use `read_uv()` (calibrated) and an ADC1 pin; ADC2 does not work with Wi-Fi on.\n- **PWM V2.0 boards** read with pulse timing (ppm = (Th − 2 ms) × 5), not with this analog driver.\n\n## Datasheet\nhttps://web.archive.org/web/20220504221542/https://wiki.dfrobot.com/Gravity__Infrared_CO2_Sensor_For_Arduino_SKU__SEN0219\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:25:00.864Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/sen0219/",
+      "https://thepihut.com/products/gravity-analog-infrared-co2-sensor-for-arduino-0-5000-ppm"
+    ]
+  }
+}

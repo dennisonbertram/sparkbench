@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mprls",
+  "board": "Adafruit MPRLS Ported Pressure Sensor Breakout - 0 to 25 PSI (product 3965)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). The model uses the datasheet's 0xAA 00 00 command, a status byte plus 24-bit counts, and transfer function A (10-90 % of 2^24) for 0-25 psi; the driver polls the busy flag and checks the status bits.",
+  "datasheetUrl": "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/pressure-sensors/board-mount-pressure-sensors/micropressure-mpr-series/documents/sps-siot-mpr-series-datasheet-32332628-ciid-172626.pdf",
+  "breakoutPinoutSource": "Adafruit Eagle board file (github.com/adafruit/Adafruit-MPRLS-Pressure-Sensor-Breakout-PCB): JP1 silkscreen left to right VIN, 3Vo, GND, SCL, SDA, EOC, RST; schematic shows 10k pull-ups on SDA/SCL to VIN through 2N7002 level shifters",
+  "checkRuns": 1
+}

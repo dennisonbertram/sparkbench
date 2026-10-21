@@ -1,0 +1,306 @@
+{
+  "type": "custom-pmsa003i",
+  "name": "PMSA003I particulate matter sensor (I2C)",
+  "mpn": "PMSA003I",
+  "category": "sensor",
+  "description": "Plantower laser-scattering dust sensor with an I2C interface (address 0x12, fixed): reports PM1.0, PM2.5 and PM10 mass concentration (ug/m3, 0-500 effective range, 1 ug/m3 resolution) and particle counts per 0.1 L, refreshed about once per second. The breakout has a 5 V charge pump for the fan, a 3.3 V regulator and BSS138 level shifters, so it runs from 3-5 V. Sold as: Adafruit PMSA003I Air Quality Breakout - STEMMA QT / Qwiic (product 4632), 7-pin header VIN, 3Vo, GND, SCL, SDA, RST, SET plus two STEMMA QT connectors.",
+  "eli5": "A tiny fan pulls air past a laser and counts the dust and smoke specks, telling your board over two wires how dirty the air is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V. Use the same voltage as your board's logic (3.3 V for ESP32/Pico): SDA/SCL are pulled up to VIN. An onboard charge pump makes the fan's 5 V.",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the onboard regulator; not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, level shifted; 10 kOhm pull-up to VIN on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, level shifted; 10 kOhm pull-up to VIN on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Sensor reset, pull low to reset (diode-isolated, pulled up on the board); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "SET",
+      "role": "io",
+      "description": "Sleep control: low = sleep (fan off), open/high = run (diode-isolated, pulled up on the board); leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 200,
+  "i2cAddress": 18,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/4632/4505_PMSA003I_series_data_manual_English_V2.6.pdf",
+  "priceUsd": 45,
+  "supplierQuery": "Adafruit PMSA003I air quality breakout 4632",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from the same voltage as the microcontroller's logic (3V3 on an ESP32 or Pico): the board's 10 kOhm I2C pull-ups go to VIN, and the onboard charge pump still gives the fan its 5 V.",
+    "From 3.3 V the charge pump draws roughly twice the sensor's 100 mA, so feed it from a board whose 3.3 V regulator can spare about 200 mA.",
+    "I2C address 0x12 (cannot be changed), standard mode 100 kHz. Read 32 bytes starting at register 0x00.",
+    "Frame: 0x42 0x4D, frame length 28, 13 big-endian 16-bit words, then a 16-bit check code = sum of the first 30 bytes. Drop frames whose header, length or sum is wrong.",
+    "Use the 'atmospheric environment' values (words 4-6) for room or outdoor air; the CF=1 values (words 1-3) are meant for factory calibration.",
+    "Give it a few seconds after power-up before the first read, and about 30 s (fan spin-up) before trusting the numbers. Mount it with the inlet and outlet unobstructed, at least 20 cm above the floor.",
+    "Leave RST and SET unconnected for normal use; pulling SET low puts the sensor to sleep."
+  ],
+  "keywords": [
+    "pmsa003i",
+    "plantower",
+    "pm2.5",
+    "pm10",
+    "particulate",
+    "dust",
+    "air quality",
+    "adafruit 4632",
+    "stemma qt",
+    "i2c"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/4632/4505_PMSA003I_series_data_manual_English_V2.6.pdf",
+    "https://www.adafruit.com/product/4632",
+    "https://learn.adafruit.com/pmsa003i/pinouts",
+    "https://github.com/adafruit/Adafruit-PMSA003I-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "PM2.5",
+    "unit": "ug/m3",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0",
+        "unit": "ug/m3",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10",
+        "unit": "ug/m3",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      },
+      {
+        "key": "n03",
+        "quantity": "Particles over 0.3 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 1500
+      },
+      {
+        "key": "n05",
+        "quantity": "Particles over 0.5 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 450
+      },
+      {
+        "key": "n10",
+        "quantity": "Particles over 1.0 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 80
+      },
+      {
+        "key": "n25",
+        "quantity": "Particles over 2.5 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 10
+      },
+      {
+        "key": "n50",
+        "quantity": "Particles over 5.0 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 2
+      },
+      {
+        "key": "n100",
+        "quantity": "Particles over 10 um per 0.1 L",
+        "unit": "/0.1L",
+        "min": 0,
+        "max": 65535,
+        "default": 0
+      }
+    ],
+    "responses": [
+      {
+        "match": "00",
+        "bytes": [
+          {
+            "const": 66,
+            "bits": 8
+          },
+          {
+            "const": 77,
+            "bits": 8
+          },
+          {
+            "const": 28,
+            "bits": 16
+          },
+          {
+            "control": "pm1",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm1",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n03",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n05",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n10",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n25",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n50",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "n100",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "crc": "sum16",
+            "over": 30
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "pmsa003i.py",
+    "code": "# Plantower PMSA003I laser particulate sensor (I2C version), MicroPython driver.\n# From the PMSA003I data manual V2.6: I2C address 0x12, 100 kHz, \"standard NXP EEPROM protocol\".\n# Registers 0x00-0x1F hold one 32-byte frame: 0x42 0x4D, frame length (2x13+2 = 28),\n# 13 big-endian 16-bit data words, then a 16-bit check code = sum of bytes 0x00-0x1D.\n# The sensor refreshes the frame about once per second.\n\n\nclass PMSA003I:\n    ADDR = 0x12\n\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def read(self):\n        \"\"\"Read one frame and return a dict of readings.\n        Keys: pm1_0_cf1, pm2_5_cf1, pm10_cf1 (ug/m3, CF=1 'factory' values),\n        pm1_0, pm2_5, pm10 (ug/m3, atmospheric environment: use these indoors/outdoors),\n        n0_3, n0_5, n1_0, n2_5, n5_0, n10 (particles larger than that many um per 0.1 L of air),\n        version, error.\n        Raises ValueError on a bad header, length or checksum (e.g. still starting up).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, 0x00, 32)\n        if d[0] != 0x42 or d[1] != 0x4D:\n            raise ValueError('PMSA003I: bad frame header')\n        if ((d[2] << 8) | d[3]) != 28:\n            raise ValueError('PMSA003I: bad frame length')\n        if (sum(d[0:30]) & 0xFFFF) != ((d[30] << 8) | d[31]):\n            raise ValueError('PMSA003I: checksum mismatch')\n        w = [(d[4 + 2 * i] << 8) | d[5 + 2 * i] for i in range(12)]\n        return {\n            'pm1_0_cf1': w[0], 'pm2_5_cf1': w[1], 'pm10_cf1': w[2],\n            'pm1_0': w[3], 'pm2_5': w[4], 'pm10': w[5],\n            'n0_3': w[6], 'n0_5': w[7], 'n1_0': w[8],\n            'n2_5': w[9], 'n5_0': w[10], 'n10': w[11],\n            'version': d[28], 'error': d[29],\n        }\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pmsa003i import PMSA003I\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = PMSA003I(i2c)\nwhile True:\n    try:\n        r = sensor.read()\n        print('PM1=%d PM2.5=%d PM10=%d ug/m3' % (r['pm1_0'], r['pm2_5'], r['pm10']))\n    except (OSError, ValueError) as e:\n        print('waiting for sensor:', e)\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM1.0, PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1",
+          "value": 21
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 48
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1=21 PM2.5=35 PM10=48 ug/m3",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:13:27.508Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/4632/4505_PMSA003I_series_data_manual_English_V2.6.pdf",
+      "https://learn.adafruit.com/pmsa003i/pinouts",
+      "https://www.adafruit.com/product/4632"
+    ]
+  }
+}

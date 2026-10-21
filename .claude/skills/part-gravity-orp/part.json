@@ -1,0 +1,117 @@
+{
+  "type": "custom-gravity-orp",
+  "name": "Gravity ORP sensor (DFRobot Analog ORP Sensor PRO)",
+  "mpn": "SEN0464",
+  "category": "sensor",
+  "description": "Analog ORP (oxidation-reduction potential) meter: an industrial platinum / Ag-AgCl probe feeds a signal converter that adds the probe voltage to a fixed 2480 mV reference and outputs it on A, so A = 2.48 V + ORP, about 0.48-4.48 V for -2000 to +2000 mV. ORP (mV) = V_A (mV) - 2480. 5 V supply. Sold as: DFRobot Gravity: Analog ORP Sensor PRO (SEN0464) kit, signal converter with 3-pin PH2.0 Gravity connector printed A, +, - and an S+/S- screw terminal for the probe.",
+  "eli5": "Dip the probe in water and it tells you how strongly the water can 'burn off' dirt (oxidise), in millivolts. Pool water with chlorine reads high and positive; stale water reads low or negative.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "A",
+      "role": "io",
+      "fn": "adc",
+      "description": "Gravity pin A: analog output, 2.48 V + ORP (about 0.48-4.48 V). Above +820 mV ORP it passes 3.3 V, so on a 3.3 V board it goes to the ADC pin through a 10 kOhm / 20 kOhm divider (Sparkbench adds it).",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      }
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Gravity pin +: supply, 5 V. Use 5V / VIN / VBUS, not 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Gravity pin -: ground.",
+      "required": true
+    }
+  ],
+  "vmin": 5,
+  "vmax": 5,
+  "currentMa": 10,
+  "datasheetUrl": "https://wiki.dfrobot.com/sen0464",
+  "sources": [
+    "https://wiki.dfrobot.com/sen0464",
+    "https://wiki.dfrobot.com/sen0464/docs/20075",
+    "https://github.com/cdjq/DFRobot_Analog_ORP_Sensor/blob/master/DFRobot_ORP_PRO.cpp",
+    "https://github.com/cdjq/DFRobot_Analog_ORP_Sensor/blob/master/DFRobot_ORP_PRO.h",
+    "https://lv.mouser.com/pdfDocs/Product-Overview-DFRobot-SEN0464.pdf"
+  ],
+  "priceUsd": 110,
+  "supplierQuery": "DFRobot SEN0464 Gravity Analog ORP Sensor PRO",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Output connector order printed on the board: A, +, - (3-pin PH2.0 Gravity socket). The probe's two leads go to the S+ / S- screw terminal on the opposite edge, so wire the board with jumper leads.",
+    "Power + from 5 V (5V / VIN / VBUS). The converter has its own voltage reference, but a steady 5 V still gives the best accuracy.",
+    "A = 2.48 V + ORP: about 0.48 V at -2000 mV and 4.48 V at +2000 mV. On a 3.3 V board use the 10 kOhm / 20 kOhm divider and divider=1.5 in the driver.",
+    "ORP (mV) = V_A (mV) - (2480 + calibration). Calibration is optional: short S+ to S- and call calibrate_zero() to measure the offset.",
+    "Immerse only the sensing end of the probe (it is not fully waterproof) and allow a few minutes for the reading to settle.",
+    "Do not run the ORP probe in the same water as a pH / EC / TDS probe without isolation."
+  ],
+  "keywords": [
+    "orp",
+    "redox",
+    "oxidation reduction potential",
+    "sen0464",
+    "gravity",
+    "dfrobot",
+    "water quality",
+    "pool",
+    "chlorine",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "A",
+    "quantity": "ORP (oxidation-reduction potential)",
+    "unit": "mV",
+    "min": -2000,
+    "max": 2000,
+    "default": 250,
+    "vAtMin": 0.48,
+    "vAtMax": 4.48,
+    "outputOhms": 10
+  },
+  "driver": {
+    "filename": "gravity_orp_pro.py",
+    "code": "# DFRobot Gravity Analog ORP Sensor PRO (SEN0464), MicroPython driver.\n# The signal converter adds the probe's ORP (platinum vs Ag/AgCl, -2000..+2000 mV) to a fixed internal\n# reference of 2480 mV and outputs the sum on A (gain 1), about 0.48-4.48 V. DFRobot's DFRobot_ORP_PRO library:\n#     ORP (mV) = V_A (mV) - (2480 mV + calibration)\n# calibration = V_A - 2480 measured with the probe input shorted (S+ to S-, i.e. 0 mV ORP); 0 by default.\n# Supply the board from a steady 5 V. On a 3.3 V board, A goes to the ADC through a divider (it reaches about\n# 4.5 V); pass divider = (top + bottom) / bottom, e.g. 1.5 for 10 k / 20 k.\nfrom machine import ADC, Pin\n\nBASE_MV = 2480.0\n\n\nclass GravityORP:\n    def __init__(self, a, calibration=0.0, samples=20, vref=3.3, divider=1.0):\n        \"\"\"a: GPIO number (or Pin) wired to the board's A pin (through the divider, if any).\n        calibration: offset in mV from calibrate_zero() (0 until calibrated).\n        divider: A voltage / ADC-pin voltage (1.5 for a 10 k / 20 k divider).\n        vref: ADC full scale used when read_uv() is unavailable (e.g. Pico: 3.3).\"\"\"\n        self.adc = ADC(Pin(a) if isinstance(a, int) else a)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.calibration = calibration\n        self.samples = samples\n        self.vref = vref\n        self.divider = divider\n\n    def voltage(self):\n        \"\"\"Voltage on the board's A pin in volts (median of several ADC samples, divider undone).\"\"\"\n        vals = []\n        for _ in range(self.samples):\n            if hasattr(self.adc, 'read_uv'):\n                vals.append(self.adc.read_uv() / 1e6)\n            else:\n                vals.append(self.adc.read_u16() * self.vref / 65535)\n        vals.sort()\n        n = len(vals)\n        mid = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2\n        return mid * self.divider\n\n    def orp(self, v=None):\n        \"\"\"ORP in mV: V_A(mV) - (2480 + calibration).\"\"\"\n        if v is None:\n            v = self.voltage()\n        return v * 1000.0 - (BASE_MV + self.calibration)\n\n    def calibrate_zero(self):\n        \"\"\"Short the probe input (S+ to S-, 0 mV) and call this: stores and returns V_A - 2480 mV.\"\"\"\n        self.calibration = self.voltage() * 1000.0 - BASE_MV\n        return self.calibration\n"
+  },
+  "example": {
+    "code": "from gravity_orp_pro import GravityORP\nimport time\n\norp = GravityORP({A}, divider=1.5)  # 10k/20k divider: A reaches about 4.5 V\nwhile True:\n    v = orp.voltage()\n    mv = orp.orp(v)\n    # the ADC (and the probe, +/-8 mV/24 h) is not good to 1 mV: show ORP to the nearest 10 mV\n    print('A=%.2fV ORP=%dmV' % (v, round(mv / 10) * 10))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Converts the A voltage to ORP (oxidising water)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 650
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=3.13V ORP=650mV",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-gravity-orp\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity Analog ORP Sensor PRO (SEN0464), an industrial ORP (redox) probe with an analog signal converter (3-pin A, +, - Gravity connector, S+/S- probe terminal). Use when designing, wiring, simulating or writing code for an ORP / redox potential meter in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Gravity ORP sensor (DFRobot SEN0464, Analog ORP Sensor PRO)\n\n## Overview\nThe **DFRobot Gravity Analog ORP Sensor PRO (SEN0464)** measures oxidation-reduction potential (ORP, in mV) of water: positive means oxidising (e.g. chlorinated pool water), negative means reducing. The kit is an industrial probe (platinum indicator electrode, silver/silver-chloride reference, 3/4\" NPT thread) plus a small signal converter board. The converter adds the probe voltage to a fixed **2480 mV** reference and outputs it on **A**:\n- Measuring range **−2000 to +2000 mV** → A ≈ **0.48 to 4.48 V** (0 mV ORP = 2.48 V)\n- Converter supply **5 V**; it has its own voltage reference, so supply ripple does not shift the reading much\n- Probe: 5–70 °C, electrode potential 245–270 mV (in the reference test), stability ±8 mV / 24 h, life about 1 year\n- No chip to talk to: read A with an ADC\n\n## Pinout (signal converter)\nGravity PH2.0 3-pin output connector, order printed on the board:\n| Pin | Name | Function |\n|---|---|---|\n| 1 | A | Analog output, 0.48–4.48 V (ORP + 2.48 V) |\n| 2 | + | Supply, 5 V |\n| 3 | - | Ground |\n\nProbe input: a 2-way 5.08 mm pluggable screw terminal on the other edge, **S+** (electrode +) and **S−** (electrode −). Gravity cable colours: green/blue = A, red = +, black = −. Because the two connectors are on different edges, the board is wired with jumper leads.\n\n## Electrical limits\n- Supply **5 V** (use 5V / VIN / VBUS, not 3.3 V).\n- A rises above 3.3 V for ORP above about +820 mV, so on a 3.3 V board put a **10 kΩ / 20 kΩ divider** between A and the ADC pin (the pin sees 2/3 of A; driver `divider=1.5`).\n- Probe is not fully waterproof: immerse only the sensing end, never the whole probe or the cable gland.\n\n## Interface details\nDFRobot_ORP_PRO library:\n```\nORP (mV) = V_A (mV) − (2480 + calibration)\ncalibration = V_A(shorted) − 2480        measured with S+ shorted to S− (0 mV input); 0 by default\n```\nExample: A = 3.13 V → ORP = +650 mV. The probe normally needs no calibration; check it with an ORP standard solution if readings look wrong.\n\n## Wiring\n| Converter | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 5V / VIN | VBUS (5 V) | 5 V (pin 2) |\n| - | GND | GND | GND |\n| A | GPIO32–39 (ADC1) via 10 k / 20 k divider | GP26/27/28 via 10 k / 20 k divider | External ADC (ADS1115) |\n\nUse an ADC1 pin on the ESP32 (ADC2 stops working while Wi-Fi is on). The Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom gravity_orp_pro import GravityORP\norp = GravityORP(34, divider=1.5)        # A on GPIO34 through a 10k/20k divider\nv = orp.voltage()\nprint('A=%.2fV ORP=%dmV' % (v, round(orp.orp(v) / 10) * 10))   # ADC is not good to 1 mV\n# optional: short S+ to S-, then orp.calibrate_zero() and keep the returned offset\n```\n\n## Gotchas\n- ORP probes respond slowly in clean water: allow a few minutes to settle after immersion.\n- Do not run an ORP probe and a pH/EC/TDS probe in the same water without isolation; they interfere.\n- Rinse with deionised or tap water; never scrub the platinum tip with a hard brush.\n- The ESP32 ADC is non-linear near its ends; `read_uv()` uses its calibration.\n\n## On a 3.3 V board\n- **A** can reach about 4.5 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 10 kΩ from A to the pin, 20 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.5 (the driver's `divider` argument does this).\n\n## Datasheet\nhttps://wiki.dfrobot.com/sen0464 (DFRobot wiki; conversion from the DFRobot_ORP_PRO library)\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:26:39.335Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/Gravity_Analog_ORP_Sensor_PRO_SKU_SEN0464"
+    ]
+  }
+}

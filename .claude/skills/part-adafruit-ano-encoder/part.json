@@ -1,0 +1,265 @@
+{
+  "type": "custom-adafruit-ano-encoder",
+  "name": "Adafruit ANO Rotary Navigation Encoder (I2C)",
+  "mpn": "Adafruit 5740",
+  "category": "input",
+  "description": "iPod-style scroll wheel with a centre SELECT button and UP/LEFT/DOWN/RIGHT buttons, read over I2C: an ATtiny816 running Adafruit seesaw firmware counts the wheel (signed 32-bit position) and reads the five buttons, so only SDA/SCL are needed. Runs on 3-5 V with no regulator or level shifter (the chip and the 10 k I2C pull-ups run from VIN), so power it from the board's logic voltage. Sold as: Adafruit ANO Rotary Navigation Encoder to I2C Stemma QT Adapter (product 5740, with the ANO encoder product 5001 soldered on; product 6310 comes assembled), 6-pad header VIN, GND, SCL, SDA, INT, UPDI plus two STEMMA QT sockets, I2C address 0x49 (0x49-0x58 with jumpers A0-A3).",
+  "eli5": "A round scroll wheel with five buttons, like an old iPod; a tiny chip on the board counts the turns and button presses and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V; feeds the ATtiny816 and the I2C pull-ups directly, so use your board's logic voltage (3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up to VIN on board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up to VIN on board)",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, pulses low on rotation or a button press once enabled in seesaw; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "UPDI",
+      "role": "nc",
+      "description": "ATtiny816 programming pin; leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 5,
+  "i2cAddress": 73,
+  "datasheetUrl": "https://www.microchip.com/en-us/product/ATtiny816",
+  "priceUsd": 4.95,
+  "supplierQuery": "Adafruit 5740 ANO rotary navigation encoder to I2C stemma qt adapter",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every seesaw access is a write of two bytes, module base then function register; for a read wait a few ms, then read the bytes back, big-endian.",
+    "Wheel position: base 0x11, register 0x30, 4 bytes, signed 32-bit. Register 0x40 is the delta since the last read.",
+    "Buttons are seesaw pins SELECT 1, UP 2, LEFT 3, DOWN 4, RIGHT 5: set them input with pull-up (DIRCLR_BULK 0x01 0x03, PULLENSET 0x01 0x0B, BULK_SET 0x01 0x05, mask 0x3E), then read GPIO_BULK (0x01 0x04, 4 bytes); a pressed button reads 0.",
+    "STATUS_VERSION (0x00 0x02) upper 16 bits read 5740 on this firmware; HW_ID (0x00 0x01) reads 0x86 (ATtiny816).",
+    "No regulator or level shifter: the SDA/SCL pull-ups go to VIN, so power VIN from 3.3 V with an ESP32 or Pico.",
+    "Default address 0x49; cut A0-A3 on the back to add 1/2/4/8 (up to 0x58).",
+    "Product 5740 is the adapter only: solder the ANO encoder (product 5001) on yourself, or buy product 6310 assembled."
+  ],
+  "keywords": [
+    "ano encoder",
+    "scroll wheel",
+    "directional pad",
+    "navigation",
+    "rotary encoder",
+    "seesaw",
+    "adafruit 5740",
+    "stemma qt",
+    "qwiic",
+    "i2c encoder"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "addrWidth": 16,
+    "quantity": "Wheel position",
+    "unit": "counts",
+    "min": -100,
+    "max": 100,
+    "default": 0,
+    "registers": {
+      "0x0001": 134,
+      "0x0002": 22,
+      "0x0003": 108,
+      "0x0004": 0,
+      "0x0005": 0
+    },
+    "responses": [
+      {
+        "match": "11 30",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 32,
+            "scale": 1,
+            "signed": true
+          }
+        ]
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x0107",
+        "bit": 1,
+        "control": "select",
+        "label": "SELECT pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 2,
+        "control": "up",
+        "label": "UP pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 3,
+        "control": "left",
+        "label": "LEFT pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 4,
+        "control": "down",
+        "label": "DOWN pressed",
+        "activeLow": true
+      },
+      {
+        "reg": "0x0107",
+        "bit": 5,
+        "control": "right",
+        "label": "RIGHT pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ano_encoder.py",
+    "code": "# Adafruit ANO Rotary Navigation Encoder to I2C adapter (product 5740 / 6310, ATtiny816 running\n# seesaw firmware), MicroPython driver.\n# seesaw protocol: every access starts with a write of [module base, function register];\n# for a read, wait briefly, then read the bytes back (all values big-endian).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_VERSION = 0x02\n_STATUS_SWRST = 0x7F\n_GPIO_BASE = 0x01\n_GPIO_DIRCLR_BULK = 0x03\n_GPIO_BULK = 0x04\n_GPIO_BULK_SET = 0x05\n_GPIO_PULLENSET = 0x0B\n_ENCODER_BASE = 0x11\n_ENCODER_POSITION = 0x30\n_ENCODER_DELTA = 0x40\n\n_HW_IDS = (0x55, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89)  # seesaw chips; this board's ATtiny816 reads 0x86\nPRODUCT_ID = 5740  # upper 16 bits of STATUS_VERSION on the ANO firmware\n\n# seesaw pins of the five ANO buttons (pressed pulls the pin to GND)\nSELECT = 1\nUP = 2\nLEFT = 3\nDOWN = 4\nRIGHT = 5\n_BUTTONS = (SELECT, UP, LEFT, DOWN, RIGHT)\n_MASK = 0\nfor _p in _BUTTONS:\n    _MASK |= 1 << _p\n\n\nclass ANOEncoder:\n    def __init__(self, i2c, addr=0x49, reset=True):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self._write(_STATUS_BASE, _STATUS_SWRST, b'\\xff')\n            time.sleep_ms(500)  # seesaw restarts after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw not in _HW_IDS:\n            raise OSError('seesaw not found at 0x%02x (HW_ID 0x%02x): check the wiring' % (addr, hw))\n        v = self._read(_STATUS_BASE, _STATUS_VERSION, 4)\n        self.product = (v[0] << 8) | v[1]\n        if self.product != PRODUCT_ID:\n            print('ANO: seesaw firmware reports product %d, expected %d' % (self.product, PRODUCT_ID))\n        # The five buttons: inputs with pull-ups (INPUT_PULLUP = DIRCLR, PULLENSET, then BULK_SET).\n        mask = _MASK.to_bytes(4, 'big')\n        self._write(_GPIO_BASE, _GPIO_DIRCLR_BULK, mask)\n        self._write(_GPIO_BASE, _GPIO_PULLENSET, mask)\n        self._write(_GPIO_BASE, _GPIO_BULK_SET, mask)\n\n    def _write(self, base, reg, data=b''):\n        self.i2c.writeto(self.addr, bytes([base, reg]) + bytes(data))\n\n    def _read(self, base, reg, n, delay_us=8000):\n        self.i2c.writeto(self.addr, bytes([base, reg]))\n        time.sleep_us(delay_us)  # seesaw needs time to fetch the value before the read\n        return self.i2c.readfrom(self.addr, n)\n\n    @staticmethod\n    def _int32(b):\n        v = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return v - (1 << 32) if v & 0x80000000 else v\n\n    def position(self):\n        \"\"\"Scroll wheel position (signed 32-bit counter kept by seesaw).\"\"\"\n        return self._int32(self._read(_ENCODER_BASE, _ENCODER_POSITION, 4))\n\n    def set_position(self, pos):\n        self._write(_ENCODER_BASE, _ENCODER_POSITION, (pos & 0xFFFFFFFF).to_bytes(4, 'big'))\n\n    def delta(self):\n        \"\"\"Counts turned since the last delta() call (reading clears it).\"\"\"\n        return self._int32(self._read(_ENCODER_BASE, _ENCODER_DELTA, 4))\n\n    def buttons(self):\n        \"\"\"Dict of the five buttons, True while pressed (one GPIO_BULK read).\"\"\"\n        b = self._read(_GPIO_BASE, _GPIO_BULK, 4)\n        bits = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return {\n            'select': not (bits >> SELECT) & 1,\n            'up': not (bits >> UP) & 1,\n            'left': not (bits >> LEFT) & 1,\n            'down': not (bits >> DOWN) & 1,\n            'right': not (bits >> RIGHT) & 1,\n        }\n\n    def pressed(self, pin):\n        \"\"\"True while the button on seesaw pin `pin` (SELECT, UP, LEFT, DOWN, RIGHT) is pressed.\"\"\"\n        b = self._read(_GPIO_BASE, _GPIO_BULK, 4)\n        bits = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]\n        return not (bits >> pin) & 1\n"
+  },
+  "skill": "---\nname: part-adafruit-ano-encoder\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit ANO Rotary Navigation Encoder to I2C Stemma QT Adapter (product 5740, or 6310 with the encoder soldered; ATtiny816 running seesaw firmware), a scroll wheel plus five-way directional pad read over I2C. Use when designing, wiring, simulating or writing code for an ANO directional navigation / scroll wheel encoder in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit ANO Rotary Navigation Encoder to I2C (Adafruit 5740)\n\n## Overview\nThe ANO encoder (Adafruit 5001) is an iPod-style scroll wheel with a centre SELECT button and four direction buttons (UP, LEFT, DOWN, RIGHT). This adapter board puts an **ATtiny816** running Adafruit's **seesaw** firmware under it. The firmware counts the wheel's pulses as a signed 32-bit position and reads the five buttons, so you only need SDA and SCL. Product 5740 is the bare adapter, and you solder the ANO encoder on yourself. Product 6310 is the same board with the encoder already soldered.\n\n## Pinout (header order, as printed on the board)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3-5 V. It feeds the ATtiny816 directly, so use your board's logic voltage (3.3 V on ESP32 / Pico) |\n| GND | Ground |\n| SCL | I2C clock (10 k pull-up to VIN on board) |\n| SDA | I2C data (10 k pull-up to VIN on board) |\n| INT | Interrupt output, pulses low on rotation or a button press once enabled in seesaw (optional) |\n| UPDI | Programming pin of the ATtiny816 (leave unconnected) |\n\nThe board also has two STEMMA QT / Qwiic sockets.\n\n## Electrical limits\n- Supply: 3-5 V on VIN. **There is no regulator or level shifter.** The ATtiny816 (rated 1.8-5.5 V) runs from VIN, and the SDA/SCL pull-ups go to VIN. With a 3.3 V board such as an ESP32 or Pico, power it from 3V3 so that the bus never rises above 3.3 V.\n- Current: a few mA, plus about 2 mA for the green power LED.\n\n## Interface details\n- **I2C address 0x49** by default. Cutting the A0/A1/A2/A3 jumpers adds 1/2/4/8, giving 0x49-0x58 (16 boards on one bus).\n- The seesaw protocol: write `[module base, function register]` with any data after it. To read, write the two bytes, wait about 8 ms, then read. Values are big-endian.\n- STATUS base 0x00: HW_ID 0x01 reads **0x86** (ATtiny816). VERSION 0x02 returns 4 bytes, and its upper 16 bits are the product number **5740**. SWRST 0x7F: write 0xFF, then wait about 500 ms.\n- ENCODER base 0x11: POSITION 0x30 is the signed 32-bit wheel position (you can also write it to set the position). DELTA 0x40 is the change since its last read, and reading it clears it.\n- Buttons are seesaw GPIO pins **SELECT 1, UP 2, LEFT 3, DOWN 4, RIGHT 5**. Set them as inputs with pull-ups using DIRCLR_BULK (0x01 0x03), PULLENSET (0x01 0x0B) and BULK_SET (0x01 0x05), each with the mask 0x0000003E. Then read GPIO_BULK (0x01 0x04, 4 bytes). A pressed button's bit reads 0.\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VIN → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n- You can also use a STEMMA QT / Qwiic cable instead of the header.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom ano_encoder import ANOEncoder\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nano = ANOEncoder(i2c)            # address 0x49\nprint(ano.position(), ano.buttons())\n```\n\n## Gotchas\n- Always leave a short delay between the register write and the read. Reading too quickly returns stale or garbage bytes.\n- Do not feed VIN from 5 V when your microcontroller uses 3.3 V logic. The on-board pull-ups would pull SDA/SCL to 5 V.\n- Direction: if the wheel counts the wrong way for you, negate the position in your code (Adafruit's examples use it as is).\n- In the Sparkbench simulator, the slider sets the POSITION register and one toggle drives each button. DELTA, INT and the address-change command are not modelled.\n\n## Datasheet\n- ATtiny816 (the chip): https://www.microchip.com/en-us/product/ATtiny816\n- Board guide: https://learn.adafruit.com/adafruit-ano-rotary-navigation-encoder-to-i2c-stemma-qt-adapter\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ano_encoder import ANOEncoder\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nano = ANOEncoder(i2c)\nwhile True:\n    b = ano.buttons()\n    print('pos=%d sel=%d up=%d left=%d down=%d right=%d' % (ano.position(), b['select'], b['up'], b['left'], b['down'], b['right']))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the wheel position and the five buttons",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 23
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "select",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "left",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=23 sel=1 up=0 left=1 down=0 right=0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "select",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "left",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "up",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "right",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=-7 sel=0 up=1 left=0 down=0 right=1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "up",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "right",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "down",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=-7 sel=0 up=0 left=0 down=1 right=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://learn.adafruit.com/adafruit-ano-rotary-navigation-encoder-to-i2c-stemma-qt-adapter/pinouts",
+    "https://www.adafruit.com/product/5740",
+    "https://github.com/adafruit/Adafruit-ANO-Rotary-Navigation-Encoder-to-I2C",
+    "https://github.com/adafruit/Adafruit_Seesaw/blob/master/examples/encoder/PID5740_ANOencoder_demo/PID5740_ANOencoder_demo.ino",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/examples/seesaw_ano_rotary_simpletest.py",
+    "https://github.com/adafruit/Adafruit_Seesaw/blob/master/Adafruit_seesaw.h",
+    "https://www.microchip.com/en-us/product/ATtiny816"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (7 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:17:58.815Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/adafruit-ano-rotary-navigation-encoder-to-i2c-stemma-qt-adapter/pinouts",
+      "https://www.adafruit.com/product/5740",
+      "https://cdn-learn.adafruit.com/assets/assets/000/121/116/large1024/adafruit_products_front_back.jpg"
+    ]
+  }
+}

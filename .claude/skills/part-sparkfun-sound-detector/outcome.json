@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sparkfun-sound-detector",
+  "board": "SparkFun Sound Detector SEN-12642 (SEN-14262 with headers)",
+  "reason": "Check passed on ESP32 and Pico: ENVELOPE (0-5 V level, 100 ohm op-amp output) and GATE (active-high push-pull) are simulated on a 5 V supply through 10k/15k dividers, which the driver undoes, printing ENV=2.0V GATE=1. AUDIO (waveform on VCC/2) is in the pinout and driver but not simulated, because the sim cannot drive a wave and a second analog output on the same part.",
+  "datasheetUrl": "http://cdn.sparkfun.com/datasheets/Sensors/Sound/LMV324.pdf",
+  "breakoutPinoutSource": "SparkFun Sound Detector v11 schematic (https://cdn.sparkfun.com/assets/8/a/1/2/5/sound-detector-v11.pdf), header JP1 pins 1-5: GND, VCC, GATE, ENVELOPE, AUDIO",
+  "checkRuns": 3
+}

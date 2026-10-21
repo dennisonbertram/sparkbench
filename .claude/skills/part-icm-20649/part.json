@@ -1,0 +1,314 @@
+{
+  "type": "custom-icm-20649",
+  "name": "ICM-20649 wide-range 6-DoF IMU",
+  "mpn": "ICM-20649",
+  "category": "sensor",
+  "description": "TDK InvenSense wide-range 6-axis motion sensor for high-impact use: 3-axis accelerometer (±4/8/16/30 g, 8192 LSB/g at ±4 g), 3-axis gyroscope (±500/1000/2000/4000 °/s, 65.5 LSB/(°/s) at ±500 °/s) and temperature sensor (333.87 LSB/°C, 0 LSB at 21 °C), I2C or SPI. Sold as: Adafruit ICM-20649 Wide-Range ±30g ±4000dps 6-DoF IMU breakout (#4464, STEMMA QT) with a 3.3 V regulator and SCL/SDA level shifting, 3–5 V supply, two 6-pin headers (VIN, 3Vo, GND, SCL, SDA, INT1 and AD0, FS, SCE, SDE, CS, INT2), I2C address 0x68 (0x69 with AD0 high).",
+  "eli5": "Measures hard knocks and very fast spins, like a golf swing or a bat hitting a ball.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V, into the on-board AP2112K 3.3 V regulator; use the same voltage as your board's logic",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "description": "I2C clock (SPI SCK); BSS138 level-shifted, 10 kΩ pull-up to VIN on the board",
+      "required": true,
+      "fn": "i2c.scl",
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "description": "I2C data (SPI SDI); BSS138 level-shifted, 10 kΩ pull-up to VIN on the board",
+      "required": true,
+      "fn": "i2c.sda",
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Interrupt 1 output, straight from the chip at 3.3 V logic (not level-shifted), optional",
+      "required": false,
+      "levelV": 3.3
+    },
+    {
+      "name": "AD0",
+      "role": "io",
+      "description": "Address select (SPI SDO), 3.3 V logic: 10 kΩ pull-down on the board = 0x68; pull to 3.3 V (or bridge the back jumper) for 0x69",
+      "required": false
+    },
+    {
+      "name": "FS",
+      "role": "io",
+      "description": "FSYNC input, tied to GND by a back jumper; 3.3 V logic only, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "SCE",
+      "role": "io",
+      "description": "Auxiliary I2C clock (AUX_CL) for external sensors, 3.3 V logic only; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "SDE",
+      "role": "io",
+      "description": "Auxiliary I2C data (AUX_DA) for external sensors, 3.3 V logic only; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select (diode-isolated, pulled high on the board for I2C); leave unconnected (low selects SPI)",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Interrupt 2 output, straight from the chip at 3.3 V logic, optional",
+      "required": false,
+      "levelV": 3.3
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3.5,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://datasheet.lcsc.com/datasheet/pdf/398bb9b0577ec4950e08e602fdd05137.pdf?productCode=C475538",
+  "priceUsd": 14.95,
+  "supplierQuery": "Adafruit ICM-20649 wide-range 6-DoF IMU 4464",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "The board has two 6-pin headers on opposite edges, so wire it with jumper leads. Only VIN, GND, SCL and SDA are needed for I2C.",
+    "WHO_AM_I (bank 0, 0x00) reads 0xE1. Registers are split into four banks chosen by REG_BANK_SEL (0x7F, bank number in bits 5:4); the sensor data is in bank 0, GYRO_CONFIG_1 (0x01) and ACCEL_CONFIG (0x14) in bank 2.",
+    "The chip powers up asleep (PWR_MGMT_1 = 0x41): write PWR_MGMT_1 (0x06) = 0x01 to wake it with the auto clock, then wait about 35 ms for the gyroscope.",
+    "Read 0x2D..0x3A in one 14-byte burst: seven big-endian signed words, accel X/Y/Z, gyro X/Y/Z, then temperature. At the reset ranges (±4 g, ±500 °/s): 8192 LSB/g, 65.5 LSB/(°/s); temperature = raw / 333.87 + 21 °C.",
+    "SCL and SDA are level-shifted and pulled up to VIN, but INT1, INT2, AD0, FS, SCE and SDE connect straight to the chip at 3.3 V: never drive them from 5 V logic.",
+    "Default address is 0x68 (AD0 pulled down on the board); pull AD0 to 3.3 V or bridge the back jumper for 0x69."
+  ],
+  "keywords": [
+    "icm-20649",
+    "icm20649",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "6-dof",
+    "high-g",
+    "30g",
+    "4000dps",
+    "invensense",
+    "tdk"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -4,
+    "max": 3.99,
+    "default": 0,
+    "controls": [
+      {
+        "key": "ay",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -4,
+        "max": 3.99,
+        "default": 0
+      },
+      {
+        "key": "az",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -4,
+        "max": 3.99,
+        "default": 1
+      },
+      {
+        "key": "gx",
+        "quantity": "X rotation rate",
+        "unit": "°/s",
+        "min": -500,
+        "max": 499,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Y rotation rate",
+        "unit": "°/s",
+        "min": -500,
+        "max": 499,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Z rotation rate",
+        "unit": "°/s",
+        "min": -500,
+        "max": 499,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x00": 225,
+      "0x06": 65,
+      "0x7F": 0
+    },
+    "measures": [
+      {
+        "reg": "0x2D",
+        "bytes": 2,
+        "scale": 0.0001220703125,
+        "signed": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2F",
+        "bytes": 2,
+        "scale": 0.0001220703125,
+        "signed": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x31",
+        "bytes": 2,
+        "scale": 0.0001220703125,
+        "signed": true,
+        "control": "az"
+      },
+      {
+        "reg": "0x33",
+        "bytes": 2,
+        "scale": 0.015267175572519083,
+        "signed": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x35",
+        "bytes": 2,
+        "scale": 0.015267175572519083,
+        "signed": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x37",
+        "bytes": 2,
+        "scale": 0.015267175572519083,
+        "signed": true,
+        "control": "gz"
+      },
+      {
+        "reg": "0x39",
+        "bytes": 2,
+        "scale": 0.0029951777638002816,
+        "signed": true,
+        "control": "temp",
+        "offset": 21
+      }
+    ]
+  },
+  "driver": {
+    "filename": "icm20649.py",
+    "code": "# ICM-20649 wide-range 6-axis IMU (TDK InvenSense DS-000192 rev 1.0), MicroPython driver.\n# Accelerometer (+-4/8/16/30 g), gyroscope (+-500/1000/2000/4000 dps) and temperature,\n# read over I2C from user bank 0; full-scale settings live in user bank 2.\nimport time\n\n_REG_BANK_SEL = 0x7F   # all banks: USER_BANK[1:0] in bits 5:4\n# User bank 0\n_WHO_AM_I = 0x00       # reads 0xE1\n_PWR_MGMT_1 = 0x06     # reset value 0x41 (asleep, CLKSEL=1)\n_PWR_MGMT_2 = 0x07\n_ACCEL_XOUT_H = 0x2D   # 0x2D..0x3A: accel X/Y/Z, gyro X/Y/Z, temperature (big-endian words)\n# User bank 2\n_GYRO_CONFIG_1 = 0x01\n_ACCEL_CONFIG = 0x14\n\n_ACCEL_LSB_PER_G = (8192, 4096, 2048, 1024)        # ACCEL_FS_SEL 0..3 = +-4/8/16/30 g\n_GYRO_LSB_PER_DPS = (65.5, 32.8, 16.4, 8.2)        # GYRO_FS_SEL 0..3 = +-500/1000/2000/4000 dps\n_TEMP_SENSITIVITY = 333.87                         # LSB/degC; room-temperature offset 0 LSB at 21 degC\n\n\ndef _s16(hi, lo):\n    v = (hi << 8) | lo\n    return v - 65536 if v & 0x8000 else v\n\n\nclass ICM20649:\n    def __init__(self, i2c, addr=0x68, accel_fs=0, gyro_fs=0):\n        \"\"\"addr 0x68 with AD0 low (Adafruit default), 0x69 with AD0 high.\n        accel_fs 0..3 = +-4/8/16/30 g, gyro_fs 0..3 = +-500/1000/2000/4000 dps.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self._bank(0)\n        who = self._r8(_WHO_AM_I)\n        if who != 0xE1:\n            raise OSError('ICM-20649 not found (WHO_AM_I=0x%02X): check wiring and address' % who)\n        self._w8(_PWR_MGMT_1, 0x80)   # DEVICE_RESET (auto-clears); registers back to defaults\n        time.sleep_ms(100)            # register access start-up time up to 100 ms\n        self._bank(0)\n        self._w8(_PWR_MGMT_1, 0x01)   # SLEEP=0, LP_EN=0, CLKSEL=1 (PLL when ready)\n        time.sleep_ms(40)             # gyro start-up from sleep 35 ms\n        self._w8(_PWR_MGMT_2, 0x00)   # accelerometer and gyroscope axes all on\n        self._bank(2)\n        self._w8(_GYRO_CONFIG_1, ((gyro_fs & 3) << 1) | 0x01)   # GYRO_FS_SEL, DLPF on\n        self._w8(_ACCEL_CONFIG, ((accel_fs & 3) << 1) | 0x01)   # ACCEL_FS_SEL, DLPF on\n        self._bank(0)\n        self._a_lsb = _ACCEL_LSB_PER_G[accel_fs & 3]\n        self._g_lsb = _GYRO_LSB_PER_DPS[gyro_fs & 3]\n        time.sleep_ms(20)\n\n    def _bank(self, n):\n        self._w8(_REG_BANK_SEL, (n & 3) << 4)\n\n    def _w8(self, reg, v):\n        self.i2c.writeto_mem(self.addr, reg, bytes([v]))\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def read(self):\n        \"\"\"Return ((ax, ay, az) in g, (gx, gy, gz) in deg/s, temperature in degC).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _ACCEL_XOUT_H, 14)\n        w = [_s16(d[i], d[i + 1]) for i in range(0, 14, 2)]\n        a = (w[0] / self._a_lsb, w[1] / self._a_lsb, w[2] / self._a_lsb)\n        g = (w[3] / self._g_lsb, w[4] / self._g_lsb, w[5] / self._g_lsb)\n        t = w[6] / _TEMP_SENSITIVITY + 21   # TEMP_degC = (TEMP_OUT - 0) / 333.87 + 21\n        return a, g, t\n\n    def acceleration(self):\n        return self.read()[0]\n\n    def gyro(self):\n        return self.read()[1]\n\n    def temperature(self):\n        return self.read()[2]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom icm20649 import ICM20649\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = ICM20649(i2c)\nwhile True:\n    (ax, ay, az), (gx, gy, gz), t = imu.read()\n    print('A=%.2f,%.2f,%.2f g G=%.1f,%.1f,%.1f dps T=%.1fC' % (ax, ay, az, gx, gy, gz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation rate and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -2.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "az",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": 120
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gy",
+          "value": -300
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 45.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=1.50,-2.25,0.50 g G=120.0,-300.0,45.5 dps T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://datasheet.lcsc.com/datasheet/pdf/398bb9b0577ec4950e08e602fdd05137.pdf?productCode=C475538",
+    "https://learn.adafruit.com/adafruit-icm20649-wide-range-6-dof-imu-accelerometer-and-gyro/pinouts",
+    "https://github.com/adafruit/Adafruit-ICM20649-PCB",
+    "https://cdn-learn.adafruit.com/assets/assets/000/088/848/large1024/sensors_Gyro_top_ORIG_2020_02.jpg",
+    "https://www.adafruit.com/product/4464"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:16:02.532Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/087/720/original/datasheet.pdf?1580177969",
+      "https://learn.adafruit.com/adafruit-icm20649-wide-range-6-dof-imu-accelerometer-and-gyro/pinouts",
+      "https://www.adafruit.com/product/4464"
+    ]
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "type": "custom-bmp580",
+  "name": "BMP580 pressure & temperature sensor",
+  "mpn": "BMP580",
+  "category": "sensor",
+  "description": "Bosch low-cost barometric pressure (30–125 kPa, ±6 Pa relative, ±30 Pa absolute) and temperature (-40 to +85 °C, ±0.5 °C) sensor with on-chip compensation (no calibration maths), I2C/I3C and SPI. The chip runs on 1.71–3.6 V. Sold as: Adafruit BMP580 I2C or SPI Temperature and Pressure Sensor - STEMMA QT (#6411), 8-pin header VIN, 3Vo, GND, SCL, SDO, SDA, CS, INT (3.3 V regulator and level shifting, 3–5 V supply, two STEMMA QT sockets), I2C address 0x47 (0x46 with SDO to GND or the addr jumper closed).",
+  "eli5": "A barometer and thermometer on a chip: it notices the air pressure change when you carry it up a flight of stairs, and reports the temperature too.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V into the on-board 3.3 V regulator (use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); pull-up and level shifting on the board, 3–5 V logic",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "levelV": 3.3,
+      "description": "I2C address select (SPI data out, 3.3 V): open = 0x47, GND = 0x46. Leave unconnected for the default address",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI); pull-up and level shifting on the board, 3–5 V logic",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select (active low); pulled up on the board so the chip uses I2C. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "levelV": 3.3,
+      "description": "Interrupt output (3.3 V, data ready / FIFO / out-of-range), not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.26,
+  "i2cAddress": 71,
+  "datasheetUrl": "https://pdf.direnc.net/upload/bmp580-datasheet.pdf",
+  "priceUsd": 7.95,
+  "supplierQuery": "Adafruit BMP580 STEMMA QT 6411",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://pdf.direnc.net/upload/bmp580-datasheet.pdf",
+    "https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp580/",
+    "https://www.adafruit.com/product/6411",
+    "https://learn.adafruit.com/adafruit-bmp580-bmp581-and-bmp585-temperature-and-pressure-sensor/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/139/368/medium800/sensors_bmp580_pinouts.png"
+  ],
+  "buildNotes": [
+    "Power VIN with the same voltage as your board's logic (3.3 V on ESP32/Pico). 3Vo is an output: never feed it.",
+    "The default I2C address is 0x47. Tie SDO to GND or close the addr jumper on the back for 0x46, e.g. for a second sensor.",
+    "Check the chip ID: register 0x01 reads 0x50 on a BMP580 (same as the BMP581; 0x51 on a BMP585).",
+    "After a soft reset (0xB6 to 0x7E) the chip sits in deep standby: write ODR_CONFIG (0x37) with deep_dis set and pwr_mode 00, wait 2.5 ms, configure, then trigger forced mode (pwr_mode 10).",
+    "Results are already compensated: temperature = signed 24-bit at 0x1D–0x1F / 65536 °C, pressure = 24-bit at 0x20–0x22 / 64 Pa, both LSB first. Read all 6 bytes in one burst.",
+    "Pressure is only measured when press_en (OSR_CONFIG 0x36 bit 6) is set; otherwise only temperature updates.",
+    "Keep it out of drafts and away from warm parts: airflow shows up as pressure noise."
+  ],
+  "keywords": [
+    "bmp580",
+    "bmp5",
+    "bmp5xx",
+    "barometer",
+    "pressure",
+    "altimeter",
+    "altitude",
+    "temperature",
+    "bosch",
+    "adafruit 6411",
+    "stemma qt",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "Pa",
+        "min": 30000,
+        "max": 125000,
+        "default": 101325
+      }
+    ],
+    "registers": {
+      "0x01": 80,
+      "0x02": 50,
+      "0x13": 48,
+      "0x14": 53,
+      "0x15": 0,
+      "0x27": 17,
+      "0x28": 2,
+      "0x36": 0,
+      "0x37": 112,
+      "0x38": 0
+    },
+    "measures": [
+      {
+        "reg": "0x1D",
+        "bytes": 3,
+        "littleEndian": true,
+        "signed": true,
+        "scale": 0.0000152587890625,
+        "control": "value"
+      },
+      {
+        "reg": "0x20",
+        "bytes": 3,
+        "littleEndian": true,
+        "scale": 0.015625,
+        "control": "pressure"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmp580.py",
+    "code": "# MicroPython driver for the Bosch BMP580 pressure/temperature sensor (I2C)\n# Written from Bosch datasheet BST-BMP580-DS004-02 (rev 1.2):\n#   post-power-up checks sec. 4.3.9, soft reset 4.3.10, forced mode 4.3.3/4.3.7,\n#   data format 4.5 (T = raw/2^16 degC, p = raw/2^6 Pa), register map sec. 7,\n#   timings table 4 (t_powup 2 ms, t_soft_res 2 ms, t_standby 2.5 ms, t_conv_p / t_conv_t).\n# The BMP580 is factory-compensated: no calibration coefficients are needed.\nimport time\n\nREG_CHIP_ID = 0x01     # 0x50 on BMP580 (and BMP581), 0x51 on BMP585\nREG_INT_CONFIG = 0x14  # bit0 int_mode (1 latched), bit1 int_pol, bit2 int_od, bit3 int_en, bits7:4 pad_int_drv\nREG_INT_SOURCE = 0x15  # bit0 drdy_data_reg_en\nREG_TEMP_XLSB = 0x1D   # 0x1D..0x1F temperature (signed 24-bit, LSB first), 0x20..0x22 pressure\nREG_INT_STATUS = 0x27  # clear-on-read: bit0 drdy_data_reg, bit4 por\nREG_STATUS = 0x28      # bit1 status_nvm_rdy, bit2 status_nvm_err\nREG_OSR_CONFIG = 0x36  # bits2:0 osr_t, bits5:3 osr_p, bit6 press_en\nREG_ODR_CONFIG = 0x37  # bits1:0 pwr_mode (0 standby, 1 normal, 2 forced, 3 continuous), bits6:2 odr, bit7 deep_dis\nREG_CMD = 0x7E         # 0xB6 = soft reset\n\nCHIP_IDS = (0x50, 0x51)\n\n# Table 4 nominal conversion times in ms (index = OSR code 0..7 for x1..x128), +5 % tolerance.\n_TCONV_P = (1.0, 1.7, 2.9, 5.4, 10.4, 20.4, 40.4, 80.4)\n_TCONV_T = (1.0, 1.1, 1.5, 2.1, 3.3, 5.8, 10.8, 20.8)\n\n\nclass BMP580:\n    def __init__(self, i2c, addr=0x47, osr_p=4, osr_t=0):\n        \"\"\"addr 0x47 (SDO high, Adafruit default) or 0x46 (SDO to GND / addr jumper closed).\n        osr codes 0..7 = x1, x2, x4, x8, x16, x32, x64, x128 (OSR_CONFIG).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.osr_p = osr_p & 0x07\n        self.osr_t = osr_t & 0x07\n        time.sleep_ms(3)  # t_powup (2 ms max)\n        cid = self._r(REG_CHIP_ID, 1)[0]\n        if cid not in CHIP_IDS:\n            raise OSError(\"BMP580 not found at 0x%02X (chip id 0x%02X, expected 0x50)\" % (addr, cid))\n        self.reset()\n        # Standby with deep standby disabled (deep_dis = 1), keeping the reset ODR bits.\n        odr = self._r(REG_ODR_CONFIG, 1)[0]\n        self._odr_bits = (odr & 0x7C) | 0x80\n        self._w(REG_ODR_CONFIG, self._odr_bits)\n        time.sleep_us(2500)  # t_standby\n        # INT pin: enabled, latched, active high, push-pull; keep the pad drive strength bits.\n        icfg = self._r(REG_INT_CONFIG, 1)[0]\n        self._w(REG_INT_CONFIG, (icfg & 0xF0) | 0x0B)\n        # Data-ready source so INT_STATUS.drdy_data_reg reports finished conversions.\n        self._w(REG_INT_SOURCE, 0x01)\n        # Pressure enabled with the chosen oversampling (written in standby, sec. 4.3.8).\n        self._w(REG_OSR_CONFIG, 0x40 | (self.osr_p << 3) | self.osr_t)\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def reset(self):\n        \"\"\"Soft reset (0xB6 to CMD), then the post-power-up checks of sec. 4.3.9.\"\"\"\n        self._w(REG_CMD, 0xB6)\n        time.sleep_ms(3)  # t_soft_res (2 ms)\n        if self._r(REG_CHIP_ID, 1)[0] == 0:\n            raise OSError(\"BMP580 chip id reads 0 after reset\")\n        st = self._r(REG_STATUS, 1)[0]\n        if not (st & 0x02) or (st & 0x04):\n            raise OSError(\"BMP580 NVM not ready or NVM error (STATUS 0x%02X)\" % st)\n        if not (self._r(REG_INT_STATUS, 1)[0] & 0x10):\n            raise OSError(\"BMP580 soft reset did not complete (INT_STATUS.por not set)\")\n\n    def _measure(self):\n        self._r(REG_INT_STATUS, 1)  # clear any stale status (clear-on-read)\n        self._w(REG_ODR_CONFIG, self._odr_bits | 0x02)  # FORCED: one measurement, then back to standby\n        t_ms = (_TCONV_P[self.osr_p] + _TCONV_T[self.osr_t]) * 1.05\n        time.sleep_ms(int(t_ms) + 2)\n        for _ in range(50):\n            if self._r(REG_INT_STATUS, 1)[0] & 0x01:  # drdy_data_reg\n                break\n            time.sleep_ms(2)\n        else:\n            raise OSError(\"BMP580 measurement timed out\")\n        d = self._r(REG_TEMP_XLSB, 6)  # one burst read for data shadowing (sec. 4.5.1)\n        raw_t = d[0] | (d[1] << 8) | (d[2] << 16)\n        if raw_t & 0x800000:\n            raw_t -= 1 << 24  # temperature is signed 24-bit\n        raw_p = d[3] | (d[4] << 8) | (d[5] << 16)\n        return raw_t, raw_p\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure Pa).\"\"\"\n        raw_t, raw_p = self._measure()\n        return raw_t / 65536.0, raw_p / 64.0\n\n    def temperature(self):\n        return self.read()[0]\n\n    def pressure(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_pa=101325.0):\n        \"\"\"Approximate altitude in metres from the international barometric formula.\"\"\"\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_pa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmp580 import BMP580\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BMP580(i2c, addr=0x47)\nwhile True:\n    t, p = sensor.read()\n    print('T=%.2fC P=%.2fPa' % (t, p))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24.8
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 99412.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=24.80C P=99412.50Pa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:14:04.507Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/6411/BMP580.pdf",
+      "https://www.adafruit.com/product/6411"
+    ]
+  }
+}

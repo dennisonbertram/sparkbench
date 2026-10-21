@@ -1,0 +1,169 @@
+{
+  "type": "custom-adafruit-neoslider",
+  "name": "Adafruit NeoSlider",
+  "mpn": "Adafruit 5295",
+  "category": "input",
+  "description": "75 mm slide potentiometer with four RGB NeoPixels read and driven over I2C: an ATtiny817 running Adafruit seesaw firmware reads the slider with its 10-bit ADC (seesaw pin 18, 0-1023) and drives the NeoPixels (seesaw pin 14). Runs on 3-5 V straight from VIN (no regulator; SDA/SCL have 10 k pull-ups to VIN, so power it from 3.3 V on 3.3 V boards). Sold as: Adafruit NeoSlider I2C QT Slide Potentiometer with 4 NeoPixels (product 5295, two identical 6-pad rows VIN, GND, SCL, SDA, INT, UPDI plus two STEMMA QT sockets), I2C address 0x30 (0x30-0x3F with jumpers A0-A3).",
+  "eli5": "A sliding knob with four colour lights under it; a tiny chip on the board measures where the knob is and tells your board over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V; use the same voltage as your board's logic (3.3 V on ESP32/Pico) because SDA/SCL are pulled up to VIN",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 10 k pull-up to VIN on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 10 k pull-up to VIN on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low (only when enabled in seesaw); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "UPDI",
+      "role": "nc",
+      "description": "ATtiny817 programming/debug pin; leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 10,
+  "i2cAddress": 48,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf",
+  "priceUsd": 9.95,
+  "supplierQuery": "Adafruit 5295 NeoSlider I2C STEMMA QT slide potentiometer seesaw",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Every seesaw access is a write of two bytes, module base then function register; for a read wait a few ms, then read the bytes back, big-endian.",
+    "Slider: ADC base 0x09, register 0x07 + 18 = 0x19, 2 bytes, 10-bit reading 0-1023.",
+    "NeoPixels: base 0x0E; PIN 0x01 = 14, BUF_LENGTH 0x03 = 12 (16-bit), BUF 0x04 = 16-bit offset + G,R,B bytes, SHOW 0x05.",
+    "HW_ID (0x00 0x01) reads 0x87 (ATtiny817). Default address 0x30; cut A0-A3 on the back to add 1/2/4/8 (up to 0x3F).",
+    "No regulator: the ATtiny and the 10 k I2C pull-ups run from VIN, so feed VIN from 3.3 V on a 3.3 V board.",
+    "The two 6-pad rows above and below the slider are the same signals; solder a header to either one."
+  ],
+  "keywords": [
+    "slide potentiometer",
+    "slider",
+    "fader",
+    "neopixel",
+    "seesaw",
+    "adafruit 5295",
+    "stemma qt",
+    "qwiic",
+    "i2c"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Slider position (ADC reading)",
+    "unit": "counts",
+    "min": 0,
+    "max": 1023,
+    "default": 512,
+    "responses": [
+      {
+        "match": "00 01",
+        "bytes": [
+          {
+            "const": 135,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "09 19",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "neoslider.py",
+    "code": "# Adafruit NeoSlider (product 5295): ATtiny817 running seesaw firmware, MicroPython driver.\n# seesaw protocol: every access starts with a write of [module base, function register];\n# for a read, wait briefly, then read the bytes back (all values big-endian).\nimport time\n\n_STATUS_BASE = 0x00\n_STATUS_HW_ID = 0x01\n_STATUS_SWRST = 0x7F\n_ADC_BASE = 0x09\n_ADC_CHANNEL_OFFSET = 0x07\n_NEOPIXEL_BASE = 0x0E\n_NEOPIXEL_PIN = 0x01\n_NEOPIXEL_BUF_LENGTH = 0x03\n_NEOPIXEL_BUF = 0x04\n_NEOPIXEL_SHOW = 0x05\n\n_HW_IDS = (0x84, 0x85, 0x86, 0x87, 0x88, 0x89)  # ATtiny8xx/16xx seesaw chips (0x87 = ATtiny817 on this board)\n_POT_PIN = 18        # slide potentiometer wiper, seesaw ADC pin 18\n_PIXEL_PIN = 14      # 4 reverse-mount NeoPixels (GRB) on seesaw pin 14\n_NUM_PIXELS = 4\n\n\nclass NeoSlider:\n    def __init__(self, i2c, addr=0x30, reset=True):\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            self._write(_STATUS_BASE, _STATUS_SWRST, b'\\xff')\n            time.sleep_ms(500)  # seesaw restarts after a software reset\n        hw = self._read(_STATUS_BASE, _STATUS_HW_ID, 1)[0]\n        if hw not in _HW_IDS:\n            raise OSError('seesaw not found at 0x%02x (HW_ID 0x%02x): check the wiring' % (addr, hw))\n        # Set up the NeoPixel output: pin 14, 4 pixels x 3 bytes (GRB).\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_PIN, bytes([_PIXEL_PIN]))\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF_LENGTH, (_NUM_PIXELS * 3).to_bytes(2, 'big'))\n\n    def _write(self, base, reg, data=b''):\n        self.i2c.writeto(self.addr, bytes([base, reg]) + bytes(data))\n\n    def _read(self, base, reg, n, delay_us=8000):\n        self.i2c.writeto(self.addr, bytes([base, reg]))\n        time.sleep_us(delay_us)  # seesaw needs time to fetch the value before the read\n        return self.i2c.readfrom(self.addr, n)\n\n    def position(self):\n        \"\"\"Slider position as the 10-bit ADC reading, 0-1023 (one end to the other).\"\"\"\n        b = self._read(_ADC_BASE, _ADC_CHANNEL_OFFSET + _POT_PIN, 2)\n        return (b[0] << 8) | b[1]\n\n    def fill(self, r, g, b):\n        \"\"\"Set all four NeoPixels to one colour (0-255 each) and show it.\"\"\"\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF, b'\\x00\\x00' + bytes([g, r, b]) * _NUM_PIXELS)\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_SHOW)\n\n    def set_pixel(self, i, r, g, b):\n        \"\"\"Set one NeoPixel (0-3); call show() afterwards.\"\"\"\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_BUF, (i * 3).to_bytes(2, 'big') + bytes([g, r, b]))\n\n    def show(self):\n        self._write(_NEOPIXEL_BASE, _NEOPIXEL_SHOW)\n"
+  },
+  "skill": "---\nname: part-adafruit-neoslider\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit NeoSlider I2C QT slide potentiometer with 4 NeoPixels (product 5295, ATtiny817 running seesaw firmware). Use when designing, wiring, simulating or writing code for the NeoSlider in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit NeoSlider (Adafruit 5295)\n\n## Overview\nA 75 mm linear slide potentiometer with four reverse-mount RGB NeoPixels under it, read and driven over I2C. An **ATtiny817** running Adafruit's **seesaw** firmware reads the slider with its 10-bit ADC (seesaw pin 18) and drives the NeoPixels (seesaw pin 14), so you only need SDA and SCL. It has two STEMMA QT / Qwiic sockets and two identical 6-pad header rows (one above and one below the slider).\n\n## Pinout (header order, as printed on the board)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3-5 V. Use the same voltage as your board's logic (3.3 V on ESP32/Pico) |\n| GND | Ground |\n| SCL | I2C clock (10 k pull-up to VIN on board) |\n| SDA | I2C data (10 k pull-up to VIN on board) |\n| INT | Interrupt output, active low (optional; it must be enabled in seesaw) |\n| UPDI | ATtiny817 programming pin (leave unconnected) |\n\n## Electrical limits\n- Supply: 3-5 V on VIN (\"VLogic/Vcc: 3-5VDC\" on the back). There is no regulator: the ATtiny817 runs straight from VIN.\n- SDA/SCL are pulled up to VIN with 10 k, and INT swings to VIN. **Power it from 3.3 V** when you use a 3.3 V board (ESP32, Pico, Raspberry Pi), or the bus is pulled up to 5 V.\n- Current: a few mA, plus up to about 60 mA more with all four NeoPixels at full white.\n\n## Interface details\n- **I2C address 0x30** by default. Cutting the A0/A1/A2/A3 jumpers on the back adds 1/2/4/8, giving up to 0x3F (16 boards on one bus).\n- The seesaw protocol: write `[module base, function register]` with any data after it. To read, write the two bytes, wait (the driver waits 8 ms, as Adafruit's library does), then read. Values are big-endian.\n- STATUS base 0x00: HW_ID 0x01 reads **0x87** (ATtiny817). SWRST 0x7F: write 0xFF, then wait about 500 ms.\n- Slider: ADC base 0x09, register 0x07 + pin = **0x19** for pin 18. Returns 2 bytes, a 10-bit reading 0-1023 from one end to the other.\n- NeoPixels: NEOPIXEL base 0x0E. PIN 0x01 = 14, BUF_LENGTH 0x03 = 12 (4 pixels x 3 bytes, 16-bit), BUF 0x04 = 2-byte start offset then G, R, B bytes, SHOW 0x05 latches them.\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VIN → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n- You can also use a STEMMA QT / Qwiic cable instead of the header.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom neoslider import NeoSlider\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\ns = NeoSlider(i2c)          # address 0x30\nprint(s.position())         # 0-1023\ns.fill(0, 0, 40)            # all four pixels dim blue\n```\n\n## Gotchas\n- Always leave a short delay between the register write and the read. Reading too quickly returns stale or garbage bytes.\n- The ADC reading is ratiometric (the pot sits across the ATtiny's supply), so it doesn't change with VIN. It is noisy by a count or two, so smooth it if you need a steady value.\n- Several NeoSliders on one bus: give each its own address with the A0-A3 jumpers (cut = 1).\n- In the Sparkbench simulator the slider sets the ADC reading. The NeoPixel writes are accepted but not drawn.\n\n## Datasheet\n- ATtiny817 (the chip): https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf\n- Board guide: https://learn.adafruit.com/adafruit-neoslider\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom neoslider import NeoSlider\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\ns = NeoSlider(i2c)\nwhile True:\n    pos = s.position()\n    s.fill(pos // 4, 0, 255 - pos // 4)\n    print('slider=%d' % pos)\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the slider ADC reading",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 837
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "slider=837",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 96
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "slider=96",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://learn.adafruit.com/adafruit-neoslider/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/107/181/large1024/adafruit_products_NS_through-hole_pads_top.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/107/175/large1024/adafruit_products_NS_pinouts_guide.jpg",
+    "https://learn.adafruit.com/adafruit-neoslider/python-circuitpython",
+    "https://www.adafruit.com/product/5295",
+    "https://github.com/adafruit/Adafruit-NeoSlider-PCB",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/seesaw.py",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/neopixel.py",
+    "https://github.com/adafruit/Adafruit_CircuitPython_seesaw/blob/main/adafruit_seesaw/attiny8x7.py",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/ATtiny417-814-816-817-DataSheet-DS40002288A.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:16:23.396Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/5295",
+      "https://learn.adafruit.com/adafruit-neoslider/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/107/175/large1024/adafruit_products_NS_pinouts_guide.jpg"
+    ]
+  }
+}

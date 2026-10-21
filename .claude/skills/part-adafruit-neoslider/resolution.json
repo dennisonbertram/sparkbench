@@ -1,0 +1,10 @@
+{
+  "diffs": [
+    {
+      "diff": "physical layout: the board has 2 header rows, but this small module is modelled as plugging in as a single row",
+      "verdict": "part-correct",
+      "evidence": "The two rows are duplicates, not separate signals: the Adafruit guide says 'In the center of the board, on each edge, are a set of six through-hole pads' followed by a single VIN/GND/SCL/SDA/INT/UPDI list, and the official Eagle schematic wires both 1x6 headers JP1 and JP5 to the same nets pin for pin (UPDI net: '<pinref part=\"JP5\" gate=\"A\" pin=\"6\"/>' next to '<pinref part=\"JP1\" gate=\"A\" pin=\"6\"/>'), so one 1x6 header on either edge carries every signal and the single-row 1x6 model is correct.",
+      "source": "https://learn.adafruit.com/adafruit-neoslider/pinouts ; https://raw.githubusercontent.com/adafruit/Adafruit-NeoSlider-PCB/main/Adafruit%20NeoSlider.sch"
+    }
+  ]
+}

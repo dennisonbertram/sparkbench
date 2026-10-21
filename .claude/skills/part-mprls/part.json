@@ -1,0 +1,153 @@
+{
+  "type": "custom-mprls",
+  "name": "MPRLS ported pressure sensor (0-25 psi)",
+  "mpn": "MPRLS0025PA00001A",
+  "category": "sensor",
+  "description": "Honeywell MicroPressure MPR series absolute pressure sensor with a 2.5 mm hose port, 0-25 psi (0-1724 hPa), 24-bit I2C output (transfer function A: 10 % to 90 % of 2^24 counts). The chip runs at 3.3 V; the breakout has a 3.3 V regulator and SDA/SCL level shifters. Sold as: Adafruit MPRLS Ported Pressure Sensor Breakout - 0 to 25 PSI (product 3965), 7-pin header VIN, 3Vo, GND, SCL, SDA, EOC, RST, I2C address 0x18.",
+  "eli5": "Measures air pressure in a tube or bottle you connect to its little nozzle, like a tyre gauge your board can read.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V into the on-board 3.3 V regulator (MIC5225); the I2C pull-ups go to this voltage, so use 3.3 V with an ESP32/Pico",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator; not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 10000,
+      "description": "I2C clock; level shifted to 3.3 V on the board, 10 kΩ pull-up to VIN",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 10000,
+      "description": "I2C data; level shifted to 3.3 V on the board, 10 kΩ pull-up to VIN",
+      "required": true
+    },
+    {
+      "name": "EOC",
+      "role": "io",
+      "levelV": 3.3,
+      "description": "End-of-conversion output (3.3 V logic, high when a reading is ready); optional",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Reset input, active low (pulled up to 3.3 V on the board, diode-isolated); optional",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3,
+  "i2cAddress": 24,
+  "datasheetUrl": "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/pressure-sensors/board-mount-pressure-sensors/micropressure-mpr-series/documents/sps-siot-mpr-series-datasheet-32332628-ciid-172626.pdf",
+  "sources": [
+    "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/pressure-sensors/board-mount-pressure-sensors/micropressure-mpr-series/documents/sps-siot-mpr-series-datasheet-32332628-ciid-172626.pdf",
+    "https://www.adafruit.com/product/3965",
+    "https://github.com/adafruit/Adafruit-MPRLS-Pressure-Sensor-Breakout-PCB",
+    "https://github.com/adafruit/Adafruit_MPRLS"
+  ],
+  "priceUsd": 15,
+  "supplierQuery": "Adafruit MPRLS ported pressure sensor breakout 0-25 PSI 3965",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Write 0xAA 0x00 0x00, then wait until the busy flag (status bit 5) clears, at least 5 ms, or EOC goes high; read 4 bytes: status, then 24-bit pressure counts.",
+    "Status bit 6 must be 1 (powered); bit 2 = memory integrity error, bit 0 = math saturation: discard the reading if either is set.",
+    "Pressure (psi) = (counts - 1677722) x 25 / (15099494 - 1677722). Multiply by 68.947572932 for hPa.",
+    "The SDA/SCL pull-ups go to VIN: power the board from 3.3 V when it shares the bus with an ESP32 or Pico.",
+    "It is an absolute sensor: open to air it reads about 14.7 psi (1013 hPa) at sea level. Push 2.5 mm ID tubing over the port.",
+    "Overpressure limit 60 psi, burst 120 psi; readings above 25 psi are out of range (math saturation). Opaque tubing is recommended: the die is light sensitive."
+  ],
+  "keywords": [
+    "mprls",
+    "mpr",
+    "honeywell",
+    "pressure",
+    "psi",
+    "hpa",
+    "absolute",
+    "ported",
+    "air pressure",
+    "3965"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Pressure",
+    "unit": "psi",
+    "min": 0,
+    "max": 25,
+    "default": 14.7,
+    "responses": [
+      {
+        "match": "AA 00 00",
+        "bytes": [
+          {
+            "const": 64,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 24,
+            "scale": 0.000001862645260253266,
+            "offset": -3.12500093132263
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mprls.py",
+    "code": "# Honeywell MPRLS (MPR series, I2C) pressure sensor, MicroPython driver.\n# Written from the Honeywell MPR Series datasheet (32332628):\n#  - I2C address 0x18; output measurement command 0xAA 0x00 0x00.\n#  - Wait for the busy flag (status bit 5) to clear, or >= 5 ms, or EOC high.\n#  - Read 4 bytes: status, then 24-bit pressure counts (MSB first).\n#  - Status: bit 6 = powered (must be 1), bit 5 = busy, bit 2 = memory integrity\n#    error, bit 0 = math saturation.\n#  - Transfer function A (10 % to 90 % of 2^24 counts):\n#    P = (counts - 1677722) * (Pmax - Pmin) / (15099494 - 1677722) + Pmin\n# The Adafruit breakout uses the 0-25 psi absolute part (MPRLS0025PA00001A).\nimport time\n\nOUTPUT_MIN = 1677722   # 0x19999A, 10 % of 2^24\nOUTPUT_MAX = 15099494  # 0xE66666, 90 % of 2^24\nPSI_TO_HPA = 68.947572932\n\n_POWERED = 0x40\n_BUSY = 0x20\n_MEM_ERR = 0x04\n_MATH_SAT = 0x01\n\n\nclass MPRLS:\n    def __init__(self, i2c, addr=0x18, psi_min=0.0, psi_max=25.0, eoc=None):\n        self.i2c = i2c\n        self.addr = addr\n        self.psi_min = psi_min\n        self.psi_max = psi_max\n        self.eoc = eoc  # optional machine.Pin (input) wired to EOC\n        time.sleep_ms(3)  # power up to data ready: 2.5 ms max\n\n    def status(self):\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def read_raw(self):\n        \"\"\"Run one measurement and return the 24-bit pressure counts.\"\"\"\n        self.i2c.writeto(self.addr, b'\\xaa\\x00\\x00')\n        t0 = time.ticks_ms()\n        time.sleep_ms(5)  # datasheet option 2: at least 5 ms per conversion\n        while True:\n            if self.eoc is not None:\n                done = self.eoc.value()\n            else:\n                done = not (self.status() & _BUSY)\n            if done:\n                break\n            if time.ticks_diff(time.ticks_ms(), t0) > 50:\n                raise OSError('MPRLS timeout: sensor stayed busy')\n            time.sleep_ms(1)\n        d = self.i2c.readfrom(self.addr, 4)\n        st = d[0]\n        if not st & _POWERED:\n            raise OSError('MPRLS not powered (status 0x%02x)' % st)\n        if st & _MEM_ERR:\n            raise OSError('MPRLS memory integrity error')\n        if st & _MATH_SAT:\n            raise OSError('MPRLS math saturation (pressure out of range)')\n        return (d[1] << 16) | (d[2] << 8) | d[3]\n\n    def pressure_psi(self):\n        raw = self.read_raw()\n        return (raw - OUTPUT_MIN) * (self.psi_max - self.psi_min) / (OUTPUT_MAX - OUTPUT_MIN) + self.psi_min\n\n    def pressure_hpa(self):\n        return self.pressure_psi() * PSI_TO_HPA\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mprls import MPRLS\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MPRLS(i2c)\nwhile True:\n    psi = sensor.pressure_psi()\n    print('P=%.2fpsi %.1fhPa' % (psi, psi * 68.947572932))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 20
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=20.00psi 1379.0hPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:24:43.138Z",
+    "verifiedSources": [
+      "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/pressure-sensors/board-mount-pressure-sensors/micropressure-mpr-series/documents/sps-siot-mpr-series-datasheet-32332628-ciid-172626.pdf",
+      "https://learn.adafruit.com/adafruit-mprls-ported-pressure-sensor-breakout/pinouts"
+    ]
+  }
+}

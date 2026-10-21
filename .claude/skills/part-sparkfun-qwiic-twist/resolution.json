@@ -1,0 +1,16 @@
+{
+  "diffs": [
+    {
+      "diff": "minimum supply: part 2.7 V, datasheet reading 3.3 V",
+      "verdict": "part-correct",
+      "evidence": "3.3 V is the board's nominal supply, not a minimum: the board has no regulator, so the 3.3V pin feeds the ATtiny84 directly, whose datasheet gives 'Operating voltage: 2.7 - 5.5V for Atmel ATtiny24/44/84' with '0 - 8MHz at 2.7 - 5.5V', and the firmware runs it at 8 MHz ('To support 400kHz I2C communication reliably ATtiny84 needs to run at 8MHz'), so 2.7 V is the real minimum.",
+      "source": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf ; https://raw.githubusercontent.com/sparkfun/Qwiic_Twist/master/Firmware/Qwiic_Twist/Qwiic_Twist.ino"
+    },
+    {
+      "diff": "maximum supply: part 3.6 V, datasheet reading 3.3 V",
+      "verdict": "part-correct",
+      "evidence": "SparkFun only states a nominal 3.3 V rail ('The Qwiic Twist is designed to operate at 3.3V so please don’t drive it at 5V'), and the ATtiny84 itself tolerates up to 5.5 V ('2.7 - 5.5V for Atmel ATtiny24/44/84'), so 3.6 V is a safe, conservative ceiling for a 3.3 V rail (normal +/-10% tolerance) that stays well below the chip limit while respecting the vendor's 3.3 V-only guidance.",
+      "source": "https://learn.sparkfun.com/tutorials/qwiic-twist-hookup-guide/all ; https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf"
+    }
+  ]
+}

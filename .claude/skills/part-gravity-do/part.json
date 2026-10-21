@@ -1,0 +1,114 @@
+{
+  "type": "custom-gravity-do",
+  "name": "Gravity analog dissolved oxygen sensor (DFRobot SEN0237)",
+  "mpn": "SEN0237",
+  "category": "sensor",
+  "description": "Analog dissolved oxygen (DO) meter: a galvanic probe (BNC) feeds a TP5551 op-amp signal board that outputs 0–3.0 V on A, proportional to dissolved oxygen. Range 0–20 mg/L, water 0–40 °C, supply 3.3–5.5 V. DO = V(mV) × DO_Table[T] / V_sat µg/L, V_sat = calibrated saturation voltage (CAL1_V + 35 mV/°C × (T − CAL1_T)). Sold as: DFRobot Gravity: Analog Dissolved Oxygen Sensor / Meter Kit for Arduino (SEN0237, current revision SEN0237-A), 3-pin PH2.0 Gravity connector numbered A, +, -.",
+  "eli5": "Put its probe in water and it tells you how much oxygen fish could breathe in it. More oxygen gives a higher voltage on its A pin.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "A",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (J1 pin 1, blue wire), 0–3.0 V through 220 Ω, proportional to dissolved oxygen. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply (J1 pin 2, red wire), 3.3–5.5 V; an onboard XC6206 3.0 V LDO powers the op-amp",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground (J1 pin 3, black wire)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 3,
+  "datasheetUrl": "https://wiki.dfrobot.com/sen0237-a/",
+  "sources": [
+    "https://wiki.dfrobot.com/sen0237-a/",
+    "https://wiki.dfrobot.com/sen0237-a/docs/20892",
+    "https://wiki.dfrobot.com/sen0237-a/docs/22521",
+    "https://dfimg.dfrobot.com/wiki/20536/SEN0237_analog-dissolved-oxygen-sensor_schematics_V1.0.pdf",
+    "https://github.com/DFRobot/Gravity_Analog_Dissolved_Oxygen_Sensor"
+  ],
+  "priceUsd": 170,
+  "supplierQuery": "DFRobot Gravity analog dissolved oxygen sensor SEN0237",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Connector order (wiki pinout and schematic J1): 1 = A (signal), 2 = + (VCC), 3 = - (GND). Gravity cable: blue A, red +, black -.",
+    "Power + from 3.3 V or 5 V (3.3–5.5 V). The op-amp runs from an onboard 3.0 V LDO, so A never exceeds 3.0 V and can go straight to an ESP32 ADC1 pin (GPIO32–39) or a Pico ADC pin (GP26–28).",
+    "DO (µg/L) = V(mV) × DO_Table[T] / V_sat; single-point V_sat = CAL1_V + 35 × (T − CAL1_T) mV. DO_Table runs 14460 (0 °C) to 6410 µg/L (40 °C).",
+    "Calibrate before use: record the A voltage in oxygen-saturated water at a known temperature (CAL1_V, CAL1_T); optionally a second, colder point (CAL2_V, CAL2_T).",
+    "Fill the probe's membrane cap with 0.5 mol/L NaOH (caustic: gloves and goggles) before first use; replace monthly.",
+    "Measure the water temperature (e.g. a waterproof DS18B20): saturation DO changes strongly with temperature."
+  ],
+  "keywords": [
+    "dissolved oxygen",
+    "do",
+    "oxygen",
+    "water quality",
+    "aquarium",
+    "aquaculture",
+    "hydroponics",
+    "galvanic",
+    "sen0237",
+    "gravity",
+    "dfrobot",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "A",
+    "quantity": "A output voltage (rises with dissolved oxygen)",
+    "unit": "V",
+    "min": 0,
+    "max": 3,
+    "default": 1.6,
+    "vAtMin": 0,
+    "vAtMax": 3,
+    "outputOhms": 220
+  },
+  "driver": {
+    "filename": "gravity_do.py",
+    "code": "# DFRobot Gravity Analog Dissolved Oxygen Sensor (SEN0237 / SEN0237-A), MicroPython driver.\n# The signal board (TP5551 op-amp, XC6206 3.0 V LDO) amplifies the galvanic probe's current into a\n# voltage on A (0-3.0 V) proportional to dissolved oxygen. Conversion is DFRobot's own (wiki sample\n# code \"Example Code for Arduino-Dissolved Oxygen Measurement\"):\n#   V_sat = CAL1_V + 35*(T - CAL1_T)                                   single-point calibration (mV)\n#   V_sat = (T - CAL2_T)*(CAL1_V - CAL2_V)/(CAL1_T - CAL2_T) + CAL2_V  two-point calibration (mV)\n#   DO    = V_mV * DO_TABLE[T] / V_sat                                 ug/L (T in whole C, 0-40)\n# CAL1_V / CAL2_V are the probe voltages measured in oxygen-saturated water at CAL1_T / CAL2_T.\n# You MUST calibrate your own probe; the defaults (1600 mV at 25 C) are DFRobot's placeholders.\nfrom machine import ADC, Pin\n\n# Saturated dissolved oxygen in ug/L at 0..40 C (DFRobot DO_Table)\nDO_TABLE = (\n    14460, 14220, 13820, 13440, 13090, 12740, 12420, 12110, 11810, 11530,\n    11260, 11010, 10770, 10530, 10300, 10080, 9860, 9660, 9460, 9270,\n    9080, 8900, 8730, 8570, 8410, 8250, 8110, 7960, 7820, 7690,\n    7560, 7430, 7300, 7180, 7070, 6950, 6840, 6730, 6630, 6530, 6410)\n\n\nclass GravityDO:\n    def __init__(self, a, cal1_mv=1600, cal1_t=25, cal2_mv=None, cal2_t=None,\n                 temperature=25, samples=20, vref=3.3, divider=1.0):\n        \"\"\"a: GPIO number (or Pin) wired to the board's A pin.\n        cal1_mv/cal1_t: saturation voltage (mV) measured at cal1_t (C). Give cal2_mv/cal2_t too for\n        two-point calibration (cal1 = high-temperature point, cal2 = low-temperature point).\n        temperature: water temperature in C (0-40). vref: ADC full scale when read_uv() is missing.\"\"\"\n        self.adc = ADC(Pin(a) if isinstance(a, int) else a)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.cal1_mv = cal1_mv\n        self.cal1_t = cal1_t\n        self.cal2_mv = cal2_mv\n        self.cal2_t = cal2_t\n        self.temperature = temperature\n        self.samples = samples\n        self.vref = vref\n        self.divider = divider\n\n    def voltage(self):\n        \"\"\"Voltage on A in volts (average of several ADC samples).\"\"\"\n        total = 0.0\n        for _ in range(self.samples):\n            if hasattr(self.adc, 'read_uv'):\n                total += self.adc.read_uv() / 1e6\n            else:\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def _t_index(self, t):\n        t = int(round(t))\n        if t < 0 or t > 40:\n            raise ValueError('water temperature must be 0-40 C')\n        return t\n\n    def saturation_mv(self, t=None):\n        \"\"\"Probe voltage (mV) expected in 100 % saturated water at temperature t.\"\"\"\n        t = self._t_index(self.temperature if t is None else t)\n        if self.cal2_mv is None or self.cal2_t is None:\n            return self.cal1_mv + 35 * (t - self.cal1_t)\n        return (t - self.cal2_t) * (self.cal1_mv - self.cal2_mv) / (self.cal1_t - self.cal2_t) + self.cal2_mv\n\n    def do_ugl(self, v=None):\n        \"\"\"Dissolved oxygen in ug/L.\"\"\"\n        if v is None:\n            v = self.voltage()\n        t = self._t_index(self.temperature)\n        return v * 1000.0 * DO_TABLE[t] / self.saturation_mv(t)\n\n    def do_mgl(self, v=None):\n        \"\"\"Dissolved oxygen in mg/L.\"\"\"\n        return self.do_ugl(v) / 1000.0\n"
+  },
+  "example": {
+    "code": "from gravity_do import GravityDO\nimport time\n\n# Calibration: 1600 mV in saturated water at 25 C (replace with your own probe's values)\nsensor = GravityDO({A}, cal1_mv=1600, cal1_t=25, temperature=25)\nwhile True:\n    v = sensor.voltage()\n    print('A=%.2fV DO=%.1fmg/L' % (v, sensor.do_mgl(v)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the A voltage and the dissolved oxygen it converts to",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=1.20V DO=6.2mg/L",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-gravity-do\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the DFRobot Gravity Analog Dissolved Oxygen Sensor (SEN0237 / SEN0237-A, galvanic DO probe + A/+/- signal board). Use when designing, wiring, simulating or writing code for a dissolved oxygen (DO) sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build, e.g. aquariums, aquaculture or hydroponics.\n---\n\n# Gravity analog dissolved oxygen sensor (DFRobot SEN0237)\n\n## Overview\nThe **DFRobot Gravity Analog Dissolved Oxygen Sensor (SEN0237, now sold as SEN0237-A)** measures how much oxygen is dissolved in water (mg/L). A **galvanic probe** (platinum cathode, lead anode, NaOH filling solution, replaceable membrane cap) produces a current proportional to oxygen; the signal board's TP5551 op-amp turns it into a voltage on **A**. No polarisation time is needed.\n- Range **0–20 mg/L**, water 0–40 °C, up to 98 % response within 90 s (25 °C)\n- Output **0–3.0 V** on A (the board runs its op-amp from an onboard 3.0 V LDO), safe for 3.3 V ADCs\n- Probe connects by BNC, 2 m cable; membrane cap every 1–5 months, filling solution monthly\n- No chip to talk to: read A with an ADC\n\n## Pinout (signal board, PH2.0 3-pin Gravity connector J1)\n| Pin | Name | Function |\n|---|---|---|\n| 1 | A | Analog output, 0–3.0 V (220 Ω series resistor) |\n| 2 | + | Supply, 3.3–5.5 V |\n| 3 | - | Ground |\n\nThe probe plugs into the BNC socket. Gravity cable colours: blue = A, red = +, black = -.\n\n## Electrical limits\n- Supply: **3.3–5.5 V**, a few mA (power LED + op-amp).\n- Output: 0–3.0 V, never above the 3.0 V rail, so no divider is needed.\n- Probe: 0–40 °C, 0–50 PSI. The board is not waterproof.\n\n## Interface details\nDFRobot's conversion (wiki sample code), V in mV, T = water temperature in whole °C (0–40):\n```\nsingle-point:  V_sat = CAL1_V + 35 × (T − CAL1_T)                         mV\ntwo-point:     V_sat = (T − CAL2_T) × (CAL1_V − CAL2_V) / (CAL1_T − CAL2_T) + CAL2_V\nDO = V × DO_Table[T] / V_sat                                              µg/L  (÷1000 → mg/L)\n```\nDO_Table is the oxygen saturation of water, 14460 µg/L at 0 °C down to 6410 µg/L at 40 °C (8250 at 25 °C).\n**Calibration**: read the A voltage in air-saturated water (pump air into water ~20 min, or hold the probe in air after a wet shake) at known T → CAL1_V/CAL1_T. For two-point, repeat in cold saturated water → CAL2_V/CAL2_T (CAL1 is the higher temperature). DFRobot's 1600 mV @ 25 °C default is only a placeholder.\nExample: CAL1 = 1600 mV @ 25 °C, V = 1.20 V, T = 25 °C → DO = 1200 × 8250 / 1600 = 6188 µg/L ≈ 6.2 mg/L.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| + | 3V3 or 5V | 3V3(OUT) or VBUS | 3.3 V (pin 1) |\n| - | GND | GND | GND |\n| A | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (ADS1115 / MCP3008) |\n\nOn the ESP32 use ADC1 pins (ADC2 stops working while Wi-Fi is on). The Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom gravity_do import GravityDO\ndo = GravityDO(34, cal1_mv=1600, cal1_t=25, temperature=25)   # A on GPIO34; enter YOUR calibration\nv = do.voltage()\nprint('A=%.2fV DO=%.1fmg/L' % (v, do.do_mgl(v)))\n```\nAdd `cal2_mv=..., cal2_t=...` for two-point calibration. Update `do.temperature` from a waterproof DS18B20 for compensation.\n\n## Gotchas\n- **Calibrate first**: without your own saturation voltage the reading is meaningless.\n- **Fill the cap** with 0.5 mol/L NaOH before first use; no bubbles under the membrane. NaOH is caustic: wear gloves and goggles.\n- **Stir or flow the water**: the galvanic probe consumes oxygen at the membrane; still water reads low.\n- Zero-oxygen liquid not reading ~0: polish the cathode. Drifting readings: replace the membrane cap.\n- Temperature table only covers 0–40 °C.\n- Do not run several probes (pH, EC, DO) in one container without isolation; they interfere.\n\n## Datasheet\nhttps://wiki.dfrobot.com/sen0237-a/\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:20:50.888Z",
+    "verifiedSources": [
+      "https://wiki.dfrobot.com/Gravity__Analog_Dissolved_Oxygen_Sensor_SKU_SEN0237"
+    ]
+  }
+}

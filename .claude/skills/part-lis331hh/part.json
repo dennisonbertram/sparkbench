@@ -1,0 +1,234 @@
+{
+  "type": "custom-lis331hh",
+  "name": "LIS331HH high-g 3-axis accelerometer",
+  "mpn": "LIS331HH",
+  "category": "sensor",
+  "description": "STMicroelectronics 3-axis digital accelerometer with a wide ±6/±12/±24 g selectable range, 12-bit output (3 mg/digit at ±6 g), I2C/SPI, two programmable interrupt generators, data rates 0.5 Hz to 1 kHz. Chip supply 2.16–3.6 V. For jumps, crashes, sports and rocketry where a ±2/±4 g accelerometer would clip. Sold as: Adafruit LIS331 Triple-Axis Wide-Range ±24g Accelerometer breakout, STEMMA QT / Qwiic (#4626), two 6-pin headers on opposite edges, 0.5 in apart: VIN, 3Vo, GND, SCL, SDA, INT and I2, NC, NC, NC, SDO, CS (3.3 V regulator, level shifting, 3–5 V supply, I2C address 0x18; for I2C the second row is left unconnected: SDO open = 0x18, CS pulled high = I2C).",
+  "eli5": "Measures hard shakes and bumps on three axes, up to 24 times the pull of gravity.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board 3.3 V regulator feeds the chip; use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt 1 output (3.3 V logic: data ready or acceleration threshold), optional",
+      "required": false
+    },
+    {
+      "name": "I2",
+      "role": "io",
+      "description": "Interrupt 2 output (3.3 V logic), optional; leave unconnected if unused",
+      "required": false
+    },
+    {
+      "name": "NC1",
+      "role": "nc",
+      "description": "No connection, printed NC (mechanical support only)",
+      "required": false
+    },
+    {
+      "name": "NC2",
+      "role": "nc",
+      "description": "No connection, printed NC (mechanical support only)",
+      "required": false
+    },
+    {
+      "name": "NC3",
+      "role": "nc",
+      "description": "No connection, printed NC (mechanical support only)",
+      "required": false
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select: open or GND = 0x18, 3.3 V = 0x19 (SPI data out in SPI mode); leave unconnected for 0x18",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Chip select, pulled high on the board = I2C mode; pulling it low selects SPI. Leave unconnected for I2C",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 24,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lis331hh.pdf",
+  "priceUsd": 13,
+  "supplierQuery": "Adafruit LIS331HH triple-axis wide-range 24g accelerometer breakout 4626",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "cabled": true,
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lis331hh.pdf",
+    "https://media.digikey.com/pdf/Data%20Sheets/ST%20Microelectronics%20PDFs/LIS331HH.pdf",
+    "https://www.adafruit.com/product/4626",
+    "https://learn.adafruit.com/adafruit-h3lis331-and-lis331hh-high-g-3-axis-accelerometers/pinouts",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-h3lis331-and-lis331hh-high-g-3-axis-accelerometers.pdf",
+    "https://github.com/adafruit/Adafruit_LIS331"
+  ],
+  "buildNotes": [
+    "The chip powers up in power-down mode (CTRL_REG1 0x20 = 0x07): write a power mode and data rate, e.g. 0x2F = normal mode, 100 Hz, X/Y/Z on, before reading; then wait the turn-on time 1/ODR + 1 ms.",
+    "Choose the range in CTRL_REG4 0x23 (FS bits 5:4: 00 = ±6 g, 01 = ±12 g, 11 = ±24 g); 0x80 = BDU on, ±6 g.",
+    "Read OUT_X_L..OUT_Z_H in one 6-byte burst starting at 0xA8 (0x28 with the auto-increment bit 0x80 set). Each axis is two's complement, low byte first, left-justified: shift right by 4, then 3 mg/digit at ±6 g (6 and 12 mg at ±12/±24 g).",
+    "WHO_AM_I (0x0F) reads 0x32; anything else means a wiring fault or the wrong address.",
+    "Leave the second header row unconnected for I2C at 0x18; tie SDO to 3.3 V for 0x19. Pulling CS low switches the chip to SPI.",
+    "Expect a zero-g offset of about ±70 mg at rest; subtract a reading taken while the board lies still if you need better.",
+    "Bolt the board down firmly; the acceleration it measures only means something if the board moves with the object."
+  ],
+  "keywords": [
+    "lis331hh",
+    "lis331",
+    "accelerometer",
+    "high-g",
+    "24g",
+    "impact",
+    "shock",
+    "3-axis",
+    "stmicroelectronics",
+    "adafruit 4626"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -6,
+    "max": 6,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -6,
+        "max": 6,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -6,
+        "max": 6,
+        "default": 1
+      }
+    ],
+    "autoIncrementBit7": true,
+    "registers": {
+      "0x0F": 50,
+      "0x20": 7,
+      "0x27": 15
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.003,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.003,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.003,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lis331hh.py",
+    "code": "# LIS331HH high-g 3-axis accelerometer (STMicroelectronics), MicroPython driver for I2C.\n# From the LIS331HH datasheet (Doc ID 16366):\n#   I2C address 0011000b (0x18) with SDO/SA0 low, 0x19 with SA0 high.\n#   WHO_AM_I 0x0F = 0x32 (also checked by Adafruit's LIS331 libraries).\n#   CTRL_REG1 0x20: PM[7:5] (000 power-down, 001 normal), DR[4:3] (00 50 Hz, 01 100 Hz,\n#     10 400 Hz, 11 1000 Hz), Zen/Yen/Xen bits 2:0. Default 0x07 = power-down.\n#   CTRL_REG4 0x23: BDU bit 7, BLE bit 6 (0 = LSB at lower address), FS[5:4]\n#     (00 +-6 g, 01 +-12 g, 11 +-24 g).\n#   STATUS_REG 0x27: ZYXDA bit 3 = new X/Y/Z set available.\n#   OUT_X_L..OUT_Z_H 0x28-0x2D: two's complement, low byte first, 12-bit representation\n#     left-justified in 16 bits. Sensitivity 3 / 6 / 12 mg per digit at +-6/12/24 g.\n#   I2C sub-address MSB = 1 enables auto-increment for multi-byte reads.\n#   Turn-on time 1/ODR + 1 ms.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x20\n_CTRL_REG4 = 0x23\n_STATUS_REG = 0x27\n_OUT_X_L = 0x28\n_AUTO_INC = 0x80\n\n_FS = {6: (0b00, 3), 12: (0b01, 6), 24: (0b11, 12)}  # FS bits, mg/digit (12-bit)\n\n\nclass LIS331HH:\n    def __init__(self, i2c, addr=0x18, g_range=6):\n        \"\"\"addr: 0x18 with SDO low or open (Adafruit board), 0x19 with SDO tied to 3.3 V.\n        g_range: 6, 12 or 24 g full scale.\"\"\"\n        if g_range not in _FS:\n            raise ValueError('g_range must be 6, 12 or 24')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x32:\n            raise OSError('LIS331HH not found (WHO_AM_I 0x%02X, expected 0x32): check wiring' % who)\n        fs, self._mg_per_digit = _FS[g_range]\n        # BDU = 1 (high/low bytes from the same sample), BLE = 0 (little endian), full scale\n        self._w(_CTRL_REG4, 0x80 | (fs << 4))\n        # Normal mode (PM = 001), 100 Hz (DR = 01), X/Y/Z enabled\n        self._w(_CTRL_REG1, 0x2F)\n        time.sleep_ms(15)  # turn-on time 1/ODR + 1 ms = 11 ms at 100 Hz\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when STATUS_REG ZYXDA says a new X/Y/Z set is available.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _STATUS_REG, 1)[0] & 0x08)\n\n    def raw(self):\n        \"\"\"(x, y, z) 12-bit counts, from one 6-byte auto-increment burst at OUT_X_L.\"\"\"\n        for _ in range(25):  # wait up to ~25 ms (over two samples at 100 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _OUT_X_L | _AUTO_INC, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # OUT_x_L = low byte, OUT_x_H = high byte\n            if v & 0x8000:\n                v -= 65536\n            out.append(v >> 4)  # 12-bit value is left-justified in bits 15:4\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._mg_per_digit / 1000\n        x, y, z = self.raw()\n        return x * k, y * k, z * k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lis331hh import LIS331HH\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = LIS331HH(i2c)  # +-6 g range\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.2f Y=%.2f Z=%.2f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -4.2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=2.50 Y=-4.20 Z=1.50 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T17:27:07.109Z",
+    "verifiedSources": [
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/647/LIS331HH.pdf",
+      "https://learn.adafruit.com/adafruit-h3lis331-and-lis331hh-high-g-3-axis-accelerometers/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/091/825/large1024/sensors_top_no_header_edit.jpg",
+      "https://github.com/adafruit/Adafruit_LIS331"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bmp580",
+  "board": "Adafruit BMP580 I2C or SPI Temperature and Pressure Sensor - STEMMA QT (#6411), 8-pin header VIN, 3Vo, GND, SCL, SDO, SDA, CS, INT, I2C address 0x47",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test T=24.80C P=99412.50Pa, PCB). The driver follows the BMP580 datasheet (BST-BMP580-DS004-02): post-power-up checks, soft reset, deep-standby exit, forced mode with Table 4 conversion times and drdy polling, and on-chip compensated output T = signed24/2^16 degC, p = raw24/2^6 Pa, which the sim encodes as little-endian 24-bit registers at 0x1D/0x20.",
+  "datasheetUrl": "https://pdf.direnc.net/upload/bmp580-datasheet.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-bmp580-bmp581-and-bmp585-temperature-and-pressure-sensor/pinouts",
+  "checkRuns": 1
+}
