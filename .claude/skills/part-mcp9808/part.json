@@ -1,0 +1,161 @@
+{
+  "type": "custom-mcp9808",
+  "name": "MCP9808 precision temperature sensor",
+  "mpn": "MCP9808",
+  "category": "sensor",
+  "description": "Microchip digital temperature sensor, -40 to 125 °C with ±0.25 °C typical (±0.5 °C max from -20 to 100 °C) accuracy and 0.0625 °C resolution, on an I2C bus. Runs on 2.7–5.5 V. Sold as: Adafruit MCP9808 High Accuracy I2C Temperature Sensor Breakout (#1782, 8-pin: VDD, GND, SCL, SDA, Alert, A0, A1, A2), I2C address 0x18 (0x18–0x1F with A0–A2).",
+  "eli5": "A very accurate thermometer chip your board can ask for the temperature over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply and logic level, 2.7–5.5 V (use the microcontroller's 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "Alert",
+      "role": "io",
+      "description": "Alert/thermostat output, open-drain (needs a pull-up); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address bit 0 (10k pull-down): unconnected = 0, VDD = +1",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Address bit 1 (10k pull-down): unconnected = 0, VDD = +2",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Address bit 2 (10k pull-down): unconnected = 0, VDD = +4",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.4,
+  "i2cAddress": 24,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP9808-0.5C-Maximum-Accuracy-Digital-Temperature-Sensor-Data-Sheet-DS20005095B.pdf",
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP9808-0.5C-Maximum-Accuracy-Digital-Temperature-Sensor-Data-Sheet-DS20005095B.pdf",
+    "https://learn.adafruit.com/adafruit-mcp9808-precision-i2c-temperature-sensor-guide/pinouts",
+    "https://github.com/adafruit/Adafruit-MCP9808-Breakout-PCB/blob/master/Adafruit%20MCP9808%20Breakout.brd",
+    "https://www.adafruit.com/product/1782"
+  ],
+  "priceUsd": 5,
+  "supplierQuery": "Adafruit MCP9808 I2C temperature sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the chip first: register 0x06 reads 0x0054 (Microchip) and the upper byte of register 0x07 reads 0x04.",
+    "Temperature is register 0x05 (16 bits, MSB first): mask off bits 15–13 (alert flags), bit 12 is the sign, bits 11–0 are 0.0625 °C steps. T = (raw & 0x0FFF) / 16, minus 256 when bit 12 is set.",
+    "The power-up resolution is 0.0625 °C with a 250 ms conversion; reading faster just repeats the last result.",
+    "A0, A1 and A2 have pull-downs: leave them unconnected for 0x18, tie them to VDD to add 1, 2 or 4 (up to eight sensors on one bus).",
+    "Keep the board away from the regulator and the microcontroller, which warm the air nearby."
+  ],
+  "keywords": [
+    "mcp9808",
+    "temperature",
+    "thermometer",
+    "precision",
+    "microchip",
+    "adafruit 1782"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 0,
+      "0x02": 0,
+      "0x03": 0,
+      "0x04": 0,
+      "0x06": 84,
+      "0x07": 1024
+    },
+    "responses": [
+      {
+        "match": "05",
+        "bytes": [
+          {
+            "const": 0,
+            "bits": 3
+          },
+          {
+            "control": "value",
+            "bits": 13,
+            "scale": 0.0625,
+            "signed": true
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp9808.py",
+    "code": "# MCP9808 precision temperature sensor (Microchip DS20005095B), MicroPython driver.\n# 16-bit registers, MSB first. Ambient temperature register TA (0x05):\n#   bits 15..13 = alert flags (TA >= TCRIT, TA > TUPPER, TA < TLOWER), bit 12 = sign,\n#   bits 11..0 = temperature in 0.0625 degC steps (two's complement with the sign bit).\nimport time\n\n_REG_CONFIG = 0x01\n_REG_TA = 0x05\n_REG_MANUF_ID = 0x06\n_REG_DEVICE_ID = 0x07\n_REG_RESOLUTION = 0x08\n\n# Resolution register value -> typical conversion time (ms), datasheet Register 5-7\n_TCONV_MS = {0: 30, 1: 65, 2: 130, 3: 250}\n\n\nclass MCP9808:\n    def __init__(self, i2c, addr=0x18):\n        self.i2c = i2c\n        self.addr = addr\n        manuf = self._read16(_REG_MANUF_ID)\n        dev = self._read16(_REG_DEVICE_ID) >> 8\n        if manuf != 0x0054 or dev != 0x04:\n            raise OSError('MCP9808 not found at 0x%02X (manufacturer 0x%04X, device 0x%02X)' % (addr, manuf, dev))\n\n    def _read16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def _write16(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([(value >> 8) & 0xFF, value & 0xFF]))\n\n    def set_resolution(self, res):\n        \"\"\"0 = 0.5 C (30 ms), 1 = 0.25 C (65 ms), 2 = 0.125 C (130 ms), 3 = 0.0625 C (250 ms, power-up default).\"\"\"\n        self.i2c.writeto_mem(self.addr, _REG_RESOLUTION, bytes([res & 0x03]))\n        time.sleep_ms(_TCONV_MS[res & 0x03])\n\n    def shutdown(self, off=True):\n        \"\"\"Set or clear CONFIG bit 8 (SHDN). In shutdown the chip draws about 0.1 uA and stops converting.\"\"\"\n        cfg = self._read16(_REG_CONFIG)\n        cfg = (cfg | 0x0100) if off else (cfg & ~0x0100)\n        self._write16(_REG_CONFIG, cfg)\n        if not off:\n            time.sleep_ms(250)  # wait one full conversion before reading\n\n    def temperature(self):\n        \"\"\"Ambient temperature in degC (datasheet Equation 5-1).\"\"\"\n        raw = self._read16(_REG_TA) & 0x1FFF  # mask the three alert flag bits\n        t = (raw & 0x0FFF) / 16\n        if raw & 0x1000:  # sign bit: TA < 0 degC\n            t -= 256\n        return t\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mcp9808 import MCP9808\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MCP9808(i2c)  # address 0x18 with A0/A1/A2 unconnected\ntime.sleep_ms(300)  # first 0.0625 C conversion takes 250 ms after power-up\nwhile True:\n    print('T=%.2fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -10.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=-10.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:52:57.272Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/25095A.pdf",
+      "https://learn.adafruit.com/adafruit-mcp9808-precision-i2c-temperature-sensor-guide/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/015/726/medium800/adafruit_products_2.png"
+    ]
+  }
+}

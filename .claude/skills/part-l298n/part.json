@@ -1,0 +1,193 @@
+{
+  "type": "custom-l298n",
+  "name": "L298N dual H-bridge motor driver",
+  "mpn": "L298N",
+  "category": "actuator",
+  "description": "ST L298 dual full-bridge driver: runs two DC motors (or one bipolar stepper) forwards, backwards, braked or coasting, up to 2 A per bridge, from TTL/3.3 V logic inputs. Motor supply 5-35 V on the module, logic 5 V. Sold as: L298N dual H-bridge motor driver module (red 43 x 43 mm board with heatsink and 78M05 regulator, e.g. Handson Technology MDU-1049; terminals OUT1 OUT2 | +12V GND +5V | header ENA IN1 IN2 IN3 IN4 ENB | OUT3 OUT4).",
+  "eli5": "Lets your board make two motors spin forwards or backwards, using a bigger battery than the board itself can supply.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "OUT1",
+      "role": "io",
+      "description": "Motor A output 1 (screw terminal); connect the motor, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "OUT2",
+      "role": "io",
+      "description": "Motor A output 2 (screw terminal)",
+      "required": false
+    },
+    {
+      "name": "+12V",
+      "role": "power",
+      "description": "Motor supply VS, 5-35 V on this module (chip allows up to 46 V). Keep the 5V-EN jumper only when this is 7-12 V",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground: common to the motor supply and the microcontroller",
+      "required": true
+    },
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "Logic supply VSS (4.5-7 V). Output of the on-board 78M05 when the 5V-EN jumper is fitted; otherwise feed 5 V in here",
+      "required": true
+    },
+    {
+      "name": "ENA",
+      "role": "io",
+      "description": "Enable bridge A (high = on, PWM for speed). Jumpered to 5 V on delivery = always full speed",
+      "required": false,
+      "fn": "pwm"
+    },
+    {
+      "name": "IN1",
+      "role": "io",
+      "description": "Bridge A input 1 (TTL: high >= 2.3 V, so 3.3 V GPIOs work)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "IN2",
+      "role": "io",
+      "description": "Bridge A input 2",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "IN3",
+      "role": "io",
+      "description": "Bridge B input 3",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "IN4",
+      "role": "io",
+      "description": "Bridge B input 4",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "ENB",
+      "role": "io",
+      "description": "Enable bridge B (high = on, PWM for speed). Jumpered to 5 V on delivery",
+      "required": false,
+      "fn": "pwm"
+    },
+    {
+      "name": "OUT3",
+      "role": "io",
+      "description": "Motor B output 3 (screw terminal)",
+      "required": false
+    },
+    {
+      "name": "OUT4",
+      "role": "io",
+      "description": "Motor B output 4 (screw terminal)",
+      "required": false
+    }
+  ],
+  "vmin": 5,
+  "vmax": 35,
+  "currentMa": 36,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/l298.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "L298N dual H-bridge motor driver module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x13_P2.54mm_Vertical",
+  "buildNotes": [
+    "Truth table (ST datasheet): EN high + IN1 high/IN2 low = forward, IN1 low/IN2 high = reverse, IN1 = IN2 = fast brake; EN low = motor coasts.",
+    "Connect the module GND to the microcontroller GND, or the IN signals have no reference.",
+    "5V-EN jumper fitted: the on-board 78M05 makes 5 V from +12V and the +5V terminal is an output - only for a motor supply of about 7-12 V. Remove the jumper above 12 V, or when the motor supply is under 7 V, and feed 5 V into +5V.",
+    "Never connect the +5V terminal to your board's 3V3 pin or feed it more than 7 V.",
+    "ENA/ENB are jumpered to 5 V (full speed). Pull the jumper and wire EN to a PWM pin for speed control; keep PWM under 25 kHz.",
+    "The bridge drops about 2-3 V (1.8-3.2 V at 1 A), so a 6 V motor needs roughly an 8-9 V supply. Small motors only from a USB 5 V pin; use a separate battery for anything bigger.",
+    "Each bridge is limited to 2 A continuous; the heatsink gets hot near that."
+  ],
+  "keywords": [
+    "l298n",
+    "l298",
+    "h-bridge",
+    "motor driver",
+    "dc motor",
+    "stepper",
+    "dual h bridge"
+  ],
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/l298.pdf",
+    "https://www.sparkfun.com/datasheets/Robotics/L298_H_Bridge.pdf",
+    "https://www.handsontec.com/dataspecs/L298N%20Motor%20Driver.pdf"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "IN1",
+      "IN2",
+      "IN3",
+      "IN4"
+    ]
+  },
+  "driver": {
+    "filename": "l298n.py",
+    "code": "# L298N dual H-bridge motor driver (ST L298), MicroPython driver for ONE bridge (one DC motor).\n# Make one L298N object per motor: bridge A = IN1, IN2, ENA; bridge B = IN3, IN4, ENB.\n# Truth table from the ST L298 datasheet (Fig. 6, bidirectional DC motor control):\n#   EN = H, C = H, D = L  -> forward\n#   EN = H, C = L, D = H  -> reverse\n#   EN = H, C = D         -> fast motor stop (brake)\n#   EN = L, C/D = X       -> free-running motor stop (coast)\n# Inputs are TTL: low <= 1.5 V, high >= 2.3 V, so 3.3 V GPIOs drive them directly.\n# Speed: PWM the EN pin (remove the ENA/ENB jumper). The L298 commutation frequency is 25 kHz typ.,\n# 40 kHz max, so the default 1 kHz is well inside the limit.\nfrom machine import Pin, PWM\n\n\nclass L298N:\n    def __init__(self, in_a, in_b, en=None, freq=1000):\n        \"\"\"in_a, in_b: GPIO numbers of the bridge's IN pins (IN1/IN2 or IN3/IN4).\n        en: GPIO number of ENA/ENB, or None when the module's enable jumper is fitted (always full speed).\"\"\"\n        self.a = Pin(in_a, Pin.OUT, value=0)\n        self.b = Pin(in_b, Pin.OUT, value=0)\n        self.pwm = None\n        if en is not None:\n            self.pwm = PWM(Pin(en), freq=freq, duty_u16=0)\n\n    def _enable(self, speed):\n        if self.pwm is not None:\n            speed = max(0, min(100, speed))\n            self.pwm.duty_u16(speed * 65535 // 100)\n\n    def forward(self, speed=100):\n        \"\"\"Spin one way (IN_a high, IN_b low). speed 0-100 % needs the EN pin.\"\"\"\n        self.a.value(1)\n        self.b.value(0)\n        self._enable(speed)\n\n    def reverse(self, speed=100):\n        \"\"\"Spin the other way (IN_a low, IN_b high).\"\"\"\n        self.a.value(0)\n        self.b.value(1)\n        self._enable(speed)\n\n    def brake(self):\n        \"\"\"Fast motor stop: both inputs equal with the bridge enabled.\"\"\"\n        self.a.value(0)\n        self.b.value(0)\n        self._enable(100)\n\n    def coast(self):\n        \"\"\"Free-running stop: EN low. Without an EN pin (jumper fitted) this falls back to brake().\"\"\"\n        self.a.value(0)\n        self.b.value(0)\n        if self.pwm is not None:\n            self.pwm.duty_u16(0)\n\n    def stop(self):\n        self.brake()\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom l298n import L298N\n\n# Motor A on IN1/IN2; ENA jumper fitted, so it runs at full speed.\nmotor = L298N({IN1}, {IN2})\nwhile True:\n    motor.forward()\n    print('motor A forward')\n    time.sleep(1)\n    motor.brake()\n    print('motor A stopped')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor A runs forward, then brakes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A stopped",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:58:12.543Z",
+    "verifiedSources": [
+      "https://www.st.com/resource/en/datasheet/l298.pdf",
+      "https://www.hibit.dev/posts/89/how-to-use-the-l298n-motor-driver-module"
+    ]
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "type": "custom-ttp223",
+  "name": "TTP223 capacitive touch button module",
+  "mpn": "TTP223",
+  "category": "sensor",
+  "description": "Tontek TTP223 one-key capacitive touch detector: its output goes high while the pad is touched (default), replacing a push button. Solder pads select active-low (A) and toggle/latching (B) modes. Runs on 2.0–5.5 V; the push-pull output swings to VCC. Sold as: TTP223 capacitive touch button module (tiny 3-pin red/blue clone board with TTP223-BA6, red LED and A/B pads; header VCC, I/O, GND).",
+  "eli5": "A button with no moving parts: just touch the round pad with your finger and it tells your board.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.0–5.5 V (use 3.3 V with an ESP32 or Pico: the output swings to VCC)",
+      "required": true
+    },
+    {
+      "name": "I/O",
+      "role": "io",
+      "description": "Touch output (chip Q pin, push-pull). High while touched by default; pad A makes it active low, pad B makes it toggle",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2,
+  "vmax": 5.5,
+  "currentMa": 3,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Touch_Sensor/res/TTP223.pdf",
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove-Touch_Sensor/res/TTP223.pdf",
+    "https://github.com/mcauser/micropython-ttp223",
+    "https://raw.githubusercontent.com/mcauser/micropython-ttp223/master/docs/demo.jpg",
+    "https://www.energiazero.org/cartelle/arduino_sensori/ttp223_capacitive_touch_sensor_module.pdf",
+    "https://www.flux.ai/adrian95/ttp223-capacitive-touch-module~euq"
+  ],
+  "priceUsd": 0.5,
+  "supplierQuery": "TTP223 capacitive touch button module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the back: VCC, I/O, GND.",
+    "Power from 3.3 V on an ESP32 or Pico: the I/O output is push-pull and swings to VCC (5 V supply gives a 5 V output).",
+    "No pull resistor needed on the GPIO: the output is driven both high and low.",
+    "Default (pads A and B open): momentary, high while touched. Bridge A for active low, B for toggle (latching) mode.",
+    "Keep fingers off the pad for 0.5 s after power-on while it calibrates; first touch can take up to ~220 ms to register (low-power mode).",
+    "It senses through thin non-metal panels; a 0–50 pF capacitor from the pad to GND reduces sensitivity."
+  ],
+  "keywords": [
+    "ttp223",
+    "ttp223b",
+    "touch",
+    "capacitive",
+    "button",
+    "touch sensor",
+    "switch"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "I/O",
+    "quantity": "Touched",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "ttp223.py",
+    "code": "# TTP223 one-key capacitive touch module (Tontek TTP223-BA6), MicroPython driver.\n# The module's I/O pin is the chip's Q output: a push-pull CMOS output (no pull-up needed).\n# Default module (pads A and B open): direct mode, active high - I/O is high only while touched.\n#   Pad A bridged -> AHLB=1: active low.   Pad B bridged -> TOG=1: toggle (latching) mode.\n# Datasheet timing: about 0.5 s settling after power-on (do not touch the pad then);\n# the BA6 package runs in low-power mode, so the first touch takes up to ~220 ms to register.\nfrom machine import Pin\n\n\nclass TTP223:\n    def __init__(self, pin, active_high=True):\n        # Q is driven both ways by the chip, so no pull resistor is required.\n        self.pin = Pin(pin, Pin.IN) if isinstance(pin, int) else pin\n        self.active_high = active_high  # False if pad A (AHLB) is bridged\n\n    def value(self):\n        \"\"\"Raw level on the I/O pin (0 or 1).\"\"\"\n        return self.pin.value()\n\n    def touched(self):\n        \"\"\"True while the pad is touched (direct mode), or while latched on (toggle mode).\"\"\"\n        return self.pin.value() == (1 if self.active_high else 0)\n\n    def irq(self, handler, on_touch=True):\n        \"\"\"Call handler(pin) on the edge where a touch starts (on_touch) or ends.\"\"\"\n        rising = self.active_high == on_touch\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_RISING if rising else Pin.IRQ_FALLING)\n"
+  },
+  "skill": "---\nname: part-ttp223\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the TTP223 capacitive touch button module (Tontek TTP223-BA6). Use when designing, wiring, simulating or writing code for a TTP223 touch sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# TTP223 capacitive touch button module (TTP223)\n\n## Overview\nThe **TTP223** from Tontek is a one-key capacitive touch detector. It replaces a push button: touch the pad and its output changes level. Hobbyists buy it on the **tiny 3-pin TTP223 touch module** (about 15 × 11 mm, red or blue, round \"TOUCH\" pad on the front, TTP223-BA6 in SOT-23-6 on the back). It has a red LED that lights while touched, and two solder pads A and B that set the output mode.\n\n## Pinout (3-pin header, as printed on the back: VCC, I/O, GND)\n| Pin | Function |\n|---|---|\n| VCC | Supply, 2.0–5.5 V |\n| I/O | Touch output (chip pin Q, push-pull CMOS). High while touched by default |\n| GND | Ground |\n\n## Electrical limits\n- Supply: 2.0–5.5 V (absolute max 5.5 V). The I/O output swings to VCC, so **power it from 3.3 V on an ESP32 or Pico**.\n- Chip current: 1.5–3 µA (typical, 3 V, low-power mode); the on-board LED adds a few mA while touched.\n- Output drive at 3 V: sinks 8 mA (VOL 0.6 V), sources 4 mA (VOH 2.4 V).\n- Operating temperature −20 to 70 °C.\n\n## Interface details\n- Plain digital output, no protocol. Read the I/O pin as a GPIO input; no pull resistor needed (CMOS output).\n- Pads (bridge with solder): **A → active low** (AHLB=1), **B → toggle/latching** (TOG=1). Both open (factory default) = momentary, active high.\n\n| A | B | Behaviour |\n|---|---|---|\n| open | open | Momentary, high while touched (default) |\n| short | open | Momentary, low while touched |\n| open | short | Toggle, starts low; each touch flips the output |\n| short | short | Toggle, starts high |\n\n- Timing: about 0.5 s calibration after power-on (keep fingers off); the BA6 package is fixed in low-power mode, so the first touch can take up to about 220 ms, then ~60 ms while awake. Recalibrates about every 4 s when untouched.\n- Sensitivity: a capacitor (0–50 pF) from the sense pad to GND lowers sensitivity; some boards have an empty pad for it.\n\n## Wiring\n- ESP32: VCC → 3V3, GND → GND, I/O → GPIO4.\n- Pico: VCC → 3V3(OUT), GND → GND, I/O → GP15.\n- Raspberry Pi 4: VCC → pin 1 (3.3 V), GND → pin 6, I/O → GPIO17 (pin 11).\n\n## Using the driver\n```python\nfrom ttp223 import TTP223\nimport time\npad = TTP223(4)          # GPIO wired to I/O\nwhile True:\n    print('TOUCH=%d' % pad.touched())\n    time.sleep(0.2)\n```\nPass `active_high=False` if pad A is bridged. `irq(handler)` calls `handler` when a touch starts.\n\n## Gotchas\n- **Powered from 5 V the output is 5 V** – too much for an ESP32/Pico pin. Use 3.3 V.\n- Don't touch the pad while powering up: the chip calibrates its baseline in the first 0.5 s and may then read \"touched\" the wrong way round until it recalibrates.\n- It senses through thin plastic or glass (no metal) — mount it behind a panel up to a few mm thick.\n- A noisy or shifting supply causes false touches; add a 100 nF capacitor across VCC/GND if the wiring is long.\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Touch_Sensor/res/TTP223.pdf\n",
+  "example": {
+    "code": "from ttp223 import TTP223\nimport time\n\npad = TTP223({I_O})\nwhile True:\n    print('TOUCH=%d' % pad.touched())\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports a touch when the pad is touched",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:55:52.902Z",
+    "verifiedSources": [
+      "https://files.seeedstudio.com/wiki/Grove-Touch_Sensor/res/TTP223.pdf",
+      "https://components101.com/sensors/ttp223-touch-sensor-module"
+    ]
+  }
+}

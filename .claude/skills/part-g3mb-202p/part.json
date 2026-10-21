@@ -1,0 +1,114 @@
+{
+  "type": "custom-g3mb-202p",
+  "name": "G3MB-202P solid state relay module",
+  "mpn": "G3MB-202P",
+  "category": "actuator",
+  "description": "Omron G3MB-202P solid state relay (phototriac, zero-cross, built-in snubber) on a 1-channel module: switches AC mains loads of 0.1–2 A at 75–264 VAC with no moving contacts. AC loads only: a triac does not turn off on DC. Module supply 5 VDC (SSR input range 4–6 VDC). Sold as: 1-channel 5V G3MB-202P SSR module, high level trigger, with resistive fuse (input header DC+, DC-, CH1; output screw terminal A1/B1).",
+  "eli5": "A silent electronic switch for mains-powered things like a lamp or heater: when your board says on, the lamp gets power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "DC+",
+      "role": "power",
+      "description": "Module supply, 5 V (SSR input rated 4–6 VDC); use the board's 5V/VBUS pin, not 3V3",
+      "required": true
+    },
+    {
+      "name": "DC-",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "CH1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Control input, high level trigger: high (3–5 V) = SSR on, low (below 0.5 V) = off. A 3.3 V GPIO is enough.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 13,
+  "datasheetUrl": "https://people.ece.cornell.edu/land/courses/ece4760/FinalProjects/s2004/daw33/RemoteOutlet/datasheets/D20G3MB0503.pdf",
+  "priceUsd": 2.5,
+  "supplierQuery": "G3MB-202P solid state relay module 1 channel 5V high level trigger",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Check the board: this model is the HIGH level trigger module (CH1 high = on). Low level trigger versions with the same DC+/DC-/CH1 header also exist; on those the logic is inverted and a 3.3 V GPIO may not switch them fully off.",
+    "AC loads only (75–264 VAC, 0.1–2 A). The triac never turns off on a DC load, and loads under 0.1 A (small LED bulbs) can glow or fail to switch off because of the snubber's leakage current.",
+    "Zero-cross switching: the output turns on and off at the next mains zero crossing (up to 1/2 cycle + 1 ms). It cannot dim (no phase control) and is too slow for PWM.",
+    "Mains wiring on the A1/B1 screw terminal is dangerous: put the SSR in series with the live wire, keep it in a closed insulated box, and never touch the module while it is plugged in. Leave mains to an adult/qualified person.",
+    "Derate the 2 A rating when hot or when several SSRs are mounted together (Omron: halve the load current with poor ventilation). The 2 A fuse on the module protects only against gross overload.",
+    "Power DC+ from 5 V and share DC- with the microcontroller's GND; CH1 draws about 2 mA, so a GPIO can drive it directly."
+  ],
+  "keywords": [
+    "g3mb-202p",
+    "g3mb",
+    "ssr",
+    "solid state relay",
+    "omron",
+    "relay",
+    "mains",
+    "ac load",
+    "lamp",
+    "heater"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "CH1"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nssr = Pin({CH1}, Pin.OUT, value=0)  # CH1 high = SSR on (high level trigger module)\nwhile True:\n    ssr.value(1)\n    print('SSR ON')\n    time.sleep(2)\n    ssr.value(0)\n    print('SSR OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The SSR switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://people.ece.cornell.edu/land/courses/ece4760/FinalProjects/s2004/daw33/RemoteOutlet/datasheets/D20G3MB0503.pdf",
+    "https://www.aideepen.com/products/g3mb-202p-1-channel-solid-state-relay-board-module-pcb-ssr-5v-dc-for-arduino-high-level-fuse",
+    "https://www.newegg.com/p/2B7-002K-00006",
+    "https://www.zagroselec.ir/stfiles/getappdocument/1/true/f2a5306b-2866-4367-a4fb-4af1129d6253.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:58:25.215Z",
+    "verifiedSources": [
+      "https://components101.com/sites/default/files/component_datasheet/G3MB-202P-Datasheet.pdf",
+      "https://components101.com/modules/g3mb-202p-solid-state-relay-pinout-features-datasheet",
+      "https://protosupplies.com/product/g3mb-202p-solid-state-relay-2a/"
+    ]
+  }
+}

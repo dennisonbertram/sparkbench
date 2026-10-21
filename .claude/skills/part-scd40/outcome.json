@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-scd40",
+  "board": "Adafruit SCD-40 STEMMA QT breakout (PID 5187)",
+  "reason": "Modelled from the Sensirion SCD4x datasheet v1.5: periodic mode (0x3F86 stop, 0x21B1 start, 0xE4B8 data-ready, 0xEC05 read) with a CRC-8 on every word. The header order VIN, 3Vo, GND, SCL, SDA comes from Adafruit's Fritzing part and its pinouts page. The check passed on ESP32 and Pico (simulator, breadboard, PCB DRC, footprint, LCSC). 3Vo is the regulator's output, so it is marked io with required:false and left unwired.",
+  "datasheetUrl": "https://sensirion.com/media/documents/48C4B7FB/64C134E7/Sensirion_SCD4x_Datasheet.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-scd-40-and-scd-41/pinouts + https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20SCD4x.fzpz (breadboard SVG header x-order)",
+  "checkRuns": 2
+}

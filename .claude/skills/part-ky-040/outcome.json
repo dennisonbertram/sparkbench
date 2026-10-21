@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-040",
+  "board": "KY-040 rotary encoder module (common 5-pin clone board: CLK, DT, SW, +, GND)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test of two clockwise clicks plus button press printing pos=2 btn=1, PCB DRC clean, footprint). Modelled as three active-low toggles (CLK and DT contacts with on-board 10k pull-ups, SW to GND); the driver decodes every CLK/DT edge with a Gray-code state table via pin IRQs, with CLK leading DT for clockwise as the module data sheet states.",
+  "datasheetUrl": "https://www.handsontec.com/dataspecs/module/Rotary%20Encoder.pdf",
+  "breakoutPinoutSource": "https://www.handsontec.com/dataspecs/module/Rotary%20Encoder.pdf (pin assignment figure and schematic, page 3: CLK, DT, SW, +, GND, 10k pull-ups on CLK/DT only), confirmed by https://lastminuteengineers.com/rotary-encoder-arduino-tutorial/",
+  "checkRuns": 2
+}

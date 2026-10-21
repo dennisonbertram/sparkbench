@@ -1,0 +1,160 @@
+{
+  "type": "custom-ina219",
+  "name": "INA219 current & voltage sensor",
+  "mpn": "INA219",
+  "category": "sensor",
+  "description": "Texas Instruments high-side current, bus voltage and power monitor with a 12-bit ADC and an I2C interface. Measures a load's supply voltage (0-26 V) and, through a 0.1 ohm shunt, its current (up to ±3.2 A, either direction). Runs on 3-5.5 V. Sold as: INA219 breakout (6-pin: VIN, GND, SCL, SDA, VIN-, VIN+), I2C address 0x40 (0x41/0x44/0x45 with the A0/A1 jumpers).",
+  "eli5": "Sits in the wire between a battery or power supply and the thing it powers, and tells your board how many volts and how much current that thing is using.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Logic supply for the INA219, 3-5.5 V (use the microcontroller's 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared by the logic and the circuit being measured",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "VIN-",
+      "role": "io",
+      "description": "Current-sense input, load side: connect to the load's + lead. 0-26 V; never to a GPIO",
+      "required": false
+    },
+    {
+      "name": "VIN+",
+      "role": "io",
+      "description": "Current-sense input, supply side: connect to the + of the supply being measured. 0-26 V; never to a GPIO",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ina219.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ina219.pdf",
+    "https://learn.adafruit.com/adafruit-ina219-current-sensor-breakout/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/104/308/large1024/adafruit_products_INA219_pinouts.jpg",
+    "https://cdn-learn.adafruit.com/assets/assets/000/124/121/large1024/adafruit_products_Untitled.png"
+  ],
+  "priceUsd": 5,
+  "supplierQuery": "INA219 current sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "The INA219 goes in series with the load: supply + to VIN+, VIN- to the load's + lead, and the supply's ground to the same GND as the microcontroller.",
+    "VIN+/VIN- may carry up to 26 V and 3.2 A: never connect them to a GPIO, and use wires thick enough for the current.",
+    "Bus voltage register 02h holds the voltage in bits 15-3 at 4 mV per count; shunt register 01h is signed at 10 uV per count. Current = shunt voltage / 0.1 ohm.",
+    "Default address 0x40; bridge A0 for 0x41, A1 for 0x44, both for 0x45 to put several on one bus."
+  ],
+  "keywords": [
+    "ina219",
+    "current",
+    "voltage",
+    "power",
+    "shunt",
+    "ammeter",
+    "wattmeter",
+    "texas instruments"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Bus voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 26,
+    "default": 12,
+    "registers": {
+      "0x00": 14751,
+      "0x05": 0
+    },
+    "regWidth": 16,
+    "controls": [
+      {
+        "key": "current",
+        "quantity": "Load current",
+        "unit": "mA",
+        "min": -3200,
+        "max": 3200,
+        "default": 0
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.004,
+        "shift": 3,
+        "control": "value"
+      },
+      {
+        "reg": "0x01",
+        "bytes": 2,
+        "scale": 0.1,
+        "signed": true,
+        "control": "current"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ina219.py",
+    "code": "# INA219 current & voltage sensor (TI INA219, SBOS448G), MicroPython driver.\n# Registers are 16-bit, sent MSB first. Shunt voltage (01h): signed, LSB 10 uV.\n# Bus voltage (02h): bits 15..3, LSB 4 mV (bit 1 CNVR, bit 0 OVF).\n# Current is computed from the shunt voltage and the board's shunt resistor\n# (0.1 ohm \"R100\" on the common breakouts), so no calibration register is needed.\nimport time\n\n_REG_CONFIG = 0x00\n_REG_SHUNT = 0x01\n_REG_BUS = 0x02\n\n# 32 V bus range, PGA /8 (+-320 mV), 12-bit shunt and bus ADC, continuous shunt + bus.\n# This is the power-on default (399Fh); written explicitly in case another program changed it.\n_CONFIG_DEFAULT = 0x399F\n\n\nclass INA219:\n    def __init__(self, i2c, addr=0x40, shunt_ohms=0.1):\n        self.i2c = i2c\n        self.addr = addr\n        self.shunt_ohms = shunt_ohms\n        self.i2c.writeto_mem(addr, _REG_CONFIG, bytes([_CONFIG_DEFAULT >> 8, _CONFIG_DEFAULT & 0xFF]))\n        time.sleep_ms(2)  # one 12-bit shunt + bus conversion takes 2 x 532 us\n\n    def _read(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)\n        return (d[0] << 8) | d[1]\n\n    def shunt_mv(self):\n        \"\"\"Voltage across the shunt resistor in mV (signed, 10 uV per count).\"\"\"\n        raw = self._read(_REG_SHUNT)\n        if raw & 0x8000:\n            raw -= 0x10000\n        return raw * 0.01\n\n    def bus_voltage(self):\n        \"\"\"Voltage on VIN- relative to GND, in volts (4 mV per count).\"\"\"\n        return (self._read(_REG_BUS) >> 3) * 0.004\n\n    def current_ma(self):\n        \"\"\"Current from VIN+ to VIN- in mA (negative if it flows the other way).\"\"\"\n        return self.shunt_mv() / self.shunt_ohms\n\n    def power_mw(self):\n        \"\"\"Power delivered to the load in mW.\"\"\"\n        return self.bus_voltage() * self.current_ma()\n\n    def read(self):\n        \"\"\"Return (bus voltage in V, current in mA).\"\"\"\n        return self.bus_voltage(), self.current_ma()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ina219 import INA219\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = INA219(i2c)  # address 0x40, 0.1 ohm shunt\nwhile True:\n    v, i = sensor.read()\n    print('V=%.2fV I=%.1fmA' % (v, i))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the bus voltage and current set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "current",
+          "value": 320
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=5.00V I=320.0mA",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (7 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:44:37.924Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ina219.pdf",
+      "https://learn.adafruit.com/adafruit-ina219-current-sensor-breakout/pinouts"
+    ]
+  }
+}

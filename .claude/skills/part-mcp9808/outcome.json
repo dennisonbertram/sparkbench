@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mcp9808",
+  "board": "Adafruit MCP9808 High Accuracy I2C Temperature Sensor Breakout (#1782)",
+  "reason": "Check PASS on esp32 and pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). TA register 0x05 is modelled bit-exact (3 zero flag bits + 13-bit two's complement at 0.0625 C) and the driver verifies IDs 0x0054/0x04 and decodes per datasheet Equation 5-1.",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/MCP9808-0.5C-Maximum-Accuracy-Digital-Temperature-Sensor-Data-Sheet-DS20005095B.pdf",
+  "breakoutPinoutSource": "Adafruit Eagle board file (github.com/adafruit/Adafruit-MCP9808-Breakout-PCB, 'Adafruit MCP9808 Breakout.brd'): silkscreen and JP2 pads 1-8 = Vdd, Gnd, SCL, SDA, Alert, A0, A1, A2; confirmed by Adafruit learn guide pinouts page",
+  "checkRuns": 1
+}

@@ -1,0 +1,139 @@
+{
+  "type": "custom-bh1750",
+  "name": "BH1750 ambient light sensor",
+  "mpn": "BH1750FVI",
+  "category": "sensor",
+  "description": "ROHM digital ambient light sensor measuring 1 to 65535 lx (1 lx resolution in H-resolution mode) with an I2C interface; the chip runs on 2.4-3.6 V. Sold as: GY-302 BH1750 module (5-pin: VCC, GND, SCL, SDA, ADDR) with an on-board 3.3 V regulator and 4.7 k pull-ups, powered from 3-5 V, I2C address 0x23 (0x5C with ADDR high).",
+  "eli5": "Tells your board how bright the light around it is, in lux, like a camera's light meter.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Module supply, 3-5 V (an on-board 3.3 V regulator feeds the chip)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 k pull-up to the module's 3.3 V on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 k pull-up to the module's 3.3 V on board)",
+      "required": true
+    },
+    {
+      "name": "ADDR",
+      "role": "io",
+      "description": "Address select, 4.7 k pull-down on board: unconnected/low = 0x23, high (3.3 V, not 5 V) = 0x5C",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.19,
+  "i2cAddress": 35,
+  "datasheetUrl": "https://www.elechouse.com/elechouse/images/product/Digital%20light%20Sensor/bh1750fvi-e.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "GY-302 BH1750 light sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Send one opcode per I2C write (the chip needs a STOP after each): Power On 0x01, then One-Time H-Resolution 0x20, wait up to 180 ms, then read 2 bytes MSB first.",
+    "Illuminance in lux = raw / 1.2 with the default measurement-time register (MTreg = 69); the H-resolution range tops out at 54612 lx.",
+    "Leave ADDR unconnected (4.7 k pull-down on the GY-302) for address 0x23. For 0x5C tie ADDR to 3.3 V only: it goes straight to the chip, whose absolute maximum is 4.5 V, so never tie it to 5 V.",
+    "Keep the sensor window uncovered and facing the light; the board's own LEDs or a shadow from wires will change the reading."
+  ],
+  "keywords": [
+    "bh1750",
+    "bh1750fvi",
+    "gy-302",
+    "light",
+    "lux",
+    "illuminance",
+    "ambient light"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Illuminance",
+    "unit": "lx",
+    "min": 0,
+    "max": 54612,
+    "default": 300,
+    "responses": [
+      {
+        "match": "20",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.8333333333333334
+          }
+        ]
+      },
+      {
+        "match": "10",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.8333333333333334
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bh1750.py",
+    "code": "# BH1750 ambient light sensor (ROHM BH1750FVI), MicroPython driver.\n# One-time H-resolution mode (opcode 0x20): 1 lx resolution, 120 ms typ / 180 ms max,\n# then the chip returns to power-down by itself. lux = raw / 1.2 (default MTreg = 69).\n# The chip accepts one opcode per I2C transaction (a STOP after every opcode).\nimport time\n\nPOWER_DOWN = 0x00\nPOWER_ON = 0x01\nRESET = 0x07\nONE_TIME_H_RES = 0x20\n\n\nclass BH1750:\n    def __init__(self, i2c, addr=0x23):\n        self.i2c = i2c\n        self.addr = addr  # 0x23 with ADDR low (default on GY-302), 0x5C with ADDR high\n        self._cmd(POWER_ON)\n        self._cmd(RESET)  # clears the data register; only works in power-on mode\n        self._cmd(POWER_DOWN)\n\n    def _cmd(self, op):\n        self.i2c.writeto(self.addr, bytes([op]))\n\n    def lux(self):\n        \"\"\"Measure once and return the illuminance in lux.\"\"\"\n        self._cmd(POWER_ON)\n        self._cmd(ONE_TIME_H_RES)\n        time.sleep_ms(180)  # max H-resolution measurement time\n        d = self.i2c.readfrom(self.addr, 2)\n        raw = (d[0] << 8) | d[1]\n        return raw / 1.2\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bh1750 import BH1750\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BH1750(i2c)\nwhile True:\n    print('Light: %.1f lx' % sensor.lux())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 750
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Light: 750.0 lx",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.elechouse.com/elechouse/images/product/Digital%20light%20Sensor/bh1750fvi-e.pdf",
+    "https://www.handsontec.com/dataspecs/sensor/BH1750%20Light%20Sensor.pdf",
+    "https://components101.com/sensors/bh1750-ambient-light-sensor"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:50:10.821Z",
+    "verifiedSources": [
+      "https://components101.com/sites/default/files/component_datasheet/BH1750.pdf",
+      "https://github.com/Erriez/ErriezBH1750",
+      "https://shillehtek.com/blogs/shillehtek-product-manuals/bh1750-pre-soldered-light-intensity-module",
+      "https://www.phippselectronics.com/using-gy-302-digital-light-intensity-sensor-module-with-arduino/"
+    ]
+  }
+}

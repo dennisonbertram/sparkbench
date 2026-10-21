@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-2",
+  "board": "MQ-2 gas sensor module, common blue FC-22-style board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The check passed on both runs: ESP32 and Pico wiring, design checks, breadboard, simulator example (AO voltage slider plus an active-low DO toggle) and circuit board. AO is modelled as the datasheet's VRL across the load resistor, and the driver applies the datasheet formula Rs = (Vc/VRL - 1) x RL. The skill warns that AO and DO are 5 V signals, so a 3.3 V board needs a divider on each.",
+  "datasheetUrl": "https://www.pololu.com/file/0J309/MQ2.pdf",
+  "breakoutPinoutSource": "https://lastminuteengineers.com/wp-content/uploads/arduino/MQ2-Gas-Sensor-Module-Pinout.png",
+  "checkRuns": 2
+}

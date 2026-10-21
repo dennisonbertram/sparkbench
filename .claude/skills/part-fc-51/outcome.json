@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-fc-51",
+  "board": "FC-51 IR obstacle avoidance sensor module (common blue 3-pin clone board: OUT, GND, VCC)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test 'Obstacle: YES' with the active toggle on, PCB DRC clean, footprint). Modelled as a digital-sensor with an active-low OUT (LM393 open-collector with 10k pull-up to VCC); the LCSC hit C3207533 FC51FL is a name match, not the module.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+  "breakoutPinoutSource": "Fritzing core part fc-51-IR-Sensor.fzp (pin1 OUT, pin2 GND, pin3 VCC), with OUT active-low behaviour confirmed by https://playembedded.org/detecting-obstacle-with-ir-sensor-and-arduino/",
+  "checkRuns": 1
+}

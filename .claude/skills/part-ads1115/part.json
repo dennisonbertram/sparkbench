@@ -1,0 +1,162 @@
+{
+  "type": "custom-ads1115",
+  "name": "ADS1115 16-bit 4-channel ADC",
+  "mpn": "ADS1115",
+  "category": "sensor",
+  "description": "Texas Instruments 16-bit delta-sigma analog-to-digital converter with 4 single-ended (or 2 differential) inputs, a programmable gain amplifier (full-scale ±0.256 V to ±6.144 V) and 8–860 samples/s, read over I2C. Runs on 2.0–5.5 V; inputs must stay between GND and VDD. Sold as: ADS1115 16-bit 4-channel ADC module, blue 10-pin breakout (GY-ADS1115 / HW-526 clone of the original Adafruit #1085), 10-pin header VDD, GND, SCL, SDA, ADDR, ALRT, A0, A1, A2, A3; I2C address 0x48 (ADDR to GND), 0x49 (VDD), 0x4A (SDA), 0x4B (SCL).",
+  "eli5": "Measures voltages very precisely (to about a tenth of a millivolt) on four inputs and tells your board the numbers over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 2.0–5.5 V. Use 3.3 V with an ESP32/Pico: the board's SDA/SCL pull-ups go to VDD",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (also the reference for single-ended readings)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10k pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10k pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "ADDR",
+      "role": "io",
+      "description": "Address select: GND (pulled down on the board) = 0x48, VDD = 0x49, SDA = 0x4A, SCL = 0x4B",
+      "required": false
+    },
+    {
+      "name": "ALRT",
+      "role": "io",
+      "description": "ALERT/RDY open-drain output (comparator / conversion ready), not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Analog input AIN0, GND to VDD (never more than VDD + 0.3 V)",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Analog input AIN1, GND to VDD",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Analog input AIN2, GND to VDD",
+      "required": false
+    },
+    {
+      "name": "A3",
+      "role": "io",
+      "description": "Analog input AIN3, GND to VDD",
+      "required": false
+    }
+  ],
+  "vmin": 2,
+  "vmax": 5.5,
+  "currentMa": 0.2,
+  "i2cAddress": 72,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ads1115.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "ADS1115 16-bit 4-channel ADC module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "buildNotes": [
+    "Single-shot read: write Config (pointer 0x01) with OS=1, the input MUX, PGA, MODE=1 and DR, wait 1/data-rate (7.8 ms at 128 SPS), poll until Config bit 15 (OS) reads 1, then read the Conversion register (pointer 0x00).",
+    "The result is a signed 16-bit code: volts = code × FSR / 32768, e.g. 125 µV per count at ±4.096 V. Single-ended inputs only use the positive half (0 to 32767).",
+    "Never put more than VDD + 0.3 V (or less than −0.3 V) on A0–A3, whatever gain you choose. Divide larger voltages down with resistors first.",
+    "Power the module from 3.3 V when using an ESP32 or Pico: its I2C pull-ups go to VDD, and 5 V on SDA/SCL can damage 3.3 V GPIOs.",
+    "Leave ADDR unconnected (pulled to GND on the board) for 0x48; tie it to VDD, SDA or SCL for 0x49/0x4A/0x4B to use up to four modules on one bus.",
+    "Join the GND of the signal you measure to the module's GND."
+  ],
+  "keywords": [
+    "ads1115",
+    "ads1115 adc",
+    "adc",
+    "16-bit adc",
+    "analog to digital",
+    "voltage",
+    "ads1x15",
+    "pga"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/ads1115.pdf",
+    "https://www.adafruit.com/product/1085",
+    "https://learn.adafruit.com/adafruit-4-channel-adc-breakouts/assembly-and-wiring",
+    "https://components101.com/modules/ads1115-module-with-programmable-gain-amplifier"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "AIN0 voltage",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.65,
+    "regWidth": 16,
+    "registers": {
+      "0x01": 34179,
+      "0x02": 32768,
+      "0x03": 32767
+    },
+    "measure": {
+      "reg": "0x00",
+      "bytes": 2,
+      "scale": 0.000125,
+      "signed": true,
+      "control": "value"
+    }
+  },
+  "driver": {
+    "filename": "ads1115.py",
+    "code": "# ADS1115 16-bit 4-channel I2C ADC (Texas Instruments ADS111x, SBAS444E), MicroPython driver.\n# Single-shot conversions: write the Config register (pointer 0x01) with OS=1, poll OS until it\n# reads 1 (conversion done), then read the Conversion register (pointer 0x00), a 16-bit\n# two's-complement value. Volts = raw * FSR / 32768 (LSB = FSR / 2^15, e.g. 125 uV at +/-4.096 V).\nimport time\n\n# Full-scale range (volts) -> PGA[2:0] bits (datasheet table 8-3)\n_PGA = {6.144: 0, 4.096: 1, 2.048: 2, 1.024: 3, 0.512: 4, 0.256: 5}\n# Data rate (samples/s) -> DR[2:0] bits\n_DR = {8: 0, 16: 1, 32: 2, 64: 3, 128: 4, 250: 5, 475: 6, 860: 7}\n# Single-ended channel -> MUX[2:0] (AINx vs GND)\n_SINGLE = {0: 4, 1: 5, 2: 6, 3: 7}\n# Differential pairs (AINP, AINN) -> MUX[2:0]\n_DIFF = {(0, 1): 0, (0, 3): 1, (1, 3): 2, (2, 3): 3}\n\n_REG_CONVERSION = 0x00\n_REG_CONFIG = 0x01\n\n\nclass ADS1115:\n    def __init__(self, i2c, addr=0x48, fsr=4.096, rate=128):\n        if fsr not in _PGA:\n            raise ValueError('fsr must be one of 6.144, 4.096, 2.048, 1.024, 0.512, 0.256')\n        if rate not in _DR:\n            raise ValueError('rate must be one of 8, 16, 32, 64, 128, 250, 475, 860')\n        self.i2c = i2c\n        self.addr = addr\n        self.fsr = fsr\n        self.rate = rate\n\n    def _write_reg(self, reg, value):\n        self.i2c.writeto(self.addr, bytes([reg, (value >> 8) & 0xFF, value & 0xFF]))\n\n    def _read_reg(self, reg):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        d = self.i2c.readfrom(self.addr, 2)\n        return (d[0] << 8) | d[1]\n\n    def _convert(self, mux):\n        config = (0x8000                     # OS = 1: start a single conversion\n                  | (mux << 12)              # MUX[2:0]\n                  | (_PGA[self.fsr] << 9)    # PGA[2:0]\n                  | 0x0100                   # MODE = 1: single-shot\n                  | (_DR[self.rate] << 5)    # DR[2:0]\n                  | 0x0003)                  # COMP_QUE = 11: comparator off, ALRT hi-Z\n        self._write_reg(_REG_CONFIG, config)\n        # One conversion takes 1/rate (+ ~25 us wake-up); allow twice that before giving up.\n        deadline = time.ticks_add(time.ticks_ms(), 2 * 1000 // self.rate + 10)\n        time.sleep_us(1000000 // self.rate)\n        while not (self._read_reg(_REG_CONFIG) & 0x8000):\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('ADS1115 conversion timed out: check the wiring')\n            time.sleep_ms(1)\n        raw = self._read_reg(_REG_CONVERSION)\n        return raw - 0x10000 if raw & 0x8000 else raw\n\n    def read_raw(self, channel=0):\n        \"\"\"Single-ended reading of AIN0..AIN3 against GND, as a signed 16-bit code.\"\"\"\n        return self._convert(_SINGLE[channel])\n\n    def read_diff_raw(self, pos=0, neg=1):\n        \"\"\"Differential reading AINpos - AINneg: (0,1), (0,3), (1,3) or (2,3).\"\"\"\n        return self._convert(_DIFF[(pos, neg)])\n\n    def raw_to_volts(self, raw):\n        return raw * self.fsr / 32768\n\n    def read_voltage(self, channel=0):\n        \"\"\"Voltage on AINx (vs GND) in volts.\"\"\"\n        return self.raw_to_volts(self.read_raw(channel))\n\n    def read_diff_voltage(self, pos=0, neg=1):\n        return self.raw_to_volts(self.read_diff_raw(pos, neg))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ads1115 import ADS1115\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nadc = ADS1115(i2c, fsr=4.096)  # address 0x48, +/-4.096 V range (125 uV per count)\nwhile True:\n    raw = adc.read_raw(0)\n    print('A0 raw=%d V=%.3f' % (raw, adc.raw_to_volts(raw)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the AIN0 voltage set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A0 raw=20000 V=2.500",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:50:32.093Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/ads1115.pdf",
+      "https://learn.adafruit.com/adafruit-4-channel-adc-breakouts/pinouts"
+    ]
+  }
+}

@@ -761,7 +761,9 @@ export class SimEngine {
           const cs = customSpec(part.type);
           if (cs?.sim.kind === 'actuator' && (cs.sim.inputPin || cs.sim.inputPins?.length)) {
             const gnd = cs.pins.find((p) => p.role === 'gnd')?.name;
-            const high = (pin: string) => !!v.powered && m.pinVoltage(part.id, pin) - (gnd ? m.pinVoltage(part.id, gnd) : 0) > 1.5;
+            // Some modules (e.g. KY-012 buzzers) have no supply pin: the signal itself powers them.
+            const supplied = cs.pins.some((p) => p.role === 'power') ? !!v.powered : true;
+            const high = (pin: string) => supplied && m.pinVoltage(part.id, pin) - (gnd ? m.pinVoltage(part.id, gnd) : 0) > 1.5;
             const pins = [...new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])];
             v.inputs = Object.fromEntries(pins.map((p) => [p, high(p)]));
             v.active = pins.some(high);

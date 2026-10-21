@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-acs712",
+  "board": "Common blue/red \"ACS712 5A current sensor module\" (ACS712ELCTR-05B, screw terminal IP+/IP-, 3-pin header VCC/OUT/GND)",
+  "reason": "All stages passed on ESP32 and Pico (spec, wiring at 5 V, design checks, breadboard, simulator test reading I=2.0A at 2 A, DRC-clean PCB, footprint, LCSC C44471). Model uses the datasheet's ratiometric transfer Vout = VCC/2 + 0.185 V/A x I, giving 1.575-3.425 V over -5..+5 A at VCC = 5 V.",
+  "datasheetUrl": "https://www.allegromicro.com/-/media/files/datasheets/acs712-datasheet.pdf",
+  "breakoutPinoutSource": "https://components101.com/sensors/acs712-current-sensor-module (pinout image ACS712-Current-Sensor-Pinout.png and board photo with silkscreen GND OUT VCC)",
+  "checkRuns": 1
+}

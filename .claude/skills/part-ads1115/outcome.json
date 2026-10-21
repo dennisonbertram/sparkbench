@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ads1115",
+  "board": "ADS1115 16-bit 4-channel ADC module, blue 10-pin breakout (GY-ADS1115 / HW-526 clone of the original Adafruit #1085)",
+  "reason": "Check passed on the first run (ESP32 and Pico: spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC). The driver does datasheet single-shot conversions (Config write with OS=1, OS poll, signed Conversion read, V = code x FSR/32768); the sim models AIN0 at +/-4.096 V (125 uV/count) in the 16-bit conversion register and does not follow MUX/PGA changes, which SKILL.md states.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/ads1115.pdf",
+  "breakoutPinoutSource": "Adafruit #1085 Fritzing wiring diagram (learn.adafruit.com/adafruit-4-channel-adc-breakouts/assembly-and-wiring) and components101 ADS1115 module pin table: VDD, GND, SCL, SDA, ADDR, ALRT, A0, A1, A2, A3",
+  "checkRuns": 1
+}

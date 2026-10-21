@@ -1,0 +1,175 @@
+{
+  "type": "custom-ky-040",
+  "name": "KY-040 rotary encoder module",
+  "mpn": "KY-040",
+  "category": "sensor",
+  "description": "Mechanical incremental rotary encoder knob (360° continuous, 2-bit Gray-code quadrature outputs CLK/DT with 10 kΩ pull-ups on the board, low while a contact is closed) with a push switch from SW to GND. Typically 20 pulses and 20 clicks per turn. Runs on 3.3–5 V. Sold as: KY-040 rotary encoder module (common 5-pin clone board: CLK, DT, SW, +, GND).",
+  "eli5": "A knob you can turn forever in either direction. Your board counts the clicks to know which way and how far it was turned, and you can also push it like a button.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "CLK",
+      "role": "io",
+      "description": "Encoder output A, 10 kΩ pull-up on board; low while contact A is closed. Changes before DT when turned clockwise (pin 1)",
+      "required": true
+    },
+    {
+      "name": "DT",
+      "role": "io",
+      "description": "Encoder output B, 10 kΩ pull-up on board; low while contact B is closed (pin 2)",
+      "required": true
+    },
+    {
+      "name": "SW",
+      "role": "io",
+      "description": "Push switch to GND, low while the knob is pressed; no pull-up fitted on most boards, use the GPIO's internal pull-up (pin 3)",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "Supply for the CLK/DT pull-ups, 3.3–5 V (pin 4). Use 3.3 V with an ESP32 or Pico",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, encoder common C (pin 5)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.7,
+  "datasheetUrl": "https://www.handsontec.com/dataspecs/module/Rotary%20Encoder.pdf",
+  "sources": [
+    "https://www.handsontec.com/dataspecs/module/Rotary%20Encoder.pdf",
+    "https://lastminuteengineers.com/rotary-encoder-arduino-tutorial/"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "KY-040 rotary encoder module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: CLK, DT, SW, +, GND.",
+    "On an ESP32 or Pico connect + to 3V3: the on-board pull-ups take CLK and DT up to whatever + is, and 5 V on a GPIO can damage it.",
+    "CLK and DT idle high and go low while their contact is closed. Turning clockwise, CLK changes first; counter-clockwise, DT changes first.",
+    "SW has no pull-up on most boards (R1 pad empty): enable the GPIO's internal pull-up. It reads 0 while the knob is pressed.",
+    "Contacts bounce: decode every edge of both lines with a state table (as the driver does) rather than counting CLK edges alone.",
+    "Most modules click once per full Gray-code cycle (4 edges, 20 clicks/turn); some click every half cycle (30 clicks, 15 pulses/turn): use steps_per_detent=2 for those."
+  ],
+  "keywords": [
+    "ky-040",
+    "ky040",
+    "rotary encoder",
+    "encoder",
+    "knob",
+    "quadrature",
+    "ec11",
+    "button"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "CLK",
+    "quantity": "CLK contact (A) closed",
+    "activeHigh": false,
+    "digitalOutputs": [
+      {
+        "pin": "DT",
+        "control": "dt",
+        "label": "DT contact (B) closed",
+        "activeHigh": false
+      },
+      {
+        "pin": "SW",
+        "control": "pressed",
+        "label": "Knob pressed",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ky040.py",
+    "code": "# KY-040 rotary encoder module, MicroPython driver.\n# The module is a mechanical incremental encoder (two contacts A/CLK and B/DT to common C/GND,\n# 10 kOhm pull-ups to + on the board) plus a push switch SW to GND (pull-up usually NOT fitted).\n# Contact closed = pin low. Outputs are 2-bit Gray code: turning clockwise, CLK changes before DT:\n#   (CLK,DT) = 11 -> 01 -> 00 -> 10 -> 11   (one full quadrature cycle)\n# Every edge on either line is decoded with a full state table, so contact bounce (A->B->A)\n# cancels itself out instead of adding counts.\n# Common modules give 20 pulses / 20 detents per turn (4 edges per click, rest state 11).\n# Some give 30 detents / 15 pulses (2 edges per click, rest at 11 or 00): pass steps_per_detent=2.\nfrom machine import Pin\n\n# Index = (old_state << 2) | new_state, state = (CLK << 1) | DT. +1 = clockwise edge, -1 = CCW,\n# 0 = no change or an invalid double change (both lines flipped: direction unknown, ignored).\n_TABLE = (0, -1, 1, 0,\n          1, 0, 0, -1,\n          -1, 0, 0, 1,\n          0, 1, -1, 0)\n\n\nclass KY040:\n    def __init__(self, clk, dt, sw=None, steps_per_detent=4, use_irq=True):\n        # CLK and DT have 10 kOhm pull-ups on the module; the internal pull-up does no harm and\n        # keeps the lines defined if the module's + pin is not connected yet.\n        self.clk = Pin(clk, Pin.IN, Pin.PULL_UP)\n        self.dt = Pin(dt, Pin.IN, Pin.PULL_UP)\n        # SW is a bare switch to GND (R1 pad usually empty): the internal pull-up is required.\n        self.sw = Pin(sw, Pin.IN, Pin.PULL_UP) if sw is not None else None\n        self.spd = steps_per_detent\n        self._state = self._read()\n        self._raw = 0        # edges counted, +1 per clockwise edge\n        self._base = 0       # raw count at the last detent reached\n        self._pos = 0        # detents (clicks), clockwise positive\n        if use_irq:\n            trig = Pin.IRQ_RISING | Pin.IRQ_FALLING\n            self.clk.irq(handler=self._edge, trigger=trig)\n            self.dt.irq(handler=self._edge, trigger=trig)\n\n    def _read(self):\n        return (self.clk.value() << 1) | self.dt.value()\n\n    def _edge(self, _pin=None):\n        new = self._read()\n        if new == self._state:\n            return\n        self._raw += _TABLE[(self._state << 2) | new]\n        self._state = new\n        # Latch whole clicks only at a rest (detent) state.\n        if new == 3 or (self.spd == 2 and new == 0) or self.spd == 1:\n            d = self._raw - self._base\n            n = (d + self.spd // 2) // self.spd if d >= 0 else -((-d + self.spd // 2) // self.spd)\n            if n:\n                self._pos += n\n                self._base += n * self.spd\n\n    def update(self):\n        \"\"\"Poll the pins (call often) when not using interrupts.\"\"\"\n        self._edge()\n\n    def position(self):\n        \"\"\"Clicks turned since start (or reset): clockwise positive.\"\"\"\n        return self._pos\n\n    def reset(self, value=0):\n        self._pos = value\n        self._base = self._raw\n\n    def pressed(self):\n        \"\"\"True while the knob is pushed in (SW pulled to GND).\"\"\"\n        return self.sw is not None and self.sw.value() == 0\n"
+  },
+  "skill": "---\nname: part-ky-040\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-040 rotary encoder module (quadrature CLK/DT outputs + push switch). Use when designing, wiring, simulating or writing code for a KY-040 rotary encoder in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-040 rotary encoder module\n\n## Overview\nThe **KY-040** is the common 5-pin rotary encoder module. It holds no chip: a mechanical\nincremental encoder (EC11 style, 360° continuous) with two contacts **A (CLK)** and **B (DT)** to a\ncommon **C (GND)**, two **10 kΩ pull-ups** from CLK and DT to the + pin, and a **push switch** that\nconnects SW to GND when the knob is pressed.\n- Outputs are 2-bit **Gray code (quadrature)**: high while a contact is open, low while it is closed\n- Turning **clockwise, CLK changes before DT**; counter-clockwise, DT changes first\n- Typically **20 pulses and 20 clicks (detents) per turn**; some batches give 30 clicks / 15 pulses\n- Supply: **3.3 V to 5 V** (only feeds the pull-ups), about 0.7 mA at 3.3 V with both contacts closed\n\n## Pinout (5-pin header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | CLK | Encoder output A (10 kΩ pull-up), low while contact A closed |\n| 2 | DT | Encoder output B (10 kΩ pull-up), low while contact B closed |\n| 3 | SW | Push switch to GND, low while pressed (no pull-up fitted on most boards) |\n| 4 | + | Supply for the pull-ups, 3.3–5 V |\n| 5 | GND | Ground (encoder common C) |\n\n## Electrical limits\n- CLK and DT are pulled up to the **+** pin. **Powered from 5 V they output 5 V**, which can damage an ESP32 or Pico GPIO. With a 3.3 V MCU always connect + to 3V3.\n- The contacts are low-current switches (EC11-type, about 10 mA at 5 V DC max): do not drive loads through them.\n\n## Interface details\nState = (CLK, DT). Clockwise one full cycle: `11 → 01 → 00 → 10 → 11`; counter-clockwise the reverse.\n- On a 20-click module each click is one full cycle (4 edges) and the knob rests at `11`.\n- On a 30-click / 15-pulse module each click is half a cycle (2 edges) and it rests at `11` or `00`.\n- The contacts bounce for a few ms. Decode **every edge of both lines** with a transition table: a bounce\n  goes forward then back and cancels itself. Counting only CLK edges miscounts.\n- SW: input with internal pull-up, reads 0 while pressed.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| CLK | GPIO32 | GP14 (pin 19) | GPIO17 (pin 11) |\n| DT | GPIO33 | GP15 (pin 20) | GPIO27 (pin 13) |\n| SW | GPIO25 (internal pull-up) | GP13 (pin 17, internal pull-up) | GPIO22 (pin 15, internal pull-up) |\n| + | 3V3 | 3V3(OUT) (pin 36) | 3V3 (pin 1) |\n| GND | GND | GND | GND |\n\n## Using the driver\n```python\nfrom ky040 import KY040\nimport time\nenc = KY040(32, 33, 25)      # GPIOs wired to CLK, DT, SW\nwhile True:\n    print('pos=%d btn=%d' % (enc.position(), enc.pressed()))\n    time.sleep_ms(200)\n```\nThe driver uses pin interrupts on both edges of CLK and DT and a full Gray-code state table.\n`position()` returns clicks turned (clockwise positive), `reset()` zeroes it, `pressed()` is True while\nthe knob is pushed. Use `steps_per_detent=2` for 30-click modules; `use_irq=False` plus frequent\n`update()` calls polls instead of using interrupts.\n\n## Gotchas\n- **Do not power + from 5 V on a 3.3 V board.**\n- **SW floats when released** unless you enable `Pin.PULL_UP`.\n- **Counts jump by 2 per click or need two clicks per count**: your module has the other detent type; change `steps_per_detent` (2 or 4).\n- Direction backwards? Swap CLK and DT (or negate the position).\n- Heavy debouncing with long `sleep`s in a polling loop loses steps when turned fast: use the interrupt mode.\n\n## Datasheet\nNo chip datasheet exists for the module; module data sheet: https://www.handsontec.com/dataspecs/module/Rotary%20Encoder.pdf\n",
+  "example": {
+    "code": "from ky040 import KY040\nimport time\n\nenc = KY040({CLK}, {DT}, {SW})\nwhile True:\n    print('pos=%d btn=%d' % (enc.position(), enc.pressed()))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Counts two clockwise clicks (CLK leads DT) and reports the knob pressed",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "dt",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "dt",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "dt",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "dt",
+          "value": 0
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressed",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "pos=2 btn=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:57:49.257Z",
+    "verifiedSources": [
+      "https://www.bourns.com/docs/product-datasheets/pec11r.pdf",
+      "https://lastminuteengineers.com/rotary-encoder-arduino-tutorial/"
+    ]
+  }
+}

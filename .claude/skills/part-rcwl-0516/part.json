@@ -1,0 +1,116 @@
+{
+  "type": "custom-rcwl-0516",
+  "name": "RCWL-0516 microwave radar motion sensor",
+  "mpn": "RCWL-0516",
+  "category": "sensor",
+  "description": "Doppler radar (about 3.2 GHz) motion sensor module built around the RCWL-9196 IC: OUT goes high (3.3 V) for about 2 s whenever something moves within 5-7 m, re-triggering while motion continues. Senses through plastic and wood. Runs on 4-28 V on VIN and provides its own 3.3 V output. Sold as: RCWL-0516 microwave radar motion sensor module (common blue 5-pin board: 3V3, GND, OUT, VIN, CDS).",
+  "eli5": "A tiny radar that notices when someone moves nearby, even through a thin wall or plastic box, and sets its output pin high for a couple of seconds.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "3V3",
+      "role": "io",
+      "description": "Regulated 3.3 V OUTPUT from the module (about 100 mA max). Not a supply input: leave unconnected or use it to power small 3.3 V parts (pin 1).",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Motion output: 3.3 V while motion is detected (about 2 s per trigger), 0 V otherwise. Push-pull, safe for 3.3 V GPIOs (pin 3).",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply input, 4-28 V. Use the 5 V / VBUS pin; 3.3 V is too low (pin 4).",
+      "required": true
+    },
+    {
+      "name": "CDS",
+      "role": "io",
+      "description": "Trigger disable input (RCWL-9196 pin 9, 1 MOhm pull-up). For an optional LDR to GND; pulled below about 0.7 V it blocks triggering. Leave open (pin 5).",
+      "required": false
+    }
+  ],
+  "vmin": 4,
+  "vmax": 28,
+  "currentMa": 3,
+  "datasheetUrl": "https://www-users.york.ac.uk/~mjf5/pi_time/Datasheets/rcwl-0516.pdf",
+  "sources": [
+    "https://www-users.york.ac.uk/~mjf5/pi_time/Datasheets/rcwl-0516.pdf",
+    "https://github.com/jdesbonnet/RCWL-0516",
+    "https://components101.com/sensors/rcwl0516-microwave-diatance-sensor-module-datasheet-pinout-features-working"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "RCWL-0516 microwave radar motion sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: 3V3, GND, OUT, VIN, CDS.",
+    "Power VIN from 5 V (ESP32 VIN/5V, Pico VBUS): the module needs 4-28 V. OUT is still only 3.3 V, so it connects straight to a GPIO.",
+    "The 3V3 pin is the module's own regulator output: never tie it to the board's 3V3 rail.",
+    "Leave CDS unconnected unless you add an LDR to disable detection in daylight.",
+    "The component side is the sensing face. Keep metal away from it and leave at least 1 cm clear behind the board; keep two modules more than 1 m apart.",
+    "OUT stays high about 2 s per trigger (longer with a capacitor on the C-TM pad); wait a few seconds after power-up before trusting it."
+  ],
+  "keywords": [
+    "rcwl-0516",
+    "rcwl0516",
+    "rcwl-9196",
+    "radar",
+    "microwave",
+    "doppler",
+    "motion",
+    "presence",
+    "pir alternative"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Motion detected",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "rcwl0516.py",
+    "code": "# RCWL-0516 microwave (Doppler radar) motion sensor module, MicroPython driver.\n# The module's RCWL-9196 IC (a BISS0001-style motion processor) drives OUT high (3.3 V,\n# from the board's own regulator) while motion is detected and low otherwise. OUT is a\n# push-pull logic output, so no pull-up/down is needed. Each detection holds OUT high for\n# about 2 s (default, no C-TM fitted) and re-triggers while motion continues.\n# The module needs 4-28 V on VIN (use the 5 V / VBUS pin); OUT is still only 3.3 V.\nfrom machine import Pin\n\n\nclass RCWL0516:\n    def __init__(self, out_pin):\n        self.pin = Pin(out_pin, Pin.IN) if isinstance(out_pin, int) else out_pin\n\n    def motion(self):\n        \"\"\"True while the sensor reports motion (OUT high).\"\"\"\n        return self.pin.value() == 1\n\n    def on_change(self, handler):\n        \"\"\"Call handler(motion: bool) on every edge of OUT. Pass None to stop.\"\"\"\n        if handler is None:\n            self.pin.irq(handler=None)\n            return\n        self.pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING,\n                     handler=lambda p: handler(p.value() == 1))\n"
+  },
+  "skill": "---\nname: part-rcwl-0516\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the RCWL-0516 microwave Doppler radar motion sensor module (RCWL-9196 IC). Use when designing, wiring, simulating or writing code for an RCWL-0516 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# RCWL-0516 microwave radar motion sensor (RCWL-0516)\n\n## Overview\nThe **RCWL-0516** is a small blue Doppler-radar motion sensor module (about 3.2 GHz, 5–7 m range). A transistor oscillator/mixer feeds an **RCWL-9196** IC (a BISS0001-style PIR processor), which drives a single digital output:\n- **OUT goes high (3.3 V) while motion is detected**, low (0 V) otherwise\n- Each trigger holds OUT high for about **2 s** (default) and re-triggers while motion continues\n- Unlike a PIR it senses through plastic, wood and glass, but not metal\n- Supply on VIN: **4–28 V**; the board makes its own 3.3 V (available on the 3V3 pin, up to ~100 mA)\n\n## Pinout (5-pin header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | 3V3 | Regulated 3.3 V **output** from the module (≈100 mA max). Do not connect to a supply |\n| 2 | GND | Ground |\n| 3 | OUT | Motion output: 3.3 V when triggered, 0 V otherwise |\n| 4 | VIN | Supply input, 4–28 V |\n| 5 | CDS | Trigger disable (RCWL-9196 pin 9, 1 MΩ pull-up). Pull below ~0.7 V to block triggering; leave open for normal use |\n\n## Electrical limits\n- VIN: 4–28 V. **3.3 V on VIN is below the minimum**: use the 5 V / VBUS / VIN pin of your board.\n- OUT swings 0–3.3 V even when VIN is 5 V or more, so it is safe on ESP32 / Pico / Pi GPIOs.\n- Current draw: about 3 mA.\n- Never connect the module's 3V3 pin to your board's 3V3 rail: both are regulator outputs.\n\n## Interface details\nPlain digital output, active high, push-pull (no pull resistor needed).\n- Default hold time ≈ 2 s; a capacitor on the C-TM pad lengthens it (time = 32768 / f, where f is the oscillator on IC pin 3).\n- Default range ≈ 7 m; a 1 MΩ resistor on R-GN cuts it to ≈ 5 m.\n- An LDR between CDS and GND disables detection in daylight (R-CDS pad adjusts the threshold).\n- Allow a few seconds after power-up for the output to settle.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VIN | 5V (VIN/USB) | VBUS (pin 40) | 5V (pin 2) |\n| GND | GND | GND | GND (pin 6) |\n| OUT | GPIO4 | GP15 | GPIO17 (pin 11) |\n| 3V3 | leave unconnected | leave unconnected | leave unconnected |\n| CDS | leave unconnected | leave unconnected | leave unconnected |\n\n## Using the driver\n```python\nfrom rcwl0516 import RCWL0516\nimport time\nradar = RCWL0516(4)          # GPIO wired to OUT\nwhile True:\n    print('MOTION=%d' % radar.motion())\n    time.sleep(0.5)\n```\n`motion()` returns True while OUT is high; `on_change(handler)` calls `handler(True/False)` on each edge.\n\n## Gotchas\n- **Powering VIN from 3.3 V** is out of spec and gives unreliable or no triggering.\n- **False triggers**: it sees through walls and catches fans, curtains, and other modules. Keep two RCWL-0516s more than 1 m apart.\n- Keep at least 1 cm clear behind the board and no metal in front of the component side (the sensing face).\n- Long or noisy supply wires near the antenna can retrigger it; a 100 µF capacitor across VIN/GND helps.\n- The 2 s hold means short motions read as a 2 s high pulse; poll at least every second or use `on_change`.\n\n## Datasheet\nNo manufacturer datasheet for the RCWL-9196 exists; the module spec sheet: https://www-users.york.ac.uk/~mjf5/pi_time/Datasheets/rcwl-0516.pdf\n",
+  "example": {
+    "code": "from rcwl0516 import RCWL0516\nimport time\n\nradar = RCWL0516({OUT})\nwhile True:\n    print('MOTION=%d' % radar.motion())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports motion when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:55:18.474Z",
+    "verifiedSources": [
+      "https://components101.com/sensors/rcwl0516-microwave-diatance-sensor-module-datasheet-pinout-features-working",
+      "https://components101.com/sites/default/files/component_datasheet/Microwave-Distance-Sensor-Datasheet.pdf",
+      "https://circuitdigest.com/microcontroller-projects/arduino-rcwl-0516-radar-sensor-interfacing"
+    ]
+  }
+}

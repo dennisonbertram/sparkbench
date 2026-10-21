@@ -1,0 +1,162 @@
+{
+  "type": "custom-sht40",
+  "name": "SHT40 temperature & humidity sensor",
+  "mpn": "SHT40",
+  "category": "sensor",
+  "description": "Sensirion SHT4x digital temperature (-40 to 125 °C, ±0.2 °C typical) and relative humidity (0–100 %, ±1.8 %) sensor with an I2C interface at address 0x44. The chip runs on 1.08–3.6 V; the breakout adds a 3.3 V regulator and level shifting. Sold as: Adafruit Sensirion SHT40 Temperature & Humidity Sensor - STEMMA QT / Qwiic (#4885; 5-pin header VIN, 3Vo, GND, SCL, SDA, plus two STEMMA QT sockets), same pinout as the Adafruit SHT41 and SHT45 boards.",
+  "eli5": "Tells your board how warm the air is and how damp it is, very accurately.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3–5 V (on-board 3.3 V regulator; use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://sensirion.com/resource/datasheet/sht4x",
+  "priceUsd": 5.95,
+  "supplierQuery": "Adafruit SHT40 temperature humidity sensor STEMMA QT 4885",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Single-shot high-precision command is one byte, 0xFD; wait at least 8.3 ms (10 ms is safe) before reading 6 bytes: temperature MSB, LSB, CRC, humidity MSB, LSB, CRC.",
+    "Check each CRC (poly 0x31, init 0xFF). A mismatch almost always means a loose SDA/SCL wire.",
+    "Humidity is RH = -6 + 125 × raw / 65535 and can come out slightly below 0 or above 100 %: crop it to 0–100 % as the datasheet advises.",
+    "The address is fixed at 0x44 on this board, so only one SHT40 per I2C bus.",
+    "Leave 3Vo unconnected; it is the regulator's output, not a supply input.",
+    "Keep the sensor away from the board's regulator and the ESP32, which warm the air around them."
+  ],
+  "keywords": [
+    "sht40",
+    "sht41",
+    "sht45",
+    "sht4x",
+    "temperature",
+    "humidity",
+    "sensirion"
+  ],
+  "sources": [
+    "https://sensirion.com/resource/datasheet/sht4x",
+    "https://learn.adafruit.com/adafruit-sht40-temperature-humidity-sensor/pinouts",
+    "https://www.adafruit.com/product/4885",
+    "https://github.com/adafruit/Adafruit-SHT40-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "fd",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0019073777370870527,
+            "offset": -6
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sht40.py",
+    "code": "# SHT40 / SHT41 / SHT45 temperature & humidity sensor (Sensirion SHT4x), MicroPython driver.\n# Single-shot, high-precision measurement (command 0xFD, max 8.3 ms), CRC-8 checked as in the\n# datasheet (poly 0x31, init 0xFF). Conversion: T = -45 + 175*S/65535 degC, RH = -6 + 125*S/65535 %,\n# RH cropped to 0..100 % as the datasheet advises.\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SHT40:\n    def __init__(self, i2c, addr=0x44):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(1)  # power-up time, max 1 ms\n\n    def reset(self):\n        \"\"\"Soft reset (0x94); the sensor is idle again after at most 1 ms.\"\"\"\n        self.i2c.writeto(self.addr, b'\\x94')\n        time.sleep_ms(1)\n\n    def serial_number(self):\n        self.i2c.writeto(self.addr, b'\\x89')\n        time.sleep_ms(1)\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('SHT40 CRC mismatch: check the wiring')\n        return (d[0] << 24) | (d[1] << 16) | (d[3] << 8) | d[4]\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in degC, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, b'\\xfd')\n        time.sleep_ms(10)  # high precision takes up to 8.3 ms\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('SHT40 CRC mismatch: check the wiring')\n        t_ticks = (d[0] << 8) | d[1]\n        rh_ticks = (d[3] << 8) | d[4]\n        t = -45 + 175 * t_ticks / 65535\n        rh = -6 + 125 * rh_ticks / 65535\n        rh = min(max(rh, 0.0), 100.0)\n        return t, rh\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sht40 import SHT40\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SHT40(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 42
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.5C H=42%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:50:37.026Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/117/503/original/Datasheet_SHT4x.pdf?1673387912",
+      "https://learn.adafruit.com/adafruit-sht40-temperature-humidity-sensor/pinouts",
+      "https://www.adafruit.com/product/4885"
+    ]
+  }
+}

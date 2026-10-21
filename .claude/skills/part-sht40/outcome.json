@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sht40",
+  "board": "Adafruit Sensirion SHT40 Temperature & Humidity Sensor - STEMMA QT / Qwiic (#4885)",
+  "reason": "Modelled from the Sensirion SHT4x datasheet (cmd 0xFD, 6-byte reply with CRC-8 0x31/0xFF, T=-45+175*S/65535, RH=-6+125*S/65535 cropped 0-100); header order VIN,3Vo,GND,SCL,SDA taken from Adafruit's Eagle board file. Part check printed PASS on ESP32 and Pico (sim test T=27.5C H=42%, PCB DRC clean).",
+  "datasheetUrl": "https://sensirion.com/resource/datasheet/sht4x",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-SHT40-PCB (Adafruit SHT40.brd: JP2 pads 1-5 = VCC/3.3V/GND/SCL/SDA, silkscreen VIN 3Vo GND SCL SDA); https://learn.adafruit.com/adafruit-sht40-temperature-humidity-sensor/pinouts",
+  "checkRuns": 2
+}

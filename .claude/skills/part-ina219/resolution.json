@@ -1,0 +1,46 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says VIN, datasheet reading says Vin+",
+      "verdict": "part-correct",
+      "evidence": "Adafruit INA219 STEMMA QT breakout (product 904) top silkscreen, 6-pin header left to right reads: VIN, GND, SCL, SDA, VIN-, VIN+ (the part's order). The second reading listed the pin names from the Adafruit guide text (Vin+/Vin- screw-terminal pins, VCC) in an arbitrary order, not the header order; the guide calls the power pin 'VIN - This is the power pin', i.e. the reading's 'VCC'. Header position 1 is silkscreened 'VIN'.",
+      "source": "https://cdn-learn.adafruit.com/assets/assets/000/104/308/large1024/adafruit_products_INA219_pinouts.jpg"
+    },
+    {
+      "diff": "header pin 2: part says GND, datasheet reading says Vin-",
+      "verdict": "part-correct",
+      "evidence": "Adafruit INA219 STEMMA QT breakout (product 904) top silkscreen, 6-pin header left to right reads: VIN, GND, SCL, SDA, VIN-, VIN+ (the part's order). The second reading listed the pin names from the Adafruit guide text (Vin+/Vin- screw-terminal pins, VCC) in an arbitrary order, not the header order; the guide calls the power pin 'VIN - This is the power pin', i.e. the reading's 'VCC'. Header position 2 is silkscreened 'GND'.",
+      "source": "https://cdn-learn.adafruit.com/assets/assets/000/104/308/large1024/adafruit_products_INA219_pinouts.jpg"
+    },
+    {
+      "diff": "header pin 3: part says SCL, datasheet reading says VCC",
+      "verdict": "part-correct",
+      "evidence": "Adafruit INA219 STEMMA QT breakout (product 904) top silkscreen, 6-pin header left to right reads: VIN, GND, SCL, SDA, VIN-, VIN+ (the part's order). The second reading listed the pin names from the Adafruit guide text (Vin+/Vin- screw-terminal pins, VCC) in an arbitrary order, not the header order; the guide calls the power pin 'VIN - This is the power pin', i.e. the reading's 'VCC'. Header position 3 is silkscreened 'SCL'.",
+      "source": "https://cdn-learn.adafruit.com/assets/assets/000/104/308/large1024/adafruit_products_INA219_pinouts.jpg"
+    },
+    {
+      "diff": "header pin 4: part says SDA, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Adafruit INA219 STEMMA QT breakout (product 904) top silkscreen, 6-pin header left to right reads: VIN, GND, SCL, SDA, VIN-, VIN+ (the part's order). The second reading listed the pin names from the Adafruit guide text (Vin+/Vin- screw-terminal pins, VCC) in an arbitrary order, not the header order; the guide calls the power pin 'VIN - This is the power pin', i.e. the reading's 'VCC'. Header position 4 is silkscreened 'SDA'.",
+      "source": "https://cdn-learn.adafruit.com/assets/assets/000/104/308/large1024/adafruit_products_INA219_pinouts.jpg"
+    },
+    {
+      "diff": "header pin 5: part says VIN-, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "Adafruit INA219 STEMMA QT breakout (product 904) top silkscreen, 6-pin header left to right reads: VIN, GND, SCL, SDA, VIN-, VIN+ (the part's order). The second reading listed the pin names from the Adafruit guide text (Vin+/Vin- screw-terminal pins, VCC) in an arbitrary order, not the header order; the guide calls the power pin 'VIN - This is the power pin', i.e. the reading's 'VCC'. Header position 5 is silkscreened 'VIN-'.",
+      "source": "https://cdn-learn.adafruit.com/assets/assets/000/104/308/large1024/adafruit_products_INA219_pinouts.jpg"
+    },
+    {
+      "diff": "header pin 6: part says VIN+, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "Adafruit INA219 STEMMA QT breakout (product 904) top silkscreen, 6-pin header left to right reads: VIN, GND, SCL, SDA, VIN-, VIN+ (the part's order). The second reading listed the pin names from the Adafruit guide text (Vin+/Vin- screw-terminal pins, VCC) in an arbitrary order, not the header order; the guide calls the power pin 'VIN - This is the power pin', i.e. the reading's 'VCC'. Header position 6 is silkscreened 'VIN+'.",
+      "source": "https://cdn-learn.adafruit.com/assets/assets/000/104/308/large1024/adafruit_products_INA219_pinouts.jpg"
+    },
+    {
+      "diff": "shunt_voltage_V: datasheet reading gives 0.00001 per count, the part's model has 0.004, 0.1",
+      "verdict": "part-correct",
+      "evidence": "TI INA219 datasheet: 'Shunt voltage, 1 LSB step size 10 uV' and 'Bus voltage, 1 LSB step size 4 mV'. The model agrees in different units: 0.004 is the bus-voltage scale (V/count, after >>3); 0.1 is the shunt register expressed as load current in mA/count = 10 uV / 0.1 ohm (R100 shunt on the board). The driver uses raw*0.01 mV (=10 uV) for shunt_mv().",
+      "source": "https://www.ti.com/lit/ds/symlink/ina219.pdf"
+    }
+  ]
+}

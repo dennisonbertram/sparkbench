@@ -1,0 +1,112 @@
+{
+  "type": "custom-acs712",
+  "name": "ACS712 5 A current sensor module",
+  "mpn": "ACS712ELCTR-05B",
+  "category": "sensor",
+  "description": "Hall-effect current sensor from Allegro MicroSystems for AC or DC current up to ±5 A, with the measured current electrically isolated from the sensing side. Its analog output sits at VCC/2 (2.5 V) at 0 A and moves 185 mV per amp, ratiometric to its 4.5–5.5 V supply. Sold as: the common blue/red \"ACS712 5A current sensor module\" (ACS712ELCTR-05B, 2-way screw terminal IP+/IP-, 3-pin header VCC, OUT, GND).",
+  "eli5": "Put it in series with a wire and it tells you how much current flows through: its OUT pin sits at 2.5 V with no current and goes up (or down for the other direction) by 0.185 V for every amp.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 4.5 V to 5.5 V: connect to 5 V (3.3 V is too low).",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output: Vout = VCC/2 + 0.185 V/A × I (2.5 V at 0 A with a 5 V supply). Connect to an ADC pin; it exceeds 3.3 V above about +4.3 A.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 10,
+  "datasheetUrl": "https://www.allegromicro.com/-/media/files/datasheets/acs712-datasheet.pdf",
+  "priceUsd": 2.5,
+  "supplierQuery": "ACS712 5A current sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: VCC, OUT, GND (silkscreen reads GND OUT VCC from the other end). Power VCC from 5 V; the chip needs 4.5–5.5 V.",
+    "The measured current goes through the 2-way screw terminal, in series with the load: current in at IP+ and out at IP- reads positive. Keep to low-voltage DC loads, and use wire rated for the current.",
+    "Current (A) = (Vout − VCC/2) / (0.185 × VCC/5). With 5 V: 2.5 V = 0 A, 2.87 V = +2 A, 2.13 V = −2 A.",
+    "OUT reaches 3.43 V at +5 A, above a 3.3 V board's ADC range. To use the full range, add a 10 kΩ (OUT to ADC pin) / 20 kΩ (ADC pin to GND) divider and pass divider=1.5 to the driver.",
+    "The zero point follows the 5 V rail and varies between parts: call calibrate_zero() once with no current flowing, and average many samples (noise is about 21 mV peak-to-peak, ≈ 0.1 A).",
+    "The 20 A (100 mV/A) and 30 A (66 mV/A) modules look the same: check the chip marking and pass the matching sensitivity."
+  ],
+  "keywords": [
+    "acs712",
+    "acs712elctr-05b",
+    "current",
+    "ammeter",
+    "hall",
+    "analog",
+    "sensor",
+    "5a"
+  ],
+  "sources": [
+    "https://www.allegromicro.com/-/media/files/datasheets/acs712-datasheet.pdf",
+    "https://components101.com/sensors/acs712-current-sensor-module",
+    "https://components101.com/sites/default/files/component_pin/ACS712-Current-Sensor-Pinout.png",
+    "https://components101.com/sites/default/files/components/ACS712-Current-Sensor-Module.jpg",
+    "https://makerselectronics.com/product/current-sensor-module-acs712-5a/"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Current",
+    "unit": "A",
+    "min": -5,
+    "max": 5,
+    "default": 0,
+    "vAtMin": 1.575,
+    "vAtMax": 3.425,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "acs712.py",
+    "code": "# ACS712 Hall-effect current sensor (Allegro MicroSystems), MicroPython driver.\n# For the ACS712ELCTR-05B (+/-5 A) on the common 3-pin VCC/OUT/GND module.\n# Datasheet (ACS712, rev. 15): VCC = 4.5-5.5 V, output is ratiometric to VCC:\n#   VIOUT(Q) = VCC x 0.5 at 0 A, Sens = 185 mV/A (180-190) at VCC = 5 V,\n# so I(A) = (Vout - VCC/2) / (0.185 V/A x VCC/5 V).\n# Positive current flows into IP+ (screw terminal pins 1-2) and out of IP- (pins 3-4).\nfrom machine import ADC, Pin\n\n\nclass ACS712:\n    SENS_05B = 0.185  # V/A at VCC = 5 V (x05B)\n    SENS_20A = 0.100  # V/A at VCC = 5 V (x20A)\n    SENS_30A = 0.066  # V/A at VCC = 5 V (x30A)\n\n    def __init__(self, pin, vcc=5.0, sensitivity=SENS_05B, divider=1.0, samples=64, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to OUT. vcc: the module's supply voltage (ratiometric).\n        divider: Vout / Vadc, e.g. 1.5 for a 10k (top) / 20k (bottom) divider; 1.0 if wired directly.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.sens = sensitivity * vcc / 5.0  # sensitivity scales with VCC (ratiometric)\n        self.zero = vcc / 2.0  # VIOUT(Q) = VCC x 0.5\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Averaged sensor output voltage (V) at the OUT pin.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with NO current flowing: stores the measured 0 A output instead of VCC/2.\"\"\"\n        self.zero = self.voltage()\n        return self.zero\n\n    def current(self):\n        \"\"\"Current in amperes (positive = IP+ to IP-).\"\"\"\n        return (self.voltage() - self.zero) / self.sens\n"
+  },
+  "skill": "---\nname: part-acs712\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the ACS712 Hall-effect current sensor module (ACS712ELCTR-05B, ±5 A). Use when designing, wiring, simulating or writing code for an ACS712 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# ACS712 5 A current sensor module (ACS712ELCTR-05B)\n\n## Overview\nThe **ACS712** (Allegro MicroSystems) is a Hall-effect current sensor. The current flows through a 1.2 mΩ copper path inside the chip, which is electrically isolated (2.4 kV RMS per the datasheet) from the sensing side. It gives an **analog voltage** proportional to the current, AC or DC, in both directions. Hobbyists buy it on the common blue/red **\"ACS712 5A current sensor module\"**: a 2-way screw terminal for the measured wire and a 3-pin header (VCC, OUT, GND).\n- Range (x05B version): **−5 A to +5 A**\n- Sensitivity: **185 mV/A** (180–190) at VCC = 5 V\n- Zero-current output: **VCC × 0.5 = 2.5 V**\n- Output is **ratiometric**: zero point and sensitivity scale with VCC\n- Total output error ±1.5 % at 25 °C; noise about 21 mV peak-to-peak (≈ 0.11 A)\n- Supply: **4.5–5.5 V**, about 10 mA\n\nThe 20 A (100 mV/A) and 30 A (66 mV/A) modules look identical; read the chip marking (…05B, …20A, …30A).\n\n## Pinout (module, 3-pin header)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | VCC | Supply, 4.5–5.5 V (use 5 V) |\n| 2 | OUT | Analog output: 2.5 V at 0 A, +185 mV per amp |\n| 3 | GND | Ground |\n\nThe silkscreen on most boards reads **GND OUT VCC** from left to right with the screw terminal at the top; it is the same row, read from the other end.\nThe **screw terminal** (IP+ / IP−) is in series with the load. Current flowing in at IP+ and out at IP− gives a positive reading.\n\n## Electrical limits\n- Supply: 4.5 V min, 5.5 V max (absolute max 8 V). **3.3 V is not enough.**\n- Output: 1.575 V at −5 A to 3.425 V at +5 A (with VCC = 5 V). Output load ≥ 4.7 kΩ, ≤ 10 nF.\n- Primary current: ±5 A for the specified accuracy; survives a 100 A, 100 ms pulse.\n- The module isolates the sensing side, but the screw terminal and its traces are **not** rated for mains by a beginner: stay with low-voltage DC loads.\n\n## Interface details\nConversion formula (datasheet, ratiometric):\n```\nI(A) = (Vout − VCC/2) / (0.185 V/A × VCC/5 V)\n```\nWith VCC = 5 V: 2.5 V = 0 A, 2.87 V = +2 A, 2.13 V = −2 A.\nFor best accuracy, measure the real zero point with no current flowing (`calibrate_zero()`), since VIOUT(Q) varies a few tens of mV between parts.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 5V / VIN (USB 5 V) | VBUS (pin 40) | 5V (pin 2) |\n| OUT | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. ADS1115 A0) |\n| GND | GND | GND | GND |\n\nOUT goes above 3.3 V for currents above about +4.3 A. The ADC then saturates (the reading clips), and at +5 A the pin sees 3.43 V, close to the 3.6 V absolute maximum. To read the full range safely on a 3.3 V board, add a divider: 10 kΩ from OUT to the ADC pin, 20 kΩ from the ADC pin to GND, and pass `divider=1.5` to the driver.\n\n## Using the driver\n```python\nfrom acs712 import ACS712\nimport time\nsensor = ACS712(26)          # GPIO of the ADC pin OUT is wired to (VCC = 5 V)\n# sensor.calibrate_zero()    # optional: run once with no current flowing\nwhile True:\n    print('I=%.2fA' % sensor.current())\n    time.sleep(1)\n```\nThe driver averages 64 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535. Pass `vcc=` if your 5 V rail is not 5.0 V, and `sensitivity=ACS712.SENS_20A` or `SENS_30A` for the other versions.\n\n## Gotchas\n- **Power it from 5 V,** not 3.3 V. The zero point is VCC/2, so a sagging USB 5 V rail (4.8 V) moves the zero point to 2.4 V, which reads as −0.5 A. Measure VCC and pass it, or use `calibrate_zero()`.\n- **Noise:** 185 mV/A on a 12-bit ESP32 ADC is about 4 mA per step, but the sensor noise is about ±50 mA. Average many samples and don't expect milliamp precision.\n- **ESP32 ADC** is nonlinear above about 3.1 V even at 11 dB attenuation. Use ADC1 pins (ADC2 stops working when Wi-Fi is on).\n- **AC current:** the reading swings around 2.5 V. Sample quickly over whole cycles and compute RMS. A single read is meaningless.\n- **Magnetic fields:** keep magnets and motors away from the chip, and don't run the measured wire back over the chip.\n- **Wrong direction?** Swap the wires on the screw terminal (the sign flips).\n\n## Datasheet\nhttps://www.allegromicro.com/-/media/files/datasheets/acs712-datasheet.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://www.allegromicro.com/-/media/files/datasheets/acs712-datasheet.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from acs712 import ACS712\nimport time\n\nsensor = ACS712({OUT})\nwhile True:\n    print('I=%.1fA' % sensor.current())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the current set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "I=2.0A",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:54:37.411Z",
+    "verifiedSources": [
+      "https://www.allegromicro.com/-/media/files/datasheets/acs712-datasheet.pdf",
+      "https://probots.co.in/current-sensor-ac-dc-module-with-analog-output-acs712-5a.html",
+      "https://makerselectronics.com/product/current-sensor-module-acs712-5a/"
+    ]
+  }
+}

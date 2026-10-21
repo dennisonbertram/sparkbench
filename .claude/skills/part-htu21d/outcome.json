@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-htu21d",
+  "board": "GY-21 HTU21D temperature & humidity module (4-pin VIN, GND, SCL, SDA)",
+  "reason": "Check passed on ESP32 and Pico: the no-hold commands 0xF3/0xF5 return 14-bit T / 12-bit RH with the datasheet's status bits and CRC-8 (poly 0x31, init 0x00), and the driver decodes them using the datasheet formulas. The CRC was verified against all of the datasheet's examples.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/1899_HTU21D.pdf",
+  "breakoutPinoutSource": "https://protosupplies.com/product/gy-21-htu21d-humidity-temperature-sensor-module/",
+  "checkRuns": 1
+}

@@ -1,0 +1,199 @@
+{
+  "type": "custom-adxl345",
+  "name": "ADXL345 3-axis accelerometer",
+  "mpn": "ADXL345",
+  "category": "sensor",
+  "description": "Analog Devices 3-axis digital accelerometer, ±2/±4/±8/±16 g selectable, up to 13-bit resolution (3.9 mg/LSB in full-resolution mode), with I2C and SPI interfaces and tap/free-fall interrupts. Sold as: GY-291 ADXL345 module (8-pin: GND, VCC, CS, INT1, INT2, SDO, SDA, SCL) with a 3.3 V regulator, 3–5 V supply, I2C address 0x53 (SDO pulled low; 0x1D with SDO high).",
+  "eli5": "Feels which way is down and how hard it is being shaken or tilted, on three axes.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Module supply, 3–5 V (on-board 3.3 V regulator feeds the chip)",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Chip select: pulled up to 3.3 V on the module = I2C mode. Leave unconnected for I2C (low selects SPI).",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Interrupt output 1 (tap, free-fall, data ready…), optional",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Interrupt output 2, optional",
+      "required": false
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "Address select (SPI data out): pulled low on the module = 0x53; tie to 3.3 V for 0x1D",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to 3.3 V on the module)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to 3.3 V on the module)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.2,
+  "i2cAddress": 83,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL345.pdf",
+  "priceUsd": 2.5,
+  "supplierQuery": "GY-291 ADXL345 accelerometer module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL345.pdf",
+    "https://www.sparkfun.com/datasheets/Sensors/Accelerometer/ADXL345.pdf",
+    "https://docs.sunfounder.com/projects/sf-components/en/latest/modules/module_adxl345.html",
+    "https://docs.sunfounder.com/projects/sf-components/en/latest/_images/adxl345_pin.jpg",
+    "https://docs.sunfounder.com/projects/sf-components/en/latest/_images/adxl345_schematic.jpg"
+  ],
+  "buildNotes": [
+    "The chip powers up in standby and reads all zeros: set the Measure bit (POWER_CTL 0x2D = 0x08) before reading.",
+    "Read DATAX0..DATAZ1 (0x32–0x37) in one 6-byte burst; each axis is two's complement, low byte first. Full resolution: 256 LSB/g (3.9 mg/LSB).",
+    "DEVID (0x00) must read 0xE5; anything else means a wiring fault, or CS pulled low (SPI mode).",
+    "Leave CS and SDO unconnected for I2C at 0x53 (the module pulls CS up and SDO down); tie SDO to 3.3 V for 0x1D.",
+    "Mount the module flat and firmly: at rest Z reads about +1 g, X and Y about 0 g."
+  ],
+  "keywords": [
+    "adxl345",
+    "gy-291",
+    "accelerometer",
+    "tilt",
+    "vibration",
+    "tap",
+    "free-fall",
+    "3-axis",
+    "analog devices"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -2,
+    "max": 2,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      }
+    ],
+    "registers": {
+      "0x00": 229,
+      "0x2C": 10,
+      "0x30": 2
+    },
+    "measures": [
+      {
+        "reg": "0x32",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x34",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x36",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "adxl345.py",
+    "code": "# ADXL345 3-axis accelerometer (Analog Devices), MicroPython driver for I2C.\n# Register map, start-up sequence and data format from the ADXL345 datasheet:\n#   DEVID 0x00 = 0xE5, BW_RATE 0x2C, POWER_CTL 0x2D (bit 3 = Measure),\n#   DATA_FORMAT 0x31 (bit 3 = FULL_RES, bits 1:0 = range), DATAX0..DATAZ1 0x32-0x37\n#   (two's complement, low byte first). In full-resolution mode the scale factor is\n#   3.9 mg/LSB (256 LSB/g typical) in every range.\nimport time\n\n_DEVID = 0x00\n_BW_RATE = 0x2C\n_POWER_CTL = 0x2D\n_DATA_FORMAT = 0x31\n_DATAX0 = 0x32\n\n_RANGES = {2: 0b00, 4: 0b01, 8: 0b10, 16: 0b11}\n_LSB_PER_G = 256  # full resolution, typical sensitivity\n\n\nclass ADXL345:\n    def __init__(self, i2c, addr=0x53, g_range=2):\n        \"\"\"addr: 0x53 with SDO low (GY-291 default), 0x1D with SDO high.\n        g_range: 2, 4, 8 or 16 (full-resolution mode keeps 3.9 mg/LSB).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        if g_range not in _RANGES:\n            raise ValueError('g_range must be 2, 4, 8 or 16')\n        devid = self.i2c.readfrom_mem(addr, _DEVID, 1)[0]\n        if devid != 0xE5:\n            raise OSError('ADXL345 not found (DEVID 0x%02X, expected 0xE5): check wiring and CS high' % devid)\n        self._w(_POWER_CTL, 0x00)                        # standby while configuring\n        self._w(_BW_RATE, 0x0A)                          # 100 Hz output data rate, normal power\n        self._w(_DATA_FORMAT, 0x08 | _RANGES[g_range])   # FULL_RES, right-justified, 4-wire SPI bit 0\n        self._w(_POWER_CTL, 0x08)                        # Measure bit: start measuring\n        time.sleep_ms(20)  # turn-on time at 100 Hz is about 11.1 ms (1/ODR + 1.1 ms)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def raw(self):\n        \"\"\"(x, y, z) raw counts. One 6-byte burst read, as the datasheet recommends,\n        so the three axes come from the same sample.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _DATAX0, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # DATAx0 = low byte, DATAx1 = high byte\n            out.append(v - 65536 if v & 0x8000 else v)\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        x, y, z = self.raw()\n        return x / _LSB_PER_G, y / _LSB_PER_G, z / _LSB_PER_G\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom adxl345 import ADXL345\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = ADXL345(i2c)\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.2f Y=%.2f Z=%.2f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.50 Y=-0.30 Z=1.20 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:56:13.801Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/ADXL345.pdf",
+      "https://www.sparkfun.com/datasheets/Sensors/Accelerometer/ADXL345.pdf"
+    ]
+  }
+}

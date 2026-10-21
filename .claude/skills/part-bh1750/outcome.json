@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bh1750",
+  "board": "GY-302 BH1750 light sensor module (5-pin VCC, GND, SCL, SDA, ADDR)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). Driver follows the ROHM datasheet: one opcode per write, Power On 0x01 then One-Time H-Res 0x20, wait 180 ms, read 2 bytes, lux = raw / 1.2. The sim encodes raw = lux x 1.2 as a 16-bit command response.",
+  "datasheetUrl": "https://www.elechouse.com/elechouse/images/product/Digital%20light%20Sensor/bh1750fvi-e.pdf",
+  "breakoutPinoutSource": "https://www.handsontec.com/dataspecs/sensor/BH1750%20Light%20Sensor.pdf",
+  "checkRuns": 1
+}

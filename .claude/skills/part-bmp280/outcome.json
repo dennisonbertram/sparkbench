@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bmp280",
+  "board": "GY-BMP280-3.3 6-pin module (VCC, GND, SCL, SDA, CSB, SDO), I2C address 0x76",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test T=31.40C P=950.00hPa, PCB). The driver uses the datasheet section 8.1 float compensation. The sim stores calibration constants in 0x88-0x9F and encodes the 20-bit adc_T and adc_P so that the datasheet formula decodes the slider values.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf",
+  "breakoutPinoutSource": "https://components101.com/sensors/gy-bmp280-module",
+  "checkRuns": 2
+}

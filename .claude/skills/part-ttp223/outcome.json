@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ttp223",
+  "board": "TTP223 capacitive touch button module (tiny 3-pin red/blue clone board with TTP223-BA6, red LED and A/B mode pads; header VCC, I/O, GND)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test TOUCH=1, PCB DRC clean, footprint). Modelled as a digital-sensor driving the push-pull Q output active high (module default with pads A/B open, per the Tontek datasheet TOG/AHLB table).",
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Touch_Sensor/res/TTP223.pdf",
+  "breakoutPinoutSource": "Silkscreen 'VCC I/O GND' visible on the module in https://raw.githubusercontent.com/mcauser/micropython-ttp223/master/docs/demo.jpg (README: https://github.com/mcauser/micropython-ttp223), matching the energiazero pin sheet (1 VCC, 2 OUT, 3 GND)",
+  "checkRuns": 1
+}

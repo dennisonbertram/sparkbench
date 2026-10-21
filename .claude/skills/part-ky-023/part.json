@@ -1,0 +1,158 @@
+{
+  "type": "custom-ky-023",
+  "name": "KY-023 dual-axis joystick module",
+  "mpn": "KY-023",
+  "category": "sensor",
+  "description": "Dual-axis analog thumb joystick: two 10 kΩ potentiometers whose wipers output 0 V to Vcc (about Vcc/2 at rest) and a push switch that connects SW to GND when the stick is pressed. Runs on 3.3–5 V. Sold as: KY-023 joystick module (common black 5-pin clone board: GND, +5V, VRx, VRy, SW).",
+  "eli5": "A little thumb stick like on a game controller. It tells your board how far you push it left/right and up/down, and whether you click it down.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "Supply for both potentiometers, 3.3–5 V (pin 2). With a 3.3 V board connect it to 3V3, or the outputs reach 5 V.",
+      "required": true
+    },
+    {
+      "name": "VRx",
+      "role": "io",
+      "fn": "adc",
+      "description": "X-axis wiper voltage, 0 V to Vcc, about Vcc/2 at rest (pin 3)",
+      "required": true
+    },
+    {
+      "name": "VRy",
+      "role": "io",
+      "fn": "adc",
+      "description": "Y-axis wiper voltage, 0 V to Vcc, about Vcc/2 at rest (pin 4)",
+      "required": true
+    },
+    {
+      "name": "SW",
+      "role": "io",
+      "description": "Push switch to GND, low while pressed; needs a pull-up (use the GPIO's internal one) (pin 5)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.7,
+  "datasheetUrl": "https://cse.unl.edu/~jfalkinburg/cse_courses/2021/336/JOYSTICK_MODULE.pdf",
+  "sources": [
+    "https://cse.unl.edu/~jfalkinburg/cse_courses/2021/336/JOYSTICK_MODULE.pdf",
+    "https://www.energiazero.org/cartelle/arduino_sensori/joystick_module.pdf",
+    "https://arduinomodules.info/ky-023-joystick-dual-axis-module/"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "KY-023 dual axis joystick module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: GND, +5V, VRx, VRy, SW.",
+    "On an ESP32 or Pico connect the +5V pin to 3V3: the wipers swing all the way to the supply, and 5 V on an ADC pin can damage it.",
+    "Position (%) = 100 × Vout / Vcc; at rest each axis sits near 50 % (1.65 V at 3.3 V). Use a small dead zone around the centre.",
+    "SW is a bare switch to GND with no pull-up: enable the GPIO's internal pull-up. It reads 0 while the stick is pressed.",
+    "On the ESP32 wire VRx and VRy to ADC1 pins (GPIO32-39); ADC2 stops working when Wi-Fi is on."
+  ],
+  "keywords": [
+    "ky-023",
+    "ky023",
+    "joystick",
+    "thumbstick",
+    "analog",
+    "xy",
+    "potentiometer",
+    "button"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "VRx",
+    "quantity": "X position",
+    "unit": "%",
+    "min": 0,
+    "max": 100,
+    "default": 50,
+    "vAtMin": 0,
+    "vAtMax": 3.3,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y position",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "analogOutputs": [
+      {
+        "pin": "VRy",
+        "control": "y",
+        "vAtMin": 0,
+        "vAtMax": 3.3
+      }
+    ],
+    "digitalOutputs": [
+      {
+        "pin": "SW",
+        "control": "pressed",
+        "label": "Button pressed",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ky023.py",
+    "code": "# KY-023 dual-axis analog joystick module, MicroPython driver.\n# The module is two 10 kOhm potentiometers (wipers on VRx / VRy, ends on +5V and GND) plus a\n# push switch from SW to GND (no pull-up fitted). Each wiper voltage is ratiometric:\n#   Vout = position * Vcc   (about Vcc / 2 at rest)\n# so position(%) = 100 * Vout / Vcc. Power the module from the same 3.3 V rail as the ADC.\nfrom machine import ADC, Pin\n\n\nclass KY023:\n    def __init__(self, vrx, vry, sw=None, vcc=3.3, samples=16):\n        self.x_adc = self._adc(vrx)\n        self.y_adc = self._adc(vry)\n        # SW only shorts to GND when pressed: use the MCU's internal pull-up.\n        self.sw = Pin(sw, Pin.IN, Pin.PULL_UP) if sw is not None else None\n        self.vcc = vcc  # supply voltage on the module's +5V pin (3.3 V recommended)\n        self.samples = samples\n\n    @staticmethod\n    def _adc(pin):\n        adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        return adc\n\n    def _fraction(self, adc):\n        \"\"\"Average samples; return wiper voltage as a fraction of Vcc (0.0-1.0).\"\"\"\n        total = 0\n        if hasattr(adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += adc.read_uv() / 1e6 / self.vcc\n        else:\n            # Pico etc.: ADC reference is the 3.3 V rail, so the raw reading is already ratiometric.\n            for _ in range(self.samples):\n                total += adc.read_u16() / 65535\n        f = total / self.samples\n        return 0.0 if f < 0 else 1.0 if f > 1 else f\n\n    def x(self):\n        \"\"\"X position in % of travel (0-100, about 50 at rest).\"\"\"\n        return 100 * self._fraction(self.x_adc)\n\n    def y(self):\n        \"\"\"Y position in % of travel (0-100, about 50 at rest).\"\"\"\n        return 100 * self._fraction(self.y_adc)\n\n    def xy_centered(self, deadzone=5):\n        \"\"\"(x, y) from -100 to +100 with 0 at rest; values within deadzone become 0.\"\"\"\n        out = []\n        for v in (self.x(), self.y()):\n            c = (v - 50) * 2\n            out.append(0 if abs(c) < deadzone else c)\n        return tuple(out)\n\n    def pressed(self):\n        \"\"\"True while the stick is pushed down (SW pulled to GND).\"\"\"\n        return self.sw is not None and self.sw.value() == 0\n"
+  },
+  "skill": "---\nname: part-ky-023\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-023 dual-axis analog joystick module (2 potentiometers + push button). Use when designing, wiring, simulating or writing code for a KY-023 joystick in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-023 dual-axis analog joystick module\n\n## Overview\nThe **KY-023** is the common black 5-pin thumb-joystick module (PS2-style stick). It holds no chip: just\n**two 10 kΩ potentiometers** at 90° (X and Y) and a **push switch** under the stick.\n- Each axis wiper outputs a voltage proportional to its position: **0 V at one end, Vcc at the other, about Vcc/2 at rest**\n- The switch connects **SW to GND when the stick is pressed** (active low, no pull-up fitted on most boards)\n- Supply: **3.3 V to 5 V** (the silkscreen says +5V). About 0.33 mA per pot at 3.3 V (0.5 mA at 5 V)\n\n## Pinout (5-pin header, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | GND | Ground |\n| 2 | +5V | Supply for both pots, 3.3–5 V (use 3.3 V with a 3.3 V MCU) |\n| 3 | VRx | X-axis wiper voltage, 0..Vcc |\n| 4 | VRy | Y-axis wiper voltage, 0..Vcc |\n| 5 | SW | Push switch to GND (needs a pull-up) |\n\n## Electrical limits\n- The outputs swing all the way to the supply. **Powered from 5 V, VRx/VRy reach 5 V, which can damage an ESP32 or Pico ADC pin.** With a 3.3 V MCU always connect +5V to 3V3.\n- Pots are 10 kΩ, so the source impedance at the wiper is up to 2.5 kΩ: fine for MCU ADCs.\n\n## Interface details\nRatiometric potentiometer divider:\n```\nVout = position × Vcc        position(%) = 100 × Vout / Vcc\n```\nAt rest each axis reads about 50 % (1.65 V on 3.3 V); spring centering is imprecise, so expect a few % offset and use a dead zone.\nSW: configure the GPIO as an input with the internal pull-up; it reads 0 while the stick is pressed.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| GND | GND | GND | GND |\n| +5V | 3V3 | 3V3(OUT) (pin 36) | 3V3 (pin 1) |\n| VRx | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. MCP3008 CH0) |\n| VRy | GPIO35 (ADC1) | GP27 / ADC1 (pin 32) | External ADC (e.g. MCP3008 CH1) |\n| SW | GPIO4 (internal pull-up) | GP15 (internal pull-up) | GPIO17 (internal pull-up) |\n\nThe Raspberry Pi 4 has **no built-in ADC**. On the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on).\n\n## Using the driver\n```python\nfrom ky023 import KY023\nimport time\njs = KY023(34, 35, 4)        # GPIOs wired to VRx, VRy, SW\nwhile True:\n    print('X=%d Y=%d SW=%d' % (round(js.x()), round(js.y()), js.pressed()))\n    time.sleep(0.2)\n```\n`x()` / `y()` return 0–100 % of travel; `xy_centered()` returns −100..+100 with a dead zone; `pressed()` is True while the stick is pushed. Pass `vcc=` if the module is not on 3.3 V (it must still not exceed the ADC's input range).\n\n## Gotchas\n- **Do not power from 5 V on a 3.3 V board** – the wipers then output up to 5 V.\n- **SW floats when released**: without a pull-up it reads random values. Use `Pin.PULL_UP` (or fit the 10 kΩ R1 pad some boards have).\n- **Axis direction** depends on how the module is mounted: with the header on the left, X and Y may appear swapped or inverted. Flip in software.\n- **ESP32 ADC** is nonlinear near 0 V and saturates near 3.1–3.3 V, so the very ends of travel read a little short; this is normal.\n- The centre value differs between modules; calibrate it at start-up if you need exact zero.\n\n## Datasheet\nNo formal datasheet exists for the module; the pin sheet: https://cse.unl.edu/~jfalkinburg/cse_courses/2021/336/JOYSTICK_MODULE.pdf\n\n---\n*Generated by Sparkbench from the module pin sheet: https://cse.unl.edu/~jfalkinburg/cse_courses/2021/336/JOYSTICK_MODULE.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from ky023 import KY023\nimport time\n\njs = KY023({VRX}, {VRY}, {SW})\nwhile True:\n    print('X=%d Y=%d SW=%d' % (round(js.x()), round(js.y()), js.pressed()))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the stick position and button set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 80
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": 25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressed",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=80 Y=25 SW=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:53:05.869Z",
+    "verifiedSources": [
+      "https://components101.com/modules/joystick-module",
+      "https://sensorkit.joy-it.net/en/sensors/ky-023"
+    ]
+  }
+}

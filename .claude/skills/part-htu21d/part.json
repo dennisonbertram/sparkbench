@@ -1,0 +1,204 @@
+{
+  "type": "custom-htu21d",
+  "name": "HTU21D temperature & humidity sensor",
+  "mpn": "HTU21D",
+  "category": "sensor",
+  "description": "TE Connectivity (MEAS) HTU21D(F) digital relative humidity (0–100 %, ±2 % typical) and temperature (-40 to 125 °C, ±0.3 °C typical) sensor with an I2C interface at fixed address 0x40; the chip itself runs on 1.5–3.6 V. Sold as: GY-21 HTU21D temperature & humidity module (4-pin header VIN, GND, SCL, SDA; on-board 3.3 V regulator and MOSFET level shifting, so VIN takes 3.3–5 V).",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Module supply, 3.3–5 V (on-board regulator feeds the chip 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (level-shifted, pull-up on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (level-shifted, pull-up on the module)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 0.5,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/1899_HTU21D.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "GY-21 HTU21D temperature humidity sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from the same voltage as your board's logic (3.3 V on ESP32/Pico); the module's regulator and level shifters handle 5 V boards too.",
+    "No-hold measurement: write 0xF3 (temperature) or 0xF5 (humidity), wait at least 50 ms / 16 ms, then read 3 bytes: MSB, LSB (low 2 bits are status), CRC.",
+    "Check the CRC (poly 0x31, init 0x00) and clear the two status bits before converting: T = -46.85 + 175.72*S/65536, RH = -6 + 125*S/65536.",
+    "The address is fixed at 0x40 (shared with Si7021/SHT21/INA219 defaults), so only one per I2C bus without a multiplexer.",
+    "Keep the sensor away from the regulator and the microcontroller, which warm the air nearby."
+  ],
+  "keywords": [
+    "htu21d",
+    "htu21df",
+    "gy-21",
+    "si7021",
+    "sht21",
+    "temperature",
+    "humidity"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "f3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "f5",
+        "bytes": [
+          {
+            "control": "humidity",
+            "bits": 12,
+            "scale": 0.030517578125,
+            "offset": -6
+          },
+          {
+            "const": 2,
+            "bits": 4
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e5",
+        "bytes": [
+          {
+            "control": "humidity",
+            "bits": 12,
+            "scale": 0.030517578125,
+            "offset": -6
+          },
+          {
+            "const": 2,
+            "bits": 4
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "htu21d.py",
+    "code": "# HTU21D(F) temperature & humidity sensor (TE / MEAS), MicroPython driver.\n# Uses the \"No Hold Master\" commands (0xF3 temperature, 0xF5 humidity) at the default\n# 14-bit T / 12-bit RH resolution, and checks the CRC-8 (poly 0x31, init 0x00) from the datasheet.\nimport time\n\n_ADDR = 0x40\n_TRIG_T_NOHOLD = 0xF3\n_TRIG_RH_NOHOLD = 0xF5\n_SOFT_RESET = 0xFE\n\n\ndef _crc8(data):\n    crc = 0x00\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass HTU21D:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(15)  # power-up: up to 15 ms before the first command\n        self.i2c.writeto(self.addr, bytes([_SOFT_RESET]))\n        time.sleep_ms(15)  # soft reset takes less than 15 ms\n\n    def _measure(self, cmd, wait_ms, is_rh):\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        time.sleep_ms(wait_ms)  # datasheet maximum conversion time\n        d = None\n        for _ in range(5):  # the chip NACKs its address until the conversion is done\n            try:\n                d = self.i2c.readfrom(self.addr, 3)\n                break\n            except OSError:\n                time.sleep_ms(5)\n        if d is None:\n            raise OSError('HTU21D not responding: check the wiring')\n        if _crc8(d[0:2]) != d[2]:\n            raise OSError('HTU21D CRC mismatch: check the wiring')\n        raw = (d[0] << 8) | d[1]\n        if bool(raw & 0x02) != is_rh:\n            raise OSError('HTU21D returned the wrong measurement type')\n        return raw & 0xFFFC  # clear the two status bits before converting\n\n    def temperature(self):\n        \"\"\"Temperature in °C: -46.85 + 175.72 * S / 2^16.\"\"\"\n        return -46.85 + 175.72 * self._measure(_TRIG_T_NOHOLD, 50, False) / 65536\n\n    def humidity(self):\n        \"\"\"Relative humidity in %: -6 + 125 * S / 2^16 (not temperature-compensated).\"\"\"\n        return -6 + 125 * self._measure(_TRIG_RH_NOHOLD, 16, True) / 65536\n\n    def read(self):\n        \"\"\"Return (temperature in °C, relative humidity in %).\"\"\"\n        return self.temperature(), self.humidity()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom htu21d import HTU21D\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = HTU21D(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.1f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65.0%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/1899_HTU21D.pdf",
+    "https://protosupplies.com/product/gy-21-htu21d-humidity-temperature-sensor-module/",
+    "https://learn.adafruit.com/adafruit-htu21d-f-temperature-humidity-sensor/pinouts"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T04:50:18.059Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/1899_HTU21D.pdf",
+      "https://protosupplies.com/product/gy-21-htu21d-humidity-temperature-sensor-module/"
+    ]
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "type": "custom-bmp280",
+  "name": "BMP280 pressure & temperature sensor",
+  "mpn": "BMP280",
+  "category": "sensor",
+  "description": "Bosch digital barometric pressure (300–1100 hPa, ±1 hPa) and temperature (-40 to +85 °C, ±1 °C) sensor with I2C (up to 3.4 MHz) and SPI interfaces. The chip runs on 1.71–3.6 V. Sold as: GY-BMP280-3.3 module (6-pin: VCC, GND, SCL, SDA, CSB, SDO, no regulator, 3.3 V only), I2C address 0x76 (0x77 with SDO high).",
+  "eli5": "A tiny barometer and thermometer: it tells your board the air pressure (which changes with weather and height) and the temperature.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V only (1.71–3.6 V). The GY-BMP280-3.3 has no regulator: 5 V destroys the chip.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK). Pull-up fitted on the module.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI). Pull-up fitted on the module.",
+      "required": true
+    },
+    {
+      "name": "CSB",
+      "role": "io",
+      "description": "Chip select: high = I2C (pulled up on the module; tie to VCC if unsure). Pulling it low selects SPI until power is cycled.",
+      "required": false
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select: open or GND = 0x76, VCC = 0x77 (SPI data out in SPI mode).",
+      "required": false
+    }
+  ],
+  "vmin": 1.71,
+  "vmax": 3.6,
+  "currentMa": 0.72,
+  "i2cAddress": 118,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "GY-BMP280-3.3 BMP280 barometric pressure sensor module I2C SPI",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf",
+    "https://components101.com/sensors/gy-bmp280-module",
+    "https://microcontrollerslab.com/?p=16150"
+  ],
+  "buildNotes": [
+    "Power the GY-BMP280-3.3 from 3.3 V only: it has no regulator and the chip's absolute maximum is 4.25 V.",
+    "Check the chip ID: register 0xD0 reads 0x58 on a BMP280 (0x60 means it is actually a BME280).",
+    "Leave SDO open for address 0x76; tie it to VCC for 0x77 (e.g. a second sensor). Keep CSB high for I2C.",
+    "Raw readings mean nothing until you apply the factory calibration constants from 0x88–0x9F (datasheet section 8.1); compute temperature first because pressure needs t_fine.",
+    "Use forced mode and wait at least 6.4 ms (×1 oversampling) before reading 0xF7–0xFC in one burst."
+  ],
+  "keywords": [
+    "bmp280",
+    "gy-bmp280",
+    "barometer",
+    "pressure",
+    "temperature",
+    "altitude",
+    "sensor",
+    "bosch"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "hPa",
+        "min": 300,
+        "max": 1100,
+        "default": 1013.25
+      }
+    ],
+    "registers": {
+      "0x88": 112,
+      "0x89": 107,
+      "0x8a": 67,
+      "0x8b": 103,
+      "0x8c": 0,
+      "0x8d": 0,
+      "0x8e": 125,
+      "0x8f": 142,
+      "0x90": 0,
+      "0x91": 0,
+      "0x92": 0,
+      "0x93": 0,
+      "0x94": 39,
+      "0x95": 11,
+      "0x96": 0,
+      "0x97": 0,
+      "0x98": 0,
+      "0x99": 0,
+      "0x9a": 140,
+      "0x9b": 60,
+      "0x9c": 248,
+      "0x9d": 198,
+      "0x9e": 0,
+      "0x9f": 0,
+      "0xd0": 88,
+      "0xf3": 0
+    },
+    "measures": [
+      {
+        "reg": "0xFA",
+        "bytes": 3,
+        "shift": 4,
+        "scale": 0.00031512975692749023,
+        "offset": -138.67726135253906,
+        "control": "value"
+      },
+      {
+        "reg": "0xF7",
+        "bytes": 3,
+        "shift": 4,
+        "scale": -0.0016656946671206128,
+        "offset": 1680.206018876594,
+        "control": "pressure"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmp280.py",
+    "code": "# MicroPython driver for Bosch BMP280 pressure/temperature sensor (I2C)\n# Written from Bosch datasheet BST-BMP280-DS001 rev 1.26:\n#   registers sec. 4, calibration table 17 (sec. 3.11.2), float compensation sec. 8.1,\n#   measurement time table 13 (sec. 3.8.1).\nimport time\n\nREG_CALIB = 0x88     # 0x88..0x9F: dig_T1..dig_P9, little-endian 16-bit\nREG_CHIP_ID = 0xD0   # reads 0x58\nREG_RESET = 0xE0     # write 0xB6 for a power-on reset\nREG_STATUS = 0xF3    # bit3 measuring, bit0 im_update\nREG_CTRL_MEAS = 0xF4 # osrs_t[7:5] osrs_p[4:2] mode[1:0]\nREG_CONFIG = 0xF5    # t_sb[7:5] filter[4:2] spi3w_en[0]\nREG_DATA = 0xF7      # 0xF7..0xFC: press msb/lsb/xlsb, temp msb/lsb/xlsb\n\nCHIP_ID = 0x58\n\n\ndef _s16(v):\n    return v - 65536 if v > 32767 else v\n\n\nclass BMP280:\n    def __init__(self, i2c, addr=0x76, osrs_t=1, osrs_p=1):\n        \"\"\"osrs codes: 1=x1, 2=x2, 3=x4, 4=x8, 5=x16 (table 21/22).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(REG_CHIP_ID, 1)[0]\n        if cid != CHIP_ID:\n            raise OSError(\"BMP280 not found at 0x%02X (chip id 0x%02X; a BME280 reads 0x60)\" % (addr, cid))\n        self._w(REG_RESET, 0xB6)\n        time.sleep_ms(3)  # start-up time after reset: 2 ms max\n        for _ in range(50):\n            if not (self._r(REG_STATUS, 1)[0] & 0x01):  # im_update: NVM copy in progress\n                break\n            time.sleep_ms(1)\n        self._load_calib()\n        self.osrs_t = osrs_t & 0x07\n        self.osrs_p = osrs_p & 0x07\n        self._w(REG_CONFIG, 0x00)  # filter off, 4-wire SPI / I2C (writable in sleep mode)\n        self._w(REG_CTRL_MEAS, (self.osrs_t << 5) | (self.osrs_p << 2) | 0x00)  # sleep mode\n        self.t_fine = 0\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _load_calib(self):\n        c = self._r(REG_CALIB, 24)\n        w = [c[2 * k] | (c[2 * k + 1] << 8) for k in range(12)]\n        self.T1 = w[0]            # unsigned\n        self.T2 = _s16(w[1])\n        self.T3 = _s16(w[2])\n        self.P1 = w[3]            # unsigned\n        self.P2, self.P3, self.P4, self.P5, self.P6, self.P7, self.P8, self.P9 = [_s16(x) for x in w[4:12]]\n\n    def _measure(self):\n        # Forced mode: one conversion, then the chip returns to sleep by itself.\n        self._w(REG_CTRL_MEAS, (self.osrs_t << 5) | (self.osrs_p << 2) | 0x01)\n        # Table 13: x1/x1 takes 6.4 ms max; up to 43.2 ms at x16/x2. Wait, then poll 'measuring'.\n        time.sleep_ms(7)\n        for _ in range(50):\n            if not (self._r(REG_STATUS, 1)[0] & 0x08):\n                break\n            time.sleep_ms(2)\n        d = self._r(REG_DATA, 6)  # one burst read so both values come from the same conversion\n        adc_p = (d[0] << 12) | (d[1] << 4) | (d[2] >> 4)\n        adc_t = (d[3] << 12) | (d[4] << 4) | (d[5] >> 4)\n        return adc_t, adc_p\n\n    def _comp_t(self, adc_t):\n        # Datasheet 8.1 bmp280_compensate_T_double; returns degC\n        var1 = (adc_t / 16384.0 - self.T1 / 1024.0) * self.T2\n        var2 = (adc_t / 131072.0 - self.T1 / 8192.0) * (adc_t / 131072.0 - self.T1 / 8192.0) * self.T3\n        self.t_fine = int(var1 + var2)\n        return (var1 + var2) / 5120.0\n\n    def _comp_p(self, adc_p):\n        # Datasheet 8.1 bmp280_compensate_P_double; returns Pa\n        var1 = self.t_fine / 2.0 - 64000.0\n        var2 = var1 * var1 * self.P6 / 32768.0\n        var2 = var2 + var1 * self.P5 * 2.0\n        var2 = var2 / 4.0 + self.P4 * 65536.0\n        var1 = (self.P3 * var1 * var1 / 524288.0 + self.P2 * var1) / 524288.0\n        var1 = (1.0 + var1 / 32768.0) * self.P1\n        if var1 == 0.0:\n            return 0.0  # avoid division by zero\n        p = 1048576.0 - adc_p\n        p = (p - var2 / 4096.0) * 6250.0 / var1\n        var1 = self.P9 * p * p / 2147483648.0\n        var2 = p * self.P8 / 32768.0\n        return p + (var1 + var2 + self.P7) / 16.0\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure hPa).\"\"\"\n        adc_t, adc_p = self._measure()\n        if adc_t == 0x80000:\n            raise OSError(\"BMP280 temperature skipped (osrs_t = 0)\")\n        t = self._comp_t(adc_t)  # must run first: sets t_fine for pressure\n        p = self._comp_p(adc_p) / 100.0\n        return t, p\n\n    def temperature(self):\n        return self.read()[0]\n\n    def pressure(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_hpa=1013.25):\n        \"\"\"Approximate altitude in metres from the barometric formula.\"\"\"\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_hpa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmp280 import BMP280\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BMP280(i2c, addr=0x76)\nwhile True:\n    t, p = sensor.read()\n    print('T=%.2fC P=%.2fhPa' % (t, p))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 31.4
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 950
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=31.40C P=950.00hPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:00:18.068Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf",
+      "https://components101.com/sensors/gy-bmp280-module"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ky-023",
+  "board": "KY-023 dual-axis joystick module (common black 5-pin clone board: GND, +5V, VRx, VRy, SW)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test X=80 Y=25 SW=1, PCB DRC clean, footprint). Modelled as two ratiometric 10k pot wipers (0..Vcc, powered from 3.3 V) plus an active-low switch read with the GPIO pull-up; the LCSC hit C3312592 is an unrelated part number match, not the module.",
+  "datasheetUrl": "https://cse.unl.edu/~jfalkinburg/cse_courses/2021/336/JOYSTICK_MODULE.pdf",
+  "breakoutPinoutSource": "https://cse.unl.edu/~jfalkinburg/cse_courses/2021/336/JOYSTICK_MODULE.pdf (pin configuration 1 GND, 2 +5V, 3 VRx, 4 VRy, 5 SW), confirmed by https://arduinomodules.info/ky-023-joystick-dual-axis-module/",
+  "checkRuns": 1
+}

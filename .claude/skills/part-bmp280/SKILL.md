@@ -1,0 +1,78 @@
+---
+name: part-bmp280
+description: Pinout, electrical limits, wiring and MicroPython driver for the BMP280 barometric pressure & temperature sensor (BMP280). Use when designing, wiring, simulating or writing code for a BMP280 / GY-BMP280 module in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.
+---
+
+# BMP280 pressure & temperature sensor (BMP280)
+
+## Overview
+The Bosch **BMP280** measures barometric pressure (300–1100 hPa) and temperature (-40…+85 °C) in a 2.0 × 2.5 × 0.95 mm LGA package. It talks over I2C (up to 3.4 MHz) or SPI (3- or 4-wire, up to 10 MHz). Hobbyists usually buy it on the purple **GY-BMP280-3.3 6-pin module** (VCC, GND, SCL, SDA, CSB, SDO), which has no voltage regulator and no level shifter, so it is a 3.3 V-only part. With SDO left open the module answers at I2C address **0x76**. It is the humidity-less sibling of the BME280 and uses the same register layout for pressure and temperature.
+
+## Pinout (GY-BMP280-3.3, left to right)
+| Pin | Function | Notes |
+|---|---|---|
+| VCC | Supply | 3.3 V only (1.71–3.6 V). No regulator on this board: never 5 V |
+| GND | Ground | |
+| SCL | I2C clock (SPI SCK) | Pull-up fitted on the module |
+| SDA | I2C data (SPI SDI) | Pull-up fitted on the module |
+| CSB | Chip select | High (or left to the board's pull-up) = I2C. Pulled low even once = SPI until power is cycled. Tie to VCC if unsure |
+| SDO | Address select (SPI SDO) | Open / GND = 0x76, VCC = 0x77 |
+
+## Electrical limits (datasheet)
+- VDD: 1.71–3.6 V. VDDIO: 1.2–3.6 V. Absolute max 4.25 V on any supply pin.
+- Operating range: -40…+85 °C, 300–1100 hPa.
+- Current: 2.8 µA typical at 1 Hz forced mode (ultra low power); peak about 0.72 mA during a pressure conversion; sleep 0.1 µA.
+- Accuracy (typical): ±1 °C (0…65 °C), ±1 hPa absolute, ±0.12 hPa relative (about ±1 m altitude).
+- Logic levels are the supply level: connect only to 3.3 V microcontroller pins.
+
+## Interface details
+- **I2C address:** 0x76 (SDO low, the GY-BMP280 default) or 0x77 (SDO to VDDIO; Adafruit's board default).
+- **Key registers:**
+  - `0xD0` chip_id = **0x58**. A BME280 reads 0x60.
+  - `0xE0` reset: write 0xB6.
+  - `0x88–0x9F` calibration: dig_T1 (u16), dig_T2–T3 (s16), dig_P1 (u16), dig_P2–P9 (s16), little-endian.
+  - `0xF3` status: bit 3 = measuring, bit 0 = im_update.
+  - `0xF4` ctrl_meas: osrs_t[7:5], osrs_p[4:2], mode[1:0] (00 sleep, 01/10 forced, 11 normal).
+  - `0xF5` config: t_sb[7:5], filter[4:2], spi3w_en[0]. Write it in sleep mode.
+  - `0xF7–0xF9` pressure, `0xFA–0xFC` temperature: 20-bit, big-endian, xlsb uses bits 7:4. 0x80000 means "skipped".
+- **Compensation:** raw readings must be converted with the factory constants (datasheet section 8.1). Temperature first: it produces `t_fine`, which the pressure formula needs. Pressure comes out in Pa (divide by 100 for hPa).
+- **Timing:** a forced conversion at ×1/×1 oversampling takes 5.5 ms typical, 6.4 ms max (table 13); ×16 pressure takes up to 43.2 ms. Read all six data bytes in one burst so both values come from the same conversion.
+
+## Wiring
+| Board | VCC | GND | SDA | SCL | CSB | SDO |
+|---|---|---|---|---|---|---|
+| ESP32 | 3V3 | GND | GPIO21 | GPIO22 | 3V3 (optional) | open |
+| Raspberry Pi Pico | 3V3(OUT) pin 36 | GND | GP4 (I2C0) | GP5 (I2C0) | 3V3 (optional) | open |
+| Raspberry Pi 4 | Pin 1 (3.3 V) | Pin 6 | Pin 3 (GPIO2) | Pin 5 (GPIO3) | 3.3 V (optional) | open |
+
+On the Pi 4, enable I2C with `raspi-config`, then check that the sensor shows up with `i2cdetect -y 1`.
+
+## Using the driver
+```python
+from machine import I2C, Pin
+from bmp280 import BMP280
+import time
+
+i2c = I2C(0, sda=Pin(4), scl=Pin(5), freq=400000)  # Pico; ESP32: sda=21, scl=22
+print([hex(a) for a in i2c.scan()])
+bmp = BMP280(i2c, addr=0x76)
+while True:
+    t, p = bmp.read()
+    print("%.2f C  %.2f hPa" % (t, p))
+    time.sleep(2)
+```
+
+## Gotchas
+- **BMP280 vs BME280:** the boards look alike and sellers mix them up. Chip ID 0x58 = BMP280 (no humidity); 0x60 = BME280. The BMP280 package is rectangular, the BME280 square.
+- If nothing answers at 0x76, try 0x77 (SDO pulled high).
+- If the bus scan is empty, check CSB: a low level on CSB switches the chip to SPI until the next power-on.
+- The GY-BMP280-3.3 has no regulator: 5 V on VCC exceeds the 4.25 V absolute maximum and destroys the chip.
+- Use forced mode at low oversampling for weather logging so the chip doesn't warm itself; keep it away from regulators and the MCU.
+- Pressure only gives altitude relative to the current sea-level pressure: pass your local QNH to `altitude()`.
+- In the Sparkbench simulator the virtual chip carries simplified calibration constants (dig_T3 and the temperature-dependent pressure terms are zero), so its raw readings are linear. The driver applies the full datasheet formula, so it works unchanged on a real chip with its own constants.
+
+## Datasheet
+https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf
+
+---
+*Generated by Sparkbench from the datasheet: https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf. Machine-readable definition: `part.json`; driver: `bmp280.py`.*
