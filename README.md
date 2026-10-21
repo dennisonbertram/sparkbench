@@ -2,17 +2,22 @@
 
 **Describe a gadget. Get a circuit you can run.**
 
-Sparkbench is an AI-assisted hardware design studio for microcontroller and discrete-component projects. Type what you want to build — *"an ESP32 with a screen, two buttons, a temperature sensor and an IMU"* — and it:
+![Sparkbench designing an e-ink weather station on an ESP32: wiring, live simulation and the copilot](docs/images/weather-station.png)
 
-1. **Picks the parts and wires them** to pins that are actually valid for the board (shared I2C bus, ADC-capable pins, no input-only or boot-strapping pins for outputs, 5 V→3.3 V dividers, an MCP3008 when a Raspberry Pi needs analog inputs).
-2. **Writes the firmware** — MicroPython for ESP32 / Raspberry Pi Pico, Python 3 + gpiozero for Raspberry Pi 4 — plus the device drivers.
-3. **Simulates it**: the *exact same code* runs in MicroPython compiled to WebAssembly, against register-level models of the OLED, IMU and LCD and a real circuit solver for LEDs, buttons, pots, dividers, transistors and 555 timers. Press buttons, turn knobs, drag temperature / tilt / distance sliders.
-4. **Produces the deliverables**: schematic (SVG + KiCad `.kicad_sch`/`.kicad_pro`/netlist), SPICE netlist for ngspice, parts list with prices and supplier links, a step-by-step build guide, and a full blog post.
-5. **Checks the design** with plain-English electrical rules (LED without a resistor, 5 V into a 3.3 V pin, I2C address clashes, missing ground, current budget…) with one-click fixes.
+Type what you want to build, e.g. *"an e-ink weather station with a button and a buzzer"*. Sparkbench picks the parts, wires them to valid pins, writes the MicroPython, and runs that exact code in a simulator with tests you can read. Then it takes you to a breadboard, your real board over USB, and a manufacturable circuit board with a case.
 
-**Any component, from its datasheet.** Not in the library? Type a part number (or paste a datasheet URL) under *+ Add part → Add any component*. Claude finds and reads the datasheet, extracts the pinout, supply range, interface (I2C address, SPI…), price, build tips and — for protocol parts — writes a MicroPython driver. You review it, and Sparkbench wires it in, draws it, simulates it (analog/digital sensors, actuators, I2C register devices), and puts it in the schematic, KiCad export, BOM and docs. Each fetched part is saved as a **Claude Code skill** in `.claude/skills/part-<mpn>/` (`SKILL.md` + `part.json` + driver), so the in-app AI and Claude Code itself both reuse that datasheet knowledge. The repo ships skills for the TMP36, BME280 and VL53L0X.
+- **Design by conversation:** *"add a buzzer"*, *"use a Pico instead"*, *"beep when it's too hot"*.
+- **Simulate the real code:** MicroPython in WebAssembly against register-level models of 570+ parts, with sliders for every sensor.
+- **Catch mistakes early:** plain-English checks for 5 V on a 3.3 V pin, missing resistors, motor supplies, I2C clashes and power budgets.
+- **Build it:** hole-by-hole breadboard guide, parts list with live stock, flashing and self-test over USB, photo wiring check.
+- **Make it permanent:** routed KiCad board, Gerbers and assembly files, and a 3D-printable case.
 
-Follow-ups work conversationally: *"add a buzzer"*, *"use a Raspberry Pi Pico instead"*, *"move button A to GPIO 14"*, *"make it beep when it's too hot"*. In the **Code** tab, an AI pair-programmer edits the firmware on request ("show the temperature in Fahrenheit"), runs the new code in the simulator first (auto-fixing crashes), and shows you a diff to accept.
+## How it's different
+
+- **Parts you can trust.** AI design tools often get pinouts wrong. Every one of the 570+ library parts passed a full check (wiring, simulation on ESP32 and Pico, KiCad footprint, routed board) and matched an independent reading of its datasheet, with disagreements settled by quotes checked against the source.
+- **From idea to a working, tested build.** Simulators like Wokwi and Tinkercad don't design for you; AI PCB tools like Flux don't run your firmware. Sparkbench does the whole path: design, code, simulation with acceptance tests, breadboard, real board, circuit board.
+- **Made for beginners and classrooms.** Explanations in plain English, safety checks a newcomer wouldn't know to make, and classes graded in the simulator.
+- **Open and local-first.** MIT licensed. It runs on your own machine, and every part is also a Claude Code skill other tools can use.
 
 ## From idea to a manufactured device
 
