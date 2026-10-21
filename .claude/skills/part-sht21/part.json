@@ -1,0 +1,203 @@
+{
+  "type": "custom-sht21",
+  "name": "SHT21 temperature & humidity sensor",
+  "mpn": "SHT21",
+  "category": "sensor",
+  "description": "Sensirion SHT21 digital relative humidity (0–100 %, ±2 % typical) and temperature (-40 to 125 °C, ±0.3 °C typical) sensor with an I2C interface at fixed address 0x40; runs on 2.1–3.6 V (3.0 V recommended) and is NOT 5 V tolerant. Sold as: ACROBOTIC SHT21 Digital Temperature and Humidity Sensor Breakout Board (BRK-00055), 4-pin header Vdd, Vss, SDA, SCL, I2C pull-ups fitted, no regulator (2.1–3.6 V supply).",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "Vdd",
+      "role": "power",
+      "description": "Supply, 2.1–3.6 V (no regulator: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "Vss",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up fitted on the breakout)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up fitted on the breakout)",
+      "required": true
+    }
+  ],
+  "vmin": 2.1,
+  "vmax": 3.6,
+  "currentMa": 0.33,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://sensirion.com/media/documents/120BBE4C/63500094/Sensirion_Datasheet_Humidity_Sensor_SHT21.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "SHT21 temperature humidity sensor breakout board I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power Vdd from 3.3 V only: the SHT21 is rated 2.1–3.6 V and this breakout has no regulator.",
+    "No-hold measurement: write 0xF3 (temperature) or 0xF5 (humidity), wait 85 ms / 29 ms (datasheet maxima at 14/12 bit), then read 3 bytes: MSB, LSB (low 2 bits are status), CRC.",
+    "Check the CRC (poly 0x31, init 0x00) and clear the two status bits before converting: T = -46.85 + 175.72*S/65536, RH = -6 + 125*S/65536.",
+    "Run the I2C bus at 100–400 kHz so the STOP after a no-hold command falls before the 15–18.5 µs window the datasheet warns about (section 5.8).",
+    "The address is fixed at 0x40 (shared with HTU21D/Si7021/INA219 defaults), so only one per I2C bus without a multiplexer.",
+    "Keep the sensor away from the regulator and the microcontroller, which warm the air nearby."
+  ],
+  "keywords": [
+    "sht21",
+    "sht2x",
+    "sht20",
+    "sensirion",
+    "temperature",
+    "humidity"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "f3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e3",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 14,
+            "scale": 0.01072509765625,
+            "offset": -46.85
+          },
+          {
+            "const": 0,
+            "bits": 2
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "f5",
+        "bytes": [
+          {
+            "control": "humidity",
+            "bits": 12,
+            "scale": 0.030517578125,
+            "offset": -6
+          },
+          {
+            "const": 2,
+            "bits": 4
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "e5",
+        "bytes": [
+          {
+            "control": "humidity",
+            "bits": 12,
+            "scale": 0.030517578125,
+            "offset": -6
+          },
+          {
+            "const": 2,
+            "bits": 4
+          },
+          {
+            "crc": "htu21d",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sht21.py",
+    "code": "# Sensirion SHT21 temperature & humidity sensor, MicroPython driver.\n# Datasheet: Sensirion SHT21 datasheet, Version 5 (October 2022).\n# Uses the \"No Hold Master\" commands (0xF3 temperature, 0xF5 humidity) at the default\n# 14-bit T / 12-bit RH resolution and checks the CRC-8 (poly 0x31, init 0x00).\n#\n# Datasheet section 5.8: in No Hold mode the STOP after the command must come either\n# < 15 us or > 18.5 us after the sensor's ACK. I2C.writeto() sends the STOP right after\n# the ACK clock (about 5 us at 100 kHz, less at 400 kHz) and the next transfer only\n# happens after the conversion wait, so keep the bus at 100 kHz or faster.\nimport time\n\n_ADDR = 0x40\n_TRIG_T_NOHOLD = 0xF3\n_TRIG_RH_NOHOLD = 0xF5\n_SOFT_RESET = 0xFE\n_T_WAIT_MS = 85   # 14-bit temperature, datasheet Table 7 maximum\n_RH_WAIT_MS = 29  # 12-bit humidity, datasheet Table 7 maximum\n\n\ndef _crc8(data):\n    crc = 0x00\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SHT21:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(15)  # power-up: at most 15 ms before the sensor is ready\n        self.i2c.writeto(self.addr, bytes([_SOFT_RESET]))\n        time.sleep_ms(15)  # soft reset takes less than 15 ms\n\n    def _measure(self, cmd, wait_ms, is_rh):\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        time.sleep_ms(wait_ms)\n        d = None\n        for _ in range(5):  # the sensor NACKs its read address until the conversion is done\n            try:\n                d = self.i2c.readfrom(self.addr, 3)\n                break\n            except OSError:\n                time.sleep_ms(5)\n        if d is None:\n            raise OSError('SHT21 not responding: check the wiring')\n        if _crc8(d[0:2]) != d[2]:\n            raise OSError('SHT21 CRC mismatch: check the wiring')\n        raw = (d[0] << 8) | d[1]\n        if bool(raw & 0x02) != is_rh:  # status bit 1: 0 = temperature, 1 = humidity\n            raise OSError('SHT21 returned the wrong measurement type')\n        return raw & 0xFFFC  # status bits must be set to 0 before converting\n\n    def temperature(self):\n        \"\"\"Temperature in degC: T = -46.85 + 175.72 * S / 2^16.\"\"\"\n        return -46.85 + 175.72 * self._measure(_TRIG_T_NOHOLD, _T_WAIT_MS, False) / 65536\n\n    def humidity(self):\n        \"\"\"Relative humidity in % (above liquid water): RH = -6 + 125 * S / 2^16.\"\"\"\n        return -6 + 125 * self._measure(_TRIG_RH_NOHOLD, _RH_WAIT_MS, True) / 65536\n\n    def read(self):\n        \"\"\"Return (temperature in degC, relative humidity in %).\"\"\"\n        return self.temperature(), self.humidity()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sht21 import SHT21\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = SHT21(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.1f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 63
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.0C H=63.0%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensirion.com/media/documents/120BBE4C/63500094/Sensirion_Datasheet_Humidity_Sensor_SHT21.pdf",
+    "https://acrobotic.com/products/brk-00055"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:26:09.745Z",
+    "verifiedSources": [
+      "https://labs.dese.iisc.ac.in/embeddedlab/wp-content/uploads/sites/24/2023/08/SHT21_Temp_Humidity.pdf",
+      "https://acrobotic.com/products/brk-00055"
+    ]
+  }
+}

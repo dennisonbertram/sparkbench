@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mcp4725",
+  "board": "Adafruit MCP4725 Breakout Board - 12-Bit DAC with I2C Interface, STEMMA QT (#935)",
+  "reason": "Check passed on ESP32 and Pico: the fast-mode writes give VOUT = VDD x code / 4096 (read back with the ADC as 0.81 V and 2.42 V), the 5-byte read returns the DAC code, and power-down sends the output to 0 V. The header order VIN, GND, SCL, SDA, A0, VOUT and address 0x62 (MCP4725A1) come from Adafruit's QT board file.",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-MCP4725-PCB/blob/master/Adafruit%20MCP4725%20QT.brd",
+  "checkRuns": 2
+}

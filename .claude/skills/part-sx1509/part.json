@@ -1,0 +1,446 @@
+{
+  "type": "custom-sx1509",
+  "name": "SX1509 16-I/O expander breakout",
+  "mpn": "SX1509",
+  "category": "ic",
+  "description": "Semtech 16-channel I2C GPIO expander with level shifting, LED driver (PWM/blink/breathe) and keypad engine: two 8-bit banks (IO0-7 on VCC1, IO8-15 on VCC2), each pin an input (5.5 V tolerant, pull-up/down) or an output (8 mA source, 15 mA sink). Runs on 1.425-3.6 V (not 5 V). Sold as: SparkFun 16 Output I/O Expander Breakout - SX1509 (BOB-13601; top header INT RST GND 3V3 SDA SCL, bottom header OSC RST GND 3.3V SDA SCL, I/O columns GND 0-3 VCC1 4-7 and 8-11 VCC2 12-15 GND; 10k pull-ups on SDA, SCL, RST and INT), I2C address 0x3E (0x3F/0x70/0x71 via the ADD jumpers).",
+  "eli5": "Gives your board 16 extra pins to light LEDs or read buttons, using only the two I2C wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Active-low interrupt output (open drain, 10k pull-up on board); optional",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Active-low reset input (10k pull-up on board); leave open for normal use",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Main supply VDDM 1.425-3.6 V; also feeds VCC1/VCC2 and the 10k SDA/SCL pull-ups by default",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "description": "I2C data (10k pull-up to 3V3 on board, jumper SJ1)",
+      "required": true,
+      "fn": "i2c.sda"
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "description": "I2C clock (10k pull-up to 3V3 on board, jumper SJ1)",
+      "required": true,
+      "fn": "i2c.scl"
+    },
+    {
+      "name": "GND_2",
+      "role": "gnd",
+      "description": "Ground at the top of the IO0-IO7 column (same net as GND)",
+      "required": false
+    },
+    {
+      "name": "0",
+      "role": "io",
+      "description": "I/O 0 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "1",
+      "role": "io",
+      "description": "I/O 1 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "2",
+      "role": "io",
+      "description": "I/O 2 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "3",
+      "role": "io",
+      "description": "I/O 3 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "VCC1",
+      "role": "power",
+      "description": "Bank A I/O supply, tied to 3V3 by a jumper by default (1.2-3.6 V if fed separately)",
+      "required": false
+    },
+    {
+      "name": "4",
+      "role": "io",
+      "description": "I/O 4 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "5",
+      "role": "io",
+      "description": "I/O 5 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "6",
+      "role": "io",
+      "description": "I/O 6 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "7",
+      "role": "io",
+      "description": "I/O 7 (Bank A, powered from VCC1): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "OSC",
+      "role": "io",
+      "description": "OSCIO: optional clock input/output or general-purpose output",
+      "required": false
+    },
+    {
+      "name": "RST_2",
+      "role": "io",
+      "description": "Second RST pad on the bottom header (same net as RST)",
+      "required": false
+    },
+    {
+      "name": "GND_3",
+      "role": "gnd",
+      "description": "Ground on the bottom header (same net as GND)",
+      "required": false
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply on the bottom header (same net as 3V3)",
+      "required": false
+    },
+    {
+      "name": "SDA_2",
+      "role": "io",
+      "description": "I2C data on the bottom header (same net as SDA), for daisy-chaining",
+      "required": false
+    },
+    {
+      "name": "SCL_2",
+      "role": "io",
+      "description": "I2C clock on the bottom header (same net as SCL), for daisy-chaining",
+      "required": false
+    },
+    {
+      "name": "8",
+      "role": "io",
+      "description": "I/O 8 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "9",
+      "role": "io",
+      "description": "I/O 9 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "10",
+      "role": "io",
+      "description": "I/O 10 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "11",
+      "role": "io",
+      "description": "I/O 11 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "VCC2",
+      "role": "power",
+      "description": "Bank B I/O supply, tied to 3V3 by a jumper by default (1.2-3.6 V if fed separately)",
+      "required": false
+    },
+    {
+      "name": "12",
+      "role": "io",
+      "description": "I/O 12 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "13",
+      "role": "io",
+      "description": "I/O 13 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "14",
+      "role": "io",
+      "description": "I/O 14 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "15",
+      "role": "io",
+      "description": "I/O 15 (Bank B, powered from VCC2): input (5.5 V tolerant, optional pull-up/pull-down) or output sourcing 8 mA / sinking 15 mA",
+      "required": false
+    },
+    {
+      "name": "GND_4",
+      "role": "gnd",
+      "description": "Ground at the top of the IO8-IO15 column (same net as GND)",
+      "required": false
+    }
+  ],
+  "vmin": 1.425,
+  "vmax": 3.6,
+  "currentMa": 1,
+  "i2cAddress": 62,
+  "datasheetUrl": "https://cdn.sparkfun.com/datasheets/BreakoutBoards/sx1509.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "SparkFun SX1509 16 output I/O expander breakout BOB-13601",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x32_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power it from 3.3 V only: the SX1509's supply is 1.425-3.6 V (absolute max 3.7 V). Its I/O pins tolerate 5.5 V as inputs.",
+    "I2C address is 0x3E with both ADD jumpers on the back at 0; 0x3F, 0x70 and 0x71 by re-soldering ADD0/ADD1.",
+    "Register pairs are Bank B (IO8-15) first, then Bank A (IO0-7): RegDirB 0x0E / RegDirA 0x0F (1 = input, reset 0xFF), RegDataB 0x10 / RegDataA 0x11, RegPullUpB 0x06 / RegPullUpA 0x07.",
+    "RegData is written to set outputs and read to get pin levels. All pins power up as inputs with the data latches high, so write the latch low before switching a pin to output if it must start off.",
+    "Software reset: write 0x12 then 0x34 to RegReset (0x7D).",
+    "Each I/O sources up to 8 mA and sinks up to 15 mA (VCCx >= 2 V): always put a resistor in series with an LED. Sinking (LED from 3.3 V to the pin) gives more current.",
+    "The outer rail next to each I/O column is GND by default (rear jumpers can move it to VCC1/VCC2). Don't solder both rows of headers if you want to use a breadboard.",
+    "RST, INT and OSC are optional; RST and INT already have 10k pull-ups."
+  ],
+  "keywords": [
+    "sx1509",
+    "io expander",
+    "gpio expander",
+    "port expander",
+    "i2c",
+    "16-bit",
+    "sparkfun",
+    "bob-13601",
+    "led driver",
+    "keypad"
+  ],
+  "sources": [
+    "https://cdn.sparkfun.com/datasheets/BreakoutBoards/sx1509.pdf",
+    "https://learn.sparkfun.com/tutorials/sx1509-io-expander-breakout-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/parts/1/0/9/5/6/13601-01.jpg",
+    "https://www.sparkfun.com/products/13601",
+    "fritzing-parts core/sx1509-breakout.fzp (SparkFun Breakout sx1509)"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x0E": 255,
+      "0x0F": 255,
+      "0x10": 255,
+      "0x11": 255,
+      "0x12": 255,
+      "0x13": 255,
+      "0x27": 255,
+      "0x28": 255
+    },
+    "outputBits": [
+      {
+        "reg": "0x11",
+        "bit": 0,
+        "name": "0"
+      },
+      {
+        "reg": "0x11",
+        "bit": 1,
+        "name": "1"
+      },
+      {
+        "reg": "0x11",
+        "bit": 2,
+        "name": "2"
+      },
+      {
+        "reg": "0x11",
+        "bit": 3,
+        "name": "3"
+      },
+      {
+        "reg": "0x11",
+        "bit": 4,
+        "name": "4"
+      },
+      {
+        "reg": "0x11",
+        "bit": 5,
+        "name": "5"
+      },
+      {
+        "reg": "0x11",
+        "bit": 6,
+        "name": "6"
+      },
+      {
+        "reg": "0x11",
+        "bit": 7,
+        "name": "7"
+      },
+      {
+        "reg": "0x10",
+        "bit": 0,
+        "name": "8"
+      },
+      {
+        "reg": "0x10",
+        "bit": 1,
+        "name": "9"
+      },
+      {
+        "reg": "0x10",
+        "bit": 2,
+        "name": "10"
+      },
+      {
+        "reg": "0x10",
+        "bit": 3,
+        "name": "11"
+      },
+      {
+        "reg": "0x10",
+        "bit": 4,
+        "name": "12"
+      },
+      {
+        "reg": "0x10",
+        "bit": 5,
+        "name": "13"
+      },
+      {
+        "reg": "0x10",
+        "bit": 6,
+        "name": "14"
+      },
+      {
+        "reg": "0x10",
+        "bit": 7,
+        "name": "15"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x10",
+        "bit": 0,
+        "control": "io8",
+        "label": "Button IO8 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x10",
+        "bit": 1,
+        "control": "io9",
+        "label": "Button IO9 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x10",
+        "bit": 2,
+        "control": "io10",
+        "label": "Button IO10 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x10",
+        "bit": 3,
+        "control": "io11",
+        "label": "Button IO11 to GND",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sx1509.py",
+    "code": "# SX1509 16-channel I2C GPIO expander (Semtech SX1509, datasheet rev 1), MicroPython driver.\n# SX1509 register map (section 5.3). Every pair is Bank B (IO8-IO15) FIRST, then Bank A (IO0-IO7):\n#   RegInputDisableB/A 0x00/0x01  1 = input buffer off (reset 0x00)\n#   RegPullUpB/A       0x06/0x07  1 = internal pull-up on\n#   RegPullDownB/A     0x08/0x09  1 = internal pull-down on\n#   RegOpenDrainB/A    0x0A/0x0B  1 = open-drain output\n#   RegDirB/A          0x0E/0x0F  1 = input (reset 0xFF), 0 = output\n#   RegDataB/A         0x10/0x11  write = output level, read = level seen at the pins (reset 0xFF)\n#   RegInterruptMaskA  0x13       reset 0xFF (used as a presence check)\n#   RegReset           0x7D       write 0x12 then 0x34 = software reset to defaults\n# Address: 0x3E (ADDR1 ADDR0 = 00), 0x3F (01), 0x70 (10), 0x71 (11).\n# Pins are numbered 0-15 as printed on the board: 0-7 = Bank A, 8-15 = Bank B.\n\n_INPUT_DISABLE_B = 0x00\n_PULLUP_B = 0x06\n_PULLDOWN_B = 0x08\n_OPEN_DRAIN_B = 0x0A\n_DIR_B = 0x0E\n_DATA_B = 0x10\n_INT_MASK_A = 0x13\n_RESET = 0x7D\n\nINPUT = 1\nOUTPUT = 0\n\n\nclass SX1509:\n    def __init__(self, i2c, addr=0x3E, reset=True):\n        \"\"\"addr 0x3E with both ADD jumpers at 0 (SparkFun BOB-13601 default).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        if reset:\n            # Software reset (datasheet 4.4.2): 0x12 then 0x34 to RegReset.\n            self._w(_RESET, 0x12)\n            self._w(_RESET, 0x34)\n        # RegInterruptMaskA resets to 0xFF: a quick check that an SX1509 answers.\n        if self._r(_INT_MASK_A) != 0xFF:\n            raise OSError('SX1509 not found at 0x%02X' % addr)\n        # Shadow of the output latches (RegData resets to 0xFFFF). Reading RegData returns\n        # pin levels, not the latch, so outputs are changed from this copy.\n        self._out = 0xFFFF\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _r16(self, reg_b):\n        \"\"\"Read a Bank B / Bank A register pair as a 16-bit value (bits 0-7 = IO0-7).\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, reg_b, 2)  # B then A (auto-increment)\n        return d[1] | (d[0] << 8)\n\n    def _w16(self, reg_b, val):\n        self.i2c.writeto_mem(self.addr, reg_b, bytes([(val >> 8) & 0xFF, val & 0xFF]))\n\n    def _bit(self, reg_b, pin, on):\n        if not 0 <= pin <= 15:\n            raise ValueError('pin must be 0-15')\n        reg = reg_b if pin >= 8 else reg_b + 1  # Bank B register, or Bank A right after it\n        v = self._r(reg)\n        m = 1 << (pin & 7)\n        self._w(reg, (v | m) if on else (v & ~m))\n\n    def pin_mode(self, pin, mode, pull=None):\n        \"\"\"mode INPUT or OUTPUT; pull = 'up', 'down' or None (inputs only).\"\"\"\n        if mode == OUTPUT:\n            self._bit(_PULLUP_B, pin, False)\n            self._bit(_PULLDOWN_B, pin, False)\n            self._bit(_OPEN_DRAIN_B, pin, False)\n            self._bit(_DIR_B, pin, False)\n        else:\n            self._bit(_INPUT_DISABLE_B, pin, False)\n            self._bit(_PULLUP_B, pin, pull == 'up')\n            self._bit(_PULLDOWN_B, pin, pull == 'down')\n            self._bit(_DIR_B, pin, True)\n\n    def value(self, pin, val=None):\n        \"\"\"Read the level at a pin (RegData read), or set an output pin's level.\"\"\"\n        if not 0 <= pin <= 15:\n            raise ValueError('pin must be 0-15')\n        if val is None:\n            reg = _DATA_B if pin >= 8 else _DATA_B + 1\n            return (self._r(reg) >> (pin & 7)) & 1\n        if val:\n            self._out |= 1 << pin\n        else:\n            self._out &= ~(1 << pin)\n        reg = _DATA_B if pin >= 8 else _DATA_B + 1\n        self._w(reg, (self._out >> (8 if pin >= 8 else 0)) & 0xFF)\n\n    def read_port(self):\n        \"\"\"All 16 pin levels: bits 0-7 = IO0-7, bits 8-15 = IO8-15.\"\"\"\n        return self._r16(_DATA_B)\n\n    def write_port(self, val):\n        \"\"\"Set all 16 output levels (only output-configured pins drive them).\"\"\"\n        self._out = val & 0xFFFF\n        self._w16(_DATA_B, self._out)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sx1509 import SX1509, INPUT, OUTPUT\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nio = SX1509(i2c)                   # address 0x3E (ADD jumpers at 0)\nio.value(0, 0)                     # IO0 latch low before it becomes an output\nio.pin_mode(0, OUTPUT)             # IO0 drives an LED (through a resistor)\nio.pin_mode(8, INPUT, pull='up')   # IO8 reads a button wired to GND\nwhile True:\n    pressed = 1 if io.value(8) == 0 else 0\n    io.value(0, pressed)           # LED on while the button is held\n    print('BTN=%d LED=%d' % (pressed, pressed))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "button-led",
+      "title": "IO8 button switches the IO0 output",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "0",
+          "on": false,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "io8",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=1 LED=1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "0",
+          "on": true,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "io8",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "0",
+          "on": false,
+          "within": 1000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:05:48.843Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/datasheets/BreakoutBoards/sx1509.pdf",
+      "https://learn.sparkfun.com/tutorials/sx1509-io-expander-breakout-hookup-guide",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/4/3/4/hardware-input-headers-2.jpg"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-acs758",
+  "board": "CJMCU-758 / MCU-758 ACS758LCB-050B-PFF-T Hall current sensor module (purple, IP+/IP- pads, 4-pin header VCC GND OU1 OU2)",
+  "reason": "All check stages passed on ESP32 and Pico (spec, wiring at 5 V, design checks, breadboard, simulator reading I=10.0A at 10 A, DRC-clean PCB, footprint, LCSC C73426). Model uses the datasheet's ratiometric transfer Vout = VCC/2 + 0.040 V/A x I, i.e. 0.5-4.5 V over -50..+50 A at VCC = 5 V; OU2 is left unmodelled and optional.",
+  "datasheetUrl": "https://www.allegromicro.com/-/media/files/datasheets/acs758-datasheet.pdf",
+  "breakoutPinoutSource": "https://probots.co.in/mcu-758-acs758lcb-050b-50a-bidirectional-hall-effect-current-sensor-module.html (product photo with silkscreen VCC GND OU1 OU2) and gotronik.pl product card (pin descriptions and OU1 = OU2 = VCC/2 + 40 mV/A x I)",
+  "checkRuns": 1
+}

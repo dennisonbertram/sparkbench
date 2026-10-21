@@ -1,0 +1,218 @@
+{
+  "type": "custom-nau7802",
+  "name": "NAU7802 24-bit load cell ADC",
+  "mpn": "NAU7802",
+  "category": "sensor",
+  "description": "Nuvoton 24-bit sigma-delta ADC for load cells and bridge sensors with a 1–128 gain PGA, an on-chip 2.4–4.5 V LDO that excites the bridge, two differential channels and an I2C interface (address 0x2A). Runs on 2.7–5.5 V. Sold as: SparkFun Qwiic Scale - NAU7802 (SEN-15242), I2C header GND, 3V3, SDA, SCL, INT, AVDD plus load cell header RED/E+, BLK/E-, WHT/A-, GRN/A+, YLW/SD, B-, B+ and a spring terminal, 2.2 kΩ pull-ups on board.",
+  "eli5": "Reads the tiny voltage from a load cell so your board can work out how heavy something is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply 2.7–5.5 V (use 3.3 V: the on-board 2.2 kΩ I2C pull-ups go to this pin)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kΩ pull-up on board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kΩ pull-up on board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "DRDY output: high when a conversion is ready (default polarity); optional",
+      "required": false
+    },
+    {
+      "name": "AVDD",
+      "role": "io",
+      "description": "LDO output / bridge reference (AVDD); not a supply, optional",
+      "required": false
+    },
+    {
+      "name": "RED/E+",
+      "role": "io",
+      "description": "Load cell excitation + (AVDD), red wire",
+      "required": false
+    },
+    {
+      "name": "BLK/E-",
+      "role": "io",
+      "description": "Load cell excitation − (GND), black wire",
+      "required": false
+    },
+    {
+      "name": "WHT/A-",
+      "role": "io",
+      "description": "Channel 1 negative input (VIN1N), white wire",
+      "required": false
+    },
+    {
+      "name": "GRN/A+",
+      "role": "io",
+      "description": "Channel 1 positive input (VIN1P), green/blue wire",
+      "required": false
+    },
+    {
+      "name": "YLW/SD",
+      "role": "io",
+      "description": "Load cell shield (GND), yellow wire, optional",
+      "required": false
+    },
+    {
+      "name": "B-",
+      "role": "io",
+      "description": "Channel 2 negative input (VIN2N), optional",
+      "required": false
+    },
+    {
+      "name": "B+",
+      "role": "io",
+      "description": "Channel 2 positive input (VIN2P), optional",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 7,
+  "i2cAddress": 42,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/learn_tutorials/8/8/0/NAU7802_Data_Sheet_V1.7.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "SparkFun Qwiic Scale NAU7802 SEN-15242",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x13_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Power-on: PU_CTRL (0x00) = 0x01 (RR), then 0x02 (PUD); wait for PUR (bit 3) = 1, about 200 µs. Then CTRL1 (0x01) = VLDO<<3 | GAINS, PU_CTRL = 0x86 (AVDDS, PUA, PUD), R0x15 = 0x30, CTRL2 rate, and set CS (bit 4) to start converting.",
+    "Set the LDO at least 0.3 V below the supply: 3.0 V (VLDO = 101) on a 3.3 V board. REFP is tied to AVDD on the Qwiic Scale, so VREF = the LDO voltage.",
+    "Wait for CR (PU_CTRL bit 5) or the INT pin, then burst-read 3 bytes from 0x12: signed 24-bit, MSB first; volts = raw × VREF / (gain × 2^24). Full scale is ±0.5 × VREF / gain (±11.7 mV at gain 128, 3.0 V).",
+    "Calibrate with CALS (CTRL2 bit 2) after power-up and after changing gain, rate or channel; poll until it reads 0, then check CAL_ERR (bit 3). Wait six conversions after power-up before trusting data.",
+    "Load cell: red → RED/E+, black → BLK/E-, white → WHT/A-, green → GRN/A+. If weight reads negative, swap A+ and A-.",
+    "Keep 3V3 at 3.3 V when using the Qwiic connectors: the I2C pull-ups go to this supply."
+  ],
+  "keywords": [
+    "nau7802",
+    "qwiic scale",
+    "load cell",
+    "scale",
+    "weight",
+    "24-bit adc",
+    "bridge",
+    "strain gauge",
+    "sparkfun"
+  ],
+  "sources": [
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/8/0/NAU7802_Data_Sheet_V1.7.pdf",
+    "https://learn.sparkfun.com/tutorials/qwiic-scale-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/8/0/Qwiic_Scale.pdf",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/8/0/SparkFun_Qwiic_Scale_-_NAU7802_-_Bottom_Pins.jpg",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/8/8/0/SparkFun_Qwiic_Scale_-_NAU7802_-_I2C_Pins.jpg",
+    "https://www.sparkfun.com/products/15242"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Bridge output A+ − A−",
+    "unit": "mV",
+    "min": -10,
+    "max": 10,
+    "default": 0,
+    "registers": {
+      "0x07": 128,
+      "0x0E": 128,
+      "0x1F": 15
+    },
+    "measure": {
+      "reg": "0x12",
+      "bytes": 3,
+      "signed": true,
+      "scale": 0.0000013969838619232178
+    },
+    "inputBits": [
+      {
+        "reg": "0x00",
+        "bit": 3,
+        "control": "busy",
+        "label": "Chip busy (powering up / converting / calibrating)",
+        "activeLow": true
+      },
+      {
+        "reg": "0x00",
+        "bit": 5,
+        "control": "busy",
+        "label": "Chip busy (powering up / converting / calibrating)",
+        "activeLow": true
+      },
+      {
+        "reg": "0x02",
+        "bit": 2,
+        "control": "busy",
+        "label": "Chip busy (powering up / converting / calibrating)"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "nau7802.py",
+    "code": "# NAU7802 24-bit bridge-sensor ADC (Nuvoton), MicroPython driver.\n# Follows the datasheet (rev 1.7): power-on sequence (section 9.1), register map (sections 10-11),\n# internal offset calibration (section 8.6) and the 24-bit two's-complement result in 0x12-0x14.\n# Full scale is +/-0.5 * VREF / gain, so 1 count = VREF / (gain * 2^24) volts. On the SparkFun\n# Qwiic Scale REFP is tied to AVDD (the internal LDO) and REFN to ground, so VREF = the LDO voltage.\nimport time\n\n_PU_CTRL = 0x00   # AVDDS OSCS CR CS PUR PUA PUD RR\n_CTRL1 = 0x01     # CRP DRDY_SEL VLDO[2:0] GAINS[2:0]\n_CTRL2 = 0x02     # CHS CRS[2:0] CAL_ERR CALS CALMOD[1:0]\n_ADCO_B2 = 0x12   # conversion result, MSB first (0x12, 0x13, 0x14)\n_ADC = 0x15       # ADC registers (REG_CHPS etc.)\n_PGA = 0x1B\n_POWER = 0x1C     # PGA_CAP_EN ...\n_REV = 0x1F\n\n_RR, _PUD, _PUA, _PUR, _CS, _CR, _AVDDS = 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x80\n_CALS, _CAL_ERR = 0x04, 0x08\n\n_LDO = {4.5: 0, 4.2: 1, 3.9: 2, 3.6: 3, 3.3: 4, 3.0: 5, 2.7: 6, 2.4: 7}\n_GAIN = {1: 0, 2: 1, 4: 2, 8: 3, 16: 4, 32: 5, 64: 6, 128: 7}\n_RATE = {10: 0, 20: 1, 40: 2, 80: 3, 320: 7}\n\n\nclass NAU7802:\n    def __init__(self, i2c, addr=0x2A, gain=128, ldo=3.0, rate=10, channel=1, calibrate=True):\n        # The LDO must be at least 0.3 V below the supply (DVDD): 3.0 V suits a 3.3 V board.\n        if ldo not in _LDO or gain not in _GAIN or rate not in _RATE or channel not in (1, 2):\n            raise ValueError('NAU7802: unsupported ldo/gain/rate/channel')\n        self.i2c = i2c\n        self.addr = addr\n        self.gain = gain\n        self.vref = ldo\n        self.rate = rate\n        self.zero = 0\n        self.counts_per_unit = 1.0\n        # 1. RR = 1: reset all registers. 2. RR = 0, PUD = 1: normal operation.\n        self._w(_PU_CTRL, _RR)\n        time.sleep_ms(1)\n        self._w(_PU_CTRL, _PUD)\n        # 3. About 200 us later PUR reads 1.\n        self._wait(_PU_CTRL, _PUR, True, 10, 'power-up (PUR) timed out: check wiring/supply')\n        # 4. Configure: LDO voltage and gain, internal LDO as AVDD source, analog powered up.\n        self._w(_CTRL1, (_LDO[ldo] << 3) | _GAIN[gain])\n        self._w(_PU_CTRL, _AVDDS | _PUA | _PUD)\n        time.sleep_ms(10)  # let the LDO and analog front end settle\n        self._w(_ADC, 0x30)  # REG_CHPS = 11: CLK_CHP off (datasheet example R0x15 = 0x30)\n        if channel == 1:\n            # 330 pF Cfilter across VIN2P/VIN2N (fitted on the Qwiic Scale): enable it for channel 1 use.\n            self._w(_POWER, self._r(_POWER) | 0x80)\n        self._ctrl2 = (0x80 if channel == 2 else 0) | (_RATE[rate] << 4)\n        self._w(_CTRL2, self._ctrl2)\n        # 5. No conversion takes place until CS = 1.\n        self._w(_PU_CTRL, _AVDDS | _CS | _PUA | _PUD)\n        if calibrate:\n            self.calibrate()\n        # After reset/power-up wait six conversion cycles for full-accuracy data (section 8.8).\n        time.sleep_ms(6 * 1000 // rate + 10)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _wait(self, reg, mask, want, timeout_ms, msg):\n        t0 = time.ticks_ms()\n        while bool(self._r(reg) & mask) != want:\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('NAU7802 ' + msg)\n            time.sleep_ms(1)\n\n    def calibrate(self, mode=0):\n        \"\"\"Run a calibration (CALMOD: 0 = internal offset, 2 = system offset, 3 = system gain).\"\"\"\n        self._w(_CTRL2, self._ctrl2 | _CALS | (mode & 0x03))\n        # CALS stays 1 until calibration is done (several conversion periods).\n        self._wait(_CTRL2, _CALS, False, 20 * 1000 // self.rate + 100, 'calibration timed out')\n        if self._r(_CTRL2) & _CAL_ERR:\n            raise OSError('NAU7802 calibration error (CAL_ERR)')\n\n    def ready(self):\n        \"\"\"True when a new conversion result is available (CR bit).\"\"\"\n        return bool(self._r(_PU_CTRL) & _CR)\n\n    def read_raw(self, timeout_ms=1000):\n        \"\"\"Wait for data ready (CR) and return the signed 24-bit result.\"\"\"\n        self._wait(_PU_CTRL, _CR, True, timeout_ms, 'no conversion (CR) - is CS set?')\n        b = self.i2c.readfrom_mem(self.addr, _ADCO_B2, 3)  # burst read latches one sample\n        v = (b[0] << 16) | (b[1] << 8) | b[2]\n        return v - 0x1000000 if v & 0x800000 else v\n\n    def to_microvolts(self, raw):\n        \"\"\"Differential input (VINxP - VINxN) in microvolts: raw * VREF / (gain * 2^24).\"\"\"\n        return raw * self.vref * 1000000 / (self.gain * 16777216)\n\n    def read_microvolts(self):\n        return self.to_microvolts(self.read_raw())\n\n    def average(self, n=8):\n        return sum(self.read_raw() for _ in range(n)) / n\n\n    def tare(self, n=8):\n        \"\"\"Take the current (empty-scale) reading as zero.\"\"\"\n        self.zero = self.average(n)\n\n    def calibrate_scale(self, known_weight, n=8):\n        \"\"\"With a known weight on the scale (after tare), set counts per unit of weight.\"\"\"\n        self.counts_per_unit = (self.average(n) - self.zero) / known_weight\n\n    def weight(self, n=1):\n        return (self.average(n) - self.zero) / self.counts_per_unit\n\n    def revision(self):\n        return self._r(_REV) & 0x0F\n"
+  },
+  "skill": "---\nname: part-nau7802\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the NAU7802 24-bit dual-channel load cell ADC (Nuvoton NAU7802, SparkFun Qwiic Scale SEN-15242). Use when designing, wiring, simulating or writing code for an NAU7802 / Qwiic Scale in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build, e.g. a kitchen or bathroom scale.\n---\n\n# NAU7802 24-bit load cell ADC (SparkFun Qwiic Scale)\n\n## Overview\nThe **Nuvoton NAU7802** is a 24-bit sigma-delta ADC with a PGA (gain 1–128), an on-chip LDO that powers the load cell\nbridge (2.4–4.5 V), internal oscillator, offset/gain calibration and an I2C interface. It does the same job as the HX711\nbut over real I2C, so it can share the bus with other sensors. Hobbyists buy it as the **SparkFun Qwiic Scale - NAU7802\n(SEN-15242)**: two Qwiic connectors, 2.2 kΩ I2C pull-ups, a power LED, a 4-way spring terminal for the load cell and a\n330 pF filter capacitor across channel 2.\n\n## Pinout (SparkFun Qwiic Scale, header by header)\nI2C edge (as printed, top to bottom):\n| Pin | Function |\n|---|---|\n| GND | Ground |\n| 3V3 | Supply, 2.7–5.5 V (3.3 V when the Qwiic bus is used — the pull-ups go to this pin) |\n| SDA | I2C data (2.2 kΩ pull-up on board) |\n| SCL | I2C clock (2.2 kΩ pull-up on board) |\n| INT | DRDY output: conversion ready (push-pull, high-active by default, CRP bit flips it) — optional |\n| AVDD | LDO output / reference (AVDD), for reference only, not a supply — optional |\n\nLoad cell edge (PTH holes, as printed on the back; the spring terminal carries RED/BLK/WHT/GRN too):\n| Pin | Function |\n|---|---|\n| RED/E+ | Bridge excitation + (AVDD) — load cell red wire |\n| BLK/E- | Bridge excitation − (GND) — black wire |\n| WHT/A- | Channel 1 negative input (VIN1N) — white wire |\n| GRN/A+ | Channel 1 positive input (VIN1P) — green (or blue) wire |\n| YLW/SD | Shield (GND) — yellow wire / foil, optional |\n| B- | Channel 2 negative input (VIN2N), optional |\n| B+ | Channel 2 positive input (VIN2P), optional |\n\n## Electrical limits\n- DVDD 2.7–5.5 V; about 2.1 mA (internal oscillator + LDO) plus the load cell's excitation current (≈3 mA for a 1 kΩ bridge at 3 V).\n- The LDO (VLDO 2.4–4.5 V) must be at least **0.3 V below the supply**: use 3.0 V on a 3.3 V board (the driver default).\n- Full-scale input: ±0.5 × VREF / gain. VREF = AVDD on this board, so at 3.0 V and gain 128: ±11.7 mV, 1 count ≈ 1.40 nV.\n- PGA common-mode range at gain 64/128: AVSS + 1.5 V to AVDD − 1.5 V (a load cell bridge sits at AVDD/2: fine).\n\n## Interface details\n- **I2C address 0x2A** (fixed), standard/fast mode.\n- Power-on (datasheet 9.1): write PU_CTRL (0x00) = RR (0x01), then PUD (0x02); wait for **PUR** (bit 3) to read 1 (≈200 µs).\n  Then set CTRL1 (0x01) = VLDO<<3 | GAINS, PU_CTRL = AVDDS|PUA|PUD (0x86), R0x15 = 0x30, CTRL2 rate, then **CS** (bit 4) to start conversions.\n- Calibration: write CALS (CTRL2 bit 2) = 1; it reads 1 until done; then check **CAL_ERR** (bit 3). Redo after gain/rate/channel changes.\n- Data: poll **CR** (PU_CTRL bit 5) or the INT pin, then burst-read 3 bytes from 0x12: signed 24-bit, MSB first.\n  Voltage = raw × VREF / (gain × 2^24). Rates 10/20/40/80/320 SPS (CTRL2 CRS).\n- After reset or power-up, wait six conversions before trusting the data.\n\n## Wiring\n- ESP32: 3V3 → 3V3, GND → GND, SDA → D21, SCL → D22 (or a Qwiic cable).\n- Pico: 3V3 → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: 3V3 → pin 1, GND → pin 6, SDA → pin 3, SCL → pin 5.\n- Load cell: red → RED/E+, black → BLK/E-, white → WHT/A-, green → GRN/A+ (spring terminal or PTH holes).\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom nau7802 import NAU7802\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nadc = NAU7802(i2c)          # gain 128, LDO 3.0 V, 10 SPS, internal offset calibration\nraw = adc.read_raw()        # signed 24-bit counts\nprint(adc.to_microvolts(raw))\nadc.tare()                  # empty scale = zero\nadc.calibrate_scale(500)    # with a 500 g weight on it\nprint(adc.weight(4))        # grams\n```\n\n## Simulation\nThe slider is the bridge output **A+ − A−** in mV; the chip returns raw = V × 128 × 2^24 / 3.0 V (the driver's\ngain 128 / LDO 3.0 V setting). The toggle \"Chip busy\" holds PUR/CR at 0 and CALS at 1 (as a chip that is still\npowering up, converting or calibrating), so you can see the driver's timeouts.\n\n## Gotchas\n- Readings drift for a few seconds after power-up and with temperature: tare after warm-up and recalibrate after changing gain or rate.\n- A reading stuck near ±8388607 means the input is over range: check the load cell wire colours (swap A+/A- if the weight reads negative).\n- Don't set the LDO above supply − 0.3 V (the SparkFun Arduino library's 3.3 V default on a 3.3 V supply leaves no headroom).\n- Do not power other things from AVDD; it is the bridge excitation/reference.\n- More than 3.3 V on 3V3 also lifts the Qwiic bus pull-ups above 3.3 V: keep 3.3 V with an ESP32/Pico.\n\n## Datasheet\nhttps://cdn.sparkfun.com/assets/learn_tutorials/8/8/0/NAU7802_Data_Sheet_V1.7.pdf\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom nau7802 import NAU7802\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nadc = NAU7802(i2c)  # gain 128, LDO 3.0 V, 10 SPS\nwhile True:\n    raw = adc.read_raw()\n    print('raw=%d uV=%.1f' % (raw, adc.to_microvolts(raw)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the bridge voltage set on the slider as raw counts and microvolts",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "raw=3579139 uV=5000.0",
+          "within": 4000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -2.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "raw=-1789570 uV=-2500.0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:15:21.580Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/e/c/8/7/6/NAU7802_Data_Sheet_V1.7.pdf",
+      "https://raw.githubusercontent.com/sparkfun/Qwiic_Scale/master/Hardware/Qwiic_Scale.sch",
+      "https://learn.sparkfun.com/tutorials/qwiic-scale-hookup-guide"
+    ]
+  }
+}

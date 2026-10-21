@@ -1,0 +1,187 @@
+{
+  "type": "custom-hih6130",
+  "name": "HIH6130 humidity & temperature sensor",
+  "mpn": "HIH6130",
+  "category": "sensor",
+  "description": "Honeywell HumidIcon HIH6130 digital relative humidity (0–100 %, ±4 %RH) and temperature (-25 to 85 °C operating, ±1 °C) sensor with 14-bit I2C output at address 0x27. Runs on 2.3–5.5 V. Sold as: SparkFun Humidity and Temperature Sensor Breakout - HIH6130 (SEN-11295; 6-pin header SDA, SCL, AL_L, AL_H, VDD, GND, with 2.2 kΩ I2C pull-ups to VDD).",
+  "eli5": "Tells your board how damp the air is and how warm it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kΩ pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kΩ pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "AL_L",
+      "role": "io",
+      "description": "Low alarm output (configured in command mode); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "AL_H",
+      "role": "io",
+      "description": "High alarm output (configured in command mode); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 2.3–5.5 V straight to the chip (calibrated at 3.3 V); use your board's logic voltage",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2.3,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "i2cAddress": 39,
+  "datasheetUrl": "http://cdn.sparkfun.com/datasheets/Prototyping/1443945.pdf",
+  "priceUsd": 30,
+  "supplierQuery": "HIH6130 humidity temperature sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Measurement Request: write the address with no data bytes (i2c.writeto(0x27, b\"\")), wait at least 37 ms (typically 36.65 ms), then read 4 bytes.",
+    "Byte 0 bits 7:6 are status: 00 = new data, 01 = stale (read again a little later), 11 = diagnostic fault. Humidity is the low 14 bits of bytes 0–1; temperature is bytes 2–3 shifted right by 2.",
+    "RH = count × 100 / 16383 %, T = count × 165 / 16383 − 40 °C (Honeywell TN, 2^14 − 1 counts full scale).",
+    "Wait 60 ms after power-up before the first measurement.",
+    "VDD feeds the chip and the 2.2 kΩ pull-ups directly, so power it from 3.3 V on an ESP32 or Pico.",
+    "Keep it away from the regulator and the microcontroller, which warm the air nearby; it is calibrated at 3.3 V."
+  ],
+  "keywords": [
+    "hih6130",
+    "hih6131",
+    "hih61xx",
+    "humidicon",
+    "honeywell",
+    "humidity",
+    "temperature"
+  ],
+  "sources": [
+    "http://cdn.sparkfun.com/datasheets/Prototyping/1443945.pdf",
+    "https://www.embeddedadventures.com/datasheets/hih-6130%20I2C.pdf",
+    "https://www.sparkfun.com/products/11295",
+    "http://cdn.sparkfun.com/datasheets/Sensors/Weather/HIH6130_Breakout_v10.pdf",
+    "http://cdn.sparkfun.com/datasheets/Sensors/Weather/HIH6130_Breakout_v10.zip"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "readFromZero": true,
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "bits": 14,
+        "scale": 0.0061038881767686015,
+        "control": "humidity",
+        "fields": [
+          {
+            "reg": "0x00",
+            "from": 8,
+            "width": 6,
+            "at": 0
+          },
+          {
+            "reg": "0x01",
+            "from": 0,
+            "width": 8,
+            "at": 0
+          }
+        ]
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "bits": 14,
+        "scale": 0.010071415491668192,
+        "offset": -40,
+        "control": "value",
+        "fields": [
+          {
+            "reg": "0x02",
+            "from": 6,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x03",
+            "from": 0,
+            "width": 6,
+            "at": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hih6130.py",
+    "code": "# Honeywell HumidIcon HIH6130/6131 humidity & temperature sensor, MicroPython driver.\n# From Honeywell's technical note \"I2C Communication with the Honeywell HumidIcon Digital\n# Humidity/Temperature Sensors: HIH-6130/6131 Series\":\n#  - Measurement Request (MR): the slave address with the WRITE bit and no data bytes, then STOP.\n#  - The measurement cycle takes typically 36.65 ms.\n#  - Data Fetch (DF): read 4 bytes: [S1 S0 H13..H8] [H7..H0] [T13..T6] [T5..T0 x x].\n#  - Status S1S0: 00 = valid new data, 01 = stale data, 10 = command mode, 11 = diagnostic fault.\n#  - RH = count * 100 / (2^14 - 1) %;  T = count * 165 / (2^14 - 1) - 40 degC.\nimport time\n\n_DENOM = 16383  # 2^14 - 1\n\n\nclass HIH6130:\n    def __init__(self, i2c, addr=0x27):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(60)  # power-on to data ready: max 60 ms\n\n    def _fetch(self):\n        return self.i2c.readfrom(self.addr, 4)\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in degC, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, b'')  # Measurement Request: address + W only\n        time.sleep_ms(40)  # measurement cycle is typically 36.65 ms\n        for _ in range(10):\n            d = self._fetch()\n            status = d[0] >> 6\n            if status == 0:\n                break\n            if status == 3:\n                raise OSError('HIH6130 diagnostic condition (EEPROM fault)')\n            if status == 2:\n                raise OSError('HIH6130 is in command mode')\n            time.sleep_ms(10)  # 01 = stale: the conversion has not finished yet\n        else:\n            raise OSError('HIH6130 data stayed stale: check the wiring')\n        h_raw = ((d[0] & 0x3F) << 8) | d[1]\n        t_raw = (d[2] << 6) | (d[3] >> 2)\n        return t_raw * 165 / _DENOM - 40, h_raw * 100 / _DENOM\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom hih6130 import HIH6130\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = HIH6130(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 42
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.5C H=42%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:22:48.241Z",
+    "verifiedSources": [
+      "https://prod-edam.honeywell.com/content/dam/honeywell-edam/sps/siot/en-us/products/sensors/humidity-with-temperature-sensors/common/documents/sps-siot-i2c-comms-humidicon-tn-009061-2-en-ciid-142171.pdf",
+      "http://cdn.sparkfun.com/datasheets/Sensors/Weather/HIH6130_Breakout_v10.pdf"
+    ]
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "type": "custom-ms5607",
+  "name": "MS5607 barometric pressure & temperature sensor",
+  "mpn": "MS5607-02BA03",
+  "category": "sensor",
+  "description": "TE Connectivity (MEAS) MS5607 high-resolution barometric pressure (10–1200 mbar, 0.024 mbar RMS at OSR 4096, about 20 cm of altitude) and temperature (-40 to 85 °C) sensor with a 24-bit ADC and factory calibration PROM, read over I2C or SPI. Sold as: Parallax Altimeter Module MS5607 (#29124), 7-pin header GND, VIN, PS, SCL, SDA, SDO, CS; 3.3–6.5 V supply with on-board regulator, level shifting and I2C pull-ups; I2C address 0x76 (0x77 with CS pulled low).",
+  "eli5": "Feels the air pressure so precisely that it can tell when you lift it by the height of a step, and also tells you the temperature.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3–6.5 V; use the same voltage as the microcontroller's I/O (3.3 V for ESP32/Pico), because SDA is level-shifted to VIN",
+      "required": true
+    },
+    {
+      "name": "PS",
+      "role": "io",
+      "description": "Protocol select: pulled high on the module = I2C; tie to GND for SPI. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCLK)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI); pull-up fitted on the module",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "SPI data out, unused in I2C mode",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select; in I2C mode the address select: high/unconnected = 0x76, low = 0x77",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 6.5,
+  "currentMa": 1.4,
+  "i2cAddress": 118,
+  "datasheetUrl": "https://www.farnell.com/datasheets/1756127.pdf",
+  "sources": [
+    "https://www.farnell.com/datasheets/1756127.pdf",
+    "https://www.generationrobots.com/media/A-000000-00793/29124-Altimeter-Module-Documentation-v1.0.pdf",
+    "https://forums.parallax.com/discussion/134753/parallaxs-new-altimeter-barometer-module/p4"
+  ],
+  "priceUsd": 30,
+  "supplierQuery": "Parallax 29124 Altimeter Module MS5607",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VIN from the same rail as the microcontroller's I/O (3V3 on an ESP32 or Pico): the module's SDA level shifter pulls up to VIN, so 5 V on VIN puts 5 V on SDA.",
+    "Send reset 0x1E once after power-up and wait 2.8 ms before reading the PROM (0xA0–0xAE, 8 words); check the AN520 CRC-4 in the low nibble of word 7.",
+    "Each reading: convert D1 (0x48) and D2 (0x58) at OSR 4096, waiting at least 9.04 ms each, then send 0x00 and read 3 bytes. A result of 0 means the conversion was read too early.",
+    "Use the MS5607 compensation constants (OFF = C2·2^17 + C4·dT/2^6, SENS = C1·2^16 + C3·dT/2^7); MS5611 code uses different ones and reads about half the real pressure.",
+    "The sensor is light sensitive: shade it from direct light. Leave PS and CS unconnected for I2C at 0x76."
+  ],
+  "keywords": [
+    "ms5607",
+    "ms5607-02ba03",
+    "altimeter",
+    "barometer",
+    "pressure",
+    "temperature",
+    "parallax 29124",
+    "te connectivity",
+    "meas"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Pressure",
+    "unit": "mbar",
+    "min": 10,
+    "max": 1200,
+    "default": 1013.25,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 20
+      }
+    ],
+    "registers": {
+      "0xa0": 0,
+      "0xa1": 0,
+      "0xa2": 181,
+      "0xa3": 36,
+      "0xa4": 171,
+      "0xa5": 205,
+      "0xa6": 113,
+      "0xa7": 131,
+      "0xa8": 108,
+      "0xa9": 194,
+      "0xaa": 123,
+      "0xab": 65,
+      "0xac": 110,
+      "0xad": 5,
+      "0xae": 0,
+      "0xaf": 0
+    },
+    "promCrc4": {
+      "reg": "0xA0"
+    },
+    "constants": {
+      "C1": "reg(0xa2)*256 + reg(0xa3)",
+      "C2": "reg(0xa4)*256 + reg(0xa5)",
+      "C3": "reg(0xa6)*256 + reg(0xa7)",
+      "C4": "reg(0xa8)*256 + reg(0xa9)",
+      "C5": "reg(0xaa)*256 + reg(0xab)",
+      "C6": "reg(0xac)*256 + reg(0xad)"
+    },
+    "commandLatch": {
+      "reg": "0x100",
+      "from": 64,
+      "to": 88
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "scale": 1,
+        "control": "temperature",
+        "when": {
+          "reg": "0x100",
+          "mask": 240,
+          "equals": 80
+        },
+        "solve": {
+          "raw": "D2",
+          "formula": "dT = D2 - C5*256; TEMP = 2000 + dT*C6/8388608; T2 = if(TEMP < 2000, dT*dT/2147483648, 0); (TEMP - T2)/100",
+          "min": 0,
+          "max": 16777215
+        }
+      },
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "scale": 1,
+        "when": {
+          "reg": "0x100",
+          "mask": 240,
+          "equals": 64
+        },
+        "solve": {
+          "raw": "D1",
+          "formula": "dT = D2 - C5*256; TEMP = 2000 + dT*C6/8388608; OFF = C2*131072 + C4*dT/64; SENS = C1*65536 + C3*dT/128; OFF2 = if(TEMP < 2000, 61*(TEMP - 2000)^2/16, 0) + if(TEMP < -1500, 15*(TEMP + 1500)^2, 0); SENS2 = if(TEMP < 2000, 2*(TEMP - 2000)^2, 0) + if(TEMP < -1500, 8*(TEMP + 1500)^2, 0); P = (D1*(SENS - SENS2)/2097152 - (OFF - OFF2))/32768; P/100",
+          "min": 0,
+          "max": 16777215
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ms5607.py",
+    "code": "# MS5607-02BA03 barometric pressure & temperature sensor (TE / MEAS), MicroPython driver.\n# I2C mode (PS high). Reset 0x1E, read the 8-word calibration PROM (0xA0-0xAE) and check its AN520 CRC-4,\n# convert D1 (pressure) and D2 (temperature) at OSR 4096 (0x48 / 0x58, max 9.04 ms), read the 24-bit\n# result with ADC read 0x00, then apply the datasheet's first- and second-order compensation (MS5607 constants).\nimport time\n\n_RESET = 0x1E\n_ADC_READ = 0x00\n_PROM = 0xA0\n# OSR -> (convert D1 command, convert D2 command, max conversion time in ms, rounded up)\n_OSR = {256: (0x40, 0x50, 1), 512: (0x42, 0x52, 2), 1024: (0x44, 0x54, 3),\n        2048: (0x46, 0x56, 5), 4096: (0x48, 0x58, 10)}\n\n\ndef crc4(prom):\n    \"\"\"AN520 CRC-4 over the 8 PROM words, with the CRC nibble (low 4 bits of word 7) taken as 0.\"\"\"\n    w = list(prom)\n    w[7] &= 0xFF00\n    rem = 0\n    for cnt in range(16):\n        rem ^= (w[cnt >> 1] & 0xFF) if cnt & 1 else (w[cnt >> 1] >> 8)\n        for _ in range(8):\n            rem = ((rem << 1) ^ 0x3000) & 0xFFFF if rem & 0x8000 else (rem << 1) & 0xFFFF\n    return (rem >> 12) & 0xF\n\n\nclass MS5607:\n    def __init__(self, i2c, addr=0x76, osr=4096):\n        self.i2c = i2c\n        self.addr = addr\n        self.osr = osr\n        self.reset()\n        self.prom = [self._prom(i) for i in range(8)]\n        if crc4(self.prom) != self.prom[7] & 0xF:\n            raise OSError('MS5607 PROM CRC mismatch: check the wiring')\n        self.C = self.prom  # C[1]..C[6] are the calibration coefficients\n\n    def reset(self):\n        self.i2c.writeto(self.addr, bytes([_RESET]))\n        time.sleep_ms(3)  # PROM reload takes 2.8 ms\n\n    def _prom(self, i):\n        self.i2c.writeto(self.addr, bytes([_PROM + 2 * i]))\n        b = self.i2c.readfrom(self.addr, 2)\n        return (b[0] << 8) | b[1]\n\n    def _adc(self, cmd, wait_ms):\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        time.sleep_ms(wait_ms)\n        self.i2c.writeto(self.addr, bytes([_ADC_READ]))\n        b = self.i2c.readfrom(self.addr, 3)\n        v = (b[0] << 16) | (b[1] << 8) | b[2]\n        if v == 0:\n            raise OSError('MS5607 conversion not finished')\n        return v\n\n    def raw(self):\n        d1c, d2c, ms = _OSR[self.osr]\n        return self._adc(d1c, ms), self._adc(d2c, ms)\n\n    def read(self):\n        \"\"\"Measure once and return (pressure in mbar, temperature in °C).\"\"\"\n        D1, D2 = self.raw()\n        C = self.C\n        dT = D2 - (C[5] << 8)\n        TEMP = 2000 + ((dT * C[6]) >> 23)\n        OFF = (C[2] << 17) + ((C[4] * dT) >> 6)\n        SENS = (C[1] << 16) + ((C[3] * dT) >> 7)\n        if TEMP < 2000:  # second-order compensation (datasheet figure 3)\n            T2 = (dT * dT) >> 31\n            OFF2 = (61 * (TEMP - 2000) ** 2) >> 4\n            SENS2 = 2 * (TEMP - 2000) ** 2\n            if TEMP < -1500:\n                OFF2 += 15 * (TEMP + 1500) ** 2\n                SENS2 += 8 * (TEMP + 1500) ** 2\n            TEMP -= T2\n            OFF -= OFF2\n            SENS -= SENS2\n        P = (((D1 * SENS) >> 21) - OFF) >> 15\n        return P / 100, TEMP / 100\n\n    def pressure(self):\n        return self.read()[0]\n\n    def temperature(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_mbar=1013.25):\n        \"\"\"Altitude in metres from the international barometric formula.\"\"\"\n        return 44330 * (1 - (self.pressure() / sea_level_mbar) ** 0.1903)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ms5607 import MS5607\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MS5607(i2c)  # 0x76 with CS left high (module default)\nprint('PROM CRC ok')\nwhile True:\n    p, t = sensor.read()\n    print('P=%.1fmbar T=%.1fC' % (p, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PROM CRC ok",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 8
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 952.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=952.5mbar T=8.0C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:09:23.145Z",
+    "verifiedSources": [
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/6592/29124-Altimeter-Module-Documentation-v1.0.pdf",
+      "https://www.te.com/commerce/DocumentDelivery/DDEController?Action=showdoc&DocId=Data+Sheet%7FMS5607-02BA03%7FB2%7Fpdf%7FEnglish%7FENG_DS_MS5607-02BA03_B2.pdf"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ms5611",
+  "board": "GY-63 MS5611 module (7-pin: VCC, GND, SCL, SDA, CSB, SDO, PS)",
+  "reason": "Part check passed on ESP32 and Pico on the first run. The simulator inverts the datasheet's integer first- and second-order compensation over a CRC-4-checked PROM, and the driver follows the datasheet steps: reset, PROM read with AN520 CRC check, OSR-4096 D1/D2 conversions, then ADC read.",
+  "datasheetUrl": "http://www.hpinfotech.ro/MS5611-01BA03.pdf",
+  "breakoutPinoutSource": "https://protosupplies.com/product/gy-63-ms5611-pressure-temperature-sensor-module/",
+  "checkRuns": 1
+}

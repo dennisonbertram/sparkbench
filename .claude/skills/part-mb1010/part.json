@@ -1,0 +1,135 @@
+{
+  "type": "custom-mb1010",
+  "name": "MaxBotix LV-MaxSonar-EZ1 MB1010 ultrasonic rangefinder",
+  "mpn": "MB1010",
+  "category": "sensor",
+  "description": "MaxBotix LV-MaxSonar-EZ1 42 kHz ultrasonic rangefinder reporting 6 to 254 inches (15 cm to 6.45 m) with 1-inch resolution. Three outputs work at once: analog AN = (Vcc/512) per inch (6.4 mV/in at 3.3 V, 9.8 mV/in at 5 V), pulse width PW = 147 us per inch, and 9600-baud 0-Vcc serial on TX (\"Rnnn\\r\"). 2.5-5.5 V supply, 2-3 mA; a new reading every 49 ms. Sold as: MaxBotix MB1010 LV-MaxSonar-EZ1 (SparkFun SEN-08502), 7-hole 0.1\" edge row printed GND, +5, TX, RX, AN, PW, BW (solder on a 7-pin male header).",
+  "eli5": "Sends out short bursts of sound too high for you to hear and times the echo, so it knows how far away the nearest object is (15 cm to 6.4 m). Its AN pin puts out a voltage that grows with the distance.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (datasheet pin 7). Supply must be ripple- and noise-free for best ranging.",
+      "required": true
+    },
+    {
+      "name": "+5",
+      "role": "power",
+      "description": "Supply Vcc 2.5-5.5 V (datasheet pin 6), 2 mA at 3 V, 3 mA at 5 V. The AN scale follows Vcc (Vcc/512 per inch), so tell the driver the supply voltage.",
+      "required": true
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "description": "Serial output (pin 5): 9600 baud 8N1 at 0-Vcc levels but RS232 polarity (inverted compared with a TTL UART, so a microcontroller UART needs its RX inverted): 'R' + three digits (inches) + CR. Not needed for analog use.",
+      "required": false
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "description": "Ranging control (pin 4), internally pulled high: open or high = range continuously; low = stop; a high pulse of 20 us or more triggers one reading. Leave open for free-run.",
+      "required": false
+    },
+    {
+      "name": "AN",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog range output (pin 3): (Vcc/512) volts per inch, buffered, holds the latest reading. At 3.3 V: 0.039 V at 6 in up to 1.64 V at 254 in.",
+      "required": true
+    },
+    {
+      "name": "PW",
+      "role": "io",
+      "description": "Pulse-width output (pin 2): high time = 147 us per inch. Not needed for analog use.",
+      "required": false
+    },
+    {
+      "name": "BW",
+      "role": "io",
+      "description": "Serial/chain select (pin 1): leave open or low for serial data on TX; high makes TX send a single chaining pulse instead.",
+      "required": false
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 5.5,
+  "currentMa": 3,
+  "datasheetUrl": "https://maxbotix.com/cdn/shop/files/LV-MaxSonar-EZ_Datasheet.pdf",
+  "sources": [
+    "https://maxbotix.com/cdn/shop/files/LV-MaxSonar-EZ_Datasheet.pdf",
+    "https://maxbotix.com/products/mb1010",
+    "https://www.sparkfun.com/products/8502"
+  ],
+  "priceUsd": 30,
+  "supplierQuery": "MaxBotix MB1010 LV-MaxSonar-EZ1 ultrasonic range finder",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Solder a 7-pin male header into the hole row. The holes are labelled GND, +5, TX, RX, AN, PW, BW (datasheet pins 7 down to 1).",
+    "Power +5 from 3V3 (or 5 V): the sensor runs on 2.5-5.5 V. Powered from 3V3, AN stays below 1.64 V and the TX/PW outputs are 3.3 V logic, safe for ESP32 and Pico pins. If you power it from 5 V, AN still stays under 2.5 V but TX/PW swing to 5 V, so do not wire those to a 3.3 V GPIO without a divider.",
+    "Distance in inches = V(AN) x 512 / Vcc. Pass the real supply voltage to the driver (vcc=3.3 or vcc=5.0).",
+    "Leave RX and BW unconnected for continuous ranging with serial on TX. Only AN, +5 and GND are needed for the analog reading.",
+    "Keep the area in front of the sensor clear (ideally 14 in, at least 7 in) at power-up: it calibrates its ringdown during the first cycle, about 250 ms after power-up.",
+    "Readings closer than 6 inches report as 6 inches; between 6 and 20 inches they can be up to 2 inches off. Running at 3.3 V typically reports 1-2 % further than actual.",
+    "Use a clean supply (add 100 nF + 10 uF across +5 and GND near the sensor if readings jump); on the ESP32 use an ADC1 pin (GPIO32-39)."
+  ],
+  "keywords": [
+    "mb1010",
+    "lv-maxsonar-ez1",
+    "maxsonar",
+    "maxbotix",
+    "ez1",
+    "ultrasonic",
+    "sonar",
+    "distance",
+    "range",
+    "rangefinder",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "AN",
+    "quantity": "Distance to target",
+    "unit": "in",
+    "min": 6,
+    "max": 254,
+    "default": 60,
+    "vAtMin": 0.038672,
+    "vAtMax": 1.637109
+  },
+  "driver": {
+    "filename": "mb1010.py",
+    "code": "# MaxBotix LV-MaxSonar-EZ1 (MB1010) ultrasonic rangefinder, MicroPython driver (analog output AN).\n# Datasheet (LV-MaxSonar-EZ Series, PD11832i): pin 3 AN \"outputs analog voltage with a scaling factor of\n# (Vcc/512) per inch\" (about 9.8 mV/in at 5 V, 6.4 mV/in at 3.3 V), buffered, holding the most recent range.\n# So: range (inches) = V_AN / (Vcc / 512) = V_AN * 512 / Vcc. Reports 6 to 254 inches with 1-inch resolution;\n# targets closer than 6 inches read as 6 inches. A new reading every 49 ms in free-run mode (RX open/high);\n# the first reading is ready about 250 ms + 100 ms after power-up (calibration cycle).\n# Pass vcc = the voltage actually on the sensor's +5 pin (3.3 if it is powered from the 3V3 pin).\nimport time\nfrom machine import ADC, Pin\n\nCM_PER_INCH = 2.54\n\n\nclass MB1010:\n    MIN_IN = 6\n    MAX_IN = 254\n\n    def __init__(self, pin, vcc=3.3, samples=8, vref=3.3):\n        \"\"\"pin: GPIO number (or Pin) wired to AN. vcc: sensor supply in volts (sets the scale).\n        vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.samples = samples\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"Averaged AN voltage in volts.\"\"\"\n        total = 0\n        for _ in range(self.samples):\n            if hasattr(self.adc, 'read_uv'):\n                total += self.adc.read_uv() / 1e6\n            else:\n                total += self.adc.read_u16() * self.vref / 65535\n            time.sleep_us(200)\n        return total / self.samples\n\n    def inches(self):\n        \"\"\"Range in inches (datasheet scale Vcc/512 per inch), clamped to the 6-254 in reporting range.\"\"\"\n        d = self.voltage() * 512 / self.vcc\n        return min(max(d, self.MIN_IN), self.MAX_IN)\n\n    def cm(self):\n        \"\"\"Range in centimetres.\"\"\"\n        return self.inches() * CM_PER_INCH\n"
+  },
+  "example": {
+    "code": "from mb1010 import MB1010\nimport time\n\nsensor = MB1010({AN}, vcc=3.3)  # +5 pin powered from 3V3\nwhile True:\n    print('D=%.0fin' % sensor.inches())\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Converts AN (Vcc/512 V per inch at 3.3 V) to distance: 100 in reads D=100in",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 100
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=100in",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (7 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:59:50.841Z",
+    "verifiedSources": [
+      "https://maxbotix.com/cdn/shop/files/LV-MaxSonar-EZ_Datasheet.pdf",
+      "https://www.sparkfun.com/products/8502"
+    ]
+  }
+}

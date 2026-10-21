@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-rv-8803",
+  "board": "SparkFun Real Time Clock Module - RV-8803 (Qwiic), BOB-16281",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator rollover test into 2030, DRC-clean board). Modelled as an i2c-device rtc at 0x00 (DS1307 order) at address 0x32. The driver follows App. Manual 4.12/4.13 (re-read at 59 s, RESET-bit time set, one-hot weekday write, V2F/V1F clear). The sim's weekday register is not one-hot, so the driver works the weekday out from the date, which gives the same result on real hardware.",
+  "datasheetUrl": "https://www.microcrystal.com/fileadmin/Media/Products/RTC/App.Manual/RV-8803-C7_App-Manual.pdf",
+  "breakoutPinoutSource": "SparkFun Eagle board file (github.com/sparkfun/SparkFun_Real_Time_Clock_Module_RV-8803, Hardware/Qwiic_RTC_RV8803.brd): J3 1x08 pads 1-8 = GND, 3.3V, SDA, SCL, !EVI, !INT, CLKOUT, CLKOE with silk labels GND 3V3 SDA SCL EVI INT CLKOUT CLKOE",
+  "checkRuns": 1
+}

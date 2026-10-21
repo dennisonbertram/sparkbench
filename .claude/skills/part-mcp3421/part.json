@@ -1,0 +1,163 @@
+{
+  "type": "custom-mcp3421",
+  "name": "MCP3421 18-bit ADC (I2C)",
+  "mpn": "MCP3421",
+  "category": "sensor",
+  "description": "Microchip 18-bit delta-sigma analog-to-digital converter with one differential input (V+ minus V-, ±2.048 V full scale, PGA x1/x2/x4/x8), on-board 2.048 V reference and an I2C interface; 12/14/16/18-bit at 240/60/15/3.75 samples per second. Runs on 2.7-5.5 V. Sold as: Adafruit MCP3421 18-Bit ADC - STEMMA QT / Qwiic (product 5870), 6-pin header VIN, GND, SCL, SDA, V+, V- (V+/V- also on a 2-way screw terminal), 10 kΩ I2C pull-ups, fixed I2C address 0x68.",
+  "eli5": "Measures one small voltage (even a negative difference between two wires) extremely precisely and sends the number over I2C.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 2.7-5.5 V straight to the chip (no regulator); use the same voltage as your microcontroller's logic (3.3 V for ESP32/Pico). The 10 kΩ SDA/SCL pull-ups go to this pin",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground for power, logic and the analog inputs",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "io",
+      "description": "Positive analog input (VIN+); reading is V+ minus V-, ±2.048 V at gain 1; keep it between GND and VIN (Adafruit advises keeping both inputs within 0-2.048 V)",
+      "required": false
+    },
+    {
+      "name": "V-",
+      "role": "io",
+      "description": "Negative analog input (VIN-); tie to GND for single-ended use; keep it between GND and VIN (Adafruit advises keeping both inputs within 0-2.048 V)",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/22003e.pdf",
+  "priceUsd": 5.95,
+  "supplierQuery": "Adafruit 5870 MCP3421 18-bit ADC STEMMA QT",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "VIN feeds the chip directly (no regulator) and the 10 kΩ SDA/SCL pull-ups go to VIN: power it from 3.3 V with an ESP32 or Pico.",
+    "The reading is V+ minus V-. For a single-ended voltage tie V- to GND; you then get 0 to +2.048 V at gain 1. Divide larger voltages down first; each input must stay within GND - 0.3 V and VIN + 0.3 V.",
+    "One-shot conversion: write one configuration byte 0x80 | rate << 2 | gain (0x8C = 18-bit, gain 1), wait about 267 ms at 18 bits, read 3 data bytes + config byte (2 + 1 below 18 bits) and accept it when bit 7 (RDY) of the config byte is 0.",
+    "Volts = code x 2.048 V / 2^(N-1) / PGA: 15.625 µV per code at 18 bits, 62.5 µV at 16 bits, 250 µV at 14 bits, 1 mV at 12 bits (gain 1). Codes are two's complement and saturate instead of rolling over.",
+    "The address is fixed at 0x68 (MCP3421A0); use an I2C multiplexer for more than one board.",
+    "The V+/V- header pins and the screw terminal are the same two nets: use one or the other."
+  ],
+  "keywords": [
+    "mcp3421",
+    "adc",
+    "18-bit",
+    "delta-sigma",
+    "analog to digital",
+    "i2c adc",
+    "differential",
+    "thermocouple",
+    "strain gauge",
+    "adafruit 5870",
+    "stemma qt",
+    "microchip"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/22003e.pdf",
+    "https://www.adafruit.com/product/5870",
+    "https://learn.adafruit.com/adafruit-mcp3421-18-bit-adc/pinouts",
+    "https://cdn-shop.adafruit.com/970x728/5870-01.jpg"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Input voltage (V+ minus V-)",
+    "unit": "V",
+    "min": -2.048,
+    "max": 2.0479,
+    "default": 0,
+    "responses": [
+      {
+        "match": "8C",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 24,
+            "signed": true,
+            "scale": 0.000015625
+          },
+          {
+            "const": 12,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "88",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "signed": true,
+            "scale": 0.0000625
+          },
+          {
+            "const": 8,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mcp3421.py",
+    "code": "# MCP3421 18-bit single-channel delta-sigma ADC (Microchip DS22003E), MicroPython driver.\n# One-shot conversions: write the configuration byte with RDY=1 and O/C=0, wait for the\n# conversion, then read the data bytes followed by the configuration byte until its RDY\n# bit reads 0 (Sections 5.2 and 5.3.3).\nimport time\n\n# Resolution bits -> (S1S0 bits, conversion time in ms at that rate, data bytes)\n_RATES = {\n    12: (0b00, 5, 2),    # 240 SPS\n    14: (0b01, 17, 2),   # 60 SPS\n    16: (0b10, 67, 2),   # 15 SPS\n    18: (0b11, 267, 3),  # 3.75 SPS\n}\n_GAINS = {1: 0b00, 2: 0b01, 4: 0b10, 8: 0b11}\n\n\nclass MCP3421:\n    def __init__(self, i2c, addr=0x68, bits=18, gain=1):\n        if bits not in _RATES:\n            raise ValueError('bits must be 12, 14, 16 or 18')\n        if gain not in _GAINS:\n            raise ValueError('gain must be 1, 2, 4 or 8')\n        self.i2c = i2c\n        self.addr = addr\n        self.bits = bits\n        self.gain = gain\n\n    def _config(self):\n        # RDY=1 (start a one-shot conversion), C1C0=00 (unused on the MCP3421),\n        # O/C=0 (one-shot), S1S0 = rate, G1G0 = PGA gain\n        return 0x80 | (_RATES[self.bits][0] << 2) | _GAINS[self.gain]\n\n    def read_raw(self):\n        \"\"\"Convert once and return the signed output code.\"\"\"\n        _, conv_ms, nbytes = _RATES[self.bits]\n        self.i2c.writeto(self.addr, bytes([self._config()]))\n        time.sleep_ms(conv_ms)\n        for _ in range(50):\n            d = self.i2c.readfrom(self.addr, nbytes + 1)\n            if not d[nbytes] & 0x80:  # RDY = 0: the output register holds the new result\n                break\n            time.sleep_ms(conv_ms // 10 + 1)\n        else:\n            raise OSError('MCP3421 conversion did not finish')\n        if nbytes == 3:\n            # 18 bits: first byte is MMMMMM D17 D16 (repeated sign bits)\n            raw = ((d[0] & 0x03) << 16) | (d[1] << 8) | d[2]\n        else:\n            raw = ((d[0] << 8) | d[1]) & ((1 << self.bits) - 1)\n        if raw & (1 << (self.bits - 1)):\n            raw -= 1 << self.bits\n        return raw\n\n    def lsb(self):\n        \"\"\"Volts per code at the inputs: 2 x 2.048 V / 2^N, divided by the PGA gain.\"\"\"\n        return 4.096 / (1 << self.bits) / self.gain\n\n    def read_volts(self):\n        \"\"\"Differential input voltage V+ minus V- in volts.\"\"\"\n        return self.read_raw() * self.lsb()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mcp3421 import MCP3421\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nadc = MCP3421(i2c, addr=0x68, bits=18, gain=1)\nwhile True:\n    raw = adc.read_raw()\n    print('ADC=%d %.5fV' % (raw, raw * adc.lsb()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the differential input voltage set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -0.75
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ADC=-48000 -0.75000V",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:12:13.130Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/22003e.pdf",
+      "https://www.adafruit.com/product/5870",
+      "https://cdn-shop.adafruit.com/970x728/5870-01.jpg",
+      "https://raw.githubusercontent.com/adafruit/Adafruit_MCP3421/main/Adafruit_MCP3421.h"
+    ]
+  }
+}

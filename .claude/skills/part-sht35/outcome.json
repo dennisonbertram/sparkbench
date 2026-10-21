@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sht35",
+  "board": "Seeed Studio Grove - I2C High Accuracy Temp&Humi Sensor (SHT35) (101020592)",
+  "reason": "Modelled from the Sensirion SHT3x-DIS datasheet (cmd 0x2400, wait 15.5 ms, 6-byte reply with CRC-8 0x31/0xFF, T=-45+175*S/65535, RH=100*S/65535) at address 0x45 (Seeed board's ADDR jumper has a default trace to VCC); Grove pin order SCL,SDA,VCC,GND from Seeed's Eagle board file, marked cabled because the socket is 2 mm Grove. Part check printed PASS on ESP32 and Pico (sim test T=33.5C H=38%, PCB DRC clean).",
+  "datasheetUrl": "https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf",
+  "breakoutPinoutSource": "Seeed Eagle files https://files.seeedstudio.com/wiki/Grove-I2C_High_Accuracy_Temp-Humi_Sensor-SHT35/res/Grove%20-%20I2C%20High%20Accuracy%20Temp%26Humi%20Sensor%20(SHT35).zip (J1 pads 1-4 = SCL/SDA/VCC/GND, R1/R2 10k pull-ups, JP1 ADDR to VCC); https://wiki.seeedstudio.com/Grove-I2C_High_Accuracy_Temp-Humi_Sensor-SHT35/",
+  "checkRuns": 1
+}

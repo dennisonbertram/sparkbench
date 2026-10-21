@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-qmp6988",
+  "board": "M5Stack Unit Mini BPS v1.1 (SKU U090-B, QMP6988)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board). The sim inverts the datasheet's full temperature and pressure polynomials over the OTP registers 0xA0-0xB8, and the forced-mode driver decodes them back to 1004.00 hPa and 18.2 C. The address is 0x70 per M5Stack's schematic and Arduino example; the product page says 0x56, so the example scans for both.",
+  "datasheetUrl": "https://static-cdn.m5stack.com/resource/docs/datasheet/unit/enviii/QMP6988%20Datasheet.pdf",
+  "breakoutPinoutSource": "https://docs.m5stack.com/en/unit/BPS(QMP6988)",
+  "checkRuns": 1
+}

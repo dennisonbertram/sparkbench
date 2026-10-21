@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mcp3421",
+  "board": "Adafruit MCP3421 18-Bit ADC - STEMMA QT / Qwiic (product 5870)",
+  "reason": "Part check PASS on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator 'ADC=-48000 -0.75000V', DRC-clean board, footprint, LCSC). Sim answers the datasheet one-shot config bytes 0x8C (18-bit) and 0x88 (16-bit) at gain 1 with sign-extended two's-complement data (15.625/62.5 uV LSB) followed by the config byte with RDY=0; other gains and 12/14-bit are not modelled.",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/22003e.pdf",
+  "breakoutPinoutSource": "Adafruit 5870 product photo https://cdn-shop.adafruit.com/970x728/5870-01.jpg (silkscreen VIN, GND, SCL, SDA, V+, V-) and Adafruit learn guide pinouts page https://learn.adafruit.com/adafruit-mcp3421-18-bit-adc/pinouts",
+  "checkRuns": 2
+}

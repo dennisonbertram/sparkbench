@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-sht21",
+  "board": "ACROBOTIC SHT21 Digital Temperature and Humidity Sensor Breakout Board (BRK-00055)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB DRC, footprint, LCSC). The sim encodes 14-bit T / 12-bit RH with status bits and the CRC-8 (0x31, init 0x00) per the Sensirion datasheet, and the driver uses no-hold 0xF3/0xF5 with the datasheet maximum waits (85/29 ms).",
+  "datasheetUrl": "https://sensirion.com/media/documents/120BBE4C/63500094/Sensirion_Datasheet_Humidity_Sensor_SHT21.pdf",
+  "breakoutPinoutSource": "https://acrobotic.com/products/brk-00055",
+  "checkRuns": 1
+}

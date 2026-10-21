@@ -1,0 +1,117 @@
+{
+  "type": "custom-acs758",
+  "name": "ACS758 50 A current sensor module",
+  "mpn": "ACS758LCB-050B-PFF-T",
+  "category": "sensor",
+  "description": "Hall-effect current sensor from Allegro MicroSystems for AC or DC current up to ±50 A through a 100 µΩ copper conductor that is electrically isolated from the sensing side. Its analog output sits at VCC/2 (2.5 V) at 0 A and moves 40 mV per amp, ratiometric to its supply (factory-trimmed at 5 V). Sold as: the purple CJMCU-758 / \"MCU-758 ACS758LCB-050B-PFF-T Hall current sensor module\" (IP+/IP- solder pads for the measured wire, 4-pin header VCC, GND, OU1, OU2).",
+  "eli5": "Run a thick wire through its IP+ and IP- pads and it tells you how much current flows: its OU1 pin sits at 2.5 V with no current and goes up (or down for the other direction) by 0.04 V for every amp.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply: connect to 5 V (the chip is trimmed for accuracy at 5 V; ratiometry is specified for 4.5–5.5 V).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground.",
+      "required": true
+    },
+    {
+      "name": "OU1",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (the chip's VIOUT): Vout = VCC/2 + 0.040 V/A × I (2.5 V at 0 A with a 5 V supply, 0.5 V at −50 A, 4.5 V at +50 A). Connect to an ADC pin; it exceeds 3.3 V above about +20 A, so use a divider for larger currents.",
+      "required": true
+    },
+    {
+      "name": "OU2",
+      "role": "io",
+      "description": "Second output. Vendors give the same formula as OU1 (OU1 = OU2 = VCC/2 + 40 mV/A × I); use OU1 and leave this unconnected.",
+      "required": false
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 10,
+  "datasheetUrl": "https://www.allegromicro.com/-/media/files/datasheets/acs758-datasheet.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "CJMCU-758 ACS758LCB-050B current sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: VCC, GND, OU1, OU2 (as printed on the board). Power VCC from 5 V; read OU1 with an ADC pin and leave OU2 unconnected.",
+    "The measured current goes through the IP+ and IP- pads (solder or bolt a thick wire or ring lugs), in series with the load: current in at IP+ and out at IP- reads positive. Keep to low-voltage DC loads, and use wire rated for the current.",
+    "Current (A) = (Vout − VCC/2) / (0.040 × VCC/5). With 5 V: 2.5 V = 0 A, 2.9 V = +10 A, 2.1 V = −10 A.",
+    "OU1 reaches 4.5 V at +50 A, far above a 3.3 V board's ADC range; it passes 3.3 V at about +20 A. To use the full range, add a 10 kΩ (OU1 to ADC pin) / 20 kΩ (ADC pin to GND) divider and pass divider=1.5 to the driver.",
+    "The zero point follows the 5 V rail and drifts by up to ±25 mV over the part's life: call calibrate_zero() with no current flowing and average many samples (noise ≈ 10 mV, about 0.25 A).",
+    "The 100 A (20 mV/A), 150 A and 200 A versions, and the unidirectional 'U' versions, look the same: check the chip marking and pass the matching sensitivity (and zero_frac=0.12 for U parts)."
+  ],
+  "keywords": [
+    "acs758",
+    "acs758lcb-050b",
+    "cjmcu-758",
+    "mcu-758",
+    "current",
+    "ammeter",
+    "hall",
+    "analog",
+    "sensor",
+    "50a"
+  ],
+  "sources": [
+    "https://www.allegromicro.com/-/media/files/datasheets/acs758-datasheet.pdf",
+    "https://probots.co.in/mcu-758-acs758lcb-050b-50a-bidirectional-hall-effect-current-sensor-module.html",
+    "https://probots.co.in/pub/media/catalog/product/cache/d8ddd0f9b0cd008b57085cd218b48832/a/c/acs758lcb-050b_50a_bidirectional.jpg",
+    "https://www.gotronik.pl/modul-do-pomiaru-pradu-50a-acs758-czujnik-halla-kartapdf-7670.html",
+    "https://robu.in/product/mcu-758-hall-current-sensor-acs758lcb-050b-pff-t-linear-current-sensor-module/"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OU1",
+    "quantity": "Current",
+    "unit": "A",
+    "min": -50,
+    "max": 50,
+    "default": 0,
+    "vAtMin": 0.5,
+    "vAtMax": 4.5,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "acs758.py",
+    "code": "# ACS758 Hall-effect current sensor (Allegro MicroSystems), MicroPython driver.\n# For the ACS758LCB-050B (+/-50 A) on the purple CJMCU-758 / MCU-758 module (header VCC, GND, OU1, OU2).\n# Datasheet (ACS758xCB): VCC 3.0-5.5 V, factory-trimmed at VCC = 5 V, output ratiometric to VCC:\n#   VIOUT(Q) = VCC / 2 at 0 A (bidirectional \"B\" parts), Sens = 40 mV/A (x050B) at VCC = 5 V,\n# so I(A) = (Vout - VCC/2) / (0.040 V/A x VCC/5 V).\n# Unidirectional \"U\" parts instead sit at VIOUT(QUNI) = 0.6 V (x VCC/5) at 0 A: pass zero_frac=0.12.\n# Positive current flows into IP+ and out of IP-.\nfrom machine import ADC, Pin\n\n\nclass ACS758:\n    SENS_050B = 0.040   # V/A at VCC = 5 V\n    SENS_050U = 0.060\n    SENS_100B = 0.020\n    SENS_100U = 0.040\n    SENS_150B = 0.0133\n    SENS_150U = 0.0267\n    SENS_200B = 0.010\n    SENS_200U = 0.020\n\n    def __init__(self, pin, vcc=5.0, sensitivity=SENS_050B, zero_frac=0.5, divider=1.0, samples=64, vref=3.3):\n        \"\"\"pin: ADC GPIO wired to OU1. vcc: the module's supply voltage (ratiometric).\n        zero_frac: 0 A output as a fraction of VCC (0.5 bidirectional, 0.12 unidirectional).\n        divider: Vout / Vadc, e.g. 1.5 for a 10k (top) / 20k (bottom) divider; 1.0 if wired directly.\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.1 V usable; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.sens = sensitivity * vcc / 5.0  # sensitivity scales with VCC (ratiometric)\n        self.zero = vcc * zero_frac          # VIOUT(Q) scales with VCC too\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Averaged sensor output voltage (V) at the OU1 pin.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def calibrate_zero(self):\n        \"\"\"Call with NO current flowing: stores the measured 0 A output instead of VCC/2.\"\"\"\n        self.zero = self.voltage()\n        return self.zero\n\n    def current(self):\n        \"\"\"Current in amperes (positive = IP+ to IP-).\"\"\"\n        return (self.voltage() - self.zero) / self.sens\n"
+  },
+  "example": {
+    "code": "from acs758 import ACS758\nimport time\n\nsensor = ACS758({OU1})\nwhile True:\n    print('I=%.1fA' % sensor.current())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the current set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 10
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "I=10.0A",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:59:51.622Z",
+    "verifiedSources": [
+      "https://www.allegromicro.com/-/media/files/datasheets/acs758-datasheet.pdf"
+    ]
+  }
+}

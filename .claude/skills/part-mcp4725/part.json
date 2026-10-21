@@ -1,0 +1,131 @@
+{
+  "type": "custom-mcp4725",
+  "name": "MCP4725 12-bit I2C DAC",
+  "mpn": "MCP4725",
+  "category": "ic",
+  "description": "Microchip 12-bit digital-to-analog converter with I2C interface and EEPROM. Outputs a rail-to-rail voltage of VDD x code / 4096 (0 to VDD, the supply is the reference). Runs on 2.7-5.5 V. Sold as: Adafruit MCP4725 Breakout Board - 12-Bit DAC with I2C Interface, STEMMA QT (product 935; 6-pin header VIN, GND, SCL, SDA, A0, VOUT; MCP4725A1, I2C address 0x62, 0x63 with A0 high).",
+  "eli5": "Lets your board make a steady voltage anywhere between 0 V and its supply, set by a number from 0 to 4095.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 2.7-5.5 V; also the DAC reference, so Vout full scale = VIN. Use the microcontroller's logic voltage.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address select: low (pulled down on the board) = 0x62, high = 0x63",
+      "required": false
+    },
+    {
+      "name": "VOUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "DAC analog output, 0 V to VIN (keep load above 5 kOhm)",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.4,
+  "i2cAddress": 98,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf",
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf",
+    "https://github.com/adafruit/Adafruit-MCP4725-PCB/blob/master/Adafruit%20MCP4725%20QT.brd",
+    "https://learn.adafruit.com/mcp4725-12-bit-dac-tutorial/pinouts",
+    "https://www.adafruit.com/product/935"
+  ],
+  "priceUsd": 5,
+  "supplierQuery": "MCP4725 12-bit DAC breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Vout = VIN x code / 4096, so the output range follows the supply: 0-3.3 V on 3.3 V, 0-5 V on 5 V.",
+    "Fast write: two bytes [0 0 PD1 PD0 D11-D8][D7-D0]. Command 0x40 writes the DAC register, 0x60 writes it and the EEPROM (up to 50 ms, poll RDY/BSY bit 7 of the first read byte).",
+    "The Adafruit board uses the MCP4725A1: address 0x62 with A0 low (default), 0x63 with A0 high or the back jumper closed.",
+    "Do not write the EEPROM in a loop: it is rated for about 1 million writes.",
+    "Power VIN from the same voltage as the microcontroller's logic so the I2C pull-ups match."
+  ],
+  "keywords": [
+    "mcp4725",
+    "dac",
+    "digital to analog",
+    "analog output",
+    "12-bit",
+    "i2c dac",
+    "microchip"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "dac": {
+      "protocol": "mcp4725",
+      "pins": [
+        "VOUT"
+      ]
+    }
+  },
+  "driver": {
+    "filename": "mcp4725.py",
+    "code": "# MCP4725 12-bit I2C DAC (Microchip MCP4725), MicroPython driver.\n# Commands from the Microchip datasheet DS22039D, section 6:\n#   Fast mode write (C2 C1 = 0 0): [0 0 PD1 PD0 D11-D8] [D7-D0]\n#   Write DAC register (C2 C1 C0 = 0 1 0): [0x40 | PD1 PD0 << 1] [D11-D4] [D3-D0 0000]\n#   Write DAC register and EEPROM (0 1 1): [0x60 | PD << 1] [D11-D4] [D3-D0 0000], EEPROM write takes up to 50 ms\n#   Read: 5 bytes [RDY/BSY POR x x x PD1 PD0 x] [D11-D4] [D3-D0 xxxx] [x PD1 PD0 x D11-D8] [D7-D0]\n# Vout = VDD * code / 4096 (the supply is the reference).\nimport time\n\n# Power-down modes (PD1 PD0): 0 normal, 1 = 1 kOhm, 2 = 100 kOhm, 3 = 500 kOhm to ground\nPD_NORMAL = 0\nPD_1K = 1\nPD_100K = 2\nPD_500K = 3\n\n\nclass MCP4725:\n    def __init__(self, i2c, addr=0x62, vdd=3.3):\n        \"\"\"addr 0x62 with A0 low, 0x63 with A0 high (MCP4725A1, as on the Adafruit board).\n        vdd: the supply voltage on VIN, which is the DAC's full-scale reference.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.vdd = vdd\n\n    def write(self, code, power_down=PD_NORMAL):\n        \"\"\"Fast-mode write of a 12-bit code (0-4095) to the DAC register. EEPROM is not changed.\"\"\"\n        code = max(0, min(4095, int(code)))\n        self.i2c.writeto(self.addr, bytes([((power_down & 3) << 4) | (code >> 8), code & 0xFF]))\n\n    def write_eeprom(self, code, power_down=PD_NORMAL):\n        \"\"\"Write the code to the DAC register AND the EEPROM (the value used at power-up).\"\"\"\n        code = max(0, min(4095, int(code)))\n        self.i2c.writeto(self.addr, bytes([0x60 | ((power_down & 3) << 1), code >> 4, (code & 0x0F) << 4]))\n        # RDY/BSY stays low until the EEPROM write is done (typ 25 ms, max 50 ms)\n        t0 = time.ticks_ms()\n        while not self.read()[3]:\n            if time.ticks_diff(time.ticks_ms(), t0) > 100:\n                raise OSError('MCP4725 EEPROM write timed out')\n            time.sleep_ms(5)\n\n    def set_voltage(self, volts):\n        \"\"\"Set the output in volts (0 to vdd).\"\"\"\n        self.write(round(volts * 4096 / self.vdd))\n\n    def power_down(self, mode=PD_500K):\n        \"\"\"Switch the output off; it is pulled to ground through 1k/100k/500k.\"\"\"\n        self.write(0, mode)\n\n    def read(self):\n        \"\"\"Return (dac_code, power_down, eeprom_code, ready).\"\"\"\n        b = self.i2c.readfrom(self.addr, 5)\n        dac = (b[1] << 4) | (b[2] >> 4)\n        pd = (b[0] >> 1) & 3\n        eeprom = ((b[3] & 0x0F) << 8) | b[4]\n        ready = bool(b[0] & 0x80)\n        return dac, pd, eeprom, ready\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin, ADC\nimport time\nfrom mcp4725 import MCP4725\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ndac = MCP4725(i2c, 0x62, vdd=3.3)\nadc = ADC(Pin({VOUT}))\n\ndef vout():\n    time.sleep_ms(20)  # let the output and the ADC settle\n    return adc.read_u16() * 3.3 / 65535\n\nwhile True:\n    for code in (1000, 3000):\n        dac.write(code)\n        v = vout()\n        print('code=%d Vout=%.2fV' % (dac.read()[0], v))\n    dac.power_down()\n    print('off Vout=%.2fV' % vout())\n    time.sleep(1)\n",
+    "test": {
+      "id": "outputs",
+      "title": "Drives VOUT to VIN x code / 4096 and reads the code back",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "code=1000 Vout=0.81V",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "code=3000 Vout=2.42V",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "off Vout=0.00V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:08:29.820Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/22039d.pdf",
+      "https://learn.adafruit.com/mcp4725-12-bit-dac-tutorial/pinouts"
+    ]
+  }
+}

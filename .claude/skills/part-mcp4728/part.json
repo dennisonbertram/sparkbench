@@ -1,0 +1,169 @@
+{
+  "type": "custom-mcp4728",
+  "name": "MCP4728 quad 12-bit I2C DAC",
+  "mpn": "MCP4728",
+  "category": "ic",
+  "description": "Microchip quad 12-bit voltage-output DAC with EEPROM and an I2C interface. Each of the four outputs is set by a 12-bit code: VOUT = VDD × code / 4096, or 2.048 V × gain (1 or 2) × code / 4096 with the internal reference (never above VDD). Chip runs on 2.7–5.5 V, about 0.8 mA. Sold as: Adafruit MCP4728 Quad DAC with EEPROM - STEMMA QT / Qwiic (product 4470), two 6-pin headers (VCC, GND, SCL, SDA, LDAC, RDY / GND, VA, VB, VC, VD, VCC), I2C address 0x60.",
+  "eli5": "Turns numbers from your board into four steady voltages, like four volume knobs your code can turn.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply and I2C pull-up voltage, 3-5 V (use 3.3 V with a 3.3 V board: SDA/SCL are pulled up to VCC)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to VCC on the board)",
+      "required": true
+    },
+    {
+      "name": "LDAC",
+      "role": "io",
+      "description": "Active-low latch input; pulled to GND by 4.7 kΩ on the board so outputs update at once. Leave unconnected for basic use",
+      "required": false
+    },
+    {
+      "name": "RDY",
+      "role": "io",
+      "description": "RDY/BSY open-drain output, low while the EEPROM is being written (needs an external pull-up if used)",
+      "required": false
+    },
+    {
+      "name": "GND_2",
+      "role": "gnd",
+      "description": "Ground (second header, same net as GND)",
+      "required": false
+    },
+    {
+      "name": "VA",
+      "role": "io",
+      "fn": "adc",
+      "description": "Channel A analog output, 0 V to VDD",
+      "required": true
+    },
+    {
+      "name": "VB",
+      "role": "io",
+      "fn": "adc",
+      "description": "Channel B analog output, 0 V to VDD",
+      "required": true
+    },
+    {
+      "name": "VC",
+      "role": "io",
+      "fn": "adc",
+      "description": "Channel C analog output, 0 V to VDD",
+      "required": true
+    },
+    {
+      "name": "VD",
+      "role": "io",
+      "fn": "adc",
+      "description": "Channel D analog output, 0 V to VDD",
+      "required": false
+    },
+    {
+      "name": "VCC_2",
+      "role": "power",
+      "description": "VCC (second header, same net as VCC); not needed when VCC is wired",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1.4,
+  "i2cAddress": 96,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/22187E.pdf",
+  "priceUsd": 7.5,
+  "supplierQuery": "Adafruit MCP4728 quad DAC STEMMA QT 4470",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V when the microcontroller is 3.3 V: the board's 4.7 kΩ SDA/SCL pull-ups go to VCC.",
+    "Factory EEPROM default is internal 2.048 V reference, gain x1, code 0 on every channel; set VREF and gain explicitly on each write (the driver's write() does).",
+    "With VREF = VDD the gain bit is ignored and the output is VDD × code / 4096, so it follows any noise or droop on VCC; use the internal 2.048 V reference for a stable voltage.",
+    "LDAC is pulled low on the board, so each write appears on the output at once; only drive it if you want to latch all four outputs together.",
+    "The outputs drive at most a few mA; keep loads above 5 kΩ. Don't use the outputs to power anything.",
+    "save() writes the EEPROM (about 50 ms, limited write endurance) so the output returns at power-up; don't call it in a loop."
+  ],
+  "keywords": [
+    "mcp4728",
+    "dac",
+    "digital to analog",
+    "quad dac",
+    "analog output",
+    "i2c dac",
+    "eeprom",
+    "adafruit 4470"
+  ],
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/22187E.pdf",
+    "https://learn.adafruit.com/adafruit-mcp4728-i2c-quad-dac/pinouts",
+    "https://www.adafruit.com/product/4470",
+    "https://github.com/adafruit/Adafruit-MCP4728-PCB"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "dac": {
+      "protocol": "mcp4728",
+      "pins": [
+        "VA",
+        "VB",
+        "VC",
+        "VD"
+      ]
+    }
+  },
+  "driver": {
+    "filename": "mcp4728.py",
+    "code": "# MCP4728 quad 12-bit I2C DAC with EEPROM (Microchip DS22187E), MicroPython driver.\n# Writes use the Multi-Write command (0 1 0 0 0 DAC1 DAC0 UDAC) with UDAC = 0, so each\n# channel's output updates at the last byte's ACK whatever the LDAC pin is doing.\n# VOUT = VDD * code / 4096 (VREF = VDD, gain ignored) or 2.048 V * gain * code / 4096 (internal VREF).\nimport time\n\nVREF_VDD = 0\nVREF_INTERNAL = 1\nINTERNAL_VREF = 2.048\n\n# Power-down modes (PD1 PD0): output pulled to GND through 1 k, 100 k or 500 k.\nPD_NORMAL = 0\nPD_1K = 1\nPD_100K = 2\nPD_500K = 3\n\n\nclass MCP4728:\n    def __init__(self, i2c, addr=0x60, vdd=3.3):\n        self.i2c = i2c\n        self.addr = addr\n        self.vdd = vdd  # supply voltage on VCC: the full-scale value when VREF = VDD\n\n    def write(self, ch, code, vref=VREF_VDD, gain=1, pd=PD_NORMAL):\n        \"\"\"Set channel ch (0-3 = A-D) to a 12-bit code; EEPROM is not touched.\"\"\"\n        if not 0 <= ch <= 3:\n            raise ValueError('channel must be 0-3 (A-D)')\n        code = max(0, min(4095, int(code)))\n        cmd = 0x40 | (ch << 1)  # Multi-Write, UDAC = 0\n        hi = ((vref & 1) << 7) | ((pd & 3) << 5) | ((1 if gain == 2 else 0) << 4) | (code >> 8)\n        self.i2c.writeto(self.addr, bytes([cmd, hi, code & 0xFF]))\n\n    def set_voltage(self, ch, volts, vref=VREF_VDD, gain=1):\n        \"\"\"Set channel ch to the nearest code for volts (clamped to the reachable range).\"\"\"\n        full = self.vdd if vref == VREF_VDD else INTERNAL_VREF * (2 if gain == 2 else 1)\n        code = max(0, min(4095, round(volts * 4096 / full)))  # with internal VREF the output still stops at VDD\n        self.write(ch, code, vref, gain)\n        return code\n\n    def fast_write(self, codes, pds=(0, 0, 0, 0)):\n        \"\"\"Fast Write: 12-bit codes for A, B, C, D (keeps each channel's VREF and gain).\"\"\"\n        buf = bytearray()\n        for c, pd in zip(codes, pds):\n            c = max(0, min(4095, int(c)))\n            buf.append(((pd & 3) << 4) | (c >> 8))\n            buf.append(c & 0xFF)\n        self.i2c.writeto(self.addr, buf)\n\n    def select_vref(self, a, b, c, d):\n        \"\"\"Write the VREF bits of all channels (1 = internal 2.048 V, 0 = VDD).\"\"\"\n        self.i2c.writeto(self.addr, bytes([0x80 | (a << 3) | (b << 2) | (c << 1) | d]))\n\n    def select_gain(self, a, b, c, d):\n        \"\"\"Write the gain bits of all channels (1 = x2, 0 = x1; only used with internal VREF).\"\"\"\n        self.i2c.writeto(self.addr, bytes([0xC0 | (a << 3) | (b << 2) | (c << 1) | d]))\n\n    def power_down(self, a=PD_NORMAL, b=PD_NORMAL, c=PD_NORMAL, d=PD_NORMAL):\n        \"\"\"Write the power-down bits of all channels (PD_NORMAL wakes a channel up).\"\"\"\n        self.i2c.writeto(self.addr, bytes([0xA0 | (a << 2) | b, (c << 6) | (d << 4)]))\n\n    def save(self, ch, code, vref=VREF_VDD, gain=1, pd=PD_NORMAL):\n        \"\"\"Single Write: set channel ch AND its EEPROM (restored at power-up). Waits for RDY/BSY.\"\"\"\n        code = max(0, min(4095, int(code)))\n        hi = ((vref & 1) << 7) | ((pd & 3) << 5) | ((1 if gain == 2 else 0) << 4) | (code >> 8)\n        self.i2c.writeto(self.addr, bytes([0x58 | (ch << 1), hi, code & 0xFF]))\n        for _ in range(50):  # EEPROM write takes up to 50 ms; the chip ignores commands until done\n            time.sleep_ms(5)\n            if self.i2c.readfrom(self.addr, 1)[0] & 0x80:\n                return\n        raise OSError('MCP4728 EEPROM write timed out')\n\n    def read(self):\n        \"\"\"Read the 24-byte status block. Returns [(input, eeprom)] for A-D, each a dict.\"\"\"\n        d = self.i2c.readfrom(self.addr, 24)\n        out = []\n        for ch in range(4):\n            regs = []\n            for k in (0, 3):\n                s, hi, lo = d[ch * 6 + k], d[ch * 6 + k + 1], d[ch * 6 + k + 2]\n                regs.append({\n                    'ready': bool(s & 0x80), 'por': bool(s & 0x40), 'addr_bits': s & 7,\n                    'vref': hi >> 7, 'pd': (hi >> 5) & 3, 'gain': 2 if hi & 0x10 else 1,\n                    'code': ((hi & 0x0F) << 8) | lo,\n                })\n            out.append(tuple(regs))\n        return out\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin, ADC\nimport time\nfrom mcp4728 import MCP4728, VREF_INTERNAL, PD_500K\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ndac = MCP4728(i2c, vdd=3.3)\na = ADC(Pin({VA}))\nb = ADC(Pin({VB}))\nc = ADC(Pin({VC}))\n\ndef volts(adc):\n    return adc.read_u16() * 3.3 / 65535\n\ndac.write(0, 2482)                     # A: VREF = VDD, 3.3 V * 2482 / 4096 = 2.00 V\ndac.write(1, 3000, VREF_INTERNAL, 1)   # B: 2.048 V * 3000 / 4096 = 1.50 V\ndac.write(2, 2500, VREF_INTERNAL, 2)   # C: 2.048 V * 2 * 2500 / 4096 = 2.50 V\ntime.sleep_ms(20)\nprint('A=%.2f B=%.2f C=%.2f' % (volts(a), volts(b), volts(c)))\ndac.power_down(c=PD_500K)              # C off: pulled to GND through 500 kOhm\ntime.sleep_ms(20)\nprint('C off=%.2f' % volts(c))\n",
+    "test": {
+      "id": "outputs",
+      "title": "Drives VA, VB and VC to the written voltages, then powers VC down",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=2.00 B=1.50 C=2.50",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "C off=0.00",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:09:37.617Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/22187E.pdf",
+      "https://learn.adafruit.com/adafruit-mcp4728-i2c-quad-dac/pinouts"
+    ]
+  }
+}

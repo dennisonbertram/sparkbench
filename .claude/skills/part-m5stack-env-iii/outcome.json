@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-m5stack-env-iii",
+  "board": "M5Stack ENV III Unit (SKU U001-C, SHT30 + QMP6988, HY2.0-4P Grove)",
+  "reason": "Check passed on ESP32 and Pico on the first run: the SHT30 0x2400 reply with Sensirion CRCs and the QMP6988 at 0x70 (OTP coefficients plus the datasheet's Tr/Pr polynomials, solved rather than linearised) decode to the exact slider values. Supply is limited to 3.0-3.6 V because the unit's SDA/SCL pull-ups go to the Grove supply pin, so 5 V would put 5 V on the I2C lines.",
+  "datasheetUrl": "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/unit/enviii/QMP6988%20Datasheet.pdf",
+  "breakoutPinoutSource": "https://docs.m5stack.com/en/unit/envIII (PinMap GND/5V/SDA/SCL, schematic envIII_sch_01.webp)",
+  "checkRuns": 1
+}

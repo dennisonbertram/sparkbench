@@ -1,0 +1,199 @@
+{
+  "type": "custom-qmp6988",
+  "name": "QMP6988 barometric pressure sensor",
+  "mpn": "QMP6988",
+  "category": "sensor",
+  "description": "QST QMP6988 digital barometric pressure (30–110 kPa, ±3.9 Pa relative, ±100 Pa absolute) and temperature (-40 to 85 °C, ±2 °C) sensor with a 24-bit ADC and per-chip OTP calibration, read over I2C. The unit has an HT7533 3.3 V regulator and BSS138 level shifters, with 4.7 kΩ pull-ups on its SDA/SCL connector side to the unit's supply pin. Sold as: M5Stack Unit Mini BPS v1.1 (SKU U090-B, QMP6988), 4-pin HY2.0-4P Grove connector GND, 5V, SDA, SCL, I2C address 0x70 (SDO tied to GND in M5Stack's schematic; the product page says 0x56), supplied with a 5 cm Grove cable.",
+  "eli5": "Feels how hard the air is pressing down, so your board can tell the weather is changing or how high up it is, and it also reports the temperature.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire of the Grove cable)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V nominal (red wire). An HT7533 regulator makes 3.3 V for the QMP6988. The SDA/SCL pull-ups go to this pin, so on an ESP32 or Pico feed it 3.3 V (the regulator then passes about 3.2 V) to keep the I2C lines at 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (yellow wire), 4.7 kΩ pull-up to the 5V pin, level-shifted to the chip",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (white wire), 4.7 kΩ pull-up to the 5V pin, level-shifted to the chip",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "i2cAddress": 112,
+  "datasheetUrl": "https://static-cdn.m5stack.com/resource/docs/datasheet/unit/enviii/QMP6988%20Datasheet.pdf",
+  "sources": [
+    "https://static-cdn.m5stack.com/resource/docs/datasheet/unit/enviii/QMP6988%20Datasheet.pdf",
+    "https://docs.m5stack.com/en/unit/BPS(QMP6988)",
+    "https://raw.githubusercontent.com/m5stack/M5Unit-ENV/master/examples/Unit_BPS1.1_M5Core/Unit_BPS1.1_M5Core.ino",
+    "https://raw.githubusercontent.com/m5stack/M5Unit-ENV/master/src/QMP6988.h"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "M5Stack Unit Mini BPS v1.1 QMP6988 U090-B",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove wire colours on M5Stack cables: black GND, red 5V, yellow SDA, white SCL. Use a Grove-to-jumper lead for a breadboard.",
+    "The unit's SDA/SCL pull-ups (4.7 kΩ) go to its 5V pin. On a 3.3 V board (ESP32, Pico) feed the 5V pin from 3V3 so the bus never sees 5 V; the HT7533 still gives the QMP6988 about 3.2 V (it needs 1.71–3.6 V).",
+    "Address: 0x70 (SDO to GND per M5Stack's schematic and Arduino example); the product page lists 0x56 (SDO high). Run i2c.scan() and use whichever answers. Chip id 0x5C at register 0xD1.",
+    "Read the 25 calibration bytes at 0xA0–0xB8 once, then for each reading write CTRL_MEAS (0xF4), wait for the conversion (33.7 ms typical at ultra-high accuracy) and read 6 bytes from 0xF7: pressure then temperature, 24 bits each, MSB first, minus 2^23.",
+    "Compute temperature first (Tr in 1/256 °C), then pressure in Pa with the datasheet's polynomial. Do not linearise it.",
+    "Keep the sensor out of direct airflow and away from the regulator; draughts make the pressure reading jump."
+  ],
+  "keywords": [
+    "qmp6988",
+    "barometer",
+    "barometric",
+    "pressure",
+    "altitude",
+    "altimeter",
+    "m5stack",
+    "mini bps",
+    "u090",
+    "qst"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Pressure",
+    "unit": "Pa",
+    "min": 30000,
+    "max": 110000,
+    "default": 101325,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 22
+      }
+    ],
+    "registers": {
+      "0xd1": 92,
+      "0xa0": 89,
+      "0xa1": 216,
+      "0xa2": 19,
+      "0xa3": 136,
+      "0xa4": 248,
+      "0xa5": 48,
+      "0xa6": 31,
+      "0xa7": 64,
+      "0xa8": 240,
+      "0xa9": 96,
+      "0xaa": 3,
+      "0xab": 232,
+      "0xac": 7,
+      "0xad": 208,
+      "0xae": 244,
+      "0xaf": 72,
+      "0xb0": 1,
+      "0xb1": 244,
+      "0xb2": 24,
+      "0xb3": 56,
+      "0xb4": 251,
+      "0xb5": 80,
+      "0xb6": 11,
+      "0xb7": 184,
+      "0xb8": 115
+    },
+    "constants": {
+      "a0": "signed(reg(0xb2)*4096 + reg(0xb3)*16 + mod(reg(0xb8), 16), 20)/16",
+      "b00": "signed(reg(0xa0)*4096 + reg(0xa1)*16 + floor(reg(0xb8)/16), 20)/16",
+      "a1": "-0.0063 + 0.00043*signed(reg(0xb4)*256 + reg(0xb5), 16)/32767",
+      "a2": "-1.9e-11 + 1.2e-10*signed(reg(0xb6)*256 + reg(0xb7), 16)/32767",
+      "bt1": "0.1 + 0.091*signed(reg(0xa2)*256 + reg(0xa3), 16)/32767",
+      "bt2": "1.2e-08 + 1.2e-06*signed(reg(0xa4)*256 + reg(0xa5), 16)/32767",
+      "bp1": "0.033 + 0.019*signed(reg(0xa6)*256 + reg(0xa7), 16)/32767",
+      "b11": "2.1e-07 + 1.4e-07*signed(reg(0xa8)*256 + reg(0xa9), 16)/32767",
+      "bp2": "-6.3e-10 + 3.5e-10*signed(reg(0xaa)*256 + reg(0xab), 16)/32767",
+      "b12": "2.9e-13 + 7.6e-13*signed(reg(0xac)*256 + reg(0xad), 16)/32767",
+      "b21": "2.1e-15 + 1.2e-14*signed(reg(0xae)*256 + reg(0xaf), 16)/32767",
+      "bp3": "1.3e-16 + 7.9e-17*signed(reg(0xb0)*256 + reg(0xb1), 16)/32767"
+    },
+    "measures": [
+      {
+        "reg": "0xFA",
+        "bytes": 3,
+        "scale": 1,
+        "control": "temperature",
+        "solve": {
+          "raw": "RT",
+          "formula": "Dt = RT - 8388608; (a0 + a1*Dt + a2*Dt^2)/256",
+          "min": 0,
+          "max": 16777215
+        }
+      },
+      {
+        "reg": "0xF7",
+        "bytes": 3,
+        "scale": 1,
+        "solve": {
+          "raw": "RP",
+          "formula": "Dt = RT - 8388608; Tr = a0 + a1*Dt + a2*Dt^2; Dp = RP - 8388608; b00 + bt1*Tr + bp1*Dp + b11*Tr*Dp + bt2*Tr^2 + bp2*Dp^2 + b12*Dp*Tr^2 + b21*Dp^2*Tr + bp3*Dp^3",
+          "min": 0,
+          "max": 16777215
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qmp6988.py",
+    "code": "# QMP6988 barometric pressure & temperature sensor (QST), MicroPython driver.\n# Written from the QST QMP6988 datasheet rev C: chip id 0x5C at 0xD1, soft reset 0xE6 -> 0xE0,\n# 25 OTP compensation bytes at 0xA0-0xB8, forced-mode measurement via CTRL_MEAS (0xF4),\n# 24-bit raw pressure at 0xF7-0xF9 and temperature at 0xFA-0xFC (MSB first), and the\n# datasheet's compensation formulas (section 4.3).\nimport time\n\n_CHIP_ID = 0xD1\n_RESET = 0xE0\n_DEVICE_STAT = 0xF3\n_CTRL_MEAS = 0xF4\n_IIR = 0xF1\n_PRESS_TXD2 = 0xF7\n_COE = 0xA0\n\n# Conversion factors K = A + S * OTP / 32767 (datasheet table, section 4.3): name -> (offset in OTP block, A, S)\n_K = (\n    ('bt1', 2, 1.00e-1, 9.10e-2),\n    ('bt2', 4, 1.20e-8, 1.20e-6),\n    ('bp1', 6, 3.30e-2, 1.90e-2),\n    ('b11', 8, 2.10e-7, 1.40e-7),\n    ('bp2', 10, -6.30e-10, 3.50e-10),\n    ('b12', 12, 2.90e-13, 7.60e-13),\n    ('b21', 14, 2.10e-15, 1.20e-14),\n    ('bp3', 16, 1.30e-16, 7.90e-17),\n    ('a1', 20, -6.30e-3, 4.30e-4),\n    ('a2', 22, -1.90e-11, 1.20e-10),\n)\n\n\ndef _s16(b, i):\n    v = (b[i] << 8) | b[i + 1]\n    return v - 65536 if v & 0x8000 else v\n\n\ndef _s20(v):\n    return v - 0x100000 if v & 0x80000 else v\n\n\nclass QMP6988:\n    def __init__(self, i2c, addr=0x70):\n        \"\"\"addr: 0x70 with SDO tied to GND, 0x56 with SDO tied to VDDIO.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(_CHIP_ID, 1)[0]\n        if cid != 0x5C:\n            raise OSError('QMP6988 not found (chip id 0x%02x)' % cid)\n        self._w(_RESET, 0xE6)       # soft reset, then the chip reloads its OTP\n        time.sleep_ms(10)           # power-on/reset start-up time is at most 10 ms\n        c = self._r(_COE, 25)       # 0xA0 ... 0xB8\n        k = {}\n        for name, i, a, s in _K:\n            k[name] = a + s * _s16(c, i) / 32767\n        # a0 and b00 are 20-bit two's complement offsets in 20Q16 format (value / 16)\n        k['b00'] = _s20((c[0] << 12) | (c[1] << 4) | (c[24] >> 4)) / 16\n        k['a0'] = _s20((c[18] << 12) | (c[19] << 4) | (c[24] & 0x0F)) / 16\n        self.k = k\n        self._w(_IIR, 0x00)         # IIR filter off\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def read(self):\n        \"\"\"One forced-mode measurement. Returns (pressure in Pa, temperature in degC).\"\"\"\n        # Ultra high accuracy preset: temperature average x4 (011), pressure average x32 (110), forced mode (01)\n        self._w(_CTRL_MEAS, (0b011 << 5) | (0b110 << 2) | 0b01)\n        time.sleep_ms(34)           # 33.7 ms typical\n        for _ in range(20):\n            if not self._r(_DEVICE_STAT, 1)[0] & 0x08:   # bit 3 'measure' clears when data is stored\n                break\n            time.sleep_ms(5)\n        d = self._r(_PRESS_TXD2, 6)\n        dp = ((d[0] << 16) | (d[1] << 8) | d[2]) - 8388608\n        dt = ((d[3] << 16) | (d[4] << 8) | d[5]) - 8388608\n        k = self.k\n        tr = k['a0'] + k['a1'] * dt + k['a2'] * dt * dt          # temperature in 1/256 degC\n        pr = (k['b00'] + k['bt1'] * tr + k['bp1'] * dp + k['b11'] * tr * dp\n              + k['bt2'] * tr * tr + k['bp2'] * dp * dp + k['b12'] * dp * tr * tr\n              + k['b21'] * dp * dp * tr + k['bp3'] * dp * dp * dp)  # pressure in Pa\n        return pr, tr / 256\n\n    def pressure(self):\n        return self.read()[0]\n\n    def temperature(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_pa=101325.0):\n        \"\"\"Approximate altitude in metres from the barometric formula.\"\"\"\n        return 44330.0 * (1.0 - (self.read()[0] / sea_level_pa) ** 0.1903)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qmp6988 import QMP6988\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naddr = 0x70 if 0x70 in i2c.scan() else 0x56\nsensor = QMP6988(i2c, addr)\nwhile True:\n    p, t = sensor.read()\n    print('P=%.2f hPa T=%.1f C' % (p / 100, t))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 18.2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 100400
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=1004.00 hPa T=18.2 C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:18:09.265Z",
+    "verifiedSources": [
+      "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/datasheet/unit/enviii/QMP6988%20Datasheet.pdf",
+      "https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/docs/static/pdf/static/en/unit/BPS(QMP6988).pdf"
+    ]
+  }
+}

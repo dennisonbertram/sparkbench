@@ -1,0 +1,220 @@
+{
+  "type": "custom-ms5611",
+  "name": "MS5611 barometric pressure sensor",
+  "mpn": "MS5611-01BA03",
+  "category": "sensor",
+  "description": "TE (MEAS) high-resolution barometric pressure (10–1200 mbar, 0.012 mbar RMS at OSR 4096, ±1.5 mbar at 25 °C) and temperature (−40 to 85 °C, 0.01 °C steps) sensor with a 24-bit ΔΣ ADC, factory calibration in a CRC-checked PROM and an I2C/SPI interface; altitude resolution about 10 cm. Needs the datasheet compensation maths. Sold as: GY-63 MS5611 module (7-pin: VCC, GND, SCL, SDA, CSB, SDO, PS) with an on-board 3.3 V regulator, PS pulled high (I2C) and CSB pulled low, I2C address 0x77 (0x76 with CSB tied to VCC).",
+  "eli5": "Feels the air pressure so precisely that your board can tell if it has been lifted by the height of a book, and it measures temperature too.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3–5 V into the on-board 3.3 V regulator (the MS5611 chip itself runs at 1.8–3.6 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCLK in SPI mode)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI in SPI mode)",
+      "required": true
+    },
+    {
+      "name": "CSB",
+      "role": "io",
+      "description": "I2C address select (pulled low on the module): low/unconnected = 0x77, VCC = 0x76; chip select in SPI mode",
+      "required": false
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "SPI data out, unused in I2C mode",
+      "required": false
+    },
+    {
+      "name": "PS",
+      "role": "io",
+      "description": "Protocol select, pulled high on the module = I2C; tie to GND for SPI",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1.4,
+  "i2cAddress": 119,
+  "datasheetUrl": "http://www.hpinfotech.ro/MS5611-01BA03.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "GY-63 MS5611 barometric pressure sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Send reset (0x1E) once after power-up and wait at least 2.8 ms for the PROM to reload.",
+    "Read the 8 PROM words (commands 0xA0, 0xA2 ... 0xAE, 2 bytes each, MSB first) and check the AN520 CRC-4 in the low 4 bits of word 7; a mismatch usually means a loose wire.",
+    "Pressure: send 0x48 (D1, OSR 4096), wait 10 ms (max 9.04 ms), send 0x00 and read 3 bytes. Temperature: the same with 0x58 (D2). Reading before the conversion ends returns 0.",
+    "Apply the datasheet maths (dT, TEMP, OFF, SENS, then T2/OFF2/SENS2 below 20 °C); P comes out in 0.01 mbar and TEMP in 0.01 °C.",
+    "Leave PS unconnected (pulled high = I2C) and CSB unconnected for address 0x77; tie CSB to VCC for 0x76 to fit a second sensor.",
+    "Shield the sensor from light and drafts (foam over the gel cap helps) and keep it away from the regulator."
+  ],
+  "keywords": [
+    "ms5611",
+    "gy-63",
+    "barometer",
+    "pressure",
+    "altimeter",
+    "altitude",
+    "variometer",
+    "temperature",
+    "meas",
+    "te connectivity"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Air pressure",
+    "unit": "mbar",
+    "min": 10,
+    "max": 1200,
+    "default": 1013.25,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 22
+      }
+    ],
+    "registers": {
+      "0xa0": 0,
+      "0xa1": 0,
+      "0xa2": 181,
+      "0xa3": 36,
+      "0xa4": 171,
+      "0xa5": 205,
+      "0xa6": 113,
+      "0xa7": 131,
+      "0xa8": 108,
+      "0xa9": 194,
+      "0xaa": 123,
+      "0xab": 65,
+      "0xac": 110,
+      "0xad": 5,
+      "0xae": 77,
+      "0xaf": 32
+    },
+    "promCrc4": {
+      "reg": "0xA0"
+    },
+    "constants": {
+      "C1": "reg(0xa2)*256 + reg(0xa3)",
+      "C2": "reg(0xa4)*256 + reg(0xa5)",
+      "C3": "reg(0xa6)*256 + reg(0xa7)",
+      "C4": "reg(0xa8)*256 + reg(0xa9)",
+      "C5": "reg(0xaa)*256 + reg(0xab)",
+      "C6": "reg(0xac)*256 + reg(0xad)"
+    },
+    "commandLatch": {
+      "reg": "0x100",
+      "from": 64,
+      "to": 88
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "scale": 1,
+        "control": "temperature",
+        "when": {
+          "reg": "0x100",
+          "mask": 240,
+          "equals": 80
+        },
+        "solve": {
+          "raw": "D2",
+          "formula": "dT = D2 - C5*256; TEMP = 2000 + floor(dT*C6/8388608); T2 = if(TEMP < 2000, floor(dT*dT/2147483648), 0); (TEMP - T2)/100",
+          "min": 0,
+          "max": 16777215
+        }
+      },
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "scale": 1,
+        "control": "value",
+        "when": {
+          "reg": "0x100",
+          "mask": 240,
+          "equals": 64
+        },
+        "solve": {
+          "raw": "D1",
+          "formula": "dT = D2 - C5*256; TEMP = 2000 + floor(dT*C6/8388608); OFF = C2*65536 + floor(C4*dT/128); SENS = C1*32768 + floor(C3*dT/256); OFF2 = if(TEMP < 2000, floor(5*(TEMP - 2000)^2/2), 0) + if(TEMP < -1500, 7*(TEMP + 1500)^2, 0); SENS2 = if(TEMP < 2000, floor(5*(TEMP - 2000)^2/4), 0) + if(TEMP < -1500, floor(11*(TEMP + 1500)^2/2), 0); P = floor((floor(D1*(SENS - SENS2)/2097152) - (OFF - OFF2))/32768); P/100",
+          "min": 0,
+          "max": 16777215
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ms5611.py",
+    "code": "# MS5611 barometric pressure & temperature sensor (TE / MEAS MS5611-01BA03), MicroPython driver.\n# I2C only (PS pin high). Follows the datasheet: reset (0x1E) then 2.8 ms PROM reload, read the 8 PROM words\n# (0xA0..0xAE) and check the AN520 CRC-4, convert D1 (pressure) / D2 (temperature) at OSR 4096 (0x48 / 0x58,\n# max 9.04 ms), read the 24-bit result with ADC read (0x00), then apply the first and second order\n# temperature compensation with integer maths exactly as the datasheet flow charts.\nimport time\n\n_RESET = 0x1E\n_ADC_READ = 0x00\n_PROM = 0xA0\n# OSR -> (D1 command, D2 command, conversion time in ms rounded up from the datasheet maximum)\n_OSR = {\n    256: (0x40, 0x50, 1),\n    512: (0x42, 0x52, 2),\n    1024: (0x44, 0x54, 3),\n    2048: (0x46, 0x56, 5),\n    4096: (0x48, 0x58, 10),\n}\n\n\ndef crc4(prom):\n    \"\"\"AN520 CRC-4 over the 8 PROM words, with the low byte of word 7 treated as 0.\"\"\"\n    w = list(prom)\n    w[7] &= 0xFF00\n    rem = 0\n    for cnt in range(16):\n        rem ^= (w[cnt >> 1] & 0xFF) if cnt % 2 else (w[cnt >> 1] >> 8)\n        for _ in range(8):\n            rem = ((rem << 1) ^ 0x3000) & 0xFFFF if rem & 0x8000 else (rem << 1) & 0xFFFF\n    return (rem >> 12) & 0x0F\n\n\nclass MS5611:\n    def __init__(self, i2c, addr=0x77, osr=4096):\n        \"\"\"addr 0x77 with CSB low (GY-63 default), 0x76 with CSB tied to VCC.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.osr = osr\n        self.reset()\n        self.prom = [self._prom_word(i) for i in range(8)]\n        if crc4(self.prom) != self.prom[7] & 0x0F:\n            raise OSError('MS5611 PROM CRC mismatch: check the wiring')\n        self.C = self.prom  # C[1]..C[6] are the calibration coefficients\n\n    def reset(self):\n        self.i2c.writeto(self.addr, bytes([_RESET]))\n        time.sleep_ms(3)  # PROM reload takes 2.8 ms\n\n    def _prom_word(self, i):\n        self.i2c.writeto(self.addr, bytes([_PROM + 2 * i]))\n        b = self.i2c.readfrom(self.addr, 2)\n        return (b[0] << 8) | b[1]\n\n    def _convert(self, cmd, wait_ms):\n        self.i2c.writeto(self.addr, bytes([cmd]))\n        time.sleep_ms(wait_ms)\n        self.i2c.writeto(self.addr, bytes([_ADC_READ]))\n        b = self.i2c.readfrom(self.addr, 3)\n        return (b[0] << 16) | (b[1] << 8) | b[2]\n\n    def read_raw(self):\n        \"\"\"Return (D1, D2): uncompensated pressure and temperature counts.\"\"\"\n        c1, c2, wait = _OSR[self.osr]\n        d1 = self._convert(c1, wait)\n        d2 = self._convert(c2, wait)\n        return d1, d2\n\n    def read(self):\n        \"\"\"Measure once; return (pressure in mbar, temperature in °C), second-order compensated.\"\"\"\n        D1, D2 = self.read_raw()\n        C = self.C\n        dT = D2 - C[5] * 256\n        TEMP = 2000 + dT * C[6] // 8388608\n        OFF = C[2] * 65536 + C[4] * dT // 128\n        SENS = C[1] * 32768 + C[3] * dT // 256\n        T2 = OFF2 = SENS2 = 0\n        if TEMP < 2000:\n            T2 = dT * dT // 2147483648\n            OFF2 = 5 * (TEMP - 2000) ** 2 // 2\n            SENS2 = 5 * (TEMP - 2000) ** 2 // 4\n            if TEMP < -1500:\n                OFF2 += 7 * (TEMP + 1500) ** 2\n                SENS2 += 11 * (TEMP + 1500) ** 2 // 2\n        TEMP -= T2\n        OFF -= OFF2\n        SENS -= SENS2\n        P = (D1 * SENS // 2097152 - OFF) // 32768\n        return P / 100, TEMP / 100\n\n    def pressure(self):\n        return self.read()[0]\n\n    def temperature(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_mbar=1013.25):\n        \"\"\"Approximate altitude in metres from the international barometric formula.\"\"\"\n        return 44330 * (1 - (self.pressure() / sea_level_mbar) ** 0.1903)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ms5611 import MS5611\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MS5611(i2c)  # 0x77 with CSB unconnected; checks the PROM CRC\nprint('MS5611 ready, PROM CRC ok')\nwhile True:\n    p, t = sensor.read()\n    print('P=%.2f mbar T=%.2f C' % (p, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the air pressure and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 987.65
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 14.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=987.65 mbar T=14.50 C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "http://www.hpinfotech.ro/MS5611-01BA03.pdf",
+    "https://protosupplies.com/product/gy-63-ms5611-pressure-temperature-sensor-module/",
+    "https://lastminuteengineers.com/ms5611-barometric-pressure-sensor-arduino-tutorial",
+    "https://microcontrollerslab.com/ms5611-barometric-pressure-sensor-arduino/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:04:22.027Z",
+    "verifiedSources": [
+      "https://static.chipdip.ru/lib/444/DOC011444630.pdf",
+      "https://components101.com/sensors/ms5611-atmospheric-pressure-temperature-sensor-module",
+      "https://lastminuteengineers.com/ms5611-barometric-pressure-sensor-arduino-tutorial"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hih6130",
+  "board": "SparkFun Humidity and Temperature Sensor Breakout - HIH6130 (SEN-11295)",
+  "reason": "The part check passed on the first run on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test T=27.5C H=42%, circuit-board DRC). The sim encodes the Honeywell 4-byte Data Fetch (status bits 7:6, 14-bit RH, then 14-bit T left-aligned) with readFromZero and fields, and the driver sends the zero-length Measurement Request, waits 40 ms and checks the status bits.",
+  "datasheetUrl": "http://cdn.sparkfun.com/datasheets/Prototyping/1443945.pdf",
+  "breakoutPinoutSource": "SparkFun HIH6130_Breakout_v10 Eagle board file (JP1 pads 1-6 = SDA, SCL, AL_L, AL_H, VDD, GND, silkscreen labels), http://cdn.sparkfun.com/datasheets/Sensors/Weather/HIH6130_Breakout_v10.zip",
+  "checkRuns": 1
+}

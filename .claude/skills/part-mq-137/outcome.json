@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-137",
+  "board": "MQ-137 ammonia gas sensor module, common blue board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The first check run passed on ESP32 and Pico: wiring, design checks, breadboard, simulator (AO voltage slider and active-low DO toggle) and circuit board. AO is modelled as the datasheet's VRL across the load resistor. The driver uses Rs = (Vc/VRL - 1) x RL with R0 measured in clean air, as the Winsen datasheet defines it. Supply is 4.9-5.1 V, about 180 mA (heater 29 ohm at 5.0 V).",
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/PDF/Semiconductor%20Gas%20Sensor/MQ137%20(Ver1.4)%20-%20Manual.pdf",
+  "breakoutPinoutSource": "https://components101.com/sensors/mq137-gas-sensor",
+  "checkRuns": 1
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-131",
+  "board": "MQ-131 ozone gas sensor module, common blue 4-pin board with LM393 comparator (header VCC, GND, DO, AO) carrying the Winsen MQ131 high-concentration sensor",
+  "reason": "The first check run passed on ESP32 and Pico: spec, wiring, design checks, breadboard, simulator (AO voltage slider plus an active-low DO toggle) and the circuit board. AO is modelled as the datasheet's VRL, and the driver uses Rs = (Vc/VRL - 1) x RL with Rs/R0 calibration. The Winsen MQ131-H manual says ozone raises Rs, so AO falls with ozone (the opposite of most shop pages), and the docs say so.",
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/manual/mq131-h.pdf",
+  "breakoutPinoutSource": "https://docs.cirkitdesigner.com/component/9dfbd613-67f0-4abc-a85e-181acb22cc54/mq-131-sensor-ozone-gas",
+  "checkRuns": 1
+}

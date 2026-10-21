@@ -1,0 +1,247 @@
+{
+  "type": "custom-hs3003",
+  "name": "HS3003 humidity & temperature sensor",
+  "mpn": "HS3003",
+  "category": "sensor",
+  "description": "Renesas HS3003 relative humidity (0–100 %RH, ±2.5 %RH typical, 20–80 %RH) and temperature (-40 to 125 °C, ±0.25 °C typical, 0–70 °C) sensor with 14-bit results over I2C at fixed address 0x44; a zero-length write starts a measurement and a 4-byte read fetches it (status bits, no CRC). The chip runs on 2.3–5.5 V. Sold as: MikroElektronika Temp&Hum 18 Click (MIKROE-4892), a mikroBUS board with two 8-pin headers (AN, RST, CS, SCK, MISO, MOSI, 3V3, GND / PWM, INT, TX, RX, SCL, SDA, 5V, GND; only 3V3, GND, SCL and SDA are needed), 4.7 kΩ I2C pull-ups, a VCC SEL jumper (3V3 / 5V) and a power LED.",
+  "eli5": "Tells your board how damp the air is and how warm it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "AN",
+      "role": "nc",
+      "description": "mikroBUS analog pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "nc",
+      "description": "mikroBUS reset pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "mikroBUS SPI chip select (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "SCK",
+      "role": "nc",
+      "description": "mikroBUS SPI clock (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "MISO",
+      "role": "nc",
+      "description": "mikroBUS SPI MISO (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "MOSI",
+      "role": "nc",
+      "description": "mikroBUS SPI MOSI (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V: powers the HS3003, the SDA/SCL pull-ups and the power LED with the VCC SEL jumper on 3V3",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "nc",
+      "description": "mikroBUS PWM pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "nc",
+      "description": "mikroBUS interrupt pin (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "TX",
+      "role": "nc",
+      "description": "mikroBUS UART TX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "RX",
+      "role": "nc",
+      "description": "mikroBUS UART RX (not connected on this board)",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to the VCC chosen by VCC SEL)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to the VCC chosen by VCC SEL)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "nc",
+      "description": "mikroBUS 5 V rail: only powers the board when the VCC SEL jumper is moved to 5V (then the I2C pull-ups go to 5 V too); leave unconnected with VCC SEL on 3V3",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (second GND pin, same net as GND)",
+      "required": false
+    }
+  ],
+  "vmin": 2.3,
+  "vmax": 3.6,
+  "currentMa": 3,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/0/0/0/2/1/HS3003_datasheet.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "MikroElektronika Temp&Hum 18 Click MIKROE-4892 HS3003",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "Start a measurement with a zero-length write to 0x44 (address + W, then STOP: i2c.writeto(0x44, b'')); there is no command byte.",
+    "Wait at least 33.9 ms (14-bit RH and T, the factory default), then read 4 bytes: status + humidity[13:8], humidity[7:0], temperature[13:6], temperature[5:0] + 2 undefined bits.",
+    "Status bits 7:6 of the first byte: 00 = new valid data, 01 = stale (already read or not finished); fetch again after a short wait.",
+    "RH = H / 16383 × 100 %RH and T = T / 16383 × 165 − 40 °C.",
+    "Keep the VCC SEL jumper on 3V3 and power the board from the 3V3 pin: the SDA/SCL pull-ups go to the selected VCC, so the 5V setting would put 5 V on an ESP32's or Pico's I2C pins.",
+    "Only 3V3, GND, SCL and SDA are used; the other mikroBUS pins are not connected on this board."
+  ],
+  "keywords": [
+    "hs3003",
+    "hs300x",
+    "hs3001",
+    "renesas",
+    "temp&hum 18 click",
+    "mikroe-4892",
+    "temperature",
+    "humidity"
+  ],
+  "sources": [
+    "https://cdn.sparkfun.com/assets/0/0/0/2/1/HS3003_datasheet.pdf",
+    "https://cdn.sparkfun.com/assets/6/5/0/f/a/Schematic-19112-Temp_Hum_18_Click.PDF",
+    "https://www.sparkfun.com/products/19112",
+    "https://www.mikroe.com/temphum-18-click"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "readFromZero": true,
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "bits": 14,
+        "scale": 0.0061038881767686015,
+        "control": "humidity",
+        "fields": [
+          {
+            "reg": "0x00",
+            "from": 8,
+            "width": 6,
+            "at": 0
+          },
+          {
+            "reg": "0x01",
+            "from": 0,
+            "width": 8,
+            "at": 0
+          }
+        ]
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "bits": 14,
+        "scale": 0.010071415491668192,
+        "offset": -40,
+        "control": "value",
+        "fields": [
+          {
+            "reg": "0x02",
+            "from": 6,
+            "width": 8,
+            "at": 0
+          },
+          {
+            "reg": "0x03",
+            "from": 0,
+            "width": 6,
+            "at": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hs3003.py",
+    "code": "# HS3003 humidity & temperature sensor (Renesas HS300x series), MicroPython driver.\n# Protocol from the Renesas HS300x datasheet (section 6):\n#  - Measurement Request (MR): the 7-bit address with the WRITE bit and NO data bytes (zero-length write).\n#  - Wait for the conversion: 33.90 ms for 14-bit RH + 14-bit T (factory default), including wake-up.\n#  - Data Fetch (DF): read 4 bytes. Byte 0 bits 7:6 = status (00 valid, 01 stale), then humidity[13:0]\n#    big-endian; bytes 2-3 = temperature[15:2] big-endian, the 2 LSBs of byte 3 are undefined (masked off).\n#  - RH = H / (2^14 - 1) * 100 %RH;  T = T / (2^14 - 1) * 165 - 40 degC.\n# No CRC: the status bits are the only validity check.\nimport time\n\nADDR = 0x44            # fixed address (datasheet 6.2)\n_MEAS_MS = 34          # 33.90 ms at 14-bit / 14-bit resolution\n_STATUS_STALE = 0x01\n\n\nclass HS3003:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _request(self):\n        # Measurement Request: address + W, then STOP (no command byte).\n        self.i2c.writeto(self.addr, b'')\n\n    def _fetch(self):\n        d = self.i2c.readfrom(self.addr, 4)\n        status = d[0] >> 6\n        h_raw = ((d[0] & 0x3F) << 8) | d[1]\n        t_raw = ((d[2] << 8) | d[3]) >> 2\n        return status, h_raw, t_raw\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in degC, relative humidity in %).\"\"\"\n        self._request()\n        time.sleep_ms(_MEAS_MS + 6)  # margin over the 33.9 ms measurement time\n        for _ in range(5):\n            status, h_raw, t_raw = self._fetch()\n            if status != _STATUS_STALE:\n                break\n            time.sleep_ms(10)  # conversion not finished yet: fetch again\n        else:\n            raise OSError('HS3003 returned stale data: check the wiring and the supply')\n        rh = h_raw * 100 / 16383\n        t = t_raw * 165 / 16383 - 40\n        return t, rh\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom hs3003 import HS3003\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = HS3003(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.3
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 61
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.3C H=61%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:59:36.685Z",
+    "verifiedSources": [
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/2551/HS300x_4-9-21.pdf",
+      "https://searchdoc.mikroe.com/temphum18/html/index.html"
+    ]
+  }
+}

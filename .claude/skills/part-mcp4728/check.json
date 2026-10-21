@@ -1,0 +1,79 @@
+{
+  "type": "custom-mcp4728",
+  "mpn": "MCP4728",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "12 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "9 pins wired; U2.VA → D32 (GPIO32) — an analog-capable pin. U2.VB → D33 (GPIO33) — an analog-capable pin. U2.VC → D34 (GPIO34) — an analog-capable pin. It shares the I2C bus (SDA D21, SCL D22) at address 0x60. Added the mcp4728.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Drives VA, VB and VC to the written voltages, then powers VC down: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "12 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "9 pins wired; U2.VA → GP28 (GPIO28) — an analog-capable pin. U2.VB → GP27 (GPIO27) — an analog-capable pin. U2.VC → GP26 (GPIO26) — an analog-capable pin. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x60. Added the mcp4728.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Drives VA, VB and VC to the written voltages, then powers VC down: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C108207 MCP4728-E/UN (5089 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T14:09:37.617Z"
+}

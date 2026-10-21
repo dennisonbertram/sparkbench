@@ -1,0 +1,341 @@
+{
+  "type": "custom-cap1188",
+  "name": "CAP1188 8-key capacitive touch sensor",
+  "mpn": "CAP1188",
+  "category": "sensor",
+  "description": "Microchip (SMSC) CAP1188 capacitive touch controller: eight sensor inputs with automatic recalibration and programmable sensitivity, plus eight LED drivers that can follow the touches; read over I2C (Sensor Input Status register 0x03) or SPI. The chip runs on 3.0-3.6 V; the breakout has a 3.3 V regulator and 5 V tolerant I2C pins pulled up to 3.3 V. Sold as: Adafruit CAP1188 - 8-Key Capacitive Touch Sensor Breakout - I2C or SPI (product 1602), two 13-pin headers (SDA, SCK, VIN, GND, L1-L8, IRQ / MOSI, CS, RST, 3Vo, C1-C8, AD) with an LED per channel, I2C address 0x29 (0x28 with AD tied to 3Vo).",
+  "eli5": "Turns up to eight bits of foil or wire into touch buttons, lights a little LED for each one you touch and tells your board which ones your fingers are on.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (silkscreen 'SDA' / 'MISO'; SPI MISO in SPI mode); 10k pull-up to the on-board 3.3 V, 5 V tolerant input",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (silkscreen 'SCK', it is SCL in I2C mode; SPI clock in SPI mode); 10k pull-up to the on-board 3.3 V, 5 V tolerant input",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3.3-5 V into the on-board MIC5225 3.3 V regulator (the CAP1188 itself runs on 3.0-3.6 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "L1",
+      "role": "io",
+      "description": "LED1 driver output (silkscreen 'L1'): already drives the on-board LED1 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "L2",
+      "role": "io",
+      "description": "LED2 driver output (silkscreen 'L2'): already drives the on-board LED2 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "L3",
+      "role": "io",
+      "description": "LED3 driver output (silkscreen 'L3'): already drives the on-board LED3 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "L4",
+      "role": "io",
+      "description": "LED4 driver output (silkscreen 'L4'): already drives the on-board LED4 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "L5",
+      "role": "io",
+      "description": "LED5 driver output (silkscreen 'L5'): already drives the on-board LED5 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "L6",
+      "role": "io",
+      "description": "LED6 driver output (silkscreen 'L6'): already drives the on-board LED6 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "L7",
+      "role": "io",
+      "description": "LED7 driver output (silkscreen 'L7'): already drives the on-board LED7 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "L8",
+      "role": "io",
+      "description": "LED8 driver output (silkscreen 'L8'): already drives the on-board LED8 (470 Ohm to 3.3 V); can sink current for an extra LED. Not needed for touch sensing",
+      "required": false
+    },
+    {
+      "name": "IRQ",
+      "role": "io",
+      "description": "ALERT# interrupt output, active low (10k pull-up to 3.3 V on board); goes low on a touch until the INT bit is cleared",
+      "required": false
+    },
+    {
+      "name": "MOSI",
+      "role": "io",
+      "description": "WAKE / SPI MOSI (silkscreen 'MOSI'): SPI data in for 4-wire SPI; in I2C mode it is the active-high WAKE output in Standby. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select, active low (silkscreen 'CS'); not used in I2C mode (datasheet: tie to GND or leave open)",
+      "required": false
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Reset input, active HIGH (10k pull-down on board): hold high to reset, low to run. Leave open for normal use",
+      "required": false
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to ~100 mA); not a supply input, leave unconnected (or tie AD here for address 0x28)",
+      "required": false
+    },
+    {
+      "name": "C1",
+      "role": "io",
+      "description": "Capacitive sensor input CS1 (silkscreen 'C1'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "C2",
+      "role": "io",
+      "description": "Capacitive sensor input CS2 (silkscreen 'C2'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "C3",
+      "role": "io",
+      "description": "Capacitive sensor input CS3 (silkscreen 'C3'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "C4",
+      "role": "io",
+      "description": "Capacitive sensor input CS4 (silkscreen 'C4'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "C5",
+      "role": "io",
+      "description": "Capacitive sensor input CS5 (silkscreen 'C5'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "C6",
+      "role": "io",
+      "description": "Capacitive sensor input CS6 (silkscreen 'C6'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "C7",
+      "role": "io",
+      "description": "Capacitive sensor input CS7 (silkscreen 'C7'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "C8",
+      "role": "io",
+      "description": "Capacitive sensor input CS8 (silkscreen 'C8'): wire to a touch pad, foil or wire, not to the microcontroller",
+      "required": false
+    },
+    {
+      "name": "AD",
+      "role": "io",
+      "description": "ADDR_COMM select (silkscreen 'AD'), 150k to GND on board: open = I2C 0x29, wired to 3Vo = I2C 0x28, wired to GND = 4-wire SPI",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 25,
+  "i2cAddress": 41,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/00001620C.pdf",
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/00001620C.pdf",
+    "https://www.adafruit.com/product/1602",
+    "https://github.com/adafruit/Adafruit-CAP1188-PCB",
+    "https://raw.githubusercontent.com/adafruit/Adafruit-CAP1188-PCB/master/Adafruit%20CAP1188.brd",
+    "https://learn.adafruit.com/adafruit-cap1188-breakout",
+    "https://github.com/adafruit/Adafruit_CAP1188_Library"
+  ],
+  "priceUsd": 7.95,
+  "supplierQuery": "Adafruit 1602 CAP1188 8-key capacitive touch sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x26_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two 13-pin headers: left = SDA, SCK, VIN, GND, L1-L8, IRQ; right = MOSI, CS, RST, 3Vo, C1-C8, AD. Wire it with jumper leads.",
+    "For I2C wire only VIN, GND, SDA and SCK (SCK is the I2C clock). SDA/SCK already have 10k pull-ups to 3.3 V and are 5 V tolerant.",
+    "Address 0x29 with AD left open (150k on board); AD to 3Vo gives 0x28. AD to GND switches the chip to SPI, so don't ground it for I2C.",
+    "By default the chip blocks multiple touches (register 0x2A = 0x80, only one pad reported); the driver writes 0x2A = 0 so every touched pad is reported.",
+    "Status bits latch until the INT bit (register 0x00 bit 0) is cleared; the driver clears it after each read, so a released pad drops out one read later.",
+    "The chip ignores the bus for up to 15 ms after power-up and the first touch reading is ready after about 200 ms. Don't touch the pads while powering on: it calibrates against them.",
+    "RST is active HIGH with a 10k pull-down: leave it open, or drive it low and pulse high to reset.",
+    "Pads: copper foil, coins or wire on C1-C8; keep leads short and apart. The on-board LED for each channel lights on touch once LED linking (register 0x72) is set."
+  ],
+  "keywords": [
+    "cap1188",
+    "capacitive touch",
+    "touch sensor",
+    "8-key",
+    "adafruit 1602",
+    "i2c",
+    "spi",
+    "microchip"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 0,
+      "0x1F": 47,
+      "0x2A": 128,
+      "0x72": 0,
+      "0xFD": 80,
+      "0xFE": 93,
+      "0xFF": 131
+    },
+    "inputBits": [
+      {
+        "reg": "0x03",
+        "bit": 0,
+        "control": "cs1",
+        "label": "Pad C1 touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 1,
+        "control": "cs2",
+        "label": "Pad C2 touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 2,
+        "control": "cs3",
+        "label": "Pad C3 touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 3,
+        "control": "cs4",
+        "label": "Pad C4 touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 4,
+        "control": "cs5",
+        "label": "Pad C5 touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 5,
+        "control": "cs6",
+        "label": "Pad C6 touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 6,
+        "control": "cs7",
+        "label": "Pad C7 touched"
+      },
+      {
+        "reg": "0x03",
+        "bit": 7,
+        "control": "cs8",
+        "label": "Pad C8 touched"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "cap1188.py",
+    "code": "# CAP1188 8-channel capacitive touch sensor with 8 LED drivers (Microchip DS00001620C), MicroPython driver, I2C mode.\n# Register map (datasheet Table 6-1):\n#   0x00 Main Control: GAIN[7:6] STBY[5] DSLEEP[4] INT[0]; writing INT = 0 clears ALERT# (IRQ pin) and the\n#        latched status bits of inputs that are no longer touched\n#   0x02 General Status (TOUCH bit 0, MULT bit 2, RESET bit 3)\n#   0x03 Sensor Input Status, bit n-1 = CSn touched (latched until INT is cleared)\n#   0x10-0x17 delta counts CS1-CS8 (signed 8-bit), 0x1F sensitivity, 0x2A multiple-touch config (default 0x80:\n#        blocking ON, only 1 simultaneous touch), 0x72 sensor input LED linking, 0x74 LED output control\n#   0xFD Product ID = 0x50, 0xFE Manufacturer ID = 0x5D, 0xFF Revision = 0x83\n# I2C address is set by the resistor from ADDR_COMM (board pin AD) to GND, Table 4-1:\n#   150k (Adafruit board default, AD open) = 0x29, AD tied to 3Vo (VDD) = 0x28.\n#   (120k = 0x2A, 100k = 0x2B, 82k = 0x2C; AD to GND selects SPI instead of I2C.)\n# The chip ignores the bus for up to 15 ms after power-up and needs ~170-200 ms for the first conversion.\nimport time\n\n_MAIN = 0x00\n_GEN_STATUS = 0x02\n_INPUT_STATUS = 0x03\n_DELTA = 0x10\n_SENSITIVITY = 0x1F\n_MTBLK = 0x2A\n_LED_LINK = 0x72\n_LED_OUTPUT = 0x74\n_PRODUCT_ID = 0xFD\n_MFR_ID = 0xFE\n_REVISION = 0xFF\n\n\nclass CAP1188:\n    def __init__(self, i2c, addr=0x29, reset_pin=None, multi_touch=True, link_leds=True):\n        \"\"\"addr 0x29 with AD open (150k on board), 0x28 with AD wired to 3Vo.\n        reset_pin: optional machine.Pin wired to RST (active high, 10k pull-down on the board).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        if reset_pin is not None:\n            reset_pin.init(reset_pin.OUT)\n            reset_pin.value(0)\n            time.sleep_ms(10)\n            reset_pin.value(1)      # held in reset while high\n            time.sleep_ms(10)       # tRST_DLY min 10 ms\n            reset_pin.value(0)\n            time.sleep_ms(200)      # tRESET release up to 200 ms\n        else:\n            time.sleep_ms(15)       # tCOMM_DLY: no communication for up to 15 ms after power-up\n        pid = self._r(_PRODUCT_ID)\n        mid = self._r(_MFR_ID)\n        if pid != 0x50 or mid != 0x5D:\n            raise OSError('CAP1188 not found at 0x%02X (product 0x%02X, maker 0x%02X)' % (addr, pid, mid))\n        self.revision = self._r(_REVISION)\n        if multi_touch:\n            self._w(_MTBLK, 0x00)   # MULT_BLK_EN = 0: report every touched input, not just the first\n        if link_leds:\n            self._w(_LED_LINK, 0xFF)  # LEDn follows a touch on CSn\n        self.clear_interrupt()\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def clear_interrupt(self):\n        \"\"\"Write INT = 0 (keeping the other Main Control bits): releases IRQ and clears status bits\n        of inputs that are no longer touched.\"\"\"\n        self._w(_MAIN, self._r(_MAIN) & ~0x01)\n\n    def touched(self):\n        \"\"\"8-bit mask, bit 0 = C1 ... bit 7 = C8. Status bits latch until INT is cleared, so the\n        driver clears INT after each read (a released pad drops out on the next read).\"\"\"\n        t = self._r(_INPUT_STATUS)\n        if t:\n            self.clear_interrupt()\n        return t\n\n    def touched_pads(self):\n        \"\"\"List of touched pad numbers 1-8 (as printed C1-C8).\"\"\"\n        t = self.touched()\n        return [n + 1 for n in range(8) if t & (1 << n)]\n\n    def delta(self, pad):\n        \"\"\"Signed delta count of pad 1-8 (two's complement, saturates at 127).\"\"\"\n        v = self._r(_DELTA + pad - 1)\n        return v - 256 if v & 0x80 else v\n\n    def set_sensitivity(self, level):\n        \"\"\"level 0 (128x, most sensitive) ... 7 (1x); default 2 (32x). Base shift bits kept.\"\"\"\n        cur = self._r(_SENSITIVITY)\n        self._w(_SENSITIVITY, (cur & 0x8F) | ((level & 0x07) << 4))\n\n    def set_gain(self, gain_code):\n        \"\"\"Main Control GAIN[1:0]: 0 = 1x, 1 = 2x, 2 = 4x, 3 = 8x.\"\"\"\n        cur = self._r(_MAIN)\n        self._w(_MAIN, (cur & 0x3F) | ((gain_code & 0x03) << 6))\n\n    def leds(self, mask):\n        \"\"\"Drive LED outputs directly (only for LEDs not linked to their input).\"\"\"\n        self._w(_LED_OUTPUT, mask)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom cap1188 import CAP1188\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\ncap = CAP1188(i2c)          # 0x29, AD left open\nwhile True:\n    pads = cap.touched_pads()\n    print('TOUCH ' + (' '.join('C%d' % p for p in pads) if pads else 'none'))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "touch-pads",
+      "title": "Touched pads are reported from the Sensor Input Status register",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH none",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs2",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs7",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH C2 C7",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs2",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH C7",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "cs8",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TOUCH C7 C8",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:12:57.034Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/CAP1188%20.pdf",
+      "https://learn.adafruit.com/adafruit-cap1188-breakout/pinouts",
+      "https://learn.adafruit.com/adafruit-cap1188-breakout/wiring",
+      "https://cdn-shop.adafruit.com/970x728/1602-03.jpg"
+    ]
+  }
+}

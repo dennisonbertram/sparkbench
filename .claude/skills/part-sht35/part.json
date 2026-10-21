@@ -1,0 +1,153 @@
+{
+  "type": "custom-sht35",
+  "name": "SHT35 temperature & humidity sensor",
+  "mpn": "SHT35",
+  "category": "sensor",
+  "description": "Sensirion high-accuracy digital temperature (-40 to 125 °C, ±0.1 °C typical) and relative humidity (0–100 %, ±1.5 % typical) sensor with an I2C interface (SHT3x-DIS family). Runs on 2.15–5.5 V. Sold as: Seeed Studio Grove - I2C High Accuracy Temp&Humi Sensor (SHT35) (101020592; 4-pin Grove I2C connector SCL, SDA, VCC, GND with 10 kΩ pull-ups on board), I2C address 0x45 (0x44 with the ADDR jumper re-soldered to GND).",
+  "eli5": "Tells your board how warm the air is and how damp it is, very accurately.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (Grove pin 1, yellow wire; 10 kΩ pull-up on board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (Grove pin 2, white wire; 10 kΩ pull-up on board)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V or 5 V (chip 2.15–5.5 V; Grove pin 3, red wire)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black wire)",
+      "required": true
+    }
+  ],
+  "cabled": true,
+  "vmin": 2.15,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "i2cAddress": 69,
+  "datasheetUrl": "https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "Seeed Grove I2C High Accuracy Temp Humi Sensor SHT35 101020592",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "The board has a 2 mm Grove socket, not 0.1 in pins: use a Grove-to-female-jumper cable (yellow SCL, white SDA, red VCC, black GND).",
+    "Default I2C address is 0x45 because the ADDR jumper is bridged to VCC; cut that trace and bridge to GND for 0x44 (e.g. for a second sensor).",
+    "Single-shot command 0x24 0x00 then wait at least 15.5 ms before reading 6 bytes: temperature MSB, LSB, CRC, humidity MSB, LSB, CRC.",
+    "Check each CRC (poly 0x31, init 0xFF). A mismatch almost always means a loose SDA/SCL wire.",
+    "Keep the sensor away from the board's regulator and the microcontroller, which warm the air around them."
+  ],
+  "keywords": [
+    "sht35",
+    "sht3x",
+    "grove",
+    "temperature",
+    "humidity",
+    "sensirion",
+    "seeed"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "24 00",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0015259021896696422
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sht35.py",
+    "code": "# SHT35 temperature & humidity sensor (Sensirion SHT3x-DIS family), MicroPython driver.\n# Single-shot, high-repeatability measurement without clock stretching (command 0x2400),\n# CRC-8 checked as in the datasheet (poly 0x31, init 0xFF; 0xBEEF -> 0x92).\n# The Seeed Grove SHT35 board ties ADDR to VCC, so its default address is 0x45.\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SHT35:\n    def __init__(self, i2c, addr=0x45):\n        self.i2c = i2c\n        self.addr = addr\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in degC, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x24\\x00')\n        time.sleep_ms(20)  # high repeatability takes up to 15.5 ms\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('SHT35 CRC mismatch: check the wiring')\n        t_raw = (d[0] << 8) | d[1]\n        h_raw = (d[3] << 8) | d[4]\n        return -45 + 175 * t_raw / 65535, 100 * h_raw / 65535\n\n    def soft_reset(self):\n        self.i2c.writeto(self.addr, b'\\x30\\xa2')\n        time.sleep_ms(2)\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sht35 import SHT35\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SHT35(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 33.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 38
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=33.5C H=38%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf",
+    "https://wiki.seeedstudio.com/Grove-I2C_High_Accuracy_Temp-Humi_Sensor-SHT35/",
+    "https://files.seeedstudio.com/wiki/Grove-I2C_High_Accuracy_Temp-Humi_Sensor-SHT35/res/Grove%20-%20I2C%20High%20Accuracy%20Temp%26Humi%20Sensor%20(SHT35).zip"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:20:59.733Z",
+    "verifiedSources": [
+      "https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf",
+      "https://raw.githubusercontent.com/Seeed-Studio/Seeed_SHT35/master/Seeed_SHT35.h"
+    ]
+  }
+}

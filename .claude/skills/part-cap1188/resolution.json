@@ -1,0 +1,10 @@
+{
+  "diffs": [
+    {
+      "diff": "pin count: part has 26 (SDA SCK VIN GND L1 L2 L3 L4 L5 L6 L7 L8 IRQ MOSI CS RST 3Vo C1 C2 C3 C4 C5 C6 C7 C8 AD), datasheet reading has 27 (VIN GND SCK MISO SDA L1 L2 L3 L4 L5 L6 L7 L8 IRQ MOSI CS RST 3Vo C1 C2 C3 C4 C5 C6 C7 C8 AD)",
+      "verdict": "part-correct",
+      "evidence": "Adafruit's Eagle board file for product 1602 has exactly two 13-pin headers, JP3 and JP4 (package 1X13_ROUND_70), for 26 pads in total. The silkscreen labels 'SDA' (x=2.54, y=36.727) and 'MISO' (x=2.54, y=35.457) are stacked around the same top pad of JP4 (y=36.195). That pad is JP4 pad 1, and it is on the single net <signal name=\"SDA/MISO\"> with U1 pad 3 and the 10K pull-up R9. So MISO is a second name for the SDA pin (I2C data, or SPI MISO in SPI mode), not a separate pin. The second reading counted that one dual-labeled pad twice. The model already describes SDA as \"silkscreen 'SDA' / 'MISO'; SPI MISO in SPI mode\".",
+      "source": "https://raw.githubusercontent.com/adafruit/Adafruit-CAP1188-PCB/master/Adafruit%20CAP1188.brd"
+    }
+  ]
+}

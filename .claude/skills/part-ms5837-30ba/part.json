@@ -1,0 +1,196 @@
+{
+  "type": "custom-ms5837-30ba",
+  "name": "MS5837-30BA depth / pressure sensor (Bar30)",
+  "mpn": "MS5837-30BA",
+  "category": "sensor",
+  "description": "TE Connectivity gel-filled, waterproof 0-30 bar absolute pressure and temperature sensor (0.2 mbar / 2 mm water depth resolution at OSR 8192) with a 24-bit ADC, factory calibration PROM and I2C interface. Sold as: Blue Robotics Bar30 High-Resolution 300 m Depth/Pressure Sensor (4-pin JST-GH cable: Vin red, SCL green, SDA white, GND black), 2.5-5.5 V supply with on-board 3.3 V regulator, 3.3 V I2C logic, no I2C pull-ups, address 0x76.",
+  "eli5": "Screws into a waterproof hull and tells your board how much the water is pressing on it, so you know how deep it is, plus the water temperature.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Red wire. Supply 2.5-5.5 V, regulated to 3.3 V on the board",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "Green wire. I2C clock, 3.3 V logic (max 3.6 V); the Bar30 has no pull-up, so add one (e.g. 4.7 kOhm) to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "White wire. I2C data, 3.3 V logic (max 3.6 V); the Bar30 has no pull-up, so add one (e.g. 4.7 kOhm) to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black wire. Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 5.5,
+  "currentMa": 1.25,
+  "i2cAddress": 118,
+  "datasheetUrl": "https://www1.futureelectronics.com/doc/TE%20Connectivity%20Sensors/MS583730BA01-50.pdf",
+  "priceUsd": 85,
+  "supplierQuery": "Blue Robotics Bar30 MS5837-30BA depth pressure sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "The Bar30 has a 4-pin JST-GH cable: 1 red Vin, 2 green SCL, 3 white SDA, 4 black GND. Use a JST-GH breakout or cut-and-crimp to reach a breadboard.",
+    "SDA and SCL are 3.3 V logic (2.5-3.6 V). On a 5 V-logic board use a level converter; on ESP32 / Pico wire them straight to the I2C pins with 4.7 kOhm pull-ups to 3.3 V (the Bar30 has none).",
+    "After reset (0x1E) read the 7 PROM words 0xA0-0xAC and check the CRC-4 in the top 4 bits of word 0; a mismatch means a wiring or bus fault.",
+    "Each reading is two conversions (D1 pressure 0x48, D2 temperature 0x58 at OSR 4096), each followed by at least 9.04 ms wait, then ADC read 0x00 returns 24 bits. Reading too early returns 0.",
+    "Apply the datasheet second-order compensation; pressure comes out in 0.1 mbar units. Depth in metres = (P - surface P) x 100 / (density x 9.80665).",
+    "The gel-filled sensing port must be kept clean; rinse in fresh water after use in salt water. Absolute pressure range 0-30 bar (about 300 m of sea water)."
+  ],
+  "keywords": [
+    "ms5837",
+    "ms5837-30ba",
+    "bar30",
+    "blue robotics",
+    "depth",
+    "pressure",
+    "water",
+    "rov",
+    "barometer",
+    "te connectivity"
+  ],
+  "sources": [
+    "https://www1.futureelectronics.com/doc/TE%20Connectivity%20Sensors/MS583730BA01-50.pdf",
+    "https://bluerobotics.com/store/sensors-cameras/sensors/bar30-sensor-r1/",
+    "https://github.com/bluerobotics/Bar30-Pressure-Sensor/blob/master/BAR30-SENSOR-Schematic.pdf"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Pressure",
+    "unit": "mbar",
+    "min": 0,
+    "max": 30000,
+    "default": 1013.25,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Water temperature",
+        "unit": "°C",
+        "min": -20,
+        "max": 85,
+        "default": 20
+      }
+    ],
+    "registers": {
+      "0xa0": 32,
+      "0xa1": 0,
+      "0xa2": 136,
+      "0xa3": 166,
+      "0xa4": 142,
+      "0xa5": 0,
+      "0xa6": 79,
+      "0xa7": 104,
+      "0xa8": 87,
+      "0xa9": 82,
+      "0xaa": 104,
+      "0xab": 22,
+      "0xac": 102,
+      "0xad": 34
+    },
+    "constants": {
+      "C1": "reg(0xa2)*256 + reg(0xa3)",
+      "C2": "reg(0xa4)*256 + reg(0xa5)",
+      "C3": "reg(0xa6)*256 + reg(0xa7)",
+      "C4": "reg(0xa8)*256 + reg(0xa9)",
+      "C5": "reg(0xaa)*256 + reg(0xab)",
+      "C6": "reg(0xac)*256 + reg(0xad)"
+    },
+    "commandLatch": {
+      "reg": "0x100",
+      "from": 64,
+      "to": 90
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "scale": 1,
+        "control": "temperature",
+        "when": {
+          "reg": "0x100",
+          "mask": 240,
+          "equals": 80
+        },
+        "solve": {
+          "raw": "D2",
+          "formula": "dT = D2 - C5*256; TEMP = 2000 + floor(dT*C6/8388608); Ti = if(TEMP < 2000, floor(3*dT*dT/8589934592), floor(2*dT*dT/137438953472)); (TEMP - Ti)/100",
+          "min": 0,
+          "max": 16777215
+        }
+      },
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "scale": 1,
+        "when": {
+          "reg": "0x100",
+          "mask": 240,
+          "equals": 64
+        },
+        "solve": {
+          "raw": "D1",
+          "formula": "dT = D2 - C5*256; TEMP = 2000 + floor(dT*C6/8388608); OFF = C2*65536 + floor(C4*dT/128); SENS = C1*32768 + floor(C3*dT/256); OFFi = if(TEMP < 2000, floor(3*(TEMP - 2000)^2/2) + if(TEMP < -1500, 7*(TEMP + 1500)^2, 0), floor((TEMP - 2000)^2/16)); SENSi = if(TEMP < 2000, floor(5*(TEMP - 2000)^2/8) + if(TEMP < -1500, 4*(TEMP + 1500)^2, 0), 0); P2 = floor((floor(D1*(SENS - SENSi)/2097152) - (OFF - OFFi))/8192); P2/10",
+          "min": 0,
+          "max": 16777215
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ms5837.py",
+    "code": "# MS5837-30BA 30 bar pressure & temperature sensor (TE Connectivity), MicroPython driver.\n# Written from the TE MS5837-30BA datasheet: reset 0x1E, PROM words 0-6 at 0xA0-0xAC with a CRC-4 in\n# bits 15:12 of word 0, D1 (pressure) / D2 (temperature) conversions, ADC read 0x00, first- and\n# second-order compensation. Works with the Blue Robotics Bar30 (I2C address 0x76).\nimport time\n\n_RESET = 0x1E\n_ADC_READ = 0x00\n_PROM = 0xA0\n_CONV_D1 = 0x40\n_CONV_D2 = 0x50\n# OSR -> (command offset, maximum conversion time in ms from the datasheet ADC table)\n_OSR = {256: (0x00, 0.60), 512: (0x02, 1.17), 1024: (0x04, 2.28),\n        2048: (0x06, 4.54), 4096: (0x08, 9.04), 8192: (0x0A, 18.08)}\n\n\ndef crc4(words):\n    \"\"\"Datasheet CRC-4 over PROM words 0-6 (CRC nibble of word 0 and subsidiary word 7 taken as 0).\"\"\"\n    n = list(words[:7]) + [0]\n    n[0] &= 0x0FFF\n    rem = 0\n    for cnt in range(16):\n        rem ^= (n[cnt >> 1] & 0xFF) if cnt % 2 else (n[cnt >> 1] >> 8)\n        for _ in range(8):\n            rem = ((rem << 1) ^ 0x3000) & 0xFFFF if rem & 0x8000 else (rem << 1) & 0xFFFF\n    return (rem >> 12) & 0x0F\n\n\nclass MS5837_30BA:\n    def __init__(self, i2c, addr=0x76, osr=4096):\n        if osr not in _OSR:\n            raise ValueError('osr must be 256, 512, 1024, 2048, 4096 or 8192')\n        self.i2c = i2c\n        self.addr = addr\n        self.osr = osr\n        self.i2c.writeto(addr, bytes([_RESET]))\n        time.sleep_ms(10)\n        c = []\n        for i in range(7):\n            self.i2c.writeto(addr, bytes([_PROM + 2 * i]))\n            b = self.i2c.readfrom(addr, 2)\n            c.append((b[0] << 8) | b[1])\n        if crc4(c) != (c[0] >> 12):\n            raise OSError('MS5837 PROM CRC mismatch: check the wiring')\n        self.C = c  # C[1]..C[6] are the calibration coefficients\n\n    def _adc(self, cmd):\n        off, tmax = _OSR[self.osr]\n        self.i2c.writeto(self.addr, bytes([cmd + off]))\n        time.sleep_us(int(tmax * 1000) + 500)  # wait the maximum conversion time\n        self.i2c.writeto(self.addr, bytes([_ADC_READ]))\n        b = self.i2c.readfrom(self.addr, 3)\n        return (b[0] << 16) | (b[1] << 8) | b[2]\n\n    def read_raw(self):\n        \"\"\"Return (D1, D2): uncompensated pressure and temperature counts.\"\"\"\n        d1 = self._adc(_CONV_D1)\n        d2 = self._adc(_CONV_D2)\n        return d1, d2\n\n    def compensate(self, d1, d2):\n        \"\"\"Datasheet first- and second-order compensation. Returns (pressure mbar, temperature °C).\"\"\"\n        C = self.C\n        dT = d2 - C[5] * 256\n        TEMP = 2000 + dT * C[6] // 8388608\n        OFF = C[2] * 65536 + C[4] * dT // 128\n        SENS = C[1] * 32768 + C[3] * dT // 256\n        if TEMP < 2000:\n            Ti = 3 * dT * dT // 8589934592\n            OFFi = 3 * (TEMP - 2000) ** 2 // 2\n            SENSi = 5 * (TEMP - 2000) ** 2 // 8\n            if TEMP < -1500:\n                OFFi += 7 * (TEMP + 1500) ** 2\n                SENSi += 4 * (TEMP + 1500) ** 2\n        else:\n            Ti = 2 * dT * dT // 137438953472\n            OFFi = (TEMP - 2000) ** 2 // 16\n            SENSi = 0\n        OFF2 = OFF - OFFi\n        SENS2 = SENS - SENSi\n        TEMP2 = TEMP - Ti                              # 0.01 °C\n        P2 = (d1 * SENS2 // 2097152 - OFF2) // 8192    # 0.1 mbar\n        return P2 / 10, TEMP2 / 100\n\n    def read(self):\n        \"\"\"Measure once: (pressure in mbar, temperature in °C).\"\"\"\n        return self.compensate(*self.read_raw())\n\n    @staticmethod\n    def depth(pressure_mbar, surface_mbar=1013.25, density=1029):\n        \"\"\"Depth in metres below the surface (density 1029 kg/m3 sea water, 997 fresh water).\"\"\"\n        return (pressure_mbar - surface_mbar) * 100 / (density * 9.80665)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ms5837 import MS5837_30BA\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = MS5837_30BA(i2c)\nwhile True:\n    p, t = sensor.read()\n    print('P=%.1f mbar T=%.1f C' % (p, t))\n    time.sleep_ms(500)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure and water temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 10
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=2500.0 mbar T=10.0 C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:05:07.962Z",
+    "verifiedSources": [
+      "https://www.amsys.de/downloads/data/MS5837-30BA-AMSYS-datasheet.pdf",
+      "https://bluerobotics.com/wp-content/uploads/2016/01/bar-i2c-jst-gh-pinout.png"
+    ]
+  }
+}

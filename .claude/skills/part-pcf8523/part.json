@@ -1,0 +1,137 @@
+{
+  "type": "custom-pcf8523",
+  "name": "PCF8523 real-time clock breakout",
+  "mpn": "PCF8523",
+  "category": "ic",
+  "description": "NXP PCF8523 real-time clock/calendar: seconds to years in BCD with leap-year handling, minute/hour/day/weekday alarm, two timers, offset calibration, battery switch-over with low-battery flag and a programmable open-drain square-wave output (32.768 kHz to 1 Hz), on a 400 kHz I2C bus at address 0x68. Chip runs on 1.6-5.5 V with I2C active (1.8 V with battery switch-over) and draws about 1.2 uA timekeeping. Sold as: Adafruit PCF8523 Real Time Clock Breakout Board - STEMMA QT / Qwiic (product 5189) (5-pin header VIN, GND, SCL, SDA, SQW plus two STEMMA QT sockets; 10 kOhm I2C pull-ups to VIN, power LED, 32.768 kHz crystal, CR1220 holder, no regulator), I2C address 0x68.",
+  "eli5": "A tiny clock that keeps the date and time, even while your board is switched off if a coin cell is fitted.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3-5 V straight to the chip (no regulator) and to the 10 kOhm I2C pull-ups: use 3.3 V with an ESP32 or Pico",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, up to 400 kHz (1 MHz chip max). 10 kOhm pull-up to VIN on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data. 10 kOhm pull-up to VIN on the board",
+      "required": true
+    },
+    {
+      "name": "SQW",
+      "role": "io",
+      "description": "INT1/CLKOUT: square wave (32.768 kHz at power-on) or alarm interrupt (active LOW). Open-drain with no pull-up on the board: add one (e.g. Pin.PULL_UP or 10 kOhm) if used. Not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 0.5,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/PCF8523.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "Adafruit PCF8523 RTC breakout STEMMA QT 5189",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/PCF8523.pdf",
+    "https://www.adafruit.com/product/5189",
+    "https://learn.adafruit.com/adafruit-pcf8523-real-time-clock/pinouts",
+    "https://github.com/adafruit/Adafruit-PCF8523-RTC-Breakout-PCB/blob/master/Adafrruit%20PCF8523%20QT.brd",
+    "https://github.com/adafruit/Adafruit-PCF8523-RTC-Breakout-PCB/blob/master/README.md"
+  ],
+  "buildNotes": [
+    "Fixed I2C address 0x68 (D0h write / D1h read), the same as a DS1307/DS3231, so only one of these per bus.",
+    "Header order on the board (silkscreen, left to right): VIN, GND, SCL, SDA, SQW. The two STEMMA QT sockets carry GND, VIN, SDA, SCL.",
+    "SCL and SDA are pulled up to VIN with 10 kOhm on the board: power VIN from 3.3 V with an ESP32 or Pico so the bus never sees 5 V.",
+    "Read or write all seven time registers (03h-09h) in one burst finished within 1 s; the chip blocks its counters during the access.",
+    "Bit 7 of the seconds register (OS) is set at power-up and whenever the oscillator stopped: the time is invalid until you set it. Setting the time clears it.",
+    "Battery switch-over is OFF at power-on (Control_3 PM = 111), so the CR1220 is not used until you write PM = 000; the driver does this whenever it sets the time.",
+    "SQW is open-drain with no pull-up on the board and outputs 32.768 kHz from power-up; write COF = 111 (register 0Fh bits 5-3) to switch it off, which also frees the pin for the alarm interrupt.",
+    "The PCF8523 is not temperature compensated: expect a drift of up to about 2 s per day (use the Offset register 0Eh to trim)."
+  ],
+  "keywords": [
+    "pcf8523",
+    "rtc",
+    "real time clock",
+    "clock",
+    "calendar",
+    "adafruit",
+    "5189",
+    "3295",
+    "stemma qt",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "rtc": {
+      "reg": "0x03",
+      "order": "pcf8563"
+    },
+    "registers": {
+      "0x00": 0,
+      "0x01": 0,
+      "0x02": 224,
+      "0x0A": 128,
+      "0x0B": 128,
+      "0x0C": 128,
+      "0x0D": 128,
+      "0x0E": 0,
+      "0x0F": 0,
+      "0x10": 7,
+      "0x12": 7
+    }
+  },
+  "driver": {
+    "filename": "pcf8523.py",
+    "code": "# PCF8523 real-time clock/calendar (NXP), MicroPython driver.\n# I2C address 0x68 (write D0h / read D1h). Registers per the NXP PCF8523 datasheet Rev. 7 (Table 6):\n# 00h Control_1 (CAP_SEL, T, STOP, SR, 12_24, SIE, AIE, CIE), 01h Control_2 (WTAF, CTAF, CTBF, SF, AF,\n# WTAIE, CTAIE, CTBIE), 02h Control_3 (PM[2:0], BSF, BLF, BSIE, BLIE),\n# 03h-09h seconds, minutes, hours, days, weekdays, months, years (BCD, auto-increment),\n# 0Ah-0Dh alarms (minute, hour, day, weekday; bit 7 AEN_x = 1 disables that field),\n# 0Eh Offset, 0Fh Tmr_CLKOUT_ctrl (COF[2:0] in bits 5-3).\n_ADDR = 0x68\n_CTRL1 = 0x00\n_CTRL2 = 0x01\n_CTRL3 = 0x02\n_SECONDS = 0x03\n_ALARM = 0x0A\n_CLKOUT = 0x0F\n\n\ndef _bcd(n):\n    return ((n // 10) << 4) | (n % 10)\n\n\ndef _dec(b):\n    return (b >> 4) * 10 + (b & 0x0F)\n\n\ndef _weekday(y, m, d):\n    # 0 = Sunday ... 6 = Saturday, the PCF8523's default weekday assignment (Table 18).\n    t = (0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4)\n    if m < 3:\n        y -= 1\n    return (y + y // 4 - y // 100 + y // 400 + t[m - 1] + d) % 7\n\n\nclass PCF8523:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w(self, reg, v):\n        self.i2c.writeto_mem(self.addr, reg, bytes([v & 0xFF]))\n\n    def reset(self):\n        \"\"\"Software reset (58h to Control_1, datasheet 8.3). Control registers return to their reset values and OS is set; time counters are left unchanged.\"\"\"\n        self._w(_CTRL1, 0x58)\n\n    def battery_switchover(self, on=True):\n        \"\"\"PM[2:0] in Control_3. Power-on default is 111 = switch-over OFF (the coin cell is not used).\n        on=True writes 000: switch-over in standard mode plus battery-low detection, so the clock keeps\n        running from the CR1220 when VCC is removed.\"\"\"\n        c3 = self._r(_CTRL3) & 0x0B  # keep BSF, BSIE, BLIE (BLF is read-only)\n        self._w(_CTRL3, c3 | (0x00 if on else 0xE0))\n\n    def datetime(self, dt=None):\n        \"\"\"Read or set the time.\n        Read returns (year, month, day, weekday, hour, minute, second), weekday 0 = Sunday.\n        Set with (year, month, day, hour, minute, second); the weekday is worked out for you.\n        Setting also switches the chip to 24-hour mode and enables coin-cell backup.\"\"\"\n        if dt is None:\n            # One burst 03h-09h: the chip blocks its counters during the access (datasheet 8.6.8).\n            r = self.i2c.readfrom_mem(self.addr, _SECONDS, 7)\n            hr = r[2]\n            if self._r(_CTRL1) & 0x08:  # 12_24 = 1: 12-hour mode, bit 5 = PM, hours 1-12\n                h = _dec(hr & 0x1F) % 12 + (12 if hr & 0x20 else 0)\n            else:\n                h = _dec(hr & 0x3F)\n            return (2000 + _dec(r[6]), _dec(r[5] & 0x1F), _dec(r[3] & 0x3F), r[4] & 0x07,\n                    h, _dec(r[1] & 0x7F), _dec(r[0] & 0x7F))\n        y, mo, d, h, mi, s = dt[:6]\n        if not 2000 <= y <= 2099:\n            raise ValueError('year must be 2000-2099')\n        c1 = self._r(_CTRL1) & 0x87  # keep CAP_SEL, SIE, AIE, CIE; T = 0, SR = 0, 12_24 = 0 (24-hour)\n        self._w(_CTRL1, c1 | 0x20)   # STOP = 1: freeze the divider chain while setting\n        # Seconds through years in one access (datasheet 8.6.8); OS = 0 clears the oscillator-stop flag.\n        self.i2c.writeto_mem(self.addr, _SECONDS, bytes([\n            _bcd(s), _bcd(mi), _bcd(h), _bcd(d), _weekday(y, mo, d), _bcd(mo), _bcd(y - 2000)]))\n        self._w(_CTRL1, c1)          # STOP = 0: clock runs, the first second starts now\n        self.battery_switchover(True)\n\n    def lost_power(self):\n        \"\"\"True if OS is set: the oscillator stopped (first power-up, or no coin cell); time is invalid.\"\"\"\n        return bool(self._r(_SECONDS) & 0x80)\n\n    def battery_low(self):\n        \"\"\"BLF (Control_3 bit 2): coin cell below about 2.5 V. Needs battery_switchover(True) (PM = 000).\"\"\"\n        return bool(self._r(_CTRL3) & 0x04)\n\n    def clkout(self, hz):\n        \"\"\"Square wave on SQW (open-drain, needs a pull-up): 32768, 16384, 8192, 4096, 1024, 32, 1,\n        or 0/None for off (high-Z). Power-on default is 32768.\"\"\"\n        codes = {32768: 0, 16384: 1, 8192: 2, 4096: 3, 1024: 4, 32: 5, 1: 6}\n        cof = 7 if not hz else codes[hz]\n        r = self._r(_CLKOUT) & 0xC7  # keep TAM, TBM, TAC, TBC\n        self._w(_CLKOUT, r | (cof << 3))\n\n    def _ctrl2_clear(self, mask):\n        # Flags are cleared by writing 0 and left alone by writing 1 (datasheet 8.7.5, Table 27);\n        # the interrupt-enable bits 2-0 are rewritten with their previous values.\n        c2 = self._r(_CTRL2)\n        self._w(_CTRL2, (0x78 & ~mask) | (c2 & 0x07))\n\n    def set_alarm(self, minute=None, hour=None, day=None, weekday=None, interrupt=True):\n        \"\"\"Alarm on the fields given (None = ignore that field, 24-hour mode). AF is set on a match;\n        with interrupt=True the INT1/SQW pin goes LOW (only when CLKOUT is off: call clkout(0)).\"\"\"\n        f = lambda v: 0x80 if v is None else _bcd(v)\n        self.i2c.writeto_mem(self.addr, _ALARM, bytes([f(minute), f(hour), f(day),\n                                                       0x80 if weekday is None else weekday & 0x07]))\n        self._ctrl2_clear(0x08)\n        c1 = self._r(_CTRL1) & 0xBF & ~0x02  # T = 0\n        self._w(_CTRL1, c1 | (0x02 if interrupt else 0))\n\n    def alarm_fired(self):\n        return bool(self._r(_CTRL2) & 0x08)\n\n    def clear_alarm(self):\n        \"\"\"Clear AF (INT1 is released); the alarm stays armed.\"\"\"\n        self._ctrl2_clear(0x08)\n\n    def disable_alarm(self):\n        self.i2c.writeto_mem(self.addr, _ALARM, b'\\x80\\x80\\x80\\x80')\n        self._w(_CTRL1, self._r(_CTRL1) & 0xBD)  # AIE = 0, T = 0\n        self._ctrl2_clear(0x08)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pcf8523 import PCF8523\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nrtc = PCF8523(i2c)\nrtc.datetime((2028, 2, 28, 23, 59, 57))  # Monday 28 Feb 2028 (leap year), 23:59:57\nwhile True:\n    y, mo, d, wd, h, mi, s = rtc.datetime()\n    print('wd=%d %04d-%02d-%02d %02d:%02d:%02d' % (wd, y, mo, d, h, mi, s))\n    time.sleep(1)\n",
+    "test": {
+      "id": "leap-day",
+      "title": "Keeps the time it was set to and rolls from 28 Feb into 29 Feb 2028 (leap year)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=1 2028-02-28 23:59:5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=2 2028-02-29 00:00:0",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T14:15:49.604Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCF8523.pdf",
+      "https://learn.adafruit.com/adafruit-pcf8523-real-time-clock/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/103/710/large1024/adafruit_products_PCF8523_pinouts.jpg"
+    ]
+  }
+}
