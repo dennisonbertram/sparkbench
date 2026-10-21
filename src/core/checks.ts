@@ -860,7 +860,44 @@ export function runChecks(project: Project): CheckResult[] {
   checkAnalog(c);
   checkPowerBudget(c);
   checkNeoPixelLevels(c);
+  checkSafety(c);
   return c.results.map((r, i) => [r, i] as const).sort((a, b) => SEVERITY_ORDER[a[0].severity] - SEVERITY_ORDER[b[0].severity] || a[1] - b[1]).map(([r]) => r);
+}
+
+const MAINS_RE = /\b(mains|1[12]0 ?v(ac)?|2[234]0 ?v(ac)?|wall (outlet|socket|plug)|power outlet|ac (lamp|power|outlet|mains)|household (power|electricity)|plug socket|light switch wiring)\b/i;
+
+/** Safety: mains voltage, relays on breadboards, motors straight from a pin. */
+function checkSafety(c: Ctx) {
+  const intent = [c.project.prompt ?? '', ...(c.project.requirements?.does ?? []), c.project.name].join(' ');
+  if (MAINS_RE.test(intent))
+    c.add({
+      id: 'safety:mains',
+      severity: 'warning',
+      title: 'Mains voltage is dangerous: keep it off this circuit',
+      detail: 'Sparkbench designs low-voltage circuits only. To switch a mains lamp or appliance, control a certified smart plug or an enclosed, certified relay module (with screw terminals and its own case) from your board. Never put mains wires on a breadboard or a home-made circuit board: a mistake can kill or start a fire.',
+    });
+  for (const p of c.project.parts) {
+    if (p.type === 'relay')
+      c.add({
+        id: `safety:relay:${p.id}`,
+        severity: 'info',
+        title: `${c.partName(p)}: switch low voltage only on this build`,
+        detail: 'The relay itself may be rated for mains, but breadboards, jumper wires and hobby boards are not. Use it for low-voltage loads (a 5–12 V pump, fan or LED strip) unless a qualified person builds the mains side in a proper enclosure.',
+        parts: [p.id],
+      });
+    if (p.type === 'dc-motor' && c.boardId) {
+      const pins = partDef(p.type).pins.map((pin) => c.net({ part: p.id, pin: pin.name }));
+      const onGpio = pins.some((net) => net && c.gpios(net).length > 0);
+      if (onGpio)
+        c.add({
+          id: `safety:motor-gpio:${p.id}`,
+          severity: 'error',
+          title: `${c.partName(p)} is wired straight to a GPIO pin`,
+          detail: 'A motor needs far more current than a pin can give (up to a few hundred mA vs about 12–40 mA) and sends voltage spikes back when it stops. Drive it through a relay module or a transistor with a flyback diode.',
+          parts: [p.id],
+        });
+    }
+  }
 }
 
 /** WS2812 data must reach 0.7 × VDD: 3.3 V data into a ring powered from 5 V is marginal. */

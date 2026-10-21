@@ -12,6 +12,7 @@ import { SimControls } from './SimControls';
 import { TestsPanel, TestsBadge } from './TestsPanel';
 import { RequirementsCard, QuestionsCard } from './Requirements';
 import { AttachImages } from './Attach';
+import { PowerCard } from './PowerCard';
 import type { Shrunk } from './images';
 import type { CheckResult, FixAction } from '../core/types';
 import { annotate } from '../core/netlist';
@@ -305,10 +306,15 @@ export function Inspector() {
             <ol className="steps">
               <li>Press <b>Run</b> to start the simulator.</li>
               <li>Click any part to learn what it does and see its pins.</li>
-              <li>Open <b>Schematic</b>, <b>Parts list</b>, <b>Build guide</b> and <b>Blog post</b> for the finished outputs.</li>
+              <li>Build it for real: <b>Build guide</b> → <b>Build it step by step</b> shows every hole.</li>
+              <li>Plug your board in and click <b>Your board</b> to copy the program and test every part.</li>
+              <li>Make it permanent: <b>Circuit board</b> designs a board you can order, with a case.</li>
             </ol>
           </section>
         )}
+        <section>
+          <PowerCard />
+        </section>
         {project.notes.length > 0 && (
           <section>
             <h3>Why it's wired this way</h3>

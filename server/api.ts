@@ -127,6 +127,19 @@ export function apiPlugin(): Plugin {
         const { project, file, line } = await body(req);
         return send(res, 200, { explanation: await aiExplainLine(project, String(file ?? 'main.py'), Number(line) || 1) });
       }
+      if (req.url === '/api/power' && req.method === 'POST') {
+        const { project } = await body(req);
+        const { simulate } = await import('../src/sim/node-runner');
+        const { measureLoad, batteryOptions, sleepAdvice, protectionAdvice } = await import('../src/core/power');
+        const { registerProjectParts } = await import('../src/core/customParts');
+        registerProjectParts(project);
+        const at = Array.from({ length: 120 }, (_, i) => 500 + i * 250);
+        const r = await simulate(project, { untilMs: 31000, onFrameAt: at });
+        const load = measureLoad(project, r.snapshots.map((s) => s.frame), 30, { wifi: (project.features ?? []).some((f: any) => f.kind === 'internet') });
+        const json = JSON.parse(JSON.stringify({ load, options: batteryOptions(project), sleep: sleepAdvice(project, load), protection: protectionAdvice(project) }, (_k, v) => (v === Infinity ? 1e12 : v)));
+        for (const o of json.options) if (o.mAh >= 1e12) o.mAh = null;
+        return send(res, 200, json);
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });
