@@ -57,6 +57,34 @@ export function genericPins(type: string): Pins {
   return Object.fromEntries(cs.pins.map((p, i) => [p.name, { x: 21 + i * 18, y: h - 4 }]));
 }
 
+/** A datasheet OLED's picture (128×64, page format), drawn at half size. */
+function OledScreen({ x, y, ram, on }: { x: number; y: number; ram: number[]; on: boolean }) {
+  const url = React.useMemo(() => {
+    if (typeof document === 'undefined') return '';
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 64;
+    const ctx = c.getContext('2d');
+    if (!ctx) return '';
+    const img = ctx.createImageData(128, 64);
+    for (let page = 0; page < 8; page++)
+      for (let px = 0; px < 128; px++) {
+        const b = on ? ram[page * 128 + px] : 0;
+        for (let bit = 0; bit < 8; bit++) {
+          const i = ((page * 8 + bit) * 128 + px) * 4;
+          const lit = (b >> bit) & 1;
+          img.data[i] = lit ? 170 : 0;
+          img.data[i + 1] = lit ? 225 : 0;
+          img.data[i + 2] = lit ? 255 : 0;
+          img.data[i + 3] = 255;
+        }
+      }
+    ctx.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }, [ram, on]);
+  return url ? <image href={url} x={x} y={y} width={64} height={32} style={{ imageRendering: 'pixelated' }} /> : <rect x={x} y={y} width={64} height={32} fill="#000" />;
+}
+
 function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) {
   const cs = customSpec(type)!;
   const [w, h] = customModuleSize(cs.pins.length);
@@ -65,7 +93,7 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible', display: 'block' }}>
       <rect x={0} y={0} width={w} height={h - 12} rx={5} fill={colour} stroke="#0008" />
-      <rect x={w / 2 - 14} y={8} width={28} height={20} rx={2} fill="#111" />
+      {visual?.oled ? <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} /> : <rect x={w / 2 - 14} y={8} width={28} height={20} rx={2} fill="#111" />}
       <text x={w / 2} y={40} fontSize={8} fill="#eef" textAnchor="middle" fontWeight={600}>{cs.mpn.slice(0, 16)}</text>
       <text x={w / 2} y={50} fontSize={5.5} fill="#cdd" textAnchor="middle">{cs.name.slice(0, 34)}</text>
       {visual?.active !== undefined && <circle cx={w - 10} cy={10} r={4} fill={visual.active ? '#ffd23f' : '#3a3a3a'} />}

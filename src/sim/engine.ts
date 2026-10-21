@@ -134,6 +134,7 @@ export class SimEngine {
       if (part.type === 'ssd1306') this.devices.push({ dev: new SSD1306Device(part.id), part });
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
       const cs = customSpec(part.type);
+      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.i2cAddress ?? 0x3c, controller: cs.sim.controller, rows: cs.sim.rows }), part });
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
         this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
@@ -720,7 +721,7 @@ export class SimEngine {
           const d = this.devices.find((x) => x.part.id === part.id)?.dev;
           v.powered = m.modulePowered(part.id);
           if (d instanceof SSD1306Device) {
-            v.oled = v.powered ? Array.from(d.ram) : new Array(1024).fill(0);
+            v.oled = v.powered ? d.visibleRam() : new Array(1024).fill(0);
             v.oledOn = v.powered && d.on;
           }
           if (d instanceof Lcd1602Device) v.lcd = { chars: v.powered ? Array.from(d.characters()) : new Array(32).fill(32), backlight: !!v.powered && d.backlight };
@@ -759,6 +760,14 @@ export class SimEngine {
         default: {
           if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
           const cs = customSpec(part.type);
+          if (cs?.sim.kind === 'oled-display') {
+            const d = this.devices.find((x) => x.part.id === part.id)?.dev;
+            v.powered = m.modulePowered(part.id);
+            if (d instanceof SSD1306Device) {
+              v.oled = v.powered ? d.visibleRam() : new Array(1024).fill(0);
+              v.oledOn = v.powered && d.on;
+            }
+          }
           if (cs?.sim.kind === 'actuator' && (cs.sim.inputPin || cs.sim.inputPins?.length)) {
             const gnd = cs.pins.find((p) => p.role === 'gnd')?.name;
             // Some modules (e.g. KY-012 buzzers) have no supply pin: the signal itself powers them.

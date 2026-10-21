@@ -13,7 +13,11 @@ const CMD_ARGS: Record<number, number> = { 0x20: 1, 0x21: 2, 0x22: 2, 0x81: 1, 0
 
 export class SSD1306Device implements I2CDevice {
   addr = 0x3c;
-  ram = new Uint8Array(1024);
+  ram: Uint8Array;
+  /** SH1106-style controllers have 132 RAM columns with the visible 128 starting at column 2. */
+  ramWidth = 128;
+  colOffset = 0;
+  rows = 64;
   on = false;
   invert = false;
   contrast = 255;
@@ -27,7 +31,16 @@ export class SSD1306Device implements I2CDevice {
   private pendingCmd = -1;
   dirty = true;
   frames = 0;
-  constructor(public partId: string) {}
+  constructor(public partId: string, opts: { addr?: number; controller?: 'ssd1306' | 'sh1106'; rows?: 32 | 64 } = {}) {
+    if (opts.addr !== undefined) this.addr = opts.addr;
+    if (opts.controller === 'sh1106') {
+      this.ramWidth = 132;
+      this.colOffset = 2;
+    }
+    if (opts.rows) this.rows = opts.rows;
+    this.ram = new Uint8Array(this.ramWidth * 8);
+    this.col1 = this.ramWidth - 1;
+  }
 
   write(bytes: number[]) {
     let i = 0;
@@ -89,8 +102,8 @@ export class SSD1306Device implements I2CDevice {
         this.contrast = args[0];
         break;
       case 0x21:
-        this.col0 = args[0] & 127;
-        this.col1 = args[1] & 127;
+        this.col0 = args[0] % this.ramWidth;
+        this.col1 = args[1] % this.ramWidth;
         this.col = this.col0;
         break;
       case 0x22:
@@ -106,7 +119,7 @@ export class SSD1306Device implements I2CDevice {
     this.dirty = true;
   }
   private data(b: number) {
-    this.ram[this.page * 128 + this.col] = b;
+    this.ram[this.page * this.ramWidth + (this.col % this.ramWidth)] = b;
     this.col++;
     if (this.col > this.col1) {
       this.col = this.col0;
@@ -115,13 +128,20 @@ export class SSD1306Device implements I2CDevice {
     }
     this.dirty = true;
   }
+  /** The visible picture as 128×64 page-format bytes (what the frame and the screen reader use). */
+  visibleRam(): number[] {
+    const out = new Array(1024).fill(0);
+    for (let page = 0; page < this.rows / 8; page++) for (let x = 0; x < 128; x++) out[page * 128 + x] = this.ram[page * this.ramWidth + x + this.colOffset];
+    return out;
+  }
   /** 128×64 pixel bitmap, one byte per pixel (0/1). */
   pixels(): Uint8Array {
     const out = new Uint8Array(128 * 64);
     if (!this.on) return out;
+    const vis = this.visibleRam();
     for (let page = 0; page < 8; page++)
       for (let x = 0; x < 128; x++) {
-        const b = this.ram[page * 128 + x];
+        const b = vis[page * 128 + x];
         for (let bit = 0; bit < 8; bit++) out[(page * 8 + bit) * 128 + x] = ((b >> bit) & 1) ^ (this.invert ? 1 : 0);
       }
     return out;

@@ -12,8 +12,12 @@ export interface CustomSim {
    * actuator: shows "on" when `inputPin` is driven high
    * i2c-device: answers at its address with a register map
    * onewire-temp: a DS18x20-family thermometer on the 1-Wire bus (MicroPython's onewire + ds18x20 modules)
+   * oled-display: a monochrome I2C OLED (SSD1306/SH1106 command set); tests can read its text
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'none';
+  /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64). */
+  controller?: 'ssd1306' | 'sh1106';
+  rows?: 32 | 64;
   /** onewire-temp: 1-Wire family code (0x28 DS18B20, 0x10 DS18S20, 0x22 DS1822); outputPin is the DQ line. */
   family?: number;
   outputPin?: string;
@@ -179,6 +183,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.inputPin && !names.has(s.inputPin)) errs.push(`sim.inputPin ${s.inputPin} is not a pin`);
   if (s.kind === 'i2c-device' && spec.i2cAddress === undefined) errs.push('i2c-device without i2cAddress');
   if (s.kind === 'onewire-temp' && !s.outputPin) errs.push('onewire-temp needs outputPin (the DQ line)');
+  if (s.kind === 'oled-display' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress');
   if (s.kind === 'onewire-temp' && s.family !== undefined && ![0x10, 0x22, 0x28, 0x3b, 0x42].includes(s.family)) errs.push(`1-Wire family 0x${s.family.toString(16)} is not a DS18x20-type thermometer`);
   const keys = new Set(['value', 'active', ...(s.controls ?? []).map((c) => c.key), ...(s.digitalOutputs ?? []).map((d) => d.control)]);
   for (const m of [...(s.measures ?? []), ...(s.measure ? [s.measure] : [])]) {
