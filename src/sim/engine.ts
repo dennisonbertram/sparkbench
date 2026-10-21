@@ -7,7 +7,8 @@ import { pinKey } from '../core/netlist';
 import { ocr } from './ocr';
 import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, TFTDevice, HT16K33Device, segText, alphaText, packResponse, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
-import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
+import { MFRC522Device } from './mfrc522';
+import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, SIMOS_PY, bootstrapPy } from './pyshims';
 
 export class SimStop extends Error {
   constructor(public reason: 'user' | 'time' | 'reset') {
@@ -158,13 +159,17 @@ export class SimEngine {
           this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
         }
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, dac: cs.sim.dac, onDac: (ch, d) => {
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, fifo: cs.sim.fifo, selfClearing: cs.sim.selfClearing, dac: cs.sim.dac, onDac: (ch, d) => {
           // The circuit model turns each channel's settings into the voltage on its pin.
           const pin = cs.sim.dac?.pins[ch];
           if (!pin) return;
           for (const [k, v] of Object.entries({ code: d.code, vref: d.vref, gain: d.gain, pd: d.pd })) this.model.setPartState(part.id, `dac:${pin}:${k}`, v);
         } }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
+      if (cs?.sim.kind === 'rfid-reader') {
+        const st = () => (this.model.states.get(part.id) as any) ?? {};
+        this.rfids.set(part.id, new MFRC522Device(part.id, cs.sim.rfid?.version ?? 0x92, () => ({ present: st().present > 0, uid: Math.round(st().value ?? 0) >>> 0 }), () => this.timeUs));
+      }
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
         const ad0 = this.model.gpiosOnNet(part.id, 'AD0').length === 0 && this.model.pinVoltage(part.id, 'AD0') > 2;
@@ -232,6 +237,96 @@ export class SimEngine {
     this.maybeFrame();
   }
 
+  // ------------------------------------------------------------------ IR remotes
+  /** Per IR receiver: queued output edges [time µs, level] and the repeat schedule while the button is held. */
+  private irs = new Map<string, { edges: [number, number][]; held: boolean; frameAt: number }>();
+  private irCache?: { part: PartInstance; cs: NonNullable<ReturnType<typeof customSpec>> }[];
+  private irParts() {
+    return (this.irCache ??= this.project.parts.flatMap((part) => {
+      const cs = customSpec(part.type);
+      return cs?.sim.kind === 'ir-receiver' && cs.sim.outputPin ? [{ part, cs }] : [];
+    }));
+  }
+  /** NEC frame as output levels (0 = mark: the receiver pulls OUT low while it sees the 38 kHz carrier). */
+  private necEdges(t0: number, ext: boolean, address: number, command: number, repeat: boolean): [number, number][] {
+    const out: [number, number][] = [];
+    let t = t0;
+    const mark = (us: number) => (out.push([t, 0]), (t += us));
+    const space = (us: number) => (out.push([t, 1]), (t += us));
+    mark(9000);
+    if (repeat) {
+      space(2250);
+      mark(562.5);
+      space(0);
+      return out;
+    }
+    space(4500);
+    const a = ext ? [address & 0xff, (address >> 8) & 0xff] : [address & 0xff, ~address & 0xff];
+    for (const byte of [...a, command & 0xff, ~command & 0xff])
+      for (let i = 0; i < 8; i++) {
+        mark(562.5);
+        space((byte >> i) & 1 ? 1687.5 : 562.5);
+      }
+    mark(562.5);
+    space(0);
+    return out;
+  }
+  /** Start frames when the remote button goes down, repeat codes every 108 ms while held, and apply due edges. */
+  private updateIr() {
+    for (const { part, cs } of this.irParts()) {
+      const st = (this.model.states.get(part.id) as any) ?? {};
+      const ir = this.irs.get(part.id) ?? { edges: [], held: false, frameAt: 0 };
+      this.irs.set(part.id, ir);
+      const held = st.press > 0;
+      const ext = cs.sim.ir?.protocol === 'nec-ext';
+      if (held && !ir.held && !ir.edges.length) {
+        ir.frameAt = this.timeUs;
+        ir.edges.push(...this.necEdges(this.timeUs, ext, Math.round(st.address ?? 0), Math.round(st.value ?? 0), false));
+      }
+      ir.held = held;
+      if (held && !ir.edges.length && this.timeUs >= ir.frameAt + 108_000) {
+        ir.frameAt += 108_000 * Math.floor((this.timeUs - ir.frameAt) / 108_000);
+        ir.edges.push(...this.necEdges(ir.frameAt, ext, 0, 0, true));
+      }
+      while (ir.edges.length && ir.edges[0][0] <= this.timeUs) {
+        const [, level] = ir.edges.shift()!;
+        this.model.setPartState(part.id, 'irLevel', level);
+        // Each edge is its own pin change, so interrupts see every one even if several fell due together.
+        if (this.irqWatch.size) this.checkIrqs();
+      }
+    }
+  }
+  /** Microseconds until the next IR output edge (so sleeps wake for it), or -1. */
+  irNextUs(): number {
+    let next = Infinity;
+    for (const ir of this.irs.values()) if (ir.edges.length) next = Math.min(next, ir.edges[0][0]);
+    for (const { part } of this.irParts()) {
+      const ir = this.irs.get(part.id);
+      if (ir?.held && !ir.edges.length) next = Math.min(next, ir.frameAt + 108_000);
+      if (!ir && ((this.model.states.get(part.id) as any)?.press ?? 0) > 0) next = Math.min(next, this.timeUs);
+    }
+    return next === Infinity ? -1 : Math.max(1, Math.ceil(next - this.timeUs));
+  }
+  /** machine.time_pulse_us on an IR receiver's output: step through its scheduled edges. */
+  private irPulse(g: number, level: number, timeoutUs: number): number {
+    const step = (until: number) => {
+      const n = this.irNextUs();
+      // With nothing scheduled, look again every millisecond so a button press is noticed.
+      this.sleepUs(Math.max(1, Math.min(n < 0 ? 1000 : n, until - this.timeUs)));
+    };
+    const start = this.timeUs;
+    while (this.readPin(g) !== level) {
+      if (this.timeUs - start >= timeoutUs) return -2;
+      step(start + timeoutUs);
+    }
+    const t0 = this.timeUs;
+    while (this.readPin(g) === level) {
+      if (this.timeUs - t0 >= timeoutUs) return -1;
+      step(t0 + timeoutUs);
+    }
+    return Math.round(this.timeUs - t0);
+  }
+
   // ------------------------------------------------------------------ inputs
   pollInputs() {
     const changes = this.host.pollInputs();
@@ -243,6 +338,7 @@ export class SimEngine {
         this.model.setPartState(id, 'motion', 0);
       }
     }
+    if (this.irParts().length) this.updateIr();
     if (this.irqWatch.size && (changes?.length || this.model.dirty)) this.checkIrqs();
   }
   /** Change speed without jumping simulated time: re-anchor the wall clock mapping. */
@@ -447,6 +543,7 @@ export class SimEngine {
     this.segPinChange(g, v);
     this.shiftPinChange(g, v);
     if (v !== (this.outLevel.get(g) ?? 1)) this.spiDeselect(g);
+    if (this.rfids.size && v !== (this.outLevel.get(g) ?? (v ? 0 : 1))) this.rfidPinChange(g, v);
     if (this.board?.id === 'pico' && g === 25) {
       this.outLevel.set(25, v);
       return;
@@ -611,6 +708,7 @@ export class SimEngine {
       this.sleepUs(450 + dur);
       return dur;
     }
+    for (const { part, cs } of this.irParts()) if (this.model.gpiosOnNet(part.id, cs.sim.outputPin!).includes(g)) return this.irPulse(g, level, timeoutUs);
     this.sleepUs(timeoutUs);
     return -2;
   }
@@ -813,6 +911,8 @@ export class SimEngine {
     this.timeUs += bytes.length * 2; // ~4 MHz
     const b = this.spiBuses[bus];
     if (!b) return;
+    const rf = this.rfidOnBus(bus);
+    this.rfidOut = rf ? rf.transfer(bytes) : null;
     for (const part of this.project.parts) {
       const cs = customSpec(part.type);
       if (cs?.sim.kind !== 'tft-display') continue;
@@ -973,8 +1073,36 @@ export class SimEngine {
 
   /** Full-duplex transfer: e-paper still gets the bytes; a selected datasheet SPI chip answers on MISO. */
   private spiTx = new Map<string, { written: number[]; reply: number[] | null; start: number }>();
+  /** MFRC522 readers, and what the selected one clocked out during the last SPI transfer. */
+  private rfids = new Map<string, MFRC522Device>();
+  private rfidOut: number[] | null = null;
+  /** The selected, powered reader on this bus (CS low, NRSTPD high). */
+  private rfidOnBus(bus: number) {
+    const b = this.spiBuses[bus];
+    if (!b) return undefined;
+    for (const [id, dev] of this.rfids) {
+      const cs = customSpec(this.project.parts.find((p) => p.id === id)!.type)!;
+      const on = (fn: string) => { const n = cs.pins.find((p) => p.fn === fn)?.name; return n ? this.model.gpiosOnNet(id, n) : []; };
+      if (!on('spi.sck').includes(b.sck) || !on('spi.mosi').includes(b.mosi)) continue;
+      const csg = on('spi.cs')[0];
+      if (csg === undefined || (this.outLevel.get(csg) ?? 1) !== 0) continue;
+      if (!this.model.modulePowered(id)) continue;
+      return dev;
+    }
+    return undefined;
+  }
+  /** CS falling starts a reader transaction; RST (NRSTPD) low powers it down, rising resets it. */
+  private rfidPinChange(g: number, v: number) {
+    for (const [id, dev] of this.rfids) {
+      const cs = customSpec(this.project.parts.find((p) => p.id === id)!.type)!;
+      const pinOf = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name;
+      if (pinOf('spi.cs') && !v && this.model.gpiosOnNet(id, pinOf('spi.cs')!).includes(g)) dev.select();
+      if (pinOf('reset') && this.model.gpiosOnNet(id, pinOf('reset')!).includes(g)) dev.setReset(!!v);
+    }
+  }
   spiXfer(bus: number, hex: string): string {
     this.spiWrite(bus, hex);
+    if (this.rfidOut) return bytesToHex(this.rfidOut);
     const out = hexToBytes(hex).map(() => 0xff);
     const b = this.spiBuses[bus];
     if (!b) return bytesToHex(out);
@@ -1251,6 +1379,9 @@ export class SimEngine {
             v.inputs = Object.fromEntries(pins.map((p) => [p, high(p)]));
             v.active = pins.some(high);
           }
+          // Indicator: a card on the reader (powered); an IR receiver's output pulled low by a remote burst.
+          if (cs?.sim.kind === 'rfid-reader') v.active = !!v.powered && ((m.states.get(part.id) as any)?.present ?? 0) > 0;
+          if (cs?.sim.kind === 'ir-receiver') v.active = !!v.powered && (m.states.get(part.id) as any)?.irLevel === 0;
         }
       }
       parts[part.id] = v;
@@ -1306,6 +1437,7 @@ export class SimEngine {
         return this.irqQueue.splice(0);
       },
       pulse_in: (g: number, l: number, t: number) => this.pulseIn(g, l, t),
+      ir_next_us: () => this.irNextUs(),
       dht_read: (g: number) => this.dhtRead(g),
       ow_scan: (g: number) => this.owScan(g),
       ow_temp: (g: number, rom: string) => this.owTemp(g, rom),
@@ -1360,14 +1492,14 @@ export class SimEngine {
     } catch {}
     const lib: Record<string, string> = isPi
       ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY, 'requests.py': REQUESTS_PY, 'signal.py': SIGNAL_PY }
-      : { 'esp32.py': ESP32_PY, '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'onewire.py': ONEWIRE_PY, 'ds18x20.py': DS18X20_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
+      : { 'esp32.py': ESP32_PY, '_simtime.py': SIMTIME_PY, '_simos.py': SIMOS_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'onewire.py': ONEWIRE_PY, 'ds18x20.py': DS18X20_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
     for (const [name, src] of Object.entries(lib)) mp.FS.writeFile(`/lib/${name}`, src);
     // Only the program's own Python files go onto the board (not e.g. the arduino/ C++ version).
     for (const [name, src] of Object.entries(this.project.files)) if (/^[\w.-]+\.py$/.test(name)) mp.FS.writeFile(`/project/${name}`, src);
     this.status = 'running';
     this.maybeFrame(true);
     try {
-      mp.runPython(bootstrapPy(isPi ? 'pi' : 'mp'));
+      mp.runPython(bootstrapPy(isPi ? 'pi' : 'mp', this.project.board));
       const main = this.project.files['main.py'] ?? '';
       // exec main.py as a file so tracebacks name it
       mp.runPython(`__file__ = "/project/main.py"\nexec(compile(open("/project/main.py").read(), "main.py", "exec"), {"__name__": "__main__"})`);

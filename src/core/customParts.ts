@@ -22,8 +22,12 @@ export interface CustomSim {
    * dht-sensor: a DHT11/DHT22/AM2302-style single-wire sensor read with MicroPython's dht module (outputPin = DATA;
    *   "value" = temperature, a "humidity" control); servo: an RC servo on a PWM pin (see servo)
    * segment-display: a 7-segment or 8×8 LED display driven by a TM1637 or MAX7219 (tests read the digits as text)
+   * rfid-reader: a 13.56 MHz MFRC522 (RC522) reader on SPI (fn spi.sck/spi.mosi/spi.miso/spi.cs, RST fn reset) with one
+   *   ISO 14443-A card: toggle "present" puts it on the reader, the "value" slider is its 4-byte UID (see rfid)
+   * ir-receiver: a 38 kHz IR receiver (VS1838B, TSOP38238) whose active-low output (outputPin) carries remote-control
+   *   frames: holding the "press" toggle sends the "value" button code to the "address" (see ir)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'char-lcd' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'char-lcd' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'rfid-reader' | 'ir-receiver' | 'none';
   /** shift-register: '595' = serial-in/parallel-out (data, clock, latch pins; outputs testable as expect what:"active"
    * text:<output pin name>), '165' = parallel-in/serial-out (inputs from toggles, load, clock, serial out). Pin names map
    * the roles: { data, clock, latch, outputs[] } or { load, clock, serialOut, inputs[] }, parallel pins listed A…H
@@ -168,6 +172,22 @@ export interface CustomSim {
    * or 2.048 V × gain × code/4096 (at most VDD) with the internal reference. LDAC is taken as tied low, so UDAC = 1
    * leaves the output unchanged until the next update of that channel. Power-down modes drive the output to 0 V. */
   dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] };
+  /** rfid-reader: the reader chip and its VersionReg (0x37) value (0x91 = v1.0, 0x92 = v2.0; many clones read 0x88 or 0x12).
+   * Modelled: registers, 64-byte FIFO, CRC coprocessor (CRC_A), Transceive with short frames and the timer timeout, TxCRCEn/
+   * RxCRCEn, and one MIFARE Classic 1K card (ATQA 04 00, SAK 08) through REQA/WUPA, anticollision, SELECT and HLTA.
+   * Not modelled: Crypto1 authentication (MFAuthent ends with a protocol error, so sector reads fail as on an
+   * unauthenticated card), 7-byte UIDs, several cards at once. */
+  rfid?: { chip: 'mfrc522'; version?: number };
+  /** ir-receiver: the remote's protocol. 'nec': 9 ms mark, 4.5 ms space, then address, ~address, command, ~command, LSB
+   * first (562.5 µs mark; 562.5 µs space = 0, 1687.5 µs = 1), a final mark, and a repeat code (9 ms, 2.25 ms, mark) every
+   * 108 ms while held. 'nec-ext': the same with a 16-bit address in place of address and ~address. The output idles
+   * high and goes low during each mark (demodulated, active low). */
+  ir?: { protocol: 'nec' | 'nec-ext' };
+  /** i2c-device with a sample FIFO (MAX30102/MAX30105-style pulse oximeters): see FifoSpec. */
+  fifo?: FifoSpec;
+  /** i2c-device: register bits that clear themselves after a write (a soft-reset bit the driver polls until it reads 0).
+   * reset: the write also restores every register to its power-on value (sim.registers) and empties the FIFO. */
+  selfClearing?: { reg: string; mask: number; reset?: boolean }[];
   /** i2c-device with no register pointer (PCF8574-style): every write sets register 0x00, every read returns it. */
   pointerless?: boolean;
   /** pointerless i2c-device with a 16-bit port (PCF8575): every transfer is byte pairs, port 0 (register 0x00, P00–P07)
@@ -181,6 +201,42 @@ export interface CustomSim {
   outputBits?: { reg: string; bit: number; name: string }[];
   /** i2c-device: register bits that read input pins, driven by toggles (control key). activeLow: pressed reads 0. */
   inputBits?: { reg: string; bit: number; control: string; label?: string; activeLow?: boolean }[];
+}
+
+/** A sample FIFO filled at the chip's configured sample rate (MAX3010x). Each sample holds one value per active channel,
+ * sent as `bytes` big-endian bytes per channel (left-justified `resolution` bits within sampleBits, the rest 0). The
+ * FIFO_DATA register (`data`) does not auto-increment: every `bytes × channels` bytes read pop one sample and advance
+ * the read pointer. writePtr / readPtr / overflow are ordinary registers the driver may also write (to clear the FIFO).
+ * Full FIFO: with `rollover` on, the oldest sample is overwritten (read pointer moves on); off, new samples are dropped;
+ * either way the overflow counter counts lost samples (saturating at depth − 1).
+ * Channel values follow a pulse: value(t) = control × (1 − depth × ppg(bpm × t / 60)), where ppg is a beat shape peaking
+ * once per period (blood volume rises, so less light is reflected); depth is a number or a control key (fraction 0–1). */
+export interface FifoSpec {
+  data: string;
+  writePtr: string;
+  readPtr: string;
+  overflow: string;
+  depth: number;
+  /** Bytes per channel per sample (3) and the bit width the value is clamped to (18). */
+  bytes: number;
+  sampleBits: number;
+  /** Channel order in each sample (e.g. red, then IR), each the control giving its light level in ADC counts. */
+  channels: { control: string; depth?: number | string }[];
+  /** The heart rate control (beats per minute) that paces the pulse. */
+  bpmControl: string;
+  /** How many channels each mode value turns on: mode = (reg & mask) >> shift, e.g. { "2": 1, "3": 2, "7": 3 }; any other
+   * mode (or the shutdown bit set) produces no samples. */
+  mode: { reg: string; mask: number; shift?: number; channels: Record<string, number>; shutdownBit?: number };
+  /** Sample rate in Hz per field value (e.g. SPO2_CONFIG bits 4:2 → 50, 100 … 3200). */
+  rate: { reg: string; mask: number; shift?: number; hz: number[] };
+  /** Samples averaged per FIFO entry, per field value (FIFO_CONFIG bits 7:5 → 1, 2, 4 … 32). */
+  average?: { reg: string; mask: number; shift?: number; n: number[] };
+  /** ADC resolution in bits per field value (LED pulse width → 15–18 bits, left-justified in sampleBits). */
+  resolution?: { reg: string; mask: number; shift?: number; bits: number[] };
+  rollover?: { reg: string; bit: number };
+  /** Interrupt status register, cleared when read: readyBit set on each new sample, almostFullBit when the unread
+   * count reaches depth − (almostFullSlots field), e.g. MAX30102 FIFO_A_FULL[3:0] in FIFO_CONFIG. */
+  status?: { reg: string; readyBit?: number; almostFullBit?: number; almostFullSlots?: { reg: string; mask: number } };
 }
 
 export interface I2CMeasure {
@@ -284,12 +340,16 @@ const REGISTRY = new Map<string, { spec: CustomPartSpec; def: PartDef }>();
 export function specToDef(spec: CustomPartSpec): PartDef {
   const controls: SimControl[] = [];
   const s = spec.sim;
-  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'dht-sensor' || s.kind === 'hx711' || s.kind === 'spi-device' || s.kind === 'uart-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
+  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'dht-sensor' || s.kind === 'hx711' || s.kind === 'spi-device' || s.kind === 'uart-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length || s.fifo))) {
     const min = s.min ?? 0;
     const max = s.max ?? 100;
     controls.push({ key: 'value', label: s.quantity ?? 'Value', kind: 'slider', min, max, step: (max - min) / 200 >= 1 ? 1 : +((max - min) / 200).toPrecision(1), default: s.default ?? (min + max) / 2, unit: s.unit ? ` ${s.unit}`.replace(/^ (°|%)/, '$1') : '' });
   }
   if (s.kind === 'digital-sensor') controls.push({ key: 'active', label: s.quantity ?? 'Triggered', kind: 'toggle', default: 0 });
+  if (s.kind === 'rfid-reader')
+    controls.push({ key: 'present', label: 'Card on the reader', kind: 'toggle', default: 0 }, { key: 'value', label: 'Card UID (4 bytes)', kind: 'slider', min: 0, max: 0xffffffff, step: 1, default: s.default ?? 0xa1b2c3d4, unit: '' });
+  if (s.kind === 'ir-receiver')
+    controls.push({ key: 'press', label: 'Remote button held', kind: 'toggle', default: 0 }, { key: 'value', label: 'Button code', kind: 'slider', min: 0, max: 255, step: 1, default: s.default ?? 0x45, unit: '' }, { key: 'address', label: 'Remote address', kind: 'slider', min: 0, max: s.ir?.protocol === 'nec-ext' ? 0xffff : 255, step: 1, default: 0, unit: '' });
   if (s.kind === 'keypad-matrix') controls.push({ key: 'value', label: `Key held (1–${(s.keys ?? []).flat().length}: ${(s.keys ?? []).flat().join(' ')}; 0 = none)`, kind: 'slider', min: 0, max: (s.keys ?? []).flat().length, step: 1, default: 0 });
   for (const d of s.digitalOutputs ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.pin, kind: 'toggle', default: 0 });
   if (s.kind === 'shift-register' && s.shift?.type === '165') for (const p of s.shift.inputs ?? []) controls.push({ key: p, label: `Input ${p}`, kind: 'toggle', default: 0 });
@@ -482,6 +542,38 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (s.dac.pins?.length !== want) errs.push(`dac ${s.dac.protocol} drives ${want} pin${want > 1 ? 's' : ''} (in channel order)`);
     for (const p of s.dac.pins ?? []) if (!names.has(p)) errs.push(`dac pin ${p} is not a pin`);
   }
+  if (s.kind === 'rfid-reader') {
+    if (s.rfid?.chip !== 'mfrc522') errs.push("rfid-reader needs rfid.chip 'mfrc522'");
+    if (!(['spi.sck', 'spi.mosi', 'spi.miso', 'spi.cs'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('an RFID reader needs pins with fn spi.sck, spi.mosi, spi.miso and spi.cs (SDA/NSS)');
+    if (s.rfid?.version !== undefined && !(s.rfid.version >= 0 && s.rfid.version <= 0xff)) errs.push('rfid.version is the VersionReg byte');
+  }
+  if (s.kind === 'ir-receiver') {
+    if (!s.outputPin || !names.has(s.outputPin)) errs.push('ir-receiver needs outputPin (the demodulated OUT pin)');
+    if (!['nec', 'nec-ext'].includes(s.ir?.protocol ?? '')) errs.push("ir-receiver needs ir.protocol 'nec' or 'nec-ext'");
+  }
+  const hexReg = (r: unknown) => typeof r === 'string' && /^0x[0-9a-f]{1,2}$/i.test(r);
+  if (s.fifo) {
+    const f = s.fifo;
+    if (s.kind !== 'i2c-device' || s.regWidth === 16 || s.pointerless) errs.push('fifo is for byte-register i2c-devices');
+    for (const k of ['data', 'writePtr', 'readPtr', 'overflow'] as const) if (!hexReg(f[k])) errs.push(`fifo.${k} must be a register like 0x07`);
+    if (!(f.depth >= 2 && (f.depth & (f.depth - 1)) === 0 && f.depth <= 256)) errs.push('fifo.depth must be a power of two (e.g. 32)');
+    if (!(f.bytes >= 1 && f.bytes <= 4) || !(f.sampleBits >= 1 && f.sampleBits <= f.bytes * 8)) errs.push('fifo needs bytes 1–4 per channel and sampleBits that fit in them');
+    if (!f.channels?.length) errs.push('fifo needs channels');
+    for (const c of f.channels ?? []) {
+      if (!keys.has(c.control)) errs.push(`fifo channel control ${c.control} is not a control`);
+      if (typeof c.depth === 'string' ? !keys.has(c.depth) : c.depth !== undefined && !(c.depth >= 0 && c.depth <= 1)) errs.push(`fifo channel ${c.control}: depth is a fraction 0–1 or a control key`);
+    }
+    if (!keys.has(f.bpmControl)) errs.push(`fifo.bpmControl ${f.bpmControl} is not a control`);
+    const fields: [string, { reg: string; mask: number } | undefined][] = [['mode', f.mode], ['rate', f.rate], ['average', f.average], ['resolution', f.resolution], ['status.almostFullSlots', f.status?.almostFullSlots]];
+    for (const [n, fl] of fields) if (fl && (!hexReg(fl.reg) || !(fl.mask > 0 && fl.mask <= 0xff))) errs.push(`fifo.${n} needs reg (hex) and a mask 1–0xFF`);
+    if (!f.mode || !Object.keys(f.mode.channels ?? {}).length) errs.push('fifo.mode.channels must map mode values to channel counts');
+    for (const n of Object.values(f.mode?.channels ?? {})) if (!(n >= 1 && n <= (f.channels?.length ?? 0))) errs.push('fifo.mode.channels counts must be 1…number of channels');
+    if (!f.rate?.hz?.length || f.rate.hz.some((h) => !(h > 0))) errs.push('fifo.rate.hz lists the sample rate (Hz) per field value');
+    if (f.resolution && f.resolution.bits.some((b) => !(b >= 1 && b <= f.sampleBits))) errs.push('fifo.resolution.bits must be ≤ sampleBits');
+    if (f.rollover && (!hexReg(f.rollover.reg) || !(f.rollover.bit >= 0 && f.rollover.bit <= 7))) errs.push('fifo.rollover needs reg (hex) and bit 0–7');
+    if (f.status && !hexReg(f.status.reg)) errs.push('fifo.status.reg must be a register like 0x00');
+  }
+  for (const c of s.selfClearing ?? []) if (s.kind !== 'i2c-device' || !hexReg(c.reg) || !(c.mask > 0 && c.mask <= 0xff)) errs.push('selfClearing entries need an i2c-device byte register (hex) and a mask 1–0xFF');
   for (const r of s.responses ?? []) {
     if (!/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`response match "${r.match}" must be hex bytes like "24 00"`);
     const bits = segBits(r.bytes);

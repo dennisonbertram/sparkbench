@@ -490,9 +490,15 @@ def enable_irq(state=0):
     pass
 
 
+def _next_ir_us():
+    n = _hw.ir_next_us()
+    return None if n < 0 else n
+
+
 import _simtime
 _simtime._hooks.append(_service)
 _simtime._next_fns.append(_next_timer_us)
+_simtime._next_fns.append(_next_ir_us)
 `;
 
 export const ESP32_PY = `# Simulated esp32 module (wake sources and sensors are accepted but have no effect).
@@ -1341,14 +1347,47 @@ def strftime(fmt, t=None):
 `;
 
 /** Bootstrap executed before user code: installs the simulated time module. */
-export function bootstrapPy(platform: 'mp' | 'pi'): string {
+export function bootstrapPy(platform: 'mp' | 'pi', board = ''): string {
+  // MicroPython boards report themselves in os.uname() (drivers such as mfrc522 pick their SPI setup from sysname).
+  const uname = board === 'pico' ? ['rp2', 'Raspberry Pi Pico with RP2040'] : board === 'esp32' ? ['esp32', 'Generic ESP32 module with ESP32'] : null;
   return `import sys
 sys.path.insert(0, "/project")
 import _simtime
 sys.modules["time"] = _simtime
 sys.modules["utime"] = _simtime
-`;
+${platform === 'mp' && uname ? `import _simos
+_simos._board("${uname[0]}", "${uname[1]}")
+sys.modules["os"] = _simos
+sys.modules["uos"] = _simos
+` : ''}`;
 }
+
+/** The os module with os.uname() describing the simulated board, as on the real port. */
+export const SIMOS_PY = `import os as _os
+import sys as _sys
+
+for _k in dir(_os):
+    if not _k.startswith("__"):
+        globals()[_k] = getattr(_os, _k)
+
+try:
+    from collections import namedtuple as _nt
+    _U = _nt("uname_result", ("sysname", "nodename", "release", "version", "machine"))
+except ImportError:
+    _U = lambda *a: tuple(a)
+
+_u = None
+
+
+def _board(sysname, machine):
+    global _u
+    rel = ".".join(str(x) for x in _sys.implementation.version[:3])
+    _u = _U(sysname, sysname, rel, "v" + rel, machine)
+
+
+def uname():
+    return _u
+`;
 
 /** MicroPython's built-in onewire module, backed by the simulated bus (scan + ROM select). */
 export const ONEWIRE_PY = `import _hw

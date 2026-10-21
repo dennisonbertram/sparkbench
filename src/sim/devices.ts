@@ -1,7 +1,8 @@
 // Register-level models of I2C peripherals. They receive exactly the bytes the real
 // MicroPython / Python drivers put on the bus, so driver bugs show up in simulation too.
 import { makeSolver, withPromCrc, type Solver } from '../core/calibration';
-import type { I2CMeasure, ResponseSegment } from '../core/customParts';
+import type { FifoSpec, I2CMeasure, ResponseSegment } from '../core/customParts';
+import { SampleFifo } from './fifo';
 
 export interface I2CDevice {
   addr: number;
@@ -490,16 +491,24 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void; fifo?: FifoSpec; selfClearing?: { reg: string; mask: number; reset?: boolean }[] } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     // A declared PROM CRC-4 is filled in, so the driver's PROM check passes.
     for (const [k, v] of Object.entries(withPromCrc(registers, layout.promCrc4))) this.setReg(Number(k), v);
+    this.por = registers;
+    if (layout.fifo) this.fifo = new SampleFifo(layout.fifo, (a) => this.byteAt(a, 0), (a, v) => this.setReg(a, v), value);
     if (measures.some((m) => m.solve)) this.solver = makeSolver(layout.constants, measures, (a) => (this.wide ? (this.byteAt(a, 0) << 8) | this.byteAt(a, 1) : this.byteAt(a, 0)));
     const n = layout.dac?.protocol === 'mcp4728' ? 4 : layout.dac ? 1 : 0;
     this.dacs = Array.from({ length: n }, () => ({ code: 0, vref: 0, gain: 1, pd: 0 }));
   }
   private solver?: Solver;
+  private por: Record<string, number>;
+  /** MAX3010x-style sample FIFO (see FifoSpec). */
+  fifo?: SampleFifo;
+  private fifoTick() {
+    this.fifo?.advance((this.layout.nowMs?.() ?? 0) * 1000);
+  }
   /** DAC channels (input register = output: LDAC is taken as tied low). */
   dacs: DacChannel[] = [];
   private dacSet(ch: number, patch: Partial<DacChannel>, update = true) {
@@ -611,6 +620,7 @@ export class GenericI2CDevice implements I2CDevice {
   write(bytes: number[]) {
     if (!bytes.length) return;
     if (this.layout.dac) return this.dacWrite(bytes);
+    this.fifoTick();
     // A bare command byte in the latch range is remembered (MS5611: which conversion ran).
     const cl = this.layout.commandLatch;
     if (cl && bytes.length === 1 && bytes[0] >= cl.from && bytes[0] <= cl.to) this.store.set(Number(cl.reg) & 0xffff, [bytes[0]]);
@@ -646,9 +656,27 @@ export class GenericI2CDevice implements I2CDevice {
       for (let i = 0; i + 1 < data.length; i += 2) this.setReg(this.ptr + i / 2, (data[i] << 8) | data[i + 1]);
     } else data.forEach((b, i) => this.setReg(this.ptr + i, b));
     if (touchesRtc) this.rtcAdopt();
+    if (!data.length || this.wide) return;
+    const wrote = (a: number) => a >= this.ptr && a < this.ptr + data.length;
+    for (const c of this.layout.selfClearing ?? []) {
+      const r = Number(c.reg);
+      if (!wrote(r) || !(this.byteAt(r, 0) & c.mask)) continue;
+      if (c.reset) {
+        // Soft reset: every register back to its power-on value, FIFO emptied.
+        this.store.clear();
+        for (const [k, v] of Object.entries(withPromCrc(this.por, this.layout.promCrc4))) this.setReg(Number(k), v);
+        this.fifo?.reset();
+      }
+      this.setReg(r, this.byteAt(r, 0) & ~c.mask);
+    }
+    const f = this.layout.fifo;
+    if (f && (wrote(Number(f.writePtr)) || wrote(Number(f.readPtr)))) this.fifo!.pointersWritten();
   }
   read(n: number) {
     if (this.reply.length) return Array.from({ length: n }, (_, i) => this.reply[i] ?? 0);
+    this.fifoTick();
+    // FIFO_DATA does not auto-increment: the pointer stays while whole samples pop.
+    if (this.fifo && !this.wide && this.fifo.isData(this.ptr)) return this.fifo.read(n);
     this.refresh();
     // Input pins: a quasi-bidirectional pin written high reads the outside level (PCF8574); register inputs read it directly.
     // (computed for this read only, so a PCF8574's output latch is never overwritten)
@@ -666,6 +694,7 @@ export class GenericI2CDevice implements I2CDevice {
     // A pointerless expander repeats its port(s): PCF8574 port, port…; PCF8575 port 0, port 1, port 0…
     const at = (i: number) => (this.layout.pointerless ? i % (this.layout.pointerlessBytes ?? 1) : this.ptr + i);
     for (let i = 0; i < n; i++) out.push(this.wide ? this.byteAt(this.ptr + (i >> 1), i & 1) : (view.get(at(i)) ?? this.byteAt(at(i), 0)));
+    if (this.fifo && !this.wide) for (let i = 0; i < n; i++) this.fifo.statusRead(at(i));
     if (!this.wide && !this.layout.pointerless) this.ptr = (this.ptr + n) & 0xffff;
     return out;
   }

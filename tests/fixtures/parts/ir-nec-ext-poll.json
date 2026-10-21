@@ -1,0 +1,85 @@
+{
+ "type": "custom-ir-nec-ext-test",
+ "name": "IR receiver (NEC extended, time_pulse_us) test",
+ "mpn": "VS1838B",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "digital",
+ "pins": [
+  {
+   "name": "OUT",
+   "role": "io",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  }
+ ],
+ "vmin": 2.7,
+ "vmax": 5.5,
+ "currentMa": 1.5,
+ "priceUsd": 0.5,
+ "supplierQuery": "VS1838B",
+ "sim": {
+  "kind": "ir-receiver",
+  "outputPin": "OUT",
+  "ir": {
+   "protocol": "nec-ext"
+  }
+ },
+ "example": {
+  "code": "from machine import Pin, time_pulse_us\npin = Pin({OUT}, Pin.IN)\nprint('ready')\nlead = time_pulse_us(pin, 0, 5000000)\ngap = time_pulse_us(pin, 1, 20000)\nbits = []\nfor i in range(32):\n    time_pulse_us(pin, 0, 5000)\n    bits.append(1 if time_pulse_us(pin, 1, 5000) > 1120 else 0)\nv = sum(b << i for i, b in enumerate(bits))\nprint('lead %d gap %d' % (round(lead, -2), round(gap, -2)))\nprint('addr %04x cmd %02x inv %02x' % (v & 0xffff, (v >> 16) & 0xff, (v >> 24) & 0xff))\n",
+  "test": {
+   "id": "t",
+   "title": "t",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "ready",
+     "within": 3000
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "address",
+     "value": 4660
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 69
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "press",
+     "value": 1
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "lead 9000 gap 4500",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "addr 1234 cmd 45 inv ba",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}
