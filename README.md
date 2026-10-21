@@ -122,7 +122,7 @@ The **Circuit board** tab (or `npx tsx scripts/make-pcb.ts <example|--all>`) mak
 3. [Freerouting](https://github.com/freerouting/freerouting) routes the board, offline with analytics disabled. `pcbnew` then pours ground on both layers.
 4. `kicad-cli` runs DRC with schematic parity against common factory limits (0.15 mm track and space, 0.3 mm drill). It then exports Gerbers, drill files, positions, a 3D render and STEP. Sparkbench adds a JLCPCB-style BOM and CPL.
 
-Needs KiCad 8+ and Java 21+ with `freerouting-2.5.0.jar` in `~/.cache/sparkbench/freerouting/`; panels need KiKit (`python3 -m pip install --target ~/.cache/sparkbench/kikit-lib kikit` with KiCad's Python). Arduino builds need `arduino-cli` with the `esp32:esp32` and `rp2040:rp2040` cores. Live part prices use JLCPCB's public parts search (cached for a day). The paths can be overridden with the `KICAD_APP`, `JAVA` and `FREEROUTING_JAR` environment variables. The native `freerouting-cli` build crashes in 2.5.0, so use the jar.
+Needs KiCad 8+ and Java 25+ with `freerouting-2.5.0.jar` in `~/.cache/sparkbench/freerouting/`; panels need KiKit (`python3 -m pip install --target ~/.cache/sparkbench/kikit-lib kikit` with KiCad's Python). Arduino builds need `arduino-cli` with the `esp32:esp32` and `rp2040:rp2040` cores. Live part prices use JLCPCB's public parts search (cached for a day). The paths can be overridden with the `KICAD_APP`, `JAVA` and `FREEROUTING_JAR` environment variables. The native `freerouting-cli` build crashes in 2.5.0, so use the jar.
 
 ## How it fits together
 
@@ -147,7 +147,7 @@ Part artwork uses [@wokwi/elements](https://github.com/wokwi/wokwi-elements) (MI
 
 Run locally, Sparkbench has no accounts. Hosted, people sign in with [Clerk](https://clerk.com) and work in a **workspace**: their personal one, or a Clerk organization shared with a class or team. Projects, parts they add, gallery entries, classes, live rooms, circuit-board jobs and AI use all belong to one workspace, and the server checks that on every request. See [docs/design/multitenancy.md](docs/design/multitenancy.md).
 
-It deploys as one Docker service (the [Dockerfile](Dockerfile) includes KiCad 9, Freerouting, KiKit and ngspice) with Postgres, e.g. on Railway ([railway.json](railway.json)):
+It deploys as one Docker service (the [Dockerfile](Dockerfile) includes KiCad 10, Freerouting, KiKit and ngspice) with Postgres, e.g. on Railway ([railway.json](railway.json)):
 
 | Variable | |
 |---|---|

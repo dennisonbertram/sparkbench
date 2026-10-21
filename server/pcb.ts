@@ -16,7 +16,7 @@ export const KICAD_CLI = KICAD_APP ? join(KICAD_APP, 'Contents/MacOS/kicad-cli')
 const KICAD_PY = KICAD_APP ? join(KICAD_APP, 'Contents/Frameworks/Python.framework/Versions/Current/bin/python3') : '/usr/bin/python3';
 export const FP_DIR = KICAD_APP ? join(KICAD_APP, 'Contents/SharedSupport/footprints') : '/usr/share/kicad/footprints';
 export const FREEROUTING = [process.env.FREEROUTING_JAR, join(homedir(), '.cache/sparkbench/freerouting/freerouting-2.5.0.jar')].find((p) => p && existsSync(p));
-const JAVA = [process.env.JAVA, '/opt/homebrew/opt/openjdk/bin/java', '/usr/local/opt/openjdk/bin/java', '/usr/lib/jvm/default-java/bin/java', '/usr/lib/jvm/java-21-openjdk-amd64/bin/java', '/usr/lib/jvm/java-21-openjdk-arm64/bin/java', '/usr/bin/java'].find((p) => p && existsSync(p));
+const JAVA = [process.env.JAVA, '/opt/homebrew/opt/openjdk/bin/java', '/usr/local/opt/openjdk/bin/java', '/usr/lib/jvm/default-java/bin/java', '/usr/lib/jvm/java-25-openjdk-amd64/bin/java', '/usr/lib/jvm/java-25-openjdk-arm64/bin/java', '/usr/bin/java'].find((p) => p && existsSync(p));
 
 export function pcbToolsStatus() {
   return { kicad: !!KICAD_CLI && existsSync(KICAD_PY), freerouting: !!FREEROUTING && !!JAVA };
@@ -133,6 +133,11 @@ export async function buildPcb(source: Project, dir: string, onStep: (msg: strin
   if (py.code !== 0 || !existsSync(join(dir, 'layout.json'))) throw new Error(`Board layout failed: ${py.out.slice(-1500)}`);
   const layout = JSON.parse(readFileSync(join(dir, 'layout.json'), 'utf8'));
   step(layout.routed ? `Routed ${layout.tracks} tracks and ${layout.vias} vias` : 'Routing did not complete');
+  // Say why: the router's own last words (e.g. a Java version mismatch) beat a bare "did not complete".
+  if (!layout.routed && layout.route_log_tail) {
+    const why = String(layout.route_log_tail).split('\n').map((l: string) => l.trim()).filter((l: string) => /error|exception|unsupported|timed out/i.test(l)).slice(-2);
+    if (why.length) step(`Router: ${why.join(' / ').slice(0, 300)}`);
+  }
   const pcb = layout.pcb as string;
 
   step('Checking design rules (KiCad DRC)');

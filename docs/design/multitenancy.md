@@ -106,7 +106,7 @@ Migrations are plain SQL files in `server/db/migrations/`, applied at startup. T
 
 ## Deployment (Railway)
 
-- `Dockerfile`: Node 22 on Debian; KiCad 9 (`kicad-cli`, Python bindings), OpenJDK + Freerouting 2.5.0, ngspice; `npm ci && npm run build`; `CMD node server/index.ts`.
+- `Dockerfile`: Node 22 on Debian; KiCad 10 (`kicad-cli`, Python bindings), OpenJDK + Freerouting 2.5.0, ngspice; `npm ci && npm run build`; `CMD node server/index.ts`.
 - Railway: one service from the Dockerfile, a Postgres plugin (`DATABASE_URL`), a volume at `/data`, a health check on `/api/health`.
 - Environment: `SPARKBENCH_MODE=hosted`, `CLERK_PUBLISHABLE_KEY` (also exposed as `VITE_CLERK_PUBLISHABLE_KEY` at build time), `CLERK_SECRET_KEY`, `DATABASE_URL`, `ANTHROPIC_API_KEY`, `DATA_DIR=/data`.
 
