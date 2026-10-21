@@ -1,0 +1,314 @@
+{
+  "type": "custom-sparkfun-qwiic-led-stick",
+  "name": "SparkFun Qwiic LED Stick - APA102C",
+  "mpn": "COM-18354",
+  "category": "actuator",
+  "description": "Strip of 10 APA102C RGB LEDs (numbered 0-9 on the board) driven over I2C by an ATtiny85 running SparkFun's Qwiic_LED_Stick firmware: you send short command bytes (colour of one LED, all LEDs, per-LED colour arrays, 5-bit brightness 0-31, off) and the firmware shifts the stored colours out to the APA102C chain. Up to 100 LEDs when more APA102 strips are chained on the CO/DO output header. 3.3 V board (ATtiny85 and LEDs both on 3.3 V by default; VLED jumper can move the LEDs to VIN, 3.0-5.5 V), 4.7 kOhm I2C pull-ups to 3.3 V. I2C address 0x23 (0x22 with the ADR jumper closed, or set in software). Sold as: SparkFun Qwiic LED Stick - APA102C (COM-18354), 6-pin 0.1\" header GND, 3.3V, SDA, SCL, VIN, GND plus two Qwiic connectors and a separate 4-pin LED output header VLED, CO, DO, GND on the far edge (only for chaining extra APA102 LEDs).",
+  "eli5": "A bar of ten colour lights; your board tells the little chip on it which colour and how bright each light should be, over two wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 3.3 V for the ATtiny85 and (default VLED jumper) the LEDs. No regulator: the Qwiic system is 3.3 V only",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kOhm pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kOhm pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Separate LED supply (3.0-5.5 V), used only after moving the VLED jumper to VIN for long LED chains; leave unconnected by default",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Second ground pad (printed GND) next to VIN, for the separate LED supply. Leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 70,
+  "i2cAddress": 35,
+  "datasheetUrl": "https://raw.githubusercontent.com/sparkfun/Qwiic_LED_Stick/main/APA102C%20Datasheet.pdf",
+  "priceUsd": 12.5,
+  "supplierQuery": "SparkFun Qwiic LED Stick APA102C COM-18354",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.sparkfun.com/sparkfun-qwiic-led-stick-apa102c.html",
+    "https://learn.sparkfun.com/tutorials/qwiic-led-stick---apa102c-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/1/8/2/4/Qwiic_LED_Stick-Qwiic.jpg",
+    "https://github.com/sparkfun/Qwiic_LED_Stick/blob/main/Firmware/Qwiic_LED_Stick/Qwiic_LED_Stick.ino",
+    "https://github.com/sparkfun/SparkFun_Qwiic_LED_Stick_Arduino_Library/blob/master/src/Qwiic_LED_Stick.cpp",
+    "https://github.com/sparkfun/Qwiic_LED_Stick_Py/blob/main/qwiic_led_stick.py",
+    "https://raw.githubusercontent.com/sparkfun/Qwiic_LED_Stick/main/APA102C%20Datasheet.pdf"
+  ],
+  "buildNotes": [
+    "Power from 3.3 V (Qwiic). All 10 LEDs full white draw about 65 mA at 3.3 V (SparkFun measurement).",
+    "Write-only command protocol: each I2C write is a command byte plus data; there are no registers to read.",
+    "LED numbers start at 0, matching the 0-9 printed on the board (firmware v2, 2021; older v1 sticks counted from 1).",
+    "Colour arrays (0x73/0x74/0x75) go in chunks of at most 12 values: the ATtiny85 receive buffer is 16 bytes.",
+    "Brightness is 0-31 per LED (APA102 global brightness) and starts at 31; brightness 0 turns an LED off but keeps its colour.",
+    "Default address 0x23; ADR jumper closed = 0x22; command 0xC7 stores a new address in EEPROM.",
+    "For chains longer than the stick, move the VLED jumper to VIN and feed the LEDs 3.0-5.5 V on VIN, and set the length (0x70, 1-100)."
+  ],
+  "keywords": [
+    "qwiic led stick",
+    "sparkfun",
+    "apa102",
+    "apa102c",
+    "led bar",
+    "rgb led",
+    "i2c led",
+    "attiny85",
+    "com-18354",
+    "dotstar"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x02": 10
+    },
+    "commands": [
+      {
+        "code": 112,
+        "data": 1,
+        "actions": [
+          {
+            "reg": "0x02",
+            "op": "set",
+            "value": "data",
+            "min": 1,
+            "max": 100
+          }
+        ]
+      },
+      {
+        "code": 113,
+        "block": {
+          "mode": "one",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            0,
+            1,
+            2
+          ],
+          "maxIndex": 99
+        }
+      },
+      {
+        "code": 114,
+        "block": {
+          "mode": "all",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            0,
+            1,
+            2
+          ],
+          "maxIndex": 99,
+          "countReg": "0x02"
+        }
+      },
+      {
+        "code": 115,
+        "block": {
+          "mode": "array",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            0
+          ],
+          "maxIndex": 99,
+          "countReg": "0x02"
+        }
+      },
+      {
+        "code": 116,
+        "block": {
+          "mode": "array",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            1
+          ],
+          "maxIndex": 99,
+          "countReg": "0x02"
+        }
+      },
+      {
+        "code": 117,
+        "block": {
+          "mode": "array",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            2
+          ],
+          "maxIndex": 99,
+          "countReg": "0x02"
+        }
+      },
+      {
+        "code": 118,
+        "block": {
+          "mode": "one",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            3
+          ],
+          "maxIndex": 99
+        }
+      },
+      {
+        "code": 119,
+        "block": {
+          "mode": "all",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            3
+          ],
+          "maxIndex": 99,
+          "countReg": "0x02"
+        }
+      },
+      {
+        "code": 120,
+        "block": {
+          "mode": "clear",
+          "base": "0x100",
+          "stride": 4,
+          "fields": [
+            0,
+            1,
+            2
+          ],
+          "maxIndex": 99,
+          "countReg": "0x02"
+        }
+      },
+      {
+        "code": 199,
+        "data": 1
+      }
+    ],
+    "blockPixels": {
+      "base": "0x100",
+      "stride": 4,
+      "rgb": [
+        0,
+        1,
+        2
+      ],
+      "brightness": 3,
+      "countReg": "0x02",
+      "countDefault": 10,
+      "maxCount": 100,
+      "init": {
+        "3": 31
+      }
+    }
+  },
+  "driver": {
+    "filename": "qwiic_led_stick.py",
+    "code": "# SparkFun Qwiic LED Stick - APA102C (COM-18354), MicroPython driver.\n# The board's ATtiny85 runs SparkFun's Qwiic_LED_Stick firmware: it keeps a colour + 5-bit brightness for\n# up to 100 APA102C LEDs and shifts the whole array out to the LEDs after every I2C write.\n# The firmware takes command bytes (no register pointer, nothing to read back):\n#   0x70 n            set LED count (1-100, stored in EEPROM)\n#   0x71 i r g b      colour of LED i (index starts at 0, as printed on the board)\n#   0x72 r g b        colour of all LEDs\n#   0x73/0x74/0x75 len off v...   red/green/blue values for LEDs off..off+len-1\n#   0x76 i bri        brightness (0-31) of LED i      0x77 bri   brightness of all LEDs\n#   0x78              all colours to 0 (brightness kept)\n#   0xC7 addr         new I2C address (0x08-0x77, stored in EEPROM)\n# Source: github.com/sparkfun/Qwiic_LED_Stick Firmware/Qwiic_LED_Stick.ino (v2, 2021: index from 0).\nimport time\n\nCMD_CHANGE_ADDRESS = 0xC7\nCMD_CHANGE_LENGTH = 0x70\nCMD_SINGLE_COLOR = 0x71\nCMD_ALL_COLOR = 0x72\nCMD_RED_ARRAY = 0x73\nCMD_GREEN_ARRAY = 0x74\nCMD_BLUE_ARRAY = 0x75\nCMD_SINGLE_BRIGHTNESS = 0x76\nCMD_ALL_BRIGHTNESS = 0x77\nCMD_ALL_OFF = 0x78\n\n# The ATtiny85 I2C receive buffer is 16 bytes: command + length + offset + 12 values per write,\n# exactly as SparkFun's Arduino library splits it.\n_CHUNK = 12\n\n\ndef _b(v):\n    v = int(v)\n    return 0 if v < 0 else 255 if v > 255 else v\n\n\ndef _bri(v):\n    v = int(v)\n    return 0 if v < 0 else 31 if v > 31 else v\n\n\nclass LEDStick:\n    def __init__(self, i2c, addr=0x23):\n        self.i2c = i2c\n        self.addr = addr\n        if addr not in i2c.scan():\n            raise OSError('Qwiic LED Stick not found at 0x%02X' % addr)\n\n    def _w(self, data):\n        self.i2c.writeto(self.addr, bytes(data))\n\n    def set_led_color(self, number, r, g, b):\n        \"\"\"Colour of one LED; number 0-99 (0 = the LED marked 0 on the board).\"\"\"\n        if not 0 <= number <= 99:\n            raise ValueError('LED number 0-99')\n        self._w([CMD_SINGLE_COLOR, number, _b(r), _b(g), _b(b)])\n\n    def set_all(self, r, g, b):\n        self._w([CMD_ALL_COLOR, _b(r), _b(g), _b(b)])\n\n    def set_colors(self, reds, greens, blues):\n        \"\"\"Different colour per LED, starting at LED 0. Lists must be the same length.\"\"\"\n        n = len(reds)\n        if len(greens) != n or len(blues) != n:\n            raise ValueError('colour lists differ in length')\n        for cmd, arr in ((CMD_RED_ARRAY, reds), (CMD_GREEN_ARRAY, greens), (CMD_BLUE_ARRAY, blues)):\n            for off in range(0, n, _CHUNK):\n                chunk = [_b(v) for v in arr[off:off + _CHUNK]]\n                self._w([cmd, len(chunk), off] + chunk)\n\n    def set_brightness(self, number, bri):\n        \"\"\"Brightness 0-31 of one LED (0 = off, colour remembered).\"\"\"\n        if not 0 <= number <= 99:\n            raise ValueError('LED number 0-99')\n        self._w([CMD_SINGLE_BRIGHTNESS, number, _bri(bri)])\n\n    def set_all_brightness(self, bri):\n        self._w([CMD_ALL_BRIGHTNESS, _bri(bri)])\n\n    def off(self):\n        \"\"\"All colours to 0 (brightness settings are kept).\"\"\"\n        self._w([CMD_ALL_OFF])\n\n    def change_length(self, n):\n        \"\"\"Number of LEDs driven (1-100, saved in EEPROM). Use an external LED supply for long chains.\"\"\"\n        if not 1 <= n <= 100:\n            raise ValueError('length 1-100')\n        self._w([CMD_CHANGE_LENGTH, n])\n\n    def change_address(self, new_addr):\n        \"\"\"Store a new I2C address (0x08-0x77) in EEPROM; ignored while the ADR jumper is closed (0x22).\"\"\"\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._w([CMD_CHANGE_ADDRESS, new_addr])\n        time.sleep_ms(50)\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_led_stick import LEDStick\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nstick = LEDStick(i2c)          # default address 0x23\nstick.off()\nprint('LEDS OFF')\ntime.sleep(1.5)\n# rainbow-ish: LED 0 red ... LED 9 blue (index 0 is the LED marked 0 on the board)\nreds = [255 - i * 28 for i in range(10)]\ngreens = [0, 40, 80, 120, 160, 160, 120, 80, 40, 0]\nblues = [i * 28 for i in range(10)]\nstick.set_colors(reds, greens, blues)\nstick.set_led_color(0, 255, 0, 0)\nprint('LEDS ON')\ntime.sleep(1.5)\nstick.set_all_brightness(0)    # dark, colours remembered\nprint('BRIGHTNESS 0')\ntime.sleep(1.5)\nstick.set_all_brightness(10)\nprint('BRIGHTNESS 10')\n",
+    "test": {
+      "id": "stick",
+      "title": "The LED Stick goes dark, lights up, dims to 0 and comes back",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LEDS OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LEDS ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BRIGHTNESS 0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BRIGHTNESS 10",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (5 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:22:32.492Z",
+    "verifiedSources": [
+      "https://learn.sparkfun.com/tutorials/qwiic-led-stick---apa102c-hookup-guide",
+      "https://cdn.sparkfun.com/datasheets/Components/LED/APA102C.pdf",
+      "https://cdn.sparkfun.com/assets/b/c/9/c/1/Qwiic_LED_Stick_-_Schematic.pdf",
+      "https://github.com/sparkfun/Qwiic_LED_Stick"
+    ]
+  }
+}

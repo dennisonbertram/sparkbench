@@ -1,0 +1,34 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says GND, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "In the SparkFun Eagle board file the six left-edge PTH holes are one column at x=1.27 (J7 1x04 SCL/SDA/3.3V/GND as pads 1-4 from y=11.43 upward, J1 1x02 VIN/GND below), and the silkscreen labels read top to bottom GND, 3.3V, SDA, SCL, VIN, GND; J7 pad 4 (GND) sits at the top of the left column y=19.05, e.g. '<element name=\"U$4\" library=\"output\" package=\"#GND#0\" value=\"\" x=\"6.096\" y=\"19.05\"' - the second reading listed Eagle pad numbers of J7 then J1, which is not the physical order along the edge, while the model follows the printed top-to-bottom order.",
+      "source": "https://raw.githubusercontent.com/sparkfun/SparkFun_Qwiic_LED_Stick/main/Hardware/Qwiic%20LED%20Stick.brd"
+    },
+    {
+      "diff": "header pin 2: part says 3.3V, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "In the SparkFun Eagle board file the six left-edge PTH holes are one column at x=1.27 (J7 1x04 SCL/SDA/3.3V/GND as pads 1-4 from y=11.43 upward, J1 1x02 VIN/GND below), and the silkscreen labels read top to bottom GND, 3.3V, SDA, SCL, VIN, GND; 3.3V (J7 pad 3) is second from the top at y=16.51, e.g. '<element name=\"U$17\" library=\"output\" package=\"#3#3V#0\" value=\"\" x=\"6.477\" y=\"16.51\"' - the second reading listed Eagle pad numbers of J7 then J1, which is not the physical order along the edge, while the model follows the printed top-to-bottom order.",
+      "source": "https://raw.githubusercontent.com/sparkfun/SparkFun_Qwiic_LED_Stick/main/Hardware/Qwiic%20LED%20Stick.brd"
+    },
+    {
+      "diff": "header pin 3: part says SDA, datasheet reading says 3.3V",
+      "verdict": "part-correct",
+      "evidence": "In the SparkFun Eagle board file the six left-edge PTH holes are one column at x=1.27 (J7 1x04 SCL/SDA/3.3V/GND as pads 1-4 from y=11.43 upward, J1 1x02 VIN/GND below), and the silkscreen labels read top to bottom GND, 3.3V, SDA, SCL, VIN, GND; SDA (J7 pad 2) is third at y=13.97, e.g. '<element name=\"U$21\" library=\"output\" package=\"#SDA_#0\" value=\"\" x=\"6.096\" y=\"13.97\"' - the second reading listed Eagle pad numbers of J7 then J1, which is not the physical order along the edge, while the model follows the printed top-to-bottom order.",
+      "source": "https://raw.githubusercontent.com/sparkfun/SparkFun_Qwiic_LED_Stick/main/Hardware/Qwiic%20LED%20Stick.brd"
+    },
+    {
+      "diff": "header pin 4: part says SCL, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "In the SparkFun Eagle board file the six left-edge PTH holes are one column at x=1.27 (J7 1x04 SCL/SDA/3.3V/GND as pads 1-4 from y=11.43 upward, J1 1x02 VIN/GND below), and the silkscreen labels read top to bottom GND, 3.3V, SDA, SCL, VIN, GND; SCL (J7 pad 1) is fourth at y=11.43, e.g. '<element name=\"U$23\" library=\"output\" package=\"#SCL_#0\" value=\"\" x=\"5.842\" y=\"11.43\"' - the second reading listed Eagle pad numbers of J7 then J1, which is not the physical order along the edge, while the model follows the printed top-to-bottom order.",
+      "source": "https://raw.githubusercontent.com/sparkfun/SparkFun_Qwiic_LED_Stick/main/Hardware/Qwiic%20LED%20Stick.brd"
+    },
+    {
+      "diff": "physical layout: the board has 2 header rows, but this small module is modelled as plugging in as a single row",
+      "verdict": "part-correct",
+      "evidence": "Both I2C/power headers are placed at the same x on the left edge, '<element name=\"J7\" library=\"SparkFun-Connectors\" package=\"1X04_NO_SILK\" value=\"\" x=\"1.27\" y=\"11.43\"' and '<element name=\"J1\" library=\"SparkFun-Connectors\" package=\"1X02_NO_SILK\" value=\"\" x=\"1.27\" y=\"8.89\"', forming a single 6-pin 0.1in column; the only other header (J5, x=90.17) is the far-edge LED output for chaining APA102 strips ('routed the LED control signals out to a dedicated 0.1\"-spaced PTH header on the edge of the board'), not a second row of the module's I2C header.",
+      "source": "https://raw.githubusercontent.com/sparkfun/SparkFun_Qwiic_LED_Stick/main/Hardware/Qwiic%20LED%20Stick.brd ; https://learn.sparkfun.com/tutorials/qwiic-led-stick---apa102c-hookup-guide/all"
+    }
+  ]
+}
