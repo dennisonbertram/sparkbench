@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-4-channel-line-tracker",
+  "board": "4-channel infrared tracing / line tracking module, common clone kit: red LM339 control board (4 trimmers, LEDs D1-D5, 6-pin header VCC, GND, IN1, IN2, IN3, IN4) with 4 TCRT5000 probe boards",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test \"Line: 0 0 1 1\" with probes 1 and 2 set to white, PCB DRC clean, footprint). Modelled as a digital-sensor with four active-low outputs (LM339 open collector, 10k board pull-ups to VCC, low over white); IN1 is openDrain and IN2-IN4 use digitalOutputs; the board is cabled because the probe connectors sit on a second edge.",
+  "datasheetUrl": "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+  "breakoutPinoutSource": "Vendor datasheet https://cdn.shopify.com/s/files/1/1509/1638/files/4chIR_datasheet.pdf (control module pins 1-6: VCC, GND, OUT1-OUT4, numbered photo) and its product photo showing the IN1-IN4 silkscreen on that header",
+  "checkRuns": 2
+}

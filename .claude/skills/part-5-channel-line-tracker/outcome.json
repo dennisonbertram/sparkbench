@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-5-channel-line-tracker",
+  "board": "5-channel TCRT5000 IR line tracking sensor board (common blue 95 x 20 mm clone, 7-pin header GND, 5V, OUT1-OUT5, single 74HC14D, no potentiometers)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test 'Line: 10100' with sensors 1 and 3 over black, PCB DRC clean, footprint). Modelled as a digital-sensor with five active-low push-pull outputs (TCRT5000 phototransistor into a 74HC14 Schmitt inverter: black/no reflection -> OUT low, white -> high), powered at 3.3-5 V so outputs stay at 3.3 V from 3V3.",
+  "datasheetUrl": "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+  "breakoutPinoutSource": "Silkscreen GND, 5V, OUT1-OUT5 in product photos (https://probots.co.in/pub/media/wysiwyg/3.3v-5v_5-Channel_IR_Sensor_Array_Line_Follower_Infrared_Detection_Module_Board_TCRT5000_7__2.jpg, https://file2.dzsc.com/product/17/07/18/8148_144419793.png); 74HC14D chip and output levels (black low, white high) from https://m.dzsc.com/product/8148-2017718145059511.html",
+  "checkRuns": 1
+}

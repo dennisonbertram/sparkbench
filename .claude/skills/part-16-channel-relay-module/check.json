@@ -1,0 +1,79 @@
+{
+  "type": "custom-16-channel-relay-module",
+  "mpn": "SRD-12VDC-SL-C",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "22 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "20 pins wired; K1.IN1 → D25 (GPIO25). K1.IN2 → D26 (GPIO26). K1.IN3 → D27 (GPIO27). K1.IN4 → D13 (GPIO13). K1.IN5 → D23 (GPIO23). K1.IN6 → D19 (GPIO19). K1.IN7 → D18 (GPIO18). K1.IN8 → TX2 (GPIO17). K1.IN9 → RX2 (GPIO16). K1.IN10 → D4 (GPIO4). K1.IN11 → D14 (GPIO14). K1.IN12 → D32 (GPIO32). K1.IN13 → D33 (GPIO33). K1.IN14 → D5 (GPIO5). K1.IN15 → D2 (GPIO2). K1.IN16 → D15 (GPIO15). Added a separate 12 V supply for DC12V+ (it needs 10.8–13.2 V and up to 600 mA, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Odd and even relays take turns switching on (active low): passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×90 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "22 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "20 pins wired; K1.IN1 → GP2 (GPIO2). K1.IN2 → GP3 (GPIO3). K1.IN3 → GP6 (GPIO6). K1.IN4 → GP7 (GPIO7). K1.IN5 → GP8 (GPIO8). K1.IN6 → GP9 (GPIO9). K1.IN7 → GP10 (GPIO10). K1.IN8 → GP11 (GPIO11). K1.IN9 → GP12 (GPIO12). K1.IN10 → GP13 (GPIO13). K1.IN11 → GP14 (GPIO14). K1.IN12 → GP15 (GPIO15). K1.IN13 → GP22 (GPIO22). K1.IN14 → GP21 (GPIO21). K1.IN15 → GP20 (GPIO20). K1.IN16 → GP19 (GPIO19). Added a separate 12 V supply for DC12V+ (it needs 10.8–13.2 V and up to 600 mA, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Odd and even relays take turns switching on (active low): passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x22_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C30431 SRD-12VDC-SL-C (156446 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T19:51:27.983Z"
+}

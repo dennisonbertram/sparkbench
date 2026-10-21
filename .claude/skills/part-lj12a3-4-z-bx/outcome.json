@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "digital-sensor",
+  "board": "LJ12A3-4-Z/BX inductive proximity sensor switch, NPN NO, DC 6-36 V (M12 x 58 mm barrel, 1 m 3-wire lead: brown V+, black OUT, blue GND)",
+  "reason": "Part check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test, PCB). Modelled as an active-low open-collector digital sensor with an external 6-36 V supply on VCC and a 10 kOhm load resistor from OUT to 3V3 (pin pullUp was dropped because it tied the resistor to 5 V).",
+  "datasheetUrl": "https://www.electrokit.com/upload/product/41014/41014825/LJ12A3-4.pdf",
+  "breakoutPinoutSource": "Electrokit LJ12A3-4 datasheet: 'Brown: V+, Black: Load, Blue: GND' (cabled sensor, pins listed VCC/OUT/GND in that order)",
+  "checkRuns": 2
+}

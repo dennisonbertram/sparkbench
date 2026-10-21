@@ -1,0 +1,119 @@
+{
+  "type": "custom-ws2812b-16x16-matrix",
+  "name": "WS2812B 16x16 LED matrix (256 pixels)",
+  "mpn": "WS2812B 16x16 panel",
+  "category": "output",
+  "description": "Flexible 16×16 matrix of 256 individually addressable WS2812B RGB LEDs (Worldsemi, 24-bit GRB, 800 kbit/s single-wire data) chained in a zig-zag on a 160×160 mm FPC with 10 mm pitch. Runs on 5 V (datasheet absolute range 3.5–5.3 V); about 60 mA per LED at full white (0.3 W), so up to about 15.4 A (77 W) for the whole panel: it always needs its own 5 V supply. Sold as: BTF-LIGHTING WS2812B 16x16 256-pixel flexible LED panel (160×160 mm black FPC, 3-pin JST-SM input 5V, DIN, GND; matching 5V, DOUT, GND output for chaining; extra red/white power-injection wires).",
+  "eli5": "A soft square of 256 colour lights you can set one by one, like a small screen, using just one data wire, but it needs its own big power supply.",
+  "refPrefix": "D",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "LED supply, 5 V (3.5–5.3 V absolute maximum). Up to about 15.4 A for 256 LEDs at full white: feed it from a separate 5 V supply (10–20 A) whose GND joins the board's GND, never from the board's 5V/VBUS pin.",
+      "required": true,
+      "supply": {
+        "vmin": 4.5,
+        "vmax": 5.3,
+        "currentMa": 15360
+      }
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Data in to the first LED (input JST-SM; follow the arrows). Needs at least 0.7 × VDD (3.5 V at 5 V) as a high: 3.3 V GPIO is marginal, so use a 74AHCT125 level shifter and a 300–500 Ω series resistor.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller and the 5 V supply",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.3,
+  "currentMa": 15360,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+  "priceUsd": 23,
+  "supplierQuery": "WS2812B 16x16 256 pixel flexible LED panel 5V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire the 3-pin JST-SM INPUT connector (5V, DIN, GND printed by the pads); the output connector (5V, DOUT, GND) only chains to another panel.",
+    "Power the panel from a separate regulated 5 V supply (5 V 10 A for typical animations, 20 A for full white at full brightness) and join its GND to the board's GND. Use the extra red/white power wires to inject power too, with 18 AWG or thicker leads; without injection the far LEDs look dim or yellow.",
+    "The driver's default brightness of 0.1 keeps a full-white frame near 1.5 A (256 × 6 mA), still more than a USB-powered board can give. Even dark, the 256 LEDs draw roughly 0.2–0.3 A.",
+    "Put a 1000 µF capacitor across 5V and GND at the panel and a 300–500 Ω resistor in series with DIN.",
+    "WS2812B wants a data high of at least 0.7 × VDD (3.5 V at 5 V): 3.3 V data is marginal; use a 74AHCT125 level shifter powered from 5 V for reliable data.",
+    "Never exceed 5.3 V on the panel's supply (datasheet absolute maximum)."
+  ],
+  "keywords": [
+    "ws2812b",
+    "ws2812",
+    "neopixel",
+    "16x16",
+    "led matrix",
+    "led panel",
+    "addressable",
+    "rgb matrix",
+    "256 led"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+    "https://cdn.sparkfun.com/datasheets/Components/LED/P256V5.pdf",
+    "https://probots.co.in/16x16-flexible-ws2812b-addressable-rgb-led-matrix-square.html",
+    "https://pmdway.com/products/flexible-ws2812b-rgb-led-panel",
+    "https://www.az-delivery.de/en/products/rgb-led-panel-ws2812b-16x16-256-leds-flexibel-led-modul-5050smd-ic-einzeladressierbare-vollfarbfunktionen-mit-dc5v-kompatibel-mit-raspberry-pi",
+    "https://www.btf-lighting.com/products/ws2812b-panel-screen-8-8-16-16-8-32-pixel-256-pixels-digital-flexible-led-programmed-individually-addressable-full-color-dc5v",
+    "https://docs.micropython.org/en/latest/library/neopixel.html"
+  ],
+  "sim": {
+    "kind": "addressable-led",
+    "inputPin": "DIN",
+    "count": 256
+  },
+  "driver": {
+    "filename": "ws2812b_16x16.py",
+    "code": "# WS2812B 16x16 flexible LED matrix (256 pixels), MicroPython helper.\n# Uses MicroPython's built-in neopixel module, which produces the WS2812B's\n# 800 kbit/s single-wire code (T0H 0.4 us, T1H 0.8 us, +-150 ns) and sends each\n# pixel as 24 bits in G-R-B order, MSB first, as the Worldsemi datasheet requires.\n# A low gap of more than 50 us after write() latches the new colours.\n#\n# The flexible 16x16 panels are wired in a zig-zag (serpentine): row 0 runs away\n# from the DIN corner, row 1 runs back, and so on. If your panel is wired\n# row-by-row in one direction, pass serpentine=False.\n#\n# brightness scales every colour (0.0-1.0). Each LED draws about 60 mA at full\n# white, so the whole panel can pull about 15 A at 5 V. The default of 0.1 keeps a\n# full-white frame near 1.5 A: still too much for a board's USB 5 V pin, so always\n# feed the panel from a separate 5 V supply whose GND joins the board's GND.\nimport neopixel\n\nWIDTH = 16\nHEIGHT = 16\n\n\nclass Matrix16x16:\n    WIDTH = WIDTH\n    HEIGHT = HEIGHT\n\n    def __init__(self, pin, serpentine=True, brightness=0.1):\n        self.np = neopixel.NeoPixel(pin, WIDTH * HEIGHT)\n        self.serpentine = serpentine\n        self.brightness = max(0.0, min(1.0, brightness))\n\n    def index(self, x, y):\n        \"\"\"Chain position of the pixel at column x, row y (0,0 = first LED after DIN).\"\"\"\n        if not (0 <= x < WIDTH and 0 <= y < HEIGHT):\n            raise ValueError('x and y must be 0-15')\n        if self.serpentine and y & 1:\n            x = WIDTH - 1 - x\n        return y * WIDTH + x\n\n    def _scale(self, color):\n        b = self.brightness\n        return (int(color[0] * b), int(color[1] * b), int(color[2] * b))\n\n    def pixel(self, x, y, color):\n        \"\"\"Set one pixel to color = (r, g, b), 0-255 each. Call show() to send.\"\"\"\n        self.np[self.index(x, y)] = self._scale(color)\n\n    def get(self, x, y):\n        \"\"\"The (r, g, b) bytes that will be sent for the pixel at x, y (after brightness).\"\"\"\n        return self.np[self.index(x, y)]\n\n    def fill(self, color):\n        self.np.fill(self._scale(color))\n\n    def clear(self):\n        self.np.fill((0, 0, 0))\n\n    def show(self):\n        self.np.write()\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom ws2812b_16x16 import Matrix16x16\n\nm = Matrix16x16(Pin({DIN}), brightness=0.1)\nm.clear()\nm.show()\ntime.sleep(1)\nfor y in range(16):\n    for x in range(16):\n        m.pixel(x, y, (250, 0, 0) if x == y else (0, 0, 120))\nm.show()\nprint('diag', m.get(5, 5), 'bg', m.get(1, 0), 'index', m.index(0, 1))\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "lights",
+      "title": "The matrix starts dark, then lights a red diagonal on blue and reports the bytes sent",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "diag (25, 0, 0) bg (0, 0, 12) index 31",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:28:28.540Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf",
+      "https://www.az-delivery.de/en/products/rgb-led-panel-ws2812b-16x16-256-leds-flexibel-led-modul-5050smd-ic-einzeladressierbare-vollfarbfunktionen-mit-dc5v-kompatibel-mit-raspberry-pi"
+    ]
+  }
+}

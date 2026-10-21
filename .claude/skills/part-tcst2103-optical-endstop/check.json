@@ -1,0 +1,79 @@
+{
+  "type": "custom-tcst2103-optical-endstop",
+  "mpn": "TCST2103",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; TCST2103 optical endstop module needs at least 4.5 V, so it is powered from 5 V. U2.S → D25 (GPIO25). Added a 10 kΩ / 20 kΩ divider on S: it swings to 5 V, and the D25 pin takes 3.3 V at most. Added the tcst2103_endstop.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "15 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the endstop triggered when the slot is blocked, open when it clears: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "46×77.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; TCST2103 optical endstop module needs at least 4.5 V, so it is powered from 5 V. U2.S → GP2 (GPIO2). Added a 10 kΩ / 20 kΩ divider on S: it swings to 5 V, and the GP2 pin takes 3.3 V at most. Added the tcst2103_endstop.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "16 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the endstop triggered when the slot is blocked, open when it clears: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C3008864 TCST2103 (134 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T19:57:11.460Z"
+}

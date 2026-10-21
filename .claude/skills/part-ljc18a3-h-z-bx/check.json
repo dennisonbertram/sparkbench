@@ -1,0 +1,79 @@
+{
+  "type": "custom-ljc18a3-h-z-bx",
+  "mpn": "LJC18A3-H-Z/BX",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.OUT → D25 (GPIO25). Added a 10 kΩ resistor from OUT to 3V3, as the datasheet's circuit requires. Added a separate 12 V supply for VCC (it needs 6–36 V and up to 13 mA, more than the board can give); its − joins the board's GND. Added the ljc18a3.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports an object when the sensor is triggered: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.OUT → GP2 (GPIO2). Added a 10 kΩ resistor from OUT to 3V3, as the datasheet's circuit requires. Added a separate 12 V supply for VCC (it needs 6–36 V and up to 13 mA, more than the board can give); its − joins the board's GND. Added the ljc18a3.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports an object when the sensor is triggered: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T19:53:57.907Z"
+}

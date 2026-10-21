@@ -1,0 +1,117 @@
+{
+  "type": "custom-xkc-y25",
+  "name": "XKC-Y25-NPN non-contact liquid level sensor",
+  "mpn": "XKC-Y25-NPN",
+  "category": "sensor",
+  "description": "Capacitive liquid level switch that sticks to the OUTSIDE of a non-metallic container (plastic, glass, ceramic, wall up to 20 mm) and reports whether liquid is at its height, without touching the liquid. NPN open-collector output: with the black wire left open, OUT is pulled LOW while liquid is sensed and is open otherwise, so it needs a pull-up to 3.3 V. Supply 5-12 V DC, 5 mA, response time about 500 ms, sensitivity knob under the back cover. Sold as: XKC-Y25-NPN (DC 5-12 V) non-contact liquid level sensor by Shenzhen XingKeChuang, 50 cm 4-wire lead on an XH2.54 4-pin plug (brown VCC, yellow OUT, blue GND, black mode), also sold as XKC-Y25-NPN water level detector by ICStation and others.",
+  "eli5": "A small box you glue to the outside of a bottle or tank: it feels the water through the wall and tells your board when the water reaches it.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Brown wire: supply, 5-12 V DC (XKC-Y25-NPN 5-12 V model), about 5 mA. Wire it to the board's 5V/VBUS pin.",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "load": {
+        "ohms": 10000,
+        "to": "3v3"
+      },
+      "description": "Yellow wire: NPN open-collector output. With the black wire open it is pulled LOW while liquid is sensed and is open otherwise. Pull it up to 3V3 (10 kOhm, plus the GPIO's internal pull-up), never to the sensor supply. Sinks up to 100 mA.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Blue wire: ground (power negative).",
+      "required": true
+    },
+    {
+      "name": "MODE",
+      "role": "nc",
+      "description": "Black wire (the manual calls it the COM terminal, the vendor 'signal option'): output mode select. Leave it unconnected for normally-open output (LOW = liquid). Tie it to GND to invert (normally closed: LOW = no liquid). Do not use it as the ground wire.",
+      "required": false
+    }
+  ],
+  "vmin": 5,
+  "vmax": 12,
+  "currentMa": 5,
+  "datasheetUrl": "https://www.xkc-sensor.com/phoenix/admin/download?fileId=gtfUWpqMgIJO&dp=GvUApKfKKUAU",
+  "sources": [
+    "https://www.xkc-sensor.com/detail/1432.html",
+    "https://www.xkc-sensor.com/phoenix/admin/download?fileId=gtfUWpqMgIJO&dp=GvUApKfKKUAU",
+    "https://www.electrokit.com/upload/quick/dc/01/adff_41022296-tds.pdf",
+    "https://www.icstation.com/contact-liquid-level-sensor-ip67-waterproof-output-water-level-detector-p-12292.html"
+  ],
+  "priceUsd": 7,
+  "supplierQuery": "XKC-Y25-NPN non-contact liquid level sensor 5-12V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "It is a sensor on a 50 cm lead ending in an XH2.54 4-pin plug, not a breadboard module: use jumper leads or cut the plug off. Wires: brown = VCC, yellow = OUT, blue = GND, black = mode (manufacturer manual).",
+    "Buy the XKC-Y25-NPN 5-12 V version and power it from the board's 5V / VBUS pin. The 24 V NPN version and the XKC-Y25-V / -PNP versions drive OUT up to their supply voltage and must not be wired straight to a 3.3 V GPIO.",
+    "Leave the black wire unconnected (insulate the end): OUT then goes LOW when liquid is at the sensor. Tying black to GND inverts the output. Never use black as ground.",
+    "OUT is an open collector: fit 10 kOhm from OUT to 3V3 (the driver also enables the GPIO's internal pull-up). Never pull it up to 5 V on an ESP32 or Pico.",
+    "Glue the flat face tight against the outside of a non-metallic container (gap under 0.5 mm), away from metal parts and from where the liquid pours in. For metal tanks the manual uses a rubber plug or an external plastic pipe.",
+    "If it does not switch, open the back cover and turn the sensitivity knob counter-clockwise (more sensitive); clockwise makes it less sensitive."
+  ],
+  "keywords": [
+    "xkc-y25",
+    "xkc-y25-npn",
+    "y25",
+    "liquid level",
+    "water level",
+    "non-contact",
+    "capacitive",
+    "tank",
+    "npn",
+    "contactless"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Liquid at sensor",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "xkc_y25.py",
+    "code": "# XKC-Y25-NPN non-contact (capacitive) liquid level sensor, MicroPython driver.\n# Manufacturer manual XKC-Y25-NPN V1.6 (Shenzhen XingKeChuang), section 9:\n#   black wire (MODE/COM) left unconnected -> normally open output:\n#       liquid sensed    -> NPN transistor ON  -> OUT (yellow) pulled LOW\n#       no liquid        -> transistor OFF     -> OUT open (high via pull-up)\n#   black wire tied to GND -> normally closed output (the logic is inverted).\n# OUT is an open collector: it needs a pull-up. On a 3.3 V board pull it up to\n# 3V3 (this driver turns on the GPIO's internal pull-up; an external 10 kOhm to\n# 3V3 is better on the 50 cm lead), never to the sensor's 5-12 V supply.\n# The sensor's response time is about 500 ms, so poll no faster than that is useful.\nfrom machine import Pin\n\n\nclass XKCY25:\n    def __init__(self, pin, pull_up=True, normally_closed=False):\n        \"\"\"pin: GPIO number or Pin wired to OUT (yellow).\n        normally_closed: True if the black wire is tied to GND.\"\"\"\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.nc = normally_closed\n\n    def raw(self):\n        \"\"\"Logic level on OUT (0 = transistor on, 1 = off).\"\"\"\n        return self.pin.value()\n\n    def liquid(self):\n        \"\"\"True while liquid is sensed at the probe's level.\"\"\"\n        on = self.pin.value() == 0  # NPN transistor conducting\n        return (not on) if self.nc else on\n\n    def irq(self, handler, on_liquid=True):\n        \"\"\"Call handler(pin) when liquid arrives (on_liquid=True) or leaves.\"\"\"\n        falling = on_liquid != self.nc\n        trig = Pin.IRQ_FALLING if falling else Pin.IRQ_RISING\n        return self.pin.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from xkc_y25 import XKCY25\nimport time\n\nsensor = XKCY25({OUT})\nwhile True:\n    print('Liquid: %s' % ('YES' if sensor.liquid() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects-liquid",
+      "title": "Reports liquid when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Liquid: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:50:35.095Z",
+    "verifiedSources": [
+      "https://electronilab.co/wp-content/uploads/2022/03/XKC-Y25-T12V.pdf",
+      "https://stgaws.robu.in/product/xkc-y25-npn-intelligent-non-contact-liquid-water-level-sensor"
+    ]
+  }
+}

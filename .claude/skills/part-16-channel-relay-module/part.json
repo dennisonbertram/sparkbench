@@ -1,0 +1,331 @@
+{
+  "type": "custom-16-channel-relay-module",
+  "name": "16-channel 12 V relay module (active low)",
+  "mpn": "SRD-12VDC-SL-C",
+  "category": "actuator",
+  "description": "Sixteen Songle SRD-12VDC-SL-C 12 V relays (SPDT, form C) on one board. Each input drives an optocoupler (the GPIO sinks the opto LED current), whose output drives a ULN2803 Darlington channel that switches the relay coil, with a status LED per relay. Inputs are active low (IN pulled low = relay on). The board runs from 12 V on a screw terminal; an on-board LM2576 makes the 5 V for the opto side, and that 5 V comes OUT on the input header. Contacts rated 10 A 250 VAC / 10 A 30 VDC by the vendor (relay datasheet: 10 A 125 VAC, 10 A 28 VDC resistive). Each energised coil draws 30 mA from 12 V (about 480 mA with all sixteen on). Sold as: SainSmart 16-Channel 12V Relay Module (SKU 101-70-103) and its many blue clones marked '16 Relay Module / Low-level input', 2x10 input header (5V, 5V / IN1, IN2 ... IN15, IN16 / GND, GND), DC12V+/DC12V- screw terminal, NO/COM/NC screw terminals per relay.",
+  "eli5": "Sixteen electrically controlled switches on one 12 V board: when your microcontroller pulls IN1 to IN16 low, that channel clicks and connects its own lamp, pump or valve to power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "5V",
+      "role": "nc",
+      "description": "Header JP2 pin 1: OUTPUT of the board's own LM2576 12 V to 5 V regulator (it feeds the optocoupler LEDs and transistors). Not a supply input: leave it unconnected (never join it to the microcontroller's 5V/VBUS/3V3).",
+      "required": false
+    },
+    {
+      "name": "5V_2",
+      "role": "nc",
+      "description": "Header JP2 pin 2: second 5V pin, same on-board regulator output as pin 1. Leave unconnected.",
+      "required": false
+    },
+    {
+      "name": "IN1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 1 control input (JP2 pin 3), active LOW: low = relay 1 on (NO1 connected to COM1), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN2",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 2 control input (JP2 pin 4), active LOW: low = relay 2 on (NO2 connected to COM2), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN3",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 3 control input (JP2 pin 5), active LOW: low = relay 3 on (NO3 connected to COM3), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN4",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 4 control input (JP2 pin 6), active LOW: low = relay 4 on (NO4 connected to COM4), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN5",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 5 control input (JP2 pin 7), active LOW: low = relay 5 on (NO5 connected to COM5), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN6",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 6 control input (JP2 pin 8), active LOW: low = relay 6 on (NO6 connected to COM6), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN7",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 7 control input (JP2 pin 9), active LOW: low = relay 7 on (NO7 connected to COM7), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN8",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 8 control input (JP2 pin 10), active LOW: low = relay 8 on (NO8 connected to COM8), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN9",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 9 control input (JP2 pin 11), active LOW: low = relay 9 on (NO9 connected to COM9), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN10",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 10 control input (JP2 pin 12), active LOW: low = relay 10 on (NO10 connected to COM10), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN11",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 11 control input (JP2 pin 13), active LOW: low = relay 11 on (NO11 connected to COM11), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN12",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 12 control input (JP2 pin 14), active LOW: low = relay 12 on (NO12 connected to COM12), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN13",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 13 control input (JP2 pin 15), active LOW: low = relay 13 on (NO13 connected to COM13), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN14",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 14 control input (JP2 pin 16), active LOW: low = relay 14 on (NO14 connected to COM14), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN15",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 15 control input (JP2 pin 17), active LOW: low = relay 15 on (NO15 connected to COM15), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "IN16",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Relay 16 control input (JP2 pin 18), active LOW: low = relay 16 on (NO16 connected to COM16), high = off. The pin is the cathode of an optocoupler LED whose anode goes through a resistor to the board's own 5 V; the GPIO sinks about 15-20 mA (vendor figure) while the relay is on.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Header JP2 pin 19: ground (the same ground as the 12 V terminal's minus). Join it to the microcontroller's GND.",
+      "required": true
+    },
+    {
+      "name": "GND_2",
+      "role": "gnd",
+      "description": "Header JP2 pin 20: second GND pin, same net as pin 19.",
+      "required": false
+    },
+    {
+      "name": "DC12V+",
+      "role": "power",
+      "description": "12 V screw terminal, plus: feeds the sixteen SRD-12VDC-SL-C relay coils (30 mA each, about 480 mA with all sixteen on) and the on-board LM2576 5 V regulator. Use a separate 12 V supply of at least 1 A, never the microcontroller board.",
+      "required": true,
+      "supply": {
+        "vmin": 10.8,
+        "vmax": 13.2,
+        "currentMa": 600
+      }
+    },
+    {
+      "name": "DC12V-",
+      "role": "gnd",
+      "description": "12 V screw terminal, minus: board ground, common with the header GND pins.",
+      "required": true
+    }
+  ],
+  "vmin": 10.8,
+  "vmax": 13.2,
+  "currentMa": 600,
+  "datasheetUrl": "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "16 channel 12V relay module optocoupler low level trigger",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x22_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Inputs are ACTIVE LOW: a relay turns ON when its IN pin is low. Create the pins with Pin(n, Pin.OUT, value=1) so the relays stay off while the program starts.",
+    "Power the board from a separate 12 V supply (1 A or more) on the DC12V+/DC12V- screw terminal and join its ground to the microcontroller's GND through a header GND pin. The coils need at least 9 V to pull in and draw 30 mA each (about 480 mA with all sixteen on).",
+    "The two 5V pins on the input header are the OUTPUT of the board's own LM2576 regulator, not an input: leave them unconnected. Never join them to the microcontroller's 5V, VBUS or 3V3.",
+    "The opto LEDs are fed from the board's 5 V, so a 3.3 V board's high (3.3 V) still leaves about 1.7 V across LED and resistor. If a relay will not switch fully off from an ESP32 or Pico, drive each IN through an NPN transistor or a ULN2803 (output low = relay on) instead of straight from the GPIO.",
+    "Each active input sinks about 15-20 mA (vendor figure): keep within your GPIO's sink rating, and use a buffer (ULN2803 / transistor) when many channels are on at once.",
+    "Contacts (form C): 10 A 125 VAC, 10 A 28 VDC resistive per the relay datasheet; inductive loads (motors, pumps) 3 A. Use the NO terminal for a load that should be off by default.",
+    "The relays switch in up to 10 ms and release in up to 5 ms: never PWM a relay.",
+    "Mains wiring on the screw terminals is dangerous: keep it in a closed insulated box, never touch the board while it is plugged in, and leave mains to an adult/qualified person. For a first project switch a low-voltage DC load.",
+    "Large board (about 188 x 90 mm) with a 2x10 header and screw terminals: wire it with jumper leads, don't plug it into the breadboard."
+  ],
+  "keywords": [
+    "relay",
+    "16 channel relay",
+    "sixteen channel relay",
+    "relay module",
+    "relay board",
+    "12v relay",
+    "active low relay",
+    "srd-12vdc-sl-c",
+    "songle",
+    "sainsmart",
+    "optocoupler",
+    "uln2803",
+    "lm2576",
+    "pump",
+    "valve",
+    "lamp",
+    "sprinkler",
+    "home automation",
+    "switch load"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "IN1",
+      "IN2",
+      "IN3",
+      "IN4",
+      "IN5",
+      "IN6",
+      "IN7",
+      "IN8",
+      "IN9",
+      "IN10",
+      "IN11",
+      "IN12",
+      "IN13",
+      "IN14",
+      "IN15",
+      "IN16"
+    ],
+    "inputsActiveLow": true
+  },
+  "skill": "---\nname: part-16-channel-relay-module\ndescription: Pinout, electrical limits, wiring and MicroPython code for the 16-channel 12 V active-low relay module (SainSmart 101-70-103 and clones; Songle SRD-12VDC-SL-C relays, optocouplers, ULN2803 drivers, LM2576 5 V regulator, 2x10 header 5V/IN1-IN16/GND). Use when designing, wiring, simulating or writing code for a 16-channel relay board in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# 16-channel 12 V relay module (SRD-12VDC-SL-C x16)\n\n## Overview\nSixteen **Songle SRD-12VDC-SL-C** relays (SPDT, form C) on one board. Each input lights an optocoupler LED; the opto output drives one channel of a **ULN2803** Darlington array that switches the relay coil from 12 V, with a status LED per relay. An on-board **LM2576** buck regulator turns the 12 V into the 5 V for the opto side. Hobbyists buy it as the **SainSmart 16-Channel 12V Relay Module (101-70-103)** or one of its blue clones printed \"16 Relay Module / Low-level input\" (about 188 x 90 mm). The inputs are **active low**: IN low = relay on.\n\n## Pinout\nInput header JP2 (2x10, pin number order, from the SainSmart schematic):\n\n| Pin | Name | Function |\n|---|---|---|\n| 1, 2 | 5V | OUTPUT of the on-board LM2576 5 V regulator. Leave unconnected |\n| 3 ... 18 | IN1 ... IN16 | Relay control: low = on, high = off (odd INs on one row, even on the other) |\n| 19, 20 | GND | Ground, join to the microcontroller GND |\n\nPower terminal (2-way screw terminal): **DC12V+**, **DC12V-**. Output terminals per relay: **NO** (connected to COM while the relay is on), **COM**, **NC** (connected to COM while the relay is off).\n\n## Electrical limits\n- Supply 12 V on the screw terminal (relay datasheet: pull-in 75 % = 9 V max, max allowed 120 % = 14.4 V). SRD-12VDC-SL-C coil: 400 Ω, 30 mA at 12 V. All sixteen on: about 480 mA plus LEDs, so use a 12 V supply of at least 1 A.\n- Inputs: optocoupler LED from the board's own 5 V through a resistor; the GPIO sinks about 15-20 mA (vendor figure) per active input.\n- Contacts (form C, resistive): 10 A 125 VAC, 10 A 28 VDC (vendor: 10 A 250 VAC / 30 VDC); inductive 3 A.\n- Operate 10 ms max, release 5 ms max.\n\n## Interface details\n- Plain digital inputs: no driver needed, just `machine.Pin`. Each IN is independent.\n- Active low: `value(0)` = relay on, `value(1)` = relay off. An input left floating reads as off.\n- The header 5V pins are an output (forum posts disagree, the schematic is clear: they sit on the LM2576 output). Don't feed them and don't tie them to your board's 5V/VBUS.\n- 3.3 V boards: a high of 3.3 V leaves about 1.7 V across the opto LED and its resistor, which may keep a relay partly on. If relays won't switch off, drive each IN through an NPN transistor or a ULN2803 channel (its output low = relay on).\n\n## Wiring\n- 12 V supply: + → DC12V+, − → DC12V-.\n- ESP32: GND → GND, IN1 ... IN16 → free output-capable GPIOs (e.g. D4, D5, D13, D14, D16, D17, D18, D19, D21, D22, D23, D25, D26, D27, D32, D33). 5V pins unconnected.\n- Pico: GND → GND, IN1 ... IN16 → GP2 ... GP17. 5V pins unconnected.\n- Raspberry Pi 4: GND → pin 6, IN pins → GPIOs, 5V pins unconnected (or use a transistor buffer per channel).\n- Load: load supply + → COM, NO → load → load supply −. Mains only by an adult or qualified person, in a closed insulated enclosure.\n\n## Using it\n```python\nfrom machine import Pin\nimport time\nrelays = [Pin(n, Pin.OUT, value=1) for n in range(2, 18)]  # value=1 = off\nrelays[0].value(0)   # load 1 on\ntime.sleep(2)\nrelays[0].value(1)   # load 1 off\n```\n\n## Gotchas\n- **Active low.** Always create the pins with `value=1`, otherwise relays click on at start-up.\n- It needs 12 V on the screw terminal: the relays do nothing from USB power.\n- The 5V header pins are the board's regulator output: never connect them to your board's supply.\n- Sixteen opto LEDs at 15-20 mA each is far more than a microcontroller should sink at once; buffer the inputs if many relays are on together.\n- Relays are slow and wear out: don't PWM them. Inductive loads (motors, pumps, solenoid valves) derate to 3 A and want a diode/snubber on the load side.\n\n## Datasheet\nhttps://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf (Songle SRD series, covers the 12 V coil). Board schematic: https://s3.us-east-1.amazonaws.com/s3.image.smart/download/101-70-103/16%2Brelay%2Bboard.rar\n",
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Low level trigger: IN low = relay on, IN high = relay off.\n# Start every input HIGH so no relay clicks on at boot.\nPINS = ({IN1}, {IN2}, {IN3}, {IN4}, {IN5}, {IN6}, {IN7}, {IN8},\n        {IN9}, {IN10}, {IN11}, {IN12}, {IN13}, {IN14}, {IN15}, {IN16})\nrelays = [Pin(n, Pin.OUT, value=1) for n in PINS]\nwhile True:\n    for i, r in enumerate(relays):\n        r.value(0 if i % 2 == 0 else 1)   # relays 1,3,5...15 on\n    print('odd relays ON, even relays OFF')\n    time.sleep(2)\n    for i, r in enumerate(relays):\n        r.value(1 if i % 2 == 0 else 0)   # relays 2,4,6...16 on\n    print('odd relays OFF, even relays ON')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "Odd and even relays take turns switching on (active low)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "odd relays ON, even relays OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN15",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN16",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "odd relays OFF, even relays ON",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN2",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN15",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "IN16",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.sainsmart.com/products/16-channel-12v-relay-module",
+    "https://s3.amazonaws.com/s3.image.smart/download/101-70-C01/101-70-103.jpg",
+    "https://s3.us-east-1.amazonaws.com/s3.image.smart/download/101-70-103/16%2Brelay%2Bboard.rar",
+    "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+    "https://forum.arduino.cc/t/16-channel-12v-relay-module-and-arduino/133515"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:51:27.983Z",
+    "verifiedSources": [
+      "https://www.sainsmart.com/products/16-channel-12v-relay-module",
+      "https://s3.amazonaws.com/s3.image.smart/download/101-70-C01/101-70-103.jpg",
+      "https://s3.us-east-1.amazonaws.com/s3.image.smart/download/101-70-103/16%2Brelay%2Bboard.rar"
+    ]
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "type": "custom-4-channel-line-tracker",
+  "name": "4-channel TCRT5000 IR line tracking module",
+  "mpn": "TCRT5000 + LM339",
+  "category": "sensor",
+  "description": "Four-way reflective IR line tracker for robot cars: four Vishay TCRT5000 probe boards (950 nm IR LED plus phototransistor, best at about 2.5 mm, usable 0.2-15 mm) cabled to a control board whose LM339 quad comparator turns each probe signal into a digital output, with one sensitivity trimmer and one indicator LED per channel. Each output (IN1-IN4) is open collector with a 10 kOhm pull-up to VCC: LOW over a white / reflective surface (LED on), HIGH over a black line or nothing. Runs on 3.3-5 V; outputs swing to VCC. Sold as: 4-channel infrared tracing / line tracking module (red LM339 control board with 4 blue trimmers and LEDs D1-D5, 6-pin header VCC, GND, IN1, IN2, IN3, IN4, plus 4 TCRT5000 probe boards and Dupont cables), the common clone kit.",
+  "eli5": "Four little eyes that look down at the floor and tell your board which of them is over a black line, so a robot car can steer to follow the track.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply, 3.3-5 V (header pin 1). Also feeds the four TCRT5000 probes and the output pull-ups, so use 3V3 on an ESP32 or Pico."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (header pin 2)."
+    },
+    {
+      "name": "IN1",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 10000,
+      "description": "Channel 1 digital output (header pin 3; the vendor datasheet calls it OUT1): LM339 open collector with a 10 kOhm pull-up (R1) to VCC. LOW over a white / reflective surface (LED D1 on), HIGH over a black line or with nothing in range."
+    },
+    {
+      "name": "IN2",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 10000,
+      "description": "Channel 2 digital output (header pin 4; the vendor datasheet calls it OUT2): LM339 open collector with a 10 kOhm pull-up (R2) to VCC. LOW over a white / reflective surface (LED D2 on), HIGH over a black line or with nothing in range."
+    },
+    {
+      "name": "IN3",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 10000,
+      "description": "Channel 3 digital output (header pin 5; the vendor datasheet calls it OUT3): LM339 open collector with a 10 kOhm pull-up (R3) to VCC. LOW over a white / reflective surface (LED D3 on), HIGH over a black line or with nothing in range."
+    },
+    {
+      "name": "IN4",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 10000,
+      "description": "Channel 4 digital output (header pin 6; the vendor datasheet calls it OUT4): LM339 open collector with a 10 kOhm pull-up (R4) to VCC. LOW over a white / reflective surface (LED D4 on), HIGH over a black line or with nothing in range."
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 100,
+  "cabled": true,
+  "datasheetUrl": "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+  "sources": [
+    "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+    "https://www.ti.com/lit/ds/symlink/lm339.pdf",
+    "https://cdn.shopify.com/s/files/1/1509/1638/files/4chIR_datasheet.pdf",
+    "https://probots.co.in/infrared-tracing-module-4-channel.html",
+    "https://m.indiamart.com/proddetail/super-debug-4-channel-infrared-tracking-sensor-module-ir-line-patrol-for-arduino-21959900762.html"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "4 channel TCRT5000 infrared line tracking sensor module LM339",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header to the microcontroller (right-angle, 6 pins) as printed: VCC, GND, IN1, IN2, IN3, IN4. The vendor datasheet numbers them 1-6 and calls the signals OUT1-OUT4; they are outputs despite the IN label.",
+    "The other edge carries four 3-pin probe connectors (VCC, GND, IN1 ... IN4): plug probe 1 into IN1 and so on, matching each probe's VCC/GND/OUT pins.",
+    "Power from 3.3 V on an ESP32 or Pico: every output has a 10 kOhm pull-up to VCC, so a 5 V supply would put 5 V on the GPIOs.",
+    "An output is LOW over white (its LED D1-D4 lights) and HIGH over a black line or with the probe lifted off the floor.",
+    "Mount the probes about 2-10 mm above the floor (TCRT5000 peak at 2.5 mm) and turn each trimmer so its LED is on over white and off over the line.",
+    "The four probe IR LEDs draw most of the current (roughly 100 mA at 5 V in total); power it from the board's 3V3 pin, not a GPIO."
+  ],
+  "keywords": [
+    "tcrt5000",
+    "line tracker",
+    "line tracking",
+    "line follower",
+    "4 channel",
+    "4-way",
+    "tracing",
+    "infrared",
+    "ir",
+    "reflective",
+    "lm339",
+    "robot car"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "IN1",
+    "quantity": "White surface under probe 1 (IN1 low)",
+    "activeHigh": false,
+    "openDrain": true,
+    "digitalOutputs": [
+      {
+        "pin": "IN2",
+        "control": "white2",
+        "label": "White surface under probe 2 (IN2 low)",
+        "activeHigh": false
+      },
+      {
+        "pin": "IN3",
+        "control": "white3",
+        "label": "White surface under probe 3 (IN3 low)",
+        "activeHigh": false
+      },
+      {
+        "pin": "IN4",
+        "control": "white4",
+        "label": "White surface under probe 4 (IN4 low)",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "line_tracker4.py",
+    "code": "# 4-channel TCRT5000 IR line tracking module, MicroPython driver.\n# Board: red control board with an LM339 quad comparator (U1), four trimmers, LEDs D1-D4 (+ D5 power)\n# and a 6-pin header VCC, GND, IN1, IN2, IN3, IN4; four TCRT5000 probe boards plug into its other edge.\n# Each LM339 output is open collector with a 10 kOhm pull-up (R1-R4) to VCC, and lights its LED when low:\n#   strong IR reflection (white / light surface) -> output LOW, LED on\n#   weak reflection (black line, or nothing in range) -> output HIGH, LED off\n# The outputs swing to VCC, so power the module from 3.3 V on an ESP32 / Pico.\nfrom machine import Pin\n\n\nclass LineTracker4:\n    def __init__(self, in1, in2, in3, in4):\n        # The board already pulls every output up to VCC (10 kOhm): no internal pull needed.\n        self.pins = [p if not isinstance(p, int) else Pin(p, Pin.IN) for p in (in1, in2, in3, in4)]\n\n    def raw(self):\n        \"\"\"Logic levels of IN1..IN4: 0 = reflective (white) surface, 1 = black line / nothing.\"\"\"\n        return tuple(p.value() for p in self.pins)\n\n    def line(self):\n        \"\"\"Tuple of 1 for every probe that is over the black line (output high), 0 over white.\"\"\"\n        return self.raw()\n\n    def white(self):\n        \"\"\"Tuple of 1 for every probe that sees a white / reflective surface (output low).\"\"\"\n        return tuple(1 - v for v in self.raw())\n\n    def on_line(self, channel):\n        \"\"\"True when probe 1..4 is over the black line.\"\"\"\n        return self.pins[channel - 1].value() == 1\n\n    def position(self):\n        \"\"\"Weighted line position from -1.5 (probe 1) to +1.5 (probe 4), or None if no probe sees the line.\"\"\"\n        v = self.line()\n        n = sum(v)\n        if n == 0:\n            return None\n        return sum((i - 1.5) * x for i, x in enumerate(v)) / n\n\n    def irq(self, channel, handler, on_line=True):\n        \"\"\"Call handler(pin) when probe 1..4 moves onto the line (rising edge) or, with on_line=False,\n        onto a white surface (falling edge).\"\"\"\n        trig = Pin.IRQ_RISING if on_line else Pin.IRQ_FALLING\n        return self.pins[channel - 1].irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from line_tracker4 import LineTracker4\nimport time\n\ntracker = LineTracker4({IN1}, {IN2}, {IN3}, {IN4})\nwhile True:\n    print('Line: %d %d %d %d' % tracker.line())\n    time.sleep(0.3)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports probes 1 and 2 over white, 3 and 4 over the black line",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "white2",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Line: 0 0 1 1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:56:26.147Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm339.pdf",
+      "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+      "https://docs.cirkitdesigner.com/component/778fada8-f2d1-487c-a668-b7058ab90e19/4-channel-infrared-tracing-module"
+    ]
+  }
+}

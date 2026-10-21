@@ -1,0 +1,174 @@
+{
+  "type": "custom-5-channel-line-tracker",
+  "name": "5-channel TCRT5000 IR line tracker",
+  "mpn": "TCRT5000L x5 + 74HC14D",
+  "category": "sensor",
+  "description": "Five Vishay TCRT5000 reflective IR sensors 15 mm apart on one 95 x 20 mm board, for line-following robots. Each phototransistor collector (pulled up to VCC) feeds one gate of a 74HC14D hex Schmitt-trigger inverter, whose push-pull output is OUTn: LOW over a black line (or with nothing in range, about 1-1.5 cm max), HIGH over a white surface, with a per-channel LED lit over white. No trimmers. Runs on 3.3-5 V; outputs swing to VCC. Sold as: 5-channel TCRT5000 IR line tracking sensor board (common blue 95 x 20 mm clone, 7-pin header GND, 5V, OUT1, OUT2, OUT3, OUT4, OUT5, single 74HC14D, no potentiometers).",
+  "eli5": "Five little eyes in a row look down at the floor and tell your robot which of them is over the black line, so it knows whether to steer left or right.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 3.3-5 V despite the '5V' label (pin 2). On an ESP32 or Pico feed it from 3V3: the 74HC14 outputs swing to this voltage.",
+      "required": true
+    },
+    {
+      "name": "OUT1",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Sensor 1 output (pin 3), 74HC14 push-pull: LOW over a black line or with nothing in range, HIGH over a white/reflective surface (channel LED on).",
+      "required": true
+    },
+    {
+      "name": "OUT2",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Sensor 2 output (pin 4), 74HC14 push-pull: LOW over a black line or with nothing in range, HIGH over a white/reflective surface (channel LED on).",
+      "required": true
+    },
+    {
+      "name": "OUT3",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Sensor 3 output (pin 5), 74HC14 push-pull: LOW over a black line or with nothing in range, HIGH over a white/reflective surface (channel LED on).",
+      "required": true
+    },
+    {
+      "name": "OUT4",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Sensor 4 output (pin 6), 74HC14 push-pull: LOW over a black line or with nothing in range, HIGH over a white/reflective surface (channel LED on).",
+      "required": true
+    },
+    {
+      "name": "OUT5",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Sensor 5 output (pin 7), 74HC14 push-pull: LOW over a black line or with nothing in range, HIGH over a white/reflective surface (channel LED on).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 100,
+  "datasheetUrl": "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+  "sources": [
+    "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+    "https://www.ti.com/lit/ds/symlink/sn74hc14.pdf",
+    "https://m.dzsc.com/product/8148-2017718145059511.html",
+    "https://file2.dzsc.com/product/17/07/18/8148_144430434.png",
+    "https://probots.co.in/3-3v-5v-5-channel-ir-sensor-array-line-follower-infrared-detection-module-board-tcrt5000.html",
+    "https://probots.co.in/pub/media/wysiwyg/3.3v-5v_5-Channel_IR_Sensor_Array_Line_Follower_Infrared_Detection_Module_Board_TCRT5000_7__2.jpg",
+    "https://docs.cirkitdesigner.com/component/2e0fc09c-eba1-4d9c-a47d-819576ca4c53/5-way-ir-line-tracking-tcrt5000"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "5 channel TCRT5000 line tracking sensor module 74HC14",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed: GND, 5V, OUT1, OUT2, OUT3, OUT4, OUT5. All seven pins are in one straight row (usually a right-angle header).",
+    "Despite the '5V' label the board runs from 3.3-5 V. On an ESP32 or Pico power it from 3V3: the 74HC14 outputs are push-pull and swing to the supply, so 5 V would put 5 V on the GPIOs.",
+    "OUTn is LOW over a black line and HIGH over white (its LED lights over white). Lifted off the floor, all five read LOW like black.",
+    "There are no trimmers: mount the sensors about 5-15 mm above a matte floor with a dark line at least 15-20 mm wide.",
+    "The five IR LEDs are always on: the board draws up to about 100 mA, so feed it from a rail that can supply that.",
+    "Sunlight and incandescent light contain IR and can upset the readings; glossy black tape may read as white."
+  ],
+  "keywords": [
+    "5 channel",
+    "5-channel",
+    "five channel",
+    "line tracker",
+    "line follower",
+    "line tracking",
+    "tcrt5000",
+    "tcrt5000l",
+    "ir",
+    "infrared",
+    "reflective",
+    "74hc14",
+    "sensor array",
+    "robot",
+    "car"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT1",
+    "quantity": "Black line under sensor 1 (OUT1 low)",
+    "activeHigh": false,
+    "digitalOutputs": [
+      {
+        "pin": "OUT2",
+        "control": "line2",
+        "label": "Black line under sensor 2 (OUT2 low)",
+        "activeHigh": false
+      },
+      {
+        "pin": "OUT3",
+        "control": "line3",
+        "label": "Black line under sensor 3 (OUT3 low)",
+        "activeHigh": false
+      },
+      {
+        "pin": "OUT4",
+        "control": "line4",
+        "label": "Black line under sensor 4 (OUT4 low)",
+        "activeHigh": false
+      },
+      {
+        "pin": "OUT5",
+        "control": "line5",
+        "label": "Black line under sensor 5 (OUT5 low)",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "line_tracker5.py",
+    "code": "# 5-channel TCRT5000 IR line tracking sensor board (blue 95 x 20 mm board, header GND, 5V, OUT1-OUT5,\n# one 74HC14D hex Schmitt-trigger inverter, no trimmers), MicroPython driver.\n# Board circuit: each TCRT5000's IR LED is lit all the time. Its phototransistor collector is pulled\n# up to VCC; that node drives one 74HC14 Schmitt inverter input, and the inverter output is OUTn\n# (push-pull, swings 0 V to VCC).\n#   Black line (IR absorbed): transistor off, input high -> OUTn = LOW, channel LED off.\n#   White / light surface (IR reflected): transistor conducts, input low -> OUTn = HIGH, LED on.\n#   Nothing within range (lifted off the floor): reads like black, OUTn = LOW.\n# Power the board from 3.3 V on a 3.3 V microcontroller: the outputs swing to VCC.\nfrom machine import Pin\n\n\nclass LineTracker5:\n    def __init__(self, out1, out2, out3, out4, out5):\n        # Push-pull 74HC14 outputs: no pull-up needed.\n        self.pins = [p if not isinstance(p, int) else Pin(p, Pin.IN)\n                     for p in (out1, out2, out3, out4, out5)]\n\n    def raw(self):\n        \"\"\"Logic levels of OUT1..OUT5: 1 = white/reflective, 0 = black line or nothing in range.\"\"\"\n        return [p.value() for p in self.pins]\n\n    def black(self):\n        \"\"\"List of 5 booleans, True where that sensor sits over the black line (OUT low).\"\"\"\n        return [p.value() == 0 for p in self.pins]\n\n    def pattern(self):\n        \"\"\"String such as '00100': '1' = black line under OUT1..OUT5 (left to right as printed).\"\"\"\n        return ''.join('1' if b else '0' for b in self.black())\n\n    def position(self):\n        \"\"\"Line position from -2 (under OUT1) to +2 (under OUT5), averaged over the sensors\n        that see black; None when no sensor sees the line, or when all five do\n        (lifted off the floor, or crossing a wide marker).\"\"\"\n        b = self.black()\n        n = sum(b)\n        if n == 0 or n == 5:\n            return None\n        return sum(i - 2 for i in range(5) if b[i]) / n\n"
+  },
+  "example": {
+    "code": "from line_tracker5 import LineTracker5\nimport time\n\ntracker = LineTracker5({OUT1}, {OUT2}, {OUT3}, {OUT4}, {OUT5})\nwhile True:\n    print('Line: %s' % tracker.pattern())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "pattern",
+      "title": "Reports which sensors are over the black line",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "line3",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Line: 10100",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:53:35.859Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+      "https://www.ti.com/lit/ds/symlink/sn74hc14.pdf",
+      "https://docs.cirkitdesigner.com/component/2e0fc09c-eba1-4d9c-a47d-819576ca4c53/5-way-ir-line-tracking-tcrt5000"
+    ]
+  }
+}

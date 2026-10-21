@@ -1,0 +1,189 @@
+{
+  "type": "custom-ch-926-coin-acceptor",
+  "name": "CH-926 coin acceptor",
+  "mpn": "CH-926",
+  "category": "sensor",
+  "description": "Programmable multi-coin acceptor (coin mech) that learns up to 6 coin types from samples and outputs a train of 1-50 pulses per accepted coin (count set per coin type) on an open-collector COIN wire; pulse length 20/50/100 ms (FAST/MEDIUM/SLOW switch), NO/NC output switch. Runs from its own 12 V DC +/-10 % supply (65 mA, solenoid surges; 0.8 A adapter recommended). Pull COIN up to 3.3 V and count falling edges. Sold as: CH-926 / JY-926 multi coin acceptor (e.g. Sintron CH-926, ArcadeXpress 'CH-926 / JY-926 Programmable Multi-Currency Pulse Coin Mech') with a 4-wire lead: red DC+12, white COIN, black GND, gray COUNTER.",
+  "eli5": "A box with a coin slot that checks each coin's size and metal. When it likes a coin, it blinks a wire a set number of times (say 5 blinks for a 50-cent coin); your board counts the blinks to know which coin went in.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "DC+12",
+      "role": "power",
+      "description": "Red wire: +12 V DC (10.8-13.2 V) from a separate 12 V adapter (0.8 A recommended for the coin-gate solenoid). Not the board's 3V3/5V.",
+      "required": true,
+      "supply": {
+        "vmin": 10.8,
+        "vmax": 13.2,
+        "currentMa": 800
+      }
+    },
+    {
+      "name": "COIN",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "White wire: coin pulse output, open collector. With the switch on NO it is open while idle and pulls to GND for each pulse (P pulses per coin, 20/50/100 ms each). Pull up to 3.3 V only (10 kOhm or the GPIO pull-up) and count falling edges.",
+      "required": true,
+      "load": {
+        "ohms": 10000,
+        "to": "3v3"
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black wire: ground. Join the 12 V supply negative and the microcontroller GND.",
+      "required": true
+    },
+    {
+      "name": "COUNTER",
+      "role": "io",
+      "description": "Gray wire: drive output for a 12 V electromechanical coin counter connected between DC+12 and COUNTER. Not needed for a microcontroller; leave unconnected.",
+      "required": false
+    }
+  ],
+  "vmin": 10.8,
+  "vmax": 13.2,
+  "currentMa": 65,
+  "datasheetUrl": "https://www.arcadexpress.com/documentos/Manual%20CH926.pdf",
+  "sources": [
+    "https://www.arcadexpress.com/documentos/Manual%20CH926.pdf",
+    "https://www.arcadexpress.com/en/coin-doors-coin-mechs/371-monedero-arcade-programable-impulsos-ch-926-jy-926.html",
+    "https://www.arcadexpress.com/en/cables-wires/1111-4-pin-wiring-for-universal-coin-mech-616-ch-926.html",
+    "https://community.sparkfun.com/t/coin-acceptor-12v-to-3v/38722",
+    "https://forum.arduino.cc/t/coin-acceptor-with-arduino/364396"
+  ],
+  "priceUsd": 25,
+  "supplierQuery": "CH-926 multi coin acceptor 12V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wires (manual connection diagram): red = DC+12, white = COIN, black = GND, gray = COUNTER. It is a coin mech on a lead: wire it with jumper leads.",
+    "Power DC+12 from its own 12 V DC adapter (10.8-13.2 V, about 0.8 A for the solenoid). Join the adapter negative, the black wire and the microcontroller GND.",
+    "COIN is open collector: add 10 kOhm from COIN to 3V3 (never 5 V or 12 V) or use Pin.PULL_UP. Before connecting it, measure COIN to GND with the acceptor powered: it must not show 5 V or 12 V; if it does, use a divider or optocoupler.",
+    "Set the output switch to NO (pulses pull COIN low) and the speed switch to match the driver (MEDIUM = 50 ms pulses by default).",
+    "Program each coin type's pulse count in the 'P' menu (1-50), e.g. pulses = coin value in the smallest unit, then sample at least 20 coins per type and power-cycle.",
+    "The driver groups pulses into one coin once no pulse arrives for max(200, 4 x pulse length) ms; leave COUNTER unconnected unless you fit a 12 V counter."
+  ],
+  "keywords": [
+    "coin acceptor",
+    "coin mech",
+    "coin selector",
+    "ch-926",
+    "jy-926",
+    "ch926",
+    "vending",
+    "arcade",
+    "pulse",
+    "coin",
+    "multi coin",
+    "sintron"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "COIN",
+    "quantity": "Coin pulse (COIN pulled low)",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "ch926.py",
+    "code": "# CH-926 multi-coin acceptor (pulse output), MicroPython driver.\n# Per the CH-926 manual: each accepted coin produces a train of P pulses on the white COIN\n# wire, where P (1-50) is programmed per coin type (\"P\" menu). The three-way switch sets the\n# pulse length: FAST 20 ms, MEDIUM 50 ms, SLOW 100 ms; the two-way switch selects NO or NC.\n# The COIN output is an open-collector transistor: with the switch on NO it is open while idle\n# and pulls the wire to GND for each pulse, so it needs a pull-up to the 3.3 V logic supply\n# (GPIO internal pull-up, or 10 kOhm to 3V3) and is counted on falling edges.\n# A pulse train is over once no new pulse has started for gap_ms (default 4 pulse lengths,\n# at least 200 ms); poll() then returns how many pulses that coin produced.\nimport machine\nfrom machine import Pin\nimport time\n\nPULSE_MS = {'fast': 20, 'medium': 50, 'slow': 100}\n\n\nclass CoinAcceptor:\n    def __init__(self, pin, speed='medium', gap_ms=None, pull_up=True, nc=False):\n        \"\"\"pin: GPIO number (or Pin) wired to COIN. speed: the acceptor's pulse switch\n        ('fast' 20 ms, 'medium' 50 ms, 'slow' 100 ms). nc=True if the NO/NC switch is on NC\n        (pulses then release the line high instead of pulling it low).\"\"\"\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n        self.pulse_ms = PULSE_MS[speed]\n        self.gap_ms = gap_ms if gap_ms is not None else max(200, 4 * self.pulse_ms)\n        # Ignore a second edge sooner than half a pulse length (noise on long leads).\n        self.glitch_ms = self.pulse_ms // 2\n        self._count = 0\n        self._total = 0\n        self._last = time.ticks_ms()\n        trig = Pin.IRQ_RISING if nc else Pin.IRQ_FALLING\n        self.pin.irq(trigger=trig, handler=self._on_edge)\n\n    def _on_edge(self, p):\n        now = time.ticks_ms()\n        if self._count and time.ticks_diff(now, self._last) < self.glitch_ms:\n            return\n        self._count += 1\n        self._total += 1\n        self._last = now\n\n    def poll(self):\n        \"\"\"Return the pulse count of a finished coin (pulse train), or 0 if none is complete.\"\"\"\n        s = machine.disable_irq()\n        n = self._count\n        done = n and time.ticks_diff(time.ticks_ms(), self._last) >= self.gap_ms\n        if done:\n            self._count = 0\n        machine.enable_irq(s)\n        return n if done else 0\n\n    def total_pulses(self):\n        \"\"\"All pulses counted since start-up (e.g. credits, if 1 pulse = 1 credit).\"\"\"\n        return self._total\n"
+  },
+  "skill": "---\nname: part-ch-926-coin-acceptor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the CH-926 multi-coin acceptor (12 V, up to 6 coin types, programmable 1-50 pulses per coin on an open-collector COIN output; also sold as JY-926 / Sintron CH-926). Use when designing, wiring, simulating or writing code for a coin acceptor / coin mech in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# CH-926 multi-coin acceptor\n\n## Overview\nThe **CH-926** is a stand-alone coin selector for vending machines, arcade games and kiosks. It learns up to **6 coin types** from samples (no PC: buttons and an LED display on the back) and, for each accepted coin, sends a **train of P pulses** on its COIN wire, where **P = 1...50** is programmed per coin type. Rejected coins drop out of the return slot.\n- Supply: **12 V DC +/-10 %** (10.8-13.2 V), 65 mA working; the coin-gate solenoid adds surges, and the seller recommends a **12 V, 0.8 A** supply.\n- Coins 15-32 mm diameter, 1.2-3.8 mm thick, <= 0.6 s per coin, 99.5 % identification.\n- Pulse length set by the three-way switch: **FAST 20 ms, MEDIUM 50 ms, SLOW 100 ms**. Two-way switch: output **NO or NC**.\n\n## Pinout (4-pin socket, order from the manual's connection diagram)\n| Pin | Wire | Function |\n|---|---|---|\n| DC+12 | Red | +12 V DC supply, from a separate 12 V adapter |\n| COIN | White | Coin pulse output, open collector: pulls to GND for each pulse (NO setting) |\n| GND | Black | Ground: join the 12 V supply negative and the microcontroller GND |\n| COUNTER | Gray | Output for a 12 V electromechanical counter wired between DC+12 and COUNTER (optional) |\n\nIt is a 170 x 130 x 70 mm coin mech on a lead, wired with jumper leads, not plugged into the breadboard.\n\n## Electrical limits\n- Never feed DC+12 from the board's 3V3/5V: use its own 12 V supply with a common ground.\n- COIN is an open-collector output. Pull it up to **3.3 V only** (GPIO internal pull-up, or 10 kOhm to 3V3); never to 12 V or 5 V on an ESP32 / Pico.\n- Units vary between batches. Before connecting COIN to a GPIO, power the acceptor and measure COIN to GND with nothing attached: it should float (near 0 V, no pull-up inside). If it reads 5 V or 12 V, use a divider or an optocoupler (PC817) instead.\n\n## Interface details\n- Switch on **NO**: COIN idles high (through your pull-up) and goes **low for each pulse**; count falling edges. On NC the polarity is inverted.\n- One coin = P pulses back to back; the coin is complete when no new pulse arrives for a few pulse lengths. The driver waits `gap_ms` = max(200, 4 x pulse length) ms (200 ms on FAST/MEDIUM, 400 ms on SLOW).\n- Programming: hold Add + Minus 3 s (\"A\"), Setup -> \"E\" number of coin types, \"H\" number of samples, **\"P\" pulses for this coin**, \"F\" accuracy (1-30, 5-10 typical), repeat per coin, then power-cycle. Then sample: Setup -> \"A1\", insert >= 20 samples, Setup -> \"A2\" ..., Setup, power-cycle.\n- A common scheme: program P = coin value in the smallest unit (e.g. 1 pulse = 0.10, so a 0.50 coin = 5 pulses).\n\n## Wiring\n| CH-926 | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| DC+12 (red) | 12 V adapter + | 12 V adapter + | 12 V adapter + |\n| GND (black) | GND and adapter - | GND and adapter - | GND and adapter - |\n| COIN (white) | GPIO4 + 10 kOhm to 3V3 | GP15 + 10 kOhm to 3V3 | GPIO17 + 10 kOhm to 3V3 |\n| COUNTER (gray) | not connected | not connected | not connected |\n\n## Using the driver\n```python\nfrom ch926 import CoinAcceptor\nimport time\ncoin = CoinAcceptor(4, speed='medium')   # COIN wire on GPIO4; acceptor switch on MEDIUM and NO\ncredit = 0\nwhile True:\n    n = coin.poll()                       # pulses of a finished coin, or 0\n    if n:\n        credit += n\n        print('Coin: %d pulses, credit=%d' % (n, credit))\n    time.sleep_ms(20)\n```\n`speed` must match the acceptor's switch ('fast', 'medium', 'slow'); `nc=True` if the switch is on NC; `total_pulses()` counts every pulse since start-up.\n\n## Gotchas\n- Set the driver's `speed` to the same position as the pulse switch, or two coins may merge or one coin split.\n- The 12 V supply must share ground with the microcontroller, or no pulses are seen.\n- The manual's FAQ lists \"pull-up resistor with signal wire (not allowed)\" as a cause of missing outputs, without saying to which voltage. Never pull COIN up to 12 V or 5 V; hobbyist builds of this open-collector output use a 3.3 V pull-up (internal or 10 kOhm) at the GPIO. If you see no pulses, check the NO/NC switch and the common ground first.\n- Re-sample when coin batches differ; use separate channels for old and new versions of a coin.\n- Interrupts: count with `Pin.irq`; polling can miss 20 ms pulses.\n\n## Datasheet\nhttps://www.arcadexpress.com/documentos/Manual%20CH926.pdf (Manual of CH-926: specs, setup, connection diagram, switches)\n",
+  "example": {
+    "code": "from ch926 import CoinAcceptor\nimport time\n\ncoin = CoinAcceptor({COIN}, speed='medium')  # switches: MEDIUM (50 ms), NO\ncredit = 0\nwhile True:\n    n = coin.poll()\n    if n:\n        credit += n\n        print('Coin: %d pulses, credit=%d' % (n, credit))\n    time.sleep_ms(20)\n",
+    "test": {
+      "id": "coin",
+      "title": "Counts a 3-pulse coin (50 ms MEDIUM pulses) as 3 credits",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "wait",
+          "ms": 50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "wait",
+          "ms": 50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "wait",
+          "ms": 50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 0
+        },
+        {
+          "kind": "wait",
+          "ms": 50
+        },
+        {
+          "kind": "wait",
+          "ms": 300
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Coin: 3 pulses, credit=3",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:56:47.220Z",
+    "verifiedSources": [
+      "https://www.arcadexpress.com/documentos/Manual%20CH926.pdf",
+      "https://www.arcadexpress.com/en/coin-doors-coin-mechs/371-monedero-arcade-programable-impulsos-ch-926-jy-926.html",
+      "https://cdn.sparkfun.com/datasheets/Components/General/6CoinPro.pdf"
+    ]
+  }
+}

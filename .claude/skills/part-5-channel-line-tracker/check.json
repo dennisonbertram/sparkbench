@@ -1,0 +1,79 @@
+{
+  "type": "custom-5-channel-line-tracker",
+  "mpn": "TCRT5000L x5 + 74HC14D",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.OUT1 → D25 (GPIO25). U2.OUT2 → D26 (GPIO26). U2.OUT3 → D27 (GPIO27). U2.OUT4 → D13 (GPIO13). U2.OUT5 → D23 (GPIO23). Added the line_tracker5.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports which sensors are over the black line: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, digital-in"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "7 pins wired; U2.OUT1 → GP2 (GPIO2). U2.OUT2 → GP3 (GPIO3). U2.OUT3 → GP6 (GPIO6). U2.OUT4 → GP7 (GPIO7). U2.OUT5 → GP8 (GPIO8). Added the line_tracker5.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "14 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports which sensors are over the black line: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T19:53:35.859Z"
+}

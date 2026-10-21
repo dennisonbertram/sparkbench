@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-xkc-y25",
+  "board": "XKC-Y25-NPN (DC 5-12 V) non-contact liquid level sensor, Shenzhen XingKeChuang, 4-wire lead on XH2.54 4-pin plug",
+  "reason": "Modelled as an active-low NPN open-collector digital sensor (black wire open = normally open, LOW when liquid) per the manufacturer's XKC-Y25-NPN manual V1.6. A 10 kOhm load to 3V3 is the pull-up. The check passed on ESP32 and Pico: spec, wiring, design checks, breadboard, simulator test and PCB.",
+  "datasheetUrl": "https://www.xkc-sensor.com/phoenix/admin/download?fileId=gtfUWpqMgIJO&dp=GvUApKfKKUAU",
+  "breakoutPinoutSource": "XKC-Y25-NPN manual V1.6 'Terminal sequence' (brown VCC, yellow OUT, blue GND, black COM) and https://www.icstation.com/contact-liquid-level-sensor-ip67-waterproof-output-water-level-detector-p-12292.html",
+  "checkRuns": 2
+}

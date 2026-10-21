@@ -1,0 +1,119 @@
+{
+  "type": "custom-ljc18a3-h-z-bx",
+  "name": "LJC18A3-H-Z/BX capacitive proximity switch",
+  "mpn": "LJC18A3-H-Z/BX",
+  "category": "sensor",
+  "description": "Capacitive proximity switch in an M18 threaded barrel: senses metal and non-metal objects (plastic, glass, wood, water, grain, liquid through a plastic tank wall) within about 1-10 mm of its face, range set by the trimpot on the back. Gives on/off only. NPN open-collector output, normally open: OUT is pulled LOW while an object is detected and needs a pull-up (to 3.3 V, never to the sensor supply) otherwise; sinks up to 300 mA. Needs a separate 6-36 V DC supply (12-24 V nominal). Sold as: LJC18A3-H-Z/BX capacitive proximity sensor switch, NPN NO, DC 6-36 V (M18 barrel about 75 mm long, 3-wire lead: brown V+, black OUT, blue GND).",
+  "eli5": "A tube that notices when almost anything (metal, plastic, water, your hand) comes within a centimetre of its tip, without touching it, and tells your board. It needs its own 12 V power supply.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Brown wire: supply, 6-36 V DC from a separate supply (12 V or 24 V typical). Not the board's 3V3/5V.",
+      "required": true,
+      "supply": {
+        "vmin": 6,
+        "vmax": 36,
+        "currentMa": 13
+      }
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Black wire: NPN open-collector output, pulled LOW while an object is detected, otherwise open. Needs a pull-up to 3.3 V (Sparkbench adds 10 kOhm to 3V3); never pull it up to the 6-36 V supply. Sinks up to 300 mA.",
+      "required": true,
+      "load": {
+        "ohms": 10000,
+        "to": "3v3"
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Blue wire: 0 V. Join it to the supply negative and the microcontroller GND.",
+      "required": true
+    }
+  ],
+  "vmin": 6,
+  "vmax": 36,
+  "currentMa": 13,
+  "datasheetUrl": "https://makerlab.ph/products/capacitive-proximity-sensor-ljc18a3-b-z-by",
+  "sources": [
+    "https://makerlab.ph/products/capacitive-proximity-sensor-ljc18a3-b-z-by",
+    "https://ebuildelectronics.odoo.com/shop/ljc18a3-h-z-bx-capacitive-proximity-sensor-switch-npn-6-36v-413",
+    "https://circuit.rocks/product:2389",
+    "https://www.direnc.net/kapasitif-pnp-proximity-sensor-ljc18a3-h-zby-en",
+    "https://www.electrokit.com/kapacitiv-givare-npn-1-10mm",
+    "https://www.electrokit.com/upload/quick/03/0a/be46_NPN-open-collector.pdf"
+  ],
+  "priceUsd": 5,
+  "supplierQuery": "LJC18A3-H-Z/BX capacitive proximity sensor NPN NO 6-36V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wires: brown = VCC (6-36 V DC), black = OUT, blue = GND (standard 3-wire DC sensor colours). Check the label on the cable: the /BY version is PNP and must not be wired this way.",
+    "Power the brown wire from a separate 6-36 V DC supply (12 V is typical), never from the board's 3V3/5V. Join the supply negative, the blue wire and the microcontroller GND.",
+    "OUT is an NPN open collector, active LOW: it reads 0 while an object is in range. Pull it up to 3V3 with 4.7-10 kOhm (the driver also enables the internal pull-up). Never pull it up to the 12/24 V supply.",
+    "Extra protection recommended: in some units the indicator LED is fed from the supply through the output, so an unloaded OUT can float to several volts. A Schottky diode in series (cathode to the black wire, anode to the GPIO and its 3V3 pull-up) or a PC817 optocoupler keeps the sensor's supply off the GPIO.",
+    "Set the range with the small trimpot on the back (the LED lights while it detects). Adjust it with the target in place: for a liquid level through a tank wall, turn it until the LED just lights with liquid and goes out without.",
+    "Capacitive sensors react to anything nearby, including the mounting bracket, hands and moisture. Mount the face clear of other objects and keep it dry."
+  ],
+  "keywords": [
+    "ljc18a3",
+    "ljc18a3-h-z/bx",
+    "ljc18a3-b-z/bx",
+    "capacitive",
+    "proximity",
+    "liquid level",
+    "non-metal",
+    "npn",
+    "m18",
+    "level sensor",
+    "counter"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Object in range",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "ljc18a3.py",
+    "code": "# LJC18A3-H-Z/BX capacitive proximity switch (M18, 1-10 mm, NPN normally open), MicroPython driver.\n# Seller/family specs (LJC18A3 series): supply 6-36 V DC (12-24 V nominal), < 13 mA;\n# output NPN normally open, open collector, sinks up to 300 mA; response about 100 Hz.\n# Leads: brown = V+, blue = 0 V, black = output. Senses metal AND non-metal objects\n# (plastic, glass, wood, water, grain) within 1-10 mm; the range is set with the trimpot\n# on the back of the barrel.\n#   OUT LOW  (0) -> object within the set distance (output transistor on, LED lit)\n#   OUT HIGH (1) -> nothing detected (transistor off; the level comes from YOUR pull-up)\n# The output only sinks current, so it needs a pull-up. Pull it up to the board's 3.3 V\n# (an external 4.7-10 kOhm resistor to 3V3; this driver also enables the GPIO's internal\n# pull-up), NEVER to the sensor's 6-36 V supply.\nfrom machine import Pin\n\n\nclass LJC18A3:\n    def __init__(self, pin, pull_up=True):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n\n    def raw(self):\n        \"\"\"Logic level on OUT: 0 = object detected, 1 = clear.\"\"\"\n        return self.pin.value()\n\n    def detected(self):\n        \"\"\"True while an object is within the sensing distance (NPN output pulls OUT low).\"\"\"\n        return self.pin.value() == 0\n\n    def irq(self, handler, on_detect=True):\n        \"\"\"Call handler(pin) when an object arrives (falling edge) or, with on_detect=False,\n        when it leaves (rising edge). The sensor switches at about 100 Hz at most.\"\"\"\n        trig = Pin.IRQ_FALLING if on_detect else Pin.IRQ_RISING\n        return self.pin.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from ljc18a3 import LJC18A3\nimport time\n\nsensor = LJC18A3({OUT})\nwhile True:\n    print('Object: %s' % ('YES' if sensor.detected() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports an object when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Object: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:53:57.907Z",
+    "verifiedSources": [
+      "https://ebuildelectronics.odoo.com/shop/ljc18a3-h-z-bx-capacitive-proximity-sensor-switch-npn-6-36v-413",
+      "https://circuit.rocks/product:2389"
+    ]
+  }
+}

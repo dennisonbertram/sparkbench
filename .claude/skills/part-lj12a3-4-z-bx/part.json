@@ -1,0 +1,117 @@
+{
+  "type": "custom-lj12a3-4-z-bx",
+  "name": "LJ12A3-4-Z/BX inductive proximity switch",
+  "mpn": "LJ12A3-4-Z/BX",
+  "category": "sensor",
+  "description": "Inductive proximity switch in an M12 threaded metal barrel: senses iron/steel within 0-4 mm of its face without contact (common as a 3D printer/CNC endstop or bed probe). Gives on/off only. NPN open-collector output, normally open: OUT is pulled LOW while metal is detected and needs a pull-up (to 3.3 V, never to the sensor supply) otherwise; sinks up to 300 mA. Needs a separate 6-36 V DC supply. Sold as: LJ12A3-4-Z/BX inductive proximity sensor switch, NPN NO, DC 6-36 V (M12 x 58 mm nickel-plated brass barrel, 1 m 3-wire PVC lead: brown V+, black OUT, blue GND).",
+  "eli5": "A metal tube that notices when a piece of metal comes very close to its tip (a few millimetres), without touching it, and tells your board. It needs its own 12 V power supply.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Brown wire: supply, 6-36 V DC from a separate supply (12 V or 24 V typical). Not the board's 3V3/5V.",
+      "required": true,
+      "supply": {
+        "vmin": 6,
+        "vmax": 36
+      }
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Black wire (load): NPN open-collector output, pulled LOW while metal is detected, otherwise open. Needs a pull-up to 3.3 V (Sparkbench adds 10 kOhm to 3V3); never pull it up to the 6-36 V supply. Sinks up to 300 mA.",
+      "required": true,
+      "load": {
+        "ohms": 10000,
+        "to": "3v3"
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Blue wire: ground. Join it to the supply negative and the microcontroller GND.",
+      "required": true
+    }
+  ],
+  "vmin": 6,
+  "vmax": 36,
+  "datasheetUrl": "https://www.electrokit.com/upload/product/41014/41014825/LJ12A3-4.pdf",
+  "sources": [
+    "https://www.electrokit.com/upload/product/41014/41014825/LJ12A3-4.pdf",
+    "https://asset.conrad.com/media10/add/160267/c1/-/en/002380072DS00/datablad-2380072-iduino-sensor-modul-passar-till-arduino-bulk.pdf",
+    "https://www.az-delivery.de/en/products/lj12a3-4-z-bx-induktiver-naherungssensor",
+    "https://www.pishop.us/product/inductive-proximity-sensor-switch-lj12a3-4-zbx/",
+    "https://www.phippselectronics.com/support/lj12a3-4-z-bx-inductive-proximity-npn-sensor-npn-normally-open-4mm-support-documentation/"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "LJ12A3-4-Z/BX inductive proximity sensor NPN NO 6-36V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wires: brown = VCC (6-36 V DC), black = OUT, blue = GND. Check the cable label: a few batches are coloured differently.",
+    "Power the brown wire from a separate 6-36 V DC supply (12 V is typical), never from the board's 3V3/5V. Join the supply negative, the blue wire and the microcontroller GND.",
+    "OUT is an NPN open collector, active LOW: it reads 0 while metal is within about 4 mm. Pull it up to 3V3 with 4.7-10 kOhm (the driver also enables the internal pull-up). Never pull it up to the 12/24 V supply.",
+    "Extra protection recommended: many units feed the indicator LED from the supply through the output, so an unloaded OUT can float to several volts. A Schottky diode in series (cathode to the black wire, anode to the GPIO and its 3V3 pull-up) or a PC817 optocoupler keeps the sensor's supply off the GPIO.",
+    "It only senses metal; steel is seen at up to 4 mm, aluminium and copper closer. Mount it with the two M12 nuts, face 1-2 mm from the target."
+  ],
+  "keywords": [
+    "lj12a3",
+    "lj12a3-4-z/bx",
+    "inductive",
+    "proximity",
+    "metal",
+    "endstop",
+    "z probe",
+    "npn",
+    "m12",
+    "cnc",
+    "3d printer",
+    "counter"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Metal in range",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "lj12a3.py",
+    "code": "# LJ12A3-4-Z/BX inductive proximity switch (M12, 4 mm, NPN normally open), MicroPython driver.\n# Datasheet (Electrokit LJ12A3-4): supply 6-36 V DC, output NPN normally open, 3-wire,\n# 300 mA sink; brown = V+, black = load (output), blue = GND. Detects iron/steel within 0-4 mm.\n#   OUT LOW  (0) -> metal within the sensing distance (output transistor on, LED lit)\n#   OUT HIGH (1) -> no metal (transistor off; the level comes from YOUR pull-up)\n# The output is an open collector that only sinks current, so it needs a pull-up. Pull it up\n# to the board's 3.3 V (an external 4.7-10 kOhm resistor to 3V3; this driver also enables the\n# GPIO's internal pull-up), NEVER to the sensor's 6-36 V supply.\nfrom machine import Pin\n\n\nclass LJ12A3:\n    def __init__(self, pin, pull_up=True):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        self.pin = pin\n\n    def raw(self):\n        \"\"\"Logic level on OUT: 0 = metal detected, 1 = clear.\"\"\"\n        return self.pin.value()\n\n    def detected(self):\n        \"\"\"True while metal is within the sensing distance (NPN output pulls OUT low).\"\"\"\n        return self.pin.value() == 0\n\n    def irq(self, handler, on_detect=True):\n        \"\"\"Call handler(pin) when metal arrives (falling edge) or, with on_detect=False,\n        when it leaves (rising edge). Useful for counting gear teeth or homing an axis.\"\"\"\n        trig = Pin.IRQ_FALLING if on_detect else Pin.IRQ_RISING\n        return self.pin.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from lj12a3 import LJ12A3\nimport time\n\nsensor = LJ12A3({OUT})\nwhile True:\n    print('Metal: %s' % ('YES' if sensor.detected() else 'no'))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports metal when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Metal: YES",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T19:51:21.811Z",
+    "verifiedSources": [
+      "https://phippselectronics.com/support/lj12a3-4-proximity-sensor-series",
+      "https://www.bitsandparts.nl/en/metal-sensor-distance-sensor-inductive-4mm-lj12a3-4-z-bx-npn-no-p1910525",
+      "https://www.az-delivery.de/en/products/lj12a3-4-z-bx-induktiver-naherungssensor"
+    ]
+  }
+}

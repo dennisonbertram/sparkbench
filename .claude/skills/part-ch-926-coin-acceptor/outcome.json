@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ch-926-coin-acceptor",
+  "board": "CH-926 / JY-926 multi coin acceptor (Sintron CH-926 style), 12 V, 4-wire lead: red DC+12, white COIN, black GND, gray COUNTER",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring with separate 12 V supply and 10 kOhm pull-up on COIN to 3V3, design checks, breadboard, simulator test counting a 3-pulse coin as 3 credits, PCB DRC). The open-collector COIN output is modelled as an active-low open-drain digital-sensor driven pulse by pulse, since a coin is a finite burst of P pulses, not the continuous frequency the pulse-sensor kind models; the driver groups falling edges into coins using the manual's 20/50/100 ms pulse settings.",
+  "datasheetUrl": "https://www.arcadexpress.com/documentos/Manual%20CH926.pdf",
+  "breakoutPinoutSource": "https://www.arcadexpress.com/documentos/Manual%20CH926.pdf",
+  "checkRuns": 2
+}

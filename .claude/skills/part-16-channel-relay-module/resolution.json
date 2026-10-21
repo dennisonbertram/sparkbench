@@ -1,0 +1,10 @@
+{
+  "diffs": [
+    {
+      "diff": "pin count: part has 22 (5V 5V_2 IN1 IN2 IN3 IN4 IN5 IN6 IN7 IN8 IN9 IN10 IN11 IN12 IN13 IN14 IN15 IN16 GND GND_2 DC12V+ DC12V-), datasheet reading has 18 (VCC IN1 IN2 IN3 IN4 IN5 IN6 IN7 IN8 IN9 IN10 IN11 IN12 IN13 IN14 IN15 IN16 GND)",
+      "verdict": "part-correct",
+      "evidence": "The second reading collapsed the duplicated header pins and dropped the 12 V screw terminal: SainSmart's own schematic for 101-70-103 (16 relay board.rar, JP2) shows a 2x10 header with 5V on pins 1 and 2, IN1-IN16 on pins 3-18 and GND on pins 19 and 20, the 5V net being the output of an on-board LM2576 fed from +12V, and a user with this exact board describes it as 'I though it took a 12v power supply to the screw terminals but what I don't get is it has 5v and ground on either end of the 16 low level input pins', so the model's 22 pins (two 5V, sixteen IN, two GND, DC12V+/DC12V-) are right and the reading's single 'VCC' power input would wrongly have a beginner feed the regulator output.",
+      "source": "https://forum.arduino.cc/t/16-channel-12v-relay-module-and-arduino/133515 ; https://s3.us-east-1.amazonaws.com/s3.image.smart/download/101-70-103/16%2Brelay%2Bboard.rar"
+    }
+  ]
+}
