@@ -33,7 +33,7 @@ export async function buildZip(project: Project): Promise<Blob> {
   const hasCode = Object.keys(project.files).length > 0;
   if (hasCode) {
     const fw = root.folder('firmware')!;
-    for (const [f, src] of Object.entries(project.files)) fw.file(f, src);
+    for (const [f, src] of Object.entries(project.files)) (f.startsWith('arduino/') ? root : fw).file(f, src);
     const st = generateSelfTest(project);
     if (st) fw.file('selftest.py', st);
   }

@@ -169,7 +169,7 @@ export function CodeView() {
         {files.map((f) => (
           <button key={f} role="tab" aria-selected={f === file} className={f === file ? 'active' : ''} onClick={() => useStore.getState().set({ activeFile: f })}>
             {f}
-            {f !== 'main.py' && <span className="file-hint">driver</span>}
+            {f !== 'main.py' && <span className="file-hint">{f.startsWith('arduino/') ? 'Arduino' : 'driver'}</span>}
           </button>
         ))}
         <span className="spacer" />
@@ -184,8 +184,9 @@ export function CodeView() {
             Regenerate main.py
           </button>
         )}
-        <button className="ghost" onClick={() => download(file, project.files[file], 'text/x-python')}>
-          Download {file}
+        <ArduinoButton />
+        <button className="ghost" onClick={() => download(file.split('/').pop()!, project.files[file], 'text/plain')}>
+          Download {file.split('/').pop()}
         </button>
       </div>
       {err && err.file === file && (
@@ -197,6 +198,46 @@ export function CodeView() {
       <CodeEditor fileKey={`${project.id}:${file}`} value={project.files[file]} onChange={(v) => useStore.getState().setFile(file, v)} errorLine={errorLine} />
       <CodeAssistant file={file} />
     </div>
+  );
+}
+
+/** "Arduino version": Claude translates main.py to C++ and arduino-cli compiles it for this board. */
+function ArduinoButton() {
+  const project = useStore((s) => s.project)!;
+  const ai = useStore((s) => s.aiStatus);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  if (project.board !== 'esp32' && project.board !== 'pico') return null;
+  const has = Object.keys(project.files).some((f) => f.startsWith('arduino/'));
+  return (
+    <>
+      <button
+        className="ghost"
+        disabled={!ai.enabled || busy}
+        title={ai.enabled ? 'Translate to Arduino C++ and compile it for this board' : 'Needs Claude'}
+        data-testid="arduino-make"
+        onClick={async () => {
+          setBusy(true);
+          setMsg('');
+          try {
+            const r = await fetch('/api/ai/arduino', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project }) });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error);
+            useStore.getState().update((p) => ({ ...p, files: { ...Object.fromEntries(Object.entries(p.files).filter(([f]) => !f.startsWith('arduino/'))), ...d.files } }));
+            const ino = Object.keys(d.files).find((f) => f.endsWith('.ino'));
+            if (ino) useStore.getState().set({ activeFile: ino });
+            setMsg(d.ok ? `${d.log.join(' ')} ${d.notes}` : `It didn't compile yet: ${d.log.join(' ')}`);
+          } catch (e: any) {
+            setMsg(e.message ?? String(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? 'Writing and compiling C++… (1–5 min)' : has ? 'Update the Arduino version' : 'Arduino (C++) version'}
+      </button>
+      {msg && <div className="banner arduino-msg" data-testid="arduino-msg">{msg}</div>}
+    </>
   );
 }
 

@@ -214,6 +214,17 @@ export function apiPlugin(): Plugin {
         }
         return send(res, 404, { error: 'not found' });
       }
+      if (req.url === '/api/ai/arduino' && req.method === 'POST') {
+        const { aiStatus } = await import('./ai');
+        if (!aiStatus().enabled) return send(res, 400, { error: 'Making the Arduino version needs Claude.' });
+        const { project } = await body(req);
+        const { aiArduino } = await import('./arduino');
+        try {
+          return send(res, 200, await aiArduino(project));
+        } catch (e: any) {
+          return send(res, 422, { error: String(e?.message ?? e) });
+        }
+      }
       if (req.url === '/api/parts' && req.method === 'GET') {
         const { listParts } = await import('./parts');
         return send(res, 200, { parts: listParts() });

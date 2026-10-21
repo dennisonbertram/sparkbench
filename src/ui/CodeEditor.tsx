@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { python } from '@codemirror/lang-python';
+import { cpp } from '@codemirror/lang-cpp';
 import { EditorState, StateEffect, StateField, Annotation } from '@codemirror/state';
 import { Decoration, hoverTooltip, type DecorationSet } from '@codemirror/view';
 import { explainLine } from '../core/explain';
@@ -103,7 +104,7 @@ export function CodeEditor({ value, onChange, errorLine, fileKey }: { value: str
         doc: value,
         extensions: [
           basicSetup,
-          python(),
+          /\.(ino|cpp|h)$/.test(fileKey) ? cpp() : python(),
           syntaxHighlighting(highlight, { fallback: false }),
           indentUnit.of('    '),
           EditorState.tabSize.of(4),

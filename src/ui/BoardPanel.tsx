@@ -137,7 +137,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
         extra['boot.py'] = otaBootPy();
         if (!project.files['secrets.py'] && ssid) extra['secrets.py'] = `WIFI_SSID = ${JSON.stringify(ssid)}\nWIFI_PASSWORD = ${JSON.stringify(wifiPass)}\n`;
       }
-      const files = Object.entries({ ...project.files, ...extra });
+      const files = Object.entries({ ...project.files, ...extra }).filter(([n]) => /^[\w.-]+\.py$/.test(n));
       for (const [i, [name, src]] of files.entries()) {
         append(`Copying ${name} (${i + 1}/${files.length})…\n`);
         await r.writeFile(name, src, (d, t) => setProgress(Math.round(((i + d / t) / files.length) * 100)));
@@ -298,7 +298,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
                 disabled={!otaHost.trim() || busy}
                 onClick={async () => {
                   setOtaLog('Sending…');
-                  const r = await fetch('/api/ota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host: otaHost.replace(/^https?:\/\//, '').replace(/:\d+.*$/, ''), project }) });
+                  const r = await fetch('/api/ota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ host: otaHost.replace(/^https?:\/\//, '').replace(/:\d+.*$/, ''), project: { ...project, files: Object.fromEntries(Object.entries(project.files).filter(([n]) => /^[\w.-]+\.py$/.test(n))) } }) });
                   const d = await r.json();
                   setOtaLog(r.ok ? d.log.join('\n') : d.error);
                 }}

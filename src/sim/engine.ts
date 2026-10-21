@@ -826,7 +826,8 @@ export class SimEngine {
       ? { '_simtime.py': SIMTIME_PY + PITIME_EXTRA_PY, 'machine.py': MACHINE_PY, 'gpiozero.py': GPIOZERO_PY, 'smbus2.py': SMBUS2_PY, 'board.py': BOARD_PY, 'adafruit_dht.py': ADAFRUIT_DHT_PY, 'neopixel.py': NEOPIXEL_PI_PY, 'requests.py': REQUESTS_PY, 'signal.py': SIGNAL_PY }
       : { 'esp32.py': ESP32_PY, '_simtime.py': SIMTIME_PY, 'machine.py': MACHINE_PY, 'dht.py': DHT_PY, 'neopixel.py': NEOPIXEL_MP_PY, 'network.py': NETWORK_PY, 'urequests.py': REQUESTS_PY, 'requests.py': REQUESTS_PY, 'ntptime.py': NTPTIME_PY };
     for (const [name, src] of Object.entries(lib)) mp.FS.writeFile(`/lib/${name}`, src);
-    for (const [name, src] of Object.entries(this.project.files)) mp.FS.writeFile(`/project/${name}`, src);
+    // Only the program's own Python files go onto the board (not e.g. the arduino/ C++ version).
+    for (const [name, src] of Object.entries(this.project.files)) if (/^[\w.-]+\.py$/.test(name)) mp.FS.writeFile(`/project/${name}`, src);
     this.status = 'running';
     this.maybeFrame(true);
     try {
