@@ -1,0 +1,103 @@
+{
+ "type": "custom-max98357a-test",
+ "name": "MAX98357A test",
+ "mpn": "MAX98357A",
+ "category": "output",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2s",
+ "pins": [
+  {
+   "name": "LRC",
+   "role": "io",
+   "fn": "i2s.lrc",
+   "required": true
+  },
+  {
+   "name": "BCLK",
+   "role": "io",
+   "fn": "i2s.bclk",
+   "required": true
+  },
+  {
+   "name": "DIN",
+   "role": "io",
+   "fn": "i2s.din",
+   "required": true
+  },
+  {
+   "name": "GAIN",
+   "role": "nc",
+   "required": false
+  },
+  {
+   "name": "SD",
+   "role": "io",
+   "required": false
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "Vin",
+   "role": "power",
+   "required": true
+  }
+ ],
+ "vmin": 2.5,
+ "vmax": 5.5,
+ "currentMa": 20,
+ "priceUsd": 6,
+ "supplierQuery": "MAX98357A I2S amplifier breakout",
+ "sim": {
+  "kind": "i2s-amp",
+  "i2sAmp": {
+   "sdPin": "SD",
+   "sdPullUpOhms": 1000000
+  }
+ },
+ "example": {
+  "code": "from machine import I2S, Pin\nimport math, struct, time\nRATE = 16000\naudio = I2S(0, sck=Pin({BCLK}), ws=Pin({LRC}), sd=Pin({DIN}), mode=I2S.TX, bits=16, format=I2S.MONO, rate=RATE, ibuf=4000)\nN = RATE // 440 * 4\nbuf = bytearray(N * 2)\nfor i in range(N):\n    struct.pack_into('<h', buf, i * 2, int(8000 * math.sin(2 * math.pi * 440 * i / RATE)))\ntime.sleep(1)\nprint('playing')\nt = time.ticks_ms()\nwhile time.ticks_diff(time.ticks_ms(), t) < 2000:\n    audio.write(buf)\nprint('done')\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "plays a tone, then stops",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "buzzer",
+     "part": "{REF}",
+     "on": false,
+     "within": 800
+    },
+    {
+     "kind": "expect",
+     "what": "buzzer",
+     "part": "{REF}",
+     "on": true,
+     "within": 3000
+    },
+    {
+     "kind": "wait",
+     "ms": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "done",
+     "within": 1000
+    },
+    {
+     "kind": "expect",
+     "what": "buzzer",
+     "part": "{REF}",
+     "on": false,
+     "within": 1500
+    }
+   ]
+  }
+ }
+}

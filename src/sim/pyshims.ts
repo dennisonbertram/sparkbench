@@ -411,6 +411,48 @@ class UART:
         return len(d)
 
 
+class I2S:
+    RX = 0
+    TX = 1
+    MONO = 0
+    STEREO = 1
+
+    def __init__(self, id, *, sck=None, ws=None, sd=None, mck=None, mode=None, bits=None, format=None, rate=None, ibuf=None):
+        if None in (sck, ws, sd, mode, bits, format, rate, ibuf):
+            raise TypeError("I2S needs sck, ws, sd, mode, bits, format, rate and ibuf")
+        self._bits = bits
+        self._h = _hw.i2s_open(id, sck._id, ws._id, sd._id, mode, bits, format, rate, ibuf)
+        if self._h == -2:
+            raise ValueError("invalid ws (must be sck+1)")
+        if self._h == -3:
+            raise ValueError("invalid bits")
+        if self._h == -4:
+            raise ValueError("I2S RX (microphones) is not simulated")
+        if self._h < 0:
+            raise ValueError("invalid I2S id or pin")
+
+    def init(self, **kw):
+        pass
+
+    def deinit(self):
+        _hw.i2s_close(self._h)
+
+    def write(self, buf):
+        return _hw.i2s_write(self._h, bytes(buf).hex())
+
+    def readinto(self, buf):
+        raise OSError("I2S RX is not simulated")
+
+    def irq(self, handler):
+        raise OSError("non-blocking I2S (irq) is not simulated")
+
+    @staticmethod
+    def shift(*, buf, bits, shift):
+        out = bytes.fromhex(_hw.i2s_shift(bytes(buf).hex(), bits, shift))
+        for i in range(len(out)):
+            buf[i] = out[i]
+
+
 class Timer:
     ONE_SHOT = 0
     PERIODIC = 1
@@ -588,33 +630,36 @@ class DHT22(DHTBase):
 export const NEOPIXEL_MP_PY = `import _hw
 
 
+# Same buffer layout as MicroPython's neopixel.py: bytes in wire order (GRB, or GRBW with bpp=4).
 class NeoPixel:
     ORDER = (1, 0, 2, 3)
 
     def __init__(self, pin, n, bpp=3, timing=1):
         self._id = pin._id
+        self.pin = pin
         self.n = n
         self.bpp = bpp
-        self.buf = [(0, 0, 0)] * n
+        self.timing = timing
+        self.buf = bytearray(n * bpp)
 
     def __len__(self):
         return self.n
 
     def __setitem__(self, i, v):
-        self.buf[i] = (int(v[0]) & 255, int(v[1]) & 255, int(v[2]) & 255)
+        offset = i * self.bpp
+        for k in range(self.bpp):
+            self.buf[offset + self.ORDER[k]] = v[k]
 
     def __getitem__(self, i):
-        return self.buf[i]
+        offset = i * self.bpp
+        return tuple(self.buf[offset + self.ORDER[k]] for k in range(self.bpp))
 
     def fill(self, v):
         for i in range(self.n):
             self[i] = v
 
     def write(self):
-        flat = []
-        for c in self.buf:
-            flat.extend(c)
-        _hw.neopixel_write(self._id, bytes(flat).hex())
+        _hw.neopixel_write(self._id, bytes(self.buf).hex())
 `;
 
 export const NETWORK_PY = `# Simulated Wi-Fi. Connects if the board's "Wi-Fi network in range" switch is on.
@@ -1279,25 +1324,35 @@ class DHT11(DHTBase):
     pass
 `;
 
-export const NEOPIXEL_PI_PY = `# Simulated Adafruit neopixel library (Raspberry Pi)
+export const NEOPIXEL_PI_PY = `# Simulated Adafruit neopixel library (Raspberry Pi): colours go out in pixel_order (GRB / GRBW by default).
 import _hw
-GRB = "GRB"
 RGB = "RGB"
+GRB = "GRB"
+RGBW = "RGBW"
+GRBW = "GRBW"
 
 
 class NeoPixel:
     def __init__(self, pin, n, bpp=3, brightness=1.0, auto_write=True, pixel_order=None):
         self._id = pin.id
         self.n = n
+        self.order = pixel_order or (GRBW if bpp == 4 else GRB)
+        self.bpp = len(self.order)
         self.brightness = brightness
         self.auto_write = auto_write
-        self._buf = [(0, 0, 0)] * n
+        self._buf = [(0,) * self.bpp] * n
 
     def __len__(self):
         return self.n
 
+    def _colour(self, v):
+        if isinstance(v, int):
+            v = ((v >> 16) & 255, (v >> 8) & 255, v & 255) if self.bpp == 3 else ((v >> 16) & 255, (v >> 8) & 255, v & 255, (v >> 24) & 255)
+        v = tuple(int(x) & 255 for x in v)
+        return v + (0,) * (self.bpp - len(v))
+
     def __setitem__(self, i, v):
-        self._buf[i] = (int(v[0]) & 255, int(v[1]) & 255, int(v[2]) & 255)
+        self._buf[i] = self._colour(v)
         if self.auto_write:
             self.show()
 
@@ -1316,7 +1371,8 @@ class NeoPixel:
     def show(self):
         flat = []
         for c in self._buf:
-            flat.extend(int(x * self.brightness) for x in c)
+            by = dict(zip("RGBW", c))
+            flat.extend(int(by[ch] * self.brightness) for ch in self.order)
         _hw.neopixel_write(self._id, bytes(flat).hex())
 
     def deinit(self):

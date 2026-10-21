@@ -5,7 +5,8 @@ import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
 import { ocr } from './ocr';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, TFTDevice, HT16K33Device, segText, alphaText, packResponse, type I2CDevice } from './devices';
+import { openPort, writeSamples, analyse, shiftSamples, type I2SPort } from './i2s';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, TM1638Device, MAX7219Device, TFTDevice, PCD8544Device, HT16K33Device, APA102Chain, decodeLedStream, segText, alphaText, packResponse, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
 import { MFRC522Device } from './mfrc522';
 import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, SIMOS_PY, bootstrapPy } from './pyshims';
@@ -53,6 +54,8 @@ export interface PartVisual {
   epaper?: { ram: number[]; refreshing: boolean; refreshes: number };
   angle?: number;
   tone?: number;
+  /** I2S amplifier: RMS level (0–1) of what it is playing. */
+  level?: number;
   relay?: boolean;
   spin?: number; // motor speed 0..1
   dir?: 'cw' | 'ccw'; // continuous-rotation servo: which way it turns while spin > 0
@@ -501,23 +504,29 @@ export class SimEngine {
     }
     return 0;
   }
-  private tfts = new Map<string, { dev: TFTDevice; ocrAt: number; lines: string[] }>();
-  private tftDev(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): TFTDevice {
+  private tfts = new Map<string, { dev: TFTDevice | PCD8544Device; ocrAt: number; lines: string[] }>();
+  private tftDev(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): TFTDevice | PCD8544Device {
     let t = this.tfts.get(part.id);
     if (!t) {
-      t = { dev: new TFTDevice(part.id, cs.sim.width ?? 240, cs.sim.height ?? 240, cs.sim.controller === 'ssd1351' ? 'ssd1351' : 'dcs', cs.sim.pixelBits ?? 16), ocrAt: -1, lines: [] };
+      const dev = cs.sim.controller === 'pcd8544' ? new PCD8544Device(part.id) : new TFTDevice(part.id, cs.sim.width ?? 240, cs.sim.height ?? 240, cs.sim.controller === 'ssd1351' ? 'ssd1351' : 'dcs', cs.sim.pixelBits ?? 16);
+      t = { dev, ocrAt: -1, lines: [] };
       this.tfts.set(part.id, t);
     }
     return t.dev;
   }
   /** Segment displays driven by datasheet parts (TM1637 by pin changes, MAX7219 over SPI). */
-  private segDevs = new Map<string, TM1637Device | MAX7219Device>();
+  private segDevs = new Map<string, TM1637Device | TM1638Device | MAX7219Device>();
   private segDev(part: PartInstance) {
     const cs = customSpec(part.type);
     if (cs?.sim.kind !== 'segment-display') return undefined;
     let d = this.segDevs.get(part.id);
     if (!d) {
-      d = cs.sim.protocol === 'max7219' ? new MAX7219Device(part.id, cs.sim.count ?? 1) : new TM1637Device(part.id, cs.sim.digits ?? 4);
+      d =
+        cs.sim.protocol === 'max7219'
+          ? new MAX7219Device(part.id, cs.sim.count ?? 1)
+          : cs.sim.protocol === 'tm1638'
+            ? new TM1638Device(part.id, () => this.tm1638Keys(part.id, cs))
+            : new TM1637Device(part.id, cs.sim.digits ?? 4);
       this.segDevs.set(part.id, d);
     }
     return d;
@@ -530,6 +539,16 @@ export class SimEngine {
       const cs = customSpec(part.type);
       if (cs?.sim.kind !== 'segment-display') continue;
       const dev = this.segDev(part)!;
+      if (dev instanceof TM1638Device) {
+        const on = (pin: string) => this.model.gpiosOnNet(part.id, pin)[0];
+        const [stbG, clkG, dioG] = [on('STB'), on('CLK'), on('DIO')];
+        if (g !== stbG && g !== clkG && g !== dioG) continue;
+        if (!this.model.modulePowered(part.id)) continue;
+        if (g === stbG) dev.stb(v);
+        else if (g === clkG) dev.clk(v, prev, dioG === undefined ? 0 : this.readPin(dioG));
+        this.model.setModuleSwitch(part.id, 'tmdio', dev.dioOut === 0);
+        continue;
+      }
       if (dev instanceof TM1637Device) {
         const clkG = this.model.gpiosOnNet(part.id, 'CLK')[0];
         const dioG = this.model.gpiosOnNet(part.id, 'DIO')[0];
@@ -545,6 +564,17 @@ export class SimEngine {
     }
   }
 
+  /** TM1638 key bytes from the button toggles: byte n bit 0-2 = K3, K2, K1 on KS(2n+1), bit 4-6 on KS(2n+2). */
+  private tm1638Keys(partId: string, cs: NonNullable<ReturnType<typeof customSpec>>): number[] {
+    const out = [0, 0, 0, 0];
+    const st = this.model.states.get(partId) as any;
+    for (const k of cs.sim.tm1638?.keys ?? []) {
+      if (!((st?.[k.control] ?? 0) > 0)) continue;
+      const n = (k.ks - 1) >> 1;
+      out[n] |= 1 << ((((k.ks - 1) & 1) ? 4 : 0) + (3 - k.k));
+    }
+    return out;
+  }
   /** 74HC595 / 74HC165 shift registers, driven by the program's pin changes. */
   private shiftRegs = new Map<string, { sr: number[]; out: number[]; prevClk: number; prevLatch: number }>();
   private shiftPinChange(g: number, v: number) {
@@ -650,6 +680,14 @@ export class SimEngine {
     }
     this.trig.set(g, tr);
     if (!v) for (const { dev, part } of this.epapers) if (this.model.gpiosOnNet(part.id, 'RST').includes(g)) dev.reset();
+    // PCD8544: RES low resets the controller (powered down, blank, RAM cleared).
+    if (!v && prev)
+      for (const part of this.project.parts) {
+        const cs = customSpec(part.type);
+        if (cs?.sim.kind !== 'tft-display' || cs.sim.controller !== 'pcd8544') continue;
+        const rst = cs.pins.find((p) => p.fn === 'tft.reset')?.name;
+        if (rst && this.model.gpiosOnNet(part.id, rst).includes(g)) (this.tftDev(part, cs) as PCD8544Device).reset();
+      }
     this.updateActuators(g);
   }
   readPin(g: number): number {
@@ -876,7 +914,7 @@ export class SimEngine {
     let found = false;
     for (const part of this.project.parts) {
       const cs = customSpec(part.type);
-      const din = part.type === 'neopixel-ring' ? 'DIN' : cs?.sim.kind === 'addressable-led' ? cs.sim.inputPin : undefined;
+      const din = part.type === 'neopixel-ring' ? 'DIN' : cs?.sim.kind === 'addressable-led' && cs.sim.ledProtocol !== 'apa102' ? cs.sim.inputPin : undefined;
       if (!din) continue;
       if (!this.model.gpiosReachable(part.id, din, 1000).includes(g)) continue;
       found = true;
@@ -884,7 +922,12 @@ export class SimEngine {
         this.warn(`np-power-${part.id}`, 'warning', `${part.ref}: the LEDs aren't powered — connect their 5 V and GND.`, [part.id]);
         continue;
       }
-      this.pixels.set(part.id, bytes);
+      const rgbw = cs?.sim.ledProtocol === 'sk6812-rgbw';
+      const count = part.type === 'neopixel-ring' ? Number(part.props.pixels ?? 12) : cs!.sim.count ?? 1;
+      // The strip takes its own frame size off the wire, so the wrong bytes per pixel garble the colours (as on the bench).
+      if (rgbw && bytes.length === count * 3) this.warn(`np-bpp-${part.id}`, 'warning', `${part.ref}: these are RGBW LEDs (4 bytes each), but the code sends 3 bytes per pixel, so the colours come out wrong. Use NeoPixel(pin, n, bpp=4) and 4-value colours (r, g, b, w).`, [part.id]);
+      if (!rgbw && bytes.length === count * 4) this.warn(`np-bpp-${part.id}`, 'warning', `${part.ref}: these are RGB LEDs (3 bytes each), but the code sends 4 bytes per pixel, so the colours come out wrong. Use NeoPixel(pin, n) with (r, g, b) colours.`, [part.id]);
+      this.pixels.set(part.id, decodeLedStream(bytes, rgbw ? 'sk6812-rgbw' : 'ws2812', count));
     }
     if (!found) this.warn(`np-missing-${g}`, 'warning', `NeoPixel data was sent on GPIO${g}, but no NeoPixel DIN is connected there.`);
   }
@@ -1002,6 +1045,7 @@ export class SimEngine {
     this.spiBuses.push({ sck, mosi, miso });
     return this.spiBuses.length - 1;
   }
+  private apa = new Map<string, APA102Chain>();
   spiWrite(bus: number, hex: string) {
     this.tick();
     const bytes = hexToBytes(hex);
@@ -1010,6 +1054,21 @@ export class SimEngine {
     if (!b) return;
     const rf = this.rfidOnBus(bus);
     this.rfidOut = rf ? rf.transfer(bytes) : null;
+    // APA102 strips have no chip select: every byte clocked on their CI/DI goes down the chain.
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'addressable-led' || cs.sim.ledProtocol !== 'apa102') continue;
+      const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name ?? '';
+      if (!this.model.gpiosOnNet(part.id, pin('spi.sck')).includes(b.sck) || !this.model.gpiosOnNet(part.id, pin('spi.mosi')).includes(b.mosi)) continue;
+      if (!this.model.modulePowered(part.id)) {
+        this.warn(`np-power-${part.id}`, 'warning', `${part.ref}: the LEDs aren't powered — connect their 5 V and GND.`, [part.id]);
+        continue;
+      }
+      let ch = this.apa.get(part.id);
+      if (!ch) this.apa.set(part.id, (ch = new APA102Chain(cs.sim.count ?? 1)));
+      ch.clockIn(bytes);
+      this.pixels.set(part.id, ch.rgb.slice());
+    }
     for (const part of this.project.parts) {
       const cs = customSpec(part.type);
       if (cs?.sim.kind !== 'tft-display') continue;
@@ -1019,6 +1078,8 @@ export class SimEngine {
       const csg = on('spi.cs')[0];
       if (csg !== undefined && (this.outLevel.get(csg) ?? 1) !== 0) continue;
       if (!this.model.modulePowered(part.id)) continue;
+      const rst = cs.sim.controller === 'pcd8544' ? on('tft.reset')[0] : undefined;
+      if (rst !== undefined && (this.outLevel.get(rst) ?? 1) === 0) continue; // held in reset
       const dev = this.tftDev(part, cs);
       const dcg = on('tft.dc')[0];
       if (dcg !== undefined && (this.outLevel.get(dcg) ?? 1) === 0) for (const c of bytes) dev.command(c);
@@ -1068,6 +1129,52 @@ export class SimEngine {
       const dc = on('DC')[0];
       dev.write(bytes, dc === undefined ? 0 : this.outLevel.get(dc) ?? 0);
     }
+  }
+
+  // ------------------------------------------------------------------ I2S (audio out)
+  private i2sPorts: (I2SPort | null)[] = [];
+  /** machine.I2S: ESP32 and Pico both have ids 0 and 1; the Pico's PIO needs WS on the pin after SCK. */
+  i2sOpen(id: number, sck: number, ws: number, sd: number, mode: number, bits: number, fmt: number, rate: number, ibuf: number): number {
+    this.tick();
+    if (!this.board || this.board.id === 'rpi4' || ![0, 1].includes(id)) return -1;
+    if (mode !== 1) return -4;
+    if (![sck, ws, sd].every((g) => this.gpioValid(g) && this.board!.pins.find((p) => p.gpio === g)?.caps?.includes('out'))) return -1;
+    if (this.board.id === 'pico' && ws !== sck + 1) return -2;
+    if (bits !== 16 && bits !== 32) return -3;
+    if (!(rate > 0) || !(ibuf > 0)) return -1;
+    for (const g of [sck, ws, sd]) this.model.setPinMode(g, { kind: 'out', level: 0 });
+    const old = this.i2sPorts.findIndex((p) => p?.id === id);
+    if (old >= 0) this.i2sPorts[old] = null;
+    this.i2sPorts.push(openPort(id, sck, ws, sd, bits, fmt === 1, rate, ibuf));
+    return this.i2sPorts.length - 1;
+  }
+  i2sWrite(h: number, hex: string): number {
+    this.tick();
+    const p = this.i2sPorts[h];
+    if (!p) return 0;
+    const bytes = hexToBytes(hex);
+    const { blockUs } = writeSamples(p, bytes, this.timeUs);
+    if (blockUs > 0) this.sleepUs(blockUs);
+    return bytes.length;
+  }
+  i2sClose(h: number) {
+    this.i2sPorts[h] = null;
+  }
+  /** What an I2S amplifier is playing right now: the port wired to its BCLK/LRC/DIN, mixed per its channel select. */
+  private i2sAmpTone(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): { hz: number; level: number } {
+    const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name ?? '';
+    const on = (fn: string) => this.model.gpiosOnNet(part.id, pin(fn));
+    const p = this.i2sPorts.find((x) => x && on('i2s.bclk').includes(x.sck) && on('i2s.lrc').includes(x.ws) && on('i2s.din').includes(x.sd));
+    if (!p || this.timeUs > p.playEndUs + 20000) return { hz: 0, level: 0 };
+    // MAX98357A SD_MODE: < 0.16 V shutdown, 0.16-0.77 V (L+R)/2, 0.77-1.4 V right, > 1.4 V left.
+    const sdPin = cs.sim.i2sAmp?.sdPin;
+    let mix: 'left' | 'right' | 'mix' = 'mix';
+    if (sdPin) {
+      const v = this.model.pinVoltage(part.id, sdPin) - this.model.pinVoltage(part.id, cs.pins.find((x) => x.role === 'gnd')?.name ?? sdPin);
+      if (v < 0.16) return { hz: 0, level: 0 };
+      mix = v < 0.77 ? 'mix' : v < 1.4 ? 'right' : 'left';
+    }
+    return analyse(p, mix);
   }
 
   // ------------------------------------------------------------------ UART (datasheet serial modules)
@@ -1438,7 +1545,14 @@ export class SimEngine {
           } else if (cs?.sim.kind === 'segment-display') {
             v.powered = m.modulePowered(part.id);
             const d = this.segDev(part)!;
-            if (d instanceof TM1637Device) {
+            if (d instanceof TM1638Device) {
+              v.segOn = !!v.powered && d.on;
+              const order = cs.sim.digitMap ?? Array.from({ length: cs.sim.digits ?? 8 }, (_, i) => 2 * i);
+              v.segText = v.segOn ? segText(order.map((i) => d.ram[i] ?? 0)) : '';
+              const leds = cs.sim.tm1638?.leds ?? [];
+              v.inputs = Object.fromEntries(leds.map((l) => [l.name, v.segOn === true && ((d.ram[l.addr] >> l.bit) & 1) === 1]));
+              v.active = Object.values(v.inputs).some(Boolean);
+            } else if (d instanceof TM1637Device) {
               v.segOn = !!v.powered && d.on;
               const order = cs.sim.digitMap ?? Array.from({ length: cs.sim.digits ?? 4 }, (_, i) => i);
               v.segText = v.segOn ? segText(order.map((i) => d.segs[i] ?? 0)) : '';
@@ -1452,6 +1566,13 @@ export class SimEngine {
               v.segOn = !!v.powered && !d.shutdown;
               v.segText = v.segOn ? segText(d.segments().slice(-(cs.sim.digits ?? 8))) : '';
             }
+          }
+          if (cs?.sim.kind === 'i2s-amp') {
+            v.powered = m.modulePowered(part.id);
+            const t = v.powered ? this.i2sAmpTone(part, cs) : { hz: 0, level: 0 };
+            // Only audible pitches count as a tone (as for buzzers).
+            v.tone = t.level > 0.005 && t.hz >= 20 ? t.hz : 0;
+            v.level = Math.round(t.level * 1000) / 1000;
           }
           if (cs?.sim.kind === 'char-lcd') {
             const d = this.devices.find((x) => x.part.id === part.id)?.dev;
@@ -1553,6 +1674,10 @@ export class SimEngine {
       spi_write: (b: number, hex: string) => this.spiWrite(b, hex),
       spi_xfer: (b: number, hex: string) => this.spiXfer(b, hex),
       uart_open: (id: number, tx: number, rx: number, baud: number) => this.uartOpen(id, tx, rx, baud),
+      i2s_open: (id: number, sck: number, ws: number, sd: number, mode: number, bits: number, fmt: number, rate: number, ibuf: number) => this.i2sOpen(id, sck, ws, sd, mode, bits, fmt, rate, ibuf),
+      i2s_write: (h: number, hex: string) => this.i2sWrite(h, hex),
+      i2s_close: (h: number) => this.i2sClose(h),
+      i2s_shift: (hex: string, bits: number, shift: number) => bytesToHex(shiftSamples(hexToBytes(hex), bits, shift)),
       uart_any: (h: number) => this.uartAny(h),
       uart_read: (h: number, n: number) => this.uartRead(h, n),
       uart_readline: (h: number) => this.uartReadline(h),

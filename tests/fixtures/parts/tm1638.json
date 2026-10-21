@@ -1,0 +1,186 @@
+{
+ "type": "custom-tm1638-test",
+ "name": "TM1638 LED&KEY test",
+ "mpn": "TM1638 LED&KEY",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "digital-out",
+ "pins": [
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "STB",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "CLK",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "DIO",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 5.5,
+ "currentMa": 80,
+ "priceUsd": 3,
+ "supplierQuery": "TM1638 LED KEY module",
+ "sim": {
+  "kind": "segment-display",
+  "protocol": "tm1638",
+  "digits": 8,
+  "tm1638": {
+   "leds": [
+    {
+     "name": "LED1",
+     "addr": 1,
+     "bit": 0
+    },
+    {
+     "name": "LED2",
+     "addr": 3,
+     "bit": 0
+    },
+    {
+     "name": "LED3",
+     "addr": 5,
+     "bit": 0
+    },
+    {
+     "name": "LED4",
+     "addr": 7,
+     "bit": 0
+    },
+    {
+     "name": "LED5",
+     "addr": 9,
+     "bit": 0
+    },
+    {
+     "name": "LED6",
+     "addr": 11,
+     "bit": 0
+    },
+    {
+     "name": "LED7",
+     "addr": 13,
+     "bit": 0
+    },
+    {
+     "name": "LED8",
+     "addr": 15,
+     "bit": 0
+    }
+   ],
+   "keys": [
+    {
+     "control": "S1",
+     "k": 3,
+     "ks": 1
+    },
+    {
+     "control": "S2",
+     "k": 3,
+     "ks": 3
+    },
+    {
+     "control": "S3",
+     "k": 3,
+     "ks": 5
+    },
+    {
+     "control": "S4",
+     "k": 3,
+     "ks": 7
+    },
+    {
+     "control": "S5",
+     "k": 3,
+     "ks": 2
+    },
+    {
+     "control": "S6",
+     "k": 3,
+     "ks": 4
+    },
+    {
+     "control": "S7",
+     "k": 3,
+     "ks": 6
+    },
+    {
+     "control": "S8",
+     "k": 3,
+     "ks": 8
+    }
+   ]
+  }
+ },
+ "driver": {
+  "filename": "tm1638.py",
+  "code": "from machine import Pin\n\nTM1638_CMD1 = 0x40\nTM1638_CMD2 = 0xC0\nTM1638_CMD3 = 0x80\nTM1638_DSP_ON = 0x08\nTM1638_READ = 0x02\n\n_SEGMENTS = bytearray(b'\\x3F\\x06\\x5B\\x4F\\x66\\x6D\\x7D\\x07\\x7F\\x6F')\n\n\nclass TM1638:\n    def __init__(self, stb, clk, dio, brightness=7):\n        self.stb = stb\n        self.clk = clk\n        self.dio = dio\n        self._brightness = brightness & 7\n        self._on = TM1638_DSP_ON\n        self.clk.init(Pin.OUT, value=1)\n        self.dio.init(Pin.OUT, value=0)\n        self.stb.init(Pin.OUT, value=1)\n        self.clear()\n        self._write_dsp_ctrl()\n\n    def _write_data_cmd(self):\n        self._command(TM1638_CMD1)\n\n    def _set_address(self, addr=0):\n        self._byte(TM1638_CMD2 | addr)\n\n    def _write_dsp_ctrl(self):\n        self._command(TM1638_CMD3 | self._on | self._brightness)\n\n    def _command(self, cmd):\n        self.stb(0)\n        self._byte(cmd)\n        self.stb(1)\n\n    def _byte(self, b):\n        for i in range(8):\n            self.clk(0)\n            self.dio((b >> i) & 1)\n            self.clk(1)\n\n    def clear(self):\n        self._write_data_cmd()\n        self.stb(0)\n        self._set_address(0)\n        for i in range(16):\n            self._byte(0x00)\n        self.stb(1)\n\n    def write(self, data, pos=0):\n        self._write_data_cmd()\n        self.stb(0)\n        self._set_address(pos)\n        for b in data:\n            self._byte(b)\n        self.stb(1)\n\n    def led(self, pos, val):\n        self.write([val], (pos << 1) + 1)\n\n    def segments(self, segments, pos=0):\n        for i in range(len(segments)):\n            self.write([segments[i]], (pos + i) << 1)\n\n    def number(self, num):\n        self.segments([_SEGMENTS[int(c)] for c in '%08d' % num])\n\n    def keys(self):\n        keys = 0\n        self.stb(0)\n        self._byte(TM1638_CMD1 | TM1638_READ)\n        for i in range(4):\n            keys |= self._scan_keys() << i\n        self.stb(1)\n        return keys\n\n    def _scan_keys(self):\n        pressed = 0\n        self.dio.init(Pin.IN, Pin.PULL_UP)\n        for i in range(8):\n            self.clk(0)\n            if self.dio.value():\n                pressed |= 1 << i\n            self.clk(1)\n        self.dio.init(Pin.OUT)\n        return pressed\n"
+ },
+ "example": {
+  "code": "from machine import Pin\nimport time\nfrom tm1638 import TM1638\ntm = TM1638(stb=Pin({STB}), clk=Pin({CLK}), dio=Pin({DIO}))\ntm.number(12345678)\ntm.led(2, 1)\nlast = -1\nwhile True:\n    k = tm.keys()\n    if k != last:\n        print('keys 0x%02x' % k)\n        last = k\n    time.sleep_ms(50)\n",
+  "test": {
+   "id": "t",
+   "title": "digits, an LED and the S6 button",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "12345678",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "active",
+     "part": "{REF}",
+     "text": "LED3",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "keys 0x00",
+     "within": 3000
+    },
+    {
+     "kind": "wait",
+     "ms": 500
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "S6",
+     "value": 1
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "keys 0x20",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

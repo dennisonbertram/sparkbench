@@ -1,0 +1,72 @@
+{
+ "type": "custom-apa102-test",
+ "name": "APA102 test",
+ "mpn": "APA102 strip",
+ "category": "output",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "D",
+ "interface": "digital-out",
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "CI",
+   "role": "io",
+   "fn": "spi.sck",
+   "required": true
+  },
+  {
+   "name": "DI",
+   "role": "io",
+   "fn": "spi.mosi",
+   "required": true
+  },
+  {
+   "name": "5V",
+   "role": "power",
+   "required": true
+  }
+ ],
+ "vmin": 3.7,
+ "vmax": 5.3,
+ "currentMa": 60,
+ "priceUsd": 6,
+ "supplierQuery": "APA102 strip",
+ "sim": {
+  "kind": "addressable-led",
+  "count": 8,
+  "ledProtocol": "apa102"
+ },
+ "example": {
+  "code": "from machine import Pin, SPI\nimport time\nspi = SPI(1, baudrate=4000000, sck=Pin({CI}), mosi=Pin({DI}))\n\ndef show(colours, brightness=31):\n    buf = bytearray(4)\n    for r, g, b in colours:\n        buf += bytes((0xE0 | brightness, b, g, r))\n    buf += b'\\xff' * 4\n    spi.write(buf)\n\ntime.sleep(1)\nshow([(0, 0, 0)] * 8)\ntime.sleep(0.5)\nshow([(255, 0, 0)] * 4 + [(0, 0, 255)] * 4, 16)\nprint('sent')\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "strip lights",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "wait",
+     "ms": 1200
+    },
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": false,
+     "within": 300
+    },
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": true,
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

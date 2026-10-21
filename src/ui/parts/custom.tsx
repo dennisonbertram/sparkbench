@@ -141,7 +141,16 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
           <text x={w / 2} y={23} fontSize={16} fontFamily={cs.sim.segments === 14 ? "'DSEG14 Classic', 'Courier New', monospace" : "'DSEG7 Classic', 'Courier New', monospace"} fontWeight={700} fill={visual.segOn ? '#ff3b30' : '#3a1010'} textAnchor="middle" letterSpacing={2}>
             {visual.segText || '    '}
           </text>
+          {cs.sim.protocol === 'tm1638' &&
+            (cs.sim.tm1638?.leds ?? []).map((l, i, all) => (
+              <circle key={l.name} cx={w / 2 - 30 + (i * 60) / Math.max(1, all.length - 1)} cy={33} r={2} fill={visual.inputs?.[l.name] ? '#ff3b30' : '#3a1010'} />
+            ))}
         </g>
+      )}
+      {cs.sim.kind === 'i2s-amp' && (
+        <text x={w / 2} y={18} fontSize={9} fill={visual?.tone ? '#ffe082' : '#ffffff55'} textAnchor="middle">
+          {visual?.tone ? `♪ ${visual.tone} Hz` : '♪'}
+        </text>
       )}
       {visual?.lcd ? (
         <LcdScreen x={4} y={3} w={w - 8} lcd={visual.lcd} />
@@ -167,7 +176,7 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
         <g>
           {Array.from({ length: Math.min(cs.sim.count ?? 1, 12) }, (_, i) => {
             const px = visual?.pixels ?? [];
-            const [g, r, b] = [px[i * 3] ?? 0, px[i * 3 + 1] ?? 0, px[i * 3 + 2] ?? 0];
+            const [r, g, b] = [px[i * 3] ?? 0, px[i * 3 + 1] ?? 0, px[i * 3 + 2] ?? 0];
             return <rect key={i} x={6 + i * 7} y={10} width={5} height={5} rx={1} fill={r + g + b > 10 ? `rgb(${Math.min(255, r * 2)},${Math.min(255, g * 2)},${Math.min(255, b * 2)})` : '#eee'} stroke="#999" strokeWidth={0.4} />;
           })}
         </g>

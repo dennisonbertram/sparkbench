@@ -1214,3 +1214,203 @@ export class HT16K33Device implements I2CDevice {
     return new Array(n).fill(0);
   }
 }
+
+/** One-wire LED strips: the wire bytes a NeoPixel write sends (GRB per LED, or GRBW for SK6812 RGBW) → RGB per LED
+ * for the screen. The white channel is added to all three (that's how it looks). Each LED takes its own frame size
+ * off the stream, so code that sends the wrong bytes per pixel shows the colours the real strip would. */
+export function decodeLedStream(bytes: number[], protocol: 'ws2812' | 'sk6812-rgbw', count: number): number[] {
+  const bpp = protocol === 'sk6812-rgbw' ? 4 : 3;
+  const out: number[] = [];
+  for (let i = 0; i < count && (i + 1) * bpp <= bytes.length; i++) {
+    const [g, r, b, w = 0] = bytes.slice(i * bpp, i * bpp + bpp);
+    out.push(Math.min(255, r + w), Math.min(255, g + w), Math.min(255, b + w));
+  }
+  return out;
+}
+
+/** APA102 / SK9822 chain on SPI (clock + data, no chip select): a start frame of 32 zero bits, then per LED
+ * 0b111 + 5-bit global brightness, blue, green, red. The first frame after the start frame lands on the first LED;
+ * frames past the last LED (and the end frame) fall off the end of the chain. */
+export class APA102Chain {
+  rgb: number[];
+  private zeros = 0;
+  private idx = -1;
+  private cur: number[] = [];
+  constructor(public count: number) {
+    this.rgb = new Array(count * 3).fill(0);
+  }
+  clockIn(bytes: number[]) {
+    for (const b of bytes) {
+      this.zeros = b === 0 ? this.zeros + 1 : 0;
+      if (this.zeros >= 4) {
+        // 32 zero bits: every LED gets ready for a new frame.
+        this.idx = 0;
+        this.cur = [];
+        continue;
+      }
+      if (this.idx < 0) continue;
+      this.cur.push(b);
+      if (this.cur.length < 4) continue;
+      const [hdr, bl, gr, rd] = this.cur;
+      this.cur = [];
+      if (this.idx < this.count) {
+        const k = (hdr & 0x1f) / 31;
+        this.rgb.splice(this.idx * 3, 3, Math.round(rd * k), Math.round(gr * k), Math.round(bl * k));
+      }
+      this.idx++;
+    }
+  }
+}
+
+/** TM1638 (LED&KEY style boards): STB low frames a transfer, bytes go LSB first and are latched on CLK rising.
+ * 0x40 / 0x44 data command (auto-increment / fixed address), 0xC0 | addr then data into the 16-byte display RAM,
+ * 0x80 | 0x08 on | brightness. After 0x42 (read keys) the chip clocks out 4 key bytes on DIO, LSB first, one bit
+ * per CLK falling edge (open drain: the MCU reads it through a pull-up). Key byte n: bit 0-2 = K3, K2, K1 on
+ * KS(2n+1), bit 4-6 = K3, K2, K1 on KS(2n+2). */
+export class TM1638Device {
+  ram = new Array(16).fill(0);
+  on = false;
+  brightness = 0;
+  /** Level the chip pulls DIO to while it is sending key data (1 = released, open drain). */
+  dioOut = 1;
+  private active = false;
+  private bits = 0;
+  private byte = 0;
+  private bytes: number[] = [];
+  private fixed = false;
+  private addr = 0;
+  private reading = false;
+  private keyBits: number[] = [];
+  private readIdx = 0;
+  constructor(public partId: string, private keyBytes: () => number[]) {}
+  stb(level: number) {
+    if (!level && !this.active) {
+      this.active = true;
+      this.bits = 0;
+      this.byte = 0;
+      this.bytes = [];
+      this.reading = false;
+    } else if (level && this.active) {
+      this.active = false;
+      this.reading = false;
+      this.dioOut = 1;
+      this.exec(this.bytes);
+    }
+  }
+  clk(level: number, prev: number, dio: number) {
+    if (!this.active) return;
+    if (this.reading) {
+      // Falling edge: the next key bit goes out on DIO.
+      if (!level && prev) this.dioOut = this.keyBits[this.readIdx++] ?? 1;
+      return;
+    }
+    if (!level || prev) return;
+    this.byte |= (dio ? 1 : 0) << this.bits;
+    if (++this.bits < 8) return;
+    this.bytes.push(this.byte);
+    if (this.bytes.length === 1 && (this.byte & 0xc3) === 0x42) {
+      this.reading = true;
+      this.readIdx = 0;
+      this.keyBits = this.keyBytes().flatMap((b) => Array.from({ length: 8 }, (_, i) => (b >> i) & 1));
+    }
+    this.bits = 0;
+    this.byte = 0;
+  }
+  private exec(b: number[]) {
+    if (!b.length) return;
+    const c = b[0];
+    if ((c & 0xc0) === 0x40) {
+      if ((c & 0x03) === 0) this.fixed = (c & 0x04) !== 0; // write data command
+      for (const d of b.slice(1)) this.put(d);
+    } else if ((c & 0xc0) === 0xc0) {
+      this.addr = c & 0x0f;
+      for (const d of b.slice(1)) this.put(d);
+    } else if ((c & 0xc0) === 0x80) {
+      this.on = (c & 0x08) !== 0;
+      this.brightness = c & 0x07;
+    }
+  }
+  private put(d: number) {
+    this.ram[this.addr] = d;
+    if (!this.fixed) this.addr = (this.addr + 1) & 0x0f;
+  }
+}
+
+/** PCD8544 (Nokia 5110) 84×48 mono LCD on SPI with D/C: 6 banks of 84 column bytes (bit 0 = top pixel).
+ * Function set 0b00100PVH (P power-down, V vertical addressing, H extended set). Basic set: display control
+ * 0b00001D0E (blank / normal / all on / inverse), set Y 0b01000yyy, set X 0b1xxxxxxx. Extended set: Vop
+ * 0b1vvvvvvv, bias, temperature coefficient. After reset it is powered down and blank with Vop 0 (nothing visible). */
+export class PCD8544Device {
+  readonly width = 84;
+  readonly height = 48;
+  ram = new Uint8Array(84 * 6);
+  writes = 0;
+  private pd = true;
+  private vertical = false;
+  private ext = false;
+  private mode = 0; // 0 blank, 1 all on, 2 normal, 3 inverse
+  vop = 0;
+  private x = 0;
+  private y = 0;
+  constructor(public partId: string) {}
+  reset() {
+    this.ram.fill(0);
+    this.pd = true;
+    this.vertical = false;
+    this.ext = false;
+    this.mode = 0;
+    this.vop = 0;
+    this.x = 0;
+    this.y = 0;
+    this.writes++;
+  }
+  /** Something visible: powered up, contrast set and the display not blanked. */
+  get on() {
+    return !this.pd && this.vop > 0 && this.mode !== 0;
+  }
+  command(c: number) {
+    this.writes++;
+    if ((c & 0xf8) === 0x20) {
+      this.pd = (c & 4) !== 0;
+      this.vertical = (c & 2) !== 0;
+      this.ext = (c & 1) !== 0;
+    } else if (this.ext) {
+      if (c & 0x80) this.vop = c & 0x7f; // bias (0x10-0x17) and temperature coefficient (0x04-0x07) don't change the image
+    } else if ((c & 0xfa) === 0x08) this.mode = ((c >> 2) & 1) * 2 + (c & 1);
+    else if ((c & 0xf8) === 0x40) this.y = Math.min(5, c & 7);
+    else if (c & 0x80) this.x = Math.min(83, c & 0x7f);
+  }
+  data(bytes: number[]) {
+    this.writes++;
+    for (const b of bytes) {
+      this.ram[this.y * 84 + this.x] = b;
+      if (this.vertical) {
+        if (++this.y > 5) {
+          this.y = 0;
+          this.x = (this.x + 1) % 84;
+        }
+      } else if (++this.x > 83) {
+        this.x = 0;
+        this.y = (this.y + 1) % 6;
+      }
+    }
+  }
+  private bit(x: number, y: number) {
+    return (this.ram[(y >> 3) * 84 + x] >> (y & 7)) & 1;
+  }
+  /** A dark (ink) pixel in RAM terms: what text was drawn with, whatever the display mode. */
+  lit(x: number, y: number): boolean {
+    if (!this.on) return false;
+    return this.mode === 1 || this.bit(x, y) === 1;
+  }
+  /** Greenish backlit glass with dark pixels (light pixels in inverse mode), every `step` pixels. */
+  thumb(step: number): number[] {
+    const out: number[] = [];
+    for (let y = 0; y < this.height; y += step)
+      for (let x = 0; x < this.width; x += step) {
+        const ink = this.on && (this.mode === 1 || (this.bit(x, y) === 1) !== (this.mode === 3));
+        out.push(...(ink ? [20, 30, 20] : [150, 190, 140]));
+      }
+    return out;
+  }
+}

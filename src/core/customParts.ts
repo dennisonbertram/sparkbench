@@ -31,8 +31,14 @@ export interface CustomSim {
    *   for the sound's round trip to the "value" distance (see echo); works with machine.time_pulse_us and polling
    * resistive-sensor: the sensor is a resistance (gas sensor element, LDR, thermistor, FSR) or a shunt voltage reference
    *   (LM335), not a voltage source: see resistive / shunt, and give the pin the load or bias resistor it needs (pin load)
+   * i2s-amp: an I2S audio amplifier (MAX98357A) fed by machine.I2S: pins fn i2s.bclk, i2s.lrc and i2s.din; tests hear what
+   *   it plays with what "buzzer" (the dominant pitch). See i2sAmp for the SD_MODE channel select.
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'char-lcd' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'rfid-reader' | 'ir-receiver' | 'pulse-sensor' | 'ultrasonic' | 'resistive-sensor' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'char-lcd' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'rfid-reader' | 'ir-receiver' | 'pulse-sensor' | 'ultrasonic' | 'resistive-sensor' | 'i2s-amp' | 'none';
+  /** i2s-amp: sdPin = the SD_MODE pin; its voltage picks the channel (MAX98357A: < 0.16 V shutdown, 0.16–0.77 V (L+R)/2,
+   * 0.77–1.4 V right, > 1.4 V left; the chip pulls it down with 100 kΩ). sdPullUpOhms = a pull-up the board fits from SD
+   * to the supply (Adafruit's breakout: 1 MΩ, giving (L+R)/2 when SD is left open). No sdPin: plays (L+R)/2. */
+  i2sAmp?: { sdPin?: string; sdPullUpOhms?: number };
   /** pulse-sensor: frequency = value × hzPerUnit + offsetHz (YF-S201: 7.5 Hz per L/min; a tachometer: pulses per turn / 60
    * per RPM), capped at maxHz (default 2000); duty = fraction of each period spent high (default 0.5). openDrain: the
    * output only pulls low (open collector), so the high level comes from a pull-up (pin pullUp, or Pin.PULL_UP). No
@@ -82,11 +88,20 @@ export interface CustomSim {
    * segment-display max7219: how many MAX7219s are daisy-chained DOUT → DIN (e.g. 4 on an FC-16 32×8 matrix module;
    * DIN enters the rightmost one). */
   count?: number;
+  /** addressable-led: the LED chip. 'ws2812' (default; GRB, MicroPython neopixel), 'sk6812-rgbw' (GRBW: the code must
+   * use NeoPixel(pin, n, bpp=4)), or 'apa102' (APA102/SK9822 on SPI: pins fn spi.sck = CI and spi.mosi = DI, no
+   * inputPin; start frame, then 0xE0|brightness, B, G, R per LED). */
+  ledProtocol?: 'ws2812' | 'sk6812-rgbw' | 'apa102';
   /** segment-display: TM1637 (pins CLK + DIO, fn digital-out) or MAX7219 (SPI: fn spi.sck, spi.mosi, spi.cs as LOAD);
    * or HT16K33 (I2C LED backpack); digits = how many digit positions the module shows; matrix = an 8×8 dot matrix
    * instead of digits (MAX7219: row = digit register, bit 7 leftmost; HT16K33: Adafruit 8×8 backpack wiring, row y = RAM
    * byte 2y, column x = bit (x + 7) % 8). Matrix text drawn with the 8×8 framebuf font is read back for tests. */
-  protocol?: 'tm1637' | 'max7219' | 'ht16k33';
+  protocol?: 'tm1637' | 'max7219' | 'ht16k33' | 'tm1638';
+  /** segment-display tm1638 (pins named STB, CLK, DIO): digits come from the even RAM bytes by default (digitMap
+   * [0, 2, … 14]); leds = single LEDs as {name, addr, bit} (LED&KEY: LED n at RAM byte 2n+1, bit 0) that tests check with
+   * what "active" + text name; keys = push buttons as toggles {control, k (1-3), ks (1-8)} at the chip's K/KS
+   * matrix position, read back with the 0x42 read-keys command. */
+  tm1638?: { leds?: { name: string; addr: number; bit: number }[]; keys?: { control: string; label?: string; k: 1 | 2 | 3; ks: number }[] };
   digits?: number;
   matrix?: boolean;
   /** segment-display: which RAM position drives each digit, left to right (e.g. [2,1,0,5,4,3] on common 6-digit TM1637 modules). */
@@ -116,8 +131,9 @@ export interface CustomSim {
   countsPerUnit?: number;
   offsetCounts?: number;
   /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64).
-   * tft-display: 'ssd1351' for the SSD1351 colour OLED command set. */
-  controller?: 'ssd1306' | 'sh1106' | 'ssd1351';
+   * tft-display: 'ssd1351' for the SSD1351 colour OLED command set; 'pcd8544' for the Nokia 5110 84×48 mono LCD (pins
+   * fn spi.sck, spi.mosi, spi.cs = CE, tft.dc = DC, tft.reset = RST; width/height are fixed at 84×48). */
+  controller?: 'ssd1306' | 'sh1106' | 'ssd1351' | 'pcd8544';
   rows?: 32 | 64;
   /** oled-display: 'spi' for 4-wire SPI modules (D0 = fn spi.sck, D1 = fn spi.mosi, CS = fn spi.cs, DC = fn tft.dc,
    * RES = fn tft.reset); DC low = command byte, high = display data. Default 'i2c' (needs i2cAddress). */
@@ -386,6 +402,7 @@ export function specToDef(spec: CustomPartSpec): PartDef {
   for (const d of s.digitalOutputs ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.pin, kind: 'toggle', default: 0 });
   if (s.kind === 'shift-register' && s.shift?.type === '165') for (const p of s.shift.inputs ?? []) controls.push({ key: p, label: `Input ${p}`, kind: 'toggle', default: 0 });
   for (const d of s.inputBits ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.control, kind: 'toggle', default: 0 });
+  for (const k of s.tm1638?.keys ?? []) if (!controls.some((x) => x.key === k.control)) controls.push({ key: k.control, label: k.label ?? k.control, kind: 'toggle', default: 0 });
   for (const c of s.controls ?? []) {
     if (c.key === 'value' || controls.some((x) => x.key === c.key)) continue;
     controls.push({ key: c.key, label: c.quantity, kind: 'slider', min: c.min, max: c.max, step: (c.max - c.min) / 200 >= 1 ? 1 : +((c.max - c.min) / 200).toPrecision(1), default: c.default ?? (c.min + c.max) / 2, unit: c.unit ? ` ${c.unit}`.replace(/^ (°|%)/, '$1') : '' });
@@ -454,12 +471,23 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.kind === 'tft-display') {
     if (!(['spi.sck', 'spi.mosi', 'tft.dc'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('a TFT needs pins with fn spi.sck, spi.mosi and tft.dc (plus spi.cs unless the board ties CS low)');
     if (!s.width || !s.height || s.width > 480 || s.height > 480) errs.push('a TFT needs width and height (up to 480)');
-    if (s.controller && s.controller !== 'ssd1351') errs.push(`controller ${s.controller} is an oled-display controller; a tft-display takes 'ssd1351' or nothing (MIPI DCS)`);
+    if (s.controller && s.controller !== 'ssd1351' && s.controller !== 'pcd8544') errs.push(`controller ${s.controller} is an oled-display controller; a tft-display takes 'ssd1351', 'pcd8544' or nothing (MIPI DCS)`);
+    if (s.controller === 'pcd8544' && ((s.width ?? 84) !== 84 || (s.height ?? 48) !== 48)) errs.push('a PCD8544 panel is 84×48');
+    if (s.controller === 'pcd8544' && s.pixelBits !== undefined) errs.push('pixelBits is for colour panels, not the PCD8544');
     if (s.controller === 'ssd1351' && (s.width! > 128 || s.height! > 128)) errs.push('an SSD1351 drives at most 128×128');
   }
   if (s.pixelBits !== undefined && (s.kind !== 'tft-display' || ![16, 18].includes(s.pixelBits))) errs.push('pixelBits (16 or 18) is for tft-display');
   if (s.kind === 'oled-display' && s.controller === 'ssd1351') errs.push("controller 'ssd1351' is a colour OLED: use kind tft-display");
-  if (s.kind === 'addressable-led' && (!s.inputPin || !s.count || s.count < 1 || s.count > 1024)) errs.push('addressable-led needs inputPin (DIN) and a count of 1-1024');
+  if (s.kind === 'oled-display' && s.controller === 'pcd8544') errs.push("controller 'pcd8544' (Nokia 5110 LCD) uses kind tft-display");
+  if (s.ledProtocol && !['ws2812', 'sk6812-rgbw', 'apa102'].includes(s.ledProtocol)) errs.push(`ledProtocol ${s.ledProtocol} must be ws2812, sk6812-rgbw or apa102`);
+  if (s.ledProtocol && s.kind !== 'addressable-led') errs.push('ledProtocol is for addressable-led');
+  if (s.kind === 'i2s-amp' && !(['i2s.bclk', 'i2s.lrc', 'i2s.din'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('an I2S amplifier needs pins with fn i2s.bclk, i2s.lrc and i2s.din');
+  if (s.i2sAmp && s.kind !== 'i2s-amp') errs.push('i2sAmp is for i2s-amp');
+  if (s.i2sAmp?.sdPin && !names.has(s.i2sAmp.sdPin)) errs.push(`i2sAmp.sdPin ${s.i2sAmp.sdPin} is not a pin`);
+  if (s.i2sAmp?.sdPullUpOhms !== undefined && !(s.i2sAmp.sdPullUpOhms > 0 && s.i2sAmp.sdPin)) errs.push('i2sAmp.sdPullUpOhms needs sdPin and a positive value');
+  if (s.kind === 'addressable-led' && (!s.count || s.count < 1 || s.count > 1024)) errs.push('addressable-led needs a count of 1-1024');
+  if (s.kind === 'addressable-led' && s.ledProtocol !== 'apa102' && !s.inputPin) errs.push('addressable-led needs inputPin (DIN)');
+  if (s.kind === 'addressable-led' && s.ledProtocol === 'apa102' && !(['spi.sck', 'spi.mosi'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('an APA102 strip needs pins with fn spi.sck (CI) and spi.mosi (DI)');
   if (s.kind === 'dht-sensor' && (!s.outputPin || !keys.has('humidity'))) errs.push('dht-sensor needs outputPin (DATA) and a "humidity" control');
   if (s.pointerlessBytes !== undefined && (!s.pointerless || ![1, 2].includes(s.pointerlessBytes))) errs.push('pointerlessBytes (1 or 2) needs pointerless: true');
   if (s.kind === 'servo' && (!s.inputPin || !s.servo || s.servo.maxUs <= s.servo.minUs)) errs.push('servo needs inputPin and servo {minUs, maxUs, degrees}');
@@ -527,7 +555,11 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (s.segments !== undefined && (s.protocol !== 'ht16k33' || ![7, 14].includes(s.segments) || s.matrix)) errs.push('segments (7 or 14) is for HT16K33 digit displays');
     if (s.protocol === 'max7219' && s.count !== undefined && !(Number.isInteger(s.count) && s.count >= 1 && s.count <= 8)) errs.push('count (daisy-chained MAX7219s) must be 1-8');
     if (s.protocol === 'max7219' && (s.count ?? 1) > 1 && !s.matrix) errs.push('daisy-chained MAX7219s (count > 1) are modelled as a dot matrix: set matrix: true');
-    if (!s.protocol) errs.push('segment-display needs protocol tm1637, max7219 or ht16k33');
+    if (s.protocol === 'tm1638' && !(names.has('STB') && names.has('CLK') && names.has('DIO'))) errs.push('a TM1638 module needs pins named STB, CLK and DIO');
+    for (const k of s.tm1638?.keys ?? []) if (![1, 2, 3].includes(k.k) || !(Number.isInteger(k.ks) && k.ks >= 1 && k.ks <= 8)) errs.push(`TM1638 key ${k.control}: k must be 1-3 and ks 1-8`);
+    for (const l of s.tm1638?.leds ?? []) if (!(l.addr >= 0 && l.addr <= 15 && l.bit >= 0 && l.bit <= 7)) errs.push(`TM1638 LED ${l.name}: addr 0-15, bit 0-7`);
+    if (s.tm1638 && s.protocol !== 'tm1638') errs.push('tm1638 settings need protocol tm1638');
+    if (!s.protocol) errs.push('segment-display needs protocol tm1637, max7219, ht16k33 or tm1638');
   }
   if (s.kind === 'hx711' && (!s.outputPin || !s.clockPin || !names.has(s.clockPin) || !s.countsPerUnit)) errs.push('hx711 needs outputPin (DOUT), clockPin (PD_SCK) and countsPerUnit');
   if (s.kind === 'onewire-temp' && s.family !== undefined && ![0x10, 0x22, 0x28, 0x3b, 0x42].includes(s.family)) errs.push(`1-Wire family 0x${s.family.toString(16)} is not a DS18x20-type thermometer`);

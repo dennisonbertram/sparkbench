@@ -275,6 +275,12 @@ export class ElectricalModel {
           if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), cs.sim.inputsActiveLow ? n(vccPin) : g, cs.sim.inputsActiveLow ? 1000 : 10000));
           for (const d of cs?.sim.digitalOutputs ?? []) els[`dout:${d.pin}`] = c.add(new VSource(`${id}.dout.${d.pin}`, n(d.pin), g, 0, 200));
           for (const pin of cs?.sim.dac?.pins ?? []) els[`dac:${pin}`] = c.add(new VSource(`${id}.dac.${pin}`, n(pin), g, 0, 1));
+          // MAX98357A SD_MODE: the chip's 100 kΩ pull-down, and the pull-up some breakouts fit to the supply.
+          if (cs?.sim.kind === 'i2s-amp' && cs.sim.i2sAmp?.sdPin) {
+            els.sdpd = c.add(new Resistor(`${id}.sdpd`, n(cs.sim.i2sAmp.sdPin), g, 100000));
+            if (cs.sim.i2sAmp.sdPullUpOhms) els.sdpu = c.add(new Resistor(`${id}.sdpu`, n(cs.sim.i2sAmp.sdPin), n(vccPin), cs.sim.i2sAmp.sdPullUpOhms));
+          }
+          if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'tm1638') els.tmdio = c.add(new Switch(`${id}.tmdio`, n('DIO'), g, false));
           if (cs?.sim.kind === 'shift-register' && cs.sim.shift?.type === '165' && cs.sim.shift.serialOut) els.shout = c.add(new VSource(`${id}.shout`, n(cs.sim.shift.serialOut), g, 0, 200));
           if (cs?.sim.kind === 'hx711' && cs.sim.outputPin && cs.sim.clockPin) {
             els.hxout = c.add(new VSource(`${id}.hxout`, n(cs.sim.outputPin), g, 0, 200));
@@ -438,6 +444,15 @@ export class ElectricalModel {
     const e = this.partEls.get(partId)?.[el] as VSource | undefined;
     if (e && e.volts !== volts) {
       e.volts = volts;
+      this.dirty = true;
+    }
+  }
+
+  /** Open-drain outputs driven by a simulated chip (e.g. a TM1638 sending key data on DIO): closed pulls the pin to GND. */
+  setModuleSwitch(partId: string, el: string, closed: boolean) {
+    const e = this.partEls.get(partId)?.[el] as Switch | undefined;
+    if (e && e.closed !== closed) {
+      e.set(closed);
       this.dirty = true;
     }
   }
