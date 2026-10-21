@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-analog-thumb-joystick",
+  "board": "Adafruit Analog 2-axis Thumb Joystick with Select Button + Breakout Board (#512)",
+  "reason": "Passive part (two 10 kOhm ratiometric pots plus select switch to GND) modelled as analog-sensor with Xout/Yout analog outputs and an active-low Sel digital output; header order GND, Sel, Yout, Xout, Vcc taken from Adafruit's Eagle schematic/board files. The check passed on ESP32 and Pico.",
+  "datasheetUrl": "https://www.adafruit.com/product/512",
+  "breakoutPinoutSource": "https://github.com/adafruit/2-axis-joystick-breakout-board-with-mounting-holes (joystick.sch/joystick.brd: JP1 pin1 GND, pin2 SEL+, pin3 H, pin4 V, pin5 V+/H+; silkscreen Vcc, Xout, Yout, Sel, GND)",
+  "checkRuns": 2
+}

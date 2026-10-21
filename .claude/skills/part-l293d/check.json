@@ -1,0 +1,79 @@
+{
+  "type": "custom-l293d",
+  "mpn": "L293DNE",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "9 pins wired; L293D dual H-bridge motor driver needs at least 4.5 V, so it is powered from 5 V. U2.1,2EN → D25 (GPIO25). U2.1A → D26 (GPIO26). U2.2A → D27 (GPIO27). Added the l293d.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "16 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor 1 runs forward, then the bridge is disabled: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "52.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "9 pins wired; L293D dual H-bridge motor driver needs at least 4.5 V, so it is powered from 5 V. U2.1,2EN → GP2 (GPIO2). U2.1A → GP3 (GPIO3). U2.2A → GP6 (GPIO6). Added the l293d.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "16 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor 1 runs forward, then the bridge is disabled: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-16_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C19632281 L293DNE(MS) (132 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T10:59:28.924Z"
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-h3lis331dl",
+  "board": "Adafruit H3LIS331 Ultra High Range Triple-Axis Accelerometer breakout, STEMMA QT (#4627), main 6-pin header VIN, 3Vo, GND, SCL, SDA, INT",
+  "reason": "Part check PASS on ESP32 and Pico on the first run (spec, wiring, design checks, breadboard, simulator test X=25.0 Y=-50.0 Z=10.0 g, DRC clean, footprint, LCSC C2655074). The sim stores OUT_X/Y/Z (0x28-0x2D) as left-justified 12-bit two's complement, low byte first, at 49 mg/digit (FS=00, ±100 g), with WHO_AM_I 0x32, STATUS 0x0F, and autoIncrementBit7 for ST sub-address auto-increment; the driver follows DocID023111 (CTRL_REG1 0x2F, CTRL_REG4 BDU+FS, >>4, 49/98/195 mg/digit).",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/h3lis331dl.pdf",
+  "breakoutPinoutSource": "Adafruit #4627 board photo https://cdn-learn.adafruit.com/assets/assets/000/092/531/medium800/sensors_4627-04_edit_narrow.jpg (bottom row VIN, 3Vo, GND, SCL, SDA, INT; top row I2, NC, NC, NC, SDO, CS) and https://learn.adafruit.com/adafruit-h3lis331-and-lis331hh-high-g-3-axis-accelerometers/pinouts",
+  "checkRuns": 1
+}

@@ -1,0 +1,130 @@
+{
+  "type": "custom-rv-3028-c7",
+  "name": "RV-3028-C7 low-power RTC breakout",
+  "mpn": "RV-3028-C7",
+  "category": "ic",
+  "description": "Micro Crystal RV-3028-C7 extreme low power real-time clock module (factory-calibrated 32.768 kHz crystal inside, +/-1 ppm at 25 C): seconds to years in BCD with leap years 2000-2099, alarm, countdown timer, UNIX time counter, automatic backup switchover and user EEPROM, on a 400 kHz I2C bus at fixed address 0x52. Draws about 45 nA timekeeping; I2C works from 1.2 to 5.5 V. Sold as: Pimoroni RV3028 Real-Time Clock (RTC) Breakout (PIM449), 5-pin header 2-5V, SDA, SCL, INT, GND with on-board 10 kOhm pull-ups on SDA/SCL/INT and a 337 silver-oxide backup cell (SparkFun does not make an RV-3028 board; their Qwiic RTCs use the RV-1805/RV-8803).",
+  "eli5": "A tiny, very accurate clock that remembers the date and time, kept running by a little button cell while your board is off.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "2-5V",
+      "role": "power",
+      "description": "Supply, 2-5 V (use 3.3 V with an ESP32/Pico: the on-board pull-ups go to this pin and the chip needs SDA/SCL above 0.8 x VDD)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, open-drain; 10 kOhm pull-up to 2-5V on the board",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, up to 400 kHz; 10 kOhm pull-up to 2-5V on the board",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (alarm/timer/update), open-drain, active LOW, 10 kOhm pull-up on the board; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (through the board's reverse-polarity MOSFET)",
+      "required": true
+    }
+  ],
+  "vmin": 2,
+  "vmax": 5,
+  "currentMa": 0.01,
+  "i2cAddress": 82,
+  "datasheetUrl": "https://www.microcrystal.com/fileadmin/Media/Products/RTC/App.Manual/RV-3028-C7_App-Manual.pdf",
+  "priceUsd": 13,
+  "supplierQuery": "Pimoroni RV3028 RTC breakout PIM449",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://www.microcrystal.com/fileadmin/Media/Products/RTC/App.Manual/RV-3028-C7_App-Manual.pdf",
+    "https://www.microcrystal.com/fileadmin/Media/Products/RTC/Datasheet/RV-3028-C7.pdf",
+    "https://shop.pimoroni.com/products/rv3028-real-time-clock-rtc-breakout",
+    "https://cdn.shopify.com/s/files/1/0174/1800/files/PIM449-schematic.png?v=1738862773",
+    "https://cdn.shopify.com/s/files/1/0174/1800/products/RV3028_RTC_1_of_4.JPG?v=1560180301"
+  ],
+  "buildNotes": [
+    "Fixed I2C address 0x52; only one RV-3028 per bus.",
+    "The Pimoroni board already has 10 kOhm pull-ups on SDA, SCL and INT, tied to its 2-5V pin: power it from 3.3 V on an ESP32 or Pico so the bus never sees 5 V.",
+    "Read the seven time registers (00h-06h) in one burst and set them in one burst; the chip blocks the 1 Hz increment during the access and applies it after STOP.",
+    "PORF (status 0Eh bit 0) is set at power-up: the time is invalid until set. The driver clears it when you set the time.",
+    "Backup switchover is OFF on delivery (EEPROM 37h BSM = 00), so the coin cell does nothing until you enable it. Call rtc.backup_mode(1) once (Direct Switching Mode); it is stored in EEPROM. Level Switching Mode (3) needs a backup cell above 2.0 V, which the 1.55 V 337 cell is not.",
+    "Hours are kept in 24-hour mode (control 2, 12_24 = 0, the default); years are 2000-2099."
+  ],
+  "keywords": [
+    "rv-3028",
+    "rv3028",
+    "rv-3028-c7",
+    "micro crystal",
+    "rtc",
+    "real time clock",
+    "clock",
+    "calendar",
+    "pim449",
+    "pimoroni"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "rtc": {
+      "reg": "0x00",
+      "order": "ds1307"
+    },
+    "registers": {
+      "0x07": 128,
+      "0x08": 128,
+      "0x09": 128,
+      "0x0E": 17,
+      "0x0F": 0,
+      "0x10": 0,
+      "0x37": 16
+    }
+  },
+  "driver": {
+    "filename": "rv3028.py",
+    "code": "# RV-3028-C7 extreme low power real-time clock (Micro Crystal), MicroPython driver.\n# I2C address 0x52. Registers per the Micro Crystal RV-3028-C7 Application Manual:\n# 00h-06h seconds, minutes, hours, weekday, date, month, year (BCD, auto-increment),\n# 07h-09h alarm (bit 7 AE = 1 disables that field), 0Eh status, 0Fh control 1, 10h control 2,\n# 27h EE command, 37h EEPROM backup (configuration EEPROM with RAM mirror).\nimport time\n\n_ADDR = 0x52\n_SECONDS = 0x00\n_ALARM = 0x07\n_STATUS = 0x0E\n_CTRL1 = 0x0F\n_CTRL2 = 0x10\n_EECMD = 0x27\n_EE_BACKUP = 0x37\n\n# Status register bits\n_EEBUSY = 0x80\n_AF = 0x04\n_PORF = 0x01\n\n\ndef _bcd(n):\n    return ((n // 10) << 4) | (n % 10)\n\n\ndef _dec(b):\n    return (b >> 4) * 10 + (b & 0x0F)\n\n\ndef _weekday(y, m, d):\n    # 0 = Sunday ... 6 = Saturday. The RV-3028 weekday counter (03h) just counts 0..6 and wraps;\n    # the meaning of each value is up to the user, this driver uses 0 = Sunday.\n    t = (0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4)\n    if m < 3:\n        y -= 1\n    return (y + y // 4 - y // 100 + y // 400 + t[m - 1] + d) % 7\n\n\nclass RV3028:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _r(self, reg, n=1):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, data):\n        self.i2c.writeto_mem(self.addr, reg, bytes(data))\n\n    def datetime(self, dt=None):\n        \"\"\"Read or set the time (24-hour mode, years 2000-2099).\n        Read returns (year, month, day, weekday, hour, minute, second), weekday 0 = Sunday.\n        Set with (year, month, day, hour, minute, second); the weekday is worked out for you.\"\"\"\n        if dt is None:\n            # One burst read: the chip blocks the 1 Hz increment during the access (applied after STOP).\n            r = self._r(_SECONDS, 7)\n            return (2000 + _dec(r[6]), _dec(r[5] & 0x1F), _dec(r[4] & 0x3F), (r[3] & 0x07) % 7,\n                    _dec(r[2] & 0x3F), _dec(r[1] & 0x7F), _dec(r[0] & 0x7F))\n        y, mo, d, h, mi, s = dt[:6]\n        if not 2000 <= y <= 2099:\n            raise ValueError('year must be 2000-2099')\n        c2 = self._r(_CTRL2)[0]\n        if c2 & 0x02:\n            self._w(_CTRL2, [c2 & ~0x02])  # 12_24 = 0: 24-hour mode\n        # One burst write from 00h; writing the seconds register also resets the 1 Hz prescaler.\n        self._w(_SECONDS, [_bcd(s), _bcd(mi), _bcd(h), _weekday(y, mo, d), _bcd(d), _bcd(mo), _bcd(y - 2000)])\n        st = self._r(_STATUS)[0]\n        self._w(_STATUS, [st & ~_PORF & 0x7F])  # clear PORF: time is now valid\n\n    def lost_power(self):\n        \"\"\"True if PORF is set: the chip saw a power-on reset (first power-up, or the supply and\n        backup both dropped), so the time is invalid until set.\"\"\"\n        return bool(self._r(_STATUS)[0] & _PORF)\n\n    def _wait_ee(self, timeout_ms=200):\n        t0 = time.ticks_ms()\n        while self._r(_STATUS)[0] & _EEBUSY:\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('RV-3028 EEPROM busy')\n            time.sleep_ms(5)\n\n    def backup_mode(self, mode=1):\n        \"\"\"Backup switchover mode, stored in the configuration EEPROM (37h, BSM bits 3:2):\n        0 = off (factory default: time is lost when VDD is removed even with a cell fitted),\n        1 = Direct Switching Mode (switch when VDD < VBACKUP; use this with the 1.55 V 337 cell),\n        3 = Level Switching Mode (needs VBACKUP > 2.0 V). Only writes the EEPROM if it changes.\"\"\"\n        if mode not in (0, 1, 3):\n            raise ValueError('mode must be 0, 1 or 3')\n        cur = self._r(_EE_BACKUP)[0]\n        new = (cur & 0xE3) | 0x10 | (mode << 2)  # keep EEOffset[0], BSIE, TCE, TCR; FEDE = 1 (datasheet: always 1)\n        if new == cur:\n            return\n        self._wait_ee()\n        c1 = self._r(_CTRL1)[0]\n        self._w(_CTRL1, [c1 | 0x08])  # EERD = 1: stop the automatic EEPROM refresh\n        try:\n            self._w(_EE_BACKUP, [new])  # RAM mirror: active immediately\n            self._w(_EECMD, [0x00])  # first command must be 00h\n            self._w(_EECMD, [0x11])  # UPDATE: configuration RAM -> EEPROM (~63 ms)\n            self._wait_ee()\n        finally:\n            self._w(_CTRL1, [c1 & ~0x08])  # EERD = 0\n\n    def set_alarm(self, minute=None, hour=None, date=None, interrupt=True):\n        \"\"\"Alarm on the fields given (None = ignore that field; hour in 24-hour form, date 1-31).\n        AF is set on a match; the open-drain INT pin goes low if interrupt is True.\"\"\"\n        c2 = self._r(_CTRL2)[0]\n        self._w(_CTRL2, [c2 & ~0x08])  # AIE = 0 while changing the alarm\n        st = self._r(_STATUS)[0]\n        self._w(_STATUS, [st & ~_AF & 0x7F])  # AF = 0\n        c1 = self._r(_CTRL1)[0]\n        self._w(_CTRL1, [c1 | 0x20])  # WADA = 1: 09h is a date alarm\n        f = lambda v: 0x80 if v is None else _bcd(v)\n        self._w(_ALARM, [f(minute), f(hour), f(date)])\n        if interrupt:\n            self._w(_CTRL2, [(c2 & ~0x08) | 0x08])  # AIE = 1\n\n    def alarm_fired(self):\n        return bool(self._r(_STATUS)[0] & _AF)\n\n    def clear_alarm(self):\n        \"\"\"Clear AF (INT is released); the alarm stays armed.\"\"\"\n        st = self._r(_STATUS)[0]\n        self._w(_STATUS, [st & ~_AF & 0x7F])\n\n    def disable_alarm(self):\n        c2 = self._r(_CTRL2)[0]\n        self._w(_CTRL2, [c2 & ~0x08])\n        self._w(_ALARM, [0x80, 0x80, 0x80])\n        self.clear_alarm()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom rv3028 import RV3028\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nrtc = RV3028(i2c)\nrtc.datetime((2028, 2, 28, 23, 59, 57))  # Monday 28 Feb 2028 (a leap year), 23:59:57\nwhile True:\n    y, mo, d, wd, h, mi, s = rtc.datetime()\n    print('wd=%d %04d-%02d-%02d %02d:%02d:%02d' % (wd, y, mo, d, h, mi, s))\n    time.sleep(1)\n",
+    "test": {
+      "id": "leap-day",
+      "title": "Keeps the time it was set to and rolls into 29 February 2028",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=1 2028-02-28 23:59:5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=2 2028-02-29 00:00:0",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:03:49.229Z",
+    "verifiedSources": [
+      "https://www.microcrystal.com/fileadmin/Media/Products/RTC/App.Manual/RV-3028-C7_App-Manual.pdf",
+      "https://shop.pimoroni.com/products/rv3028-real-time-clock-rtc-breakout"
+    ]
+  }
+}

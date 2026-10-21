@@ -1,0 +1,157 @@
+{
+  "type": "custom-dht20",
+  "name": "DHT20 I2C temperature & humidity sensor",
+  "mpn": "DHT20",
+  "category": "sensor",
+  "description": "Aosong (ASAIR) DHT20 temperature (-40 to 80 °C, ±0.5 °C typical) and relative humidity (0–100 %, ±3 % typical) sensor in the DHT11-style housing, with an AHT20 chip inside, an I2C interface and a CRC-checked 20-bit reading. Sold as: Adafruit DHT20 - AHT20 Pin Module (product 5183), 4 pins left to right VDD, SDA, GND, SCL, built-in 4.7 kΩ I2C pull-ups, fixed I2C address 0x38.",
+  "eli5": "Tells your board how warm the air is and how damp it is, using just two data wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 2.5–5.5 V (use your board's logic voltage, 3.3 V on ESP32/Pico; the pull-ups go to VDD)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to VDD built in)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to VDD built in)",
+      "required": true
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "i2cAddress": 56,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/5183/5193_DHT20.pdf",
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/5183/5193_DHT20.pdf",
+    "https://www.adafruit.com/product/5183",
+    "https://learn.adafruit.com/adafruit-aht20"
+  ],
+  "priceUsd": 4.5,
+  "supplierQuery": "DHT20 I2C temperature humidity sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Pin order looking at the grille, left to right: VDD, SDA, GND, SCL. It is NOT the DHT11/DHT22 order, so don't reuse an old DHT wiring.",
+    "Wait at least 100 ms after power-on, then read one status byte: if (status & 0x18) != 0x18, run Aosong's initialisation of registers 0x1B, 0x1C and 0x1E.",
+    "Measure: send 0xAC 0x33 0x00, wait 80 ms, read until status bit 7 (busy) is clear, then read 7 bytes: status, 20-bit humidity, 20-bit temperature, CRC.",
+    "Check the CRC (poly 0x31, init 0xFF over the first 6 bytes). A mismatch almost always means a loose SDA/SCL wire.",
+    "The address is fixed at 0x38, so only one DHT20 (or AHT20) per I2C bus.",
+    "The datasheet asks for a 100 nF capacitor between VDD and GND close to the sensor.",
+    "Read no faster than about once every 2 s so the sensor doesn't warm itself."
+  ],
+  "keywords": [
+    "dht20",
+    "aht20",
+    "aosong",
+    "asair",
+    "temperature",
+    "humidity",
+    "i2c"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 80,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "registers": {
+      "0x00": 24
+    },
+    "responses": [
+      {
+        "match": "ac 33 00",
+        "bytes": [
+          {
+            "const": 24,
+            "bits": 8
+          },
+          {
+            "control": "humidity",
+            "bits": 20,
+            "scale": 0.000095367431640625
+          },
+          {
+            "control": "value",
+            "bits": 20,
+            "scale": 0.00019073486328125,
+            "offset": -50
+          },
+          {
+            "crc": "sensirion",
+            "over": 6
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "dht20.py",
+    "code": "# DHT20 temperature & humidity sensor (Aosong / ASAIR DHT20, AHT20 inside), MicroPython driver.\n# Follows the DHT20 datasheet (V1.0, section 7.4): wait >= 100 ms after power-on, read the\n# status byte; if (status & 0x18) != 0x18 run Aosong's register initialisation (0x1B, 0x1C,\n# 0x1E); wait 10 ms; trigger 0xAC 0x33 0x00; wait 80 ms; poll busy (bit 7); read status +\n# 5 data bytes + CRC-8 (poly 0x31 = x^8+x^5+x^4+1, init 0xFF).\nimport time\n\n_ADDR = 0x38\n_CMD_MEASURE = b'\\xac\\x33\\x00'\n_BUSY = 0x80\n_READY_MASK = 0x18\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass DHT20:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(100)  # datasheet 7.1/7.4: >= 100 ms after power-on\n        if self.status() & _READY_MASK != _READY_MASK:\n            for reg in (0x1B, 0x1C, 0x1E):\n                self._reset_reg(reg)\n            time.sleep_ms(10)\n            if self.status() & _READY_MASK != _READY_MASK:\n                raise OSError('DHT20 not ready: check the wiring')\n        time.sleep_ms(10)  # datasheet 7.4 step 2: wait 10 ms before the first trigger\n\n    def _reset_reg(self, reg):\n        # Aosong's reference initialisation routine for registers 0x1B/0x1C/0x1E.\n        self.i2c.writeto(self.addr, bytes((reg, 0x00, 0x00)))\n        time.sleep_ms(5)\n        d = self.i2c.readfrom(self.addr, 3)\n        time.sleep_ms(10)\n        self.i2c.writeto(self.addr, bytes((0xB0 | reg, d[1], d[2])))\n        time.sleep_ms(10)\n\n    def status(self):\n        \"\"\"The status byte (a plain one-byte read): bit 7 busy, bit 3 calibrated.\"\"\"\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in °C, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, _CMD_MEASURE)\n        time.sleep_ms(80)  # datasheet: wait 80 ms for the measurement\n        for _ in range(10):\n            if not self.status() & _BUSY:\n                break\n            time.sleep_ms(10)\n        else:\n            raise OSError('DHT20 stayed busy')\n        d = self.i2c.readfrom(self.addr, 7)\n        if d[0] & _BUSY:\n            raise OSError('DHT20 busy')\n        if _crc8(d[0:6]) != d[6]:\n            raise OSError('DHT20 CRC mismatch: check the wiring')\n        h_raw = (d[1] << 12) | (d[2] << 4) | (d[3] >> 4)\n        t_raw = ((d[3] & 0x0F) << 16) | (d[4] << 8) | d[5]\n        return t_raw * 200 / 1048576 - 50, h_raw * 100 / 1048576\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom dht20 import DHT20\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = DHT20(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 72
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.5C H=72%",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:07:13.848Z",
+    "verifiedSources": [
+      "https://cdn-learn.adafruit.com/assets/assets/000/091/676/original/AHT20-datasheet-2020-4-16.pdf",
+      "https://www.adafruit.com/product/5183"
+    ]
+  }
+}

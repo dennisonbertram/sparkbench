@@ -1,0 +1,79 @@
+{
+  "type": "custom-8-channel-relay-module",
+  "mpn": "SRD-05VDC-SL-C",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "10 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "10 pins wired; 8-channel 5 V relay module (active low) needs at least 4.5 V, so it is powered from 5 V. K1.IN1 → D25 (GPIO25). K1.IN2 → D26 (GPIO26). K1.IN3 → D27 (GPIO27). K1.IN4 → D13 (GPIO13). K1.IN5 → D23 (GPIO23). K1.IN6 → D19 (GPIO19). K1.IN7 → D18 (GPIO18). K1.IN8 → TX2 (GPIO17)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Odd and even relays take turns switching on (active low): passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "10 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "10 pins wired; 8-channel 5 V relay module (active low) needs at least 4.5 V, so it is powered from 5 V. K1.IN1 → GP2 (GPIO2). K1.IN2 → GP3 (GPIO3). K1.IN3 → GP6 (GPIO6). K1.IN4 → GP7 (GPIO7). K1.IN5 → GP8 (GPIO8). K1.IN6 → GP9 (GPIO9). K1.IN7 → GP10 (GPIO10). K1.IN8 → GP11 (GPIO11)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Odd and even relays take turns switching on (active low): passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C35449 SRD-05VDC-SL-C (92085 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T10:57:40.226Z"
+}

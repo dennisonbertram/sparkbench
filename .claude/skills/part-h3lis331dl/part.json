@@ -1,0 +1,196 @@
+{
+  "type": "custom-h3lis331dl",
+  "name": "H3LIS331DL high-g 3-axis accelerometer",
+  "mpn": "H3LIS331DL",
+  "category": "sensor",
+  "description": "STMicroelectronics high-g 3-axis digital accelerometer, ±100/±200/±400 g selectable, 12-bit output (49 mg/digit at ±100 g), I2C/SPI, two programmable interrupt generators, data rates 0.5 Hz to 1 kHz. Chip supply 2.16–3.6 V. For impacts, crashes, rocketry and other big shocks; too coarse for tilt sensing. Sold as: Adafruit H3LIS331 Ultra High Range Triple-Axis Accelerometer breakout, STEMMA QT (#4627), modelled by its main 6-pin header VIN, 3Vo, GND, SCL, SDA, INT (3.3 V regulator, 3–5 V supply, I2C address 0x18; the second 6-pin row I2, NC, NC, NC, SDO, CS is not needed for I2C and is left unconnected: SDO open = 0x18, CS pulled high = I2C).",
+  "eli5": "Measures very hard knocks and shakes on three axes, up to hundreds of times the pull of gravity.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3–5 V (on-board 3.3 V regulator feeds the chip; use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up and level shifting on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt 1 output (3.3 V logic: data ready or acceleration threshold), optional",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 24,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/h3lis331dl.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Adafruit H3LIS331 high-g triple-axis accelerometer breakout 4627",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/h3lis331dl.pdf",
+    "https://static.chipdip.ru/lib/583/DOC001583173.pdf",
+    "https://learn.adafruit.com/adafruit-h3lis331-and-lis331hh-high-g-3-axis-accelerometers/pinouts",
+    "https://cdn-learn.adafruit.com/assets/assets/000/092/531/medium800/sensors_4627-04_edit_narrow.jpg",
+    "https://www.adafruit.com/product/4627"
+  ],
+  "buildNotes": [
+    "The chip powers up in power-down mode (CTRL_REG1 0x20 = 0x07): write a power mode and data rate, e.g. 0x2F = normal mode, 100 Hz, X/Y/Z on, before reading; then wait the turn-on time 1/ODR + 1 ms.",
+    "Choose the range in CTRL_REG4 0x23 (FS bits 5:4: 00 = ±100 g, 01 = ±200 g, 11 = ±400 g); 0x80 = BDU on, ±100 g.",
+    "Read OUT_X_L..OUT_Z_H in one 6-byte burst starting at 0xA8 (0x28 with the auto-increment bit 0x80 set). Each axis is two's complement, low byte first, left-justified: shift right by 4, then 49 mg/digit at ±100 g (98 and 195 mg at ±200/±400 g).",
+    "WHO_AM_I (0x0F) must read 0x32; anything else means a wiring fault or the wrong address.",
+    "Leave the second header row unconnected for I2C at 0x18; tie SDO to 3.3 V for 0x19. Pulling CS low switches the chip to SPI.",
+    "Resolution is about 0.05 g, so at rest the readings jitter around 0 g / 1 g with an offset of up to ±1 g: this sensor is for big shocks, not tilt.",
+    "Bolt the board down firmly; the acceleration it measures only means something if the board moves with the object."
+  ],
+  "keywords": [
+    "h3lis331dl",
+    "h3lis331",
+    "accelerometer",
+    "high-g",
+    "impact",
+    "shock",
+    "crash",
+    "rocketry",
+    "3-axis",
+    "stmicroelectronics",
+    "adafruit 4627"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "X acceleration",
+    "unit": "g",
+    "min": -100,
+    "max": 100,
+    "default": 0,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y acceleration",
+        "unit": "g",
+        "min": -100,
+        "max": 100,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Z acceleration",
+        "unit": "g",
+        "min": -100,
+        "max": 100,
+        "default": 1
+      }
+    ],
+    "autoIncrementBit7": true,
+    "registers": {
+      "0x0F": 50,
+      "0x20": 7,
+      "0x27": 15
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.049,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.049,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "y"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.049,
+        "shift": 4,
+        "signed": true,
+        "littleEndian": true,
+        "control": "z"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "h3lis331dl.py",
+    "code": "# H3LIS331DL high-g 3-axis accelerometer (STMicroelectronics), MicroPython driver for I2C.\n# From the H3LIS331DL datasheet (DocID023111):\n#   WHO_AM_I 0x0F = 0x32.\n#   CTRL_REG1 0x20: PM[7:5] (000 power-down, 001 normal), DR[4:3] (00 50 Hz, 01 100 Hz,\n#     10 400 Hz, 11 1000 Hz), Zen/Yen/Xen bits 2:0. Default 0x07 = power-down.\n#   CTRL_REG4 0x23: BDU bit 7, BLE bit 6 (0 = LSB at lower address), FS[5:4]\n#     (00 +-100 g, 01 +-200 g, 11 +-400 g).\n#   STATUS_REG 0x27: ZYXDA bit 3 = new X/Y/Z set available.\n#   OUT_X_L..OUT_Z_H 0x28-0x2D: two's complement, 12-bit data left-justified in 16 bits,\n#     low byte first. Sensitivity 49 / 98 / 195 mg per digit (12-bit) at +-100/200/400 g.\n#   I2C sub-address MSB = 1 enables auto-increment for multi-byte reads.\n#   Turn-on time 1/ODR + 1 ms.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x20\n_CTRL_REG4 = 0x23\n_STATUS_REG = 0x27\n_OUT_X_L = 0x28\n_AUTO_INC = 0x80\n\n_FS = {100: (0b00, 49), 200: (0b01, 98), 400: (0b11, 195)}  # FS bits, mg/digit\n\n\nclass H3LIS331DL:\n    def __init__(self, i2c, addr=0x18, g_range=100):\n        \"\"\"addr: 0x18 with SDO/SA0 low or open (Adafruit board), 0x19 with SDO tied to 3.3 V.\n        g_range: 100, 200 or 400 g full scale.\"\"\"\n        if g_range not in _FS:\n            raise ValueError('g_range must be 100, 200 or 400')\n        self.i2c = i2c\n        self.addr = addr\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != 0x32:\n            raise OSError('H3LIS331DL not found (WHO_AM_I 0x%02X, expected 0x32): check wiring' % who)\n        fs, self._mg_per_digit = _FS[g_range]\n        # BDU = 1 (high/low bytes from the same sample), BLE = 0 (little endian), full scale\n        self._w(_CTRL_REG4, 0x80 | (fs << 4))\n        # Normal mode (PM = 001), 100 Hz (DR = 01), X/Y/Z enabled\n        self._w(_CTRL_REG1, 0x2F)\n        time.sleep_ms(15)  # turn-on time 1/ODR + 1 ms = 11 ms at 100 Hz\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def data_ready(self):\n        \"\"\"True when STATUS_REG ZYXDA says a new X/Y/Z set is available.\"\"\"\n        return bool(self.i2c.readfrom_mem(self.addr, _STATUS_REG, 1)[0] & 0x08)\n\n    def raw(self):\n        \"\"\"(x, y, z) 12-bit counts, from one 6-byte auto-increment burst at OUT_X_L.\"\"\"\n        for _ in range(25):  # wait up to ~25 ms (over two samples at 100 Hz) for fresh data\n            if self.data_ready():\n                break\n            time.sleep_ms(1)\n        d = self.i2c.readfrom_mem(self.addr, _OUT_X_L | _AUTO_INC, 6)\n        out = []\n        for i in (0, 2, 4):\n            v = d[i] | (d[i + 1] << 8)  # OUT_x_L = low byte, OUT_x_H = high byte\n            if v & 0x8000:\n                v -= 65536\n            out.append(v >> 4)  # 12-bit value is left-justified in bits 15:4\n        return tuple(out)\n\n    def read(self):\n        \"\"\"(x, y, z) acceleration in g.\"\"\"\n        k = self._mg_per_digit / 1000\n        x, y, z = self.raw()\n        return x * k, y * k, z * k\n\n    def read_ms2(self):\n        \"\"\"(x, y, z) acceleration in m/s^2.\"\"\"\n        return tuple(v * 9.80665 for v in self.read())\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom h3lis331dl import H3LIS331DL\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\naccel = H3LIS331DL(i2c)  # +-100 g range\nwhile True:\n    x, y, z = accel.read()\n    print('X=%.1f Y=%.1f Z=%.1f g' % (x, y, z))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y and Z acceleration set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 10
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=25.0 Y=-50.0 Z=10.0 g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:08:25.078Z",
+    "verifiedSources": [
+      "https://www.st.com/resource/en/datasheet/h3lis331dl.pdf",
+      "https://www.adafruit.com/product/4627",
+      "https://github.com/adafruit/Adafruit-LIS331-PCB"
+    ]
+  }
+}

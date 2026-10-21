@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mcp7940n",
+  "board": "M12 Labs MCP7940N Real-Time Clock (RTC) Breakout Board (Tindie, rev 02-00), header J1 row VCC, MFP, SCL, SDA, GND",
+  "reason": "Part check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator new-year rollover test with weekday, circuit board, footprint, LCSC). Modelled with the rtc ds1307-order layout at 0x00 at address 0x6F plus datasheet reset values; the driver follows the datasheet set-time sequence (clear ST, wait OSCRUN, load, set ST, VBATEN) and the board's on-board 10k pull-ups mean no pullUp is added.",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/20005010H.pdf",
+  "breakoutPinoutSource": "https://www.tindie.com/products/m12labs/mcp7940n-real-time-clock-rtc-breakout-board/",
+  "checkRuns": 1
+}

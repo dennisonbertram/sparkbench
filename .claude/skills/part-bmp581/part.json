@@ -1,0 +1,177 @@
+{
+  "type": "custom-bmp581",
+  "name": "BMP581 pressure & temperature sensor",
+  "mpn": "BMP581",
+  "category": "sensor",
+  "description": "Bosch high-precision barometric pressure (30–125 kPa, ±50 Pa absolute, <0.1 Pa RMS noise) and temperature (-40 to +85 °C, ±0.5 °C) sensor with on-chip compensation (no calibration maths), I2C/I3C and SPI. The chip runs on 1.71–3.6 V. Sold as: SparkFun Pressure Sensor - BMP581 (Qwiic) SEN-20170, 1x1\" board with two Qwiic sockets and a 7-pin header GND, 3V3, SDI/SDA, SCK/SCL, SDO/ADR, CSB, INT (no regulator, 3.3 V only, 2.2 kΩ I2C pull-ups), I2C address 0x47 (0x46 with the ADR jumper moved).",
+  "eli5": "A very sensitive barometer and thermometer: it notices the air pressure change when you lift it by just a few centimetres, and reports the temperature too.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 1.71–3.6 V straight to the chip's VDD and VDDIO (no regulator): use 3.3 V, never 5 V",
+      "required": true
+    },
+    {
+      "name": "SDI/SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI SDI); 2.2 kΩ pull-up to 3.3 V on the board (I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCK/SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); 2.2 kΩ pull-up to 3.3 V on the board (I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SDO/ADR",
+      "role": "io",
+      "description": "I2C address select (SPI data out): set by the ADR jumper, 0x47 by default; driving it low gives 0x46. 3.3 V only",
+      "required": false
+    },
+    {
+      "name": "CSB",
+      "role": "io",
+      "description": "SPI chip select (active low); pulled up to 3.3 V by 10 kΩ on the board so the chip uses I2C. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output (3.3 V, data ready / FIFO / out-of-range), not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 1.71,
+  "vmax": 3.6,
+  "currentMa": 0.26,
+  "i2cAddress": 71,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf",
+  "priceUsd": 17,
+  "supplierQuery": "SparkFun Pressure Sensor BMP581 Qwiic SEN-20170",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf",
+    "https://learn.sparkfun.com/tutorials/qwiic-pressure-sensor-bmp581-hookup-guide/all",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Pressure_Sensor_BMP581/blob/main/Hardware/Qwiic%201x1/SparkFun_Pressure_Sensor_BMP581_Qwiic.brd"
+  ],
+  "buildNotes": [
+    "Power 3V3 from your board's 3.3 V pin. There is no regulator or level shifter: 5 V on 3V3 or on any signal pin can destroy the chip (absolute maximum 4.3 V).",
+    "The default I2C address is 0x47 (ADR jumper pulls SDO high). Move the ADR jumper for 0x46, e.g. for a second sensor; cutting it completely selects SPI.",
+    "Check the chip ID: register 0x01 reads 0x50 on a BMP581 (0x51 on a BMP585).",
+    "After a soft reset (0xB6 to 0x7E) the chip sits in deep standby: write ODR_CONFIG (0x37) with deep_dis set and pwr_mode 00 before configuring, then trigger forced mode (pwr_mode 10).",
+    "Results are already compensated: temperature = signed 24-bit at 0x1D–0x1F / 65536 °C, pressure = 24-bit at 0x20–0x22 / 64 Pa, both LSB first. Read all 6 bytes in one burst.",
+    "Pressure is only measured when press_en (OSR_CONFIG 0x36 bit 6) is set; otherwise the pressure registers stay stale.",
+    "Keep it out of drafts and away from warm parts: airflow shows up as pressure noise."
+  ],
+  "keywords": [
+    "bmp581",
+    "bmp5",
+    "barometer",
+    "pressure",
+    "altimeter",
+    "altitude",
+    "temperature",
+    "bosch",
+    "sparkfun sen-20170",
+    "qwiic"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "Pa",
+        "min": 30000,
+        "max": 125000,
+        "default": 101325
+      }
+    ],
+    "registers": {
+      "0x01": 80,
+      "0x02": 50,
+      "0x14": 53,
+      "0x15": 0,
+      "0x27": 17,
+      "0x28": 2,
+      "0x36": 0,
+      "0x37": 112,
+      "0x38": 0
+    },
+    "measures": [
+      {
+        "reg": "0x1D",
+        "bytes": 3,
+        "littleEndian": true,
+        "signed": true,
+        "scale": 0.0000152587890625,
+        "control": "value"
+      },
+      {
+        "reg": "0x20",
+        "bytes": 3,
+        "littleEndian": true,
+        "scale": 0.015625,
+        "control": "pressure"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmp581.py",
+    "code": "# MicroPython driver for the Bosch BMP581 pressure/temperature sensor (I2C)\n# Written from Bosch datasheet BST-BMP581-DS004-13:\n#   power-up checks sec. 4.3.9, soft reset 4.3.10, forced mode 4.3.3/4.3.7,\n#   data format 4.5 (T = raw/2^16 degC, p = raw/2^6 Pa), register map sec. 7,\n#   timings table 2 (t_soft_res 2 ms, t_standby 2.5 ms, t_conv_p / t_conv_t).\n# The BMP581 is factory-compensated: no calibration coefficients are needed.\nimport time\n\nREG_CHIP_ID = 0x01     # 0x50 on BMP581 (and BMP580), 0x51 on BMP585\nREG_INT_CONFIG = 0x14  # bit0 int_mode (1 latched), bit1 int_pol, bit2 int_od, bit3 int_en\nREG_INT_SOURCE = 0x15  # bit0 drdy_data_reg_en\nREG_TEMP_XLSB = 0x1D   # 0x1D..0x1F temperature (signed 24-bit, LSB first), 0x20..0x22 pressure\nREG_INT_STATUS = 0x27  # clear-on-read: bit0 drdy_data_reg, bit4 por\nREG_STATUS = 0x28      # bit1 status_nvm_rdy, bit2 status_nvm_err\nREG_OSR_CONFIG = 0x36  # bits2:0 osr_t, bits5:3 osr_p, bit6 press_en\nREG_ODR_CONFIG = 0x37  # bits1:0 pwr_mode (0 standby, 1 normal, 2 forced, 3 non-stop), bits6:2 odr, bit7 deep_dis\nREG_CMD = 0x7E         # 0xB6 = soft reset\n\nCHIP_IDS = (0x50, 0x51)\n\n# Table 2 nominal conversion times in ms (index = OSR code 0..7 for x1..x128), +5 % tolerance.\n_TCONV_P = (1.0, 1.7, 2.9, 5.4, 10.4, 20.4, 40.4, 80.4)\n_TCONV_T = (1.0, 1.1, 1.5, 2.1, 3.3, 5.8, 10.8, 20.8)\n\n\nclass BMP581:\n    def __init__(self, i2c, addr=0x47, osr_p=4, osr_t=0):\n        \"\"\"addr 0x47 (SDO high, SparkFun default) or 0x46 (SDO low / ADR jumper moved).\n        osr codes 0..7 = x1, x2, x4, x8, x16, x32, x64, x128 (OSR_CONFIG, sec. 7.33).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.osr_p = osr_p & 0x07\n        self.osr_t = osr_t & 0x07\n        time.sleep_ms(3)  # t_powerup / t_startup\n        cid = self._r(REG_CHIP_ID, 1)[0]\n        if cid not in CHIP_IDS:\n            raise OSError(\"BMP581 not found at 0x%02X (chip id 0x%02X, expected 0x50)\" % (addr, cid))\n        self.reset()\n        # Standby with deep standby disabled (deep_dis = 1), keeping the reset ODR bits.\n        odr = self._r(REG_ODR_CONFIG, 1)[0]\n        self._odr_bits = (odr & 0x7C) | 0x80\n        self._w(REG_ODR_CONFIG, self._odr_bits)\n        time.sleep_us(2500)  # t_standby\n        # INT pin: enabled, latched, active high, push-pull (sec. 6.2 advice for an unconnected INT);\n        # data-ready interrupt source so INT_STATUS.drdy_data_reg reports finished conversions.\n        self._w(REG_INT_CONFIG, 0x0B)\n        self._w(REG_INT_SOURCE, 0x01)\n        # Pressure enabled with the chosen oversampling (written in standby, sec. 4.3.8).\n        self._w(REG_OSR_CONFIG, 0x40 | (self.osr_p << 3) | self.osr_t)\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def reset(self):\n        \"\"\"Soft reset (0xB6 to CMD), then the post-power-up checks of sec. 4.3.9.\"\"\"\n        self._w(REG_CMD, 0xB6)\n        time.sleep_ms(2)  # t_soft_res\n        if self._r(REG_CHIP_ID, 1)[0] == 0:\n            raise OSError(\"BMP581 chip id reads 0 after reset\")\n        st = self._r(REG_STATUS, 1)[0]\n        if not (st & 0x02) or (st & 0x04):\n            raise OSError(\"BMP581 NVM not ready or NVM error (STATUS 0x%02X)\" % st)\n        if not (self._r(REG_INT_STATUS, 1)[0] & 0x10):\n            raise OSError(\"BMP581 soft reset did not complete (INT_STATUS.por not set)\")\n\n    def _measure(self):\n        self._r(REG_INT_STATUS, 1)  # clear any stale status (clear-on-read)\n        self._w(REG_ODR_CONFIG, self._odr_bits | 0x02)  # FORCED: one measurement, then back to standby\n        t_ms = (_TCONV_P[self.osr_p] + _TCONV_T[self.osr_t]) * 1.05\n        time.sleep_ms(int(t_ms) + 2)\n        for _ in range(50):\n            if self._r(REG_INT_STATUS, 1)[0] & 0x01:  # drdy_data_reg\n                break\n            time.sleep_ms(2)\n        else:\n            raise OSError(\"BMP581 measurement timed out\")\n        d = self._r(REG_TEMP_XLSB, 6)  # one burst read for data shadowing (sec. 4.5.1)\n        raw_t = d[0] | (d[1] << 8) | (d[2] << 16)\n        if raw_t & 0x800000:\n            raw_t -= 1 << 24  # temperature is signed 24-bit\n        raw_p = d[3] | (d[4] << 8) | (d[5] << 16)\n        return raw_t, raw_p\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure Pa).\"\"\"\n        raw_t, raw_p = self._measure()\n        return raw_t / 65536.0, raw_p / 64.0\n\n    def temperature(self):\n        return self.read()[0]\n\n    def pressure(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_pa=101325.0):\n        \"\"\"Approximate altitude in metres from the international barometric formula.\"\"\"\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_pa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmp581 import BMP581\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = BMP581(i2c, addr=0x47)\nwhile True:\n    t, p = sensor.read()\n    print('T=%.2fC P=%.2fPa' % (t, p))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 26.35
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 94870
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=26.35C P=94870.00Pa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:52:43.899Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf",
+      "https://www.sparkfun.com/sparkfun-pressure-sensor-bmp581-qwiic.html"
+    ]
+  }
+}

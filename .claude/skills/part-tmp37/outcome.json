@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-tmp37",
+  "board": "Analog Devices TMP37GT9Z bare TO-92 sensor",
+  "reason": "Modelled as an analog-sensor with Vout = 20 mV/°C x T and no offset (0.1 V at 5 °C to 2.0 V at 100 °C, datasheet Tables 1 and 4). Pins are +VS, VOUT, GND per datasheet Figure 4 (T-3). The check passed on ESP32 and Pico (the simulator reads T=60C), and the footprint check passed. LCSC has no stock, which is informational only.",
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/TMP35_36_37.pdf",
+  "breakoutPinoutSource": "ADI TMP35/36/37 datasheet Rev. E Figure 4 (T-3 TO-92: pin 1 +VS, pin 2 VOUT, pin 3 GND) and the pin table by Figure 24 (TO-92: +VS 1, VOUT 2, GND 3)",
+  "checkRuns": 1
+}

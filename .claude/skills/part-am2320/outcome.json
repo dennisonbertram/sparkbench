@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-am2320",
+  "board": "Adafruit AM2320 Digital Temperature and Humidity Sensor (product 3721, bare 4-lead sensor: VDD, SDA, GND, SCL)",
+  "reason": "Check passed on ESP32 and Pico on the first run. The model uses the datasheet's I2C sequence (wake, 03 00 04, 8-byte reply, x10 values, CRC-16/Modbus checked against both example frames) and adds 4.7 kOhm pull-ups because the sensor has none. The sim temperature slider is limited to 0-80 C because the simulator cannot produce the chip's sign-magnitude negative temperatures; the driver still decodes them.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/3721/AM2320.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-am2320-temperature-humidity-i2c-sensor/pinouts",
+  "checkRuns": 1
+}

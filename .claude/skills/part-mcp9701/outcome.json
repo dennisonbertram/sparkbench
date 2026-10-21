@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mcp9701",
+  "board": "Microchip MCP9701-E/TO bare TO-92 sensor (also MCP9701A-E/TO)",
+  "reason": "Modelled as an analog-sensor with VOUT = 400 mV + 19.5 mV/°C over -10..125 °C (0.205 V to 2.8375 V, datasheet Equation 4-1 and DC characteristics), VDD 3.1-5.5 V; TO-92 pins VDD, VOUT, GND per datasheet Package Types and Table 3-1. Check passed on ESP32 and Pico (T=60C), footprint OK.",
+  "datasheetUrl": "https://ww1.microchip.com/downloads/aemDocuments/documents/MSLD/ProductDocuments/DataSheets/MCP970X-Family-Data-Sheet-DS20001942.pdf",
+  "breakoutPinoutSource": "Microchip MCP970X datasheet DS20001942L page 2 Package Types (TO-92: pin 1 VDD, pin 2 VOUT, pin 3 GND) and Table 3-1",
+  "checkRuns": 1
+}

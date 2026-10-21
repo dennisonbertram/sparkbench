@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lps25hb",
+  "board": "Adafruit LPS25 Pressure Sensor - STEMMA QT / Qwiic (#4530)",
+  "reason": "Modelled from ST DocID027112 Rev 4 (WHO_AM_I 0xBD, CTRL_REG1 0x20 with PD bit, STATUS 0x27, 24-bit pressure at 0x28 / 4096 LSB/hPa, 16-bit temperature at 0x2B with T = 42.5 + raw/480, I2C auto-increment via SUB bit 7 so the burst read uses 0xA8) with header order VIN,3Vo,GND,SCK,SDO,SDI,CS,INT from Adafruit's Fritzing part; the check passed on ESP32 and Pico. The 42.5 degC offset comes from ST's LPS25H datasheet since the LPS25HB datasheet gives only the 480 LSB/degC sensitivity.",
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lps25hb.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Fritzing-Library/raw/master/parts/Adafruit-LPS2X.fzpz (breadboard SVG pin positions) + https://learn.adafruit.com/adafruit-lps25-pressure-sensor/pinouts",
+  "checkRuns": 1
+}

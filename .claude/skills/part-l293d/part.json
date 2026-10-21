@@ -1,0 +1,230 @@
+{
+  "type": "custom-l293d",
+  "name": "L293D dual H-bridge motor driver",
+  "mpn": "L293DNE",
+  "category": "actuator",
+  "description": "Texas Instruments L293D quadruple half-H driver with built-in output clamp diodes: drivers 1-2 (enable 1,2EN) and 3-4 (enable 3,4EN) form two H-bridges, so it runs two small DC motors forwards, backwards, braked or coasting (or one bipolar stepper), 600 mA per channel (1.2 A peak), motor supply VCC2 4.5-36 V, logic supply VCC1 4.5-7 V, TTL inputs that accept 3.3 V GPIOs. Sold as: Texas Instruments L293DNE bare chip in a DIP-16 package (pins 1 1,2EN, 2 1A, 3 1Y, 4-5 GND, 6 2Y, 7 2A, 8 VCC2, 9 3,4EN, 10 3A, 11 3Y, 12-13 GND, 14 4Y, 15 4A, 16 VCC1), plugged straight into a breadboard; ST's L293D has the same pinout.",
+  "eli5": "A small chip that lets your board make two little motors spin forwards or backwards, powered from a battery instead of the board.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "1,2EN",
+      "role": "io",
+      "description": "Enable drivers 1 and 2 = bridge 1 (pin 1), active high: high = outputs on, low = off (motor coasts). PWM it for speed, or tie to 5 V for full speed",
+      "required": true,
+      "fn": "pwm"
+    },
+    {
+      "name": "1A",
+      "role": "io",
+      "description": "Driver 1 input (pin 2), TTL: high >= 2.3 V, so 3.3 V GPIOs work",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "1Y",
+      "role": "io",
+      "description": "Driver 1 output (pin 3): one lead of motor 1. Connect the motor, never the microcontroller",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground and heat sink (pin 4): common to the motor supply and the microcontroller",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground and heat sink (pin 5, printed GROUND): connect to ground with the other three",
+      "required": true
+    },
+    {
+      "name": "2Y",
+      "role": "io",
+      "description": "Driver 2 output (pin 6): other lead of motor 1",
+      "required": false
+    },
+    {
+      "name": "2A",
+      "role": "io",
+      "description": "Driver 2 input (pin 7)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "VCC2",
+      "role": "power",
+      "description": "Motor supply (pin 8): VCC1 up to 36 V, 36 V absolute max. Use a separate battery for anything but a tiny motor",
+      "required": true
+    },
+    {
+      "name": "3,4EN",
+      "role": "io",
+      "description": "Enable drivers 3 and 4 = bridge 2 (pin 9), active high. Tie to GND if bridge 2 is unused",
+      "required": false,
+      "fn": "pwm"
+    },
+    {
+      "name": "3A",
+      "role": "io",
+      "description": "Driver 3 input (pin 10)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "3Y",
+      "role": "io",
+      "description": "Driver 3 output (pin 11): one lead of motor 2",
+      "required": false
+    },
+    {
+      "name": "GND3",
+      "role": "gnd",
+      "description": "Ground and heat sink (pin 12, printed GROUND): connect to ground",
+      "required": true
+    },
+    {
+      "name": "GND4",
+      "role": "gnd",
+      "description": "Ground and heat sink (pin 13, printed GROUND): connect to ground",
+      "required": true
+    },
+    {
+      "name": "4Y",
+      "role": "io",
+      "description": "Driver 4 output (pin 14): other lead of motor 2",
+      "required": false
+    },
+    {
+      "name": "4A",
+      "role": "io",
+      "description": "Driver 4 input (pin 15)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "VCC1",
+      "role": "power",
+      "description": "Logic supply (pin 16), 4.5-7 V: use 5 V, never 3.3 V",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 7,
+  "currentMa": 60,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/l293d.pdf",
+  "priceUsd": 1.5,
+  "supplierQuery": "L293DNE L293D DIP-16 motor driver",
+  "footprint": "Package_DIP:DIP-16_W7.62mm",
+  "buildNotes": [
+    "Truth table (TI function table): EN high + 1A high/2A low = forward, 1A low/2A high = reverse, 1A = 2A = fast brake; EN low = outputs off, motor coasts.",
+    "VCC1 (pin 16) is the logic supply and needs 4.5-7 V: wire it to 5 V, not 3.3 V. The A and EN inputs still accept 3.3 V GPIO highs (>= 2.3 V).",
+    "VCC2 (pin 8) is the motor supply, from VCC1 up to 36 V. Use a separate battery for anything bigger than a tiny motor, and join its minus to GND.",
+    "Connect all four GND pins (4, 5, 12, 13) to ground: they are also the heat sink. Share ground with the microcontroller.",
+    "Each channel is limited to 600 mA continuous (1.2 A for 100 us). Motor stall current often exceeds this; the chip shuts down when it overheats.",
+    "The outputs drop about 2.6 V typical (3.6 V max) across the bridge at 600 mA, so budget extra supply voltage.",
+    "Put 100 nF ceramic capacitors from VCC1 and VCC2 to GND close to the chip, plus a bulk electrolytic on VCC2.",
+    "Tie an unused enable (3,4EN) to GND rather than leaving it floating."
+  ],
+  "keywords": [
+    "l293d",
+    "l293",
+    "l293dne",
+    "h-bridge",
+    "motor driver",
+    "dc motor",
+    "stepper",
+    "dual h bridge",
+    "half-h driver"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/l293d.pdf",
+    "https://www.ti.com/product/L293D",
+    "Fritzing core part L293D (core/L293D.fzp)"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "1A",
+      "2A",
+      "1,2EN",
+      "3A",
+      "4A",
+      "3,4EN"
+    ]
+  },
+  "driver": {
+    "filename": "l293d.py",
+    "code": "# L293D quadruple half-H driver (TI L293D / ST L293D), MicroPython driver for ONE H-bridge (one DC motor).\n# Two half-H drivers that share an enable form one bridge:\n#   bridge 1: inputs 1A (pin 2) and 2A (pin 7), enable 1,2EN (pin 1), motor on 1Y (pin 3) / 2Y (pin 6)\n#   bridge 2: inputs 3A (pin 10) and 4A (pin 15), enable 3,4EN (pin 9), motor on 3Y (pin 11) / 4Y (pin 14)\n# Function table (TI SLRS008D, Table 1, each driver): EN = H, A = H -> Y = H; EN = H, A = L -> Y = L;\n# EN = L -> Y = Z (high impedance). So for one bridge:\n#   EN = H, A1 = H, A2 = L  -> forward\n#   EN = H, A1 = L, A2 = H  -> reverse\n#   EN = H, A1 = A2         -> fast motor stop (brake: both motor leads at the same level)\n#   EN = L                  -> outputs off, the motor coasts to a stop\n# Inputs are TTL compatible: low <= 1.5 V, high >= 2.3 V, so 3.3 V GPIOs drive them directly.\n# Speed: PWM the enable pin (a few kHz or less; the outputs switch in about 1 us).\nfrom machine import Pin, PWM\n\n\nclass L293D:\n    def __init__(self, in_a, in_b, en=None, freq=1000):\n        \"\"\"in_a, in_b: GPIO numbers wired to the bridge's A inputs (1A/2A or 3A/4A).\n        en: GPIO number wired to 1,2EN or 3,4EN, or None when that enable pin is tied to 5 V (always on).\"\"\"\n        self.a = Pin(in_a, Pin.OUT, value=0)\n        self.b = Pin(in_b, Pin.OUT, value=0)\n        self.pwm = None\n        if en is not None:\n            self.pwm = PWM(Pin(en), freq=freq, duty_u16=0)\n\n    def _enable(self, speed):\n        if self.pwm is not None:\n            speed = max(0, min(100, speed))\n            self.pwm.duty_u16(speed * 65535 // 100)\n\n    def forward(self, speed=100):\n        \"\"\"Spin one way (A1 high, A2 low). speed 0-100 % needs the enable pin on a GPIO.\"\"\"\n        self.a.value(1)\n        self.b.value(0)\n        self._enable(speed)\n\n    def reverse(self, speed=100):\n        \"\"\"Spin the other way (A1 low, A2 high).\"\"\"\n        self.a.value(0)\n        self.b.value(1)\n        self._enable(speed)\n\n    def brake(self):\n        \"\"\"Fast motor stop: both inputs low with the drivers enabled (both motor leads pulled to GND).\"\"\"\n        self.a.value(0)\n        self.b.value(0)\n        self._enable(100)\n\n    def coast(self):\n        \"\"\"Free-running stop: enable low, outputs high impedance. Without an enable GPIO this falls back to brake().\"\"\"\n        self.a.value(0)\n        self.b.value(0)\n        if self.pwm is not None:\n            self.pwm.duty_u16(0)\n\n    def stop(self):\n        self.coast()\n"
+  },
+  "example": {
+    "code": "import time\nfrom l293d import L293D\n\n# Motor 1 between 1Y and 2Y; 1,2EN on a PWM pin.\nmotor = L293D({1A}, {2A}, en={1_2EN})\nwhile True:\n    motor.forward()\n    print('motor 1 forward')\n    time.sleep(1)\n    motor.coast()\n    print('motor 1 off')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor 1 runs forward, then the bridge is disabled",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "1A",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "2A",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "1,2EN",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor 1 forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "1,2EN",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "1A",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor 1 off",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-l293d\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the L293D dual H-bridge motor driver chip (TI L293DNE, quadruple half-H driver, DIP-16). Use when designing, wiring, simulating or writing code for an L293D in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# L293D dual H-bridge motor driver (L293DNE)\n\n## Overview\nThe **L293D** is four half-H drivers in one chip. Drivers 1 and 2 share the enable 1,2EN and drivers 3 and 4 share 3,4EN, so each pair is a full H-bridge: two small DC motors forwards/backwards (or one bipolar stepper), up to **600 mA per channel** (1.2 A peak for 100 us) at 4.5-36 V. The \"D\" version has the output clamp diodes built in, so no external flyback diodes are needed. Inputs are TTL, so 3.3 V GPIOs drive it directly. Hobbyists buy the bare **Texas Instruments L293DNE in a DIP-16 package** (ST's L293D has the same pinout) and plug it straight into a breadboard.\n\n## Pinout (DIP-16, pin 1 next to the notch)\n| Pin | Name | Function |\n|---|---|---|\n| 1 | 1,2EN | Enable drivers 1 and 2 (bridge 1), active high; PWM for speed |\n| 2 | 1A | Driver 1 input |\n| 3 | 1Y | Driver 1 output (motor 1 lead) |\n| 4, 5 | GND | Ground and heat sink |\n| 6 | 2Y | Driver 2 output (motor 1 other lead) |\n| 7 | 2A | Driver 2 input |\n| 8 | VCC2 | Motor supply, VCC1 to 36 V |\n| 9 | 3,4EN | Enable drivers 3 and 4 (bridge 2), active high |\n| 10 | 3A | Driver 3 input |\n| 11 | 3Y | Driver 3 output (motor 2 lead) |\n| 12, 13 | GND | Ground and heat sink |\n| 14 | 4Y | Driver 4 output (motor 2 other lead) |\n| 15 | 4A | Driver 4 input |\n| 16 | VCC1 | Logic supply, 4.5-7 V (5 V) |\n\n## Electrical limits\n- VCC1 (logic): 4.5-7 V recommended (5 V). It is NOT a 3.3 V part: never run VCC1 from 3V3.\n- VCC2 (motor): from VCC1 up to 36 V (absolute max 36 V).\n- Inputs: high >= 2.3 V, low <= 1.5 V, absolute max 7 V.\n- Output current: **600 mA continuous per channel**, 1.2 A peak (non-repetitive, <= 100 us).\n- Voltage drop: high side up to 1.8 V, low side up to 1.8 V at 600 mA, so a motor sees about VCC2 - 2.6 V (typ) to VCC2 - 3.6 V (max).\n- Logic supply current up to 60 mA, motor supply idle current up to 24 mA. Operating range 0-70 C.\n\n## Interface details (datasheet function table, each driver)\n| A | EN | Y |\n|---|---|---|\n| H | H | H |\n| L | H | L |\n| X | L | Z (off) |\n\nFor one bridge (motor between 1Y and 2Y):\n| 1,2EN | 1A | 2A | Motor |\n|---|---|---|---|\n| H | H | L | Forward |\n| H | L | H | Reverse |\n| H | 1A = 2A | | Fast stop (brake) |\n| L | X | X | Coasts to a stop |\nBridge 2 is the same with 3,4EN, 3A, 4A. In thermal shutdown all outputs go off.\n\n## Wiring\n- Power: VCC1 (pin 16) -> 5 V (ESP32 5V/VIN, Pico VBUS). VCC2 (pin 8) -> motor battery + (or 5 V for a tiny motor). All four GND pins (4, 5, 12, 13) -> GND, shared with the battery minus and the microcontroller GND.\n- ESP32: 1,2EN -> D25, 1A -> D26, 2A -> D27 (3,4EN, 3A, 4A to any other output pins, or 3,4EN to GND if unused).\n- Pico: 1,2EN -> GP2, 1A -> GP3, 2A -> GP4.\n- Raspberry Pi 4: 1,2EN -> GPIO18 (pin 12), 1A -> GPIO23 (pin 16), 2A -> GPIO24 (pin 18).\n- Motor 1 between 1Y (pin 3) and 2Y (pin 6); motor 2 between 3Y (pin 11) and 4Y (pin 14).\n- 100 nF ceramic capacitor from VCC1 to GND and from VCC2 to GND, close to the chip; add a bulk electrolytic (e.g. 100 uF) on VCC2.\n\n## Using the driver\n```python\nfrom l293d import L293D\nm1 = L293D(26, 27, en=25)    # 1A, 2A, 1,2EN on a PWM pin\nm2 = L293D(14, 12)           # 3A, 4A with 3,4EN tied to 5 V (full speed)\nm1.forward(); m2.reverse()\nm1.forward(60)               # 60 % speed via PWM on the enable\nm1.brake(); m1.coast()\n```\n\n## Gotchas\n- VCC1 needs 5 V; on 3.3 V the chip is out of spec. The inputs still accept 3.3 V logic.\n- No common ground = the motor twitches or does nothing.\n- The bridge drops about 2.6-3.6 V: a 6 V motor on a 6 V supply runs slowly.\n- 600 mA per channel is small: motor stall current often exceeds it, and the chip gets hot. The ground pins are the heat sink; on a PCB give them copper area.\n- Motors on a USB 5 V pin can brown out the microcontroller. Use a separate battery on VCC2.\n- The plain L293 (no D) has no clamp diodes: add external diodes if you got that one.\n- Unused enable pins must not float: tie 3,4EN to GND if bridge 2 is unused.\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/l293d.pdf\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:59:28.924Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/l293d.pdf"
+    ]
+  }
+}

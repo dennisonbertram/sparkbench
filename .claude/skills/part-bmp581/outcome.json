@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bmp581",
+  "board": "SparkFun Pressure Sensor - BMP581 (Qwiic) SEN-20170, 7-pin header GND, 3V3, SDI/SDA, SCK/SCL, SDO/ADR, CSB, INT, I2C address 0x47",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test T=26.35C P=94870.00Pa, PCB). The driver follows the BMP581 datasheet: soft reset and post-power-up checks, leaving deep standby, press_en/OSR setup, forced mode with t_conv wait and drdy poll, and the section 4.5 formulas (signed24/2^16 degC, raw24/2^6 Pa); the sim encodes little-endian 24-bit data at 0x1D-0x22 with the same formulas.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp581-ds004.pdf",
+  "breakoutPinoutSource": "https://github.com/sparkfun/SparkFun_Qwiic_Pressure_Sensor_BMP581/blob/main/Hardware/Qwiic%201x1/SparkFun_Pressure_Sensor_BMP581_Qwiic.brd",
+  "checkRuns": 1
+}

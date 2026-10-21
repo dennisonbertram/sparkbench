@@ -1,0 +1,411 @@
+{
+  "type": "custom-lsm9ds1",
+  "name": "LSM9DS1 9-DoF IMU (accel, gyro & magnetometer)",
+  "mpn": "LSM9DS1",
+  "category": "sensor",
+  "description": "STMicroelectronics 9-axis IMU: 3-axis accelerometer (±2/4/8/16 g), 3-axis gyroscope (±245/500/2000 dps), 3-axis magnetometer (±4/8/12/16 gauss) and a die temperature sensor, read over I2C as two chips: accelerometer + gyroscope at 0x6B, magnetometer at 0x1E. Sold as: Adafruit 9-DOF LSM9DS1 Breakout Board - STEMMA QT / Qwiic (product 4634, Rev C), 3-5 V with on-board 3.3 V regulator and I2C level shifting, 9-pin header (Vin, 3Vo, GND, SCL, SDA, CSAG, CSM, SDOAG, SDOM) plus 5-pin header (DEN, INT2, INT1, INTM, DRDY).",
+  "eli5": "Feels which way is down, how fast it is spinning and which way is north, so your project knows exactly how it is moving and pointing.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Supply, 3-5 V (AP2112K 3.3 V regulator on the board; I2C is level-shifted)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock / SPI clock (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data / SPI MOSI (10 kΩ pull-up and level shifter on the board)",
+      "required": true
+    },
+    {
+      "name": "CSAG",
+      "role": "io",
+      "description": "Accel/gyro SPI chip select, 10 kΩ pull-up to 3.3 V = I2C mode; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "CSM",
+      "role": "io",
+      "description": "Magnetometer SPI chip select, 10 kΩ pull-up to 3.3 V = I2C mode; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "SDOAG",
+      "role": "io",
+      "description": "Accel/gyro address bit (10 kΩ pull-up: 0x6B; tie to GND for 0x6A) / SPI MISO, 3.3 V logic",
+      "required": false
+    },
+    {
+      "name": "SDOM",
+      "role": "io",
+      "description": "Magnetometer address bit (10 kΩ pull-up: 0x1E; tie to GND for 0x1C) / SPI MISO, 3.3 V logic (printed DOM on the back)",
+      "required": false
+    },
+    {
+      "name": "DEN",
+      "role": "io",
+      "description": "Gyro data enable input (pulled up to 3.3 V through a diode); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Accel/gyro interrupt 2 output, 3.3 V logic (optional)",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Accel/gyro interrupt 1 output, 3.3 V logic (optional)",
+      "required": false
+    },
+    {
+      "name": "INTM",
+      "role": "io",
+      "description": "Magnetometer interrupt output, 3.3 V logic (optional)",
+      "required": false
+    },
+    {
+      "name": "DRDY",
+      "role": "io",
+      "description": "Magnetometer data-ready output (chip pin DRDY_M), 3.3 V logic (optional)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 5,
+  "i2cAddress": 107,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lsm9ds1.pdf",
+  "priceUsd": 19.95,
+  "supplierQuery": "Adafruit LSM9DS1 9-DOF breakout STEMMA QT 4634",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x14_P2.54mm_Vertical",
+  "sources": [
+    "https://cdn.sparkfun.com/assets/learn_tutorials/3/7/3/LSM9DS1_Datasheet.pdf",
+    "https://www.st.com/resource/en/datasheet/lsm9ds1.pdf",
+    "https://learn.adafruit.com/adafruit-lsm9ds1-accelerometer-plus-gyro-plus-magnetometer-9-dof-breakout/pinouts",
+    "https://github.com/adafruit/Adafruit-LSM9DS1-Breakout-PCB",
+    "https://www.adafruit.com/product/4634"
+  ],
+  "buildNotes": [
+    "Power Vin from 3.3 V or 5 V: the board regulates to 3.3 V and level-shifts SCL/SDA, but INT1/INT2/INTM/DRDY/SDOAG/SDOM are 3.3 V outputs.",
+    "Leave CSAG and CSM unconnected (10 kΩ pull-ups keep the chip in I2C mode). SDOAG and SDOM are pulled up too, giving addresses 0x6B and 0x1E; tie them to GND for 0x6A / 0x1C.",
+    "Check WHO_AM_I (0x0F) = 0x68 at 0x6B and 0x3D at 0x1E. Then write CTRL_REG8 (0x22) = 0x44, CTRL_REG1_G (0x10) = 0x60 (119 Hz, ±245 dps), CTRL_REG6_XL (0x20) = 0x60 (±2 g), and on the magnetometer CTRL_REG3_M (0x22) = 0x00: it starts in power-down.",
+    "Outputs are 16-bit two's complement, low byte first: gyro 0x18-0x1D (8.75 mdps/LSB), accel 0x28-0x2D (0.061 mg/LSB), temperature 0x15-0x16 (25 °C + raw/16), magnetometer 0x28-0x2D at 0x1E (0.14 mgauss/LSB at ±4 gauss).",
+    "Magnetometer burst reads need bit 7 of the register address set (0xA8 for OUT_X_L_M); without it you read the same byte six times.",
+    "Keep the board away from motors, speakers and steel screws, which bend the magnetometer reading."
+  ],
+  "keywords": [
+    "lsm9ds1",
+    "imu",
+    "9dof",
+    "9-dof",
+    "accelerometer",
+    "gyroscope",
+    "magnetometer",
+    "compass",
+    "adafruit 4634",
+    "adafruit 3387"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "autoIncrementBit7": true,
+    "quantity": "Chip temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 25,
+    "registers": {
+      "0x0F": 104,
+      "0x17": 7,
+      "0x1E": 56,
+      "0x1F": 56,
+      "0x22": 4,
+      "0x27": 7
+    },
+    "controls": [
+      {
+        "key": "ax",
+        "quantity": "Acceleration X",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "ay",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 0
+      },
+      {
+        "key": "az",
+        "quantity": "Acceleration Z",
+        "unit": "g",
+        "min": -2,
+        "max": 2,
+        "default": 1
+      },
+      {
+        "key": "gx",
+        "quantity": "Rotation rate X",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Rotation rate Y",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Rotation rate Z",
+        "unit": "dps",
+        "min": -245,
+        "max": 245,
+        "default": 0
+      },
+      {
+        "key": "mx",
+        "quantity": "Magnetic field X",
+        "unit": "gauss",
+        "min": -4,
+        "max": 4,
+        "default": 0.2
+      },
+      {
+        "key": "my",
+        "quantity": "Magnetic field Y",
+        "unit": "gauss",
+        "min": -4,
+        "max": 4,
+        "default": 0
+      },
+      {
+        "key": "mz",
+        "quantity": "Magnetic field Z",
+        "unit": "gauss",
+        "min": -4,
+        "max": 4,
+        "default": -0.4
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x15",
+        "bytes": 2,
+        "scale": 0.0625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "offset": 25
+      },
+      {
+        "reg": "0x18",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx"
+      },
+      {
+        "reg": "0x1A",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy"
+      },
+      {
+        "reg": "0x1C",
+        "bytes": 2,
+        "scale": 0.00875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz"
+      },
+      {
+        "reg": "0x28",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax"
+      },
+      {
+        "reg": "0x2A",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x2C",
+        "bytes": 2,
+        "scale": 0.000061,
+        "signed": true,
+        "littleEndian": true,
+        "control": "az"
+      }
+    ],
+    "subDevices": [
+      {
+        "i2cAddress": 30,
+        "autoIncrementBit7": true,
+        "registers": {
+          "0x0F": 61,
+          "0x20": 16,
+          "0x22": 3,
+          "0x27": 15
+        },
+        "measures": [
+          {
+            "reg": "0x28",
+            "bytes": 2,
+            "scale": 0.00014,
+            "signed": true,
+            "littleEndian": true,
+            "control": "mx"
+          },
+          {
+            "reg": "0x2A",
+            "bytes": 2,
+            "scale": 0.00014,
+            "signed": true,
+            "littleEndian": true,
+            "control": "my"
+          },
+          {
+            "reg": "0x2C",
+            "bytes": 2,
+            "scale": 0.00014,
+            "signed": true,
+            "littleEndian": true,
+            "control": "mz"
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lsm9ds1.py",
+    "code": "# LSM9DS1 9-axis IMU (STMicroelectronics, DocID025715 Rev 2), MicroPython driver.\n# Two I2C chips in one package:\n#   accelerometer + gyroscope at 0x6B (SDO_AG high; 0x6A with SDO_AG low), WHO_AM_I 0x0F = 0x68\n#   magnetometer at 0x1E (SDO_M high; 0x1C with SDO_M low), WHO_AM_I_M 0x0F = 0x3D\n# Outputs are 16-bit two's complement, low byte first (BLE = 0, the default).\n# Accel/gyro: the register address auto-increments while CTRL_REG8.IF_ADD_INC = 1 (default).\n# Magnetometer: the MSB of the register address must be set to auto-increment (datasheet 5.1.1).\nimport time\n\nAG_ADDR = 0x6B\nMAG_ADDR = 0x1E\n\n_WHO_AM_I = 0x0F        # 0x68 (accel/gyro), 0x3D (magnetometer)\n_CTRL_REG1_G = 0x10     # ODR_G[2:0] FS_G[1:0] 0 BW_G[1:0]\n_OUT_TEMP_L = 0x15\n_STATUS_REG = 0x17      # bit0 XLDA, bit1 GDA, bit2 TDA\n_OUT_X_L_G = 0x18\n_CTRL_REG6_XL = 0x20    # ODR_XL[2:0] FS_XL[1:0] BW_SCAL_ODR BW_XL[1:0]\n_CTRL_REG8 = 0x22       # BOOT BDU H_LACTIVE PP_OD SIM IF_ADD_INC BLE SW_RESET\n_OUT_X_L_XL = 0x28\n_CTRL_REG1_M = 0x20\n_CTRL_REG2_M = 0x21\n_CTRL_REG3_M = 0x22\n_CTRL_REG4_M = 0x23\n_CTRL_REG5_M = 0x24\n_STATUS_REG_M = 0x27    # bit3 ZYXDA\n_OUT_X_L_M = 0x28\n\n# Full scale -> (register bits, sensitivity), datasheet Table 3 and register descriptions.\n# FS_XL coding: 00 = 2 g, 01 = 16 g, 10 = 4 g, 11 = 8 g.\n_ACC_FS = {2: (0b00, 0.061e-3), 4: (0b10, 0.122e-3), 8: (0b11, 0.244e-3), 16: (0b01, 0.732e-3)}   # g/LSB\n_GYR_FS = {245: (0b00, 8.75e-3), 500: (0b01, 17.5e-3), 2000: (0b11, 70e-3)}                     # dps/LSB\n_MAG_FS = {4: (0b00, 0.14e-3), 8: (0b01, 0.29e-3), 12: (0b10, 0.43e-3), 16: (0b11, 0.58e-3)}    # gauss/LSB\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass LSM9DS1:\n    def __init__(self, i2c, ag_addr=AG_ADDR, mag_addr=MAG_ADDR, accel_fs=2, gyro_fs=245, mag_fs=4):\n        self.i2c = i2c\n        self.ag = ag_addr\n        self.mag = mag_addr\n        who = self._r(self.ag, _WHO_AM_I, 1)[0]\n        if who != 0x68:\n            raise OSError('LSM9DS1 accel/gyro not found at 0x%02X (WHO_AM_I=0x%02X)' % (self.ag, who))\n        who = self._r(self.mag, _WHO_AM_I, 1)[0]\n        if who != 0x3D:\n            raise OSError('LSM9DS1 magnetometer not found at 0x%02X (WHO_AM_I=0x%02X)' % (self.mag, who))\n        fa, self._acc_s = _ACC_FS[accel_fs]\n        fg, self._gyr_s = _GYR_FS[gyro_fs]\n        fm, self._mag_s = _MAG_FS[mag_fs]\n        # BDU = 1 (LSB and MSB from the same sample), IF_ADD_INC = 1 (burst reads).\n        self._w(self.ag, _CTRL_REG8, 0x44)\n        # Gyro (and accel, which then shares its rate): ODR 119 Hz (011), chosen full scale, BW 00.\n        self._w(self.ag, _CTRL_REG1_G, 0x60 | (fg << 3))\n        # Accelerometer: ODR 119 Hz (011), chosen full scale, bandwidth set by ODR.\n        self._w(self.ag, _CTRL_REG6_XL, 0x60 | (fa << 3))\n        # Magnetometer: temperature compensation on, X/Y ultra-high performance (OM = 11), 10 Hz (DO = 100).\n        self._w(self.mag, _CTRL_REG1_M, 0xF0)\n        self._w(self.mag, _CTRL_REG2_M, fm << 5)\n        # Z axis ultra-high performance (OMZ = 11), little endian.\n        self._w(self.mag, _CTRL_REG4_M, 0x0C)\n        # BDU = 1.\n        self._w(self.mag, _CTRL_REG5_M, 0x40)\n        # Continuous-conversion mode (MD = 00); the chip starts in power-down (MD = 11).\n        self._w(self.mag, _CTRL_REG3_M, 0x00)\n        time.sleep_ms(100)  # gyro turn-on and the first magnetometer sample (10 Hz)\n\n    def _r(self, addr, reg, n):\n        return self.i2c.readfrom_mem(addr, reg, n)\n\n    def _w(self, addr, reg, val):\n        self.i2c.writeto_mem(addr, reg, bytes([val]))\n\n    @staticmethod\n    def _xyz(d, scale):\n        return (_s16(d[0], d[1]) * scale, _s16(d[2], d[3]) * scale, _s16(d[4], d[5]) * scale)\n\n    def data_ready(self):\n        \"\"\"(accel, gyro, temperature, magnetometer) new-data flags.\"\"\"\n        s = self._r(self.ag, _STATUS_REG, 1)[0]\n        m = self._r(self.mag, _STATUS_REG_M, 1)[0]\n        return bool(s & 1), bool(s & 2), bool(s & 4), bool(m & 8)\n\n    def acceleration(self):\n        \"\"\"(x, y, z) in g.\"\"\"\n        return self._xyz(self._r(self.ag, _OUT_X_L_XL, 6), self._acc_s)\n\n    def gyro(self):\n        \"\"\"(x, y, z) angular rate in degrees per second.\"\"\"\n        return self._xyz(self._r(self.ag, _OUT_X_L_G, 6), self._gyr_s)\n\n    def magnetic(self):\n        \"\"\"(x, y, z) magnetic field in gauss (1 gauss = 100 uT).\"\"\"\n        # Set bit 7 of the register address: the magnetometer only auto-increments when asked.\n        return self._xyz(self._r(self.mag, _OUT_X_L_M | 0x80, 6), self._mag_s)\n\n    def temperature(self):\n        \"\"\"Die temperature in degC: 16 LSB/degC, 0 at 25 degC (not an air thermometer).\"\"\"\n        d = self._r(self.ag, _OUT_TEMP_L, 2)\n        return 25 + _s16(d[0], d[1]) / 16\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lsm9ds1 import LSM9DS1\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = LSM9DS1(i2c)  # accel/gyro 0x6B, magnetometer 0x1E (Adafruit defaults)\nwhile True:\n    ax, ay, az = imu.acceleration()\n    gx, gy, gz = imu.gyro()\n    mx, my, mz = imu.magnetic()\n    t = imu.temperature()\n    print('A=%.2f,%.2f,%.2fg G=%.1f,%.1f,%.1fdps M=%.2f,%.2f,%.2fgauss T=%.1fC' % (ax, ay, az, gx, gy, gz, mx, my, mz, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the tilt, rotation, magnetic field and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ax",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "az",
+          "value": 0.75
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": 10
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gy",
+          "value": -20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mx",
+          "value": 0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "my",
+          "value": -0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "mz",
+          "value": 1.2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,-0.25,0.75g G=10.0,-20.0,30.0dps M=0.25,-0.50,1.20gauss T=30.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:05:52.656Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/learn_tutorials/3/7/3/LSM9DS1_Datasheet.pdf",
+      "https://learn.adafruit.com/adafruit-lsm9ds1-accelerometer-plus-gyro-plus-magnetometer-9-dof-breakout/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/092/388/large1024/sensors_P4636Back_edit_pinouts.jpg"
+    ]
+  }
+}

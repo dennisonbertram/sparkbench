@@ -1,0 +1,132 @@
+{
+  "type": "custom-mq-8",
+  "name": "MQ-8 hydrogen gas sensor module",
+  "mpn": "MQ-8",
+  "category": "sensor",
+  "description": "Hanwei/Winsen MQ-8 tin-dioxide (SnO2) gas sensor for hydrogen (H2, 100-10000 ppm), with little response to alcohol, LPG, methane, CO and cooking fumes, on a module with a load resistor, an LM393 comparator and a sensitivity trimmer. The heater runs at a constant 5 V (about 170 mA). AO is the voltage across the load resistor and rises with hydrogen; DO goes LOW when AO passes the trimmer threshold. Readings are relative, not ppm. Not a safety hydrogen alarm. Sold as: MQ-8 hydrogen gas sensor module, common blue FC-22-style board with LM393 comparator (4-pin header: VCC, GND, DO, AO), AO + DO outputs, 5 V only.",
+  "eli5": "An electronic nose for hydrogen gas with a little heater inside. More hydrogen in the air means a higher voltage on its AO pin, and its DO pin flips low when the hydrogen passes a level you set with the tiny screw. It is a learning toy, not a life-saving alarm.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply for heater and circuit, 5.0 V ±0.1 V (pin 1). About 170 mA: use the board's 5 V / VIN / VBUS, never 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (pin 2)",
+      "required": true
+    },
+    {
+      "name": "DO",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Digital output from the LM393 comparator (pin 3): HIGH (pulled up to VCC, 5 V) in clean air, LOW when AO is above the trimmer threshold. Active low.",
+      "required": true
+    },
+    {
+      "name": "AO",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (pin 4): voltage across the load resistor, VRL = VCC × RL / (Rs + RL). Rises with hydrogen, can reach close to 5 V.",
+      "required": true
+    }
+  ],
+  "vmin": 4.9,
+  "vmax": 5.1,
+  "currentMa": 170,
+  "datasheetUrl": "https://cdn.sparkfun.com/datasheets/Sensors/Biometric/MQ-8.pdf",
+  "sources": [
+    "https://cdn.sparkfun.com/datasheets/Sensors/Biometric/MQ-8.pdf",
+    "https://www.winsen-sensor.com/d/files/semiconductor/mq-8.pdf",
+    "https://components101.com/sensors/mq8-hydrogen-gas-sensor-pinout-features-datasheet-working-alternative-application",
+    "https://openkits-wiki.easyeda.com/en/coloreasyduino/module/sensor/mq-8-sensor.html"
+  ],
+  "priceUsd": 3,
+  "supplierQuery": "MQ-8 hydrogen gas sensor module LM393 4 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the common blue board: VCC, GND, DO, AO. Some sellers' boards (e.g. black ones) use another order such as VCC, AO, DO, GND, so follow the labels.",
+    "Power VCC from 5 V (USB 5V / VIN / VBUS). The heater (31 Ω, under 800 mW) takes about 160 mA and gets hot to the touch. Do not exceed 5.1 V (datasheet standard condition Vc and VH 5 V ±0.1 V).",
+    "AO and DO are 5 V signals. AO can go above 3.3 V with a lot of hydrogen and DO idles at 5 V through the module's pull-up. For an ESP32 or Pico put a divider on each (e.g. 10 kΩ in series, 20 kΩ to GND) and pass divider=1.5 to the driver.",
+    "Burn in a new sensor for 24-48 hours (datasheet preheat time), then let it warm up a few minutes after every power-on before trusting the readings.",
+    "Rs = (Vc / VRL − 1) × RL (datasheet). The datasheet recommends RL about 10 kΩ; many modules fit 1 kΩ (SMD marked 102). Check yours and pass rl= to the driver. Hanwei's R0 is Rs in 1000 ppm H2; calibrate your own.",
+    "Turn the blue trimmer to set the DO threshold: the DO LED lights (DO LOW) when hydrogen passes it.",
+    "This is not a hydrogen safety alarm. Use a certified detector to protect people."
+  ],
+  "keywords": [
+    "mq-8",
+    "mq8",
+    "hydrogen",
+    "h2",
+    "gas",
+    "fc-22",
+    "fuel cell",
+    "battery",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "AO",
+    "quantity": "AO voltage (rises with hydrogen)",
+    "unit": "V",
+    "min": 0,
+    "max": 5,
+    "default": 0.3,
+    "vAtMin": 0,
+    "vAtMax": 5,
+    "digitalOutputs": [
+      {
+        "pin": "DO",
+        "control": "gas",
+        "label": "Hydrogen above threshold (DO low)",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mq8.py",
+    "code": "# MQ-8 hydrogen gas sensor module (Hanwei/Winsen MQ-8 on the common blue 4-pin VCC/GND/DO/AO\n# board with an LM393 comparator), MicroPython driver.\n# Datasheet basic test circuit: the sensor resistance Rs and the load resistor RL form a divider from\n# Vc (5 V on the module), and AO is the voltage across RL:  VRL = Vc * RL / (Rs + RL).\n# Datasheet formula: Rs = (Vc / VRL - 1) * RL.  Hydrogen lowers Rs, so AO rises with H2.\n# Concentration comes from Rs/R0 on the datasheet's log-log chart (Hanwei: R0 = Rs in 1000 ppm H2;\n# Winsen v1.4: R0 = Rs in clean air). The chart is typical only, so R0 must be found by calibrating\n# your own sensor; this driver gives the voltage, Rs and Rs/R0, not ppm.\n# DO is the LM393 comparator output: it goes LOW when AO is above the threshold set on the trimmer.\nfrom machine import ADC, Pin\n\n\nclass MQ8:\n    def __init__(self, ao, do=None, rl=1000, vc=5.0, divider=1.0, samples=32, vref=3.3):\n        \"\"\"ao/do: GPIO numbers (or Pin objects). rl: the module's load resistor in ohms (check yours:\n        many boards use 1 kOhm, marked 102; the datasheet recommends about 10 kOhm, 5k-33k).\n        vc: module supply. divider: AO / ADC-pin voltage ratio if you fitted a resistor divider\n        (e.g. 1.5 for 10k over 20k), 1.0 if AO goes straight to the pin.\"\"\"\n        self.adc = ADC(Pin(ao) if isinstance(ao, int) else ao)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.do = None if do is None else (Pin(do, Pin.IN) if isinstance(do, int) else do)\n        self.rl = rl\n        self.vc = vc\n        self.divider = divider\n        self.samples = samples\n        self.vref = vref  # ADC full scale used when read_uv() is not available (e.g. Pico)\n        self.r0 = None\n\n    def voltage(self):\n        \"\"\"AO voltage (VRL) in volts, averaged over several ADC samples.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples * self.divider\n\n    def resistance(self):\n        \"\"\"Sensor resistance Rs in ohms: Rs = (Vc / VRL - 1) * RL (datasheet).\"\"\"\n        v = self.voltage()\n        if v <= 0.001:\n            return float('inf')  # no reading: sensor cold, unpowered or AO not wired\n        return (self.vc / v - 1) * self.rl\n\n    def calibrate(self, r0=None):\n        \"\"\"Store R0. With no argument, take the current Rs as R0. Hanwei's R0 is Rs in 1000 ppm H2,\n        Winsen's is Rs in clean air (after the burn-in and a few minutes of warm-up). They give\n        different scales, so say which one you used.\"\"\"\n        self.r0 = self.resistance() if r0 is None else r0\n        return self.r0\n\n    def ratio(self):\n        \"\"\"Rs/R0, the ordinate of the datasheet's sensitivity chart. Needs calibrate() first.\"\"\"\n        if not self.r0:\n            raise ValueError('call calibrate() first')\n        return self.resistance() / self.r0\n\n    def detected(self):\n        \"\"\"True when DO is LOW, i.e. AO is above the trimmer threshold (DO LED lit).\"\"\"\n        if self.do is None:\n            raise ValueError('DO pin not given')\n        return self.do.value() == 0\n"
+  },
+  "example": {
+    "code": "from mq8 import MQ8\nimport time\n\nsensor = MQ8({AO}, {DO})\nwhile True:\n    print('AO=%.1fV DO=%s' % (sensor.voltage(), 'H2' if sensor.detected() else 'clear'))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the AO voltage and the DO alarm set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.4
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gas",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "AO=2.4V DO=H2",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:56:04.409Z",
+    "verifiedSources": [
+      "https://www.winsen-sensor.com/d/files/semiconductor/mq-8.pdf",
+      "https://cdn.sparkfun.com/datasheets/Sensors/Biometric/MQ-8.pdf",
+      "https://components101.com/sensors/mq8-hydrogen-gas-sensor-pinout-features-datasheet-working-alternative-application"
+    ]
+  }
+}

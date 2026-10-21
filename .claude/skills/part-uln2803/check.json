@@ -1,0 +1,79 @@
+{
+  "type": "custom-uln2803",
+  "mpn": "ULN2803AN",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "18 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "10 pins wired; ULN2803 8-channel Darlington driver needs at least 5 V, so it is powered from 5 V. U2.1B → D25 (GPIO25). U2.2B → D26 (GPIO26). U2.3B → D27 (GPIO27). U2.4B → D13 (GPIO13). U2.5B → D23 (GPIO23). U2.6B → D19 (GPIO19). U2.7B → D18 (GPIO18). U2.8B → TX2 (GPIO17). Added the uln2803.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "17 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Switches channels 1 and 3 on, then channels 2 and 8: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "53×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "18 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "10 pins wired; ULN2803 8-channel Darlington driver needs at least 5 V, so it is powered from 5 V. U2.1B → GP2 (GPIO2). U2.2B → GP3 (GPIO3). U2.3B → GP6 (GPIO6). U2.4B → GP7 (GPIO7). U2.5B → GP8 (GPIO8). U2.6B → GP9 (GPIO9). U2.7B → GP10 (GPIO10). U2.8B → GP11 (GPIO11). Added the uln2803.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "17 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Switches channels 1 and 3 on, then channels 2 and 8: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_DIP:DIP-18_W7.62mm"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C481685 ULN2803AN (16 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T10:59:28.980Z"
+}

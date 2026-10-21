@@ -1,0 +1,150 @@
+{
+  "type": "custom-2-channel-ssr-module",
+  "name": "2-channel SSR module (G3MB-202P, low level trigger)",
+  "mpn": "G3MB-202P",
+  "category": "actuator",
+  "description": "Two Omron G3MB-202P solid state relays (phototriac, zero-cross, built-in snubber) on one board, each with a 2 A resistive fuse and status LED: a GPIO switches two separate AC mains loads of 0.1-2 A at 75-264 VAC with no moving contacts. AC loads only: a triac does not turn off on DC. Inputs are low level trigger (CH low = SSR on). Module supply 5 VDC (SSR input range 4-6 VDC). Sold as: 2 Channel 5V SSR G3MB-202P Solid State Relay Module 240V 2A Output with Resistive Fuse, low level trigger (black '2 Solid State Relay' board, HCMODU0115; input terminal DC+, DC-, CH1, CH2; output screw terminals per channel).",
+  "eli5": "Two silent electronic switches for mains-powered things like lamps or heaters: when your board pulls CH1 or CH2 low, that lamp gets power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "DC+",
+      "role": "power",
+      "description": "Module supply, 5 V (SSR input rated 4-6 VDC, about 11-12.5 mA per SSR that is on); use the board's 5V/VIN/VBUS pin, not 3V3",
+      "required": true
+    },
+    {
+      "name": "DC-",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller",
+      "required": true
+    },
+    {
+      "name": "CH1",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "SSR 1 control input, LOW level trigger: 0-0.5 V = SSR 1 on, 3.3-5 V = off (0.5-3.3 V undefined). The GPIO sinks about 2 mA (plus the SSR input current) while on.",
+      "required": true
+    },
+    {
+      "name": "CH2",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "SSR 2 control input, LOW level trigger: 0-0.5 V = SSR 2 on, 3.3-5 V = off (0.5-3.3 V undefined). The GPIO sinks about 2 mA (plus the SSR input current) while on.",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 27,
+  "datasheetUrl": "https://people.ece.cornell.edu/land/courses/ece4760/FinalProjects/s2004/daw33/RemoteOutlet/datasheets/D20G3MB0503.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "2 channel 5V SSR G3MB-202P solid state relay module low level trigger resistive fuse",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Low level trigger: CH low = SSR on, CH high = off. Create the pins with value=1 so the loads do not switch on while the board boots; a GPIO that idles low turns its channel on.",
+    "Vendor thresholds: 0-0.5 V = on, 0.5-3.3 V = undefined, 3.3-5 V = off. A 3.3 V GPIO high sits right at the edge of 'off': it usually switches off, but if a load stays on or glows, drive each CH through an NPN transistor (GPIO -> 1 kOhm -> base, emitter to GND, collector to CH; logic then inverts: GPIO high = on) or a 5 V logic buffer. Do not pull CH up to 5 V with a 3.3 V pin connected.",
+    "AC loads only (75-264 VAC, 0.1-2 A per channel). The triac never turns off on a DC load, and loads under 0.1 A (small LED bulbs) can glow or fail to switch off because of the snubber's leakage current (up to 1.5 mA at 200 VAC).",
+    "Zero-cross switching: each output changes at the next mains zero crossing (up to 1/2 cycle + 1 ms). It cannot dim (no phase control) and is too slow for PWM.",
+    "Mains wiring on the output screw terminals is dangerous: put each SSR in series with the live wire of its load, keep the board in a closed insulated box, and never touch it while plugged in. Leave mains to an adult/qualified person.",
+    "The input side is a screw terminal (DC+, DC-, CH1, CH2) on the opposite edge from the mains terminals, so wire it with jumper leads; it does not sit on a breadboard. Power DC+ from 5 V and share DC- with the microcontroller's GND.",
+    "Derate the 2 A rating when hot: Omron says halve the load current when SSRs are mounted close together or ventilation is poor. The on-board 2 A fuse only protects against gross overload."
+  ],
+  "keywords": [
+    "g3mb-202p",
+    "g3mb",
+    "ssr",
+    "solid state relay",
+    "2 channel ssr",
+    "dual ssr",
+    "omron",
+    "relay",
+    "low level trigger",
+    "active low",
+    "mains",
+    "ac load",
+    "lamp",
+    "heater"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "CH1",
+      "CH2"
+    ],
+    "inputsActiveLow": true
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Low level trigger: CH low = SSR on, CH high = off. Start both OFF (value=1).\nch1 = Pin({CH1}, Pin.OUT, value=1)\nch2 = Pin({CH2}, Pin.OUT, value=1)\nwhile True:\n    ch1.value(0)\n    ch2.value(1)\n    print('SSR 1 ON, SSR 2 OFF')\n    time.sleep(2)\n    ch1.value(1)\n    ch2.value(0)\n    print('SSR 1 OFF, SSR 2 ON')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "SSR 1 and SSR 2 take turns switching on (low level trigger)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR 1 ON, SSR 2 OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "CH1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "CH2",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR 1 OFF, SSR 2 ON",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "CH1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "CH2",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://people.ece.cornell.edu/land/courses/ece4760/FinalProjects/s2004/daw33/RemoteOutlet/datasheets/D20G3MB0503.pdf",
+    "https://intesc.mx/wp-content/uploads/2021/07/2-solid-state-relay-board.pdf",
+    "https://www.bitsandparts.nl/en/2-channel-solid-state-relay-module-p111852",
+    "https://done.land/components/signalprocessing/switch/relais/solidstate/2ag3mb-202p/",
+    "https://www.xn--42ch1bjnbi5dd6hqbof3hte3aj3isd.com/articles/esp32-solid-state-relay-ssr-active-low-en/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:02:05.181Z",
+    "verifiedSources": [
+      "https://components101.com/modules/g3mb-202p-solid-state-relay-pinout-features-datasheet",
+      "https://zbotic.in/product/5v-2-channel-ssr-g3mb-202p-solid-state-relay-module-240v-2a-output-with-resistive-fuse/",
+      "https://robu.in/?p=28500"
+    ]
+  }
+}

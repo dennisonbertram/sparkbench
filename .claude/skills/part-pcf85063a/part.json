@@ -1,0 +1,147 @@
+{
+  "type": "custom-pcf85063a",
+  "name": "PCF85063A real-time clock breakout",
+  "mpn": "PCF85063A",
+  "category": "ic",
+  "description": "NXP PCF85063A real-time clock/calendar: seconds to years in BCD with leap-year handling, alarm, countdown timer, offset calibration, one RAM byte and a programmable CLKOUT square wave (32.768 kHz to 1 Hz), on a 400 kHz I2C bus at address 0x51. Chip runs on 0.9-5.5 V (1.8-5.5 V with I2C active) and draws about 0.22 uA when timekeeping. Sold as: Soldered Electronics Real time clock RTC PCF85063A breakout (SKU 333051; 4-pin header SCL, SDA, VCC, GND plus 3-pin header CLK-OE, CLK-OUT, INT on the opposite edge, two easyC/Qwiic connectors, 3.3 V regulator, I2C level shifter with 10 kOhm pull-ups, CR2032 holder), I2C address 0x51.",
+  "eli5": "A tiny clock that keeps the date and time, even while your board is switched off if a coin cell is fitted.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, up to 400 kHz. 10 kOhm pull-up to VCC on the board (JP1), level-shifted to the chip",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data. 10 kOhm pull-up to VCC on the board (JP1), level-shifted to the chip",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3-5 V into the on-board 3.3 V regulator; also the I2C pull-up rail, so use 3.3 V with an ESP32 or Pico",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "CLK-OE",
+      "role": "io",
+      "description": "CLKOUT enable input, pulled HIGH (enabled) by 10 kOhm on the board; drive LOW to switch CLKOUT off. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "CLK-OUT",
+      "role": "io",
+      "description": "Square-wave output, push-pull, 32.768 kHz at power-on (3.3 V logic). Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Alarm/timer interrupt, open-drain, active LOW, 10 kOhm pull-up to 3.3 V on the board. Not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 0.05,
+  "i2cAddress": 81,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/PCF85063A.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Soldered PCF85063A RTC breakout 333051",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "cabled": true,
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/PCF85063A.pdf",
+    "https://docs.soldered.com/pcf85063a/hardware/",
+    "https://docs.soldered.com/img/pcf85063a/pinout.jpg",
+    "https://github.com/SolderedElectronics/Real-time-clock-RTC-PCF85063A-breakout-hardware-design/blob/main/OUTPUTS/V1.3.0/Real%20time%20clock%20RTC%20PCF85063A%20breakout%20Schematic.pdf",
+    "https://soldered.com/products/real-time-clock-rtc-pcf85063a-breakout"
+  ],
+  "buildNotes": [
+    "Fixed I2C address 0x51 (A2h write / A3h read); only one PCF85063A per bus.",
+    "The two headers sit on opposite edges (SCL/SDA/VCC/GND on one, CLK-OE/CLK-OUT/INT on the other), so wire the board with jumper leads rather than plugging it into the breadboard.",
+    "The SCL/SDA header pins are pulled up to VCC with 10 kOhm (jumper JP1): power VCC from 3.3 V with an ESP32 or Pico so the bus never sees 5 V.",
+    "Read or write all seven time registers (04h-0Ah) in one burst, finished within 1 s; the chip blocks its counters during the access.",
+    "Bit 7 of the seconds register (OS) is set at first power-up or after the oscillator stopped: the time is invalid until you set it. Setting the time clears it.",
+    "Set STOP (Control_1 bit 5) while writing the time and clear it afterwards; keep CAP_SEL = 0 (7 pF), which matches the board's crystal.",
+    "CLKOUT runs at 32.768 kHz from power-up; write COF = 111 (Control_2 bits 2-0) or pull CLK-OE low to switch it off.",
+    "If the board was not powered up from 0 V, send the software reset (58h to register 00h) to load the reset values."
+  ],
+  "keywords": [
+    "pcf85063a",
+    "pcf85063",
+    "rtc",
+    "real time clock",
+    "clock",
+    "calendar",
+    "soldered",
+    "333051"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "rtc": {
+      "reg": "0x04",
+      "order": "pcf8563"
+    },
+    "registers": {
+      "0x00": 0,
+      "0x01": 0,
+      "0x02": 0,
+      "0x03": 0,
+      "0x0B": 128,
+      "0x0C": 128,
+      "0x0D": 128,
+      "0x0E": 128,
+      "0x0F": 128,
+      "0x10": 0,
+      "0x11": 24
+    }
+  },
+  "driver": {
+    "filename": "pcf85063a.py",
+    "code": "# PCF85063A real-time clock/calendar (NXP), MicroPython driver.\n# I2C address 0x51 (write A2h / read A3h). Registers per the NXP PCF85063A datasheet (Table 4):\n# 00h Control_1 (EXT_TEST, STOP, SR, CIE, 12_24, CAP_SEL), 01h Control_2 (AIE, AF, MI, HMI, TF, COF[2:0]),\n# 02h Offset, 03h RAM_byte, 04h-0Ah seconds..years (BCD, auto-increment),\n# 0Bh-0Fh alarms (bit 7 AEN_x = 1 disables that field), 10h/11h countdown timer.\n_ADDR = 0x51\n_CTRL1 = 0x00\n_CTRL2 = 0x01\n_RAM = 0x03\n_SECONDS = 0x04\n_ALARM = 0x0B\n\n\ndef _bcd(n):\n    return ((n // 10) << 4) | (n % 10)\n\n\ndef _dec(b):\n    return (b >> 4) * 10 + (b & 0x0F)\n\n\ndef _weekday(y, m, d):\n    # 0 = Sunday ... 6 = Saturday, the PCF85063A's weekday coding (Table 24).\n    t = (0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4)\n    if m < 3:\n        y -= 1\n    return (y + y // 4 - y // 100 + y // 400 + t[m - 1] + d) % 7\n\n\nclass PCF85063A:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w(self, reg, v):\n        self.i2c.writeto_mem(self.addr, reg, bytes([v & 0xFF]))\n\n    def reset(self):\n        \"\"\"Software reset (58h to Control_1): all registers to their reset values, time 00:00:00 1 Jan 2000.\"\"\"\n        self._w(_CTRL1, 0x58)\n\n    def datetime(self, dt=None):\n        \"\"\"Read or set the time.\n        Read returns (year, month, day, weekday, hour, minute, second), weekday 0 = Sunday.\n        Set with (year, month, day, hour, minute, second); the weekday is worked out for you.\"\"\"\n        if dt is None:\n            # One burst 04h-0Ah: the chip blocks the counters during the access (datasheet 7.4).\n            r = self.i2c.readfrom_mem(self.addr, _SECONDS, 7)\n            hr = r[2]\n            if self._r(_CTRL1) & 0x02:  # 12-hour mode: bit 5 = PM, hours 1-12\n                h = _dec(hr & 0x1F) % 12 + (12 if hr & 0x20 else 0)\n            else:\n                h = _dec(hr & 0x3F)\n            return (2000 + _dec(r[6]), _dec(r[5] & 0x1F), _dec(r[3] & 0x3F), r[4] & 0x07,\n                    h, _dec(r[1] & 0x7F), _dec(r[0] & 0x7F))\n        y, mo, d, h, mi, s = dt[:6]\n        if not 2000 <= y <= 2099:\n            raise ValueError('year must be 2000-2099')\n        c1 = self._r(_CTRL1) & 0x05  # keep CIE and CAP_SEL; 12_24 = 0 (24-hour mode), EXT_TEST = 0\n        self._w(_CTRL1, c1 | 0x20)   # STOP = 1: hold the prescaler while setting\n        self.i2c.writeto_mem(self.addr, _SECONDS, bytes([\n            _bcd(s),  # OS = 0 clears the oscillator-stop flag\n            _bcd(mi), _bcd(h), _bcd(d), _weekday(y, mo, d), _bcd(mo), _bcd(y - 2000)]))\n        self._w(_CTRL1, c1)          # STOP = 0: clock runs, the first second starts now\n\n    def lost_power(self):\n        \"\"\"True if OS is set: the oscillator stopped (first power-up, or supply/battery too low); time is invalid.\"\"\"\n        return bool(self._r(_SECONDS) & 0x80)\n\n    def clkout(self, hz):\n        \"\"\"Square wave on CLKOUT (push-pull): 32768, 16384, 8192, 4096, 2048, 1024, 1, or 0/None for off (LOW).\"\"\"\n        codes = {32768: 0, 16384: 1, 8192: 2, 4096: 3, 2048: 4, 1024: 5, 1: 6}\n        cof = 7 if not hz else codes[hz]\n        c2 = self._r(_CTRL2) & 0xB8 | 0x40  # keep AIE, MI, HMI, TF; AF written 1 = unchanged\n        self._w(_CTRL2, (c2 & 0xF8) | cof)\n\n    def set_alarm(self, second=None, minute=None, hour=None, day=None, weekday=None, interrupt=True):\n        \"\"\"Alarm on the fields given (None = ignore that field, 24-hour mode). AF is set on a match;\n        INT goes low if interrupt.\"\"\"\n        f = lambda v: 0x80 if v is None else _bcd(v)\n        self.i2c.writeto_mem(self.addr, _ALARM, bytes([f(second), f(minute), f(hour), f(day),\n                                                       0x80 if weekday is None else weekday & 0x07]))\n        c2 = self._r(_CTRL2) & 0x3F  # keep MI, HMI, TF, COF; AF written 0 clears it\n        self._w(_CTRL2, c2 | (0x80 if interrupt else 0))\n\n    def alarm_fired(self):\n        return bool(self._r(_CTRL2) & 0x40)\n\n    def clear_alarm(self):\n        \"\"\"Clear AF (INT is released); the alarm stays armed.\"\"\"\n        self._w(_CTRL2, self._r(_CTRL2) & 0xBF)\n\n    def disable_alarm(self):\n        self.i2c.writeto_mem(self.addr, _ALARM, b'\\x80\\x80\\x80\\x80\\x80')\n        self._w(_CTRL2, self._r(_CTRL2) & 0x3F)  # AIE = 0, AF cleared\n\n    def ram(self, value=None):\n        \"\"\"Read or write the one free RAM byte (03h).\"\"\"\n        if value is None:\n            return self._r(_RAM)\n        self._w(_RAM, value)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pcf85063a import PCF85063A\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nrtc = PCF85063A(i2c)\nrtc.datetime((2027, 2, 28, 23, 59, 57))  # Sunday 28 Feb 2027 (not a leap year), 23:59:57\nwhile True:\n    y, mo, d, wd, h, mi, s = rtc.datetime()\n    print('wd=%d %04d-%02d-%02d %02d:%02d:%02d' % (wd, y, mo, d, h, mi, s))\n    time.sleep(1)\n",
+    "test": {
+      "id": "month-end",
+      "title": "Keeps the time it was set to and rolls from 28 Feb into 1 March 2027",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=0 2027-02-28 23:59:5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=1 2027-03-01 00:00:0",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (7 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:15:39.999Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCF85063A.pdf",
+      "https://cms.soldered.com/products/333051/media/333051_pinout-png_684fcc.svg"
+    ]
+  }
+}

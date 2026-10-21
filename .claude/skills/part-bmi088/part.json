@@ -1,0 +1,273 @@
+{
+  "type": "custom-bmi088",
+  "name": "BMI088 6-axis IMU (accelerometer + gyroscope)",
+  "mpn": "BMI088",
+  "category": "sensor",
+  "description": "Bosch Sensortec high-performance 6-axis IMU: a 16-bit 3-axis accelerometer (±3/6/12/24 g) and a 16-bit 3-axis gyroscope (±125 to ±2000 °/s) as two separate I2C devices in one package, plus a die temperature sensor. Sold as: Seeed Studio Grove - 6-Axis Accelerometer&Gyroscope (BMI088) (101020584; 4-pin Grove I2C connector GND, VCC, SDA, SCL; XC6206 3.0 V regulator and MOSFET level shifters, works from 3.3 V or 5 V), accelerometer at I2C 0x19 and gyroscope at 0x69 (0x18 / 0x68 with the AD0 / AD1 pads cut over).",
+  "eli5": "Feels which way is down and how fast it is turning, very steadily, so a robot or drone knows its tilt and spin.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove black wire)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3–5 V into the on-board 3.0 V regulator (Grove red wire)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (Grove white wire); level-shifted and pulled up on the board",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (Grove yellow wire); level-shifted and pulled up on the board",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 6,
+  "i2cAddress": 25,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi088-ds001.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "Seeed Grove 6-Axis Accelerometer Gyroscope BMI088 101020584",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "It is two I2C devices: the accelerometer answers at 0x19 and the gyroscope at 0x69 (an I2C scan shows both). Cutting and bridging the AD0 / AD1 pads on the back moves them to 0x18 / 0x68.",
+    "The accelerometer starts in suspend mode and reads zero until you write 0x00 to ACC_PWR_CONF (0x7C), wait 1 ms, then 0x04 to ACC_PWR_CTRL (0x7D). The gyroscope starts in normal mode.",
+    "Data is little-endian two's complement: accel X/Y/Z at 0x12-0x17 (default ±6 g: g = raw × 6 / 32768), gyro X/Y/Z at 0x02-0x07 of the gyro address (default ±2000 °/s: 16.384 LSB per °/s).",
+    "The board has a Grove connector, not header pins: use a Grove-to-female-jumper cable to reach the breadboard. INT1-INT4 are only bare pads on the far edge.",
+    "Temperature (0x22-0x23 of the accelerometer) is the die temperature: 11 bits, 23 °C + raw × 0.125, updated every 1.28 s, and only while the accelerometer is on."
+  ],
+  "keywords": [
+    "bmi088",
+    "grove",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "6dof",
+    "6-axis",
+    "bosch",
+    "drone"
+  ],
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi088-ds001.pdf",
+    "https://wiki.seeedstudio.com/Grove-6-Axis_Accelerometer&Gyroscope_BMI088/",
+    "https://files.seeedstudio.com/wiki/Grove-6-Axis_Accelerometer-Gyroscope-BMI088/img/pin_out.jpg",
+    "https://files.seeedstudio.com/wiki/Grove-6-Axis_Accelerometer-Gyroscope-BMI088/img/pin_out_back.jpg",
+    "https://github.com/Seeed-Studio/Grove_6Axis_Accelerometer_And_Gyroscope_BMI088"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Acceleration Z",
+    "unit": "g",
+    "min": -5.99,
+    "max": 5.99,
+    "default": 1,
+    "registers": {
+      "0x00": 30,
+      "0x41": 1,
+      "0x40": 168,
+      "0x7C": 3,
+      "0x7D": 0
+    },
+    "controls": [
+      {
+        "key": "ax",
+        "quantity": "Acceleration X",
+        "unit": "g",
+        "min": -5.99,
+        "max": 5.99,
+        "default": 0
+      },
+      {
+        "key": "ay",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -5.99,
+        "max": 5.99,
+        "default": 0
+      },
+      {
+        "key": "gx",
+        "quantity": "Rotation rate X",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Rotation rate Y",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Rotation rate Z",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "scale": 0.00018310546875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax"
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 0.00018310546875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay"
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.00018310546875,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x22",
+        "bytes": 2,
+        "scale": 0.00390625,
+        "offset": 23,
+        "signed": true,
+        "control": "temp"
+      }
+    ],
+    "subDevices": [
+      {
+        "i2cAddress": 105,
+        "registers": {
+          "0x00": 15,
+          "0x0F": 0,
+          "0x10": 128,
+          "0x11": 0
+        },
+        "measures": [
+          {
+            "reg": "0x02",
+            "bytes": 2,
+            "scale": 0.06103515625,
+            "signed": true,
+            "littleEndian": true,
+            "control": "gx"
+          },
+          {
+            "reg": "0x04",
+            "bytes": 2,
+            "scale": 0.06103515625,
+            "signed": true,
+            "littleEndian": true,
+            "control": "gy"
+          },
+          {
+            "reg": "0x06",
+            "bytes": 2,
+            "scale": 0.06103515625,
+            "signed": true,
+            "littleEndian": true,
+            "control": "gz"
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmi088.py",
+    "code": "# BMI088 6-axis IMU (Bosch Sensortec BMI088), MicroPython I2C driver.\n# Written from the datasheet BST-BMI088-DS001 (rev 1.9). The package holds two chips with\n# their own I2C addresses and register maps:\n#   accelerometer 0x18 (SDO1 low) / 0x19 (SDO1 high): ACC_CHIP_ID 0x00 = 0x1E, data 0x12-0x17,\n#     temperature 0x22-0x23, ACC_RANGE 0x41, ACC_PWR_CONF 0x7C, ACC_PWR_CTRL 0x7D.\n#     After power-up it is in SUSPEND mode and must be switched on (ACC_PWR_CONF = 0x00, ACC_PWR_CTRL = 0x04).\n#   gyroscope 0x68 (SDO2 low) / 0x69 (SDO2 high): GYRO_CHIP_ID 0x00 = 0x0F, data 0x02-0x07,\n#     GYRO_RANGE 0x0F. It starts in normal mode.\n# All axis data is 16-bit two's complement, LSB first.\nimport time\n\n_ACC_CHIP_ID = 0x00\n_ACC_DATA = 0x12\n_ACC_TEMP = 0x22\n_ACC_CONF = 0x40\n_ACC_RANGE = 0x41\n_ACC_PWR_CONF = 0x7C\n_ACC_PWR_CTRL = 0x7D\n\n_GYR_CHIP_ID = 0x00\n_GYR_DATA = 0x02\n_GYR_RANGE = 0x0F\n_GYR_LPM1 = 0x11\n\n# ACC_RANGE code: full scale = 1.5 * 2^(code+1) g  ->  3, 6, 12, 24 g\n_ACC = {3: 0x00, 6: 0x01, 12: 0x02, 24: 0x03}\n# GYRO_RANGE code -> LSB per deg/s (datasheet table 5.5.5)\n_GYR = {2000: (0x00, 16.384), 1000: (0x01, 32.768), 500: (0x02, 65.536), 250: (0x03, 131.072), 125: (0x04, 262.144)}\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass BMI088:\n    def __init__(self, i2c, acc_addr=0x19, gyro_addr=0x69, accel_range=6, gyro_range=2000):\n        # Seeed Grove BMI088: AD0/AD1 pads default to 0x19 (accel) and 0x69 (gyro).\n        self.i2c = i2c\n        self.acc = acc_addr\n        self.gyr = gyro_addr\n        time.sleep_ms(2)  # accelerometer boot time after power-up: up to 1 ms\n        cid = self._r(self.acc, _ACC_CHIP_ID, 1)[0]\n        if cid != 0x1E:\n            raise OSError('BMI088 accelerometer not found at 0x%02X (id 0x%02X)' % (acc_addr, cid))\n        cid = self._r(self.gyr, _GYR_CHIP_ID, 1)[0]\n        if cid != 0x0F:\n            raise OSError('BMI088 gyroscope not found at 0x%02X (id 0x%02X)' % (gyro_addr, cid))\n        # Accelerometer: leave suspend mode, then switch it (and the temperature sensor) on.\n        # Writes in suspend mode need >= 1000 us between them; then wait 450 us after enabling.\n        self._w(self.acc, _ACC_PWR_CONF, 0x00)\n        time.sleep_ms(2)\n        self._w(self.acc, _ACC_PWR_CTRL, 0x04)\n        time.sleep_ms(2)\n        code = _ACC[accel_range]\n        self._w(self.acc, _ACC_RANGE, code)\n        self._acc_g_per_lsb = 1.5 * (1 << (code + 1)) / 32768\n        # Gyroscope: make sure it is in normal mode (0x00 in GYRO_LPM1) and set the range.\n        self._w(self.gyr, _GYR_LPM1, 0x00)\n        time.sleep_ms(30)  # up to 30 ms after a power-mode change\n        code, self._gyr_lsb = _GYR[gyro_range]\n        self._w(self.gyr, _GYR_RANGE, code)\n        time.sleep_ms(10)\n\n    def _w(self, addr, reg, val):\n        self.i2c.writeto_mem(addr, reg, bytes([val]))\n\n    def _r(self, addr, reg, n):\n        return self.i2c.readfrom_mem(addr, reg, n)\n\n    def acceleration(self):\n        \"\"\"(ax, ay, az) in g, read in one burst.\"\"\"\n        d = self._r(self.acc, _ACC_DATA, 6)\n        k = self._acc_g_per_lsb\n        return tuple(_s16(d[i], d[i + 1]) * k for i in (0, 2, 4))\n\n    def gyro(self):\n        \"\"\"(gx, gy, gz) in deg/s, read in one burst.\"\"\"\n        d = self._r(self.gyr, _GYR_DATA, 6)\n        return tuple(_s16(d[i], d[i + 1]) / self._gyr_lsb for i in (0, 2, 4))\n\n    def temperature(self):\n        \"\"\"Die temperature in degC (11-bit, 0.125 degC/LSB, updated every 1.28 s).\"\"\"\n        d = self._r(self.acc, _ACC_TEMP, 2)\n        t = d[0] * 8 + (d[1] >> 5)\n        if t > 1023:\n            t -= 2048\n        return t * 0.125 + 23\n\n    def read(self):\n        return self.acceleration(), self.gyro()\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmi088 import BMI088\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nimu = BMI088(i2c)  # accel 0x19, gyro 0x69 on the Grove board\nwhile True:\n    ax, ay, az = imu.acceleration()\n    gx, gy, gz = imu.gyro()\n    print('A=%.2f,%.2f,%.2fg G=%.1f,%.1f,%.1fdps T=%.2fC' % (ax, ay, az, gx, gy, gz, imu.temperature()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ax",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ay",
+          "value": -0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": -100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,-0.25,-1.00g G=-100.0,0.0,500.0dps T=30.50C",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:07:20.407Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi088-ds001.pdf",
+      "https://wiki.seeedstudio.com/Grove-6-Axis_Accelerometer&Gyroscope_BMI088/"
+    ]
+  }
+}

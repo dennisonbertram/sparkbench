@@ -1,0 +1,109 @@
+{
+  "type": "custom-ky-033",
+  "name": "KY-033 line tracking sensor module",
+  "mpn": "KY-033",
+  "category": "sensor",
+  "description": "Reflective infrared line tracking sensor: a Vishay TCRT5000 (950 nm IR LED plus phototransistor, best at about 2.5 mm, works 0.2-15 mm) on a small board with an LM393 comparator and sensitivity trimmer. The signal pin S is HIGH over a black, light-absorbing line (or with nothing in range, module LED off) and LOW over a white, reflective surface (LED on). Runs on 3.3-5 V. Sold as: Joy-IT / Keyes KY-033 line tracking sensor module (SEN-KY033LT, black 3-pin board, header G, +V, S).",
+  "eli5": "Shines invisible light at the floor and tells your board whether it is over a black line or a white floor, so a robot can follow a track.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "G",
+      "role": "gnd",
+      "description": "Ground (pin 1)",
+      "required": true
+    },
+    {
+      "name": "+V",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (pin 2). Use 3V3 with an ESP32 or Pico: S switches up to the supply.",
+      "required": true
+    },
+    {
+      "name": "S",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Signal (pin 3), LM393 comparator output: HIGH over a black line or nothing in range, LOW over a white/reflective surface (LED on).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 25,
+  "datasheetUrl": "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+  "sources": [
+    "https://www.vishay.com/docs/83760/tcrt5000.pdf",
+    "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+    "https://sensorkit.joy-it.net/en/sensors/ky-033",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-033/KY-033.png",
+    "https://sensorkit.joy-it.net/files/files/sensors/KY-033/033-ARD.svg"
+  ],
+  "priceUsd": 1,
+  "supplierQuery": "KY-033 line tracking sensor module TCRT5000 3 pin",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the Joy-IT/Keyes board: G, +V, S. Some clones differ; check the silkscreen before wiring.",
+    "Power +V from 3V3 on an ESP32 or Pico: S switches up to the supply voltage.",
+    "S is HIGH over a black line (module LED off) and LOW over a white floor (LED on).",
+    "The LM393 output is open collector; enable the GPIO's internal pull-up (the driver does, as Joy-IT's examples do).",
+    "Mount the sensor about 2-10 mm above the floor and turn the trimmer until the LED is on over the floor and off over the line."
+  ],
+  "keywords": [
+    "ky-033",
+    "ky033",
+    "line",
+    "tracking",
+    "line follower",
+    "tcrt5000",
+    "ir",
+    "infrared",
+    "reflective",
+    "lm393",
+    "robot",
+    "hunt sensor"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "S",
+    "quantity": "Black line under sensor (S high)",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "ky033.py",
+    "code": "# KY-033 line tracking sensor module (Joy-IT / Keyes board, header G, +V, S), MicroPython driver.\n# Board: a Vishay TCRT5000 reflective sensor (IR LED + phototransistor) feeding an LM393 comparator\n# whose threshold is set by the trimmer. The comparator output is the S pin.\n#   Over a black / light-absorbing line (or nothing within range): S = HIGH, module LED off.\n#   Over a white / reflective surface:                           S = LOW,  module LED on.\n# The LM393 output is open collector, so the input pull-up is enabled here (Joy-IT's own\n# examples do the same); it is harmless if the board also has a pull-up resistor.\n# Power the module from 3.3 V on a 3.3 V board (ESP32, Pico).\nfrom machine import Pin\n\n\nclass KY033:\n    def __init__(self, s_pin, pull_up=True):\n        if isinstance(s_pin, int):\n            self.pin = Pin(s_pin, Pin.IN, Pin.PULL_UP if pull_up else None)\n        else:\n            self.pin = s_pin\n\n    def value(self):\n        \"\"\"Logic level on S: 1 = over a dark line / nothing, 0 = over a reflective surface.\"\"\"\n        return self.pin.value()\n\n    def on_line(self):\n        \"\"\"True while the sensor is over a black (light-absorbing) line.\"\"\"\n        return self.pin.value() == 1\n\n    def reflective(self):\n        \"\"\"True while the sensor is over a white / reflective surface.\"\"\"\n        return self.pin.value() == 0\n\n    def irq(self, handler, on_line=True):\n        \"\"\"Call handler(pin) when the sensor moves onto a dark line (rising edge) or,\n        with on_line=False, when it moves onto a reflective surface (falling edge).\"\"\"\n        trig = Pin.IRQ_RISING if on_line else Pin.IRQ_FALLING\n        return self.pin.irq(handler=handler, trigger=trig)\n"
+  },
+  "skill": "---\nname: part-ky-033\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the KY-033 line tracking sensor module (Vishay TCRT5000 reflective IR sensor + LM393 comparator, header G, +V, S). Use when designing, wiring, simulating or writing code for a KY-033 line follower sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# KY-033 line tracking sensor (KY-033)\n\n## Overview\nThe **KY-033** tells a robot whether it is over a dark line or a light floor. A **Vishay TCRT5000** (950 nm IR LED next to a phototransistor, best at about 2.5 mm, usable 0.2-15 mm) looks down at the surface and an **LM393 comparator** with a sensitivity trimmer turns the reflection into one digital signal. Modelled board: **Joy-IT / Keyes KY-033 line tracking sensor module (SEN-KY033LT, 3-pin header G, +V, S)**.\n- **S is HIGH over a black (light-absorbing) line** or with nothing in range; module LED off\n- **S is LOW over a white / reflective surface**; module LED on\n- Supply: **3.3-5 V**\n\n## Pinout (3-pin header, in board order)\n| Pin | Name | Function |\n|---|---|---|\n| 1 | G | Ground |\n| 2 | +V | Supply, 3.3-5 V |\n| 3 | S | Signal: 1 = black line / nothing, 0 = white / reflective |\n\nSome clones print the header differently (e.g. S, V, G from the other side): always follow the silkscreen.\n\n## Electrical limits\n- Supply 3.3-5 V. S switches up to the supply, so **power it from 3V3 on an ESP32 or Pico**.\n- Current roughly 15-25 mA, mostly the always-on IR LED (TCRT5000 LED max 60 mA).\n- TCRT5000 ambient range -25 to +85 °C.\n\n## Interface details\nPlain digital input, no protocol:\n```\nS = 1  -> over a black line, or nothing within range (LED off)\nS = 0  -> over a white / light surface a few mm away (LED on)\n```\nThe LM393 output is open collector; Joy-IT's examples enable the GPIO's internal pull-up and the driver does too.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| G | GND | GND | GND (pin 6) |\n| +V | 3V3 | 3V3(OUT) (pin 36) | 3V3 (pin 1) |\n| S | GPIO27 | GP15 | GPIO24 (pin 18) |\n\n## Using the driver\n```python\nfrom ky033 import KY033\nimport time\nsensor = KY033(27)            # GPIO wired to S\nwhile True:\n    print('On line' if sensor.on_line() else 'Off line')\n    time.sleep(0.2)\n```\n`value()` returns S, `on_line()` is True over black, `reflective()` True over white, `irq(handler)` fires on moving onto the line (`on_line=False` for moving off it).\n\n## Gotchas\n- **Height matters**: mount the sensor 2-10 mm above the floor. Too high and it always reads \"line\" (S high).\n- **Set the trimmer** so the LED is on over the floor and off over the line.\n- \"Line\" (S high) also means \"nothing there\", e.g. the robot was lifted.\n- Sunlight contains IR and can cause false readings; glossy black tape can look white. Use matte black.\n- Powered from 5 V, S can reach 5 V: too much for an ESP32/Pico pin.\n\n## Datasheet\nhttps://www.vishay.com/docs/83760/tcrt5000.pdf (TCRT5000); https://www.ti.com/lit/ds/symlink/lm393.pdf (LM393)\nModule and pin order: https://sensorkit.joy-it.net/en/sensors/ky-033 (G, +V, S).\n",
+  "example": {
+    "code": "from ky033 import KY033\nimport time\n\nsensor = KY033({S})\nwhile True:\n    print('S=%d line=%d' % (sensor.value(), sensor.on_line()))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports the black line when the sensor is over it",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "S=1 line=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:56:04.420Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+      "https://sensorkit.joy-it.net/en/sensors/ky-033",
+      "https://arduinomodules.info/ky-033-line-tracking-sensor-module/"
+    ]
+  }
+}

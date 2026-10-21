@@ -1,0 +1,111 @@
+{
+  "type": "custom-sg92r",
+  "name": "SG92R micro servo",
+  "mpn": "SG92R",
+  "category": "actuator",
+  "description": "TowerPro SG92R 9 g micro servo with POM/carbon-fibre gears and a coreless motor: turns about 180° (90° each way) to the angle set by a 50 Hz pulse of about 1–2 ms (1.5 ms = middle). 2.5 kgf·cm stall torque and 0.1 s/60° at 4.8 V, 1 µs dead band. Sold as: Adafruit Micro servo - TowerPro SG92R (product #169), a bare servo with a 3-wire lead and female 2.54 mm JR/Futaba connector (brown GND, red V+, orange PWM), with horns and screws.",
+  "eli5": "A tiny motor that turns its arm to exactly the angle your board asks for and holds it there.",
+  "refPrefix": "M",
+  "interface": "pwm",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (brown wire)",
+      "required": true
+    },
+    {
+      "name": "V+",
+      "role": "power",
+      "description": "Supply 4.8 V nominal, up to 6 V (red wire); use 5 V, not 3.3 V",
+      "required": true
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "fn": "pwm",
+      "description": "Control pulse (orange wire): 50 Hz, 1–2 ms high",
+      "required": true
+    }
+  ],
+  "vmin": 4.8,
+  "vmax": 6,
+  "currentMa": 250,
+  "datasheetUrl": "https://www.towerpro.com.tw/product/sg92r-7/",
+  "sources": [
+    "https://www.towerpro.com.tw/product/sg92r-7/",
+    "https://www.adafruit.com/product/169"
+  ],
+  "priceUsd": 6,
+  "supplierQuery": "TowerPro SG92R micro servo",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire colours: brown = GND, red = V+ (4.8 V nominal, 6 V max), orange = PWM signal. The 3.3 V signal from an ESP32 or Pico drives it fine.",
+    "Power it from 5 V (VIN/VBUS or a separate 5 V supply), never from the 3.3 V pin. Join the supply ground to the board's GND.",
+    "It draws a few hundred mA when it starts moving or is held against a load; add a 470 µF capacitor across V+ and GND if the board resets when it moves.",
+    "1–2 ms pulses may not give the full 180°. Adafruit suggests trying 0.75–2.25 ms: widen in small steps and stop if it buzzes against its end stop."
+  ],
+  "keywords": [
+    "sg92r",
+    "servo",
+    "micro servo",
+    "9g servo",
+    "carbon fiber gear",
+    "towerpro",
+    "motor",
+    "angle",
+    "pwm"
+  ],
+  "sim": {
+    "kind": "servo",
+    "inputPin": "PWM",
+    "servo": {
+      "minUs": 1000,
+      "maxUs": 2000,
+      "degrees": 180
+    }
+  },
+  "driver": {
+    "filename": "sg92r.py",
+    "code": "# TowerPro SG92R micro servo (carbon-fibre gears), MicroPython driver.\n# Datasheet / vendor: 50 Hz (20 ms) frame; 1.5 ms pulse = middle (\"0\"),\n# ~1 ms = full left (\"-90\"), ~2 ms = full right (\"+90\"). Dead band 1 us.\n# Supply 4.8 V nominal (signal is 3.3 V logic-compatible).\n# Angles here run 0..180 degrees: 0 = 1 ms (left), 90 = 1.5 ms (middle), 180 = 2 ms (right).\nfrom machine import Pin, PWM\n\nPERIOD_US = 20000  # 50 Hz frame\n\n\nclass SG92R:\n    def __init__(self, pin, min_us=1000, max_us=2000, degrees=180):\n        # 1-2 ms may not give the full 180 degrees; Adafruit suggests trying 750-2250 us.\n        # Widen in small steps and back off if the servo buzzes against its end stop.\n        self.min_us = min_us\n        self.max_us = max_us\n        self.degrees = degrees\n        self.pwm = PWM(pin if isinstance(pin, Pin) else Pin(pin), freq=50)\n        self.pwm.duty_u16(0)  # no pulse until an angle is set\n\n    def write_us(self, us):\n        us = max(self.min_us, min(self.max_us, us))\n        self.pwm.duty_u16(int(us * 65535 // PERIOD_US))\n\n    def angle(self, deg):\n        deg = max(0, min(self.degrees, deg))\n        self.write_us(self.min_us + (self.max_us - self.min_us) * deg / self.degrees)\n\n    def off(self):\n        \"\"\"Stop sending pulses: the servo goes limp and stops drawing holding current.\"\"\"\n        self.pwm.duty_u16(0)\n\n    def deinit(self):\n        self.pwm.deinit()\n"
+  },
+  "example": {
+    "code": "import time\nfrom sg92r import SG92R\n\nservo = SG92R({PWM})\nservo.angle(30)\ntime.sleep(1)\nservo.angle(135)\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "turns",
+      "title": "Turns to 30° then to 135°",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 25,
+          "max": 35,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 1000
+        },
+        {
+          "kind": "expect",
+          "what": "servo",
+          "part": "{REF}",
+          "min": 130,
+          "max": 140,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:59:45.634Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/169",
+      "https://www.towerpro.com.tw/product/sg92r-7/"
+    ]
+  }
+}

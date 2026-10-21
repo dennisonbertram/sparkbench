@@ -1,0 +1,188 @@
+{
+  "type": "custom-drv8838",
+  "name": "DRV8838 single DC motor driver",
+  "mpn": "DRV8838",
+  "category": "actuator",
+  "description": "TI DRV8838 single H-bridge motor driver with a PHASE/ENABLE interface: runs one small brushed DC motor forwards, backwards or braked from 1.8-7 V logic, motor supply 0-11 V, up to 1.8 A peak (about 1.7 A continuous on the carrier). Sold as: Pololu DRV8838 Single Brushed DC Motor Driver Carrier (#2990), 0.4 x 0.5 in 10-pin DIP-style board; logic row GND VCC EN PH SLP, motor row GND VIN O2 O1 VM.",
+  "eli5": "Lets your board spin one small motor forwards or backwards and set its speed, using a separate battery for the motor.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (logic side): shared with the microcontroller and the motor supply",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Logic supply 1.8-7 V (e.g. the microcontroller's 3V3). Sets the input thresholds; under 1.7 V the outputs switch off (UVLO)",
+      "required": true
+    },
+    {
+      "name": "EN",
+      "role": "io",
+      "description": "ENABLE: high = drive, low = brake (both outputs low). PWM it for speed (max 250 kHz). ~100 kOhm pull-down on the chip",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "PH",
+      "role": "io",
+      "description": "PHASE: direction. Low = forward (OUT1 high), high = reverse (OUT2 high). ~100 kOhm pull-down on the chip",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "SLP",
+      "role": "io",
+      "description": "nSLEEP: low = sleep, outputs off (motor coasts). 10 kOhm pull-up to VCC on the board, so it runs if left open",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Ground (motor side, printed GND): motor supply negative",
+      "required": false
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Motor supply input through the reverse-polarity MOSFET, about 1.5-11 V. Recommended motor power pin",
+      "required": false
+    },
+    {
+      "name": "O2",
+      "role": "io",
+      "description": "Motor output OUT2; connect the motor, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "O1",
+      "role": "io",
+      "description": "Motor output OUT1; connect the motor, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "VM",
+      "role": "power",
+      "description": "Motor supply after the reverse-protection MOSFET (0-11 V). Normally an output; feed power here only for very low motor voltages",
+      "required": false
+    }
+  ],
+  "vmin": 1.8,
+  "vmax": 7,
+  "currentMa": 1,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/drv8838.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "Pololu DRV8838 single brushed DC motor driver carrier 2990",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Truth table (TI datasheet Table 7-2): SLP low = coast (outputs off); EN low = brake (both outputs low); EN high with PH low = forward (OUT1 high), PH high = reverse (OUT2 high).",
+    "Speed: PWM the EN pin (up to 250 kHz; 20 kHz is silent). The motor brakes during the low part of each period.",
+    "Power the logic from VCC (1.8-7 V, e.g. the microcontroller's 3V3) and the motor from VIN (reverse-polarity protected, about 1.5-11 V). VM bypasses the protection and is normally left unconnected.",
+    "Connect the board GND to the microcontroller GND; both GND pins are the same net.",
+    "SLP has a 10 kOhm pull-up on the board, so the driver runs if SLP is left open. Drive it low only to coast or sleep.",
+    "Control inputs take at most 5.5 V (7 V absolute); never connect them to the motor supply.",
+    "No fault output: over-current (1.9 A min) and over-temperature shut the bridge off and it retries by itself. The chip gets hot above about 1 A."
+  ],
+  "keywords": [
+    "drv8838",
+    "h-bridge",
+    "motor driver",
+    "dc motor",
+    "phase enable",
+    "pololu 2990",
+    "single motor driver"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/drv8838.pdf",
+    "https://www.pololu.com/product/2990",
+    "https://a.pololu-files.com/picture/0J5751.600x480.jpg",
+    "https://www.pololu.com/file/0J807/drv8838-motor-driver-carrier-schematic.pdf"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "EN",
+      "PH",
+      "SLP"
+    ]
+  },
+  "driver": {
+    "filename": "drv8838.py",
+    "code": "# DRV8838 single brushed DC motor driver (TI DRV8838), MicroPython driver.\n# PHASE/ENABLE interface from the TI datasheet (SLVSBA4F, Table 7-2 \"DRV8838 Device Logic\"):\n#   nSLEEP = 0              -> OUT1/OUT2 Hi-Z: coast (sleep mode)\n#   nSLEEP = 1, EN = 0      -> OUT1 L, OUT2 L: brake\n#   nSLEEP = 1, PH = 0, EN = 1 -> OUT1 H, OUT2 L: forward\n#   nSLEEP = 1, PH = 1, EN = 1 -> OUT1 L, OUT2 H: reverse\n# Speed: PWM on EN (0-250 kHz allowed); while EN is low the outputs brake (both low).\n# Inputs: VIH <= 0.5 x VCC, VIL >= 0.25 x VCC, max 5.5 V, so 3.3 V GPIOs work with VCC = 3.3 V or 5 V.\n# PH and EN have ~100 kOhm pull-downs on the chip. On the Pololu carrier SLP has a 10 kOhm pull-up to VCC,\n# so the driver is awake unless SLP is driven low. Wake time after nSLEEP rises: tWAKE <= 30 us.\nfrom machine import Pin, PWM\nimport time\n\n\nclass DRV8838:\n    def __init__(self, ph, en, slp=None, freq=20000):\n        \"\"\"ph, en: GPIO numbers wired to PH and EN.\n        slp: GPIO number wired to SLP (nSLEEP), or None to leave it on the board's pull-up (always awake).\n        freq: PWM frequency on EN for speed control (20 kHz is above hearing; datasheet max 250 kHz).\"\"\"\n        self._en_no = en\n        self._freq = freq\n        self._pwm = None\n        self.ph = Pin(ph, Pin.OUT, value=0)\n        self.en = Pin(en, Pin.OUT, value=0)\n        self.slp = None\n        if slp is not None:\n            self.slp = Pin(slp, Pin.OUT, value=0)\n            self.wake()\n\n    def wake(self):\n        \"\"\"Drive nSLEEP high and wait tWAKE (30 us max).\"\"\"\n        if self.slp is not None:\n            self.slp.value(1)\n            time.sleep_us(30)\n\n    def sleep(self):\n        \"\"\"nSLEEP low: outputs Hi-Z (the motor coasts), chip draws nanoamps.\n        On the Pololu carrier the 10 kOhm pull-up then draws VCC / 10 kOhm.\"\"\"\n        if self.slp is not None:\n            self.slp.value(0)\n\n    def _enable(self, speed):\n        speed = max(0, min(100, speed))\n        if speed > 0 and self.slp is not None and not self.slp.value():\n            self.wake()  # coming back from coast()\n        if self._pwm is not None:\n            self._pwm.deinit()\n            self._pwm = None\n            self.en = Pin(self._en_no, Pin.OUT)\n        if speed >= 100:\n            self.en.value(1)\n        elif speed <= 0:\n            self.en.value(0)\n        else:\n            # EN high = drive, EN low = brake, so the duty cycle is the speed.\n            self._pwm = PWM(Pin(self._en_no), freq=self._freq, duty_u16=speed * 65535 // 100)\n\n    def forward(self, speed=100):\n        \"\"\"PH low, EN high (or PWM): OUT1 high, OUT2 low. speed 0-100 %.\"\"\"\n        self.ph.value(0)\n        self._enable(speed)\n\n    def reverse(self, speed=100):\n        \"\"\"PH high, EN high (or PWM): OUT1 low, OUT2 high. speed 0-100 %.\"\"\"\n        self.ph.value(1)\n        self._enable(speed)\n\n    def brake(self):\n        \"\"\"EN low: both outputs low, the motor is shorted and stops quickly.\"\"\"\n        self._enable(0)\n\n    def coast(self):\n        \"\"\"Outputs Hi-Z so the motor spins down freely. Needs SLP wired to a GPIO.\"\"\"\n        self._enable(0)\n        self.sleep()\n\n    def stop(self):\n        self.brake()\n"
+  },
+  "example": {
+    "code": "import time\nfrom drv8838 import DRV8838\n\n# PH sets direction, EN switches the bridge on. SLP is left open: the board's pull-up keeps the chip awake.\nmotor = DRV8838({PH}, {EN})\nwhile True:\n    motor.forward()\n    print('motor forward')\n    time.sleep(1)\n    motor.reverse()\n    print('motor reverse')\n    time.sleep(1)\n    motor.brake()\n    print('motor braking')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Runs the motor forward, then reverse, then brakes",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "EN",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PH",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "PH",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor reverse",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "EN",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor braking",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:59:52.898Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/drv8838.pdf",
+      "https://www.pololu.com/product/2990",
+      "https://a.pololu-files.com/picture/0J5752.1200.jpg"
+    ]
+  }
+}

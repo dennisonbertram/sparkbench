@@ -1,0 +1,111 @@
+{
+  "type": "custom-ga1a12s202",
+  "name": "GA1A12S202 log-scale analog light sensor",
+  "mpn": "GA1A1S202WP",
+  "category": "sensor",
+  "description": "Sharp GA1A1S202WP OPIC light detector with an on-chip log amplifier: its output current is Io = 10 x log10(lux) uA (20 uA at 100 lx, 30 uA at 1000 lx) over 3 to 55,000 lx, peak sensitivity 555 nm. The breakout's 68 kOhm load turns it into 0.68 V per decade of light (lux = 10^(V/0.68)), reaching about 3.2 V in full sunlight. Sold as: Adafruit GA1A12S202 Log-scale Analog Light Sensor (product ID 1384), 3-pin header VCC, OUT, GND.",
+  "eli5": "A light sensor that works like your eye: it notices small changes in a dark room but does not get dazzled by sunshine. Every time the light gets 10 times brighter, the voltage on OUT goes up by 0.68 volts.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply (header pin 1): 2.3 V to 5 V. The chip is characterised at 2.3-3.2 V (abs max 7 V); Adafruit rates the board 2.3-6 V. 3.3 V is the usual choice.",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (header pin 2): V = 10 uA x log10(lux) x 68 kOhm = 0.68 V per decade, so lux = 10^(V/0.68). About 0.32 V at 3 lx up to about 3.2 V at 55,000 lx.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (header pin 3); bottom of the on-board 68 kOhm load resistor.",
+      "required": true
+    }
+  ],
+  "vmin": 2.3,
+  "vmax": 5,
+  "currentMa": 0.2,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/GA1A1S202WP_Spec.pdf",
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/GA1A1S202WP_Spec.pdf",
+    "https://www.adafruit.com/product/1384",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20GA1A1S202WP.fzpz"
+  ],
+  "priceUsd": 3.95,
+  "supplierQuery": "GA1A12S202 log-scale analog light sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (Adafruit Fritzing part, silkscreen left to right): pin 1 VCC, pin 2 OUT, pin 3 GND.",
+    "Illuminance: lux = 10^(V(OUT)/0.68). The datasheet gives Io = 10 x log10(Ev) uA and the board has a 68 kOhm load, so 0.68 V per decade (10 lx = 0.68 V, 1000 lx = 2.04 V).",
+    "Power from 3.3 V on an ESP32 or Pico (the datasheet characterises 2.3-3.2 V); OUT stays below about 3.2 V even in sunlight, so a 5 V supply is also safe for a 3.3 V ADC.",
+    "Readings below about 0.3 V (3 lx) are outside the specified range; treat them as dark.",
+    "On the ESP32 wire OUT to an ADC1 pin (GPIO32-39) and use 11 dB attenuation with read_uv()."
+  ],
+  "keywords": [
+    "ga1a12s202",
+    "ga1a1s202wp",
+    "log light sensor",
+    "logarithmic",
+    "ambient light",
+    "light sensor",
+    "lux",
+    "analog",
+    "adafruit",
+    "sharp"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "OUT",
+    "quantity": "Light level (log10 of lux)",
+    "unit": "log10 lx",
+    "min": 0,
+    "max": 4.7,
+    "default": 2,
+    "vAtMin": 0,
+    "vAtMax": 3.196,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "ga1a12s202.py",
+    "code": "# GA1A12S202 log-scale analog light sensor (Adafruit #1384, Sharp GA1A1S202WP), MicroPython driver.\n# The Sharp GA1A1S202WP is a photodiode + current amp + LOG AMP that sources an output current\n# proportional to the logarithm of illuminance. Datasheet (Nov 2007) section 3.3, note *2:\n#     Io = 10 x log10(Ev)  [uA]     (typ: 20 uA at 100 lx, 30 uA at 1000 lx; range 3..55000 lx)\n# The Adafruit breakout puts a 68 kOhm resistor from OUT to GND, so\n#     V(OUT) = Io x 68 kOhm = 0.68 V x log10(Ev)   ->   Ev = 10 ** (V / 0.68)\n# i.e. 0.68 V per decade of light: 10 lx = 0.68 V, 100 lx = 1.36 V, 1000 lx = 2.04 V, 10000 lx = 2.72 V.\nfrom machine import ADC, Pin\n\n\nclass GA1A12S202:\n    LOAD_OHMS = 68000.0  # Adafruit breakout load resistor, OUT to GND\n    UA_PER_DECADE = 10.0  # datasheet: Io = 10 x log10(Ev) uA\n\n    def __init__(self, pin, samples=16, vref=3.3, load_ohms=LOAD_OHMS):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n        self.load_ohms = load_ohms\n\n    def volts(self):\n        \"\"\"Average several ADC samples and return the OUT voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def microamps(self):\n        \"\"\"Output current Io in uA (voltage across the 68 kOhm load).\"\"\"\n        return self.volts() / self.load_ohms * 1000000\n\n    def log_lux(self):\n        \"\"\"log10 of the illuminance: Io / 10 uA (datasheet Io = 10 x log10(Ev) uA).\"\"\"\n        return self.microamps() / self.UA_PER_DECADE\n\n    def lux(self):\n        \"\"\"Illuminance in lux: Ev = 10 ** (Io / 10 uA) = 10 ** (V / 0.68 V).\"\"\"\n        return 10 ** self.log_lux()\n"
+  },
+  "skill": "---\nname: part-ga1a12s202\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the GA1A12S202 log-scale analog light sensor (Sharp GA1A1S202WP on the Adafruit #1384 breakout). Use when designing, wiring, simulating or writing code for a GA1A12S202 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# GA1A12S202 log-scale analog light sensor (Sharp GA1A1S202WP)\n\n## Overview\nThe **GA1A1S202WP** (Sharp OPIC light detector) combines a photodiode, a current amplifier and a **log amplifier**: it sources an output current proportional to the **logarithm** of illuminance, with a human-eye response (peak 555 nm). Hobbyists buy it as the **Adafruit GA1A12S202 Log-scale Analog Light Sensor (product ID 1384)**, which adds a **68 kΩ load resistor** from OUT to GND so the current becomes a voltage.\n- Output current (Vcc = 2.9 V, illuminant A): **Io = 10 × log10(Ev) µA** — typ 20 µA at 100 lx (16–24), 30 µA at 1000 lx (27–33), ≤ 1 µA in the dark\n- On the breakout: **V(OUT) = Io × 68 kΩ = 0.68 V × log10(lux)**, so **lux = 10^(V / 0.68)**\n- Dynamic range **3 to 55 000 lx** (≈ 0.32 V to ≈ 3.2 V): it is hard to saturate, works indoors and outdoors\n- No calibration needed between boards (the log amp is on-chip); about ±0.25 %/°C\n\n## Pinout (Adafruit #1384, header left to right)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | VCC | Supply, 2.3 V to 5 V (datasheet characterises 2.3–3.2 V; abs max 7 V) |\n| 2 | OUT | Analog output, 0.68 V per decade of lux (68 kΩ to GND on board) |\n| 3 | GND | Ground |\n\nSource: Adafruit Fritzing library part \"Adafruit GA1A1S202WP\" (breadboard silkscreen VCC, OUT, GND left to right) and the Adafruit product page (\"connect the Vin to 2.3-6VDC, Gnd to ground and measure the analog output on OUT\").\n\n## Electrical limits\n- Supply: datasheet recommended 2.3–3.2 V, absolute max −0.3 to +7.0 V. Adafruit rates the board for 2.3–6 V; 3.3 V and 5 V rails both work.\n- Output current 1 mA absolute max (the 68 kΩ load keeps it ~50 µA).\n- Supply current 70 µA typ, 150 µA max (at 1000 lx), plus the output current.\n- Operating temperature −40 to +85 °C.\n- OUT stays below about 3.2 V even in full sunlight, so it is safe for a 3.3 V ADC on either supply.\n\n## Interface details\n```\nIo(µA) = V(OUT) / 68 kΩ × 10^6\nlog10(Ev) = Io / 10 µA                 (datasheet: Io = 10 × log(Ev) µA)\nEv(lx)  = 10 ^ (V(OUT) / 0.68)\n```\nExamples: 0.68 V = 10 lx, 1.36 V = 100 lx, 2.04 V = 1000 lx, 2.72 V = 10 000 lx, 3.2 V ≈ 50 000 lx.\nBecause the response is logarithmic, a fixed ADC error is a fixed **percentage** error in lux: 1 mV ≈ 0.34 %.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| OUT | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC input (e.g. MCP3008 CH0 or ADS1115 A0) |\n| GND | GND | GND | GND |\n\nThe Raspberry Pi 4 has no built-in ADC. Keep the sensor's leads short or add 0.01 µF across VCC/GND (datasheet note 7-1) if readings are noisy.\n\n## Using the driver\n```python\nfrom ga1a12s202 import GA1A12S202\nimport time\nsensor = GA1A12S202(26)        # GPIO number of the ADC pin OUT is wired to\nwhile True:\n    print('L=%.0flx' % sensor.lux())\n    time.sleep(1)\n```\nThe driver averages 16 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535 (pass `vref=` if your rail differs). `volts()`, `microamps()` and `log_lux()` give the raw quantities; `log_lux()` (decades) is handy for brightness thresholds and dimming curves.\n\n## Gotchas\n- **It is logarithmic:** do not scale the voltage linearly to lux. Each 0.68 V step is ×10 in light.\n- **Below 3 lx** the output is outside the specified range (dark current ≤ 1 µA ≈ 68 mV); treat readings under ~0.3 V as \"dark\".\n- **ESP32 ADC:** use ADC1 pins (ADC2 does not work while Wi-Fi is on) and 11 dB attenuation; uncalibrated `read()` is non-linear, so prefer `read_uv()`.\n- **Light source:** specified with a tungsten lamp (CIE illuminant A); white LEDs / fluorescent read within ±2 µA (about ±0.2 decade worst case).\n- **Discontinued at Adafruit** (successors: VEML7700, ALS-PT19), but boards are still in circulation.\n\n## Datasheet\nhttps://cdn-shop.adafruit.com/datasheets/GA1A1S202WP_Spec.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://cdn-shop.adafruit.com/datasheets/GA1A1S202WP_Spec.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from ga1a12s202 import GA1A12S202\nimport time\n\nsensor = GA1A12S202({OUT})\nwhile True:\n    print('L=%.0flx' % sensor.lux())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the illuminance set on the slider (3 decades = 1000 lx)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L=1000lx",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:55:28.378Z",
+    "verifiedSources": [
+      "https://learn.adafruit.com/adafruit-ga1a12s202-log-scale-analog-light-sensor",
+      "https://www.adafruit.com/product/1384",
+      "https://cdn-learn.adafruit.com/assets/assets/000/009/086/large1024/light_1384_LRG.jpg"
+    ]
+  }
+}

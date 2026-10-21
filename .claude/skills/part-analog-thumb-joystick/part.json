@@ -1,0 +1,160 @@
+{
+  "type": "custom-analog-thumb-joystick",
+  "name": "Analog thumb joystick with select button",
+  "mpn": "Adafruit 512",
+  "category": "sensor",
+  "description": "Analog 2-axis thumb joystick (PSP/Xbox style): two 10 kΩ potentiometers whose wipers output 0 V to Vcc (about Vcc/2 at rest) and a select switch that shorts Sel to GND when the stick is pressed. Runs on any supply up to 5 V (use 3.3 V with a 3.3 V board), about 1 mA at 5 V. Sold as: Adafruit Analog 2-axis Thumb Joystick with Select Button + Breakout Board (product 512), 5-pin header GND, Sel, Yout, Xout, Vcc.",
+  "eli5": "A little thumb stick like on a game controller. It tells your board how far you push it left/right and up/down, and whether you click it down.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground for both pots and the select switch (header pin 1)",
+      "required": true
+    },
+    {
+      "name": "Sel",
+      "role": "io",
+      "description": "Select switch, shorts to GND while the stick is pressed; no pull-up on the board, use the GPIO's internal pull-up (pin 2)",
+      "required": true
+    },
+    {
+      "name": "Yout",
+      "role": "io",
+      "fn": "adc",
+      "description": "Y-axis wiper voltage, 0 V to Vcc, about Vcc/2 at rest (pin 3)",
+      "required": true
+    },
+    {
+      "name": "Xout",
+      "role": "io",
+      "fn": "adc",
+      "description": "X-axis wiper voltage, 0 V to Vcc, about Vcc/2 at rest (pin 4)",
+      "required": true
+    },
+    {
+      "name": "Vcc",
+      "role": "power",
+      "description": "Supply for both pots, up to 5 V (pin 5). With a 3.3 V board connect it to 3V3, or the outputs reach 5 V.",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "datasheetUrl": "https://www.adafruit.com/product/512",
+  "sources": [
+    "https://www.adafruit.com/product/512",
+    "https://github.com/adafruit/2-axis-joystick-breakout-board-with-mounting-holes",
+    "https://raw.githubusercontent.com/adafruit/2-axis-joystick-breakout-board-with-mounting-holes/master/joystick.brd",
+    "https://raw.githubusercontent.com/adafruit/2-axis-joystick-breakout-board-with-mounting-holes/master/joystick.sch"
+  ],
+  "priceUsd": 5.95,
+  "supplierQuery": "Adafruit 512 analog 2-axis thumb joystick select button breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header pin 1 is GND: GND, Sel, Yout, Xout, Vcc (read left to right on the silkscreen it is Vcc, Xout, Yout, Sel, GND).",
+    "The stick ships loose: solder it to the breakout, then solder the 5-pin header.",
+    "On an ESP32 or Pico connect Vcc to 3V3: the wipers swing all the way to the supply, and 5 V on an ADC pin can damage it.",
+    "Position (%) = 100 × Vout / Vcc; at rest each axis sits near 50 % (1.65 V at 3.3 V). Use a small dead zone.",
+    "Sel shorts to GND with no pull-up fitted: enable the GPIO's internal pull-up. It reads 0 while pressed.",
+    "On the ESP32 wire Xout and Yout to ADC1 pins (GPIO32-39); ADC2 stops working when Wi-Fi is on."
+  ],
+  "keywords": [
+    "joystick",
+    "thumb joystick",
+    "thumbstick",
+    "adafruit 512",
+    "analog",
+    "xy",
+    "potentiometer",
+    "select button"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "Xout",
+    "quantity": "X position",
+    "unit": "%",
+    "min": 0,
+    "max": 100,
+    "default": 50,
+    "vAtMin": 0,
+    "vAtMax": 3.3,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Y position",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "analogOutputs": [
+      {
+        "pin": "Yout",
+        "control": "y",
+        "vAtMin": 0,
+        "vAtMax": 3.3
+      }
+    ],
+    "digitalOutputs": [
+      {
+        "pin": "Sel",
+        "control": "pressed",
+        "label": "Select pressed",
+        "activeHigh": false
+      }
+    ]
+  },
+  "driver": {
+    "filename": "thumbjoystick.py",
+    "code": "# Adafruit analog 2-axis thumb joystick with select button (product 512), MicroPython driver.\n# The breakout holds no chip: two 10 kOhm potentiometers (ends on Vcc and GND, wipers on\n# Xout / Yout) and a select switch that shorts Sel to GND when the stick is pressed\n# (no pull-up on the board). Each wiper voltage is ratiometric:\n#   Vout = position * Vcc   (about Vcc / 2 at rest)\n# so position(%) = 100 * Vout / Vcc. Power the board from the same 3.3 V rail as the ADC.\nfrom machine import ADC, Pin\n\n\nclass ThumbJoystick:\n    def __init__(self, xout, yout, sel=None, vcc=3.3, samples=16):\n        self.x_adc = self._adc(xout)\n        self.y_adc = self._adc(yout)\n        # Sel only shorts to GND when pressed: use the MCU's internal pull-up.\n        self.sel = Pin(sel, Pin.IN, Pin.PULL_UP) if sel is not None else None\n        self.vcc = vcc  # voltage on the board's Vcc pin (3.3 V with a 3.3 V MCU)\n        self.samples = samples\n\n    @staticmethod\n    def _adc(pin):\n        adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        return adc\n\n    def _fraction(self, adc):\n        \"\"\"Average samples; return the wiper voltage as a fraction of Vcc (0.0-1.0).\"\"\"\n        total = 0\n        if hasattr(adc, 'read_uv'):\n            # ESP32: calibrated microvolts, divide by the supply voltage.\n            for _ in range(self.samples):\n                total += adc.read_uv() / 1e6 / self.vcc\n        else:\n            # Pico etc.: the ADC reference is the 3.3 V rail, so the raw reading is ratiometric.\n            for _ in range(self.samples):\n                total += adc.read_u16() / 65535\n        f = total / self.samples\n        return 0.0 if f < 0 else 1.0 if f > 1 else f\n\n    def x(self):\n        \"\"\"Xout position in % of travel (0-100, about 50 at rest).\"\"\"\n        return 100 * self._fraction(self.x_adc)\n\n    def y(self):\n        \"\"\"Yout position in % of travel (0-100, about 50 at rest).\"\"\"\n        return 100 * self._fraction(self.y_adc)\n\n    def xy_centered(self, deadzone=5):\n        \"\"\"(x, y) from -100 to +100 with 0 at rest; values within deadzone become 0.\"\"\"\n        out = []\n        for v in (self.x(), self.y()):\n            c = (v - 50) * 2\n            out.append(0 if abs(c) < deadzone else c)\n        return tuple(out)\n\n    def pressed(self):\n        \"\"\"True while the stick is pushed down (Sel shorted to GND).\"\"\"\n        return self.sel is not None and self.sel.value() == 0\n"
+  },
+  "example": {
+    "code": "from thumbjoystick import ThumbJoystick\nimport time\n\njs = ThumbJoystick({XOUT}, {YOUT}, {SEL})\nwhile True:\n    print('X=%d Y=%d SEL=%d' % (round(js.x()), round(js.y()), js.pressed()))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the stick position and select button set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 70
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": 20
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressed",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=70 Y=20 SEL=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (4 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:57:44.778Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/512",
+      "https://cdn-shop.adafruit.com/970x728/512-05.jpg",
+      "https://github.com/adafruit/2-axis-joystick-breakout-board-with-mounting-holes"
+    ]
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "type": "custom-lps25hb",
+  "name": "LPS25HB barometric pressure sensor",
+  "mpn": "LPS25HB",
+  "category": "sensor",
+  "description": "STMicroelectronics MEMS absolute pressure sensor, 260-1260 hPa with 24-bit output (4096 LSB/hPa, ±0.1 hPa relative, ±1 hPa absolute accuracy) and a built-in 16-bit temperature sensor (480 LSB/°C, T = 42.5 + raw/480), I2C or SPI; the chip runs on 1.7-3.6 V. Sold as: Adafruit LPS25 Pressure Sensor - STEMMA QT / Qwiic (#4530), 8-pin header VIN, 3Vo, GND, SCK, SDO, SDI, CS, INT (SCK = I2C SCL and SDI = I2C SDA, modelled as pins SCL and SDA) with a 3.3 V regulator and I2C level shifting for 3-5 V, I2C address 0x5D (0x5C with SDO tied to GND).",
+  "eli5": "Feels the weight of the air above it, so your board can tell the weather is changing or how high up it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V (on-board 3.3 V regulator feeds the chip; use the same voltage as your board's logic)",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 100 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, printed SCK on the board (it doubles as the SPI clock); 10 kΩ pull-up and level shifting on the board",
+      "required": true
+    },
+    {
+      "name": "SDO",
+      "role": "io",
+      "description": "I2C address select (SA0): open = 0x5D, tie to GND for 0x5C; SPI data out. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, printed SDI on the board (it doubles as SPI data in); 10 kΩ pull-up and level shifting on the board",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "SPI chip select; leave unconnected for I2C (pulled high on the board)",
+      "required": false
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt / data-ready output (INT_DRDY), optional",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 0.03,
+  "i2cAddress": 93,
+  "datasheetUrl": "https://www.st.com/resource/en/datasheet/lps25hb.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Adafruit LPS25 pressure sensor STEMMA QT LPS25HB 4530",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "sources": [
+    "https://www.st.com/resource/en/datasheet/lps25hb.pdf",
+    "https://cdn.components.ru/media/PDF/2280851.pdf",
+    "https://www.pololu.com/file/0J761/LPS25H.pdf",
+    "https://learn.adafruit.com/adafruit-lps25-pressure-sensor/pinouts",
+    "https://github.com/adafruit/Fritzing-Library/raw/master/parts/Adafruit-LPS2X.fzpz",
+    "https://www.adafruit.com/product/4530"
+  ],
+  "buildNotes": [
+    "The chip powers up in power-down mode (CTRL_REG1 0x20 = 0x00): set PD (bit 7) and an output data rate, e.g. 0xA0 for continuous 7 Hz.",
+    "Check WHO_AM_I (0x0F) = 0xBD. Wait for STATUS_REG (0x27) bits P_DA (bit 1) and T_DA (bit 0), then burst-read 5 bytes from 0x28 with the auto-increment bit set (register address 0xA8): PRESS_OUT_XL, _L, _H, TEMP_OUT_L, _H (low byte first, two's complement).",
+    "Pressure = raw24 / 4096 hPa; temperature = 42.5 + raw16 / 480 °C.",
+    "Over I2C the register address only auto-increments when its top bit is 1; reading 5 bytes from plain 0x28 returns the same register five times.",
+    "The silkscreen uses SPI names: SCK is the I2C clock (SCL) and SDI is the I2C data line (SDA). Leave CS unconnected for I2C.",
+    "Default address 0x5D; tie SDO to GND for 0x5C (e.g. for a second sensor). 3Vo is the regulator's output: leave it unconnected."
+  ],
+  "keywords": [
+    "lps25hb",
+    "lps25",
+    "pressure",
+    "barometer",
+    "barometric",
+    "altitude",
+    "temperature",
+    "st"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Air pressure",
+    "unit": "hPa",
+    "min": 260,
+    "max": 1260,
+    "default": 1013,
+    "controls": [
+      {
+        "key": "temperature",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -25,
+        "max": 105,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x0F": 189,
+      "0x10": 15,
+      "0x20": 0,
+      "0x21": 0,
+      "0x27": 3
+    },
+    "measures": [
+      {
+        "reg": "0x28",
+        "bytes": 3,
+        "scale": 0.000244140625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x2B",
+        "bytes": 2,
+        "scale": 0.0020833333333333333,
+        "offset": 42.5,
+        "signed": true,
+        "littleEndian": true,
+        "control": "temperature"
+      }
+    ],
+    "autoIncrementBit7": true
+  },
+  "driver": {
+    "filename": "lps25hb.py",
+    "code": "# LPS25HB barometric pressure + temperature sensor (STMicroelectronics), MicroPython driver.\n# Written from the ST datasheet DocID027112 Rev 4:\n#   WHO_AM_I 0x0F = 0xBD, CTRL_REG1 0x20 (PD bit 7, ODR[2:0] bits 6:4), STATUS_REG 0x27 (P_DA bit 1, T_DA bit 0),\n#   PRESS_OUT_XL/L/H 0x28-0x2A: 24-bit two's complement, 4096 LSB/hPa,\n#   TEMP_OUT_L/H 0x2B-0x2C: 16-bit two's complement, 480 LSB/degC, T = 42.5 + TEMP_OUT / 480\n#   (offset from ST's LPS25H datasheet and ST's lps25hb driver).\n# I2C multi-byte reads only auto-increment when bit 7 of the register address (SUB(7)) is 1,\n# so the 5-byte burst is read from 0x28 | 0x80 = 0xA8.\nimport time\n\n_WHO_AM_I = 0x0F\n_CTRL_REG1 = 0x20\n_STATUS = 0x27\n_PRESS_OUT_XL = 0x28\n_AUTO_INC = 0x80\n_CHIP_ID = 0xBD\n\n# ODR codes for CTRL_REG1 bits 6:4 (Table 20): 1, 7, 12.5, 25 Hz.\n_ODR = {1: 0b001, 7: 0b010, 12: 0b011, 25: 0b100}\n\n\nclass LPS25HB:\n    def __init__(self, i2c, addr=0x5D, rate=7):\n        \"\"\"addr 0x5D with SA0/SDO high (Adafruit default), 0x5C with SDO tied to GND.\n        rate: 1, 7, 12 (12.5 Hz) or 25 samples per second.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        self.period_ms = 1000 // rate\n        who = self.i2c.readfrom_mem(addr, _WHO_AM_I, 1)[0]\n        if who != _CHIP_ID:\n            raise OSError('LPS25HB not found (WHO_AM_I=0x%02X, expected 0xBD)' % who)\n        # PD=1 (active), continuous mode at the chosen ODR, DIFF_EN=0, BDU=0 (the 5-byte burst is read\n        # right after data-ready, well inside one sample period), RESET_AZ=0, SIM=0.\n        self.i2c.writeto_mem(addr, _CTRL_REG1, bytes([0x80 | (_ODR[rate] << 4)]))\n\n    def _wait_ready(self):\n        # STATUS_REG: P_DA (bit 1) and T_DA (bit 0) go to 1 when a new sample is available.\n        deadline = time.ticks_add(time.ticks_ms(), 2 * self.period_ms + 100)\n        while (self.i2c.readfrom_mem(self.addr, _STATUS, 1)[0] & 0x03) != 0x03:\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('LPS25HB: no new data (check wiring and power)')\n            time.sleep_ms(5)\n\n    def read(self):\n        \"\"\"Return (pressure in hPa, temperature in degC).\"\"\"\n        self._wait_ready()\n        d = self.i2c.readfrom_mem(self.addr, _PRESS_OUT_XL | _AUTO_INC, 5)\n        p = d[0] | (d[1] << 8) | (d[2] << 16)\n        if p & 0x800000:\n            p -= 1 << 24\n        t = d[3] | (d[4] << 8)\n        if t & 0x8000:\n            t -= 1 << 16\n        return p / 4096, 42.5 + t / 480\n\n    def pressure(self):\n        return self.read()[0]\n\n    def temperature(self):\n        return self.read()[1]\n\n    def altitude(self, sea_level_hpa=1013.25):\n        \"\"\"Approximate altitude in metres from the international barometric formula.\"\"\"\n        return 44330 * (1 - (self.pressure() / sea_level_hpa) ** 0.1903)\n"
+  },
+  "skill": "---\nname: part-lps22hb\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the LPS22HB barometric pressure & temperature sensor (STMicroelectronics LPS22HB). Use when designing, wiring, simulating or writing code for an LPS22HB in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# LPS22HB barometric pressure & temperature sensor (LPS22HB)\n\n## Overview\nThe **LPS22HB** from STMicroelectronics is a MEMS absolute pressure sensor (260–1260 hPa, 24-bit, 4096 LSB/hPa, ±0.1 hPa relative accuracy, ±1 hPa absolute) with a built-in temperature sensor (16-bit, 100 LSB/°C). It talks I2C or SPI. Hobbyists buy it on the **Adafruit LPS22 Pressure Sensor - STEMMA QT / Qwiic (#4633)**, which adds a 3.3 V regulator, I2C level shifting with 10 kΩ pull-ups, two STEMMA QT connectors and an 8-pin header.\n\n## Pinout (Adafruit #4633, header order as printed)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3–5 V (on-board 3.3 V regulator; use your board's logic voltage) |\n| 3Vo | 3.3 V regulator output (up to 100 mA); leave unconnected |\n| GND | Ground |\n| SCK (part pin SCL) | I2C clock (SCL); SPI clock |\n| SDO | I2C address select: open = 0x5D, tied to GND = 0x5C; SPI data out |\n| SDI (part pin SDA) | I2C data (SDA); SPI data in |\n\nSparkbench names the SCK and SDI pins SCL and SDA (their I2C roles); on the board they are printed SCK and SDI.\n| CS | SPI chip select; leave open for I2C (pulled high on the board) |\n| INT | Interrupt / data-ready output, optional |\n\n## Electrical limits\n- Chip VDD: 1.7–3.6 V (absolute max 4.8 V); the breakout's regulator takes 3–5 V on VIN.\n- Current: about 12 µA at 1 Hz in low-noise mode, 1 µA power-down.\n- I2C up to 400 kHz.\n- Pressure range 260–1260 hPa; operating temperature −40 to +85 °C.\n\n## Interface details\n- **I2C address 0x5D** (SDO/SA0 high, the Adafruit default); 0x5C with SDO tied to GND.\n- WHO_AM_I (0x0F) reads **0xB1**.\n- The chip powers up in power-down/one-shot mode (CTRL_REG1 0x10 = 0x00). Write an output data rate to CTRL_REG1 bits 6:4 (0x10 = 1 Hz, 0x20 = 10 Hz, 0x30 = 25 Hz, 0x40 = 50 Hz, 0x50 = 75 Hz) for continuous mode. Bit 7 must stay 0.\n- STATUS (0x27): bit 0 P_DA, bit 1 T_DA = new pressure / temperature sample ready.\n- Burst-read 5 bytes from 0x28 (IF_ADD_INC is on by default): PRESS_OUT_XL, _L, _H, TEMP_OUT_L, _H.\n- Pressure: 24-bit two's complement, low byte first; **P = raw / 4096 hPa**.\n- Temperature: 16-bit two's complement, low byte first; **T = raw / 100 °C**.\n- If you set BDU (CTRL_REG1 bit 1) over I2C, the datasheet requires IF_ADD_INC = 0 and single-byte reads; the driver leaves BDU off and reads right after data-ready instead.\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDI → D21 (SDA), SCK → D22 (SCL).\n- Pico: VIN → 3V3(OUT), GND → GND, SDI → GP4 (SDA), SCK → GP5 (SCL).\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDI → pin 3 (SDA), SCK → pin 5 (SCL).\n- Or just plug in a STEMMA QT / Qwiic cable.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom lps22hb import LPS22HB\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nsensor = LPS22HB(i2c)          # 0x5D, continuous at 10 Hz\np, t = sensor.read()\nprint('P=%.2fhPa T=%.2fC' % (p, t))\n```\n`altitude(sea_level_hpa)` gives an approximate height in metres.\n\n## Gotchas\n- Silkscreen uses SPI names: **SCK is SCL and SDI is SDA** in I2C mode.\n- Leave CS unconnected (or high) for I2C; pulling it low switches the chip to SPI.\n- No reading / `OSError` at 0x5D: check whether SDO is tied to GND (then use addr=0x5C).\n- The temperature sensor reads the die, which is a little warmer than the air while the board is powered.\n- Pressure depends on altitude and weather; to compare with forecasts convert to sea-level pressure.\n\n## Datasheet\nhttps://www.st.com/resource/en/datasheet/lps22hb.pdf\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lps25hb import LPS25HB\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = LPS25HB(i2c)\nwhile True:\n    p, t = sensor.read()\n    print('P=%.2fhPa T=%.2fC' % (p, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the pressure and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 950.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temperature",
+          "value": 30.25
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=950.50hPa T=30.25C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:53:37.757Z",
+    "verifiedSources": [
+      "https://www.pololu.com/file/0J761/LPS25H.pdf",
+      "https://www.st.com/resource/en/datasheet/lps25hb.pdf",
+      "https://learn.adafruit.com/adafruit-lps25-pressure-sensor/pinouts",
+      "https://cdn-shop.adafruit.com/970x728/4530-04.jpg",
+      "https://raw.githubusercontent.com/adafruit/Adafruit_LPS2X/master/Adafruit_LPS25.cpp"
+    ]
+  }
+}

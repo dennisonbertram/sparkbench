@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ga1a12s202",
+  "board": "Adafruit GA1A12S202 Log-scale Analog Light Sensor (product ID 1384)",
+  "reason": "Modelled as an analog-sensor whose slider is log10(lux): datasheet Io = 10 x log10(Ev) uA into the board's 68 kOhm load gives V = 0.68 V per decade (0-4.7 decades -> 0-3.196 V), and the driver computes lux = 10^(V/0.68); pins VCC, OUT, GND per Adafruit Fritzing part. The check passed on ESP32 and Pico (L=1000lx), with footprint, design checks and DRC clean.",
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/GA1A1S202WP_Spec.pdf",
+  "breakoutPinoutSource": "Adafruit Fritzing-Library parts/Adafruit GA1A1S202WP.fzpz (breadboard silkscreen VCC, OUT, GND left to right) and adafruit.com/product/1384 (Vin 2.3-6 V, 68K load resistor OUT to GND)",
+  "checkRuns": 1
+}

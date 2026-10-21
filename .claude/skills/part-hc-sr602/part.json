@@ -1,0 +1,106 @@
+{
+  "type": "custom-hc-sr602",
+  "name": "HC-SR602 mini PIR motion sensor",
+  "mpn": "HC-SR602",
+  "category": "sensor",
+  "description": "Miniature passive-infrared motion sensor: OUT goes high (about 3.3 V from the on-board 3.3 V regulator) when a warm body moves within about 5 m (0-3.5 m best) in a 100 degree cone, stays high for about 2.5 s (factory setting, changeable with a chip resistor) and then ignores motion for about 2 s. Draws about 20 uA and runs from 3.3-15 V. Sold as: MH-SR602 (HW-438) mini PIR motion sensor module (round black board with white dome lens, 3-pin header OUT, +, -; unpopulated S+/S- pads for an optional photodiode).",
+  "eli5": "A tiny heat-motion detector: when a person or animal moves in front of it, it sets its output pin high for a couple of seconds.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "OUT",
+      "role": "io",
+      "description": "Motion output (marked OUT): about 3.3 V for ~2.5 s per trigger, 0 V otherwise. Safe for 3.3 V GPIOs (end pin 1, next to +).",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-15 V DC (marked + on the board) (middle pin 2)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (marked - on the board) (pin 3)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 15,
+  "currentMa": 0.02,
+  "datasheetUrl": "https://cdn.shopify.com/s/files/1/1509/1638/files/SR602PIR_datasheet.pdf?v=1753359263",
+  "sources": [
+    "https://cdn.shopify.com/s/files/1/1509/1638/files/SR602PIR_datasheet.pdf?v=1753359263",
+    "https://www.codrey.com/?p=13542",
+    "https://www.codrey.com/wp-content/uploads/2024/05/MH-SR602x2.jpg",
+    "https://www.codrey.com/wp-content/uploads/2024/05/MH-SR602-MODs.jpg",
+    "https://sparks.gogo.co.nz/catalog/Sensors-267/Miniature-PIR-Passive-Infrared-Motion-Sensor-SR602-1147.html"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "SR602 mini PIR motion sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order: OUT, + (VCC), - (GND). Unlike most PIR modules OUT is an END pin and + is in the middle; read the silkscreen before powering.",
+    "VCC can be 3.3-15 V (3V3 or 5V both work); the on-board 3.3 V regulator keeps OUT at about 3.3 V, so it connects straight to a GPIO.",
+    "OUT is active high: 1 for about 2.5 s after motion, then a ~2 s blocking time in which it ignores motion. Longer hold times need a different chip resistor.",
+    "The two S+/S- holes are for an optional photodiode (night-only operation); leave them empty for normal use.",
+    "Give it up to a minute after power-up to settle before trusting the output."
+  ],
+  "keywords": [
+    "hc-sr602",
+    "sr602",
+    "mh-sr602",
+    "hw-438",
+    "pir",
+    "passive infrared",
+    "motion",
+    "presence",
+    "occupancy",
+    "mini pir",
+    "low power"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OUT",
+    "quantity": "Motion detected",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "hc_sr602.py",
+    "code": "# HC-SR602 (MH-SR602 / HW-438) mini PIR motion sensor module, MicroPython driver.\n# The module carries a digital PIR detector and a 3.3 V LDO, so OUT is a logic output\n# from the 3.3 V rail even when \"+\" is fed 5-15 V:\n#   HIGH (about 3.3 V) for about 2.5 s after motion (factory delay; set by a chip resistor),\n#   re-triggering while motion continues.\n#   LOW (0 V) otherwise; after going low it ignores motion for about 2 s (blocking time).\n# OUT connects straight to a 3.3 V GPIO. No pull-up/down is needed.\n# Supply 3.3-15 V DC on \"+\"; quiescent current about 20 uA.\nfrom machine import Pin\n\n\nclass HCSR602:\n    def __init__(self, out_pin):\n        self.pin = Pin(out_pin, Pin.IN) if isinstance(out_pin, int) else out_pin\n\n    def motion(self):\n        \"\"\"True while the sensor reports motion (OUT high).\"\"\"\n        return self.pin.value() == 1\n\n    def on_change(self, handler):\n        \"\"\"Call handler(motion: bool) on every edge of OUT. Pass None to stop.\"\"\"\n        if handler is None:\n            self.pin.irq(handler=None)\n            return\n        self.pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING,\n                     handler=lambda p: handler(p.value() == 1))\n"
+  },
+  "example": {
+    "code": "from hc_sr602 import HCSR602\nimport time\n\npir = HCSR602({OUT})\nwhile True:\n    print('MOTION=%d' % pir.motion())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports motion when the sensor is triggered",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MOTION=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:58:44.338Z",
+    "verifiedSources": [
+      "https://www.codrey.com/?p=13542",
+      "https://sigmanortec.ro/en/mini-pir-sensor-sr602-motion-detection-33-15v",
+      "https://cdn.ozdisan.com/ETicaret_Dosya/628100_162232.pdf"
+    ]
+  }
+}

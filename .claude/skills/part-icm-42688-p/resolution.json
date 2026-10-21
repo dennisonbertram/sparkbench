@@ -1,0 +1,34 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says SDO, datasheet reading says 3V3",
+      "verdict": "part-correct",
+      "evidence": "Vendor front photo of the exact modelled board (Amazon B0F3JWY1XF, QUAINTBYTE, 71tIMEytkaL) shows the silkscreen: top row left-to-right 'SDO', [label partly covered by an SMD resistor], 'SCL', 'CS'; bottom row left-to-right 'INT', 'FSY', 'GND', '3V3'. The part numbers the top row as pins 1-4 and the bottom row as pins 5-8, matching this photo. The second reading's order (3V3, GND, SCL, SDA, SDO, CS, INT, FSY) was a guess from search-snippet text (manuals.plus was blocked) and does not match the silkscreen. Top row pin 1 is printed 'SDO' (3V3 is printed at bottom row, far right = pin 8).",
+      "source": "https://m.media-amazon.com/images/I/71tIMEytkaL._SL1500_.jpg"
+    },
+    {
+      "diff": "header pin 2: part says SDA, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Vendor front photo of the exact modelled board (Amazon B0F3JWY1XF, QUAINTBYTE, 71tIMEytkaL) shows the silkscreen: top row left-to-right 'SDO', [label partly covered by an SMD resistor], 'SCL', 'CS'; bottom row left-to-right 'INT', 'FSY', 'GND', '3V3'. The part numbers the top row as pins 1-4 and the bottom row as pins 5-8, matching this photo. The second reading's order (3V3, GND, SCL, SDA, SDO, CS, INT, FSY) was a guess from search-snippet text (manuals.plus was blocked) and does not match the silkscreen. Top row pin 2's label is partly hidden by a resistor, but the other seven pads are clearly printed SDO, SCL, CS, INT, FSY, GND, 3V3, so the only remaining board function, SDA (SDA/SDI), is pin 2; GND is printed at bottom row position 3 = pin 7.",
+      "source": "https://m.media-amazon.com/images/I/71tIMEytkaL._SL1500_.jpg"
+    },
+    {
+      "diff": "header pin 4: part says CS, datasheet reading says SDA",
+      "verdict": "part-correct",
+      "evidence": "Vendor front photo of the exact modelled board (Amazon B0F3JWY1XF, QUAINTBYTE, 71tIMEytkaL) shows the silkscreen: top row left-to-right 'SDO', [label partly covered by an SMD resistor], 'SCL', 'CS'; bottom row left-to-right 'INT', 'FSY', 'GND', '3V3'. The part numbers the top row as pins 1-4 and the bottom row as pins 5-8, matching this photo. The second reading's order (3V3, GND, SCL, SDA, SDO, CS, INT, FSY) was a guess from search-snippet text (manuals.plus was blocked) and does not match the silkscreen. Top row pin 4 (far right) is printed 'CS'.",
+      "source": "https://m.media-amazon.com/images/I/71tIMEytkaL._SL1500_.jpg"
+    },
+    {
+      "diff": "header pin 7: part says GND, datasheet reading says INT",
+      "verdict": "part-correct",
+      "evidence": "Vendor front photo of the exact modelled board (Amazon B0F3JWY1XF, QUAINTBYTE, 71tIMEytkaL) shows the silkscreen: top row left-to-right 'SDO', [label partly covered by an SMD resistor], 'SCL', 'CS'; bottom row left-to-right 'INT', 'FSY', 'GND', '3V3'. The part numbers the top row as pins 1-4 and the bottom row as pins 5-8, matching this photo. The second reading's order (3V3, GND, SCL, SDA, SDO, CS, INT, FSY) was a guess from search-snippet text (manuals.plus was blocked) and does not match the silkscreen. Bottom row third pad (pin 7) is printed 'GND'; INT is the bottom row first pad (pin 5).",
+      "source": "https://m.media-amazon.com/images/I/71tIMEytkaL._SL1500_.jpg"
+    },
+    {
+      "diff": "header pin 8: part says 3V3, datasheet reading says FSY",
+      "verdict": "part-correct",
+      "evidence": "Vendor front photo of the exact modelled board (Amazon B0F3JWY1XF, QUAINTBYTE, 71tIMEytkaL) shows the silkscreen: top row left-to-right 'SDO', [label partly covered by an SMD resistor], 'SCL', 'CS'; bottom row left-to-right 'INT', 'FSY', 'GND', '3V3'. The part numbers the top row as pins 1-4 and the bottom row as pins 5-8, matching this photo. The second reading's order (3V3, GND, SCL, SDA, SDO, CS, INT, FSY) was a guess from search-snippet text (manuals.plus was blocked) and does not match the silkscreen. Bottom row fourth pad (pin 8) is printed '3V3'; FSY is the bottom row second pad (pin 6). Back silkscreen (71o-qaW7RfL) also reads 'VDD:1.71-3.6V', consistent with 3V3 going straight to the chip.",
+      "source": "https://m.media-amazon.com/images/I/71tIMEytkaL._SL1500_.jpg"
+    }
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "type": "custom-am2320",
+  "name": "AM2320 temperature & humidity sensor",
+  "mpn": "AM2320",
+  "category": "sensor",
+  "description": "Aosong digital temperature (-40 to 80 °C, ±0.5 °C) and relative humidity (0–99.9 %, ±3 %) sensor with an I2C (Modbus-style, CRC-16) interface, 0.1 unit resolution. Runs on 3.1–5.5 V; I2C up to 100 kHz; no pull-ups inside. Sold as: Adafruit AM2320 Digital Temperature and Humidity Sensor (product 3721, bare 4-lead 2.54 mm sensor: VDD, SDA, GND, SCL), fixed I2C address 0x5C (0xB8 in 8-bit notation).",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Supply, 3.1–5.5 V; use 3.3 V with ESP32/Pico so the I2C pull-ups go to 3.3 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; needs an external pull-up (3–10 kΩ, e.g. 4.7 kΩ) to VDD",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock; needs an external pull-up (3–10 kΩ, e.g. 4.7 kΩ) to VDD. Held low at power-up, it selects the single-bus (DHT-style) mode instead",
+      "required": true,
+      "pullUp": 4700
+    }
+  ],
+  "vmin": 3.1,
+  "vmax": 5.5,
+  "currentMa": 0.95,
+  "i2cAddress": 92,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/3721/AM2320.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "AM2320 temperature humidity sensor I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Pins, looking at the slotted front, left to right: VDD, SDA, GND, SCL. The sensor has no pull-ups: fit 3–10 kΩ (e.g. 4.7 kΩ) from SDA and from SCL to VDD.",
+    "The sensor sleeps between reads: wake it by sending its address (it does NOT acknowledge, so expect an OSError), then within 3 ms write 0x03 0x00 0x04, wait at least 1.5 ms and read 8 bytes.",
+    "Reply: 0x03, 0x04, humidity (×10), temperature (bit 15 = sign, bits 14–0 = |T| ×10), CRC-16/Modbus low byte first. A CRC or header mismatch usually means a loose wire or missing pull-ups.",
+    "Run the I2C bus at 100 kHz or slower and read at most once every 2 s; each read returns the measurement triggered by the previous read.",
+    "The address is fixed at 0x5C, so only one AM2320 can share a bus."
+  ],
+  "keywords": [
+    "am2320",
+    "aosong",
+    "temperature",
+    "humidity",
+    "i2c"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": 0,
+    "max": 80,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 99.9,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "03 00 04",
+        "bytes": [
+          {
+            "const": 3,
+            "bits": 8
+          },
+          {
+            "const": 4,
+            "bits": 8
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.1
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.1
+          },
+          {
+            "crc": "modbus16",
+            "over": 6
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "am2320.py",
+    "code": "# AM2320 temperature & humidity sensor (Aosong AM2320), MicroPython driver for its I2C mode.\n# Datasheet sequence: wake the sensor (address byte, which it does NOT acknowledge), send\n# function 0x03 \"read registers\" from 0x00 for 4 registers, wait >= 1.5 ms, then read\n# 8 bytes: 0x03, 0x04, RH high, RH low, T high, T low, CRC low, CRC high.\n# CRC-16/Modbus (init 0xFFFF, poly 0xA001 reflected) over the first 6 bytes, sent low byte first.\n# Humidity = raw / 10 %RH. Temperature: bit 15 = sign (1 = negative), bits 14..0 = |T| x 10.\n# Bus speed must be 100 kHz or less. Read no more often than once every 2 s.\nimport time\n\nADDR = 0x5C  # 0xB8 in the datasheet's 8-bit (address + R/W) notation\n\n\ndef _crc16(data):\n    crc = 0xFFFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1\n    return crc\n\n\nclass AM2320:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _wake(self):\n        # The sensor sleeps between reads and does not ACK the wake-up address byte,\n        # so the write normally raises OSError: that is expected.\n        try:\n            self.i2c.writeto(self.addr, b'')\n        except OSError:\n            pass\n        time.sleep_ms(1)  # datasheet: hold >= 800 us (max 3 ms) before it is awake\n\n    def read(self):\n        \"\"\"Return (temperature in °C, relative humidity in %).\n\n        The sensor starts a new measurement each time it is read, so a reading\n        reflects the previous read; wait at least 2 s between calls.\n        \"\"\"\n        self._wake()\n        try:\n            self.i2c.writeto(self.addr, b'\\x03\\x00\\x04')\n        except OSError:\n            # Some ports need a second attempt right after waking the sensor.\n            time.sleep_ms(1)\n            self.i2c.writeto(self.addr, b'\\x03\\x00\\x04')\n        time.sleep_ms(2)  # datasheet: wait at least 1.5 ms before reading\n        d = self.i2c.readfrom(self.addr, 8)\n        if d[0] != 0x03 or d[1] != 0x04:\n            raise OSError('AM2320 bad reply header: check the wiring and pull-ups')\n        if _crc16(d[0:6]) != (d[6] | (d[7] << 8)):\n            raise OSError('AM2320 CRC mismatch: check the wiring and pull-ups')\n        h_raw = (d[2] << 8) | d[3]\n        t_raw = (d[4] << 8) | d[5]\n        t = (t_raw & 0x7FFF) / 10\n        if t_raw & 0x8000:\n            t = -t\n        return t, h_raw / 10\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom am2320 import AM2320\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nsensor = AM2320(i2c)\nwhile True:\n    try:\n        t, h = sensor.read()\n        print('T=%.1fC H=%.1f%%' % (t, h))\n    except OSError as e:\n        print('AM2320 error:', e)\n    time.sleep(2)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 24.8
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=24.8C H=65.5%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/3721/AM2320.pdf",
+    "https://www.adafruit.com/product/3721",
+    "https://learn.adafruit.com/adafruit-am2320-temperature-humidity-i2c-sensor/pinouts"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:06:46.799Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/3721/AM2320.pdf",
+      "https://www.adafruit.com/product/3721"
+    ]
+  }
+}

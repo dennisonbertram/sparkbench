@@ -1,0 +1,193 @@
+{
+  "type": "custom-rdm6300",
+  "name": "RDM6300 125 kHz RFID reader",
+  "mpn": "RDM6300",
+  "category": "sensor",
+  "description": "125 kHz (EM4100-type) read-only RFID card/tag reader. While a tag is in the field it sends the tag's 10-hex-digit ID over a 9600-baud 8N1 TTL UART as a 14-byte frame (0x02, 10 ASCII hex characters, 2 ASCII hex XOR checksum, 0x03). Runs on 5 V +/-5 %, under 50 mA; reads tags at up to about 5 cm. Sold as: RDM6300 125KHz EM4100 RFID reader module (38.5 x 19 mm, P1 TX/RX/-/GND/+5V, P2 ANT1/ANT2 with the supplied coil antenna, P3 LED/+5V/GND).",
+  "eli5": "Hold a 125 kHz key fob or card near its coil and it tells your board the card's ID number.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "P1 pin 1: UART data out, 9600 baud 8N1, 5 V TTL level (use a divider for 3.3 V GPIOs)",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "P1 pin 2: UART data in; the module has no documented commands, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "P1 pin 3: not connected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "P1 pin 4: ground",
+      "required": true
+    },
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "P1 pin 5: supply, 5 V DC +/-5 %",
+      "required": true
+    },
+    {
+      "name": "ANT1",
+      "role": "passive",
+      "description": "P2 pin 1: antenna coil (the supplied coil is plugged in here)",
+      "required": false
+    },
+    {
+      "name": "ANT2",
+      "role": "passive",
+      "description": "P2 pin 2: antenna coil",
+      "required": false
+    },
+    {
+      "name": "LED",
+      "role": "io",
+      "description": "P3 pin 1: read indicator LED drive output, optional",
+      "required": false
+    },
+    {
+      "name": "+5V2",
+      "role": "power",
+      "description": "P3 pin 2: +5 V (same supply as P1 pin 5), for the indicator LED",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "P3 pin 3: ground (same as P1 pin 4)",
+      "required": false
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 50,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/125Khz_RFID_module-UART/res/RDM630-Spec.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "RDM6300 125KHz RFID reader module UART",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x10_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Power from 5 V (VBUS/VIN), never 3.3 V: the datasheet allows 5 V +/-5 % only.",
+    "TX idles high at the 5 V supply level. On an ESP32 or Pico put a divider (e.g. 1 kOhm series, 2 kOhm to GND) between TX and the GPIO.",
+    "Only TX, GND and +5V are needed. RX takes no documented commands; leave it and P3 unconnected.",
+    "Keep the antenna coil plugged into P2 and away from metal and the ESP32 antenna; read range is about 5 cm.",
+    "Frames repeat while the tag stays in the field; check the XOR checksum and ignore bad frames."
+  ],
+  "keywords": [
+    "rdm6300",
+    "rdm630",
+    "rfid",
+    "125khz",
+    "em4100",
+    "card reader",
+    "key fob",
+    "uart"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Tag ID (10 hex digits, as a number)",
+    "unit": "",
+    "min": 0,
+    "max": 1099511627775,
+    "default": 21487657599,
+    "controls": [
+      {
+        "key": "present",
+        "quantity": "Tag held near the coil (1 = yes)",
+        "min": 0,
+        "max": 1,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 150,
+      "when": "present",
+      "bytes": [
+        {
+          "const": 2,
+          "bits": 8
+        },
+        {
+          "control": "value",
+          "bits": 80,
+          "scale": 1,
+          "hex": true
+        },
+        {
+          "crc": "xor8hex",
+          "over": 10
+        },
+        {
+          "const": 3,
+          "bits": 8
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "rdm6300.py",
+    "code": "# RDM6300 125 kHz EM4100 RFID reader, MicroPython driver.\n# The module sends a 14-byte frame at 9600 baud 8N1 while a tag is in the field (RDM630/RDM6300 spec):\n#   0x02 | 10 ASCII hex chars (1 version/customer byte + 4-byte card number) | 2 ASCII hex checksum | 0x03\n# Checksum = XOR of the 5 data bytes spelled by the 10 hex characters.\n# Datasheet example: tag 62E3086CED -> 62^E3^08^6C^ED = 0x08.\nimport time\n\n\nclass RDM6300:\n    FRAME_LEN = 14\n\n    def __init__(self, uart):\n        # uart: machine.UART already set to baudrate=9600, bits=8, parity=None, stop=1\n        self.uart = uart\n        self._buf = b''\n\n    def _frame(self):\n        n = self.uart.any()\n        if n:\n            data = self.uart.read(n)\n            if data:\n                self._buf = (self._buf + data)[-64:]\n        while True:\n            i = self._buf.find(b'\\x02')\n            if i < 0:\n                self._buf = b''\n                return None\n            if len(self._buf) - i < self.FRAME_LEN:\n                self._buf = self._buf[i:]\n                return None\n            f = self._buf[i:i + self.FRAME_LEN]\n            if f[13] == 0x03:\n                self._buf = self._buf[i + self.FRAME_LEN:]\n                return f\n            self._buf = self._buf[i + 1:]  # false start byte, resync\n\n    def read(self):\n        \"\"\"Return (tag_hex, card_number) for the next valid frame, or None.\n\n        tag_hex is the 10-character ID (e.g. '62E3086CED'); card_number is the 4-byte card\n        number (last 8 hex chars) as an int, the decimal number often printed on cards.\"\"\"\n        while True:\n            f = self._frame()\n            if f is None:\n                return None\n            try:\n                tag = f[1:11].decode()\n                data = bytes.fromhex(tag) if hasattr(bytes, 'fromhex') else bytes(int(tag[k:k + 2], 16) for k in range(0, 10, 2))\n                chk = int(f[11:13].decode(), 16)\n            except (ValueError, UnicodeError):\n                continue\n            x = 0\n            for b in data:\n                x ^= b\n            if x == chk:\n                return tag, int(tag[2:], 16)\n\n    def wait(self, timeout_ms=None):\n        \"\"\"Block until a tag is read (or timeout_ms passes, then return None).\"\"\"\n        t0 = time.ticks_ms()\n        while True:\n            r = self.read()\n            if r:\n                return r\n            if timeout_ms is not None and time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                return None\n            time.sleep_ms(20)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom rdm6300 import RDM6300\n\nu = UART({UART_ID}, baudrate=9600, bits=8, parity=None, stop=1, rx=Pin({TX}))\nreader = RDM6300(u)\nprint('Waiting for a tag')\nwhile True:\n    r = reader.read()\n    if r:\n        tag, card = r\n        print('TAG=%s CARD=%d' % (tag, card))\n    time.sleep_ms(50)\n",
+    "test": {
+      "id": "reads-tag",
+      "title": "Prints the ID of the tag held near the coil",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Waiting for a tag",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 115979161917
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "present",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "TAG=1B00E5913D CARD=15044925",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://files.seeedstudio.com/wiki/125Khz_RFID_module-UART/res/RDM630-Spec.pdf",
+    "https://microcontrollerslab.com/rdm6300-rdm630-rfid-reader-esp32-tutorial/",
+    "https://microcontrollerslab.com/rdm6300-rdm630-rfid-reader-arduino-tutorial/"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:53:54.405Z",
+    "verifiedSources": [
+      "https://microcontrollerslab.com/rdm6300-rdm630-rfid-reader-arduino-tutorial/",
+      "https://docs.cirkitdesigner.com/component/eaf1c6b4-8199-4668-bb42-9dd522d3b5a2/rdm6300"
+    ]
+  }
+}

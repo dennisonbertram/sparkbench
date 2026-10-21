@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mq-8",
+  "board": "MQ-8 hydrogen gas sensor module, common blue FC-22-style board with LM393 comparator (4-pin header: VCC, GND, DO, AO)",
+  "reason": "The first check run passed on ESP32 and Pico: wiring, design checks, breadboard, the simulator example (an AO voltage slider plus an active-low DO toggle) and the circuit board. AO is modelled as the datasheet's VRL across the load resistor, and the driver uses the datasheet formula Rs = (Vc/VRL - 1) x RL with a calibratable R0 (Hanwei: Rs in 1000 ppm H2).",
+  "datasheetUrl": "https://cdn.sparkfun.com/datasheets/Sensors/Biometric/MQ-8.pdf",
+  "breakoutPinoutSource": "https://components101.com/sensors/mq8-hydrogen-gas-sensor-pinout-features-datasheet-working-alternative-application",
+  "checkRuns": 1
+}

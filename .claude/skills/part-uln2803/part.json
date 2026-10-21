@@ -1,0 +1,277 @@
+{
+  "type": "custom-uln2803",
+  "name": "ULN2803 8-channel Darlington driver",
+  "mpn": "ULN2803AN",
+  "category": "actuator",
+  "description": "TI ULN2803A: eight NPN Darlington low-side switches (open collector, 50 V, 500 mA per channel) with a 2.7 kOhm base resistor per input and common-cathode flyback clamp diodes, so a 3.3 V or 5 V GPIO can switch relays, solenoids, lamps, LED strips or a unipolar stepper. Input nB high = output nC sinks current to GND. No logic supply: COM goes to the load supply for the clamp diodes. Sold as: Texas Instruments ULN2803AN bare chip in a DIP-18 package (pins 1-8 inputs 1B-8B, 9 GND, 10 COM, 11-18 outputs 8C-1C), plugged straight into a breadboard.",
+  "eli5": "Eight heavy-duty switches in one chip: your board's tiny pin signal turns on a motor, relay or lamp that needs much more current than the pin can give.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "1B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 1 (pin 1): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 1C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "2B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 2 (pin 2): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 2C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "3B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 3 (pin 3): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 3C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "4B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 4 (pin 4): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 4C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "5B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 5 (pin 5): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 5C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "6B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 6 (pin 6): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 6C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "7B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 7 (pin 7): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 7C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "8B",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Input 8 (pin 8): high (>= 2.7 V; a 3.3 V GPIO is enough) switches output 8C on. Open or low = off (7.2k/3k to GND inside)"
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground / common emitter (pin 9). Join to the microcontroller GND and the load supply's negative; carries all the load current"
+    },
+    {
+      "name": "COM",
+      "role": "power",
+      "required": true,
+      "description": "Clamp-diode common (pin 10): connect to the load supply (+), up to 50 V, so the built-in diodes absorb flyback from relays, solenoids and motors. Not a logic supply"
+    },
+    {
+      "name": "8C",
+      "role": "io",
+      "required": false,
+      "description": "Output 8 (pin 11), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    },
+    {
+      "name": "7C",
+      "role": "io",
+      "required": false,
+      "description": "Output 7 (pin 12), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    },
+    {
+      "name": "6C",
+      "role": "io",
+      "required": false,
+      "description": "Output 6 (pin 13), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    },
+    {
+      "name": "5C",
+      "role": "io",
+      "required": false,
+      "description": "Output 5 (pin 14), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    },
+    {
+      "name": "4C",
+      "role": "io",
+      "required": false,
+      "description": "Output 4 (pin 15), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    },
+    {
+      "name": "3C",
+      "role": "io",
+      "required": false,
+      "description": "Output 3 (pin 16), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    },
+    {
+      "name": "2C",
+      "role": "io",
+      "required": false,
+      "description": "Output 2 (pin 17), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    },
+    {
+      "name": "1C",
+      "role": "io",
+      "required": false,
+      "description": "Output 1 (pin 18), open collector: connect the load between the load supply (+) and this pin. Sinks up to 500 mA, 50 V max"
+    }
+  ],
+  "vmin": 5,
+  "vmax": 50,
+  "currentMa": 1,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/uln2803a.pdf",
+  "priceUsd": 0.8,
+  "supplierQuery": "ULN2803AN DIP-18 Darlington array",
+  "footprint": "Package_DIP:DIP-18_W7.62mm",
+  "buildNotes": [
+    "Pin 1 (1B) is next to the notch/dot. Inputs 1B-8B are on one side (pins 1-8), outputs 8C-1C on the other (pins 11-18); output nC sits directly opposite input nB.",
+    "Wire each load between the load supply (+) and an output nC. The chip only switches the low side; it never sources current.",
+    "Connect COM (pin 10) to the load supply (+) whenever the loads are inductive (relays, solenoids, motors): that is how the built-in clamp diodes catch the flyback spike.",
+    "Join GND (pin 9) to the microcontroller GND and the load supply (-). All the load current flows out of pin 9, so use a short, thick wire.",
+    "3.3 V GPIOs drive it directly: TI specifies VI(on) at most 2.4 V for 200 mA and 2.7 V for 250 mA. Each input draws under about 1 mA.",
+    "Expect about 1 V drop across an on output (VCE(sat) 1.0 V typ. at 200 mA, 1.3 V at 350 mA), so a 5 V load sees about 4 V.",
+    "500 mA per channel is the absolute maximum for one channel; with all eight on together the package heats up fast - keep the total well under 1 A, or check the datasheet's duty-cycle limits. Two channels can be paralleled for more current.",
+    "Unused inputs can be left open (internal resistors hold them off)."
+  ],
+  "keywords": [
+    "uln2803",
+    "uln2803a",
+    "uln2803an",
+    "darlington",
+    "darlington array",
+    "low-side driver",
+    "relay driver",
+    "sink driver",
+    "8 channel driver",
+    "transistor array"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/uln2803a.pdf",
+    "https://www.sparkfun.com/datasheets/IC/uln2803a.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/ULN2803A.pdf"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "1B",
+      "2B",
+      "3B",
+      "4B",
+      "5B",
+      "6B",
+      "7B",
+      "8B"
+    ]
+  },
+  "driver": {
+    "filename": "uln2803.py",
+    "code": "# ULN2803A 8-channel Darlington sink driver (TI ULN2803AN, DIP-18), MicroPython driver.\n# Each channel is an NPN Darlington pair with a 2.7 kOhm series base resistor on chip:\n# input nB high = output nC pulls down to GND (sinks up to 500 mA, 50 V max), input low or open = output off.\n# TI SLRS049C: VI(on) <= 2.4 V for 200 mA and <= 2.7 V for 250 mA (VCE = 2 V), so a 3.3 V GPIO drives it.\n# A 3.3 V GPIO high draws about 0.2-0.3 mA per input (II(on) is 0.93 mA typ. at 3.85 V).\n# Loads go between the load supply (+) and an nC output; COM (pin 10) goes to that same supply so the\n# built-in clamp diodes catch the flyback from relays, solenoids and motors.\n# There is no logic, no timing and no protocol: the GPIO level is the switch state. Switching takes\n# under 1 us (tPHL 20 ns, tPLH 130 ns typ.).\nfrom machine import Pin\n\n\nclass ULN2803:\n    def __init__(self, pins):\n        \"\"\"pins: GPIO numbers wired to inputs 1B..8B, in that order (fewer than 8 is fine).\"\"\"\n        self.pins = [Pin(p, Pin.OUT, value=0) for p in pins]\n\n    def on(self, ch):\n        \"\"\"Channel ch (1-8): output sinks current, the load is powered.\"\"\"\n        self.pins[ch - 1].value(1)\n\n    def off(self, ch):\n        \"\"\"Channel ch (1-8): output off (open), the load is unpowered.\"\"\"\n        self.pins[ch - 1].value(0)\n\n    def set(self, ch, state):\n        self.pins[ch - 1].value(1 if state else 0)\n\n    def is_on(self, ch):\n        return bool(self.pins[ch - 1].value())\n\n    def write(self, mask):\n        \"\"\"Set every channel from a bit mask: bit 0 = channel 1 ... bit 7 = channel 8.\"\"\"\n        for i, p in enumerate(self.pins):\n            p.value((mask >> i) & 1)\n\n    def value(self):\n        \"\"\"The current bit mask (bit 0 = channel 1).\"\"\"\n        m = 0\n        for i, p in enumerate(self.pins):\n            if p.value():\n                m |= 1 << i\n        return m\n\n    def all_off(self):\n        self.write(0)\n"
+  },
+  "example": {
+    "code": "import time\nfrom uln2803 import ULN2803\n\n# Inputs 1B..8B in order; output nC sinks current while nB is high.\ndrv = ULN2803([{1B}, {2B}, {3B}, {4B}, {5B}, {6B}, {7B}, {8B}])\ndrv.write(0b00000101)  # channels 1 and 3 on\nprint('ON=%s' % '{:08b}'.format(drv.value()))\ntime.sleep(4)\ndrv.write(0b10000010)  # channels 2 and 8 on\nprint('ON=%s' % '{:08b}'.format(drv.value()))\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "channels",
+      "title": "Switches channels 1 and 3 on, then channels 2 and 8",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "1B",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "3B",
+          "on": true,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "2B",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "8B",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ON=00000101",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "2B",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "8B",
+          "on": true,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "1B",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "3B",
+          "on": false,
+          "within": 500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ON=10000010",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:59:28.980Z",
+    "verifiedSources": [
+      "https://media.digikey.com/pdf/Data%20Sheets/Texas%20Instruments%20PDFs/ULN2803A_Rev2015.pdf"
+    ]
+  }
+}

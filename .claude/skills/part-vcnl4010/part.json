@@ -1,0 +1,165 @@
+{
+  "type": "custom-vcnl4010",
+  "name": "VCNL4010 proximity & ambient light sensor",
+  "mpn": "VCNL4010",
+  "category": "sensor",
+  "description": "Vishay proximity sensor (built-in IR LED, 10-200 mA, 16-bit reading, up to about 200 mm) plus 16-bit ambient light sensor (0.25 lx per count, up to about 16 klx), with an I2C interface at fixed address 0x13 and an open-drain interrupt output. The chip runs on 2.5-3.6 V. Sold as: Adafruit VCNL4010 Proximity/Light sensor (#466), 6-pin header Vin, 3Vo, GND, SCL, SDA, INT with a 3.3 V regulator and pull-ups to Vin, for 3.3-5 V.",
+  "eli5": "Senses how close something is (up to about 20 cm) and how bright the room is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (regulated to 3.3 V on the board; 5 V is ideal because Vin also powers the IR LED); use the same voltage as your microcontroller's logic",
+      "required": true
+    },
+    {
+      "name": "3Vo",
+      "role": "nc",
+      "description": "3.3 V output of the on-board regulator (up to 50 mA); not a supply input, leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (weak pull-up to Vin on board; 3 V or 5 V logic)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (weak pull-up to Vin on board; 3 V or 5 V logic)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low; not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 4,
+  "i2cAddress": 19,
+  "datasheetUrl": "https://www.vishay.com/docs/83462/vcnl4010.pdf",
+  "priceUsd": 7.5,
+  "supplierQuery": "VCNL4010 proximity light sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Registers are 8-bit at 0x80-0x90 (not 0x00): 0x80 command, 0x81 product ID (0x21), 0x82 proximity rate, 0x83 IR LED current, 0x84 ALS parameters, 0x85/0x86 ALS result, 0x87/0x88 proximity result (high byte first).",
+    "Nothing is measured until you ask: either set selftimed_en + als_en + prox_en (0x80 = 0x07) for periodic readings, or write als_od/prox_od (0x80 = 0x18) for one reading and poll the data-ready bits 6 and 5.",
+    "Change the rates (0x82, 0x84) and LED current only while selftimed_en = 0.",
+    "Lux = ALS counts x 0.25 lx. Each ALS reading takes a 100 ms frame (standard mode).",
+    "Proximity is counts of reflected IR, bigger = closer; it is not a distance and depends on the target's colour, so pick thresholds by testing.",
+    "The address is fixed at 0x13, so only one VCNL4010 per I2C bus (use a multiplexer for more).",
+    "Keep wires and LEDs out of the sensor's view; IR cross-talk raises the proximity baseline."
+  ],
+  "keywords": [
+    "vcnl4010",
+    "proximity",
+    "lux",
+    "light",
+    "ambient light",
+    "als",
+    "ir",
+    "vishay"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/466/vcnl4010.pdf",
+    "https://www.vishay.com/docs/83462/vcnl4010.pdf",
+    "https://learn.adafruit.com/using-vcnl4010-proximity-sensor/pinouts",
+    "https://www.adafruit.com/product/466",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20VCNL4010%20Proximity%20and%20Light%20sensor.fzpz"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Light level",
+    "unit": "lx",
+    "min": 0,
+    "max": 16383.75,
+    "default": 300,
+    "controls": [
+      {
+        "key": "proximity",
+        "quantity": "Proximity counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2200
+      }
+    ],
+    "registers": {
+      "0x80": 128,
+      "0x81": 33,
+      "0x82": 0,
+      "0x83": 2,
+      "0x84": 29,
+      "0x8F": 1
+    },
+    "measures": [
+      {
+        "reg": "0x85",
+        "bytes": 2,
+        "scale": 0.25,
+        "control": "value"
+      },
+      {
+        "reg": "0x87",
+        "bytes": 2,
+        "scale": 1,
+        "control": "proximity"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "vcnl4010.py",
+    "code": "# VCNL4010 proximity & ambient light sensor (Vishay, datasheet doc 83462), MicroPython driver.\n# I2C address 0x13 (fixed). Seventeen 8-bit registers 0x80..0x90; 16-bit results are stored\n# high byte first (0x85/0x86 ambient light, 0x87/0x88 proximity) and auto-increment on read.\n# Ambient light: lux = counts x 0.25 lx (datasheet: 0.25 lx per LSB, 0.25 to 16383 lx).\n# Proximity: unitless 16-bit counts of reflected IR, bigger = closer.\nimport time\n\n_COMMAND = 0x80      # b7 config_lock (RO), b6 als_data_rdy, b5 prox_data_rdy, b4 als_od, b3 prox_od,\n                     # b2 als_en, b1 prox_en, b0 selftimed_en\n_PRODUCT_ID = 0x81   # 0x21: product ID 2, revision 1\n_PROX_RATE = 0x82    # bits 2:0\n_IR_LED = 0x83       # bits 5:0 = current / 10 mA (0..20); bits 7:6 fuse prog ID (read only)\n_ALS_PARAM = 0x84    # b7 continuous conversion, b6:4 als_rate, b3 auto offset, b2:0 averaging (2^n)\n_ALS_RESULT = 0x85   # high byte, 0x86 low byte\n_PROX_RESULT = 0x87  # high byte, 0x88 low byte\n_INT_CTRL = 0x89\n_INT_STATUS = 0x8E\n_MOD_TIMING = 0x8F\n\n_ALS_DATA_RDY = 0x40\n_PROX_DATA_RDY = 0x20\n_ALS_OD = 0x10\n_PROX_OD = 0x08\n_ALS_EN = 0x04\n_PROX_EN = 0x02\n_SELFTIMED_EN = 0x01\n\nLUX_PER_COUNT = 0.25\n\n# Proximity rate (register 0x82), measurements per second\nPROX_RATE_1_95 = 0\nPROX_RATE_3_9 = 1\nPROX_RATE_7_8 = 2\nPROX_RATE_16_6 = 3\nPROX_RATE_31_25 = 4\nPROX_RATE_62_5 = 5\nPROX_RATE_125 = 6\nPROX_RATE_250 = 7\n\n# Ambient light rate (register 0x84 bits 6:4), samples per second\nALS_RATE_1 = 0\nALS_RATE_2 = 1\nALS_RATE_3 = 2\nALS_RATE_4 = 3\nALS_RATE_5 = 4\nALS_RATE_6 = 5\nALS_RATE_8 = 6\nALS_RATE_10 = 7\n\n\nclass VCNL4010:\n    def __init__(self, i2c, addr=0x13, led_ma=200, prox_rate=PROX_RATE_16_6,\n                 als_rate=ALS_RATE_10, als_averaging=5):\n        \"\"\"Check the ID, configure and start self-timed (periodic) proximity and ALS measurements.\n\n        led_ma: IR LED current 0..200 mA in 10 mA steps. als_averaging: n for 2^n conversions\n        per reading (0..7, default 5 = 32). Each ALS reading takes a 100 ms frame.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        pid = self._r8(_PRODUCT_ID)\n        if (pid >> 4) != 2:\n            raise OSError('VCNL4010 not found at 0x%02X (ID 0x%02X)' % (addr, pid))\n        # Rates may only be changed while selftimed_en = 0, so stop first.\n        self._w8(_COMMAND, 0x00)\n        self.set_led_current(led_ma)\n        self._w8(_PROX_RATE, prox_rate & 0x07)\n        # Continuous conversion off, rate, auto offset compensation on, averaging 2^n\n        self._w8(_ALS_PARAM, ((als_rate & 0x07) << 4) | 0x08 | (als_averaging & 0x07))\n        self._w8(_MOD_TIMING, 0x01)  # Vishay recommended value (delay 0, 390.625 kHz, dead time 1)\n        self._w8(_INT_CTRL, 0x00)    # no interrupts\n        self.start()\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, value):\n        self.i2c.writeto_mem(self.addr, reg, bytes([value & 0xFF]))\n\n    def _r16(self, reg):\n        d = self.i2c.readfrom_mem(self.addr, reg, 2)  # auto-increment: high byte, then low byte\n        return (d[0] << 8) | d[1]\n\n    def set_led_current(self, ma):\n        \"\"\"IR LED current for proximity, 0..200 mA in 10 mA steps (stops self-timed mode briefly).\"\"\"\n        ma = max(0, min(200, int(ma)))\n        cmd = self._r8(_COMMAND) & 0x07\n        if cmd & _SELFTIMED_EN:\n            self._w8(_COMMAND, 0x00)\n        self._w8(_IR_LED, ma // 10)\n        if cmd & _SELFTIMED_EN:\n            self._w8(_COMMAND, cmd)\n\n    def start(self):\n        \"\"\"Enable self-timed ALS + proximity measurements and wait for the first results.\"\"\"\n        self._w8(_COMMAND, _SELFTIMED_EN | _PROX_EN | _ALS_EN)\n        time.sleep_ms(250)  # ALS frame is 100 ms; slowest default rates need a little longer\n\n    def stop(self):\n        \"\"\"Stop measuring (standby, about 1.5 uA).\"\"\"\n        self._w8(_COMMAND, 0x00)\n\n    def als_raw(self):\n        \"\"\"Latest ambient light result (0..65535 counts).\"\"\"\n        return self._r16(_ALS_RESULT)\n\n    def lux(self):\n        \"\"\"Ambient light in lx: counts x 0.25 lx (datasheet basic characteristics).\"\"\"\n        return self._r16(_ALS_RESULT) * LUX_PER_COUNT\n\n    def proximity(self):\n        \"\"\"Latest proximity result (0..65535 counts): bigger = closer. Not a distance.\"\"\"\n        return self._r16(_PROX_RESULT)\n\n    def read_on_demand(self, timeout_ms=500):\n        \"\"\"Single on-demand ALS + proximity measurement (self-timed mode must be off).\n\n        Returns (lux, proximity). Polls the data-ready flags in the command register.\"\"\"\n        self.stop()\n        self._w8(_COMMAND, _ALS_OD | _PROX_OD)\n        t0 = time.ticks_ms()\n        want = _ALS_DATA_RDY | _PROX_DATA_RDY\n        while (self._r8(_COMMAND) & want) != want:\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError('VCNL4010 measurement timed out')\n            time.sleep_ms(5)\n        return self.lux(), self.proximity()\n\n    def interrupt_status(self, clear=True):\n        \"\"\"Read register 0x8E (b3 prox ready, b2 als ready, b1 low threshold, b0 high threshold);\n        writing 1s clears the bits and releases INT.\"\"\"\n        s = self._r8(_INT_STATUS) & 0x0F\n        if clear and s:\n            self._w8(_INT_STATUS, s)\n        return s\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom vcnl4010 import VCNL4010\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = VCNL4010(i2c)  # self-timed ALS + proximity, 200 mA IR LED\nwhile True:\n    print('Lux=%.2f Prox=%d' % (sensor.lux(), sensor.proximity()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the light level and proximity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "proximity",
+          "value": 5432
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Lux=1234.00 Prox=5432",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:12:58.748Z",
+    "verifiedSources": [
+      "https://www.vishay.com/doc?83476",
+      "https://www.adafruit.com/product/466",
+      "https://github.com/adafruit/Adafruit_VCNL4010"
+    ]
+  }
+}

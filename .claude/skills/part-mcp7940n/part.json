@@ -1,0 +1,127 @@
+{
+  "type": "custom-mcp7940n",
+  "name": "MCP7940N real-time clock module",
+  "mpn": "MCP7940N",
+  "category": "ic",
+  "description": "Microchip MCP7940N battery-backed real-time clock/calendar: seconds to years in BCD with leap years to 2399, 12/24-hour modes, two alarms, a multifunction output (alarm, square wave or GPIO), digital trimming, power-fail time stamps and 64 bytes of battery-backed SRAM, on a 400 kHz I2C bus at address 0x6F. The oscillator only runs once the ST bit is set, and the coin cell is only used once VBATEN is set. Chip runs on 1.8-5.5 V (100 kHz below 2.5 V) and draws about 1.2 uA timekeeping. Sold as: M12 Labs MCP7940N Real-Time Clock (RTC) Breakout Board (Tindie, rev 02-00; header J1 VCC, MFP, SCL, SDA, GND; Qwiic/STEMMA QT sockets J2/J3; 10 kOhm I2C pull-ups and a coin-cell holder on board), I2C address 0x6F.",
+  "eli5": "A tiny clock that keeps the date and time, and with a coin cell fitted it keeps counting while your board is switched off.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 1.8-5.5 V. The board's I2C pull-ups go to VCC, so use 3.3 V with an ESP32 or Pico",
+      "required": true
+    },
+    {
+      "name": "MFP",
+      "role": "io",
+      "description": "Multifunction output: alarm interrupt, square wave (1 Hz-32.768 kHz) or general-purpose output. Open-drain, needs a pull-up (typically 10 kOhm) if used; may be left floating; not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, up to 400 kHz (100 kHz below 2.5 V). 10 kOhm pull-up to VCC on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, open-drain. 10 kOhm pull-up to VCC on the board",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 1.8,
+  "vmax": 5.5,
+  "currentMa": 0.4,
+  "i2cAddress": 111,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/20005010H.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "MCP7940N RTC breakout board I2C real time clock",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/20005010H.pdf",
+    "https://www.tindie.com/products/m12labs/mcp7940n-real-time-clock-rtc-breakout-board/",
+    "https://img.tindie.com/images/resize/MbCNh6N8cTBkRgzgkRo54cTT7DI=/p/fit-in/1032x688/filters:fill(fff)/i/915594/products/2025-04-28T19:50:43.687Z-front-edited.jpg?1745844654"
+  ],
+  "buildNotes": [
+    "Fixed I2C address 0x6F (control byte 1101111x, DEh write / DFh read); only one MCP7940N per bus. SRAM shares the same address (registers 20h-5Fh).",
+    "The clock does NOT run from power-up: set ST (RTCSEC bit 7) to start the oscillator. The driver's datetime() setter does this.",
+    "The coin cell is ignored until VBATEN (RTCWKDAY bit 3) is set; the driver sets it whenever it sets the time.",
+    "The board has 10 kOhm pull-ups on SDA/SCL to VCC: power it from 3.3 V on an ESP32 or Pico so the bus never sees 5 V.",
+    "Use J1's labelled row (VCC, MFP, SCL, SDA, GND) on the breadboard, or a Qwiic/STEMMA QT cable on J2/J3.",
+    "Read all seven time registers (00h-06h) in one burst: the chip buffers them against rollover during the read.",
+    "To change the time, clear ST, wait for OSCRUN (RTCWKDAY bit 5) to clear, load the registers, then set ST again (datasheet 5.3 note 2).",
+    "MFP is open-drain: fit a 10 kOhm pull-up if you use it for alarms or the square wave."
+  ],
+  "keywords": [
+    "mcp7940n",
+    "mcp7940",
+    "mcp7940m",
+    "rtc",
+    "rtcc",
+    "real time clock",
+    "clock",
+    "calendar",
+    "sram",
+    "m12 labs"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "rtc": {
+      "reg": "0x00",
+      "order": "ds1307"
+    },
+    "registers": {
+      "0x07": 128,
+      "0x08": 0,
+      "0x0D": 1,
+      "0x14": 1
+    }
+  },
+  "driver": {
+    "filename": "mcp7940n.py",
+    "code": "# MCP7940N battery-backed I2C real-time clock/calendar (Microchip), MicroPython driver.\n# I2C address 0x6F (control byte 1101111x). Registers per Microchip DS20005010H:\n# 00h RTCSEC (bit 7 ST = start oscillator), 01h RTCMIN, 02h RTCHOUR (bit 6 = 12-hour mode),\n# 03h RTCWKDAY (bit 5 OSCRUN, bit 4 PWRFAIL, bit 3 VBATEN, bits 2-0 weekday 1-7),\n# 04h RTCDATE, 05h RTCMTH (bit 5 LPYR, read-only), 06h RTCYEAR, all BCD.\n# 07h CONTROL (OUT, SQWEN, ALM1EN, ALM0EN, EXTOSC, CRSTRIM, SQWFS1:0), 08h OSCTRIM,\n# 0Ah-0Fh alarm 0, 11h-16h alarm 1, 18h-1Fh power-fail time stamps, 20h-5Fh 64 bytes of SRAM.\nimport time\n\n_ADDR = 0x6F\n_RTCSEC = 0x00\n_RTCWKDAY = 0x03\n_CONTROL = 0x07\n_OSCTRIM = 0x08\n_ALM0 = 0x0A\n_ALM1 = 0x11\n_SRAM = 0x20\n\n_ST = 0x80       # RTCSEC bit 7\n_OSCRUN = 0x20   # RTCWKDAY bit 5\n_PWRFAIL = 0x10  # RTCWKDAY bit 4\n_VBATEN = 0x08   # RTCWKDAY bit 3\n\n\ndef _bcd(n):\n    return ((n // 10) << 4) | (n % 10)\n\n\ndef _dec(b):\n    return (b >> 4) * 10 + (b & 0x0F)\n\n\ndef _weekday(y, m, d):\n    # 1 = Monday ... 7 = Sunday. The chip just counts 1-7; this driver uses the ISO convention.\n    t = (0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4)\n    if m < 3:\n        y -= 1\n    w = (y + y // 4 - y // 100 + y // 400 + t[m - 1] + d) % 7  # 0 = Sunday\n    return w or 7\n\n\nclass MCP7940N:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _r(self, reg, n=1):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, data):\n        self.i2c.writeto_mem(self.addr, reg, bytes(data))\n\n    def datetime(self, dt=None):\n        \"\"\"Read or set the time.\n        Read returns (year, month, day, weekday, hour, minute, second), weekday 1 = Monday ... 7 = Sunday.\n        Set with (year, month, day, hour, minute, second); the weekday is worked out for you.\n        Setting also starts the oscillator (ST) and enables the coin-cell backup (VBATEN).\"\"\"\n        if dt is None:\n            r = self._r(_RTCSEC, 7)  # one read: the chip buffers the time registers against rollover\n            h = r[2]\n            if h & 0x40:  # 12-hour mode (set by other software): convert to 24 h\n                hour = _dec(h & 0x1F) % 12 + (12 if h & 0x20 else 0)\n            else:\n                hour = _dec(h & 0x3F)\n            return (2000 + _dec(r[6]), _dec(r[5] & 0x1F), _dec(r[4] & 0x3F), r[3] & 0x07,\n                    hour, _dec(r[1] & 0x7F), _dec(r[0] & 0x7F))\n        y, mo, d, h, mi, s = dt[:6]\n        if not 2001 <= y <= 2099:\n            raise ValueError('year must be 2001-2099')  # chip's leap-year logic covers 2001-2399, year is 2 digits\n        # Datasheet 5.3 note 2: clear ST, wait for OSCRUN to clear, load the time, then set ST again.\n        sec = self._r(_RTCSEC)[0]\n        if sec & _ST:\n            self._w(_RTCSEC, [sec & 0x7F])\n            t0 = time.ticks_ms()\n            while self._r(_RTCWKDAY)[0] & _OSCRUN:\n                if time.ticks_diff(time.ticks_ms(), t0) > 50:  # TOSF is ~1 ms; give up after 50 ms\n                    break\n                time.sleep_ms(1)\n        self._w(_RTCSEC + 1, [\n            _bcd(mi),\n            _bcd(h),                          # bit 6 = 0: 24-hour format\n            _VBATEN | _weekday(y, mo, d),     # writing RTCWKDAY also clears PWRFAIL\n            _bcd(d),\n            _bcd(mo),\n            _bcd(y - 2000)])\n        self._w(_RTCSEC, [_ST | _bcd(s)])     # start the oscillator last\n\n    def is_running(self):\n        \"\"\"True once the oscillator is running (OSCRUN). False after first power-up until the time is set.\"\"\"\n        return bool(self._r(_RTCWKDAY)[0] & _OSCRUN)\n\n    def power_failed(self):\n        \"\"\"True if main power was lost while on the coin cell (PWRFAIL). Cleared by setting the time\n        or by clear_power_fail().\"\"\"\n        return bool(self._r(_RTCWKDAY)[0] & _PWRFAIL)\n\n    def clear_power_fail(self):\n        w = self._r(_RTCWKDAY)[0]\n        self._w(_RTCWKDAY, [w & 0x0F])  # PWRFAIL can only be written 0; OSCRUN is read-only\n\n    def battery_backup(self, on=True):\n        \"\"\"Enable (VBATEN) or disable the VBAT coin-cell input.\"\"\"\n        w = self._r(_RTCWKDAY)[0] & 0x0F\n        self._w(_RTCWKDAY, [(w | _VBATEN) if on else (w & ~_VBATEN)])\n\n    def square_wave(self, hz):\n        \"\"\"Square wave on MFP (open-drain, needs a pull-up): 1, 4096, 8192, 32768, or 0/None for off.\"\"\"\n        c = self._r(_CONTROL)[0] & 0xB8  # keep OUT, ALM1EN, ALM0EN, EXTOSC; clear SQWEN, CRSTRIM, SQWFS\n        if hz:\n            c |= 0x40 | {1: 0, 4096: 1, 8192: 2, 32768: 3}[hz]\n        self._w(_CONTROL, [c])\n\n    def mfp(self, level):\n        \"\"\"Drive MFP as a general-purpose output (only when square wave and both alarms are off).\"\"\"\n        c = self._r(_CONTROL)[0]\n        self._w(_CONTROL, [(c | 0x80) if level else (c & 0x7F)])\n\n    def trim(self, steps):\n        \"\"\"Digital trim, -127..127 (SIGN bit 7 + TRIMVAL6:0, CRSTRIM = 0). Each step adds or subtracts\n        2 clock cycles per minute (about 1 ppm). Positive: the clock runs slow, so add cycles. 0 = off.\"\"\"\n        v = max(-127, min(127, int(steps)))\n        self._w(_OSCTRIM, [(0x80 | v) if v > 0 else -v])\n\n    def set_alarm(self, alarm=0, second=None, minute=None, hour=None, weekday=None, day=None,\n                  month=None, active_high=False):\n        \"\"\"Alarm 0 or 1. Give ONE of second/minute/hour/weekday/day to match only that field,\n        or give all of second, minute, hour, weekday, day and month for a full match.\n        MFP asserts (low by default) when ALMxIF is set; clear it with clear_alarm().\"\"\"\n        base = _ALM0 if alarm == 0 else _ALM1\n        fields = (second, minute, hour, weekday, day, month)\n        given = [f is not None for f in fields]\n        if all(given):\n            mask = 7\n        elif sum(given) == 1 and month is None:\n            mask = given.index(True)  # 0 sec, 1 min, 2 hour, 3 weekday, 4 date\n        else:\n            raise ValueError('give one field, or all six')\n        v = [0 if f is None else f for f in fields]\n        pol = 0x80 if active_high else 0\n        if alarm == 1:\n            pol = self._r(_ALM0 + 3)[0] & 0x80  # ALMPOL lives in ALM0WKDAY; ALM1's copy is read-only\n        self._w(base, [\n            _bcd(v[0]), _bcd(v[1]), _bcd(v[2]),\n            pol | (mask << 4) | (v[3] & 0x07),  # writing ALMxWKDAY clears ALMxIF\n            _bcd(v[4]), _bcd(v[5])])\n        c = self._r(_CONTROL)[0] & ~0x40      # SQWEN off so MFP is the alarm output\n        self._w(_CONTROL, [c | (0x10 if alarm == 0 else 0x20)])\n\n    def alarm_fired(self, alarm=0):\n        base = _ALM0 if alarm == 0 else _ALM1\n        return bool(self._r(base + 3)[0] & 0x08)\n\n    def clear_alarm(self, alarm=0):\n        base = _ALM0 if alarm == 0 else _ALM1\n        w = self._r(base + 3)[0]\n        self._w(base + 3, [w & 0xF7])\n\n    def disable_alarm(self, alarm=0):\n        c = self._r(_CONTROL)[0]\n        self._w(_CONTROL, [c & ~(0x10 if alarm == 0 else 0x20)])\n\n    def sram_read(self, offset, n):\n        \"\"\"Read n bytes of the 64-byte battery-backed SRAM (offset 0-63).\"\"\"\n        if offset < 0 or offset + n > 64:\n            raise ValueError('SRAM is 64 bytes')\n        return self._r(_SRAM + offset, n)\n\n    def sram_write(self, offset, data):\n        if offset < 0 or offset + len(data) > 64:\n            raise ValueError('SRAM is 64 bytes')\n        self._w(_SRAM + offset, data)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mcp7940n import MCP7940N\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nrtc = MCP7940N(i2c)\nrtc.datetime((2026, 12, 31, 23, 59, 57))  # Thursday 31 Dec 2026, 23:59:57; also starts the oscillator\nwhile True:\n    y, mo, d, wd, h, mi, s = rtc.datetime()\n    print('wd=%d %04d-%02d-%02d %02d:%02d:%02d' % (wd, y, mo, d, h, mi, s))\n    time.sleep(1)\n",
+    "test": {
+      "id": "new-year",
+      "title": "Keeps the time it was set to and rolls over into 2027",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=4 2026-12-31 23:59:5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "wd=5 2027-01-01 00:00:0",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:03:19.728Z",
+    "verifiedSources": [
+      "https://ww1.microchip.com/downloads/en/DeviceDoc/20005010F.pdf",
+      "https://www.tindie.com/products/m12labs/mcp7940n-real-time-clock-rtc-breakout-board/"
+    ]
+  }
+}

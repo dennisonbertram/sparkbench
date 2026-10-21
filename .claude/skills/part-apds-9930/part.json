@@ -1,0 +1,186 @@
+{
+  "type": "custom-apds-9930",
+  "name": "APDS-9930 proximity & ambient light sensor",
+  "mpn": "APDS-9930",
+  "category": "sensor",
+  "description": "Broadcom (Avago) APDS-9930: an IR-LED proximity sensor (10-bit count, calibrated to about 100 mm) and a two-channel ambient light sensor (Ch0 visible+IR, Ch1 IR, 16-bit counts each, lux from the datasheet equation), over I2C at the fixed address 0x39. Chip runs on 2.2-3.6 V (3.8 V absolute max) with 3.3 V logic. Sold as: CJMCU-9930 APDS-9930 proximity & ambient light module (purple board, 6-pin header VL, GND, VCC, SCL, SDA, INT, no regulator or level shifter).",
+  "eli5": "Shines invisible light to tell how close your hand is, and measures how bright the room is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VL",
+      "role": "power",
+      "description": "IR LED supply (chip LEDA, 2.5-4.5 V): connect to 3.3 V so the proximity LED works",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Sensor supply, 2.4-3.6 V (3.3 V). NOT 5 V tolerant: no regulator on the board",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock, 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data, 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low; not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2.4,
+  "vmax": 3.6,
+  "currentMa": 3,
+  "i2cAddress": 57,
+  "datasheetUrl": "https://docs.broadcom.com/doc/AV02-3190EN",
+  "priceUsd": 3,
+  "supplierQuery": "APDS-9930 proximity ambient light sensor module CJMCU-9930 I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC and VL from 3.3 V only: the chip's absolute maximum is 3.8 V and the CJMCU-9930 has no regulator or level shifter. Never put 5 V on VCC, VL, SDA or SCL.",
+    "VL feeds the IR LED anode (LEDA, 2.5-4.5 V). Without it the proximity reading stays near zero; wire it to 3.3 V next to VCC.",
+    "The address 0x39 is fixed (one sensor per bus). ID register 0x12 reads 0x39. Every register access uses a command byte: 0xA0 | register for auto-increment, 0x80 | register for repeated byte, 0xE7 clears interrupts.",
+    "Wait 4.5 ms after power-up, configure with ENABLE (0x00) = 0, set CONTROL (0x0F) with PDIODE = 10 (Ch1 diode; proximity does not work otherwise), PPULSE = 8 and PDRIVE = 100 mA, then ENABLE = 0x07 (PON + AEN + PEN).",
+    "ALS: ALSIT = 2.73 ms x (256 - ATIME), max count = min(65535, 1023 x (256 - ATIME)). Read Ch0/Ch1 (0x14-0x17, low byte first) in one 4-byte read after STATUS AVALID.",
+    "Lux (open air) = max(CH0 - 1.862 CH1, 0.746 CH0 - 1.291 CH1, 0) x 0.49 x 52 / (ALSIT x AGAIN). Behind a window the coefficients change (see the Broadcom application note).",
+    "Proximity: PDATA (0x18/0x19) is 0-1023 with PTIME = 0xFF; about 100-200 counts with nothing in front, about 520 for a grey card at 100 mm. The LED pulses at 100 mA, so use short, solid supply wires."
+  ],
+  "keywords": [
+    "apds9930",
+    "apds-9930",
+    "cjmcu-9930",
+    "proximity",
+    "ambient light",
+    "lux",
+    "light sensor",
+    "avago",
+    "broadcom"
+  ],
+  "sources": [
+    "https://docs.broadcom.com/doc/AV02-3190EN",
+    "https://electropeak.com/learn/interfacing-apds-9930-proximity-and-ambient-light-and-gesture-sensor-with-arduino/",
+    "https://electropeak.com/learn/wp-content/uploads/2020/12/APDS-9930-Pinout.jpg",
+    "https://kitsguru.com/products/rgb-infrared-gesture-sensor-apds-9930-dc-3-3-3-8v-for-arduino-i2c-interface-3-3v-detectoin-proximity-sensing-color-uv-filter",
+    "https://juejin.cn/post/7665613563865464841",
+    "https://github.com/depau/APDS9930"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Proximity (counts, higher = closer)",
+    "unit": "counts",
+    "min": 0,
+    "max": 1023,
+    "default": 150,
+    "controls": [
+      {
+        "key": "ch0",
+        "quantity": "Ch0 visible + IR light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 37887,
+        "default": 2000
+      },
+      {
+        "key": "ch1",
+        "quantity": "Ch1 infrared light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 37887,
+        "default": 300
+      }
+    ],
+    "registers": {
+      "0xB2": 57,
+      "0xB3": 3
+    },
+    "measures": [
+      {
+        "reg": "0xB4",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ch0"
+      },
+      {
+        "reg": "0xB6",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "ch1"
+      },
+      {
+        "reg": "0xB8",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "apds9930.py",
+    "code": "# APDS-9930 digital proximity and ambient light sensor (Broadcom/Avago), MicroPython driver.\n# Written from the APDS-9930 datasheet (AV02-3190EN):\n#  - fixed I2C address 0x39; ID register 0x12 reads 0x39.\n#  - every register access starts with a COMMAND byte: bit 7 CMD = 1, bits 6:5 TYPE\n#    (00 repeated byte, 01 auto-increment, 11 special function), bits 4:0 register address.\n#    This driver uses auto-increment (0xA0 | reg) for all reads and writes; 0xE7 clears interrupts.\n#  - ENABLE (0x00): PON bit 0, AEN bit 1, PEN bit 2, WEN bit 3. Configure with ENABLE = 0, then enable.\n#    Wait at least 4.5 ms after power-up before the first I2C command.\n#  - ATIME (0x01): ALSIT = 2.73 ms x (256 - ATIME); max count = min(65535, 1023 x (256 - ATIME)).\n#  - PTIME (0x02) = 0xFF recommended (proximity full scale 1023). PPULSE (0x0E): 8 pulses recommended.\n#  - CONTROL (0x0F): PDRIVE b7:6 (00 = 100 mA), PDIODE b5:4 (must be 10 = Ch1 diode),\n#    PGAIN b3:2 (1/2/4/8x), AGAIN b1:0 (1/8/16/120x).\n#  - STATUS (0x13): AVALID bit 0, PVALID bit 1.\n#  - Ch0DATA (0x14/0x15), Ch1DATA (0x16/0x17), PDATA (0x18/0x19): 16-bit, low byte first.\n#  - Lux (open air): IAC = max(CH0 - 1.862 CH1, 0.746 CH0 - 1.291 CH1, 0);\n#    LPC = GA x DF / (ALSIT x AGAIN) with GA = 0.49, DF = 52; lux = IAC x LPC.\nimport time\n\n_ADDR = 0x39\n_CMD_AUTO = 0xA0\n_CMD_CLEAR_INT = 0xE7\n\n_ENABLE = 0x00\n_ATIME = 0x01\n_PTIME = 0x02\n_WTIME = 0x03\n_PERS = 0x0C\n_CONFIG = 0x0D\n_PPULSE = 0x0E\n_CONTROL = 0x0F\n_ID = 0x12\n_STATUS = 0x13\n_CH0DATAL = 0x14\n_PDATAL = 0x18\n\n_PON = 0x01\n_AEN = 0x02\n_PEN = 0x04\n_AVALID = 0x01\n_PVALID = 0x02\n\n_AGAIN = {1: 0, 8: 1, 16: 2, 120: 3}\n_PGAIN = {1: 0, 2: 1, 4: 2, 8: 3}\n_PDIODE_CH1 = 0x20  # datasheet: PDIODE must be 10 (Ch1 diode) for proximity to work\n_PDRIVE_100MA = 0x00\n\n# Open-air lux coefficients from the datasheet.\n_GA = 0.49\n_DF = 52.0\n_B = 1.862\n_C = 0.746\n_D = 1.291\n\n# 0x39 is the datasheet ID; some boards' chips report 0x12 (accepted by common Arduino libraries too).\n_IDS = (0x39, 0x12)\n\n\nclass APDS9930:\n    def __init__(self, i2c, addr=_ADDR, atime=0xDB, again=1, pgain=1, ppulse=8):\n        \"\"\"atime: 0xFF (2.73 ms) .. 0x00 (699 ms); default 0xDB = 101 ms (max count 37887).\n        again: ALS gain 1, 8, 16 or 120. pgain: proximity gain 1, 2, 4 or 8.\n        ppulse: IR LED pulses per proximity reading (8 recommended by the datasheet).\"\"\"\n        if again not in _AGAIN or pgain not in _PGAIN:\n            raise ValueError('again must be 1/8/16/120, pgain 1/2/4/8')\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(5)  # >= 4.5 ms after power-up before the first command\n        dev_id = self._read8(_ID)\n        if dev_id not in _IDS:\n            raise OSError('APDS-9930 not found (ID 0x%02X): check the wiring' % dev_id)\n        self.atime = atime & 0xFF\n        self.again = again\n        self._write8(_ENABLE, 0x00)  # power down while configuring\n        self._write8(_ATIME, self.atime)\n        self._write8(_PTIME, 0xFF)  # one 2.73 ms proximity ADC cycle, as recommended\n        self._write8(_WTIME, 0xFF)\n        self._write8(_PERS, 0x00)\n        self._write8(_CONFIG, 0x00)  # AGL = 0, WLONG = 0, PDL = 0\n        self._write8(_PPULSE, ppulse & 0xFF)\n        self._write8(_CONTROL, _PDRIVE_100MA | _PDIODE_CH1 | (_PGAIN[pgain] << 2) | _AGAIN[again])\n        self._write8(_ENABLE, _PON | _AEN | _PEN)\n        time.sleep_ms(12)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto_mem(self.addr, _CMD_AUTO | reg, bytes((value & 0xFF,)))\n\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, _CMD_AUTO | reg, n)\n\n    def _read8(self, reg):\n        return self._read(reg, 1)[0]\n\n    def integration_ms(self):\n        return 2.73 * (256 - self.atime)\n\n    def max_count(self):\n        return min(65535, 1023 * (256 - self.atime))\n\n    def _wait(self, bit):\n        deadline = time.ticks_add(time.ticks_ms(), int(self.integration_ms() * 2) + 100)\n        while not (self._read8(_STATUS) & bit):\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('APDS-9930 timed out waiting for a reading')\n            time.sleep_ms(5)\n\n    def raw(self):\n        \"\"\"(ch0, ch1) ALS counts: ch0 = visible + IR, ch1 = IR, from one integration cycle.\"\"\"\n        self._wait(_AVALID)\n        d = self._read(_CH0DATAL, 4)\n        return d[0] | (d[1] << 8), d[2] | (d[3] << 8)\n\n    def proximity(self):\n        \"\"\"Proximity count, 0 .. 1023 with PTIME = 0xFF (bigger = closer).\"\"\"\n        self._wait(_PVALID)\n        d = self._read(_PDATAL, 2)\n        return d[0] | (d[1] << 8)\n\n    def lux(self, ch0=None, ch1=None):\n        \"\"\"Illuminance in lux from the datasheet's open-air equation (no cover glass).\"\"\"\n        if ch0 is None or ch1 is None:\n            ch0, ch1 = self.raw()\n        iac = max(ch0 - _B * ch1, _C * ch0 - _D * ch1, 0)\n        lpc = _GA * _DF / (self.integration_ms() * self.again)\n        return iac * lpc\n\n    def saturated(self, ch0):\n        return ch0 >= self.max_count()\n\n    def clear_interrupts(self):\n        self.i2c.writeto(self.addr, bytes((_CMD_CLEAR_INT,)))\n\n    def sleep(self):\n        self._write8(_ENABLE, 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom apds9930 import APDS9930\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = APDS9930(i2c)\nwhile True:\n    p = sensor.proximity()\n    ch0, ch1 = sensor.raw()\n    print('P=%d CH0=%d CH1=%d LUX=%.0f' % (p, ch0, ch1, sensor.lux(ch0, ch1)))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the proximity, Ch0/Ch1 counts and lux set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 400
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ch0",
+          "value": 5000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ch1",
+          "value": 525
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=400 CH0=5000 CH1=525 LUX=1015",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:53:10.548Z",
+    "verifiedSources": [
+      "https://docs.broadcom.com/doc/AV02-3190EN",
+      "https://kitsguru.com/products/rgb-infrared-gesture-sensor-apds-9930-dc-3-3-3-8v-for-arduino-i2c-interface-3-3v-detectoin-proximity-sensing-color-uv-filter"
+    ]
+  }
+}

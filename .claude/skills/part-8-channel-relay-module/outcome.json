@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-8-channel-relay-module",
+  "board": "8-channel 5V relay module with optocoupler, low level trigger (common blue Songle board, 8x SRD-05VDC-SL-C; 10-pin input header GND, IN1-IN8, VCC plus GND/VCC/JD-VCC jumper header)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, DRC, footprint, LCSC C35449). IN1-IN8 modelled as actuator inputs with inputsActiveLow; the test confirms odd and even relays alternate when their inputs are driven low. No driver needed (plain GPIO); marked cabled (10-pin header, screw terminals on the far edge).",
+  "datasheetUrl": "https://www.circuitbasics.com/wp-content/uploads/2015/11/SRD-05VDC-SL-C-Datasheet.pdf",
+  "breakoutPinoutSource": "https://components101.com/switches/5v-eight-channel-relay-module-pinout-features-applications-working-datasheet (pins 1-10: GND, IN1-IN8, VCC, then GND/VCC/RY-VCC jumper); https://zbotic.in/wp-content/uploads/2023/09/8Ch-relay-User-Manual.pdf (Handsontec 8Ch manual, active LOW, JD-VCC jumper)",
+  "checkRuns": 1
+}

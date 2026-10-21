@@ -1,0 +1,392 @@
+{
+  "type": "custom-tca9555",
+  "name": "TCA9555 16-bit I/O expander",
+  "mpn": "TCA9555",
+  "category": "ic",
+  "description": "Texas Instruments 16-bit I2C/SMBus I/O expander: two 8-bit ports (P00-P07, P10-P17), each pin an input with a fixed internal 100 kOhm pull-up or a push-pull output (25 mA max per pin), plus an open-drain interrupt output. Runs on 1.65-5.5 V with 5 V tolerant I/O. Sold as: MusRock TCA9555 I2C I/O Expander 16-Bit GPIO Expansion Board (green 24-pin DIP-style board, 800 mil rows; J1: nINT, A1, A2, P00-P07, GND | J2: VDD, SDA, SCL, A0, P17-P10; 10k pull-ups on SDA, SCL and nINT, A0-A2 pulled low by 10k), I2C address 0x20 (0x20-0x27 via A0-A2).",
+  "eli5": "Gives your board 16 extra pins to switch LEDs or read buttons, using only the two I2C wires.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "nINT",
+      "role": "io",
+      "description": "J1-1: INT, active-low open-drain interrupt output (goes low when an input changes; cleared by reading the Input Port). 10k pull-up on the board",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "J1-2: address bit 1, pulled low by 10k on the board (tie to VDD to add 2 to the address)",
+      "required": false
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "J1-3: address bit 2, pulled low by 10k on the board (tie to VDD to add 4)",
+      "required": false
+    },
+    {
+      "name": "P00",
+      "role": "io",
+      "description": "J1-4: port 0 pin 0, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P01",
+      "role": "io",
+      "description": "J1-5: port 0 pin 1, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P02",
+      "role": "io",
+      "description": "J1-6: port 0 pin 2, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P03",
+      "role": "io",
+      "description": "J1-7: port 0 pin 3, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P04",
+      "role": "io",
+      "description": "J1-8: port 0 pin 4, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P05",
+      "role": "io",
+      "description": "J1-9: port 0 pin 5, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P06",
+      "role": "io",
+      "description": "J1-10: port 0 pin 6, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P07",
+      "role": "io",
+      "description": "J1-11: port 0 pin 7, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "J1-12: ground",
+      "required": true
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "J2-1: supply 1.65-5.5 V (silkscreen V on top, VDD underneath); also feeds the board pull-ups, so the I2C level = VDD",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "J2-2: I2C data (10k pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "J2-3: I2C clock (10k pull-up to VDD on the board)",
+      "required": true
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "J2-4: address bit 0, pulled low by 10k on the board (tie to VDD to add 1)",
+      "required": false
+    },
+    {
+      "name": "P17",
+      "role": "io",
+      "description": "J2-5: port 1 pin 7, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P16",
+      "role": "io",
+      "description": "J2-6: port 1 pin 6, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P15",
+      "role": "io",
+      "description": "J2-7: port 1 pin 5, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P14",
+      "role": "io",
+      "description": "J2-8: port 1 pin 4, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P13",
+      "role": "io",
+      "description": "J2-9: port 1 pin 3, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P12",
+      "role": "io",
+      "description": "J2-10: port 1 pin 2, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P11",
+      "role": "io",
+      "description": "J2-11: port 1 pin 1, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    },
+    {
+      "name": "P10",
+      "role": "io",
+      "description": "J2-12: port 1 pin 0, input (internal 100k pull-up) or push-pull output, 25 mA max",
+      "required": false
+    }
+  ],
+  "vmin": 1.65,
+  "vmax": 5.5,
+  "currentMa": 2,
+  "i2cAddress": 32,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/tca9555.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "TCA9555 I2C 16-bit IO expander module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x24_P2.54mm_Vertical",
+  "buildNotes": [
+    "I2C address is 0x20 + (A2 A1 A0): the board pulls A0-A2 low through 10k, so it answers at 0x20 until you tie address pins to VDD.",
+    "All pins power up as inputs (Configuration 0x06/0x07 = 0xFF) and every Output Port latch powers up at 1: write the level to Output Port 0x02/0x03 first, then clear the pin's Configuration bit to make it an output, or it starts by driving high.",
+    "Read pin levels from Input Port 0x00 (P00-P07) / 0x01 (P10-P17). Inputs have a fixed internal ~100 kOhm pull-up, so a button to GND needs no extra resistor and reads 0 when pressed.",
+    "Each pin sinks or sources at most 25 mA, each 8-pin port 100 mA sunk / 80 mA sourced, the chip 200 mA sunk / 160 mA sourced: always put a resistor in series with an LED.",
+    "The board's SDA/SCL/nINT pull-ups go to VDD: power it from 3.3 V with an ESP32 or Pico so the bus never sees 5 V (the P pins themselves are 5 V tolerant).",
+    "nINT is open-drain and goes low when an input changes; reading the Input Port clears it.",
+    "This 24-pin board has two rows 800 mil apart, so Sparkbench wires it with jumper leads to a single-row connector."
+  ],
+  "keywords": [
+    "tca9555",
+    "pca9555",
+    "io expander",
+    "gpio expander",
+    "port expander",
+    "i2c",
+    "16-bit"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/tca9555.pdf",
+    "https://www.amazon.com/dp/B0FTFXR6NW",
+    "https://m.media-amazon.com/images/I/51fqwUXszmL.jpg",
+    "https://m.media-amazon.com/images/I/51XAsIiFICL.jpg",
+    "https://m.media-amazon.com/images/I/51ht8Ec4u3L.jpg"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 255,
+      "0x01": 255,
+      "0x02": 255,
+      "0x03": 255,
+      "0x04": 0,
+      "0x05": 0,
+      "0x06": 255,
+      "0x07": 255
+    },
+    "outputBits": [
+      {
+        "reg": "0x02",
+        "bit": 0,
+        "name": "P00"
+      },
+      {
+        "reg": "0x02",
+        "bit": 1,
+        "name": "P01"
+      },
+      {
+        "reg": "0x02",
+        "bit": 2,
+        "name": "P02"
+      },
+      {
+        "reg": "0x02",
+        "bit": 3,
+        "name": "P03"
+      },
+      {
+        "reg": "0x02",
+        "bit": 4,
+        "name": "P04"
+      },
+      {
+        "reg": "0x02",
+        "bit": 5,
+        "name": "P05"
+      },
+      {
+        "reg": "0x02",
+        "bit": 6,
+        "name": "P06"
+      },
+      {
+        "reg": "0x02",
+        "bit": 7,
+        "name": "P07"
+      },
+      {
+        "reg": "0x03",
+        "bit": 0,
+        "name": "P10"
+      },
+      {
+        "reg": "0x03",
+        "bit": 1,
+        "name": "P11"
+      },
+      {
+        "reg": "0x03",
+        "bit": 2,
+        "name": "P12"
+      },
+      {
+        "reg": "0x03",
+        "bit": 3,
+        "name": "P13"
+      },
+      {
+        "reg": "0x03",
+        "bit": 4,
+        "name": "P14"
+      },
+      {
+        "reg": "0x03",
+        "bit": 5,
+        "name": "P15"
+      },
+      {
+        "reg": "0x03",
+        "bit": 6,
+        "name": "P16"
+      },
+      {
+        "reg": "0x03",
+        "bit": 7,
+        "name": "P17"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x01",
+        "bit": 0,
+        "control": "p10",
+        "label": "Button P10 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x01",
+        "bit": 1,
+        "control": "p11",
+        "label": "Button P11 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x01",
+        "bit": 2,
+        "control": "p12",
+        "label": "Button P12 to GND",
+        "activeLow": true
+      },
+      {
+        "reg": "0x01",
+        "bit": 3,
+        "control": "p13",
+        "label": "Button P13 to GND",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tca9555.py",
+    "code": "# TCA9555 16-bit I2C I/O expander (TI SCPS200E), MicroPython driver.\n# Register map (command byte, datasheet Table 3):\n#   0x00 / 0x01  Input Port 0 / 1         read-only, the levels on the pins\n#   0x02 / 0x03  Output Port 0 / 1        output latches (power-up 0xFF)\n#   0x04 / 0x05  Polarity Inversion 0 / 1 1 = invert that input (power-up 0x00)\n#   0x06 / 0x07  Configuration 0 / 1      1 = input (power-up 0xFF), 0 = output\n# Registers come in pairs: after the command byte, a 2-byte read or write\n# moves from port 0 to port 1 of the same pair.\n# Pins are numbered 0-15: 0-7 = P00-P07, 8-15 = P10-P17.\n# Every input has a fixed internal ~100 kOhm pull-up (no register for it):\n# an undriven input reads 1, a button to GND reads 0.\n\n_INPUT0 = 0x00\n_OUTPUT0 = 0x02\n_POLARITY0 = 0x04\n_CONFIG0 = 0x06\n\nINPUT = 1\nOUTPUT = 0\n\n\nclass TCA9555:\n    def __init__(self, i2c, addr=0x20):\n        \"\"\"addr = 0x20 + A2A1A0 (0x20 with all address pins low).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _r(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _bit(self, base, pin, on):\n        if not 0 <= pin <= 15:\n            raise ValueError('pin must be 0-15')\n        reg = base + (pin >> 3)  # port 0 register, or the port 1 register right after it\n        v = self._r(reg)\n        v = v | (1 << (pin & 7)) if on else v & ~(1 << (pin & 7))\n        self._w(reg, v)\n\n    def pin_mode(self, pin, mode):\n        \"\"\"mode INPUT or OUTPUT. Set the output level with value() first:\n        the latch powers up at 1, so a pin made an output drives high.\"\"\"\n        self._bit(_CONFIG0, pin, mode == INPUT)\n\n    def invert(self, pin, on=True):\n        \"\"\"Polarity inversion of an input pin (read back as the opposite level).\"\"\"\n        self._bit(_POLARITY0, pin, on)\n\n    def value(self, pin, val=None):\n        \"\"\"Read a pin's level (Input Port register), or set its output latch (Output Port register).\"\"\"\n        if val is None:\n            if not 0 <= pin <= 15:\n                raise ValueError('pin must be 0-15')\n            return (self._r(_INPUT0 + (pin >> 3)) >> (pin & 7)) & 1\n        self._bit(_OUTPUT0, pin, val)\n\n    def read_port(self):\n        \"\"\"All 16 pin levels: bits 0-7 = P00-P07, bits 8-15 = P10-P17.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _INPUT0, 2)  # Input Port 0 then Input Port 1\n        return d[0] | (d[1] << 8)\n\n    def write_port(self, val):\n        \"\"\"Set all 16 output latches: bits 0-7 = P00-P07, bits 8-15 = P10-P17.\"\"\"\n        self.i2c.writeto_mem(self.addr, _OUTPUT0, bytes([val & 0xFF, (val >> 8) & 0xFF]))\n\n    def config_port(self, inputs):\n        \"\"\"16-bit direction mask in one go (1 = input, 0 = output).\"\"\"\n        self.i2c.writeto_mem(self.addr, _CONFIG0, bytes([inputs & 0xFF, (inputs >> 8) & 0xFF]))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tca9555 import TCA9555, INPUT, OUTPUT\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nio = TCA9555(i2c)          # address 0x20 (A0-A2 pulled low on the board)\nio.value(0, 0)             # latch P00 low first (it powers up at 1)...\nio.pin_mode(0, OUTPUT)     # ...then make P00 an output for an LED (through a resistor)\nio.pin_mode(8, INPUT)      # P10 reads a button wired to GND (internal pull-up)\nwhile True:\n    pressed = 1 if io.value(8) == 0 else 0\n    io.value(0, pressed)   # LED on while the button is held\n    print('BTN=%d LED=%d' % (pressed, pressed))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "button-led",
+      "title": "P10 button switches the P00 output",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P00",
+          "on": false,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "p10",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=1 LED=1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P00",
+          "on": true,
+          "within": 1000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "p10",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BTN=0 LED=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P00",
+          "on": false,
+          "within": 1000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T11:04:05.611Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/tca9555.pdf"
+    ]
+  }
+}

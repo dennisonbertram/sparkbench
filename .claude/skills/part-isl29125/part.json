@@ -1,0 +1,178 @@
+{
+  "type": "custom-isl29125",
+  "name": "ISL29125 RGB colour light sensor",
+  "mpn": "ISL29125",
+  "category": "sensor",
+  "description": "Renesas (Intersil) digital red, green and blue light sensor with an IR-blocking filter and a 16-bit ADC, I2C interface at fixed address 0x44. Two ranges: 375 lux or 10,000 lux full scale. Runs on 2.25–3.63 V only (not 5 V tolerant). Sold as: SparkFun RGB Light Sensor - ISL29125 (SEN-12829), 5-pin header GND, 3.3V, SDA, SCL, INT with 10 kΩ pull-ups fitted.",
+  "eli5": "Tells your board how much red, green and blue light is falling on it, so it can work out the colour of the light or of a lit object.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 2.25–3.63 V (3.3 V). No regulator: never connect 5 V",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low, open-drain (10 kΩ pull-up on the board); printed !INT. Not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2.25,
+  "vmax": 3.63,
+  "currentMa": 0.085,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://www.renesas.com/us/en/document/dst/isl29125-datasheet",
+  "priceUsd": 8,
+  "supplierQuery": "ISL29125 RGB light sensor breakout SparkFun SEN-12829",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power it from 3.3 V only: the chip's absolute supply limit is 3.63 V and the board has no regulator or level shifting.",
+    "Check the device ID (register 0x00 reads 0x7D), reset by writing 0x46 to register 0x00, then write CONFIG1 = 0x0D (green/red/blue mode, 10,000 lux range, 16-bit) and CONFIG2 = 0xBF (maximum IR compensation, as the datasheet recommends).",
+    "Each colour takes about 101 ms to convert in 16-bit mode, so a full red/green/blue cycle takes about 0.3 s; wait that long before the first read.",
+    "Read 6 bytes from register 0x09: green, red, blue, each as a little-endian 16-bit count (low byte first).",
+    "Counts are relative intensities; converting to lux or a colour temperature needs coefficients calibrated for your enclosure (datasheet equation 2)."
+  ],
+  "keywords": [
+    "isl29125",
+    "rgb",
+    "colour",
+    "color",
+    "light",
+    "sensor",
+    "intersil",
+    "renesas",
+    "sparkfun"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Green channel reading",
+    "unit": "counts",
+    "min": 0,
+    "max": 65535,
+    "default": 2000,
+    "controls": [
+      {
+        "key": "red",
+        "quantity": "Red channel reading",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 1500
+      },
+      {
+        "key": "blue",
+        "quantity": "Blue channel reading",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 1000
+      }
+    ],
+    "registers": {
+      "0x00": 125
+    },
+    "measures": [
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "value"
+      },
+      {
+        "reg": "0x0B",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "red"
+      },
+      {
+        "reg": "0x0D",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "blue"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "isl29125.py",
+    "code": "# ISL29125 RGB colour light sensor (Renesas/Intersil ISL29125), MicroPython driver.\n# Written from datasheet FN8424.2: I2C address 0x44 (fixed), device ID 0x7D in register 0x00,\n# writing 0x46 to register 0x00 resets all registers. Data registers are little-endian 16-bit:\n# green 0x09/0x0A, red 0x0B/0x0C, blue 0x0D/0x0E. In 16-bit mode each colour takes ~101 ms,\n# so a full green/red/blue cycle takes about 303 ms.\nimport time\n\n_ID = 0x00\n_CONFIG1 = 0x01\n_CONFIG2 = 0x02\n_CONFIG3 = 0x03\n_STATUS = 0x08\n_GREEN_L = 0x09\n\nMODE_RGB = 0x05      # CONFIG1 B2:B0 = 101: green/red/blue, continuous\nRANGE_375 = 0x00     # CONFIG1 B3 = 0: 375 lux full scale\nRANGE_10K = 0x08     # CONFIG1 B3 = 1: 10,000 lux full scale\nBITS_16 = 0x00       # CONFIG1 B4 = 0: 16-bit ADC (~101 ms per colour)\nBITS_12 = 0x10       # CONFIG1 B4 = 1: 12-bit ADC\n\n\nclass ISL29125:\n    def __init__(self, i2c, addr=0x44, bright=True, ir_comp=0xBF):\n        \"\"\"bright=True selects the 10,000 lux range (False = 375 lux, for dim light).\n        ir_comp goes to CONFIG2; the datasheet recommends 0xBF (maximum IR compensation).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        dev_id = self._r8(_ID)\n        if dev_id != 0x7D:\n            raise OSError('ISL29125 not found (ID 0x%02X, expected 0x7D): check the wiring' % dev_id)\n        self._w8(_ID, 0x46)  # software reset: all registers back to defaults\n        time.sleep_ms(1)\n        cfg1 = MODE_RGB | (RANGE_10K if bright else RANGE_375) | BITS_16\n        self._w8(_CONFIG1, cfg1)\n        self._w8(_CONFIG2, ir_comp)\n        self._w8(_CONFIG3, 0x00)  # no interrupts\n        if self._r8(_CONFIG1) != cfg1 or self._r8(_CONFIG2) != ir_comp:\n            raise OSError('ISL29125 configuration did not stick: check the wiring')\n        time.sleep_ms(350)  # first full G/R/B conversion cycle (3 x 101 ms)\n\n    def _r8(self, reg):\n        return self.i2c.readfrom_mem(self.addr, reg, 1)[0]\n\n    def _w8(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def rgb(self):\n        \"\"\"Return the latest (red, green, blue) ADC counts, 0-65535 each.\"\"\"\n        d = self.i2c.readfrom_mem(self.addr, _GREEN_L, 6)\n        g = d[0] | (d[1] << 8)\n        r = d[2] | (d[3] << 8)\n        b = d[4] | (d[5] << 8)\n        return r, g, b\n\n    def red(self):\n        return self.rgb()[0]\n\n    def green(self):\n        return self.rgb()[1]\n\n    def blue(self):\n        return self.rgb()[2]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom isl29125 import ISL29125\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = ISL29125(i2c)  # 10,000 lux range, 16-bit\nwhile True:\n    r, g, b = sensor.rgb()\n    print('R=%d G=%d B=%d' % (r, g, b))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the red, green and blue counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 8000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "blue",
+          "value": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=8000 G=12000 B=3000",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.renesas.com/us/en/document/dst/isl29125-datasheet",
+    "https://cdn.sparkfun.com/datasheets/Sensors/LightImaging/isl29125.pdf",
+    "https://www.sparkfun.com/products/12829",
+    "https://learn.sparkfun.com/tutorials/isl29125-rgb-light-sensor-hookup-guide/all",
+    "https://github.com/sparkfun/ISL29125_Breakout/blob/master/Hardware/SparkFun_ISL29125_Breakout.brd",
+    "https://github.com/sparkfun/ISL29125_Breakout/blob/master/Libraries/Arduino/src/SparkFunISL29125.cpp"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T10:51:28.392Z",
+    "verifiedSources": [
+      "https://www.renesas.com/en/document/dst/isl29125-datasheet",
+      "https://raw.githubusercontent.com/sparkfun/ISL29125_Breakout/master/Hardware/SparkFun_ISL29125_Breakout.brd",
+      "https://learn.sparkfun.com/tutorials/isl29125-rgb-light-sensor-hookup-guide"
+    ]
+  }
+}
