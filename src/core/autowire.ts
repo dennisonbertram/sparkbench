@@ -82,7 +82,7 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
       const analog = fn === 'adc' || (spec?.sim.kind === 'analog-sensor' && spec.sim.outputPin === pin.name);
       // 1-Wire is bidirectional and actuator inputs are driven by the board: both need output-capable pins.
       // Keypad columns need internal pull-ups, which the ESP32's input-only pins don't have.
-      const out = /out|pwm|cs|trig|reset|enable|onewire/i.test(fn) || spec?.sim.kind === 'keypad-matrix' || spec?.sim.inputPin === pin.name || !!spec?.sim.inputPins?.includes(pin.name) || (spec?.sim.kind === 'onewire-temp' && spec.sim.outputPin === pin.name);
+      const out = /out|pwm|cs|trig|reset|enable|onewire|din/i.test(fn) || spec?.sim.kind === 'keypad-matrix' || spec?.sim.inputPin === pin.name || !!spec?.sim.inputPins?.includes(pin.name) || (spec?.sim.kind === 'onewire-temp' && spec.sim.outputPin === pin.name);
       const bp = take(analog ? 'adc' : out ? 'out' : 'in');
       if (!bp) {
         notes.push(analog && project.board === 'rpi4' ? `${pin.name} is an analog output, but the Raspberry Pi has no analog inputs — add an MCP3008 and wire ${pin.name} to one of its channels.` : `No free pin was left for ${pin.name}; wire it by hand.`);

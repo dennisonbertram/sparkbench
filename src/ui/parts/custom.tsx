@@ -110,6 +110,14 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
             <circle key={i} cx={w / 2 - 14.5 + (i % 8) * 4.2} cy={4.5 + Math.floor(i / 8) * 4.2} r={1.6} fill={(visual?.pixels?.[i * 3] ?? 0) > 10 ? '#ff3b30' : '#3a1010'} />
           ))}
         </g>
+      ) : cs.sim.kind === 'addressable-led' ? (
+        <g>
+          {Array.from({ length: Math.min(cs.sim.count ?? 1, 12) }, (_, i) => {
+            const px = visual?.pixels ?? [];
+            const [g, r, b] = [px[i * 3] ?? 0, px[i * 3 + 1] ?? 0, px[i * 3 + 2] ?? 0];
+            return <rect key={i} x={6 + i * 7} y={10} width={5} height={5} rx={1} fill={r + g + b > 10 ? `rgb(${Math.min(255, r * 2)},${Math.min(255, g * 2)},${Math.min(255, b * 2)})` : '#eee'} stroke="#999" strokeWidth={0.4} />;
+          })}
+        </g>
       ) : visual?.segText === undefined ? (
         <rect x={w / 2 - 14} y={8} width={28} height={20} rx={2} fill="#111" />
       ) : null}

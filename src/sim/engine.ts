@@ -566,11 +566,13 @@ export class SimEngine {
     this.sleepUs(bytes.length * 1.25 * 8 + 50);
     let found = false;
     for (const part of this.project.parts) {
-      if (part.type !== 'neopixel-ring') continue;
-      if (!this.model.gpiosReachable(part.id, 'DIN', 1000).includes(g)) continue;
+      const cs = customSpec(part.type);
+      const din = part.type === 'neopixel-ring' ? 'DIN' : cs?.sim.kind === 'addressable-led' ? cs.sim.inputPin : undefined;
+      if (!din) continue;
+      if (!this.model.gpiosReachable(part.id, din, 1000).includes(g)) continue;
       found = true;
       if (!this.model.modulePowered(part.id)) {
-        this.warn(`np-power-${part.id}`, 'warning', `${part.ref}: the NeoPixels aren't powered — connect VCC (5 V) and GND.`, [part.id]);
+        this.warn(`np-power-${part.id}`, 'warning', `${part.ref}: the LEDs aren't powered — connect their 5 V and GND.`, [part.id]);
         continue;
       }
       this.pixels.set(part.id, bytes);
@@ -1008,6 +1010,10 @@ export class SimEngine {
               ]);
               v.active = Object.values(v.inputs).some(Boolean);
             }
+          }
+          if (cs?.sim.kind === 'addressable-led') {
+            v.powered = m.modulePowered(part.id);
+            v.pixels = v.powered ? (this.pixels.get(part.id) ?? []).slice(0, (cs.sim.count ?? 1) * 3) : [];
           }
           if (cs?.sim.kind === 'segment-display') {
             v.powered = m.modulePowered(part.id);
