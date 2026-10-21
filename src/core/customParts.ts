@@ -26,8 +26,40 @@ export interface CustomSim {
    *   ISO 14443-A card: toggle "present" puts it on the reader, the "value" slider is its 4-byte UID (see rfid)
    * ir-receiver: a 38 kHz IR receiver (VS1838B, TSOP38238) whose active-low output (outputPin) carries remote-control
    *   frames: holding the "press" toggle sends the "value" button code to the "address" (see ir)
+   * pulse-sensor: outputPin gives a square wave whose frequency follows the "value" slider (flow meters, tachometers; see pulse)
+   * ultrasonic: a trigger/echo rangefinder: a pulse on echo.trigPin starts a measurement and outputPin (ECHO) goes high
+   *   for the sound's round trip to the "value" distance (see echo); works with machine.time_pulse_us and polling
+   * resistive-sensor: the sensor is a resistance (gas sensor element, LDR, thermistor, FSR) or a shunt voltage reference
+   *   (LM335), not a voltage source: see resistive / shunt, and give the pin the load or bias resistor it needs (pin load)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'char-lcd' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'rfid-reader' | 'ir-receiver' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'char-lcd' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'shift-register' | 'rfid-reader' | 'ir-receiver' | 'pulse-sensor' | 'ultrasonic' | 'resistive-sensor' | 'none';
+  /** pulse-sensor: frequency = value × hzPerUnit + offsetHz (YF-S201: 7.5 Hz per L/min; a tachometer: pulses per turn / 60
+   * per RPM), capped at maxHz (default 2000); duty = fraction of each period spent high (default 0.5). openDrain: the
+   * output only pulls low (open collector), so the high level comes from a pull-up (pin pullUp, or Pin.PULL_UP). No
+   * pulses while the frequency is 0 or the part is unpowered. */
+  pulse?: { hzPerUnit: number; offsetHz?: number; duty?: number; openDrain?: boolean; maxHz?: number };
+  /** ultrasonic: TRIG is trigPin, ECHO is outputPin. A trigger pulse of at least triggerUs (default 10) starts a
+   * measurement; delayUs later (default 450, the 40 kHz burst) ECHO goes high for distance × usPerCm (default 58.3:
+   * 2 / 343 m/s). Distances are clamped to minCm…maxCm, except that past maxCm the echo lasts beyondUs if given (the
+   * sensor's timeout pulse; leave it out if the sensor reports maxCm). The "value" slider is the distance in cm. */
+  echo?: { trigPin: string; minCm: number; maxCm: number; usPerCm?: number; delayUs?: number; triggerUs?: number; beyondUs?: number };
+  /** resistive-sensor: each entry is a resistance from `pin` to `to` (another pin; default the part's GND) set by a
+   * control (default "value"): curve 'linear' or 'log' between rAtMin and rAtMax over the control's range; 'ntc'
+   * R = r0·exp(beta·(1/T − 1/(t0+273.15))) with T in kelvin from the control in °C (t0 default 25); 'power'
+   * R = rRef·(value/ref)^exponent (LDRs: exponent ≈ −0.7 with value in lux; gas sensors: Rs from the datasheet's
+   * log-log curve). */
+  resistive?: { pin: string; to?: string; control?: string; curve: 'linear' | 'log' | 'ntc' | 'power'; rAtMin?: number; rAtMax?: number; r0?: number; beta?: number; t0?: number; rRef?: number; ref?: number; exponent?: number }[];
+  /** resistive-sensor: a shunt voltage reference between `pin` (+) and `to` (−, default GND), like a zener: once the
+   * bias resistor (pin load) pushes enough current through it, it holds vAtMin…vAtMax over the control's range
+   * (LM335: 10 mV/K) with dynamic impedance rz (default 1 Ω); below minUa (default 400) the reading is not valid
+   * and the simulator warns. It never sources current, so with too little bias the pin just follows the resistor. */
+  shunt?: { pin: string; to?: string; control?: string; vAtMin: number; vAtMax: number; rz?: number; minUa?: number };
+  /** i2c-device with 16-bit registers: the byte order of each word on the bus (default 'msb', high byte first). */
+  wordOrder?: 'msb' | 'lsb';
+  /** i2c-device: SMBus packet error checking. Every word read is followed by a CRC-8 (poly 0x07, init 0) over the
+   * address byte (write), the command, the address byte (read) and the data bytes, and writes must end with one over
+   * the address byte, command and data, or the chip ignores them (LC709203F). */
+  pec?: boolean;
   /** shift-register: '595' = serial-in/parallel-out (data, clock, latch pins; outputs testable as expect what:"active"
    * text:<output pin name>), '165' = parallel-in/serial-out (inputs from toggles, load, clock, serial out). Pin names map
    * the roles: { data, clock, latch, outputs[] } or { load, clock, serialOut, inputs[] }, parallel pins listed A…H
@@ -340,7 +372,7 @@ const REGISTRY = new Map<string, { spec: CustomPartSpec; def: PartDef }>();
 export function specToDef(spec: CustomPartSpec): PartDef {
   const controls: SimControl[] = [];
   const s = spec.sim;
-  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'dht-sensor' || s.kind === 'hx711' || s.kind === 'spi-device' || s.kind === 'uart-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length || s.fifo))) {
+  if (s.kind === 'pulse-sensor' || s.kind === 'ultrasonic' || s.kind === 'resistive-sensor' || s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'dht-sensor' || s.kind === 'hx711' || s.kind === 'spi-device' || s.kind === 'uart-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length || s.fifo))) {
     const min = s.min ?? 0;
     const max = s.max ?? 100;
     controls.push({ key: 'value', label: s.quantity ?? 'Value', kind: 'slider', min, max, step: (max - min) / 200 >= 1 ? 1 : +((max - min) / 200).toPrecision(1), default: s.default ?? (min + max) / 2, unit: s.unit ? ` ${s.unit}`.replace(/^ (°|%)/, '$1') : '' });
@@ -547,6 +579,38 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!(['spi.sck', 'spi.mosi', 'spi.miso', 'spi.cs'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('an RFID reader needs pins with fn spi.sck, spi.mosi, spi.miso and spi.cs (SDA/NSS)');
     if (s.rfid?.version !== undefined && !(s.rfid.version >= 0 && s.rfid.version <= 0xff)) errs.push('rfid.version is the VersionReg byte');
   }
+  if (s.kind === 'pulse-sensor') {
+    if (!s.outputPin || !names.has(s.outputPin)) errs.push('pulse-sensor needs outputPin (the pulse output)');
+    const p = s.pulse;
+    if (!p || !(p.hzPerUnit > 0)) errs.push('pulse-sensor needs pulse.hzPerUnit > 0');
+    if (p?.duty !== undefined && !(p.duty > 0 && p.duty < 1)) errs.push('pulse.duty is a fraction between 0 and 1');
+    if (p?.maxHz !== undefined && !(p.maxHz > 0 && p.maxHz <= 5000)) errs.push('pulse.maxHz must be 1–5000 Hz');
+  }
+  if (s.kind === 'ultrasonic') {
+    const e = s.echo;
+    if (!s.outputPin || !names.has(s.outputPin)) errs.push('ultrasonic needs outputPin (ECHO)');
+    if (!e || !names.has(e.trigPin)) errs.push('ultrasonic needs echo.trigPin (TRIG)');
+    if (e && !(e.minCm >= 0 && e.maxCm > e.minCm && e.maxCm <= 2000)) errs.push('echo needs 0 ≤ minCm < maxCm ≤ 2000');
+    if (e?.beyondUs !== undefined && !(e.beyondUs > 0 && e.beyondUs <= 200000)) errs.push('echo.beyondUs must be 1–200000 µs');
+  }
+  if (s.kind === 'resistive-sensor') {
+    if (!s.resistive?.length && !s.shunt) errs.push('resistive-sensor needs resistive elements or a shunt');
+    for (const r of s.resistive ?? []) {
+      if (!names.has(r.pin) || (r.to && !names.has(r.to))) errs.push(`resistive element ${r.pin}${r.to ? `–${r.to}` : ''}: not a pin`);
+      if (r.control && !keys.has(r.control)) errs.push(`resistive control ${r.control} is not a control`);
+      const pos = (x?: number) => x !== undefined && x > 0;
+      if ((r.curve === 'linear' || r.curve === 'log') && !(pos(r.rAtMin) && pos(r.rAtMax))) errs.push(`resistive ${r.pin}: ${r.curve} needs rAtMin and rAtMax > 0`);
+      else if (r.curve === 'ntc' && !(pos(r.r0) && pos(r.beta))) errs.push(`resistive ${r.pin}: ntc needs r0 and beta`);
+      else if (r.curve === 'power' && !(pos(r.rRef) && pos(r.ref) && r.exponent !== undefined)) errs.push(`resistive ${r.pin}: power needs rRef, ref and exponent`);
+      else if (!['linear', 'log', 'ntc', 'power'].includes(r.curve)) errs.push(`resistive ${r.pin}: curve must be linear, log, ntc or power`);
+    }
+    const sh = s.shunt;
+    if (sh && (!names.has(sh.pin) || (sh.to && !names.has(sh.to)))) errs.push('shunt pin is not a pin');
+    if (sh && !(sh.vAtMin > 0 && sh.vAtMax > 0)) errs.push('shunt needs vAtMin and vAtMax');
+    if (sh?.control && !keys.has(sh.control)) errs.push(`shunt control ${sh.control} is not a control`);
+  }
+  for (const p of spec.pins) if (p.load && (!(p.load.ohms >= 10 && p.load.ohms <= 10_000_000) || !['3v3', 'gnd', 'supply'].includes(p.load.to))) errs.push(`load on ${p.name} needs ohms 10 Ω – 10 MΩ and to '3v3', 'gnd' or 'supply'`);
+  if ((s.wordOrder || s.pec) && (s.kind !== 'i2c-device' || s.regWidth !== 16)) errs.push('wordOrder and pec are for i2c-devices with regWidth 16');
   if (s.kind === 'ir-receiver') {
     if (!s.outputPin || !names.has(s.outputPin)) errs.push('ir-receiver needs outputPin (the demodulated OUT pin)');
     if (!['nec', 'nec-ext'].includes(s.ir?.protocol ?? '')) errs.push("ir-receiver needs ir.protocol 'nec' or 'nec-ext'");

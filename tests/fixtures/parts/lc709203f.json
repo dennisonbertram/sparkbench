@@ -1,0 +1,81 @@
+{
+ "type": "custom-lc709203f-test",
+ "name": "LC709203F test",
+ "mpn": "LC709203F",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "priceUsd": 3,
+ "supplierQuery": "LC709203F",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  }
+ ],
+ "vmin": 3,
+ "vmax": 5,
+ "currentMa": 1,
+ "i2cAddress": 11,
+ "sim": {
+  "kind": "i2c-device",
+  "regWidth": 16,
+  "wordOrder": "lsb",
+  "pec": true,
+  "quantity": "Cell voltage",
+  "unit": "mV",
+  "min": 2500,
+  "max": 4400,
+  "default": 3700,
+  "registers": {
+   "0x11": 8449
+  },
+  "measure": {
+   "reg": "0x09",
+   "bytes": 2,
+   "scale": 1
+  }
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\ni2c = I2C({I2C_ID}, scl=Pin({SCL}), sda=Pin({SDA}))\ndef crc8(data):\n    c = 0\n    for b in data:\n        c ^= b\n        for _ in range(8):\n            c = ((c << 1) ^ 0x07) & 0xFF if c & 0x80 else (c << 1) & 0xFF\n    return c\ndef read_word(cmd):\n    r = i2c.readfrom_mem(0x0B, cmd, 3)\n    if crc8(bytes([0x16, cmd, 0x17, r[0], r[1]])) != r[2]:\n        raise OSError('CRC')\n    return r[0] | (r[1] << 8)\nwhile True:\n    print('V=%d' % read_word(0x09))\n    time.sleep_ms(500)\n",
+  "test": {
+   "id": "t",
+   "title": "volts",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 3950
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "V=3950",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

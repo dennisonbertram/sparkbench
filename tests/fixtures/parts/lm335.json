@@ -1,0 +1,72 @@
+{
+ "type": "custom-lm335-test",
+ "name": "LM335 test",
+ "mpn": "LM335",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "analog",
+ "priceUsd": 3,
+ "supplierQuery": "LM335",
+ "pins": [
+  {
+   "name": "ADJ",
+   "role": "nc",
+   "required": false
+  },
+  {
+   "name": "V+",
+   "role": "io",
+   "fn": "adc",
+   "required": true,
+   "load": {
+    "ohms": 2200,
+    "to": "supply"
+   }
+  },
+  {
+   "name": "V-",
+   "role": "gnd",
+   "required": true
+  }
+ ],
+ "vmin": 4.5,
+ "vmax": 5.5,
+ "currentMa": 1,
+ "sim": {
+  "kind": "resistive-sensor",
+  "quantity": "Temperature",
+  "unit": "\u00b0C",
+  "min": -40,
+  "max": 55,
+  "default": 20,
+  "shunt": {
+   "pin": "V+",
+   "vAtMin": 2.3315,
+   "vAtMax": 3.2815
+  }
+ },
+ "example": {
+  "code": "from machine import ADC, Pin\nimport time\nadc = ADC(Pin({V_}))\ntry:\n    adc.atten(ADC.ATTN_11DB)\nexcept AttributeError:\n    pass\nwhile True:\n    v = adc.read_u16() * 3.3 / 65535\n    print('T=%d' % round(v * 100 - 273.15))\n    time.sleep_ms(300)\n",
+  "test": {
+   "id": "t",
+   "title": "temp",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 25
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "T=25",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

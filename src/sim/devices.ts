@@ -491,7 +491,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void; fifo?: FifoSpec; selfClearing?: { reg: string; mask: number; reset?: boolean }[] } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void; fifo?: FifoSpec; selfClearing?: { reg: string; mask: number; reset?: boolean }[]; wordOrder?: 'msb' | 'lsb'; pec?: boolean } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     // A declared PROM CRC-4 is filled in, so the driver's PROM check passes.
@@ -646,6 +646,11 @@ export class GenericI2CDevice implements I2CDevice {
       if (whole) for (let i = 0; i < k; i++) this.setReg(i, bytes[whole - k + i]);
       return;
     }
+    if (this.layout.pec) {
+      // SMBus PEC: the last byte is a CRC-8 over the address byte, command and data; a bad one is ignored.
+      if (bytes.length > 1 && crc8Smbus([this.addr << 1, ...bytes.slice(0, -1)]) !== bytes[bytes.length - 1]) return;
+      if (bytes.length > 1) bytes = bytes.slice(0, -1);
+    }
     const aw = this.layout.addrWidth === 16 ? 2 : 1;
     this.ptr = aw === 2 ? ((bytes[0] << 8) | (bytes[1] ?? 0)) : this.layout.autoIncrementBit7 ? bytes[0] & 0x7f : bytes[0];
     const data = bytes.slice(aw);
@@ -653,7 +658,8 @@ export class GenericI2CDevice implements I2CDevice {
     const touchesRtc = rtcBase >= 0 && data.length > 0 && this.ptr < rtcBase + 7 && this.ptr + data.length > rtcBase;
     if (touchesRtc) this.rtcMaterialize();
     if (this.wide) {
-      for (let i = 0; i + 1 < data.length; i += 2) this.setReg(this.ptr + i / 2, (data[i] << 8) | data[i + 1]);
+      const lsb = this.layout.wordOrder === 'lsb';
+      for (let i = 0; i + 1 < data.length; i += 2) this.setReg(this.ptr + i / 2, lsb ? (data[i + 1] << 8) | data[i] : (data[i] << 8) | data[i + 1]);
     } else data.forEach((b, i) => this.setReg(this.ptr + i, b));
     if (touchesRtc) this.rtcAdopt();
     if (!data.length || this.wide) return;
@@ -693,6 +699,16 @@ export class GenericI2CDevice implements I2CDevice {
     // Byte registers auto-increment; word registers stream the word at the pointer (then the next).
     // A pointerless expander repeats its port(s): PCF8574 port, port…; PCF8575 port 0, port 1, port 0…
     const at = (i: number) => (this.layout.pointerless ? i % (this.layout.pointerlessBytes ?? 1) : this.ptr + i);
+    if (this.wide && (this.layout.pec || this.layout.wordOrder === 'lsb')) {
+      // Each word in bus order, then (with PEC) its CRC-8 over address(W), command, address(R) and the data.
+      for (let w = 0; out.length < n; w++) {
+        const word = [this.byteAt(this.ptr + w, 0), this.byteAt(this.ptr + w, 1)];
+        if (this.layout.wordOrder === 'lsb') word.reverse();
+        out.push(...word);
+        if (this.layout.pec) out.push(crc8Smbus([this.addr << 1, (this.ptr + w) & 0xff, (this.addr << 1) | 1, ...word]));
+      }
+      return out.slice(0, n);
+    }
     for (let i = 0; i < n; i++) out.push(this.wide ? this.byteAt(this.ptr + (i >> 1), i & 1) : (view.get(at(i)) ?? this.byteAt(at(i), 0)));
     if (this.fifo && !this.wide) for (let i = 0; i < n; i++) this.fifo.statusRead(at(i));
     if (!this.wide && !this.layout.pointerless) this.ptr = (this.ptr + n) & 0xffff;
@@ -803,6 +819,16 @@ export function crc8Sensirion(bytes: number[], init = 0xff): number {
 }
 
 /** Pack response fields MSB-first into bytes (fields may straddle bytes, e.g. AHT20's 20-bit values). */
+/** SMBus packet error code: CRC-8, polynomial 0x07, initial value 0 (CRC-8-ATM). */
+export function crc8Smbus(bytes: number[]): number {
+  let c = 0;
+  for (const b of bytes) {
+    c ^= b & 0xff;
+    for (let i = 0; i < 8; i++) c = c & 0x80 ? ((c << 1) ^ 0x07) & 0xff : (c << 1) & 0xff;
+  }
+  return c;
+}
+
 export function packResponse(segs: ResponseSegment[], value: (key: string) => number): number[] {
   const out: number[] = [];
   let acc = 0;

@@ -1,0 +1,72 @@
+{
+ "type": "custom-ldr-test",
+ "name": "GL5528 test",
+ "mpn": "GL5528",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "passive",
+ "priceUsd": 3,
+ "supplierQuery": "GL5528",
+ "pins": [
+  {
+   "name": "1",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "2",
+   "role": "io",
+   "fn": "adc",
+   "required": true,
+   "load": {
+    "ohms": 10000,
+    "to": "gnd"
+   }
+  }
+ ],
+ "vmin": 0,
+ "vmax": 150,
+ "currentMa": 1,
+ "sim": {
+  "kind": "resistive-sensor",
+  "quantity": "Light",
+  "unit": "lx",
+  "min": 1,
+  "max": 10000,
+  "default": 10,
+  "resistive": [
+   {
+    "pin": "2",
+    "to": "1",
+    "curve": "power",
+    "rRef": 10000,
+    "ref": 10,
+    "exponent": -0.7
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import ADC, Pin\nimport time\nadc = ADC(Pin({2}))\ntry:\n    adc.atten(ADC.ATTN_11DB)\nexcept AttributeError:\n    pass\nwhile True:\n    v = adc.read_u16() * 3.3 / 65535\n    r = 10000 * (3.3 - v) / v\n    lux = 10 * (r / 10000) ** (1 / -0.7)\n    print('L=%d' % round(lux, -1))\n    time.sleep_ms(300)\n",
+  "test": {
+   "id": "t",
+   "title": "light",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 100
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "L=100",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}
