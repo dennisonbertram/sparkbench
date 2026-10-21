@@ -64,6 +64,25 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
       notes.push(`${part.ref ?? part.id}.${ptx.name} → ${brx.name} (the board's RX)${prx ? `, ${prx.name} → ${btx.name} (the board's TX)` : ''}.`);
     } else notes.push(`No free UART pin pair was left for ${def.name}; wire TX/RX by hand.`);
   }
+  // I2S: on the Pico the PIO program needs WS (LRC) on the GPIO right after SCK (BCLK).
+  const pbclk = def.pins.find((p) => p.fn === 'i2s.bclk' && !already.has(p.name));
+  const plrc = def.pins.find((p) => p.fn === 'i2s.lrc' && !already.has(p.name));
+  if (pbclk && plrc && project.board === 'pico') {
+    const outPin = (g: number) => board.pins.find((p) => p.gpio === g && p.role === 'gpio' && p.caps?.includes('out') && !used.has(p.name) && ![board.i2c.sda, board.i2c.scl].includes(p.name));
+    const sck = board.pins
+      .filter((p) => p.gpio !== undefined && outPin(p.gpio) && outPin(p.gpio + 1))
+      .sort((a, b) => (a.rank ?? 5) - (b.rank ?? 5) || a.gpio! - b.gpio!)[0];
+    if (sck) {
+      const ws = outPin(sck.gpio! + 1)!;
+      used.add(sck.name);
+      used.add(ws.name);
+      wire(pbclk.name, sck.name, '#00838f');
+      wire(plrc.name, ws.name, '#8e24aa');
+      already.add(pbclk.name);
+      already.add(plrc.name);
+      notes.push(`${part.ref ?? part.id}.${pbclk.name} → ${sck.name}, ${plrc.name} → ${ws.name} (I2S on the Pico needs LRC on the pin after BCLK).`);
+    } else notes.push(`No two neighbouring free pins were left for ${def.name}'s BCLK/LRC; wire them by hand (LRC on the GPIO after BCLK).`);
+  }
   for (const pin of def.pins) {
     if (already.has(pin.name) || pin.role === 'nc') continue;
     const fn = pin.fn ?? '';
@@ -84,7 +103,7 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
       const analog = fn === 'adc' || (spec?.sim.kind === 'analog-sensor' && spec.sim.outputPin === pin.name);
       // 1-Wire is bidirectional and actuator inputs are driven by the board: both need output-capable pins.
       // Keypad columns need internal pull-ups, which the ESP32's input-only pins don't have.
-      const out = /out|pwm|cs|trig|reset|enable|onewire|din|^tft\./i.test(fn) || spec?.sim.kind === 'dht-sensor' || spec?.sim.kind === 'keypad-matrix' || spec?.sim.inputPin === pin.name || !!spec?.sim.inputPins?.includes(pin.name) || (spec?.sim.kind === 'onewire-temp' && spec.sim.outputPin === pin.name);
+      const out = /out|pwm|cs|trig|reset|enable|onewire|din|^tft\.|^i2s\./i.test(fn) || spec?.sim.kind === 'dht-sensor' || spec?.sim.kind === 'keypad-matrix' || spec?.sim.inputPin === pin.name || !!spec?.sim.inputPins?.includes(pin.name) || (spec?.sim.kind === 'onewire-temp' && spec.sim.outputPin === pin.name);
       const bp = take(analog ? 'adc' : out ? 'out' : 'in');
       if (!bp) {
         notes.push(analog && project.board === 'rpi4' ? `${pin.name} is an analog output, but the Raspberry Pi has no analog inputs — add an MCP3008 and wire ${pin.name} to one of its channels.` : `No free pin was left for ${pin.name}; wire it by hand.`);

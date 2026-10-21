@@ -1,0 +1,96 @@
+{
+ "type": "custom-pcd8544-test",
+ "name": "Nokia 5110 test",
+ "mpn": "PCD8544 Nokia 5110",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "spi",
+ "pins": [
+  {
+   "name": "RST",
+   "role": "io",
+   "fn": "tft.reset",
+   "required": true
+  },
+  {
+   "name": "CE",
+   "role": "io",
+   "fn": "spi.cs",
+   "required": true
+  },
+  {
+   "name": "DC",
+   "role": "io",
+   "fn": "tft.dc",
+   "required": true
+  },
+  {
+   "name": "DIN",
+   "role": "io",
+   "fn": "spi.mosi",
+   "required": true
+  },
+  {
+   "name": "CLK",
+   "role": "io",
+   "fn": "spi.sck",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "LIGHT",
+   "role": "nc",
+   "required": false
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  }
+ ],
+ "vmin": 2.7,
+ "vmax": 3.3,
+ "currentMa": 10,
+ "priceUsd": 3,
+ "supplierQuery": "Nokia 5110 LCD PCD8544",
+ "sim": {
+  "kind": "tft-display",
+  "controller": "pcd8544",
+  "width": 84,
+  "height": 48
+ },
+ "driver": {
+  "filename": "pcd8544.py",
+  "code": "from micropython import const\nfrom time import sleep_us\n\nFUNCTION_SET = const(0x20)\nDISPLAY_CONTROL = const(0x08)\nSET_Y_ADDRESS = const(0x40)\nSET_X_ADDRESS = const(0x80)\nTEMP_COEFF = const(0x04)\nBIAS_SYSTEM = const(0x10)\nSET_VOP = const(0x80)\nEXTENDED_INSTR = const(0x01)\nADDRESSING_VERT = const(0x02)\nDISPLAY_NORMAL = const(0x04)\nBIAS_1_40 = const(4)\nTEMP_COEFF_2 = const(2)\n\nWIDTH = const(84)\nHEIGHT = const(48)\n\n\nclass PCD8544:\n    def __init__(self, spi, cs, dc, rst=None):\n        self.spi = spi\n        self.cs = cs\n        self.dc = dc\n        self.rst = rst\n        self.cs.init(self.cs.OUT, value=1)\n        self.dc.init(self.dc.OUT, value=0)\n        if self.rst:\n            self.rst.init(self.rst.OUT, value=1)\n        self.reset()\n        self.init()\n\n    def init(self, horizontal=True, contrast=0x3F, bias=BIAS_1_40, temp=TEMP_COEFF_2):\n        self.fn = FUNCTION_SET | (0 if horizontal else ADDRESSING_VERT)\n        self.write_cmd(self.fn | EXTENDED_INSTR)\n        self.write_cmd(TEMP_COEFF | temp)\n        self.write_cmd(BIAS_SYSTEM | bias)\n        self.write_cmd(SET_VOP | contrast)\n        self.write_cmd(self.fn)\n        self.write_cmd(DISPLAY_CONTROL | DISPLAY_NORMAL)\n        self.clear()\n\n    def reset(self):\n        if self.rst:\n            self.rst(1)\n            sleep_us(100)\n            self.rst(0)\n            sleep_us(100)\n            self.rst(1)\n\n    def write_cmd(self, command):\n        self.dc(0)\n        self.cs(0)\n        self.spi.write(bytearray([command]))\n        self.cs(1)\n\n    def data(self, buf):\n        self.dc(1)\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)\n\n    def position(self, x, y):\n        self.write_cmd(SET_X_ADDRESS | x)\n        self.write_cmd(SET_Y_ADDRESS | y)\n\n    def clear(self):\n        self.position(0, 0)\n        self.data(bytearray(WIDTH * HEIGHT // 8))\n        self.position(0, 0)\n"
+ },
+ "example": {
+  "code": "from machine import Pin, SPI\nimport framebuf, time\nimport pcd8544\nspi = SPI(1, baudrate=2000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}))\nlcd = pcd8544.PCD8544(spi, Pin({CE}), Pin({DC}), Pin({RST}))\nbuf = bytearray(84 * 48 // 8)\nfb = framebuf.FrameBuffer(buf, 84, 48, framebuf.MONO_VLSB)\nn = 0\nwhile True:\n    fb.fill(0)\n    fb.text('Count', 0, 0, 1)\n    fb.text(str(n), 0, 16, 1)\n    lcd.data(buf)\n    n += 1\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "shows text",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "Count",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "2",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

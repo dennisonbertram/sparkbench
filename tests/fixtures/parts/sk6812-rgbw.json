@@ -1,0 +1,69 @@
+{
+ "type": "custom-sk6812rgbw-test",
+ "name": "SK6812 RGBW test",
+ "mpn": "SK6812 RGBW strip",
+ "category": "output",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "D",
+ "interface": "digital-out",
+ "pins": [
+  {
+   "name": "5V",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "DIN",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  }
+ ],
+ "vmin": 3.7,
+ "vmax": 5.3,
+ "currentMa": 60,
+ "priceUsd": 6,
+ "supplierQuery": "SK6812 RGBW strip",
+ "sim": {
+  "kind": "addressable-led",
+  "inputPin": "DIN",
+  "count": 8,
+  "ledProtocol": "sk6812-rgbw"
+ },
+ "example": {
+  "code": "from machine import Pin\nimport neopixel, time\nnp = neopixel.NeoPixel(Pin({DIN}), 8, bpp=4)\ntime.sleep(1)\nnp.fill((0, 0, 0, 80))\nnp.write()\nprint('white', np[3])\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "white channel lights",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": false,
+     "within": 800
+    },
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": true,
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "white (0, 0, 0, 80)",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}
