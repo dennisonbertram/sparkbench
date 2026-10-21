@@ -108,3 +108,10 @@ describe('split float fields', () => {
     expect(new DataView(new Uint8Array([b[0], b[1], b[3], b[4]]).buffer).getFloat32(0)).toBeCloseTo(812.25, 3);
   });
 });
+
+describe('little-endian fields', () => {
+  it('sends a 16-bit value low byte first (SDS011 PM2.5 = 123.4)', () => {
+    const b = packResponse([{ control: 'value', bits: 16, scale: 0.1, littleEndian: true }], () => 123.4);
+    expect(b).toEqual([1234 & 0xff, 1234 >> 8]);
+  });
+});

@@ -627,7 +627,9 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
     } else {
       let raw = Math.round((value(s.control) - (s.offset ?? 0)) / (s.scale || 1));
       if (s.signed && raw < 0) raw += 2 ** s.bits;
-      push(Math.max(0, Math.min(2 ** s.bits - 1, raw)), s.bits);
+      raw = Math.max(0, Math.min(2 ** s.bits - 1, raw));
+      if (s.littleEndian && s.bits % 8 === 0) for (let i = 0; i < s.bits / 8; i++) push(Math.floor(raw / 2 ** (8 * i)) & 0xff, 8);
+      else push(raw, s.bits);
     }
   }
   return out;

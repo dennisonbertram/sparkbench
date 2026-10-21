@@ -123,7 +123,8 @@ export function segBits(segs: ResponseSegment[]): number {
 
 export type ResponseSegment =
   | { const: number; bits: number }
-  | { control: string; bits: number; scale: number; offset?: number; signed?: boolean }
+  /** littleEndian: a whole-byte field sent low byte first (SDS011, many UART frames). */
+  | { control: string; bits: number; scale: number; offset?: number; signed?: boolean; littleEndian?: boolean }
   /** An IEEE-754 single-precision float of (value − offset) / scale, big-endian: the whole float (bits 32), or its
    * high or low 16-bit half (bits 16) when the chip puts a CRC after every word (SCD30, SPS30). */
   | { control: string; float32: true | 'hi' | 'lo'; bits: 32 | 16; scale?: number; offset?: number }
