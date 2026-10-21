@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
 import { slug } from './exporters';
 import { Revisions } from './Revisions';
+import { CostHint } from './CostHint';
 import { CaseSection } from './CaseSection';
 import { BoardEditor, type PlacedPart } from './BoardEditor';
 
@@ -136,6 +137,7 @@ export function PcbView() {
             <h2>Circuit board</h2>
             <p>Turn this design into a real printed circuit board: a sturdy, permanent version of your breadboard that a factory makes for you. Sparkbench places the parts, draws the copper tracks, checks everything against the factory's rules, and gives you the files to order it.</p>
           </div>
+          {!running && <CostHint kind="pcb" />}
           {!running && (
             <button className="primary" onClick={() => build()} data-testid="pcb-build">
               {res ? (stale ? 'Update the board for the changed design' : 'Design it again') : 'Design my circuit board'}

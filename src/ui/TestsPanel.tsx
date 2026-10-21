@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
 import { sendPrompt } from './copilot';
+import { CostHint } from './CostHint';
 import type { AcceptanceTest, TestResult } from '../core/acceptance';
 import type { Project } from '../core/types';
 
@@ -109,6 +110,7 @@ export function TestsPanel() {
       >
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder={ai.enabled ? 'Add a test in plain words, e.g. "when I press SW1 the buzzer beeps"' : 'Adding tests in plain words needs Claude'} disabled={!ai.enabled || adding} aria-label="Describe a new test" />
         <button type="submit" disabled={!ai.enabled || adding || !text.trim()}>{adding ? 'Writing the test…' : 'Add test'}</button>
+        {ai.enabled && <CostHint kind="test" />}
       </form>
       {error && <div className="problem error">{error}</div>}
     </div>

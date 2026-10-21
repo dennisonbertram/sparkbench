@@ -9,6 +9,7 @@ import { installEsp32, installPico } from '../board/install';
 import { parseSelfTest, type SelfTestLine } from '../core/selftest';
 import { download, slug } from './exporters';
 import { MultimeterGuide } from './MultimeterGuide';
+import { CostHint } from './CostHint';
 import { otaPy, otaBootPy, otaToken } from '../core/ota';
 
 type Phase = 'idle' | 'connecting' | 'connected' | 'busy';
@@ -351,7 +352,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
             <h3>Something not working?</h3>
             <textarea value={symptom} onChange={(e) => setSymptom(e.target.value)} rows={2} placeholder='Describe it, e.g. "the screen stays black" or "the LED never lights"' aria-label="Describe the problem" />
             <button className="primary" onClick={askAi} disabled={!ai.enabled || asking || !symptom.trim()} data-testid="board-ask">{asking ? 'Thinking… (about 30 s)' : 'Ask AI what is wrong'}</button>
-            {!ai.enabled && <span className="muted"> Needs Claude.</span>}
+            {!ai.enabled ? <span className="muted"> Needs Claude.</span> : <CostHint kind="debug" />}
             <p className="muted">It looks at your description, the serial output and self-test above, what the simulator expects, and the wiring.</p>
             {answer && (
               <div className="bp-answer" data-testid="board-answer">

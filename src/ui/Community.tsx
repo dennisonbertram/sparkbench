@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import type { Project } from '../core/types';
+import { CostHint } from './CostHint';
 
 const post = async (url: string, body: unknown) => {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -217,6 +218,7 @@ export function ClassBanner() {
             >
               {busy ? 'Checking your project… (about a minute)' : 'Hand it in'}
             </button>
+            <CostHint kind="grade" />
             <button className="ghost" onClick={() => useStore.getState().set({ classCode: null })}>Leave class</button>
           </div>
           {grade && (

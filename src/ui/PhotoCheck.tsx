@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from './store';
 import { shrinkImage as shrink } from './images';
+import { CostHint } from './CostHint';
 
 interface Issue { parts: string[]; problem: string; fix: string; confidence: 'high' | 'medium' | 'low' }
 interface Result { verdict: 'looks-right' | 'problems' | 'cant-tell'; summary: string; issues: Issue[]; could_not_check: string[]; photo_tips: string | null }
@@ -56,6 +57,9 @@ export function PhotoCheck() {
             <button className="primary" disabled={busy || !ai?.enabled} onClick={check} title={ai?.enabled ? '' : 'Needs Claude: log in to Claude Code or set ANTHROPIC_API_KEY'}>
               {busy ? 'Checking… (about 30 s)' : 'Check wiring'}
             </button>
+          )}
+          {photos.length > 0 && ai?.enabled && (
+            <CostHint kind="photo" />
           )}
         </div>
       </div>

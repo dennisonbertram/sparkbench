@@ -70,10 +70,15 @@ export async function buildEnclosure(id: string, project: Project, style: import
   const dir = join(job.result.dir, 'enclosure', style);
   mkdirSync(dir, { recursive: true });
   const files: string[] = [];
+  const { solidToStep } = await import('../src/core/step');
   for (const part of r.parts) {
     const buf = Buffer.concat(stl.serialize({ binary: true }, part.geom).map((d: ArrayBuffer) => Buffer.from(d)));
     writeFileSync(join(dir, `${part.name}.stl`), buf);
     files.push(`enclosure/${style}/${part.name}.stl`);
+    if (part.name.startsWith('case-')) {
+      writeFileSync(join(dir, `${part.name}.step`), solidToStep(part.geom, part.name));
+      files.push(`enclosure/${style}/${part.name}.step`);
+    }
   }
   const notes = [`# ${p.name} case (${style})`, '', `Outside: ${r.outer.w} × ${r.outer.d} × ${r.outer.h} mm. Tallest part: ${r.tallest.ref} (${r.tallest.h} mm above the board).`, '', '## Print', '', ...r.parts.map((x) => `- \`${x.name}.stl\`: ${x.note}`), '', '## Openings', '', ...r.openings.map((o) => `- ${o.where}: ${o.ref ? `${o.ref} — ` : ''}${o.what}`), '', '## Assemble', '', '1. Screw the board onto the four posts with M3 × 6 mm self-tapping screws.', '2. Push the button caps into their lid holes from inside (flange inside).', '3. Press the lid on; the lip holds it. A dab of glue makes it permanent.', ...(r.warnings.length ? ['', '## Notes', '', ...r.warnings.map((w) => `- ${w}`)] : []), ''].join('\n');
   writeFileSync(join(dir, 'CASE.md'), notes);

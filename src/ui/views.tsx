@@ -11,6 +11,7 @@ import { CodeEditor } from './CodeEditor';
 import { CodeAssistant } from './CodeAssistant';
 import { PhotoCheck } from './PhotoCheck';
 import { BuildMode } from './BuildMode';
+import { CostHint } from './CostHint';
 import { Toolkit } from './Toolkit';
 import { planBreadboard } from '../core/bbplace';
 import { renderBreadboardSvg } from '../core/breadboard';
@@ -236,6 +237,7 @@ function ArduinoButton() {
       >
         {busy ? 'Writing and compiling C++… (1–5 min)' : has ? 'Update the Arduino version' : 'Arduino (C++) version'}
       </button>
+      {ai.enabled && !busy && <CostHint kind="arduino" />}
       {msg && <div className="banner arduino-msg" data-testid="arduino-msg">{msg}</div>}
     </>
   );
@@ -275,6 +277,7 @@ export function BomView() {
         <span className="doc-title">Parts list</span>
         <button onClick={() => download(`${slug(project.name)}-bom.csv`, bomToCsv(lines), 'text/csv')}>Download CSV</button>
         {!live && <button onClick={loadLive} disabled={loading} data-testid="bom-live">{loading ? 'Checking stock and prices…' : 'Check live stock and prices'}</button>}
+        {!live && <CostHint kind="parts" />}
         {live && found.length > 0 && <button onClick={() => download(`${slug(project.name)}-lcsc-cart.csv`, lcscCsv(), 'text/csv')} data-testid="bom-cart">Download LCSC cart ({found.length} parts)</button>}
       </div>
       {liveErr && <div className="banner error">{liveErr}</div>}

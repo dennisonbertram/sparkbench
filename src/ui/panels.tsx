@@ -13,6 +13,7 @@ import { TestsPanel, TestsBadge } from './TestsPanel';
 import { RequirementsCard, QuestionsCard } from './Requirements';
 import { AttachImages } from './Attach';
 import { PowerCard } from './PowerCard';
+import { CostHint } from './CostHint';
 import { CommentsPanel } from './Community';
 import type { Shrunk } from './images';
 import type { CheckResult, FixAction } from '../core/types';
@@ -124,6 +125,7 @@ export function Copilot() {
           }}
         />
         <AttachImages images={images} onChange={setImages} label="" />
+        {ai.enabled && <CostHint kind="design" />}
         <button type="submit" className="primary" disabled={(!text.trim() && !images.length) || !!busy}>
           {busy ? 'Working…' : 'Send'}
         </button>
@@ -681,6 +683,7 @@ function AddAnyComponent({ initial, onDone }: { initial: string; onDone(): void 
           <button className="primary" disabled={busy || !q.trim()}>
             {busy ? 'Reading…' : 'Find datasheet'}
           </button>
+          {ai.enabled && <CostHint kind="datasheet" />}
         </form>
       )}
       {busy && <p className="assistant-status">Claude is finding and reading the datasheet (30–90 s)…</p>}
