@@ -492,6 +492,23 @@ export class SimEngine {
           this.servos.set(part.id, Math.max(0, Math.min(180, ((pulseUs - 500) / 2000) * 180)));
         }
       }
+      const scs = customSpec(part.type);
+      if (scs?.sim.kind === 'servo' && scs.sim.inputPin && scs.sim.servo && this.model.gpiosReachable(part.id, scs.sim.inputPin).includes(g)) {
+        const p = this.pwm.get(g);
+        if (!this.model.modulePowered(part.id)) {
+          this.warn(`servo-power-${part.id}`, 'warning', `${part.ref ?? part.id}: the servo has no power — connect its + wire and GND.`, [part.id]);
+          continue;
+        }
+        if (p && p.duty > 0) {
+          if (p.freq < 40 || p.freq > 400) {
+            this.warn(`servo-freq-${part.id}`, 'warning', `${part.ref ?? part.id}: this servo expects 50 Hz pulses, got ${p.freq} Hz.`, [part.id]);
+            continue;
+          }
+          const sv = scs.sim.servo;
+          const pulseUs = (p.duty / 65535) * (1e6 / p.freq);
+          this.servos.set(part.id, Math.max(0, Math.min(sv.degrees, ((pulseUs - sv.minUs) / (sv.maxUs - sv.minUs)) * sv.degrees)));
+        }
+      }
       if (part.type === 'buzzer' && this.model.gpiosReachable(part.id, '+').includes(g)) {
         const p = this.pwm.get(g);
         this.tones.set(part.id, p && p.duty > 0 && p.duty < 65535 ? p.freq : 0);
@@ -542,15 +559,17 @@ export class SimEngine {
   dhtRead(g: number): number[] {
     this.tick();
     for (const part of this.project.parts) {
-      if (part.type !== 'dht22') continue;
-      if (!this.model.gpiosOnNet(part.id, 'DATA').includes(g)) continue;
+      const cs = customSpec(part.type);
+      const data = part.type === 'dht22' ? 'DATA' : cs?.sim.kind === 'dht-sensor' ? cs.sim.outputPin : undefined;
+      if (!data) continue;
+      if (!this.model.gpiosOnNet(part.id, data).includes(g)) continue;
       if (!this.model.modulePowered(part.id)) {
-        this.warn(`dht-power-${part.id}`, 'warning', `${part.ref}: the DHT22 isn't powered — check VCC and GND.`, [part.id]);
+        this.warn(`dht-power-${part.id}`, 'warning', `${part.ref}: the ${cs?.mpn ?? 'DHT22'} isn't powered — check VCC and GND.`, [part.id]);
         break;
       }
       this.sleepUs(5000);
-      const st = this.model.states.get(part.id)!;
-      return [0, st.temperature, st.humidity];
+      const st = this.model.states.get(part.id)! as any;
+      return cs ? [0, st.value, st.humidity] : [0, st.temperature, st.humidity];
     }
     this.warn(`dht-missing-${g}`, 'warning', `Your code reads a DHT sensor on GPIO${g}, but no powered DHT22 DATA pin is wired to GPIO${g}.`);
     this.sleepUs(5000);
@@ -1060,6 +1079,10 @@ export class SimEngine {
               ]);
               v.active = Object.values(v.inputs).some(Boolean);
             }
+          }
+          if (cs?.sim.kind === 'servo') {
+            v.powered = m.modulePowered(part.id);
+            v.angle = this.servos.get(part.id) ?? (cs.sim.servo?.degrees ?? 180) / 2;
           }
           if (cs?.sim.kind === 'tft-display') {
             v.powered = m.modulePowered(part.id);

@@ -17,9 +17,13 @@ export interface CustomSim {
    * spi-device: a chip read over SPI (thermocouple/RTD amplifiers, SPI ADCs); pins use fn spi.sck/spi.miso/spi.mosi/spi.cs
    * uart-device: a serial module (GPS, particulate, CO2); its TX pin has fn uart.tx, its RX pin fn uart.rx
    * keypad-matrix: a passive row/column key matrix (4×4, 3×4 membrane keypads)
+   * dht-sensor: a DHT11/DHT22/AM2302-style single-wire sensor read with MicroPython's dht module (outputPin = DATA;
+   *   "value" = temperature, a "humidity" control); servo: an RC servo on a PWM pin (see servo)
    * segment-display: a 7-segment or 8×8 LED display driven by a TM1637 or MAX7219 (tests read the digits as text)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'addressable-led' | 'tft-display' | 'dht-sensor' | 'servo' | 'none';
+  /** servo: inputPin is the signal; a pulse of minUs…maxUs (at about 50 Hz) turns it to 0…degrees. */
+  servo?: { minUs: number; maxUs: number; degrees: number };
   /** tft-display: an SPI colour TFT (ST7789/ST7735/ILI9341 command set: 0x2A/0x2B window, 0x2C RGB565 pixels).
    * Pins: fn spi.sck, spi.mosi, spi.cs, tft.dc (data/command) and optionally tft.reset. */
   width?: number;
@@ -193,7 +197,7 @@ const REGISTRY = new Map<string, { spec: CustomPartSpec; def: PartDef }>();
 export function specToDef(spec: CustomPartSpec): PartDef {
   const controls: SimControl[] = [];
   const s = spec.sim;
-  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'hx711' || s.kind === 'spi-device' || s.kind === 'uart-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
+  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'dht-sensor' || s.kind === 'hx711' || s.kind === 'spi-device' || s.kind === 'uart-device' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
     const min = s.min ?? 0;
     const max = s.max ?? 100;
     controls.push({ key: 'value', label: s.quantity ?? 'Value', kind: 'slider', min, max, step: (max - min) / 200 >= 1 ? 1 : +((max - min) / 200).toPrecision(1), default: s.default ?? (min + max) / 2, unit: s.unit ? ` ${s.unit}`.replace(/^ (°|%)/, '$1') : '' });
@@ -272,6 +276,8 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!s.width || !s.height || s.width > 480 || s.height > 480) errs.push('a TFT needs width and height (up to 480)');
   }
   if (s.kind === 'addressable-led' && (!s.inputPin || !s.count || s.count < 1 || s.count > 1024)) errs.push('addressable-led needs inputPin (DIN) and a count of 1-1024');
+  if (s.kind === 'dht-sensor' && (!s.outputPin || !keys.has('humidity'))) errs.push('dht-sensor needs outputPin (DATA) and a "humidity" control');
+  if (s.kind === 'servo' && (!s.inputPin || !s.servo || s.servo.maxUs <= s.servo.minUs)) errs.push('servo needs inputPin and servo {minUs, maxUs, degrees}');
   if (s.kind === 'onewire-temp' && !s.outputPin) errs.push('onewire-temp needs outputPin (the DQ line)');
   for (const p of spec.pins) if (p.pullUp !== undefined && !(p.pullUp >= 100 && p.pullUp <= 100000)) errs.push(`pull-up on ${p.name} must be 100 Ω – 100 kΩ`);
   if (s.kind === 'oled-display' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress');
