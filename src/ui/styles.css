@@ -789,3 +789,45 @@ body.building .console { display: none; }
 .pcb-note ul { margin: 4px 0 0; padding-left: 18px; }
 .be-part.outside rect { stroke: #c77700; stroke-dasharray: 1 0.6; }
 .be-part.bad rect { fill-opacity: 0.85; }
+
+/* ---- hosted mode: workspace loading, import offer, account controls */
+.hosted-gate {
+  display: grid;
+  place-items: center;
+  min-height: 80vh;
+  gap: 12px;
+  color: var(--muted, #5b6662);
+}
+.import-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #fff7d6;
+  color: #3d3200;
+  border-bottom: 1px solid #e8d77a;
+  font-size: 14px;
+}
+.import-banner button {
+  font: inherit;
+}
+.account-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.account-controls select {
+  max-width: 160px;
+}
+.account-link {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #214f46;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+}

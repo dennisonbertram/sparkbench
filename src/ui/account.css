@@ -1,0 +1,48 @@
+:root {
+  --ink: #1d2422;
+  --bg: #f6f7f5;
+  --brand: #214f46;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8ece9;
+    --bg: #141816;
+    --brand: #7fc4b3;
+  }
+}
+body {
+  margin: 0;
+  font: 16px/1.5 'IBM Plex Sans', system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+.account {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.account.center {
+  display: grid;
+  place-items: center;
+  min-height: 90vh;
+}
+.account header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.account .brand {
+  font-weight: 600;
+  font-size: 20px;
+  color: var(--brand);
+  text-decoration: none;
+  margin-right: auto;
+}
+.account .lede {
+  max-width: 60ch;
+}
+.account .open {
+  color: var(--brand);
+  font-weight: 600;
+}

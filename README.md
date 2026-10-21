@@ -143,6 +143,24 @@ prompt ─▶ planner (offline) or Claude ─▶ DesignSpec ─▶ buildProject:
 
 Part artwork uses [@wokwi/elements](https://github.com/wokwi/wokwi-elements) (MIT). Simulation uses the [MicroPython](https://micropython.org) WebAssembly port (MIT). Internet examples use the free [Open-Meteo](https://open-meteo.com) API (the simulator makes real requests from the browser and falls back to sample data offline).
 
+## Hosting (accounts and workspaces)
+
+Run locally, Sparkbench has no accounts. Hosted, people sign in with [Clerk](https://clerk.com) and work in a **workspace**: their personal one, or a Clerk organization shared with a class or team. Projects, parts they add, gallery entries, classes, live rooms, circuit-board jobs and AI use all belong to one workspace, and the server checks that on every request. See [docs/design/multitenancy.md](docs/design/multitenancy.md).
+
+It deploys as one Docker service (the [Dockerfile](Dockerfile) includes KiCad 9, Freerouting, KiKit and ngspice) with Postgres, e.g. on Railway ([railway.json](railway.json)):
+
+| Variable | |
+|---|---|
+| `SPARKBENCH_MODE` | `hosted` (set in the image) |
+| `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | from the Clerk dashboard, with Organizations enabled |
+| `DATABASE_URL` | Postgres connection string |
+| `ANTHROPIC_API_KEY` | the hosted AI (a personal Claude Code login is never used when hosted) |
+| `DATA_DIR` | `/data`, a persistent volume for circuit-board files |
+| `SPARKBENCH_ORIGIN` | optional: the site's URL, to pin which origins Clerk sessions are accepted from |
+| `AI_PRICE_INPUT`, `AI_PRICE_OUTPUT` | optional: USD per million tokens, for the per-workspace monthly AI allowance (default $20) |
+
+`npm run build && npm run server` runs the production server locally (local mode unless `SPARKBENCH_MODE=hosted`).
+
 ## License
 
 MIT, see [LICENSE](LICENSE). Third-party libraries and any driver code adapted from other projects keep their own licences. KiCad and Freerouting are installed separately and are not distributed here.

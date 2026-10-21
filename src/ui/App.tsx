@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useStore, listSaved, loadCurrent, deleteSaved, type Tab } from './store';
 import { Breadboard } from './Breadboard';
 import { Copilot, Inspector, Console, PartLibrary } from './panels';
@@ -29,6 +29,9 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'pcb', label: 'Circuit board' },
   { id: 'blog', label: 'Blog post' },
 ];
+
+// Clerk only loads when the server is hosted.
+const AccountControls = lazy(() => import('./hosted').then((m) => ({ default: m.AccountControls })));
 
 export function App() {
   const project = useStore((s) => s.project);
@@ -165,6 +168,7 @@ function BreadboardWithLibrary() {
 }
 
 function Topbar() {
+  const hosted = useStore((s) => s.hosted);
   const project = useStore((s) => s.project)!;
   const status = useStore((s) => s.sim.status);
   const past = useStore((s) => s.past.length);
@@ -245,6 +249,11 @@ function Topbar() {
       <button className="ghost" onClick={() => useStore.getState().set({ tourStep: 0 })}>
         Tour
       </button>
+      {hosted && (
+        <Suspense fallback={null}>
+          <AccountControls />
+        </Suspense>
+      )}
       <button className="board-btn" onClick={() => useStore.getState().set({ boardPanel: !useStore.getState().boardPanel })} data-testid="board-open" data-tour="board" title="Program and test the real hardware over USB">
         Your board
       </button>
@@ -456,6 +465,11 @@ function Welcome() {
         <span className="brand">
           <Logo /> <span>Sparkbench</span>
         </span>
+        {useStore.getState().hosted && (
+          <Suspense fallback={null}>
+            <AccountControls />
+          </Suspense>
+        )}
         <nav className="welcome-nav">
           <a href="#examples">Examples</a>
           {community > 0 && <a href="#community">Community projects ({community})</a>}

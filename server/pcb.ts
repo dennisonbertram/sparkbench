@@ -16,7 +16,7 @@ export const KICAD_CLI = KICAD_APP ? join(KICAD_APP, 'Contents/MacOS/kicad-cli')
 const KICAD_PY = KICAD_APP ? join(KICAD_APP, 'Contents/Frameworks/Python.framework/Versions/Current/bin/python3') : '/usr/bin/python3';
 export const FP_DIR = KICAD_APP ? join(KICAD_APP, 'Contents/SharedSupport/footprints') : '/usr/share/kicad/footprints';
 export const FREEROUTING = [process.env.FREEROUTING_JAR, join(homedir(), '.cache/sparkbench/freerouting/freerouting-2.5.0.jar')].find((p) => p && existsSync(p));
-const JAVA = [process.env.JAVA, '/opt/homebrew/opt/openjdk/bin/java', '/usr/local/opt/openjdk/bin/java', '/usr/lib/jvm/default-java/bin/java'].find((p) => p && existsSync(p));
+const JAVA = [process.env.JAVA, '/opt/homebrew/opt/openjdk/bin/java', '/usr/local/opt/openjdk/bin/java', '/usr/lib/jvm/default-java/bin/java', '/usr/lib/jvm/java-21-openjdk-amd64/bin/java', '/usr/lib/jvm/java-21-openjdk-arm64/bin/java', '/usr/bin/java'].find((p) => p && existsSync(p));
 
 export function pcbToolsStatus() {
   return { kicad: !!KICAD_CLI && existsSync(KICAD_PY), freerouting: !!FREEROUTING && !!JAVA };

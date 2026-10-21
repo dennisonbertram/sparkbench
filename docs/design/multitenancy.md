@@ -1,6 +1,6 @@
 # Multitenant Sparkbench (Clerk + Railway)
 
-Status: design, approved to build. Owner: Sparkbench core.
+Status: built on branch `multitenancy` (server, client, Docker/Railway); a live Clerk sign-in test is pending keys.
 
 ## Goals
 

@@ -74,6 +74,8 @@ interface State {
   pinnedNet: string | null;
   tourStep: number | null;
   aiStatus: { enabled: boolean; model?: string; via?: string; kicad?: boolean; ngspice?: boolean; pcb?: { kicad: boolean; freerouting: boolean } };
+  /** Signed-in, multi-workspace server (Clerk); false when running locally. */
+  hosted: boolean;
 
   /** remote: a collaborator's change (live sharing): undo history is rebased onto it so undo only takes back my own changes. */
   setProject(p: Project | null, opts?: { record?: boolean; keepSim?: boolean; remote?: boolean }): void;
@@ -122,6 +124,7 @@ export const useStore = create<State>((set, get) => ({
   pinnedNet: null,
   tourStep: null,
   aiStatus: { enabled: false },
+  hosted: false,
 
   setProject(p, opts = {}) {
     registerProjectParts(p);
@@ -132,6 +135,7 @@ export const useStore = create<State>((set, get) => ({
       const saved = loadChat(p.id);
       const pendingNew = !cur && get().chat.length > 0;
       set({ chat: pendingNew ? get().chat : saved });
+      if (!pendingNew && !saved.length) fetchChat(p.id);
     }
     const record = opts.record ?? true;
     if (opts.remote && p && cur && p.id === cur.id) {
@@ -248,51 +252,144 @@ export const useStore = create<State>((set, get) => ({
   },
 }));
 
-// ------------------------------------------------------------------ persistence (browser only)
-const KEY = 'sparkbench.projects.v1';
-const CUR = 'sparkbench.current.v1';
+// ------------------------------------------------------------------ persistence
+// Projects and chats live in a browser cache (so the editor stays instant). Locally that cache is
+// the only copy. When hosted, the cache is per workspace and every change is also written to the
+// server, which is the source of truth (hydrateFromServer() fills the cache on start-up).
+const BASE_KEY = 'sparkbench.projects.v1';
+const BASE_CUR = 'sparkbench.current.v1';
+let scope = '';
+let remote = false;
+const KEY = () => BASE_KEY + scope;
+const CUR = () => BASE_CUR + scope;
+const CHAT = (id: string) => `sparkbench.chat.${scope ? `${scope.slice(1)}.` : ''}${id}`;
 
-export function listSaved(): Project[] {
+/** Server writes waiting to be sent (debounced per project), flushed on page hide. */
+const pending = new Map<string, { timer: ReturnType<typeof setTimeout>; send: () => Promise<unknown> }>();
+function later(key: string, send: () => Promise<unknown>, ms = 800) {
+  const prev = pending.get(key);
+  if (prev) clearTimeout(prev.timer);
+  const timer = setTimeout(() => {
+    pending.delete(key);
+    send().catch(() => later(key, send, 5000)); // offline or a hiccup: try again
+  }, ms);
+  pending.set(key, { timer, send });
+}
+const api = (url: string, method: string, body?: unknown, keepalive = false) =>
+  fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), keepalive }).then((r) => {
+    if (!r.ok && r.status !== 404) throw new Error(`${method} ${url}: ${r.status}`);
+    return r;
+  });
+if (typeof window !== 'undefined')
+  window.addEventListener('pagehide', () => {
+    for (const [k, p] of pending) {
+      clearTimeout(p.timer);
+      pending.delete(k);
+      p.send().catch(() => {});
+    }
+  });
+
+const readAll = (): Record<string, Project> => {
   try {
-    const all = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, Project>;
-    return Object.values(all).sort((a, b) => b.updatedAt - a.updatedAt);
+    return JSON.parse(localStorage.getItem(KEY()) ?? '{}');
+  } catch {
+    return {};
+  }
+};
+const writeAll = (all: Record<string, Project>) => {
+  try {
+    localStorage.setItem(KEY(), JSON.stringify(all));
+  } catch {}
+};
+
+/** Hosted start-up: use this workspace's cache and fill it from the server. */
+export async function hydrateFromServer(workspaceId: string): Promise<void> {
+  scope = `.${workspaceId}`;
+  remote = true;
+  const r = await fetch('/api/projects');
+  if (!r.ok) throw new Error(`Couldn't load your projects (${r.status}).`);
+  const { projects } = (await r.json()) as { projects: Project[] };
+  writeAll(Object.fromEntries(projects.map((p) => [p.id, p])));
+}
+
+/** Projects saved in this browser before signing in (the local, unscoped cache). */
+export function browserOnlyProjects(): Project[] {
+  try {
+    return Object.values(JSON.parse(localStorage.getItem(BASE_KEY) ?? '{}') as Record<string, Project>);
   } catch {
     return [];
   }
 }
+
+/** Copy the browser-only projects into the current workspace (never overwriting). */
+export async function importBrowserProjects(): Promise<number> {
+  const projects = browserOnlyProjects();
+  const r = await api('/api/projects/import', 'POST', { projects });
+  const { imported } = await r.json();
+  const all = readAll();
+  for (const p of projects) all[p.id] ??= p;
+  writeAll(all);
+  return imported;
+}
+
+export function listSaved(): Project[] {
+  return Object.values(readAll()).sort((a, b) => b.updatedAt - a.updatedAt);
+}
 export function saveProject(p: Project) {
+  const all = readAll();
+  all[p.id] = p;
+  writeAll(all);
   try {
-    const all = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, Project>;
-    all[p.id] = p;
-    localStorage.setItem(KEY, JSON.stringify(all));
-    localStorage.setItem(CUR, p.id);
+    localStorage.setItem(CUR(), p.id);
   } catch {}
+  if (remote) later(`p:${p.id}`, () => api(`/api/projects/${encodeURIComponent(p.id)}`, 'PUT', { project: readAll()[p.id] ?? p }, true));
 }
 function saveChat(id: string | undefined, chat: ChatMsg[]) {
   if (!id) return;
+  const keep = chat.filter((m) => !m.pending).slice(-60);
   try {
-    localStorage.setItem(`sparkbench.chat.${id}`, JSON.stringify(chat.filter((m) => !m.pending).slice(-60)));
+    localStorage.setItem(CHAT(id), JSON.stringify(keep));
   } catch {}
+  if (remote) later(`c:${id}`, () => api(`/api/projects/${encodeURIComponent(id)}/chat`, 'PUT', { messages: keep }, true));
 }
 function loadChat(id: string): ChatMsg[] {
   try {
-    return JSON.parse(localStorage.getItem(`sparkbench.chat.${id}`) ?? '[]');
+    return JSON.parse(localStorage.getItem(CHAT(id)) ?? '[]');
   } catch {
     return [];
   }
 }
+/** Hosted: a chat started on another device isn't in this browser's cache yet. */
+function fetchChat(id: string) {
+  if (!remote) return;
+  fetch(`/api/projects/${encodeURIComponent(id)}/chat`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      const msgs = (d?.messages ?? []) as ChatMsg[];
+      const s = useStore.getState();
+      if (!msgs.length || s.project?.id !== id || s.chat.length) return;
+      try {
+        localStorage.setItem(CHAT(id), JSON.stringify(msgs));
+      } catch {}
+      s.set({ chat: msgs } as any);
+    })
+    .catch(() => {});
+}
 
 export function deleteSaved(id: string) {
-  try {
-    const all = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, Project>;
-    delete all[id];
-    localStorage.setItem(KEY, JSON.stringify(all));
-  } catch {}
+  const all = readAll();
+  delete all[id];
+  writeAll(all);
+  if (remote) {
+    pending.get(`p:${id}`) && clearTimeout(pending.get(`p:${id}`)!.timer);
+    pending.delete(`p:${id}`);
+    api(`/api/projects/${encodeURIComponent(id)}`, 'DELETE').catch(() => {});
+  }
 }
 export function loadCurrent(): Project | null {
   try {
-    const id = localStorage.getItem(CUR);
-    const all = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Record<string, Project>;
+    const id = localStorage.getItem(CUR());
+    const all = readAll();
     return id && all[id] ? all[id] : null;
   } catch {
     return null;

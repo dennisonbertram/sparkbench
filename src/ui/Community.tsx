@@ -149,6 +149,8 @@ export function PublishDialog({ onClose }: { onClose(): void }) {
   const [title, setTitle] = useState(earlier?.[1].name ?? (remixOf && myName() ? `${myName()}’s ${project.name}` : project.name));
   const [blurb, setBlurb] = useState(project.summary ?? '');
   const [update, setUpdate] = useState(!!earlier);
+  const hosted = useStore((s) => s.hosted);
+  const [everyone, setEveryone] = useState(false);
   const [unchanged, setUnchanged] = useState(false);
   const [done, setDone] = useState<Entry | null>(null);
   const [error, setError] = useState('');
@@ -163,7 +165,9 @@ export function PublishDialog({ onClose }: { onClose(): void }) {
     <Modal title="Publish to the gallery" onClose={onClose}>
       {done ? (
         <div data-testid="publish-done">
-          <p>Published! Everyone using this Sparkbench can now open, like and remix <strong>{done.name}</strong>.</p>
+          <p>
+            Published! {hosted && !everyone ? 'Everyone in this workspace' : 'Everyone using this Sparkbench'} can now open, like and remix <strong>{done.name}</strong>.
+          </p>
           <p className="muted">
             Link: <code>{link(`gallery=${done.id}`)}</code> <CopyButton text={link(`gallery=${done.id}`)} />
           </p>
@@ -176,7 +180,7 @@ export function PublishDialog({ onClose }: { onClose(): void }) {
             try {
               saveName(author);
               const mine = myEntries();
-              const res = await post('/api/gallery', { project, author, blurb, name: title, update: update && earlier ? { id: earlier[0], editKey: earlier[1].editKey } : undefined });
+              const res = await post('/api/gallery', { project, author, blurb, name: title, update: update && earlier ? { id: earlier[0], editKey: earlier[1].editKey } : undefined, visibility: hosted && everyone ? 'public' : undefined });
               mine[res.id] = { editKey: res.editKey, projectId: project.id, name: res.name };
               store('sb-published', mine);
               setDone(res);
@@ -188,6 +192,11 @@ export function PublishDialog({ onClose }: { onClose(): void }) {
           <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} data-testid="publish-title" /></label>
           <label>Your name<input value={author} onChange={(e) => setAuthor(e.target.value)} required maxLength={40} /></label>
           <label>What is it? (one or two sentences)<textarea value={blurb} onChange={(e) => setBlurb(e.target.value)} rows={3} maxLength={300} /></label>
+          {hosted && (
+            <label className="check">
+              <input type="checkbox" checked={everyone} onChange={(e) => setEveryone(e.target.checked)} data-testid="publish-public" /> Share with everyone on Sparkbench, not just this workspace
+            </label>
+          )}
           {remixOf && <p className="muted">It will say it’s a remix of {remixOf.author}’s {remixOf.name}.</p>}
           {unchanged && <div className="banner warn" data-testid="publish-unchanged">You haven’t changed anything from {remixOf!.author}’s original yet. Change something first, so your remix is worth opening.</div>}
           {earlier && (
