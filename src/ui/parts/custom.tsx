@@ -93,7 +93,26 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible', display: 'block' }}>
       <rect x={0} y={0} width={w} height={h - 12} rx={5} fill={colour} stroke="#0008" />
-      {visual?.oled ? <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} /> : <rect x={w / 2 - 14} y={8} width={28} height={20} rx={2} fill="#111" />}
+      {visual?.segText !== undefined && (
+        <g>
+          <rect x={w / 2 - 34} y={6} width={68} height={22} rx={2} fill="#1a0505" />
+          <text x={w / 2} y={23} fontSize={16} fontFamily="'DSEG7 Classic', 'Courier New', monospace" fontWeight={700} fill={visual.segOn ? '#ff3b30' : '#3a1010'} textAnchor="middle" letterSpacing={2}>
+            {visual.segText || '    '}
+          </text>
+        </g>
+      )}
+      {visual?.oled ? (
+        <OledScreen x={w / 2 - 32} y={4} ram={visual.oled} on={!!visual.oledOn} />
+      ) : cs.sim.kind === 'segment-display' && cs.sim.matrix ? (
+        <g>
+          <rect x={w / 2 - 17} y={2} width={34} height={34} fill="#111" />
+          {Array.from({ length: 64 }, (_, i) => (
+            <circle key={i} cx={w / 2 - 14.5 + (i % 8) * 4.2} cy={4.5 + Math.floor(i / 8) * 4.2} r={1.6} fill={(visual?.pixels?.[i * 3] ?? 0) > 10 ? '#ff3b30' : '#3a1010'} />
+          ))}
+        </g>
+      ) : visual?.segText === undefined ? (
+        <rect x={w / 2 - 14} y={8} width={28} height={20} rx={2} fill="#111" />
+      ) : null}
       <text x={w / 2} y={40} fontSize={8} fill="#eef" textAnchor="middle" fontWeight={600}>{cs.mpn.slice(0, 16)}</text>
       <text x={w / 2} y={50} fontSize={5.5} fill="#cdd" textAnchor="middle">{cs.name.slice(0, 34)}</text>
       {visual?.active !== undefined && <circle cx={w - 10} cy={10} r={4} fill={visual.active ? '#ffd23f' : '#3a3a3a'} />}

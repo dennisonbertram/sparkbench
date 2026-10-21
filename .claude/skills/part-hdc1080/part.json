@@ -1,0 +1,150 @@
+{
+  "type": "custom-hdc1080",
+  "name": "HDC1080 temperature & humidity sensor",
+  "mpn": "HDC1080",
+  "category": "sensor",
+  "description": "Texas Instruments digital temperature (-40 to 125 °C, ±0.2 °C typical) and relative humidity (0–100 %, ±2 %) sensor with 14-bit results over I2C at fixed address 0x40. Runs on 2.7–5.5 V. Sold as: CJMCU-1080 HDC1080 module (4-pin: GND, SCL, SDA, VCC; 10 kΩ pull-ups to VCC on board, no regulator), I2C address 0x40.",
+  "eli5": "Tells your board how warm the air is and how damp it is, very accurately.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VCC on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VCC on the module)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7–5.5 V straight to the chip (use 3.3 V with an ESP32/Pico: the pull-ups go to VCC)",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 0.22,
+  "i2cAddress": 64,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/hdc1080.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "CJMCU-1080 HDC1080 temperature humidity sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V when using an ESP32 or Pico: the module's SDA/SCL pull-ups go to VCC, so 5 V on VCC would put 5 V on the microcontroller's pins.",
+    "Write 0x02 0x10 0x00 to the configuration register (T then RH, 14-bit each), then a pointer write of 0x00 starts a measurement; wait at least 13 ms and read 4 bytes: T MSB, T LSB, RH MSB, RH LSB.",
+    "T = raw / 65536 × 165 − 40 °C; RH = raw / 65536 × 100 %. The two lowest bits of each word are always 0.",
+    "Manufacturer ID (reg 0xFE) reads 0x5449 and device ID (reg 0xFF) 0x1050: a quick way to confirm the wiring.",
+    "The address is fixed at 0x40, so it clashes with HTU21D/Si7021/SHT21 and INA219 at default address on the same bus.",
+    "Keep the sensor away from the ESP32 and regulators, which warm the air around them."
+  ],
+  "keywords": [
+    "hdc1080",
+    "cjmcu-1080",
+    "temperature",
+    "humidity",
+    "texas instruments",
+    "ti"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "regWidth": 16,
+    "registers": {
+      "0x02": 4096,
+      "0xFE": 21577,
+      "0xFF": 4176
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "scale": 0.01007080078125,
+        "offset": -40,
+        "shift": 2,
+        "control": "value"
+      },
+      {
+        "reg": "0x01",
+        "bytes": 2,
+        "scale": 0.006103515625,
+        "shift": 2,
+        "control": "humidity"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hdc1080.py",
+    "code": "# HDC1080 temperature & humidity sensor (Texas Instruments), MicroPython driver.\n# Written from the TI datasheet (SNAS672A): sequential mode (config bit 12 = 1), 14-bit T and RH.\n# Trigger = pointer write to 0x00; after the conversion the chip returns T then RH in one 4-byte read.\nimport time\n\n_ADDR = 0x40\n_REG_TEMP = 0x00\n_REG_CONFIG = 0x02\n_REG_MFR_ID = 0xFE\n_REG_DEV_ID = 0xFF\n_CONFIG = 0x1000  # heater off, MODE=1 (T then RH), TRES=14 bit, HRES=14 bit\n\n\nclass HDC1080:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(15)  # start-up time: up to 15 ms after power-up\n        if self._read_reg(_REG_MFR_ID) != 0x5449 or self._read_reg(_REG_DEV_ID) != 0x1050:\n            raise OSError('HDC1080 not found at 0x%02x: check the wiring' % addr)\n        self.i2c.writeto(self.addr, bytes([_REG_CONFIG, _CONFIG >> 8, _CONFIG & 0xFF]))\n        time.sleep_ms(1)\n\n    def _read_reg(self, reg):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        d = self.i2c.readfrom(self.addr, 2)\n        return (d[0] << 8) | d[1]\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in °C, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, bytes([_REG_TEMP]))  # pointer write to 0x00 starts T + RH\n        time.sleep_ms(20)  # 6.35 ms (T, 14 bit) + 6.50 ms (RH, 14 bit), with margin\n        d = None\n        for _ in range(5):  # the chip NACKs the read until the conversion is done\n            try:\n                d = self.i2c.readfrom(self.addr, 4)\n                break\n            except OSError:\n                time.sleep_ms(5)\n        if d is None:\n            raise OSError('HDC1080 not responding: check the wiring')\n        t_raw = (d[0] << 8) | d[1]\n        h_raw = (d[2] << 8) | d[3]\n        # Datasheet: T = raw / 2^16 * 165 - 40 °C, RH = raw / 2^16 * 100 %\n        return t_raw * 165 / 65536 - 40, h_raw * 100 / 65536\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom hdc1080 import HDC1080\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = HDC1080(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.1f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65.0%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/hdc1080.pdf",
+    "https://kunkune.co.uk/shop/arduino-sensors/cjmcu-1080-high-precision-temperature-and-humidity-sensor-hdc1080/",
+    "https://kunkune.co.uk/wp-content/uploads/CJMCU-1080-High-Precision-Temperature-and-Humidity-Sensor-HDC1080-main.jpg",
+    "https://store.siqma.com/CJMCU-HDC1080-Module.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:09:12.457Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/hdc1080.pdf",
+      "https://docs.cirkitdesigner.com/component/0a1b716c-18e5-4a99-8515-c8a34d38603f/hdc1080"
+    ]
+  }
+}

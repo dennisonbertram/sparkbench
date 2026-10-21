@@ -17,8 +17,14 @@ export interface CustomSim {
    * spi-device: a chip read over SPI (thermocouple/RTD amplifiers, SPI ADCs); pins use fn spi.sck/spi.miso/spi.mosi/spi.cs
    * uart-device: a serial module (GPS, particulate, CO2); its TX pin has fn uart.tx, its RX pin fn uart.rx
    * keypad-matrix: a passive row/column key matrix (4×4, 3×4 membrane keypads)
+   * segment-display: a 7-segment or 8×8 LED display driven by a TM1637 or MAX7219 (tests read the digits as text)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'spi-device' | 'uart-device' | 'keypad-matrix' | 'segment-display' | 'none';
+  /** segment-display: TM1637 (pins CLK + DIO, fn digital-out) or MAX7219 (SPI: fn spi.sck, spi.mosi, spi.cs as LOAD);
+   * digits = how many digit positions the module shows; matrix = an 8×8 dot matrix instead of 7-segment digits. */
+  protocol?: 'tm1637' | 'max7219';
+  digits?: number;
+  matrix?: boolean;
   /** keypad-matrix: row and column pins and the key labels (keys[row][col]); the "value" slider holds
    * key number n (1 = keys[0][0], counting along each row; 0 = nothing pressed). Each key joins its row and column. */
   rowPins?: string[];
@@ -239,6 +245,11 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!s.rowPins?.length || !s.colPins?.length || !s.keys?.length) errs.push('keypad-matrix needs rowPins, colPins and keys');
     for (const p of [...(s.rowPins ?? []), ...(s.colPins ?? [])]) if (!names.has(p)) errs.push(`keypad pin ${p} is not a pin`);
     if (s.keys && (s.keys.length !== s.rowPins?.length || s.keys.some((r) => r.length !== s.colPins?.length))) errs.push('keys must be rows × columns');
+  }
+  if (s.kind === 'segment-display') {
+    if (s.protocol === 'tm1637' && !(names.has('CLK') && names.has('DIO'))) errs.push('a TM1637 display needs pins named CLK and DIO');
+    if (s.protocol === 'max7219' && !(['spi.sck', 'spi.mosi', 'spi.cs'] as const).every((f) => spec.pins.some((p) => p.fn === f))) errs.push('a MAX7219 display needs pins with fn spi.sck, spi.mosi and spi.cs');
+    if (!s.protocol) errs.push('segment-display needs protocol tm1637 or max7219');
   }
   if (s.kind === 'hx711' && (!s.outputPin || !s.clockPin || !names.has(s.clockPin) || !s.countsPerUnit)) errs.push('hx711 needs outputPin (DOUT), clockPin (PD_SCK) and countsPerUnit');
   if (s.kind === 'onewire-temp' && s.family !== undefined && ![0x10, 0x22, 0x28, 0x3b, 0x42].includes(s.family)) errs.push(`1-Wire family 0x${s.family.toString(16)} is not a DS18x20-type thermometer`);

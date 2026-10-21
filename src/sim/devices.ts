@@ -563,3 +563,116 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
   }
   return out;
 }
+
+/** 7-segment glyphs (bit0 = a … bit6 = g) → characters, for reading a display in tests. */
+const SEG_CHARS: Record<number, string> = {
+  0x3f: '0', 0x06: '1', 0x5b: '2', 0x4f: '3', 0x66: '4', 0x6d: '5', 0x7d: '6', 0x07: '7', 0x7f: '8', 0x6f: '9',
+  0x77: 'A', 0x7c: 'b', 0x39: 'C', 0x5e: 'd', 0x79: 'E', 0x71: 'F', 0x3d: 'G', 0x76: 'H', 0x30: 'I', 0x1e: 'J', 0x38: 'L',
+  0x54: 'n', 0x5c: 'o', 0x73: 'P', 0x67: 'q', 0x50: 'r', 0x78: 't', 0x3e: 'U', 0x1c: 'u', 0x6e: 'y', 0x40: '-', 0x08: '_', 0x63: '°', 0x00: ' ',
+  0x7e: '0', 0x7b: '9', 0x27: '7', 0x7a: 'd',
+};
+export function segText(segs: number[]): string {
+  return segs.map((b) => SEG_CHARS[b & 0x7f] ?? '?').join('');
+}
+
+/** TM1637: decodes the two-wire protocol from pin changes (start/stop while CLK high, LSB-first bytes, ack clock). */
+export class TM1637Device {
+  segs: number[];
+  on = false;
+  brightness = 7;
+  private bits = 0;
+  private byte = 0;
+  private bytes: number[] = [];
+  private active = false;
+  constructor(public partId: string, digits = 4) {
+    this.segs = new Array(Math.max(digits, 6)).fill(0);
+  }
+  /** Called with both line levels whenever the board changes CLK or DIO. */
+  update(clk: number, dio: number, prevClk: number, prevDio: number) {
+    if (clk && prevClk && dio !== prevDio) {
+      if (!dio) {
+        this.active = true;
+        this.bits = 0;
+        this.byte = 0;
+        this.bytes = [];
+      } else if (this.active) {
+        this.active = false;
+        this.command(this.bytes);
+      }
+      return;
+    }
+    if (this.active && clk && !prevClk) {
+      if (this.bits < 8) this.byte |= (dio ? 1 : 0) << this.bits;
+      this.bits++;
+      if (this.bits === 9) {
+        this.bytes.push(this.byte);
+        this.bits = 0;
+        this.byte = 0;
+      }
+    }
+  }
+  private addr = 0;
+  private command(b: number[]) {
+    if (!b.length) return;
+    const c = b[0];
+    if ((c & 0xc0) === 0x40) return; // data command (auto-increment or fixed): nothing to store
+    if ((c & 0xc0) === 0xc0) {
+      this.addr = c & 0x07;
+      for (const d of b.slice(1)) if (this.addr < this.segs.length) this.segs[this.addr++] = d;
+      return;
+    }
+    if ((c & 0xf0) === 0x80) {
+      this.on = (c & 0x08) !== 0;
+      this.brightness = c & 0x07;
+    }
+  }
+}
+
+/** MAX7219: 16-bit register frames latched by LOAD (CS) rising; digits 1–8, decode mode, shutdown, test. */
+export class MAX7219Device {
+  digitRegs = new Array(8).fill(0);
+  decode = 0;
+  shutdown = true;
+  test = false;
+  scanLimit = 7;
+  private shift: number[] = [];
+  constructor(public partId: string) {}
+  clockIn(bytes: number[]) {
+    this.shift.push(...bytes);
+    if (this.shift.length > 64) this.shift.splice(0, this.shift.length - 64);
+  }
+  /** LOAD rising: the last 16 bits shifted in are this chip's frame (cascaded chips pass earlier ones on). */
+  latch() {
+    if (this.shift.length < 2) return void (this.shift = []);
+    const [a, d] = this.shift.slice(-2);
+    this.shift = [];
+    const reg = a & 0x0f;
+    if (reg >= 1 && reg <= 8) this.digitRegs[reg - 1] = d;
+    else if (reg === 0x09) this.decode = d;
+    else if (reg === 0x0b) this.scanLimit = d & 7;
+    else if (reg === 0x0c) this.shutdown = (d & 1) === 0;
+    else if (reg === 0x0f) this.test = (d & 1) === 1;
+  }
+  /** Segment bytes (bit0 = a … bit6 = g) for digit positions left to right (digit 7 is the leftmost on 8-digit modules). */
+  segments(): number[] {
+    const CODE_B = [0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f, 0x40, 0x79, 0x76, 0x38, 0x73, 0x00];
+    const out: number[] = [];
+    for (let i = this.scanLimit; i >= 0; i--) {
+      const v = this.digitRegs[i];
+      if (this.decode & (1 << i)) out.push(CODE_B[v & 0x0f] | (v & 0x80));
+      else {
+        // No-decode bit order: DP A B C D E F G (bit7 … bit0).
+        let seg = 0;
+        for (let k = 0; k < 7; k++) if (v & (1 << (6 - k))) seg |= 1 << k;
+        out.push(seg | (v & 0x80));
+      }
+    }
+    return out;
+  }
+  /** 8×8 matrix brightness (row = digit register, column bit 7 … 0 left to right). */
+  matrix(): number[] {
+    const px: number[] = [];
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) px.push(!this.shutdown && (this.test || (this.digitRegs[r] >> (7 - c)) & 1) ? 255 : 0);
+    return px;
+  }
+}

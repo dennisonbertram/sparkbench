@@ -4,7 +4,7 @@ import type { Project, PartInstance } from '../core/types';
 import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
-import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, packResponse, type I2CDevice } from './devices';
+import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, MAX7219Device, segText, packResponse, type I2CDevice } from './devices';
 import { registerProjectParts, customSpec } from '../core/customParts';
 import { ESP32_PY, SIMTIME_PY, MACHINE_PY, DHT_PY, ONEWIRE_PY, DS18X20_PY, NEOPIXEL_MP_PY, NETWORK_PY, REQUESTS_PY, NTPTIME_PY, GPIOZERO_PY, SMBUS2_PY, BOARD_PY, ADAFRUIT_DHT_PY, NEOPIXEL_PI_PY, PITIME_EXTRA_PY, SIGNAL_PY, bootstrapPy } from './pyshims';
 
@@ -40,6 +40,9 @@ export interface PartVisual {
   pixels?: number[]; // flat r,g,b
   oled?: number[]; // 1024 bytes GDDRAM
   oledOn?: boolean;
+  /** Segment displays (TM1637/MAX7219): the digits as text, and whether the display is on. */
+  segText?: string;
+  segOn?: boolean;
   lcd?: { chars: number[]; backlight: boolean };
   epaper?: { ram: number[]; refreshing: boolean; refreshes: number };
   angle?: number;
@@ -290,6 +293,41 @@ export class SimEngine {
     }
     return 0;
   }
+  /** Segment displays driven by datasheet parts (TM1637 by pin changes, MAX7219 over SPI). */
+  private segDevs = new Map<string, TM1637Device | MAX7219Device>();
+  private segDev(part: PartInstance) {
+    const cs = customSpec(part.type);
+    if (cs?.sim.kind !== 'segment-display') return undefined;
+    let d = this.segDevs.get(part.id);
+    if (!d) {
+      d = cs.sim.protocol === 'max7219' ? new MAX7219Device(part.id) : new TM1637Device(part.id, cs.sim.digits ?? 4);
+      this.segDevs.set(part.id, d);
+    }
+    return d;
+  }
+  /** Before a pin changes: feed TM1637s on CLK/DIO and latch MAX7219s on LOAD rising. */
+  private segPinChange(g: number, v: number) {
+    const prev = this.outLevel.get(g) ?? 0;
+    if (prev === v) return;
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'segment-display') continue;
+      const dev = this.segDev(part)!;
+      if (dev instanceof TM1637Device) {
+        const clkG = this.model.gpiosOnNet(part.id, 'CLK')[0];
+        const dioG = this.model.gpiosOnNet(part.id, 'DIO')[0];
+        if (g !== clkG && g !== dioG) continue;
+        const clk = this.outLevel.get(clkG) ?? 0;
+        const dio = this.outLevel.get(dioG) ?? 0;
+        if (g === clkG) dev.update(v, dio, clk, dio);
+        else dev.update(clk, v, clk, dio);
+      } else {
+        const load = cs.pins.find((p) => p.fn === 'spi.cs')?.name;
+        if (load && v && this.model.gpiosOnNet(part.id, load).includes(g)) dev.latch();
+      }
+    }
+  }
+
   /** HX711-style bridge ADCs: clock edges on PD_SCK shift the 24-bit reading out on DOUT. */
   private hx = new Map<string, { bit: number; raw: number; readyAt: number }>();
   private hxParts() {
@@ -337,6 +375,7 @@ export class SimEngine {
   pinWrite(g: number, v: number) {
     this.tick();
     if (v && !(this.outLevel.get(g) ?? 0)) this.hxClock(g);
+    this.segPinChange(g, v);
     if (v !== (this.outLevel.get(g) ?? 1)) this.spiDeselect(g);
     if (this.board?.id === 'pico' && g === 25) {
       this.outLevel.set(25, v);
@@ -651,6 +690,16 @@ export class SimEngine {
     this.timeUs += bytes.length * 2; // ~4 MHz
     const b = this.spiBuses[bus];
     if (!b) return;
+    for (const part of this.project.parts) {
+      const cs = customSpec(part.type);
+      if (cs?.sim.kind !== 'segment-display' || cs.sim.protocol !== 'max7219') continue;
+      const pin = (fn: string) => cs.pins.find((p) => p.fn === fn)?.name ?? '';
+      const on = (fn: string) => this.model.gpiosOnNet(part.id, pin(fn));
+      if (!on('spi.sck').includes(b.sck) || !on('spi.mosi').includes(b.mosi)) continue;
+      const load = on('spi.cs')[0];
+      if (load === undefined || (this.outLevel.get(load) ?? 1) !== 0) continue;
+      (this.segDev(part) as MAX7219Device).clockIn(bytes);
+    }
     for (const { dev, part } of this.epapers) {
       const on = (pin: string) => this.model.gpiosOnNet(part.id, pin);
       if (!on('CLK').includes(b.sck) || !on('DIN').includes(b.mosi)) {
@@ -948,6 +997,20 @@ export class SimEngine {
         default: {
           if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
           const cs = customSpec(part.type);
+          if (cs?.sim.kind === 'segment-display') {
+            v.powered = m.modulePowered(part.id);
+            const d = this.segDev(part)!;
+            if (d instanceof TM1637Device) {
+              v.segOn = !!v.powered && d.on;
+              v.segText = v.segOn ? segText(d.segs.slice(0, cs.sim.digits ?? 4)) : '';
+            } else if (cs.sim.matrix) {
+              v.segOn = !!v.powered && !d.shutdown;
+              v.pixels = v.powered ? d.matrix().flatMap((x) => [x, 0, 0]) : [];
+            } else {
+              v.segOn = !!v.powered && !d.shutdown;
+              v.segText = v.segOn ? segText(d.segments().slice(-(cs.sim.digits ?? 8))) : '';
+            }
+          }
           if (cs?.sim.kind === 'oled-display') {
             const d = this.devices.find((x) => x.part.id === part.id)?.dev;
             v.powered = m.modulePowered(part.id);

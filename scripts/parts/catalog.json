@@ -91,6 +91,26 @@
    "family": "keypad-matrix"
   },
   {
+   "mpn": "TM1637",
+   "form": "TM1637 4-digit 7-segment display module with clock colon (CLK DIO VCC GND)",
+   "family": "segment-display"
+  },
+  {
+   "mpn": "MAX7219 8-digit",
+   "form": "MAX7219 8-digit 7-segment display module (VCC GND DIN CS CLK)",
+   "family": "segment-display"
+  },
+  {
+   "mpn": "MAX7219 8x8 matrix",
+   "form": "MAX7219 8\u00d78 LED dot matrix module (FC-16 style, VCC GND DIN CS CLK)",
+   "family": "segment-display"
+  },
+  {
+   "mpn": "TM1637 6-digit",
+   "form": "TM1637 6-digit 7-segment display module",
+   "family": "segment-display"
+  },
+  {
    "mpn": "AHT20",
    "form": "AHT20 temperature & humidity breakout (4-pin VIN GND SCL SDA)",
    "family": "i2c-command"
@@ -692,14 +712,6 @@
   }
  ],
  "later": [
-  {
-   "mpn": "MAX7219",
-   "why": "SPI LED matrix/7-seg: needs SPI + display model"
-  },
-  {
-   "mpn": "TM1637",
-   "why": "4-digit display: custom 2-wire protocol + display model"
-  },
   {
    "mpn": "ST7789",
    "why": "SPI colour TFT: display model"

@@ -1,0 +1,170 @@
+{
+  "type": "custom-aht10",
+  "name": "AHT10 temperature & humidity sensor",
+  "mpn": "AHT10",
+  "category": "sensor",
+  "description": "Aosong (ASAIR) digital temperature (-40 to 85 °C) and relative humidity (0–100 %, ±2 % typical) sensor with an I2C interface and 20-bit readings (no CRC). The bare chip runs on 1.8–3.6 V. Sold as: AHT10 temperature & humidity module (blue 4-pin board: VIN, GND, SCL, SDA, with XC6206 3.3 V regulator and MOSFET I2C level shifters), I2C address 0x38.",
+  "eli5": "Tells your board how warm the air is and how damp it is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3.3–5 V into the module's 3.3 V regulator (use your board's 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (level shifted on the module)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (level shifted on the module)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "i2cAddress": 56,
+  "datasheetUrl": "https://server4.eca.ir/eshop/AHT10/Aosong_AHT10_en_draft_0c.pdf",
+  "priceUsd": 1.5,
+  "supplierQuery": "AHT10 temperature humidity sensor module I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wait at least 20 ms after power-on, send the init command 0xE1 0x08 0x00, then read one status byte: bit 3 set means calibration is enabled.",
+    "Measure: send 0xAC 0x33 0x00, wait more than 75 ms, then read 6 bytes: status (bit 7 = busy), 20-bit humidity, 20-bit temperature. There is no CRC byte on the AHT10.",
+    "RH = raw / 2^20 × 100 %; T = raw / 2^20 × 200 − 50 °C.",
+    "The bare AHT10 chip is limited to 3.6 V. The module's regulator lets VIN take 3.3–5 V; use 3.3 V on ESP32/Pico.",
+    "The address is 0x38 on the module, so only one AHT10 per I2C bus.",
+    "Keep the sensor away from the board's regulator and the microcontroller, which warm the air around them."
+  ],
+  "keywords": [
+    "aht10",
+    "aht1x",
+    "asair",
+    "aosong",
+    "temperature",
+    "humidity"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "registers": {
+      "0x00": 8
+    },
+    "responses": [
+      {
+        "match": "ac 33 00",
+        "bytes": [
+          {
+            "const": 8,
+            "bits": 8
+          },
+          {
+            "control": "humidity",
+            "bits": 20,
+            "scale": 0.000095367431640625
+          },
+          {
+            "control": "value",
+            "bits": 20,
+            "scale": 0.00019073486328125,
+            "offset": -50
+          }
+        ]
+      },
+      {
+        "match": "e1 08 00",
+        "bytes": [
+          {
+            "const": 8,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "ba",
+        "bytes": [
+          {
+            "const": 8,
+            "bits": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "aht10.py",
+    "code": "# AHT10 temperature & humidity sensor (Aosong/ASAIR AHT10), MicroPython driver.\n# Written from the ASAIR AHT10 technical manual: address 0x38, init 0xE1 0x08 0x00,\n# trigger 0xAC 0x33 0x00, wait > 75 ms, read 6 bytes (status + 20-bit RH + 20-bit T).\n# The AHT10 sends no CRC byte (unlike the AHT20).\nimport time\n\n_ADDR = 0x38\n_CMD_INIT = b'\\xe1\\x08\\x00'\n_CMD_MEASURE = b'\\xac\\x33\\x00'\n_CMD_RESET = b'\\xba'\n_BUSY = 0x80\n_CALIBRATED = 0x08\n\n\nclass AHT10:\n    def __init__(self, i2c, addr=_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(40)  # datasheet: up to 20 ms after power-on to reach idle\n        self.i2c.writeto(self.addr, _CMD_INIT)\n        time.sleep_ms(350)\n        if not self.status() & _CALIBRATED:\n            raise OSError('AHT10 not calibrated: check the wiring')\n\n    def reset(self):\n        \"\"\"Soft reset (0xBA); the sensor needs under 20 ms to restart.\"\"\"\n        self.i2c.writeto(self.addr, _CMD_RESET)\n        time.sleep_ms(20)\n\n    def status(self):\n        \"\"\"The status byte: a plain one-byte read (bit 7 busy, bit 3 calibration enabled).\"\"\"\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in °C, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, _CMD_MEASURE)\n        time.sleep_ms(80)  # datasheet: wait more than 75 ms\n        for _ in range(10):\n            d = self.i2c.readfrom(self.addr, 6)\n            if not d[0] & _BUSY:\n                break\n            time.sleep_ms(10)\n        else:\n            raise OSError('AHT10 stayed busy')\n        h_raw = (d[1] << 12) | (d[2] << 4) | (d[3] >> 4)\n        t_raw = ((d[3] & 0x0F) << 16) | (d[4] << 8) | d[5]\n        return t_raw * 200 / 1048576 - 50, h_raw * 100 / 1048576\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "skill": "---\nname: part-aht10\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the AHT10 temperature & humidity sensor module (Aosong/ASAIR AHT10). Use when designing, wiring, simulating or writing code for an AHT10 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# AHT10 temperature & humidity sensor (AHT10)\n\n## Overview\nThe **AHT10** from Aosong (ASAIR) measures temperature (−40 to 85 °C) and relative humidity (0–100 %, ±2 % typical) and talks I2C. Each reading is 20 bits. Unlike the newer AHT20, the AHT10 sends **no CRC byte**. Hobbyists buy it on the common blue **4-pin AHT10 module** (VIN, GND, SCL, SDA). The module has a 3.3 V regulator (XC6206) and MOSFET level shifters on SDA/SCL, so it runs from 3.3 V or 5 V.\n\n## Pinout (AHT10 module, header order)\n| Pin | Function |\n|---|---|\n| VIN | Supply, 3.3–5 V (goes to the on-board 3.3 V regulator) |\n| GND | Ground |\n| SCL | I2C clock (level shifted) |\n| SDA | I2C data (level shifted) |\n\nSome clones print VCC instead of VIN or put SDA before SCL. Check the silkscreen.\n\n## Electrical limits\n- Module supply: 3.3–5 V. The bare AHT10 chip only takes 1.8–3.6 V (absolute max 3.6 V). Never put 5 V on a bare chip or on a board without the regulator.\n- Current: about 23 µA while measuring, 0.25 µA asleep (chip). The regulator adds a little.\n- I2C up to 400 kHz.\n\n## Interface details\n- **I2C address 0x38**. The chip's ADR pin can move it to 0x39, but the common module ties it to GND, so treat it as fixed.\n- After power-on wait at least 20 ms, then send the init command **0xE1 0x08 0x00** and read one byte = status: bit 7 busy, bit 3 calibration enabled.\n- Measure: write **0xAC 0x33 0x00**, wait more than 75 ms, then read 6 bytes: status, 20-bit humidity (byte 1, byte 2, high nibble of byte 3), 20-bit temperature (low nibble of byte 3, bytes 4, 5). If status bit 7 is still set, wait and read again.\n- Humidity: RH = raw / 2^20 × 100 %. Temperature: T = raw / 2^20 × 200 − 50 °C.\n- Soft reset: write **0xBA**, takes under 20 ms.\n\n## Wiring\n- ESP32: VIN → 3V3, GND → GND, SDA → D21, SCL → D22.\n- Pico: VIN → 3V3(OUT), GND → GND, SDA → GP4, SCL → GP5.\n- Raspberry Pi 4: VIN → pin 1 (3.3 V), GND → pin 6, SDA → pin 3, SCL → pin 5.\n\n## Using the driver\n```python\nfrom machine import I2C, Pin\nfrom aht10 import AHT10\ni2c = I2C(0, sda=Pin(21), scl=Pin(22))\nt, h = AHT10(i2c).read()\nprint('T=%.1fC H=%.0f%%' % (t, h))\n```\n\n## Gotchas\n- There is no CRC, so a loose wire can give a wrong reading without an error. Use short, firm SDA/SCL wires.\n- AHT20 drivers send 0xBE to initialise, but the AHT10 uses 0xE1. The 0xAC measurement command is the same on both.\n- Only one AHT10 module per bus at 0x38. A second one needs another I2C bus or a multiplexer.\n- Keep it away from the regulator and the microcontroller, which warm the air nearby. Don't read more often than about once every 2 s, because the sensor heats itself.\n- Above 80 % RH for a long time the reading drifts up. It recovers slowly in normal air.\n\n## Datasheet\nhttps://server4.eca.ir/eshop/AHT10/Aosong_AHT10_en_draft_0c.pdf\n",
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom aht10 import AHT10\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = AHT10(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://server4.eca.ir/eshop/AHT10/Aosong_AHT10_en_draft_0c.pdf",
+    "https://components101.com/sensor/aht10-digital-temperature-and-humidity-measurement-module",
+    "https://github.com/torvalds/linux/blob/master/drivers/hwmon/aht10.c"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T05:09:19.330Z",
+    "verifiedSources": [
+      "https://server4.eca.ir/eshop/AHT10/Aosong_AHT10_en_draft_0c.pdf",
+      "https://www.espboards.dev/sensors/aht10"
+    ]
+  }
+}

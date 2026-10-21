@@ -67,6 +67,7 @@ export function ocr(w: number, h: number, on: Pixel): string[] {
 /** Text on a display part (OLED, 16×2 LCD or e-paper), one entry per line or text run. */
 export function screenText(v: PartVisual | undefined): string[] {
   if (!v) return [];
+  if (v.segText !== undefined) return v.segText.trim() ? [v.segText] : [];
   if (v.lcd) {
     const s = String.fromCharCode(...v.lcd.chars.map((c) => (c >= 32 && c < 127 ? c : 32)));
     return [s.slice(0, 16).trimEnd(), s.slice(16).trimEnd()].filter(Boolean);

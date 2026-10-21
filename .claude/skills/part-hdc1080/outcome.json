@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hdc1080",
+  "board": "CJMCU-1080 HDC1080 temperature & humidity module (4-pin: GND, SCL, SDA, VCC)",
+  "reason": "Check passed on ESP32 and Pico on the first run. The model uses 16-bit registers with 14-bit T/RH words (low 2 bits zero) per TI's formulas, plus the ID and config registers; the driver checks the IDs, sets config 0x1000 and does a triggered sequential 4-byte read.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/hdc1080.pdf",
+  "breakoutPinoutSource": "https://kunkune.co.uk/wp-content/uploads/CJMCU-1080-High-Precision-Temperature-and-Humidity-Sensor-HDC1080-main.jpg",
+  "checkRuns": 1
+}
