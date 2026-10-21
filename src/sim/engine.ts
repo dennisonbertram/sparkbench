@@ -879,6 +879,10 @@ export class SimEngine {
     for (const { part, cs, talks } of this.uartParts(u)) {
       const st = cs.sim.uartStream;
       if (!talks || !st) continue;
+      if (st.when && !((this.model.states.get(part.id) as any)?.[st.when] > 0)) {
+        u.last.delete(part.id); // the first frame comes soon after the tag arrives
+        continue;
+      }
       const last = u.last.get(part.id) ?? -st.everyMs / 2;
       const n = Math.floor((t - last) / st.everyMs);
       if (n < 1) continue;

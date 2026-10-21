@@ -53,7 +53,8 @@ export interface CustomSim {
   /** uart-device: what the module sends by itself every `everyMs` (binary fields, or NMEA sentences built from
    * the controls "lat", "lon" and optionally "speed" [knots] and "alt" [m]), and replies to commands it receives. */
   uartBaud?: number;
-  uartStream?: { everyMs: number; nmea?: boolean; bytes?: ResponseSegment[] };
+  /** when: a control that must be on for the module to send (an RFID reader only talks while a tag is in the field). */
+  uartStream?: { everyMs: number; nmea?: boolean; bytes?: ResponseSegment[]; when?: string };
   uartReplies?: { match: string; bytes: ResponseSegment[] }[];
   /** spi-device: what the chip clocks out on MISO while CS is low. Each reply may require the
    * transaction to start with `match` (hex bytes, '' = any) and starts `at` bytes into it (default: after match). */
@@ -154,13 +155,14 @@ export interface I2CMeasure {
 /** One field of a command response, packed MSB-first into the reply's bit stream. */
 /** Bits a reply occupies (checksums are 8 bits except sum16). */
 export function segBits(segs: ResponseSegment[]): number {
-  return segs.reduce((n, b) => n + ('crc' in b ? (['sum16', 'neg16', 'modbus16'].includes(b.crc) ? 16 : 8) : b.bits), 0);
+  return segs.reduce((n, b) => n + ('crc' in b ? (['sum16', 'neg16', 'modbus16', 'xor8hex'].includes(b.crc) ? 16 : 8) : b.bits), 0);
 }
 
 export type ResponseSegment =
   | { const: number; bits: number }
   /** littleEndian: a whole-byte field sent low byte first (SDS011, many UART frames). */
-  | { control: string; bits: number; scale: number; offset?: number; signed?: boolean; littleEndian?: boolean }
+  | { control: string; bits: number; scale: number; offset?: number; signed?: boolean; littleEndian?: boolean; hex?: boolean }
+  /* hex: the value sent as uppercase ASCII hex digits, bits/8 characters of 4 bits each (RDM6300 tag frames). */
   /** An IEEE-754 single-precision float of (value − offset) / scale, big-endian: the whole float (bits 32), or its
    * high or low 16-bit half (bits 16) when the chip puts a CRC after every word (SCD30, SPS30). */
   | { control: string; float32: true | 'hi' | 'lo'; bits: 32 | 16; scale?: number; offset?: number }
@@ -168,7 +170,9 @@ export type ResponseSegment =
   | { crc: 'sensirion' | 'htu21d'; over: number }
   /** Checksums of serial sensors over the previous `over` bytes: 'sum16' = 16-bit sum, big-endian (PMS5003);
    * 'mhz19' = 0xFF − (sum of bytes after the first) + 1 (MH-Z19, SDS011-style); 'neg16' = −sum as 16 bits, big-endian (DFPlayer); 'modbus16' = CRC-16/MODBUS, low byte first (Senseair S8, Modbus sensors). */
-  | { crc: 'sum16' | 'mhz19' | 'sum8' | 'neg16' | 'modbus16'; over: number };
+  | { crc: 'sum16' | 'mhz19' | 'sum8' | 'neg16' | 'modbus16'; over: number }
+  /** XOR of the bytes spelled by the previous `over` ASCII hex characters, sent as 2 ASCII hex characters (RDM6300). */
+  | { crc: 'xor8hex'; over: number };
 
 export interface CustomPartSpec {
   type: string; // "custom-bme280"
@@ -319,6 +323,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!spec.pins.some((p) => p.fn === 'uart.tx')) errs.push('uart-device needs its TX pin marked fn uart.tx');
     if (!s.uartStream && !s.uartReplies?.length) errs.push('uart-device needs uartStream or uartReplies');
     if (s.uartStream?.nmea && !(keys.has('lat') && keys.has('lon'))) errs.push('an NMEA stream needs controls "lat" and "lon"');
+    if (s.uartStream?.when && !keys.has(s.uartStream.when)) errs.push(`uartStream.when ${s.uartStream.when} is not a control`);
     for (const r of [...(s.uartReplies ?? []), ...(s.uartStream?.bytes ? [{ match: '', bytes: s.uartStream.bytes }] : [])]) {
       if (r.match && !/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`uart reply match "${r.match}" must be hex bytes`);
       if (segBits(r.bytes) % 8) errs.push(`uart reply "${r.match}" is not whole bytes`);

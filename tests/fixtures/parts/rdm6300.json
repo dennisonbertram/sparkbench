@@ -1,0 +1,113 @@
+{
+ "type": "custom-rfid-test",
+ "name": "RDM6300 test",
+ "mpn": "RDM6300",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "uart",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "TX",
+   "role": "io",
+   "fn": "uart.tx",
+   "required": true
+  },
+  {
+   "name": "RX",
+   "role": "io",
+   "fn": "uart.rx",
+   "required": true
+  }
+ ],
+ "vmin": 4.5,
+ "vmax": 5.5,
+ "currentMa": 60,
+ "priceUsd": 20,
+ "supplierQuery": "RDM6300",
+ "sim": {
+  "kind": "uart-device",
+  "uartBaud": 9600,
+  "quantity": "Tag ID",
+  "unit": "",
+  "min": 0,
+  "max": 1099511627775,
+  "default": 424715775213,
+  "controls": [
+   {
+    "key": "present",
+    "quantity": "Tag in the field",
+    "min": 0,
+    "max": 1,
+    "default": 0
+   }
+  ],
+  "uartStream": {
+   "everyMs": 100,
+   "when": "present",
+   "bytes": [
+    {
+     "const": 2,
+     "bits": 8
+    },
+    {
+     "control": "value",
+     "bits": 80,
+     "scale": 1,
+     "hex": true
+    },
+    {
+     "crc": "xor8hex",
+     "over": 10
+    },
+    {
+     "const": 3,
+     "bits": 8
+    }
+   ]
+  }
+ },
+ "example": {
+  "code": "from machine import UART, Pin\nimport time\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\ntime.sleep(1)\nprint('quiet' if u.any() == 0 else 'noisy')\nwhile True:\n    if u.any() >= 14:\n        r = u.read(14)\n        if r[0] == 2 and r[13] == 3:\n            x = 0\n            for i in range(1, 11, 2):\n                x ^= int(r[i:i+2], 16)\n            if x == int(r[11:13], 16):\n                print('TAG=' + r[1:11].decode())\n    time.sleep_ms(20)\n",
+  "test": {
+   "id": "t",
+   "title": "tag",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "wait",
+     "ms": 2000
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "quiet",
+     "within": 3000
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "present",
+     "value": 1
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "TAG=62E3086CED",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

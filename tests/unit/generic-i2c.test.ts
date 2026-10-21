@@ -138,3 +138,11 @@ describe('Modbus CRC', () => {
     expect(b.slice(6)).toEqual([0xc5, 0xcd]);
   });
 });
+
+describe('ASCII hex fields', () => {
+  it('spells a tag ID and its XOR checksum in hex characters (RDM6300 frame)', () => {
+    const b = packResponse([{ const: 0x02, bits: 8 }, { control: 'tag', bits: 80, scale: 1, hex: true }, { crc: 'xor8hex', over: 10 }, { const: 0x03, bits: 8 }], () => 0x62e3086ced);
+    expect(String.fromCharCode(...b.slice(1, 13))).toBe('62E3086CED08');
+    expect([b[0], b[13]]).toEqual([0x02, 0x03]);
+  });
+});

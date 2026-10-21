@@ -653,6 +653,12 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
         push(crc >> 8, 8);
       }
       else if (s.crc === 'sum8') push(sum & 0xff, 8);
+      else if (s.crc === 'xor8hex') {
+        const txt = String.fromCharCode(...prev);
+        let x = 0;
+        for (let i = 0; i + 1 < txt.length; i += 2) x ^= parseInt(txt.slice(i, i + 2), 16) || 0;
+        for (const c of x.toString(16).toUpperCase().padStart(2, '0')) push(c.charCodeAt(0), 8);
+      }
       else if (s.crc === 'mhz19') push((0xff - (prev.slice(1).reduce((a, b) => a + b, 0) & 0xff) + 1) & 0xff, 8);
       else push(crc8Sensirion(prev, s.crc === 'htu21d' ? 0 : 0xff), 8);
     }
@@ -665,9 +671,11 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
       else push(dv.getUint32(0), 32);
     } else {
       let raw = Math.round((value(s.control) - (s.offset ?? 0)) / (s.scale || 1));
-      if (s.signed && raw < 0) raw += 2 ** s.bits;
-      raw = Math.max(0, Math.min(2 ** s.bits - 1, raw));
-      if (s.littleEndian && s.bits % 8 === 0) for (let i = 0; i < s.bits / 8; i++) push(Math.floor(raw / 2 ** (8 * i)) & 0xff, 8);
+      const width = s.hex ? s.bits / 2 : s.bits; // hex: each 8-bit character carries 4 bits
+      if (s.signed && raw < 0) raw += 2 ** width;
+      raw = Math.max(0, Math.min(2 ** width - 1, raw));
+      if (s.hex) for (const c of raw.toString(16).toUpperCase().padStart(s.bits / 8, '0')) push(c.charCodeAt(0), 8);
+      else if (s.littleEndian && s.bits % 8 === 0) for (let i = 0; i < s.bits / 8; i++) push(Math.floor(raw / 2 ** (8 * i)) & 0xff, 8);
       else push(raw, s.bits);
     }
   }
