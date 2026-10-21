@@ -1,0 +1,69 @@
+{
+  "type": "custom-tmp36gt9z",
+  "mpn": "TMP36GT9Z",
+  "pass": false,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.VOUT → D32 (GPIO32) — an analog-capable pin."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "skip",
+        "detail": "no example program: driver loads, behaviour untested"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; U2.VOUT → GP28 (GPIO28) — an analog-capable pin."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "10 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "skip",
+        "detail": "no example program: driver loads, behaviour untested"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Package_TO_SOT_THT:TO-92_Inline"
+    }
+  ],
+  "checkedAt": "2026-10-21T04:30:45.161Z"
+}

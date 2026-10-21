@@ -10,7 +10,7 @@ export type TestStep =
   | { kind: 'press'; part: string; ms?: number }
   | {
       kind: 'expect';
-      what: 'screen' | 'serial' | 'led' | 'buzzer' | 'servo' | 'relay' | 'motor' | 'pixels' | 'no-error';
+      what: 'screen' | 'serial' | 'led' | 'buzzer' | 'servo' | 'relay' | 'motor' | 'pixels' | 'active' | 'no-error';
       part?: string;
       text?: string;
       on?: boolean;

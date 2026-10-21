@@ -26,7 +26,7 @@ const CACHE = join(homedir(), '.cache/sparkbench/jlc');
 const DAY = 24 * 3600 * 1000;
 let last = 0;
 
-async function search(keyword: string, page = 1): Promise<LivePart[]> {
+export async function search(keyword: string, page = 1): Promise<LivePart[]> {
   mkdirSync(CACHE, { recursive: true });
   const file = join(CACHE, createHash('sha1').update(`${keyword}#${page}`).digest('hex') + '.json');
   if (existsSync(file)) {

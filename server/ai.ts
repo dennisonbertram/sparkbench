@@ -76,7 +76,7 @@ const StepSchema = z.object({
   control: z.string().nullable().describe("set: the part's control key (from the list)"),
   value: z.number().nullable().describe('set: the value'),
   ms: z.number().nullable().describe('wait: milliseconds; press: how long to hold'),
-  what: z.enum(['screen', 'serial', 'led', 'buzzer', 'servo', 'relay', 'motor', 'pixels', 'no-error']).nullable().describe('expect: what to check'),
+  what: z.enum(['screen', 'serial', 'led', 'buzzer', 'servo', 'relay', 'motor', 'pixels', 'active', 'no-error']).nullable().describe('expect: what to check'),
   text: z.string().nullable().describe('expect screen/serial: text that must appear (short, case-insensitive)'),
   on: z.boolean().nullable().describe('expect led/buzzer/relay/motor/pixels: true = on, false = off'),
   min: z.number().nullable().describe('expect servo: lowest acceptable angle'),

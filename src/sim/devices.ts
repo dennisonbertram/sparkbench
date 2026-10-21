@@ -1,5 +1,6 @@
 // Register-level models of I2C peripherals. They receive exactly the bytes the real
 // MicroPython / Python drivers put on the bus, so driver bugs show up in simulation too.
+import type { I2CMeasure, ResponseSegment } from '../core/customParts';
 
 export interface I2CDevice {
   addr: number;
@@ -432,38 +433,106 @@ export class EPaperDevice {
 
 /** An I2C chip described by its datasheet: fixed registers plus one measured value. */
 export class GenericI2CDevice implements I2CDevice {
-  regs = new Uint8Array(256);
   ptr = 0;
+  /** Bytes queued by a command (see responses); reads drain these before falling back to registers. */
+  private reply: number[] = [];
   constructor(
     public partId: string,
     public addr: number,
     registers: Record<string, number>,
-    private measure: { reg: string; bytes: number; scale: number; offset?: number; signed?: boolean; littleEndian?: boolean; shift?: number } | undefined,
-    private value: () => number,
+    private measures: I2CMeasure[],
+    private value: (key: string) => number,
+    private responses: { match: string; bytes: ResponseSegment[] }[] = [],
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16 } = {},
   ) {
-    for (const [k, v] of Object.entries(registers)) this.regs[Number(k) & 0xff] = v & 0xff;
+    // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
+    for (const [k, v] of Object.entries(registers)) this.setReg(Number(k), v);
+  }
+  private get wide() {
+    return this.layout.regWidth === 16;
+  }
+  /** Words live at 2×address in the byte store, so 16-bit registers never overlap. */
+  private setReg(addr: number, v: number) {
+    if (this.wide) {
+      this.store.set(addr & 0xffff, [(v >> 8) & 0xff, v & 0xff]);
+    } else this.store.set(addr & 0xffff, [v & 0xff]);
+  }
+  private store = new Map<number, number[]>();
+  private byteAt(addr: number, i: number): number {
+    const w = this.store.get(addr);
+    return w?.[i] ?? 0;
   }
   write(bytes: number[]) {
     if (!bytes.length) return;
-    this.ptr = bytes[0];
-    for (let i = 1; i < bytes.length; i++) this.regs[(this.ptr + i - 1) & 0xff] = bytes[i];
+    const hit = this.responses.find((r) => {
+      const m = r.match.split(' ').map((h) => parseInt(h, 16));
+      return m.length <= bytes.length && m.every((b, i) => b === bytes[i]);
+    });
+    if (hit) {
+      this.reply = packResponse(hit.bytes, this.value);
+      return;
+    }
+    this.reply = [];
+    const aw = this.layout.addrWidth === 16 ? 2 : 1;
+    this.ptr = aw === 2 ? ((bytes[0] << 8) | (bytes[1] ?? 0)) : bytes[0];
+    const data = bytes.slice(aw);
+    if (this.wide) {
+      for (let i = 0; i + 1 < data.length; i += 2) this.setReg(this.ptr + i / 2, (data[i] << 8) | data[i + 1]);
+    } else data.forEach((b, i) => this.setReg(this.ptr + i, b));
   }
   read(n: number) {
-    const m = this.measure;
-    if (m) {
-      const reg = Number(m.reg) & 0xff;
-      let raw = Math.round((this.value() - (m.offset ?? 0)) / (m.scale || 1)) << (m.shift ?? 0);
+    if (this.reply.length) return Array.from({ length: n }, (_, i) => this.reply[i] ?? 0);
+    for (const m of this.measures) {
+      const reg = Number(m.reg);
+      let raw = Math.round((this.value(m.control ?? 'value') - (m.offset ?? 0)) / (m.scale || 1)) * 2 ** (m.shift ?? 0);
       const bits = m.bytes * 8;
       if (m.signed && raw < 0) raw += 2 ** bits;
       raw = Math.max(0, Math.min(2 ** bits - 1, raw));
-      for (let i = 0; i < m.bytes; i++) {
-        const byte = (raw >> (8 * (m.littleEndian ? i : m.bytes - 1 - i))) & 0xff;
-        this.regs[(reg + i) & 0xff] = byte;
-      }
+      const b = Array.from({ length: m.bytes }, (_, i) => Math.floor(raw / 2 ** (8 * (m.littleEndian ? i : m.bytes - 1 - i))) & 0xff);
+      if (this.wide) for (let i = 0; i < b.length; i += 2) this.store.set(reg + i / 2, [b[i], b[i + 1] ?? 0]);
+      else b.forEach((x, i) => this.store.set(reg + i, [x]));
     }
     const out: number[] = [];
-    for (let i = 0; i < n; i++) out.push(this.regs[(this.ptr + i) & 0xff]);
-    this.ptr = (this.ptr + n) & 0xff;
+    // Byte registers auto-increment; word registers stream the word at the pointer (then the next).
+    for (let i = 0; i < n; i++) out.push(this.wide ? this.byteAt(this.ptr + (i >> 1), i & 1) : this.byteAt(this.ptr + i, 0));
+    if (!this.wide) this.ptr = (this.ptr + n) & 0xffff;
     return out;
   }
+}
+
+/** Sensirion CRC-8 (poly 0x31, init 0xFF), used by SHT3x/SHT4x/SCD4x/SGP and AHT20. */
+export function crc8Sensirion(bytes: number[], init = 0xff): number {
+  let crc = init;
+  for (const b of bytes) {
+    crc ^= b;
+    for (let i = 0; i < 8; i++) crc = crc & 0x80 ? ((crc << 1) ^ 0x31) & 0xff : (crc << 1) & 0xff;
+  }
+  return crc;
+}
+
+/** Pack response fields MSB-first into bytes (fields may straddle bytes, e.g. AHT20's 20-bit values). */
+export function packResponse(segs: ResponseSegment[], value: (key: string) => number): number[] {
+  const out: number[] = [];
+  let acc = 0;
+  let nbits = 0;
+  const push = (v: number, bits: number) => {
+    for (let i = bits - 1; i >= 0; i--) {
+      acc = (acc << 1) | (Math.floor(v / 2 ** i) & 1);
+      if (++nbits === 8) {
+        out.push(acc & 0xff);
+        acc = 0;
+        nbits = 0;
+      }
+    }
+  };
+  for (const s of segs) {
+    if ('crc' in s) push(crc8Sensirion(out.slice(-s.over), s.crc === 'htu21d' ? 0 : 0xff), 8);
+    else if ('const' in s) push(s.const, s.bits);
+    else {
+      let raw = Math.round((value(s.control) - (s.offset ?? 0)) / (s.scale || 1));
+      if (s.signed && raw < 0) raw += 2 ** s.bits;
+      push(Math.max(0, Math.min(2 ** s.bits - 1, raw)), s.bits);
+    }
+  }
+  return out;
 }

@@ -37,6 +37,11 @@ function check(step: Extract<TestStep, { kind: 'expect' }>, f: SimFrame, id: str
       return { ok: step.on === false ? !v?.relay : !!v?.relay, saw: `${step.part} ${v?.relay ? 'on' : 'off'}` };
     case 'motor':
       return { ok: step.on === false ? !(v?.spin ?? 0) : (v?.spin ?? 0) > 0, saw: `${step.part} ${v?.spin ? 'spinning' : 'stopped'}` };
+    case 'active': {
+      // text names one control input (e.g. "IN1"); otherwise any input counts.
+      const on = step.text ? !!v?.inputs?.[step.text] : !!v?.active;
+      return { ok: step.on === false ? !on : on, saw: `${step.part}${step.text ? ` ${step.text}` : ''} ${on ? 'switched on' : 'off'}` };
+    }
     case 'pixels': {
       const lit = (v?.pixels ?? []).some((x) => x > 10);
       return { ok: step.on === false ? !lit : lit, saw: `${step.part} ${lit ? 'lit' : 'dark'}` };
@@ -55,6 +60,7 @@ function describe(step: Extract<TestStep, { kind: 'expect' }>): string {
     case 'relay': return `${step.part} to switch ${not ? 'off' : 'on'}`;
     case 'motor': return `${step.part} to ${not ? 'stop' : 'run'}`;
     case 'pixels': return `${step.part} to ${not ? 'go dark' : 'light up'}`;
+    case 'active': return `${step.part}${step.text ? ` ${step.text}` : ''} to be switched ${not ? 'off' : 'on'}`;
     case 'no-error': return 'no errors';
   }
 }

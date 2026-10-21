@@ -1,0 +1,93 @@
+import { describe, expect, it } from 'vitest';
+import { GenericI2CDevice, crc8Sensirion, packResponse } from '../../src/sim/devices';
+import { validateSpec, type CustomPartSpec } from '../../src/core/customParts';
+
+describe('datasheet-part I2C model', () => {
+  it('computes the Sensirion CRC-8 (datasheet example: 0xBEEF → 0x92)', () => {
+    expect(crc8Sensirion([0xbe, 0xef])).toBe(0x92);
+  });
+
+  it('packs fields MSB-first across bytes (AHT20 20-bit values)', () => {
+    // status 0x1C, humidity raw 0x80000 (50 %), temperature raw 0x60000 (≈ 25 °C), then CRC over 6 bytes.
+    const bytes = packResponse(
+      [
+        { const: 0x1c, bits: 8 },
+        { control: 'humidity', bits: 20, scale: 100 / 2 ** 20 },
+        { control: 'value', bits: 20, scale: 200 / 2 ** 20, offset: -50 },
+        { crc: 'sensirion', over: 6 },
+      ],
+      (k) => (k === 'humidity' ? 50 : 25),
+    );
+    expect(bytes.slice(0, 6)).toEqual([0x1c, 0x80, 0x00, 0x06, 0x00, 0x00]);
+    expect(bytes[6]).toBe(crc8Sensirion(bytes.slice(0, 6)));
+  });
+
+  it('answers a command with its response, and registers otherwise', () => {
+    const dev = new GenericI2CDevice('u', 0x44, { '0xd0': 0x60 }, [{ reg: '0x10', bytes: 2, scale: 0.5, control: 'lux' }], (k) => (k === 'lux' ? 100 : 21), [
+      { match: '24 00', bytes: [{ control: 'value', bits: 16, scale: 175 / 65535, offset: -45 }, { crc: 'sensirion', over: 2 }] },
+    ]);
+    dev.write([0x24, 0x00]);
+    const r = dev.read(3);
+    const raw = (r[0] << 8) | r[1];
+    expect(-45 + (175 * raw) / 65535).toBeCloseTo(21, 1);
+    expect(r[2]).toBe(crc8Sensirion(r.slice(0, 2)));
+    dev.write([0xd0]);
+    expect(dev.read(1)).toEqual([0x60]);
+    dev.write([0x10]);
+    expect(dev.read(2)).toEqual([0, 200]);
+  });
+
+  it('rejects malformed models', () => {
+    const spec = {
+      type: 'custom-x',
+      name: 'x',
+      mpn: 'X',
+      category: 'sensor',
+      description: '',
+      eli5: '',
+      refPrefix: 'U',
+      interface: 'i2c',
+      pins: [{ name: 'GND', role: 'gnd' }, { name: 'VCC', role: 'power' }],
+      i2cAddress: 0x44,
+      priceUsd: 1,
+      supplierQuery: 'x',
+      sim: { kind: 'i2c-device', measures: [{ reg: '16', bytes: 2, scale: 1, control: 'nope' }], responses: [{ match: '2400', bytes: [{ const: 1, bits: 4 }] }] },
+    } as unknown as CustomPartSpec;
+    const errs = validateSpec(spec).join(' | ');
+    expect(errs).toMatch(/must be hex like/);
+    expect(errs).toMatch(/control nope/);
+    expect(errs).toMatch(/hex bytes like/);
+    expect(errs).toMatch(/not whole bytes/);
+  });
+});
+
+describe('word registers and 16-bit addresses', () => {
+  it('keeps 16-bit registers apart (INA219-style bus and shunt registers)', () => {
+    const vals: Record<string, number> = { value: 5, shunt: 0.01 };
+    const dev = new GenericI2CDevice('u', 0x40, { '0x00': 0x399f }, [
+      { reg: '0x02', bytes: 2, scale: 0.004, shift: 3 },
+      { reg: '0x01', bytes: 2, scale: 0.00001, signed: true, control: 'shunt' },
+    ], (k) => vals[k], [], { regWidth: 16 });
+    dev.write([0x02]);
+    const bus = dev.read(2);
+    expect((((bus[0] << 8) | bus[1]) >> 3) * 0.004).toBeCloseTo(5, 2);
+    dev.write([0x01]);
+    const sh = dev.read(2);
+    expect(((sh[0] << 8) | sh[1]) * 0.00001).toBeCloseTo(0.01, 5);
+    dev.write([0x00]);
+    expect(dev.read(2)).toEqual([0x39, 0x9f]);
+    dev.write([0x05, 0x10, 0x00]); // calibration write
+    dev.write([0x05]);
+    expect(dev.read(2)).toEqual([0x10, 0x00]);
+  });
+
+  it('uses two-byte register addresses when asked (VL53L1X-style)', () => {
+    const dev = new GenericI2CDevice('u', 0x29, { '0x010f': 0xea }, [], () => 0, [], { addrWidth: 16 });
+    dev.write([0x01, 0x0f]);
+    expect(dev.read(1)).toEqual([0xea]);
+  });
+
+  it('computes the HTU21D/Si7021 CRC (init 0x00): 0x683A → 0x7C', () => {
+    expect(crc8Sensirion([0x68, 0x3a], 0)).toBe(0x7c);
+  });
+});

@@ -28,8 +28,44 @@ export interface CustomSim {
   /** i2c-device: fixed register contents, e.g. { "0xD0": 96 } (chip id). */
   registers?: Record<string, number>;
   /** i2c-device: where the slider's measured value appears: raw = round((value - offset) / scale). */
-  measure?: { reg: string; bytes: number; scale: number; offset?: number; signed?: boolean; littleEndian?: boolean; shift?: number };
+  measure?: I2CMeasure;
+  /** i2c-device: more measured values, each in its own register(s) and driven by its own control. */
+  measures?: I2CMeasure[];
+  /** i2c-device that answers commands rather than register reads (Sensirion, Aosong…): after a write
+   * starting with `match` (hex bytes, e.g. "24 00"), reads return `bytes` packed MSB-first. */
+  responses?: { match: string; bytes: ResponseSegment[] }[];
+  /** More sliders besides the main one (e.g. humidity next to temperature), keyed for measures/outputs/tests. */
+  controls?: { key: string; quantity: string; unit?: string; min: number; max: number; default?: number }[];
+  /** analog-sensor with more than one output (e.g. a joystick's X and Y). */
+  analogOutputs?: { pin: string; control: string; vAtMin: number; vAtMax: number }[];
+  /** On/off outputs driven by toggles (a joystick's button, an encoder's A/B, a gas module's DO). */
+  digitalOutputs?: { pin: string; control: string; label?: string; activeHigh?: boolean }[];
+  /** actuator with several control inputs (e.g. a motor driver's IN1/IN2); each shows as on/off. */
+  inputPins?: string[];
+  /** i2c-device: register width in bits. 16 = each register address holds a 16-bit word (INA219, ADS1115, LM75…). */
+  regWidth?: 8 | 16;
+  /** i2c-device: register address width in bits (16 for e.g. VL53L1X, VL6180X). */
+  addrWidth?: 8 | 16;
 }
+
+export interface I2CMeasure {
+  reg: string;
+  bytes: number;
+  scale: number;
+  offset?: number;
+  signed?: boolean;
+  littleEndian?: boolean;
+  shift?: number;
+  /** Which control supplies the value ('value' = the main slider). */
+  control?: string;
+}
+
+/** One field of a command response, packed MSB-first into the reply's bit stream. */
+export type ResponseSegment =
+  | { const: number; bits: number }
+  | { control: string; bits: number; scale: number; offset?: number; signed?: boolean }
+  /** CRC-8 over the previous `over` bytes, poly 0x31: 'sensirion' starts at 0xFF (SHT3x/4x, SCD4x, AHT20), 'htu21d' at 0x00 (HTU21D, Si7021). */
+  | { crc: 'sensirion' | 'htu21d'; over: number };
 
 export interface CustomPartSpec {
   type: string; // "custom-bme280"
@@ -56,6 +92,12 @@ export interface CustomPartSpec {
   driver?: { filename: string; code: string };
   /** The part's skill (markdown) — given to the AI whenever the part is in a project. */
   skill?: string;
+  /**
+   * A tiny program that uses the part, and a test for it. The part check wires the part to a board
+   * the way autoWirePart does, runs this in the simulator and runs the test. `{PIN}` placeholders
+   * (e.g. {OUT}) are replaced with the GPIO number the part's pin was wired to.
+   */
+  example?: { code: string; test: import('./acceptance').AcceptanceTest };
 }
 
 const REGISTRY = new Map<string, { spec: CustomPartSpec; def: PartDef }>();
@@ -63,12 +105,17 @@ const REGISTRY = new Map<string, { spec: CustomPartSpec; def: PartDef }>();
 export function specToDef(spec: CustomPartSpec): PartDef {
   const controls: SimControl[] = [];
   const s = spec.sim;
-  if (s.kind === 'analog-sensor' || (s.kind === 'i2c-device' && s.measure)) {
+  if (s.kind === 'analog-sensor' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
     const min = s.min ?? 0;
     const max = s.max ?? 100;
     controls.push({ key: 'value', label: s.quantity ?? 'Value', kind: 'slider', min, max, step: (max - min) / 200 >= 1 ? 1 : +((max - min) / 200).toPrecision(1), default: s.default ?? (min + max) / 2, unit: s.unit ? ` ${s.unit}`.replace(/^ (°|%)/, '$1') : '' });
   }
   if (s.kind === 'digital-sensor') controls.push({ key: 'active', label: s.quantity ?? 'Triggered', kind: 'toggle', default: 0 });
+  for (const d of s.digitalOutputs ?? []) if (!controls.some((x) => x.key === d.control)) controls.push({ key: d.control, label: d.label ?? d.pin, kind: 'toggle', default: 0 });
+  for (const c of s.controls ?? []) {
+    if (c.key === 'value' || controls.some((x) => x.key === c.key)) continue;
+    controls.push({ key: c.key, label: c.quantity, kind: 'slider', min: c.min, max: c.max, step: (c.max - c.min) / 200 >= 1 ? 1 : +((c.max - c.min) / 200).toPrecision(1), default: c.default ?? (c.min + c.max) / 2, unit: c.unit ? ` ${c.unit}`.replace(/^ (°|%)/, '$1') : '' });
+  }
   return {
     type: spec.type,
     name: spec.name,
@@ -128,5 +175,23 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.outputPin && !names.has(s.outputPin)) errs.push(`sim.outputPin ${s.outputPin} is not a pin`);
   if (s.inputPin && !names.has(s.inputPin)) errs.push(`sim.inputPin ${s.inputPin} is not a pin`);
   if (s.kind === 'i2c-device' && spec.i2cAddress === undefined) errs.push('i2c-device without i2cAddress');
+  const keys = new Set(['value', 'active', ...(s.controls ?? []).map((c) => c.key), ...(s.digitalOutputs ?? []).map((d) => d.control)]);
+  for (const m of [...(s.measures ?? []), ...(s.measure ? [s.measure] : [])]) {
+    if (!/^0x[0-9a-f]{1,2}$/i.test(m.reg)) errs.push(`measure reg ${m.reg} must be hex like 0x1A`);
+    if (m.control && !keys.has(m.control)) errs.push(`measure control ${m.control} is not a control`);
+    if (!(m.bytes >= 1 && m.bytes <= 4) || !m.scale) errs.push(`measure at ${m.reg} needs 1-4 bytes and a non-zero scale`);
+  }
+  for (const r of s.responses ?? []) {
+    if (!/^([0-9a-f]{2})( [0-9a-f]{2})*$/i.test(r.match)) errs.push(`response match "${r.match}" must be hex bytes like "24 00"`);
+    const bits = r.bytes.reduce((n, b) => n + ('crc' in b ? 8 : b.bits), 0);
+    if (bits % 8) errs.push(`response "${r.match}" is ${bits} bits, not whole bytes`);
+    for (const b of r.bytes) if ('control' in b && !keys.has(b.control)) errs.push(`response field control ${b.control} is not a control`);
+  }
+  for (const d of s.digitalOutputs ?? []) if (!names.has(d.pin)) errs.push(`digital output ${d.pin} is not a pin`);
+  for (const p of s.inputPins ?? []) if (!names.has(p)) errs.push(`input ${p} is not a pin`);
+  for (const o of s.analogOutputs ?? []) {
+    if (!names.has(o.pin)) errs.push(`analog output ${o.pin} is not a pin`);
+    if (!keys.has(o.control)) errs.push(`analog output control ${o.control} is not a control`);
+  }
   return errs;
 }

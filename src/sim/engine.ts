@@ -47,6 +47,7 @@ export interface PartVisual {
   relay?: boolean;
   spin?: number; // motor speed 0..1
   active?: boolean; // datasheet-defined actuator is switched on
+  inputs?: Record<string, boolean>; // datasheet-defined actuator: which control inputs are high
   powered?: boolean;
 }
 
@@ -134,7 +135,7 @@ export class SimEngine {
       if (part.type === 'lcd1602') this.devices.push({ dev: new Lcd1602Device(part.id), part });
       const cs = customSpec(part.type);
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, cs.sim.measure, () => this.model.states.get(part.id)?.value ?? 0), part });
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth }), part });
       if (part.type === 'epaper29') this.epapers.push({ dev: new EPaperDevice(part.id, () => this.timeUs), part });
       if (part.type === 'mpu6050') {
         const st = () => this.model.states.get(part.id)! as any;
@@ -719,9 +720,12 @@ export class SimEngine {
         default: {
           if (partDef(part.type).vmin !== undefined && partDef(part.type).category !== 'board') v.powered = m.modulePowered(part.id);
           const cs = customSpec(part.type);
-          if (cs?.sim.kind === 'actuator' && cs.sim.inputPin) {
+          if (cs?.sim.kind === 'actuator' && (cs.sim.inputPin || cs.sim.inputPins?.length)) {
             const gnd = cs.pins.find((p) => p.role === 'gnd')?.name;
-            v.active = !!v.powered && m.pinVoltage(part.id, cs.sim.inputPin) - (gnd ? m.pinVoltage(part.id, gnd) : 0) > 1.5;
+            const high = (pin: string) => !!v.powered && m.pinVoltage(part.id, pin) - (gnd ? m.pinVoltage(part.id, gnd) : 0) > 1.5;
+            const pins = [...new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])];
+            v.inputs = Object.fromEntries(pins.map((p) => [p, high(p)]));
+            v.active = pins.some(high);
           }
         }
       }

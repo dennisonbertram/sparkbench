@@ -1,0 +1,69 @@
+{
+  "type": "custom-bme280",
+  "mpn": "BME280",
+  "pass": false,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; It shares the I2C bus (SDA D21, SCL D22) at address 0x76. Added the bme280.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "skip",
+        "detail": "no example program: driver loads, behaviour untested"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "4 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; It shares the I2C bus (SDA GP4, SCL GP5) at address 0x76. Added the bme280.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "skip",
+        "detail": "no example program: driver loads, behaviour untested"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+    }
+  ],
+  "checkedAt": "2026-10-21T04:30:45.146Z"
+}

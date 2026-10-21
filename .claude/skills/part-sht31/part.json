@@ -1,0 +1,148 @@
+{
+  "type": "custom-sht31",
+  "name": "SHT31 temperature & humidity sensor",
+  "mpn": "SHT31",
+  "category": "sensor",
+  "description": "Sensirion digital temperature (-40 to 125 °C, ±0.2 °C typical) and relative humidity (0–100 %, ±2 %) sensor with an I2C interface. Runs on 2.15–5.5 V. Sold as: SHT31-D breakout (6-pin: VIN, GND, SCL, SDA, ADR, ALR), I2C address 0x44 (0x45 with ADR high).",
+  "eli5": "Tells your board how warm the air is and how damp it is, very accurately.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 2.4–5.5 V (3.3 V recommended)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (pull-up fitted on most breakouts)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (pull-up fitted on most breakouts)",
+      "required": true
+    },
+    {
+      "name": "ADR",
+      "role": "io",
+      "description": "Address select: low or unconnected = 0x44, high = 0x45",
+      "required": false
+    },
+    {
+      "name": "ALR",
+      "role": "io",
+      "description": "Alert output (open-drain), not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 2.4,
+  "vmax": 5.5,
+  "currentMa": 0.8,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "SHT31-D temperature humidity sensor breakout I2C",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Single-shot command 0x24 0x00 then wait at least 15.5 ms before reading 6 bytes: temperature MSB, LSB, CRC, humidity MSB, LSB, CRC.",
+    "Check each CRC (poly 0x31, init 0xFF). A mismatch almost always means a loose SDA/SCL wire.",
+    "Leave ADR unconnected (pulled low on most boards) for address 0x44; tie it to VIN for 0x45, e.g. for a second sensor.",
+    "Keep the sensor away from the board's regulator and the ESP32, which warm the air around them."
+  ],
+  "keywords": [
+    "sht31",
+    "sht30",
+    "sht3x",
+    "temperature",
+    "humidity",
+    "sensirion"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "24 00",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0015259021896696422
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "sht31.py",
+    "code": "# SHT31 temperature & humidity sensor (Sensirion SHT3x-DIS), MicroPython driver.\n# Single-shot, high-repeatability measurement without clock stretching (command 0x2400),\n# CRC-8 checked as in the datasheet (poly 0x31, init 0xFF).\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass SHT31:\n    def __init__(self, i2c, addr=0x44):\n        self.i2c = i2c\n        self.addr = addr\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in °C, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x24\\x00')\n        time.sleep_ms(20)  # high repeatability takes up to 15.5 ms\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('SHT31 CRC mismatch: check the wiring')\n        t_raw = (d[0] << 8) | d[1]\n        h_raw = (d[3] << 8) | d[4]\n        return -45 + 175 * t_raw / 65535, 100 * h_raw / 65535\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom sht31 import SHT31\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SHT31(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65%",
+          "within": 3000
+        }
+      ]
+    }
+  }
+}

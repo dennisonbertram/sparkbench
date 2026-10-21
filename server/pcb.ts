@@ -14,7 +14,7 @@ import { revLabel } from '../src/core/revisions';
 const KICAD_APP = [process.env.KICAD_APP, join(homedir(), 'Applications/KiCad.app'), '/Applications/KiCad/KiCad.app', '/Applications/KiCad.app'].find((p) => p && existsSync(p));
 export const KICAD_CLI = KICAD_APP ? join(KICAD_APP, 'Contents/MacOS/kicad-cli') : ['/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find(existsSync);
 const KICAD_PY = KICAD_APP ? join(KICAD_APP, 'Contents/Frameworks/Python.framework/Versions/Current/bin/python3') : '/usr/bin/python3';
-const FP_DIR = KICAD_APP ? join(KICAD_APP, 'Contents/SharedSupport/footprints') : '/usr/share/kicad/footprints';
+export const FP_DIR = KICAD_APP ? join(KICAD_APP, 'Contents/SharedSupport/footprints') : '/usr/share/kicad/footprints';
 export const FREEROUTING = [process.env.FREEROUTING_JAR, join(homedir(), '.cache/sparkbench/freerouting/freerouting-2.5.0.jar')].find((p) => p && existsSync(p));
 const JAVA = [process.env.JAVA, '/opt/homebrew/opt/openjdk/bin/java', '/usr/local/opt/openjdk/bin/java', '/usr/lib/jvm/default-java/bin/java'].find((p) => p && existsSync(p));
 

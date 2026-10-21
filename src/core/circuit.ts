@@ -215,8 +215,10 @@ export class ElectricalModel {
           }
           const cs = customSpec(part.type);
           if (cs?.sim.kind === 'analog-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 1000));
+          for (const o of cs?.sim.kind === 'analog-sensor' ? (cs.sim.analogOutputs ?? []) : []) els[`out:${o.pin}`] = c.add(new VSource(`${id}.out.${o.pin}`, n(o.pin), g, 0, 1000));
           if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
-          if (cs?.sim.kind === 'actuator' && cs.sim.inputPin) els.in = c.add(new Resistor(`${id}.in`, n(cs.sim.inputPin), g, 10000));
+          if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), g, 10000));
+          for (const d of cs?.sim.digitalOutputs ?? []) els[`dout:${d.pin}`] = c.add(new VSource(`${id}.dout.${d.pin}`, n(d.pin), g, 0, 200));
           if (part.type === 'epaper29') els.busy = c.add(new VSource(`${id}.busy`, n('BUSY'), g, 0, 200));
           if (part.type === 'level-shifter') {
             // Each channel has a 10 kΩ pull-up on both sides; the MOSFET only conducts when a side is pulled low.
@@ -277,7 +279,13 @@ export class ElectricalModel {
       default: {
         // Datasheet-defined sensors: map the slider / toggle to an output voltage.
         const cs = customSpec(part.type);
-        if (!cs || !els.out) break;
+        if (!cs) break;
+        if (cs.sim.digitalOutputs?.length) {
+          const vcc0 = this.moduleSupply(partId);
+          const on = vcc0 >= (cs.vmin ?? 2.7) * 0.85;
+          for (const d of cs.sim.digitalOutputs) (els[`dout:${d.pin}`] as VSource).volts = on && (st[d.control] > 0) === (d.activeHigh ?? true) ? vcc0 : 0;
+        }
+        if (!els.out) break;
         const vcc = this.moduleSupply(partId);
         const powered = vcc >= (cs.vmin ?? 2.7) * 0.85;
         const s = cs.sim;
@@ -287,6 +295,11 @@ export class ElectricalModel {
           const f = hi === lo ? 0 : (st.value - lo) / (hi - lo);
           const v = (s.vAtMin ?? 0) + f * ((s.vAtMax ?? vcc) - (s.vAtMin ?? 0));
           (els.out as VSource).volts = powered ? Math.max(0, Math.min(vcc, v)) : 0;
+          for (const o of s.analogOutputs ?? []) {
+            const c = s.controls?.find((x) => x.key === o.control);
+            const f2 = c && c.max !== c.min ? ((st[o.control] ?? c.default ?? c.min) - c.min) / (c.max - c.min) : 0;
+            (els[`out:${o.pin}`] as VSource).volts = powered ? Math.max(0, Math.min(vcc, o.vAtMin + f2 * (o.vAtMax - o.vAtMin))) : 0;
+          }
         } else if (s.kind === 'digital-sensor') {
           const high = (st.active > 0) === (s.activeHigh ?? true);
           (els.out as VSource).volts = powered && high ? vcc : 0;
