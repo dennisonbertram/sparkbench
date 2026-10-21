@@ -159,7 +159,7 @@ export class SimEngine {
           this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
         }
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, fifo: cs.sim.fifo, selfClearing: cs.sim.selfClearing, dac: cs.sim.dac, onDac: (ch, d) => {
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, fifo: cs.sim.fifo, selfClearing: cs.sim.selfClearing, wordOrder: cs.sim.wordOrder, pec: cs.sim.pec, dac: cs.sim.dac, onDac: (ch, d) => {
           // The circuit model turns each channel's settings into the voltage on its pin.
           const pin = cs.sim.dac?.pins[ch];
           if (!pin) return;
@@ -307,10 +307,97 @@ export class SimEngine {
     }
     return next === Infinity ? -1 : Math.max(1, Math.ceil(next - this.timeUs));
   }
-  /** machine.time_pulse_us on an IR receiver's output: step through its scheduled edges. */
-  private irPulse(g: number, level: number, timeoutUs: number): number {
+  // ------------------------------------------------------------------ pulse trains and ultrasonic echoes
+  /** Pulse-sensor outputs: current level and when it last changed (µs). */
+  private pulses = new Map<string, { level: number; last: number }>();
+  /** Ultrasonic echoes: queued ECHO edges [time µs, level]. */
+  private echoes = new Map<string, [number, number][]>();
+  private timedCache?: { part: PartInstance; cs: NonNullable<ReturnType<typeof customSpec>> }[];
+  private timedParts() {
+    return (this.timedCache ??= this.project.parts.flatMap((part) => {
+      const cs = customSpec(part.type);
+      return (cs?.sim.kind === 'pulse-sensor' || cs?.sim.kind === 'ultrasonic') && cs.sim.outputPin ? [{ part, cs }] : [];
+    }));
+  }
+  private pulseHz(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): number {
+    const p = cs.sim.pulse!;
+    if (!this.model.modulePowered(part.id)) return 0;
+    const v = (this.model.states.get(part.id) as any)?.value ?? 0;
+    return Math.max(0, Math.min(p.maxHz ?? 2000, v * p.hzPerUnit + (p.offsetHz ?? 0)));
+  }
+  /** When the pulse output changes next (µs), or Infinity while it isn't pulsing. */
+  private pulseNext(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): number {
+    const f = this.pulseHz(part, cs);
+    const ps = this.pulses.get(part.id);
+    if (!(f > 0) || !ps) return Infinity;
+    const duty = cs.sim.pulse!.duty ?? 0.5;
+    return ps.last + ((ps.level ? duty : 1 - duty) / f) * 1e6;
+  }
+  /** Step pulse trains and due echo edges up to now, one pin change at a time so interrupts see every edge. */
+  private updateTimed() {
+    for (const { part, cs } of this.timedParts()) {
+      if (cs.sim.kind === 'pulse-sensor') {
+        const ps = this.pulses.get(part.id) ?? { level: 0, last: this.timeUs };
+        if (!this.pulses.has(part.id)) {
+          this.pulses.set(part.id, ps);
+          this.model.setPartState(part.id, 'pulseLevel', 0);
+        }
+        // Not pulsing: the wave restarts from here when the flow (or speed) comes back.
+        if (!(this.pulseHz(part, cs) > 0)) {
+          ps.last = this.timeUs;
+          continue;
+        }
+        for (let k = 0, next = this.pulseNext(part, cs); next <= this.timeUs && k < 100_000; k++, next = this.pulseNext(part, cs)) {
+          ps.level ^= 1;
+          ps.last = next;
+          this.model.setPartState(part.id, 'pulseLevel', ps.level);
+          if (this.irqWatch.size) this.checkIrqs();
+        }
+      } else {
+        const q = this.echoes.get(part.id);
+        while (q?.length && q[0][0] <= this.timeUs) {
+          this.model.setPartState(part.id, 'echoLevel', q.shift()![1]);
+          if (this.irqWatch.size) this.checkIrqs();
+        }
+      }
+    }
+  }
+  /** A trigger pulse ended on GPIO g: ultrasonic parts whose TRIG is there start a measurement. */
+  private ultrasonicTrigger(g: number, pulseUs: number) {
+    for (const { part, cs } of this.timedParts()) {
+      const e = cs.sim.echo;
+      if (cs.sim.kind !== 'ultrasonic' || !e || !this.model.gpiosOnNet(part.id, e.trigPin).includes(g)) continue;
+      if (!this.model.modulePowered(part.id)) continue;
+      if (pulseUs < (e.triggerUs ?? 10)) {
+        this.warn(`us-trig-${part.id}`, 'warning', `${part.ref}: the trigger pulse on ${e.trigPin} was ${Math.round(pulseUs)} µs; the ${cs.mpn} needs at least ${e.triggerUs ?? 10} µs to start a measurement.`, [part.id]);
+        continue;
+      }
+      const q = this.echoes.get(part.id) ?? [];
+      if (q.length) continue; // still measuring: the sensor ignores triggers until its echo is done
+      const d = (this.model.states.get(part.id) as any)?.value ?? e.maxCm;
+      const dur = d > e.maxCm && e.beyondUs ? e.beyondUs : Math.max(e.minCm, Math.min(e.maxCm, d)) * (e.usPerCm ?? 2e4 / 343);
+      const t0 = this.timeUs + (e.delayUs ?? 450);
+      this.echoes.set(part.id, [[t0, 1], [t0 + dur, 0]]);
+    }
+  }
+  /** Microseconds until the next scheduled output edge of any part (IR frames, pulse trains, echoes), or -1. */
+  edgeNextUs(): number {
+    let next = Infinity;
+    const ir = this.irNextUs();
+    if (ir >= 0) next = this.timeUs + ir;
+    for (const { part, cs } of this.timedParts()) {
+      if (cs.sim.kind === 'pulse-sensor') next = Math.min(next, this.pulseNext(part, cs));
+      else {
+        const q = this.echoes.get(part.id);
+        if (q?.length) next = Math.min(next, q[0][0]);
+      }
+    }
+    return next === Infinity ? -1 : Math.max(1, Math.ceil(next - this.timeUs));
+  }
+  /** machine.time_pulse_us on a scheduled output (IR receiver, pulse sensor, echo): step through its edges. */
+  private edgePulse(g: number, level: number, timeoutUs: number): number {
     const step = (until: number) => {
-      const n = this.irNextUs();
+      const n = this.edgeNextUs();
       // With nothing scheduled, look again every millisecond so a button press is noticed.
       this.sleepUs(Math.max(1, Math.min(n < 0 ? 1000 : n, until - this.timeUs)));
     };
@@ -339,6 +426,7 @@ export class SimEngine {
       }
     }
     if (this.irParts().length) this.updateIr();
+    if (this.timedParts().length) this.updateTimed();
     if (this.irqWatch.size && (changes?.length || this.model.dirty)) this.checkIrqs();
   }
   /** Change speed without jumping simulated time: re-anchor the wall clock mapping. */
@@ -558,6 +646,7 @@ export class SimEngine {
     if (!v && prev && tr.rise >= 0) {
       tr.pulse = this.timeUs - tr.rise;
       tr.at = this.timeUs;
+      if (this.timedParts().length) this.ultrasonicTrigger(g, tr.pulse);
     }
     this.trig.set(g, tr);
     if (!v) for (const { dev, part } of this.epapers) if (this.model.gpiosOnNet(part.id, 'RST').includes(g)) dev.reset();
@@ -607,6 +696,13 @@ export class SimEngine {
     const v = this.model.gpioVoltage(g);
     const full = this.board?.id === 'esp32' ? [1.1, 1.5, 2.2, 3.3][atten] ?? 3.3 : 3.3;
     if (v > 3.6) this.warn(`overv${g}`, 'error', `GPIO${g} (ADC) sees ${v.toFixed(1)} V — above 3.3 V. Use a divider.`);
+    // A shunt reference (LM335) only reads right with enough bias current through it.
+    for (const part of this.project.parts) {
+      const sh = customSpec(part.type)?.sim.shunt;
+      if (!sh || !this.model.gpiosOnNet(part.id, sh.pin).includes(g)) continue;
+      const ua = this.model.elementCurrentMa(part.id, 'shunt') * 1000;
+      if (ua < (sh.minUa ?? 400)) this.warn(`shunt-bias-${part.id}`, 'warning', `${part.ref}: only ${ua < 1 ? 'about 0' : Math.round(ua)} µA flows through the ${customSpec(part.type)!.mpn}; it needs at least ${sh.minUa ?? 400} µA to give an accurate reading. Use a smaller bias resistor or a higher bias voltage.`, [part.id]);
+    }
     const noise = (Math.random() - 0.5) * 60;
     return Math.max(0, Math.min(65535, Math.round((v / full) * 65535 + noise)));
   }
@@ -708,7 +804,8 @@ export class SimEngine {
       this.sleepUs(450 + dur);
       return dur;
     }
-    for (const { part, cs } of this.irParts()) if (this.model.gpiosOnNet(part.id, cs.sim.outputPin!).includes(g)) return this.irPulse(g, level, timeoutUs);
+    for (const { part, cs } of this.irParts()) if (this.model.gpiosOnNet(part.id, cs.sim.outputPin!).includes(g)) return this.edgePulse(g, level, timeoutUs);
+    for (const { part, cs } of this.timedParts()) if (this.model.gpiosOnNet(part.id, cs.sim.outputPin!).includes(g)) return this.edgePulse(g, level, timeoutUs);
     this.sleepUs(timeoutUs);
     return -2;
   }
@@ -1382,6 +1479,9 @@ export class SimEngine {
           // Indicator: a card on the reader (powered); an IR receiver's output pulled low by a remote burst.
           if (cs?.sim.kind === 'rfid-reader') v.active = !!v.powered && ((m.states.get(part.id) as any)?.present ?? 0) > 0;
           if (cs?.sim.kind === 'ir-receiver') v.active = !!v.powered && (m.states.get(part.id) as any)?.irLevel === 0;
+          // A pulse sensor while it pulses; an ultrasonic sensor while its ECHO is high.
+          if (cs?.sim.kind === 'pulse-sensor') v.active = !!v.powered && this.pulseHz(part, cs) > 0;
+          if (cs?.sim.kind === 'ultrasonic') v.active = !!v.powered && ((m.states.get(part.id) as any)?.echoLevel ?? 0) > 0;
         }
       }
       parts[part.id] = v;
@@ -1437,7 +1537,7 @@ export class SimEngine {
         return this.irqQueue.splice(0);
       },
       pulse_in: (g: number, l: number, t: number) => this.pulseIn(g, l, t),
-      ir_next_us: () => this.irNextUs(),
+      edge_next_us: () => this.edgeNextUs(),
       dht_read: (g: number) => this.dhtRead(g),
       ow_scan: (g: number) => this.owScan(g),
       ow_temp: (g: number, rom: string) => this.owTemp(g, rom),

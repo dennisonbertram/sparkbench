@@ -155,6 +155,35 @@ export class Diode implements Element {
   }
 }
 
+/** Shunt voltage reference (LM335-style, like a zener): sinks current from nodes[0] (+) to nodes[1] (−) once the
+ * voltage across it passes `vz`, with dynamic impedance `rz`; it never sources current. The knee is a smooth
+ * softplus (a few mV wide) so Newton–Raphson converges. */
+export class ShuntRef implements Element {
+  nodes: number[];
+  nonlinear = true;
+  static KNEE = 0.002;
+  constructor(public name: string, pos: number, neg: number, public vz: number, public rz = 1) {
+    this.nodes = [pos, neg];
+  }
+  private iv(vd: number): [number, number] {
+    const k = ShuntRef.KNEE;
+    const u = (vd - this.vz) / k;
+    // softplus(u)·k / rz and its derivative (logistic(u) / rz), with overflow guards
+    const sp = u > 30 ? u : Math.log1p(Math.exp(u));
+    const sig = u > 30 ? 1 : u < -30 ? Math.exp(u) : 1 / (1 + Math.exp(-u));
+    return [(sp * k) / this.rz, sig / this.rz];
+  }
+  stamp(s: Stamp, x: Float64Array) {
+    const vd = v(x, this.nodes[0]) - v(x, this.nodes[1]);
+    const [i, g] = this.iv(vd);
+    addG(s, this.nodes[0], this.nodes[1], g + GMIN);
+    addI(s, this.nodes[0], this.nodes[1], i - g * vd);
+  }
+  current(x: Float64Array) {
+    return this.iv(v(x, this.nodes[0]) - v(x, this.nodes[1]))[0];
+  }
+}
+
 /** NPN BJT, Ebers–Moll transport model. nodes = [C, B, E]. */
 export class NPN implements Element {
   nodes: number[];

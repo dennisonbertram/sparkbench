@@ -5,7 +5,7 @@ import { buildNets, pinKey, boardPart } from './netlist';
 import { partDef } from './parts';
 import { customSpec } from './customParts';
 import { boardFor, type BoardDef } from './boards';
-import { Circuit, Resistor, VSource, Diode, NPN, Timer555, Switch, Capacitor, LED_PARAMS, type Element } from './mna';
+import { Circuit, Resistor, VSource, Diode, NPN, Timer555, Switch, Capacitor, ShuntRef, LED_PARAMS, type Element } from './mna';
 
 export type PinMode = { kind: 'out'; level: number } | { kind: 'in'; pull: 'up' | 'down' | 'none' } | { kind: 'pwm'; duty: number; freq: number } | { kind: 'analog' } | { kind: 'unused' };
 
@@ -43,6 +43,31 @@ export function ldrOhms(lux: number): number {
 export function ntcOhms(tempC: number): number {
   const B = 3950;
   return 10000 * Math.exp(B * (1 / (tempC + 273.15) - 1 / 298.15));
+}
+
+type Spec = NonNullable<ReturnType<typeof customSpec>>;
+/** A control's range: the main "value" slider uses sim.min/max, the others their own min/max. */
+function controlRange(cs: Spec, key: string): [number, number] {
+  if (key === 'value') return [cs.sim.min ?? 0, cs.sim.max ?? 100];
+  const c = cs.sim.controls?.find((x) => x.key === key);
+  return c ? [c.min, c.max] : [0, 1];
+}
+/** Linear map of a control over its range onto a…b. */
+function controlLerp(cs: Spec, key: string, st: Record<string, number>, a: number, b: number): number {
+  const [lo, hi] = controlRange(cs, key);
+  const f = hi === lo ? 0 : Math.max(0, Math.min(1, ((st[key] ?? lo) - lo) / (hi - lo)));
+  return a + f * (b - a);
+}
+/** A resistive sensor element's resistance for the current control value (see CustomSim.resistive). */
+export function sensorOhms(cs: Spec, r: NonNullable<Spec['sim']['resistive']>[number], st: Record<string, number>): number {
+  const key = r.control ?? 'value';
+  const x = st[key] ?? controlRange(cs, key)[0];
+  let ohms: number;
+  if (r.curve === 'linear') ohms = controlLerp(cs, key, st, r.rAtMin!, r.rAtMax!);
+  else if (r.curve === 'log') ohms = Math.exp(controlLerp(cs, key, st, Math.log(r.rAtMin!), Math.log(r.rAtMax!)));
+  else if (r.curve === 'ntc') ohms = r.r0! * Math.exp(r.beta! * (1 / (x + 273.15) - 1 / ((r.t0 ?? 25) + 273.15)));
+  else ohms = r.rRef! * Math.pow(Math.max(x, r.ref! * 1e-6) / r.ref!, r.exponent!);
+  return Math.max(0.1, Math.min(1e10, ohms));
 }
 
 export class ElectricalModel {
@@ -200,6 +225,13 @@ export class ElectricalModel {
           const gp = kp.pins.find((p) => p.role === 'gnd')?.name;
           els.out = c.add(new VSource(`${id}.out`, n(kp.sim.outputPin), gp ? n(gp) : 0, 0, 1000));
         }
+        // Resistive sensors and shunt references are passive: they need no supply pin of their own.
+        if (kp?.sim.kind === 'resistive-sensor') {
+          const gp = kp.pins.find((p) => p.role === 'gnd')?.name;
+          const lo = (to?: string) => (to ? n(to) : gp ? n(gp) : -1);
+          (kp.sim.resistive ?? []).forEach((r, i) => (els[`res:${i}`] = c.add(new Resistor(`${id}.r${i}`, n(r.pin), lo(r.to), 10000))));
+          if (kp.sim.shunt) els.shunt = c.add(new ShuntRef(`${id}.shunt`, n(kp.sim.shunt.pin), lo(kp.sim.shunt.to), kp.sim.shunt.vAtMin, kp.sim.shunt.rz ?? 1));
+        }
         if (kp?.sim.kind === 'keypad-matrix')
           (kp.sim.rowPins ?? []).forEach((r, ri) => (kp.sim.colPins ?? []).forEach((col, ci) => (els[`key:${ri}:${ci}`] = c.add(new Switch(`${id}.k${ri}.${ci}`, n(r), n(col), false)))));
         // Modules: model their supply draw as a resistor, plus signal-pin behaviour.
@@ -234,6 +266,12 @@ export class ElectricalModel {
           for (const o of cs?.sim.kind === 'analog-sensor' ? (cs.sim.analogOutputs ?? []) : []) els[`out:${o.pin}`] = c.add(new VSource(`${id}.out.${o.pin}`, n(o.pin), g, 0, 1000));
           if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
           if (cs?.sim.kind === 'ir-receiver' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
+          // Pulse outputs: push-pull, or open collector (pulls low only; the high comes from a pull-up).
+          if (cs?.sim.kind === 'pulse-sensor' && cs.sim.outputPin) els.out = cs.sim.pulse?.openDrain ? c.add(new Switch(`${id}.out`, n(cs.sim.outputPin), g, false)) : c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
+          if (cs?.sim.kind === 'ultrasonic' && cs.sim.outputPin && cs.sim.echo) {
+            els.out = c.add(new VSource(`${id}.echo`, n(cs.sim.outputPin), g, 0, 200));
+            els.trig = c.add(new Resistor(`${id}.trig`, n(cs.sim.echo.trigPin), g, 10000));
+          }
           if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), cs.sim.inputsActiveLow ? n(vccPin) : g, cs.sim.inputsActiveLow ? 1000 : 10000));
           for (const d of cs?.sim.digitalOutputs ?? []) els[`dout:${d.pin}`] = c.add(new VSource(`${id}.dout.${d.pin}`, n(d.pin), g, 0, 200));
           for (const pin of cs?.sim.dac?.pins ?? []) els[`dac:${pin}`] = c.add(new VSource(`${id}.dac.${pin}`, n(pin), g, 0, 1));
@@ -325,6 +363,12 @@ export class ElectricalModel {
             (els[`dac:${pin}`] as VSource).volts = on && !k('pd') ? v : 0;
           }
         }
+        if (cs.sim.kind === 'resistive-sensor') {
+          (cs.sim.resistive ?? []).forEach((r, i) => ((els[`res:${i}`] as Resistor).ohms = sensorOhms(cs, r, st)));
+          const sh = cs.sim.shunt;
+          if (sh) (els.shunt as ShuntRef).vz = controlLerp(cs, sh.control ?? 'value', st, sh.vAtMin, sh.vAtMax);
+          break;
+        }
         if (!els.out) break;
         const s = cs.sim;
         const vcc = s.selfPowered ? Infinity : this.moduleSupply(partId);
@@ -343,6 +387,13 @@ export class ElectricalModel {
         } else if (s.kind === 'digital-sensor') {
           const high = (st.active > 0) === (s.activeHigh ?? true);
           (els.out as VSource).volts = powered && high ? vcc : 0;
+        } else if (s.kind === 'pulse-sensor') {
+          // The simulator steps pulseLevel through the square wave; an open-collector output only pulls low.
+          const high = !powered || st.pulseLevel > 0;
+          if (s.pulse?.openDrain) (els.out as Switch).set(!high);
+          else (els.out as VSource).volts = powered && high ? vcc : 0;
+        } else if (s.kind === 'ultrasonic') {
+          (els.out as VSource).volts = powered && st.echoLevel > 0 ? vcc : 0;
         } else if (s.kind === 'ir-receiver') {
           // Demodulated output: idles high, low during each burst of the remote's carrier (the simulator sets irLevel).
           (els.out as VSource).volts = powered && st.irLevel !== 0 ? vcc : 0;

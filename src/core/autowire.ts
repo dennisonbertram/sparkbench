@@ -110,6 +110,24 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
     const ohms = pin.pullUp!;
     notes.push(`Added a ${ohms >= 1000 ? `${ohms / 1000} kΩ` : `${ohms} Ω`} pull-up resistor from ${pin.name} to ${supply}, as the datasheet requires.`);
   }
+  // Load / bias resistors (a gas sensor's load resistor, an LDR's divider partner, an LM335's bias resistor): a real
+  // resistor from the pin's board net to 3V3, GND or the part's supply.
+  for (const pin of def.pins.filter((p) => p.load)) {
+    const sigWire = wires.find((w) => w.a.part === partId && w.a.pin === pin.name);
+    if (!sigWire) continue;
+    const { ohms, to } = pin.load!;
+    const rail = to === '3v3' ? board.supply3v3 : to === 'gnd' ? board.gnd : supply;
+    let k = 1;
+    while ([...project.parts, ...extraParts].some((x) => x.id === `${partId}_rl${k}`)) k++;
+    const rid = `${partId}_rl${k}`;
+    extraParts.push({ id: rid, type: 'resistor', label: `${pin.name} load`, props: { ohms }, x: part.x + 30 * k, y: part.y + 60 });
+    while (project.wires.some((w) => w.id === `w${n}`) || wires.some((w) => w.id === `w${n}`)) n++;
+    wires.push({ id: `w${n}`, a: { part: rid, pin: '1' }, b: { ...sigWire.b }, color: COLORS[sig++ % COLORS.length] });
+    n++;
+    wires.push({ id: `w${n}`, a: { part: rid, pin: '2' }, b: { part: bpart.id, pin: rail }, color: to === 'gnd' ? '#1f2328' : rail === board.supply3v3 ? '#d32f2f' : '#ef6c00' });
+    const label = ohms >= 1e6 ? `${+(ohms / 1e6).toFixed(2)} MΩ` : ohms >= 1000 ? `${+(ohms / 1000).toFixed(2)} kΩ` : `${ohms} Ω`;
+    notes.push(`Added a ${label} resistor from ${pin.name} to ${rail}, as the datasheet's circuit requires.`);
+  }
   // Pins fed from a separate supply: an external DC supply that fits (one already in the design, or a new one),
   // its − joined to the board's GND. Never the board's 3V3/5V.
   for (const pin of def.pins.filter((p) => p.role === 'power' && p.supply && !already.has(p.name))) {
@@ -158,6 +176,8 @@ export function withCustomPart(project: Project, spec: CustomPartSpec, opts: { w
 /** Remove a datasheet/library part (and its wires) from a design. */
 export function withoutCustomPart(project: Project, type: string): Project {
   const ids = new Set(project.parts.filter((p) => p.type === type).map((p) => p.id));
+  // The pull-up and load resistors autowire added for it go too.
+  for (const p of project.parts) if (p.type === 'resistor' && [...ids].some((id) => new RegExp(`^${id}_(pu|rl)\\d+$`).test(p.id))) ids.add(p.id);
   const spec = project.customParts?.find((c) => c.type === type);
   const files = { ...project.files };
   if (spec?.driver) delete files[spec.driver.filename];

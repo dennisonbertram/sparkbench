@@ -1,0 +1,87 @@
+{
+ "type": "custom-jsnsr04t-test",
+ "name": "JSN-SR04T test",
+ "mpn": "JSN-SR04T",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "digital-in",
+ "priceUsd": 3,
+ "supplierQuery": "JSN-SR04T",
+ "pins": [
+  {
+   "name": "5V",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "TRIG",
+   "role": "io",
+   "fn": "digital-out",
+   "required": true
+  },
+  {
+   "name": "ECHO",
+   "role": "io",
+   "fn": "digital-in",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 5.5,
+ "currentMa": 8,
+ "sim": {
+  "kind": "ultrasonic",
+  "outputPin": "ECHO",
+  "quantity": "Distance",
+  "unit": "cm",
+  "min": 0,
+  "max": 600,
+  "default": 200,
+  "echo": {
+   "trigPin": "TRIG",
+   "minCm": 25,
+   "maxCm": 450
+  }
+ },
+ "example": {
+  "code": "from machine import Pin, time_pulse_us\nimport time\ntrig = Pin({TRIG}, Pin.OUT, value=0)\necho = Pin({ECHO}, Pin.IN)\nwhile True:\n    trig.value(1)\n    time.sleep_us(10)\n    trig.value(0)\n    t = time_pulse_us(echo, 1, 40000)\n    if t > 0:\n        print('D=%d' % round(t / 58.3))\n    time.sleep_ms(200)\n",
+  "test": {
+   "id": "t",
+   "title": "distance",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 100
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "D=100",
+     "within": 3000
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 10
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "D=25",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

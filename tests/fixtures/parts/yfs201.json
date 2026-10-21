@@ -1,0 +1,76 @@
+{
+ "type": "custom-yfs201-test",
+ "name": "YF-S201 test",
+ "mpn": "YF-S201",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "digital-in",
+ "priceUsd": 3,
+ "supplierQuery": "YF-S201",
+ "pins": [
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "OUT",
+   "role": "io",
+   "fn": "digital-in",
+   "required": true,
+   "load": {
+    "ohms": 10000,
+    "to": "3v3"
+   }
+  }
+ ],
+ "vmin": 4.5,
+ "vmax": 18,
+ "currentMa": 15,
+ "sim": {
+  "kind": "pulse-sensor",
+  "outputPin": "OUT",
+  "quantity": "Flow",
+  "unit": "L/min",
+  "min": 0,
+  "max": 30,
+  "default": 0,
+  "pulse": {
+   "hzPerUnit": 7.5,
+   "openDrain": true
+  }
+ },
+ "example": {
+  "code": "from machine import Pin\nimport time\nn = 0\ndef cb(p):\n    global n\n    n += 1\np = Pin({OUT}, Pin.IN)\np.irq(trigger=Pin.IRQ_RISING, handler=cb)\nwhile True:\n    n = 0\n    time.sleep(2)\n    print('Q=%d' % round(n / 7.5 / 2))\n",
+  "test": {
+   "id": "t",
+   "title": "flow",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 10
+    },
+    {
+     "kind": "wait",
+     "ms": 2500
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "Q=10",
+     "within": 5000
+    }
+   ]
+  }
+ }
+}

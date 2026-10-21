@@ -490,15 +490,15 @@ def enable_irq(state=0):
     pass
 
 
-def _next_ir_us():
-    n = _hw.ir_next_us()
+def _next_edge_us():
+    n = _hw.edge_next_us()
     return None if n < 0 else n
 
 
 import _simtime
 _simtime._hooks.append(_service)
 _simtime._next_fns.append(_next_timer_us)
-_simtime._next_fns.append(_next_ir_us)
+_simtime._next_fns.append(_next_edge_us)
 `;
 
 export const ESP32_PY = `# Simulated esp32 module (wake sources and sensors are accepted but have no effect).
