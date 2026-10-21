@@ -1,0 +1,126 @@
+{
+  "type": "custom-adafruit-stemma-mini-relay",
+  "name": "Adafruit STEMMA Non-Latching Mini Relay",
+  "mpn": "4409",
+  "category": "actuator",
+  "description": "Adafruit STEMMA non-latching mini relay: a NEXEM/EM Devices EE2-series (NUH, minimum-footprint) 2 Form C signal relay whose coil is switched from VIN by an MMBT2222 transistor driven from SIG (1 k base resistor, 10 k pull-down), with 1N4148 flyback diode, 10 uF bulk capacitor and red LED. SIG high = relay on (COM-NO closed); SIG low or floating = COM-NC. Works from 3-5 V power and logic; about 50 mA while on at 3.3 V. Push-in terminal NC/COM/NO rated 2 A at 30 VDC, 0.5 A at 120 VAC, 0.3 A at 250 VAC (60 W max). Sold as: Adafruit STEMMA Non-Latching Mini Relay - JST PH 2mm (product ID 4409), 3-pin JST PH connector GND, VIN, SIG.",
+  "eli5": "An electrically controlled switch: when your board sets the white SIG wire high, the relay clicks and connects a small lamp, fan or pump to its own power.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (JST PH pin 1, black wire), shared with the microcontroller."
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "required": true,
+      "description": "Supply (JST PH pin 2, red wire): 3-5 V. Powers the relay coil through the MMBT2222 driver, not the load. About 50 mA while on at 3.3 V, up to about 85 mA at 5 V."
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Control input (JST PH pin 3, white wire): high = relay on (COM-NO), low = off (COM-NC). 1 k into the MMBT2222 base with a 10 k pull-down, so it stays off when floating. 3.3 V or 5 V logic."
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 90,
+  "datasheetUrl": "http://www.worldproducts.com/pdfs/NEXEM/NEXEM-MiniatureRelayCatalog.pdf",
+  "sources": [
+    "https://www.adafruit.com/product/4409",
+    "https://learn.adafruit.com/adafruit-stemma-non-latching-mini-relay/pinouts",
+    "https://learn.adafruit.com/adafruit-stemma-non-latching-mini-relay/downloads",
+    "https://github.com/adafruit/Adafruit-STEMMA-Non-Latching-Mini-Relay-PCB",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20STEMMA%20Non-Latching%20Relay%20Breakout.fzpz",
+    "http://www.worldproducts.com/pdfs/NEXEM/NEXEM-MiniatureRelayCatalog.pdf"
+  ],
+  "priceUsd": 6.95,
+  "supplierQuery": "Adafruit 4409 STEMMA Non-Latching Mini Relay",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "JST PH 3-pin order (Adafruit schematic X4): pin 1 GND (black), pin 2 VIN (red), pin 3 SIG (white). Use a JST PH 3-pin to male header cable to reach the breadboard; the load terminal is on the opposite edge.",
+    "SIG high = relay on. The 10 k pull-down keeps the relay off while the microcontroller boots; still create the pin with value=0.",
+    "Power VIN from 3.3 V or 5 V. The coil draws about 50 mA at 3.3 V (about 80 mA at 5 V): fine from an ESP32 DevKit or Pico 3V3 pin, never from a GPIO.",
+    "Load terminal NC / COM / NO (push-in, 24-18 AWG). Ratings (resistive): 2 A at 30 VDC, 0.6 A at 110 VDC, 0.5 A at 120 VAC, 0.3 A at 250 VAC; keep loads under 60 W and derate for inductive loads.",
+    "Relay operates in about 2 ms and releases in about 1 ms; it is a mechanical part, so never PWM it.",
+    "Voltages above 24 V on the terminal are dangerous: keep them in a closed insulated box and leave mains to an adult/qualified person. For a first project switch a low-voltage DC load."
+  ],
+  "keywords": [
+    "adafruit stemma relay",
+    "stemma relay",
+    "4409",
+    "adafruit 4409",
+    "mini relay",
+    "non-latching relay",
+    "relay",
+    "relay module",
+    "nexem ee2",
+    "ee2-3nuh",
+    "jst ph",
+    "normally open",
+    "normally closed",
+    "fan",
+    "lamp",
+    "pump",
+    "switch load"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "SIG"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Adafruit STEMMA relay: SIG high = relay on (COM-NO closed).\nrelay = Pin({SIG}, Pin.OUT, value=0)\nwhile True:\n    relay.value(1)\n    print('relay ON')\n    time.sleep(2)\n    relay.value(0)\n    print('relay OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The relay switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "relay OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-adafruit-stemma-mini-relay\ndescription: Pinout, electrical limits, wiring and MicroPython code for the Adafruit STEMMA Non-Latching Mini Relay (product 4409; NEXEM/EM Devices EE2 2-Form-C signal relay driven by an MMBT2222 from SIG, JST PH 3-pin GND/VIN/SIG, active-high, NC/COM/NO push-in terminal). Use when designing, wiring, simulating or writing code for the Adafruit STEMMA relay in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit STEMMA Non-Latching Mini Relay (#4409)\n\n## Overview\nA small signal relay board with a 3-pin **JST PH 2 mm STEMMA** connector. The relay is a **NEXEM (EM Devices) EE2-series non-latching relay, minimum-footprint NUH type** (2 Form C, gold-overlay silver contacts); its coil goes from VIN to the collector of an **MMBT2222** NPN transistor. SIG drives the base through **1 kΩ**, with a **10 kΩ pull-down** to GND, so a floating SIG keeps the relay off. A 1N4148 flyback diode sits across the coil, a 10 µF capacitor on VIN, and a red LED (1 kΩ, solder jumper SJ1 to disable) lights while the relay is on. **SIG high = relay on.** Hobbyists buy it as **Adafruit STEMMA Non-Latching Mini Relay - JST PH 2mm, product ID 4409**.\n\n## Pinout (JST PH connector X4, schematic pin order)\n| Pin | Wire | Function |\n|---|---|---|\n| GND | black | Ground |\n| VIN | red | Supply 3–5 V for the coil driver (not the load) |\n| SIG | white | Control input, high = relay on |\n\nThe same three signals are on an optional 0.1\" pad row JP1 (SIG, VIN, GND). The load side is a 3-way **WAGO 2060 push-in terminal NC / COM / NO** on the far edge (24–18 AWG; press the button to release), plus an unpopulated 3.5 mm footprint for the relay's second pole. Because of the connector on each end, wire the module with a JST PH 3-pin to male header cable.\n\n## Electrical limits\n- VIN 3–5 V (Adafruit). About 50 mA while on at 3.3 V; about 80–90 mA at 5 V (coil 64 Ω ±10 % for the 3 V EE2 coil, plus LED and base current). Essentially zero when off.\n- Coil (EE2 non-latch, 3 V nominal, 140 mW): must operate 2.25 V, must release 0.3 V.\n- Contacts (Adafruit rating, resistive): 2 A at 30 VDC or about 40 VAC, 0.6 A at 110 VDC, 0.5 A at 120 VAC, 0.3 A at 250 VAC. Relay maximum 60 W / 125 VA. Keep loads at 60 W or less and derate for motors, solenoids and lamps.\n- Operate about 2 ms, release about 1 ms (relay datasheet, excluding bounce).\n- SIG: 3.3 V or 5 V logic; about 2.5 mA at 3.3 V into 1 kΩ.\n\n## Interface details\n- Plain digital input: no driver, just `machine.Pin`.\n- Active high with an on-board 10 kΩ pull-down: the relay stays off while the microcontroller boots.\n- Non-latching: if VIN is lost the relay returns to COM–NC.\n\n## Wiring\n- ESP32: SIG → GPIO26, VIN → 3V3, GND → GND.\n- Pico: SIG → GP16, VIN → 3V3(OUT), GND → GND.\n- Raspberry Pi 4: SIG → pin 11 (GPIO17), VIN → pin 1 (3.3 V), GND → pin 6.\n- Load: supply + → COM, NO → load → supply − (load on when SIG is high). Use NC instead for \"on unless switched\".\n\n## Using it\n```python\nfrom machine import Pin\nimport time\nrelay = Pin(26, Pin.OUT, value=0)  # SIG\nrelay.value(1)   # COM-NO closed, red LED on\ntime.sleep(2)\nrelay.value(0)   # back to COM-NC\n```\n\n## Gotchas\n- VIN only powers the coil driver; the switched load needs its own supply through COM/NO/NC.\n- This is a small signal relay: not for mains appliances, heaters or big motors (60 W max).\n- Relays are slow and wear out: never PWM them.\n- High voltages (> 24 V) are for experienced adults only, in a closed insulated enclosure.\n\n## Datasheet\nhttp://www.worldproducts.com/pdfs/NEXEM/NEXEM-MiniatureRelayCatalog.pdf (EE2 series, pages 35–37); schematic https://github.com/adafruit/Adafruit-STEMMA-Non-Latching-Mini-Relay-PCB ; guide https://learn.adafruit.com/adafruit-stemma-non-latching-mini-relay\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:10:17.348Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/4409",
+      "https://learn.adafruit.com/adafruit-stemma-non-latching-mini-relay/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/083/201/large1024/adafruit_products_STEMMA_Relay_Sch.png",
+      "http://www.worldproducts.com/pdfs/NEXEM/NEXEM-MiniatureRelayCatalog.pdf"
+    ]
+  }
+}

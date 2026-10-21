@@ -1,0 +1,122 @@
+{
+  "type": "custom-grove-electromagnet",
+  "name": "Grove Electromagnet (v1.0)",
+  "mpn": "101020073",
+  "category": "actuator",
+  "description": "5 V holding electromagnet (ZYE1-P20/15 coil, 20 mm x 15 mm, 25 N rated / about 1 kg peak hold) on a Grove board with its own low-side switch: SIG goes through 100 Ω to the gate of a CJ2302 N-channel MOSFET (100 kΩ gate pull-down), which switches the coil from VCC; a 1N4148 flyback diode sits across the coil. SIG high = magnet on, low or unconnected = off. The coil draws about 400 mA from VCC at 5 V, so feed VCC from a 5 V supply that can deliver it; a 3.3 V GPIO drives SIG directly. Sold as: Seeed Studio Grove - Electromagnet (SKU 101020073), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A magnet you can switch on and off: set the pin high and it grabs iron, set it low and it lets go.",
+  "refPrefix": "M",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Control input (Grove pin 1, yellow wire): high = magnet on, low = off. Drives the CJ2302 MOSFET gate through 100 Ω, with a 100 kΩ pull-down to GND so the magnet stays off while the pin floats at boot. Draws almost no current, so a 3.3 V GPIO is enough."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "supply": {
+        "vmin": 5,
+        "vmax": 5,
+        "currentMa": 420
+      },
+      "description": "Coil supply (Grove pin 3, red wire): 5 V DC at about 400 mA (Seeed spec). The whole coil current flows through this pin, so use a 5 V supply rated for at least 0.5 A with its ground shared with the microcontroller, not the board's 3V3 pin."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire): MOSFET source and coil return, shared with the microcontroller and the 5 V supply."
+    }
+  ],
+  "vmin": 5,
+  "vmax": 5,
+  "currentMa": 420,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Bazaar_file/101020073/ZYE1-P%20electro%20holding%20magnets.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Seeed Grove Electromagnet 101020073",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order (Seeed v1.0 Eagle schematic, J1): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Circuit (Seeed v1.0 schematic): SIG → 100 Ω → CJ2302 N-MOSFET gate, 100 kΩ gate-to-GND pull-down; coil (ZYE1-P20/15, marked DC6V 0.5A) from VCC to the drain; 1N4148 flyback diode across the coil; 100 nF across VCC/GND.",
+    "Seeed spec: working voltage DC 5 V, working current 400 mA, standby current 200 µA, holds about 1 kg. Give VCC a 5 V supply good for at least 0.5 A (a USB 5 V rail can work for one magnet, but a separate 5 V supply with a common ground is safer, especially next to an ESP32's Wi-Fi current peaks).",
+    "High = hold, low = release. The 100 kΩ pull-down keeps it released while the GPIO is still floating at power-up.",
+    "The coil gets warm if left on for long periods; switch it off when not holding something. PWM on SIG (about 1 kHz) can lower the holding power once an object is held.",
+    "Holds best on flat, clean mild steel at least 5 mm thick (ZYE1-P datasheet). Thin sheet, stainless steel, aluminium and brass hold weakly or not at all."
+  ],
+  "keywords": [
+    "electromagnet",
+    "holding magnet",
+    "magnet",
+    "grove",
+    "seeed",
+    "101020073",
+    "zye1-p20/15",
+    "p20/15",
+    "cj2302"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "SIG"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\nmagnet = Pin({SIG}, Pin.OUT, value=0)  # SIG high = MOSFET on = magnet holds\nwhile True:\n    magnet.value(1)\n    print('MAGNET ON')\n    time.sleep(2)\n    magnet.value(0)\n    print('MAGNET OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "magnet-switches",
+      "title": "The electromagnet switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MAGNET ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "MAGNET OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Electromagnet/",
+    "https://files.seeedstudio.com/wiki/Grove-Electromagnet/res/Grove_Electromagnet_v1.0_SCH_PCB.zip",
+    "https://files.seeedstudio.com/wiki/Bazaar_file/101020073/ZYE1-P%20electro%20holding%20magnets.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:10:52.599Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Electromagnet/",
+      "https://files.seeedstudio.com/wiki/Grove-Electromagnet/res/Grove_Electromagnet_v1.0_SCH_PCB.zip"
+    ]
+  }
+}

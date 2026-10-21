@@ -1,0 +1,79 @@
+{
+  "type": "custom-grove-mosfet",
+  "mpn": "103020008",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; Grove MOSFET needs at least 5 V, so it is powered from 5 V. Q1.SIG → D25 (GPIO25). Added a separate 12 V supply for VIN (it needs 5–15 V and up to 2 A, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The MOSFET switches the load on, then off again: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; Grove MOSFET needs at least 5 V, so it is powered from 5 V. Q1.SIG → GP2 (GPIO2). Added a separate 12 V supply for VIN (it needs 5–15 V and up to 2 A, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The MOSFET switches the load on, then off again: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C52269207 1030200086 (227 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T20:10:05.325Z"
+}

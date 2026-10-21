@@ -1,0 +1,220 @@
+{
+  "type": "custom-grove-tmg3993",
+  "name": "Grove TMG3993 light, colour, proximity & gesture sensor",
+  "mpn": "TMG39931",
+  "category": "sensor",
+  "description": "ams TMG39931: an IR-LED proximity sensor (8-bit count), clear/red/green/blue ambient light channels (16-bit counts each) and a gesture engine, over I2C at the fixed address 0x39. The chip runs on 2.4-3.6 V; the Grove board adds a 3.0 V regulator (XC6206), 2N7002 I2C level shifters with 4.7 kOhm pull-ups to VCC and a boost/buck supply for the IR LED, so the module runs on 3.3-5 V. Sold as: Seeed Studio Grove - Light & Gesture & Color & Proximity Sensor (TMG39931), SKU 101020580, 4-pin Grove connector SCL, SDA, VCC, GND.",
+  "eli5": "Shines invisible light to tell how close your hand is, and measures how much red, green and blue light falls on it.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "boardPullUp": 4700,
+      "required": true,
+      "description": "I2C clock (Grove pin 1, yellow wire); level shifted, 4.7 kOhm pull-up to VCC on the board"
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "boardPullUp": 4700,
+      "required": true,
+      "description": "I2C data (Grove pin 2, white wire); level shifted, 4.7 kOhm pull-up to VCC on the board"
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire), 3.3-5 V. Use 3.3 V with an ESP32/Pico: the I2C pull-ups go to VCC"
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)"
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 3,
+  "i2cAddress": 57,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Light-Gesture-Color-Proximity_Sensor-TMG39931/res/TMG3993.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "Seeed Grove Light Gesture Color Proximity Sensor TMG39931",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Power VCC from 3.3 V when using an ESP32, Pico or Raspberry Pi: the board's 4.7 kOhm I2C pull-ups go to VCC, so a 5 V supply would put 5 V on SDA/SCL.",
+    "The address 0x39 is fixed (TMG39931): only one sensor per I2C bus. The APDS-9960 uses the same address.",
+    "Check the ID register 0x92: bits 7:2 read 101010 (0x2A), so the byte is 0xA8 on this VDD-bus version.",
+    "Write all control registers with ENABLE = 0, then set PON, wait about 6 ms (exit-sleep pause), then ENABLE = 0x07 (PON + AEN + PEN). CONFIG1 0x8D reserved bits 6:5 must stay 1 (0x60) and CONFIG2 0x90 bit 0 must stay 1.",
+    "Colour integration = 2.78 ms x (256 - ATIME); max count = min(65535, 1024 x (256 - ATIME) + 1). Wait for STATUS AVALID, then read 8 bytes from 0x94: clear, red, green, blue, each low byte first.",
+    "Proximity: wait for STATUS PVALID, then read PDATA (0x9C), 0-255, higher = closer.",
+    "The interrupt pin is only on a solder pad (J1), not on the Grove connector. Gesture detection (FIFO 0xFC-0xFF) is not covered by this driver or the simulator."
+  ],
+  "keywords": [
+    "tmg3993",
+    "tmg39931",
+    "grove",
+    "seeed",
+    "gesture",
+    "proximity",
+    "colour sensor",
+    "color sensor",
+    "rgb",
+    "ambient light",
+    "ams",
+    "101020580"
+  ],
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove-Light-Gesture-Color-Proximity_Sensor-TMG39931/res/TMG3993.pdf",
+    "https://wiki.seeedstudio.com/Grove-Light-Gesture-Color-Proximity_Sensor-TMG39931/",
+    "https://files.seeedstudio.com/wiki/Grove-Light-Gesture-Color-Proximity_Sensor-TMG39931/res/Grove-Light-Gesture-Color-Proximity_Sensor-TMG39931.zip",
+    "https://github.com/Seeed-Studio/Seeed_TMG3993",
+    "https://www.seeedstudio.com/Grove-Light-Color-Proximity-Sensor-TMG39931-p-2879.html"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Proximity (counts, higher = closer)",
+    "unit": "counts",
+    "min": 0,
+    "max": 255,
+    "default": 20,
+    "controls": [
+      {
+        "key": "clear",
+        "quantity": "Clear light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 2000
+      },
+      {
+        "key": "red",
+        "quantity": "Red light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 800
+      },
+      {
+        "key": "green",
+        "quantity": "Green light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 700
+      },
+      {
+        "key": "blue",
+        "quantity": "Blue light (ADC counts)",
+        "unit": "counts",
+        "min": 0,
+        "max": 65535,
+        "default": 500
+      }
+    ],
+    "registers": {
+      "0x92": 168,
+      "0x93": 3
+    },
+    "measures": [
+      {
+        "reg": "0x9C",
+        "bytes": 1,
+        "scale": 1,
+        "control": "value"
+      },
+      {
+        "reg": "0x94",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "clear"
+      },
+      {
+        "reg": "0x96",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "red"
+      },
+      {
+        "reg": "0x98",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "green"
+      },
+      {
+        "reg": "0x9A",
+        "bytes": 2,
+        "scale": 1,
+        "littleEndian": true,
+        "control": "blue"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "tmg3993.py",
+    "code": "# TMG3993 (ams TMG39931) proximity / ambient light / RGBC colour sensor, MicroPython driver.\n# Written from the ams TMG3993 datasheet v1-07:\n#  - TMG39931: I2C address 0x39, I2C bus at VDD level; ID register 0x92 bits 7:2 = 101010 (0x2A),\n#    bits 1:0 = VID (00 for VBUS = VDD), so the register reads 0xA8;\n#  - set every control register with the engines off, then ENABLE (0x80): PON | AEN | PEN\n#    (datasheet note: changing control registers while running may give invalid results);\n#  - ATIME (0x81): integration = 2.78 ms x (256 - ATIME), max count = min(65535, 1024 x cycles + 1);\n#  - STATUS (0x93): AVALID (bit 0) after an RGBC cycle, PVALID (bit 1) after a proximity cycle;\n#  - CDATAL..BDATAH (0x94-0x9B): 16-bit, low byte first; reading CDATAL latches all eight bytes,\n#    so read them in one 8-byte transaction starting at 0x94;\n#  - PDATA (0x9C): 8-bit proximity count (bigger = closer / more reflective); reading it clears PVALID;\n#  - CONFIG1 (0x8D) reserved bits 6:5 must be 1; CONFIG2 (0x90) reserved bit 0 must be 1.\n# Gesture (FIFO 0xFC-0xFF) and pattern burst are not used by this driver.\nimport time\n\n_ENABLE = 0x80\n_ATIME = 0x81\n_WTIME = 0x83\n_PERS = 0x8C\n_CONFIG1 = 0x8D\n_PPULSE = 0x8E\n_CONTROL = 0x8F\n_CONFIG2 = 0x90\n_ID = 0x92\n_STATUS = 0x93\n_CDATAL = 0x94\n_PDATA = 0x9C\n_CONFIG3 = 0x9F\n_CONFIG_AB = 0xAB\n\n_PON = 0x01\n_AEN = 0x02\n_PEN = 0x04\n_AVALID = 0x01\n_PVALID = 0x02\n\n_AGAIN = {1: 0, 4: 1, 16: 2, 64: 3}\n_PGAIN = {1: 0, 2: 1, 4: 2, 8: 3}\n\n\nclass TMG3993:\n    def __init__(self, i2c, addr=0x39, atime=0xDB, again=4, pgain=4):\n        \"\"\"atime: 0xFF (2.78 ms) .. 0x00 (712 ms); default 0xDB = 103 ms, max count 37888.\n        again: colour gain 1, 4, 16 or 64. pgain: proximity gain 1, 2, 4 or 8.\"\"\"\n        if again not in _AGAIN or pgain not in _PGAIN:\n            raise ValueError('again must be 1/4/16/64, pgain 1/2/4/8')\n        self.i2c = i2c\n        self.addr = addr\n        dev_id = self._read8(_ID)\n        if (dev_id >> 2) != 0x2A:\n            raise OSError('TMG3993 not found (ID 0x%02X): check the wiring' % dev_id)\n        self.atime = atime & 0xFF\n        self._write8(_ENABLE, 0x00)          # all engines off while configuring\n        self._write8(_CONFIG_AB, 0x00)       # GMODE = 0, gesture interrupts off\n        self._write8(_ATIME, self.atime)\n        self._write8(_WTIME, 0xFF)           # 2.78 ms (WEN stays off)\n        self._write8(_PERS, 0x00)\n        self._write8(_CONFIG1, 0x60)         # reserved bits 6:5 = 1, WLONG = 0\n        self._write8(_PPULSE, 0x87)          # PPLEN 16 us, 8 pulses\n        # LDRIVE = 00 (100 mA), RPINS = 0, PGAIN, AGAIN\n        self._write8(_CONTROL, (_PGAIN[pgain] << 2) | _AGAIN[again])\n        self._write8(_CONFIG2, 0x01)         # no saturation interrupts, LEDBOOST 100 %, reserved bit 0 = 1\n        self._write8(_CONFIG3, 0x00)\n        self._write8(_ENABLE, _PON)\n        time.sleep_ms(10)                    # exit-sleep pause (about 5.7 ms)\n        self._write8(_ENABLE, _PON | _AEN | _PEN)\n\n    def _write8(self, reg, value):\n        self.i2c.writeto(self.addr, bytes((reg, value & 0xFF)))\n\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes((reg,)))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _read8(self, reg):\n        return self._read(reg, 1)[0]\n\n    def integration_ms(self):\n        return 2.78 * (256 - self.atime)\n\n    def max_count(self):\n        return min(65535, 1024 * (256 - self.atime) + 1)\n\n    def _wait(self, bit):\n        deadline = time.ticks_add(time.ticks_ms(), int(self.integration_ms() * 2) + 100)\n        while not (self._read8(_STATUS) & bit):\n            if time.ticks_diff(deadline, time.ticks_ms()) < 0:\n                raise OSError('TMG3993 timed out waiting for a reading')\n            time.sleep_ms(5)\n\n    def proximity(self):\n        \"\"\"8-bit proximity count, 0 (nothing) .. 255 (very close).\"\"\"\n        self._wait(_PVALID)\n        return self._read8(_PDATA)\n\n    def color_raw(self):\n        \"\"\"Return (clear, red, green, blue) ADC counts from a completed integration.\"\"\"\n        self._wait(_AVALID)\n        d = self._read(_CDATAL, 8)\n        return (d[0] | (d[1] << 8), d[2] | (d[3] << 8), d[4] | (d[5] << 8), d[6] | (d[7] << 8))\n\n    def saturated(self, clear):\n        return clear >= self.max_count()\n\n    def sleep(self):\n        self._write8(_ENABLE, 0x00)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom tmg3993 import TMG3993\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = TMG3993(i2c)\nwhile True:\n    p = sensor.proximity()\n    c, r, g, b = sensor.color_raw()\n    print('P=%d C=%d R=%d G=%d B=%d' % (p, c, r, g, b))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the proximity and the clear, red, green and blue counts set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 140
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "clear",
+          "value": 12000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "red",
+          "value": 5200
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "green",
+          "value": 4100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "blue",
+          "value": 2300
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "P=140 C=12000 R=5200 G=4100 B=2300",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:15:36.726Z",
+    "verifiedSources": [
+      "https://files.seeedstudio.com/wiki/Grove-Light-Gesture-Color-Proximity_Sensor-TMG39931/res/TMG3993.pdf",
+      "https://wiki.seeedstudio.com/Grove-Light-Gesture-Color-Proximity_Sensor-TMG39931/"
+    ]
+  }
+}

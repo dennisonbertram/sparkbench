@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-grove-thumb-joystick",
+  "board": "Seeed Grove - Thumb Joystick v1.1 (SKU 101020028)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test X=70 Y=25, circuit board, footprint). X/Y modelled from Seeed's spec table (206-798 / 203-797 of 1023, matching the schematic's 4.7k-10k-4.7k dividers); the click, which shorts X to VCC, is decoded by the driver but cannot be simulated (a digitalOutput would fight the analog source), and this is documented.",
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Thumb_Joystick/res/Joystick.pdf",
+  "breakoutPinoutSource": "Seeed schematic Joystick.pdf J2 (1 OUT_X, 2 OUT_Y, 3 VCC, 4 GND) and Seeed wiki wire table (yellow A0, white A1, red 5V, black GND)",
+  "checkRuns": 1
+}

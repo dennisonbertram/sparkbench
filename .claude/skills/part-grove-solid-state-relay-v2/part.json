@@ -1,0 +1,129 @@
+{
+  "type": "custom-grove-solid-state-relay-v2",
+  "name": "Grove Solid State Relay V2",
+  "mpn": "103020137",
+  "category": "actuator",
+  "description": "Seeed Grove solid state relay V2: an Omron G3MC-202P zero-cross SSR (phototriac output with snubber, 5 VDC input, 300 ohm) whose INT+ sits on VCC and whose INT- is switched to GND by a BC817 NPN from CTR (2.2 k base resistor, 10 k pull-down), with a red on-LED. CTR high = SSR on; 3.3 V or 5 V logic. VCC must be 5 V (4-6 V); up to about 25 mA while on. The push terminal LOAD1/LOAD2 switches AC loads only: 75-264 VAC, 0.1-2 A, 1.5 mA off-state leakage. Sold as: Seeed Grove - Solid State Relay V2 (SKU 103020137), 4-pin Grove connector CTR, NC, VCC, GND.",
+  "eli5": "A silent electronic switch for mains AC gadgets on a Grove plug: when your board sets the yellow CTR wire high, it connects your lamp or fan to its power, with no clicking and no moving parts.",
+  "refPrefix": "K",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "CTR",
+      "role": "io",
+      "fn": "digital-out",
+      "required": true,
+      "description": "Control input (Grove pin 1, yellow wire): high = SSR on (LOAD1-LOAD2 conduct), low = off. 2.2 k into a BC817 base with a 10 k pull-down, so it stays off when floating. 3.3 V or 5 V logic."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 5 V nominal, 4-6 V. Feeds the G3MC-202P 5 VDC input directly (must operate 4 V max), so 3.3 V is not enough. Up to about 25 mA while on."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire), shared with the microcontroller."
+    }
+  ],
+  "vmin": 4,
+  "vmax": 6,
+  "currentMa": 25,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/res/G3MC202p.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Solid_State_Relay_V2/",
+    "https://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/img/PIN_map_.jpg",
+    "https://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/res/Grove-Solid_State_Relay_V2_Eagle.zip",
+    "https://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/res/G3MC202p.pdf",
+    "https://uk.rs-online.com/web/p/power-motor-robotics-development-tools/1887120",
+    "https://uk.farnell.com/seeed-studio/103020137/relay-board-arduino-raspberry/dp/4007770"
+  ],
+  "priceUsd": 10,
+  "supplierQuery": "Seeed Grove Solid State Relay V2 103020137",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J2 and pin map): pin 1 CTR (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "CTR high = SSR on. A 10 k pull-down on the board keeps the SSR off while the microcontroller boots; still create the pin with value=0.",
+    "Power VCC from 5 V (ESP32 VIN/5V, Pico VBUS, Pi pin 2). The G3MC-202P input needs at least 4 V to switch on, so 3.3 V on VCC is not enough. CTR itself works with 3.3 V logic.",
+    "AC loads only (75-264 VAC, 0.1-2 A, derated above 25 C). The triac never turns off on a DC load, and loads under 0.1 A can glow or fail to switch off because of the 1.5 mA leakage current.",
+    "Zero-cross switching: the output changes at the next mains zero crossing (up to 1/2 cycle + 1 ms). It cannot dim and is too slow for PWM.",
+    "Mains wiring on LOAD1/LOAD2 is dangerous: put the SSR in series with the live wire of the load, keep the board in a closed insulated box, and leave mains to an adult/qualified person."
+  ],
+  "keywords": [
+    "grove solid state relay",
+    "grove ssr",
+    "grove",
+    "seeed",
+    "103020137",
+    "g3mc-202p",
+    "g3mc202p",
+    "ssr",
+    "solid state relay",
+    "omron",
+    "zero cross",
+    "ac load",
+    "lamp",
+    "fan",
+    "heater"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPin": "CTR"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\n\n# Grove Solid State Relay V2: CTR high = SSR on.\nssr = Pin({CTR}, Pin.OUT, value=0)\nwhile True:\n    ssr.value(1)\n    print('SSR ON')\n    time.sleep(2)\n    ssr.value(0)\n    print('SSR OFF')\n    time.sleep(2)\n",
+    "test": {
+      "id": "switches",
+      "title": "The SSR switches on, then off again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SSR OFF",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-solid-state-relay-v2\ndescription: Pinout, electrical limits, wiring and MicroPython code for the Seeed Grove - Solid State Relay V2 (SKU 103020137; Omron G3MC-202P zero-cross SSR, 2 A at 100-240 VAC, BC817 low-side driver, Grove CTR/NC/VCC/GND, active-high, VCC 5 V). Use when designing, wiring, simulating or writing code for a Grove solid state relay in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Seeed Grove - Solid State Relay V2\n\n## Overview\nA single **Omron G3MC-202P** solid state relay (phototriac output, zero-cross, snubber, 5 VDC input, 2 A at 100-240 VAC) on a Grove board. The SSR input (INT+) sits on VCC through a 0 Ω link and its INT- is switched to GND by a **BC817** NPN transistor. CTR drives the base through 2.2 kΩ with a 10 kΩ pull-down, so a floating CTR keeps the SSR off. A red LED (1 kΩ from VCC) lights when the SSR is on. **CTR high = SSR on.** Hobbyists buy it as **Seeed Grove - Solid State Relay V2, SKU 103020137**.\n\n## Pinout (Grove connector J2, schematic order)\n| Pin | Wire | Function |\n|---|---|---|\n| CTR | yellow | Control input, high = SSR on |\n| NC | white | Not connected |\n| VCC | red | Supply 5 V (4-6 V) |\n| GND | black | Ground |\n\nLoad side: 2-way push terminal **LOAD1 / LOAD2** (\"SW\") on the opposite edge, so the module is wired with a Grove-to-jumper cable, not plugged into the breadboard.\n\n## Electrical limits\n- VCC 4-6 V, 5 V nominal (Seeed spec; G3MC-202P 5 VDC input: operating 4-6 VDC, must operate 4 V max, must release 1 V min, input impedance 300 Ω ±20 %). **Do not power it from 3.3 V**: the SSR input then sees less than its 4 V must-operate level. About 17-21 mA SSR input + 3 mA LED = up to ~25 mA while on.\n- CTR: 3.3 V or 5 V logic. With 3.3 V, about 1.1 mA base current into the BC817-40 (hFE >= 250), plenty for ~25 mA collector current.\n- Load: AC only, 75-264 VAC 50/60 Hz, 0.1-2 A (2 A at 25 °C, derate with temperature: about 1 A at 40 °C per the Omron curve). Inrush 30 A for one cycle. ON voltage drop 1.6 V RMS max.\n- Off-state leakage 1.5 mA max at 200 VAC (snubber), enough to make small LED lamps glow.\n- Operate / release time: 1/2 mains cycle + 1 ms max (zero-cross switching).\n\n## Interface details\n- Plain digital input: no driver, just `machine.Pin`.\n- Active high, with an on-board pull-down: the SSR stays off while the microcontroller boots.\n\n## Wiring\n- ESP32: CTR -> GPIO26, VCC -> 5V (VIN), GND -> GND.\n- Pico: CTR -> GP16, VCC -> VBUS (5 V from USB), GND -> GND.\n- Raspberry Pi 4: CTR -> pin 11 (GPIO17), VCC -> pin 2 (5 V), GND -> pin 6.\n- Load: cut the live wire of the AC load and put LOAD1 / LOAD2 in series with it. Mains only by an adult or qualified person, in a closed insulated enclosure.\n\n## Using it\n```python\nfrom machine import Pin\nimport time\nssr = Pin(26, Pin.OUT, value=0)  # CTR\nssr.value(1)   # load on\ntime.sleep(2)\nssr.value(0)   # load off (at the next zero crossing)\n```\n\n## Gotchas\n- AC loads only: a triac never turns off on DC, so a DC load stays on once triggered.\n- Loads under 0.1 A (small LED bulbs, phone chargers) may glow or not switch off because of the 1.5 mA leakage current.\n- Zero-cross SSR: it cannot dim a lamp (no phase control) and is too slow for PWM.\n- VCC must be 5 V even on a 3.3 V microcontroller; CTR at 3.3 V logic is fine.\n- The SSR heats up with load current: derate above 25 °C and keep it ventilated.\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/res/G3MC202p.pdf (Omron G3MC); schematic in https://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/res/Grove-Solid_State_Relay_V2_Eagle.zip\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:11:38.914Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Solid_State_Relay_V2/",
+      "https://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/img/PIN_map_.jpg",
+      "https://files.seeedstudio.com/wiki/Grove-Solid_State_Relay_V2/res/G3MC202p.pdf"
+    ]
+  }
+}

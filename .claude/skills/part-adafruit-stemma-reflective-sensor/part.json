@@ -1,0 +1,120 @@
+{
+  "type": "custom-adafruit-stemma-reflective-sensor",
+  "name": "Adafruit STEMMA Reflective Photo Interrupt Sensor",
+  "mpn": "TCRT1000",
+  "category": "sensor",
+  "description": "Adafruit breakout for the Vishay TCRT1000 reflective optical sensor (950 nm IR LED plus phototransistor behind a daylight filter, peak at 1 mm, useful 0.2-4 mm). The IR LED is always on, its current set by a trimmer from about 10 mA to about 100 mA. The phototransistor collector is SIG, pulled up to VIN by 10 kOhm: HIGH with nothing in front, pulled toward 0 V (LOW) when IR is reflected back; a red Sig LED lights while SIG is low and a green ON LED shows power. Runs on 3-5 V. Sold as: Adafruit STEMMA Reflective Photo Interrupt Sensor - TCRT1000 (product 5913; listed in the request as #5629, which is actually a different Adafruit product), 3-pin header SIG, VIN, GND plus a matching STEMMA JST PH connector.",
+  "eli5": "Shines invisible infrared light out of its tip and tells your board when something very close (a few millimetres) bounces it back, so you can spot an object, a slot edge or filament passing by.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "digital-in",
+      "required": true,
+      "boardPullUp": 10000,
+      "description": "Signal output (header pin 1, white JST wire): TCRT1000 phototransistor collector with a 10 kOhm pull-up to VIN. HIGH with nothing detected, LOW while IR is reflected back (red Sig LED on). Swings to VIN, so power the board from 3.3 V on a 3.3 V microcontroller."
+    },
+    {
+      "name": "VIN",
+      "role": "power",
+      "required": true,
+      "description": "Supply (header pin 2, red JST wire): 3-5 V, same as the microcontroller's logic level. Use 3V3 with an ESP32 or Pico because SIG is pulled up to VIN."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (header pin 3, black JST wire)."
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 105,
+  "datasheetUrl": "https://cdn-learn.adafruit.com/assets/assets/000/129/122/original/tcrt1000.pdf",
+  "sources": [
+    "https://www.adafruit.com/product/5913",
+    "https://learn.adafruit.com/adafruit-stemma-reflective-photo-interrupt-sensor/pinouts",
+    "https://learn.adafruit.com/adafruit-stemma-reflective-photo-interrupt-sensor/arduino",
+    "https://learn.adafruit.com/adafruit-stemma-reflective-photo-interrupt-sensor/downloads",
+    "https://cdn-learn.adafruit.com/assets/assets/000/129/123/large1024/sensors_schem.png",
+    "https://cdn-learn.adafruit.com/assets/assets/000/129/124/large1024/sensors_fab.png",
+    "https://cdn-learn.adafruit.com/assets/assets/000/129/122/original/tcrt1000.pdf"
+  ],
+  "priceUsd": 4.95,
+  "supplierQuery": "Adafruit 5913 STEMMA Reflective Photo Interrupt Sensor TCRT1000",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the board: SIG, VIN, GND. The STEMMA JST PH connector carries the same signals (white SIG, red VIN, black GND).",
+    "Power VIN from 3.3 V on an ESP32 or Pico: SIG is pulled up to VIN through 10 kOhm, so a 5 V supply would put 5 V on the GPIO.",
+    "SIG is HIGH with nothing in front and LOW while IR is reflected back (red Sig LED lights).",
+    "The TCRT1000 only sees things very close: best at about 1 mm, usable from 0.2 to 4 mm.",
+    "The trimmer sets the IR LED current from about 10 mA to about 100 mA: turn it up for more sensitivity. At full current the board draws about 100 mA, which the 3V3 pin of an ESP32 or Pico can supply.",
+    "Cut the On / Sig jumpers on the back to disable the green power LED or the red signal LED.",
+    "Sunlight contains IR and can cause false detections."
+  ],
+  "keywords": [
+    "adafruit",
+    "5913",
+    "stemma",
+    "reflective",
+    "photo interrupt",
+    "photo interrupter",
+    "tcrt1000",
+    "ir",
+    "infrared",
+    "optical",
+    "object detection",
+    "filament sensor",
+    "encoder"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "SIG",
+    "quantity": "Reflection detected (SIG low)",
+    "activeHigh": false,
+    "openDrain": true
+  },
+  "driver": {
+    "filename": "stemma_reflective.py",
+    "code": "# Adafruit STEMMA Reflective Photo Interrupt Sensor (product 5913, Vishay TCRT1000), MicroPython driver.\n# Board circuit (Adafruit \"Stemma TCRT1000 rev A\" schematic):\n#   IR LED: anode through the 200 ohm trimmer R5 and R2 to VIN, always on. The trimmer sets the LED\n#   current from about 10 mA (least sensitive) to about 100 mA (most sensitive).\n#   Phototransistor: emitter to GND, collector = SIG, pulled up to VIN by R4 (10 kOhm).\n#   Red \"Sig\" LED (via R1) from VIN to SIG lights when SIG is pulled low.\n# So: nothing in front -> transistor off -> SIG HIGH (= VIN).\n#     IR bounced back by an object / light surface (best at about 1 mm, 0.2-4 mm) -> SIG pulled toward 0 V -> LOW.\n# SIG swings up to VIN: on a 3.3 V board (ESP32, Pico) power VIN from 3.3 V.\nfrom machine import Pin\n\n\nclass StemmaReflective:\n    def __init__(self, sig_pin):\n        # SIG already has a 10 kOhm pull-up to VIN on the board.\n        self.sig = Pin(sig_pin, Pin.IN) if isinstance(sig_pin, int) else sig_pin\n\n    def raw(self):\n        \"\"\"Logic level on SIG: 0 = reflection detected, 1 = nothing detected.\"\"\"\n        return self.sig.value()\n\n    def detected(self):\n        \"\"\"True while IR is reflected back into the phototransistor (object / light surface close in front).\"\"\"\n        return self.sig.value() == 0\n\n    def irq(self, handler, on_detect=True):\n        \"\"\"Call handler(pin) when an object appears (falling edge) or, with on_detect=False,\n        when it goes away (rising edge).\"\"\"\n        trig = Pin.IRQ_FALLING if on_detect else Pin.IRQ_RISING\n        return self.sig.irq(handler=handler, trigger=trig)\n"
+  },
+  "example": {
+    "code": "from stemma_reflective import StemmaReflective\nimport time\n\nsensor = StemmaReflective({SIG})\nwhile True:\n    print('Object: %s' % ('yes' if sensor.detected() else 'no'))\n    time.sleep(0.2)\n",
+    "test": {
+      "id": "detects",
+      "title": "Reports an object when IR is reflected back",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Object: no",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Object: yes",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T20:10:28.395Z",
+    "verifiedSources": [
+      "https://www.vishay.com/docs/83752/tcrt1000.pdf",
+      "https://www.adafruit.com/product/5913"
+    ]
+  }
+}

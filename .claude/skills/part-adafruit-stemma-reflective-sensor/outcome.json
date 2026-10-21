@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-adafruit-stemma-reflective-sensor",
+  "board": "Adafruit STEMMA Reflective Photo Interrupt Sensor - TCRT1000 (product 5913)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB). Modelled as an open-drain digital sensor: the TCRT1000 phototransistor collector is SIG with a 10 kOhm board pull-up to VIN, low when IR is reflected. The request's #5629 is actually the FeatherS2 Neo; the real product ID is 5913.",
+  "datasheetUrl": "https://cdn-learn.adafruit.com/assets/assets/000/129/122/original/tcrt1000.pdf",
+  "breakoutPinoutSource": "https://learn.adafruit.com/adafruit-stemma-reflective-photo-interrupt-sensor/pinouts plus the Adafruit fab print https://cdn-learn.adafruit.com/assets/assets/000/129/124/large1024/sensors_fab.png (header SIG, VIN, GND)",
+  "checkRuns": 2
+}
