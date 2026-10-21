@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says GND, datasheet reading says 5V",
+      "verdict": "part-correct",
+      "evidence": "The iPixel S60102 strip datasheet (the strip SparkFun COM-14015 uses) shows the input-end pads silkscreened, in physical order across the strip: GND, CI, DI, 5V (output side: GND, CO, DO, 5V). The model's header order GND, CI, DI, 5V follows that silkscreen. The second reading's order 5V/CI/DI/GND is the same four signals reversed, taken from the datasheet's wire-colour legend (red DC5V, blue CLK, green DAT, yellow GND), which is a lead legend, not a pad/pin-1 order. Neither the APA102C chip datasheet nor SparkFun's page/hookup guide defines a numbered pin 1 for the pre-terminated 4-pin connector; SparkFun says to 'follow the wires to the LED strip's pad'. Each pin is named in the model (GND and 5V), so the order is a convention. The model follows the printed pads.",
+      "source": "http://cdn.sparkfun.com/datasheets/Components/LED/S60102.pdf"
+    },
+    {
+      "diff": "header pin 4: part says 5V, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "The iPixel S60102 strip datasheet (the strip SparkFun COM-14015 uses) shows the input-end pads silkscreened, in physical order across the strip: GND, CI, DI, 5V (output side: GND, CO, DO, 5V). The model's header order GND, CI, DI, 5V follows that silkscreen. The second reading's order 5V/CI/DI/GND is the same four signals reversed, taken from the datasheet's wire-colour legend (red DC5V, blue CLK, green DAT, yellow GND), which is a lead legend, not a pad/pin-1 order. Neither the APA102C chip datasheet nor SparkFun's page/hookup guide defines a numbered pin 1 for the pre-terminated 4-pin connector; SparkFun says to 'follow the wires to the LED strip's pad'. Each pin is named in the model (GND and 5V), so the order is a convention. The model follows the printed pads.",
+      "source": "http://cdn.sparkfun.com/datasheets/Components/LED/S60102.pdf"
+    },
+    {
+      "diff": "minimum supply: part 4.5 V, datasheet reading 5 V",
+      "verdict": "part-fixed",
+      "evidence": "APA102C datasheet p.3, Electrical Characteristics: VDD Supply Voltage Min (blank), Typ 5.0, Max 5.5 V; the 4.4-4.7 V figure is VREG (internal regulator output), not a supply minimum. SparkFun APA102 hookup guide: 'Red Vcc APA102 power supply. Should be a regulated supply between 5V and 5.5V.' The model's 4.5 V minimum has no source, so vmin was changed to 5.0 V in part.json (top level and 5V pin supply) and SKILL.md. check.ts PASS.",
+      "source": "https://cdn.sparkfun.com/datasheets/Components/LED/APA102C.pdf ; https://learn.sparkfun.com/tutorials/apa102-addressable-led-hookup-guide"
+    }
+  ]
+}

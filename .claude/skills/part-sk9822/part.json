@@ -1,0 +1,136 @@
+{
+  "type": "custom-sk9822",
+  "name": "SK9822 addressable RGB LED strip (60 LEDs, 1 m)",
+  "mpn": "SK9822",
+  "category": "output",
+  "description": "Strip of 60 individually addressable SK9822 RGB LEDs (Opsco, APA102-compatible two-wire clock + data SPI, up to 30 MHz, 8-bit PWM per colour plus a 5-bit constant-current brightness). Runs on 5 V (datasheet 4.5-5.3 V); about 50 mA per LED at full white, so up to 3 A for the metre: it needs its own 5 V supply. Sold as: Pololu Addressable RGB 60-LED Strip, 5V, 1m (SK9822), item #3089 (4-pin JST SM input lead: black GND, green DI, yellow CI, red VCC; strip pads VCC, CI, DI, GND).",
+  "eli5": "A metre of 60 colour lights you set one by one with a clock wire and a data wire. It is easy to drive because there is no tricky timing.",
+  "refPrefix": "D",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire). Join it to the microcontroller's GND and the 5 V supply's GND.",
+      "required": true
+    },
+    {
+      "name": "DI",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Data in (green wire), sampled on the rising edge of CI. Input only; 3.3 V logic usually works, a 74AHCT125 makes it reliable.",
+      "required": true
+    },
+    {
+      "name": "CI",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Clock in (yellow wire), idles low, up to 30 MHz. Input only.",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "LED supply (red wire), 5 V (4.5-5.3 V). Up to about 3 A at full white for 60 LEDs: use a separate 5 V supply.",
+      "required": true,
+      "supply": {
+        "vmin": 4.5,
+        "vmax": 5.3,
+        "currentMa": 3000
+      }
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.3,
+  "currentMa": 3000,
+  "datasheetUrl": "https://www.pololu.com/file/0J1234/sk9822_datasheet.pdf",
+  "priceUsd": 38,
+  "supplierQuery": "Pololu 3089 SK9822 addressable RGB 60-LED strip 5V 1m",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Use the INPUT end of the strip (pads labelled DI and CI, arrow pointing away). The JST SM input lead is black GND, green DI, yellow CI, red VCC; the output end (DO, CO) only chains to another strip.",
+    "Power the strip from a separate 5 V supply rated for at least 3 A (60 LEDs x 50 mA at full white) and join its GND to the microcontroller's GND. Never feed more than 5.3 V.",
+    "Send a 32-zero-bit start frame, 4 bytes per LED (0xE0 | brightness, blue, green, red), then a 32-zero-bit reset frame and at least n/2 more zero clocks. The SK9822 shows new colours only when that reset/start frame arrives; ones as the end frame can glitch the first LED.",
+    "The SK9822 datasheet gives no input-high threshold: 3.3 V signals usually work on short wires, but add a 74AHCT125 level shifter powered from 5 V if the strip flickers.",
+    "Put a 1000 uF capacitor across VCC and GND at the strip input. Pololu recommends a separate supply feed every 180 LEDs."
+  ],
+  "keywords": [
+    "sk9822",
+    "apa102",
+    "apa102c",
+    "dotstar",
+    "addressable led",
+    "led strip",
+    "rgb strip",
+    "spi led",
+    "pololu 3089"
+  ],
+  "sources": [
+    "https://www.pololu.com/file/0J1234/sk9822_datasheet.pdf",
+    "https://www.pololu.com/product/3089",
+    "https://www.pololu.com/product/3087/pictures",
+    "https://cpldcpu.wordpress.com/2016/12/13/sk9822-a-clone-of-the-apa102/"
+  ],
+  "sim": {
+    "kind": "addressable-led",
+    "count": 60,
+    "ledProtocol": "apa102"
+  },
+  "driver": {
+    "filename": "sk9822.py",
+    "code": "# SK9822 addressable RGB LED strip (APA102-compatible two-wire SPI), MicroPython driver.\n# Frame format from the SK9822 datasheet (Opsco, rev 01, section 9):\n#   start frame : 32 zero bits\n#   LED frame   : 0b111 + 5-bit global brightness, then BLUE, GREEN, RED (8 bits each, MSB first)\n# The datasheet shows an end frame of 32 one bits, but the SK9822 (unlike the APA102) only\n# moves the new colours to its outputs when it sees the NEXT start frame, and ones after the\n# data can be taken as an extra LED frame. So, as Pololu and cpldcpu recommend, we send a\n# 32-zero-bit \"reset frame\" after the LED data (latches this update) and then at least n/2\n# more zero clock edges so the data reaches the last LED (each LED delays it by half a clock).\n#\n# Clock idles low and data is sampled on the rising edge: SPI mode 0 (polarity=0, phase=0).\n# The datasheet allows up to 30 MHz; long wires and 3.3 V logic are happier at 1-4 MHz.\n#\n# brightness (0-31) sets the drive current of all three LEDs in each pixel (n/31 of 20 mA\n# max), the 8-bit colour values set the PWM duty (n/256). Each pixel draws about 50 mA at\n# full white with brightness 31.\n\n\nclass SK9822:\n    def __init__(self, spi, n, brightness=4):\n        self.spi = spi\n        self.n = n\n        self.brightness = brightness & 0x1F\n        self.buf = [(0, 0, 0)] * n\n\n    def __len__(self):\n        return self.n\n\n    def __setitem__(self, i, color):\n        r, g, b = color\n        self.buf[i] = (r & 0xFF, g & 0xFF, b & 0xFF)\n\n    def __getitem__(self, i):\n        return self.buf[i]\n\n    def fill(self, color):\n        r, g, b = color\n        self.buf = [(r & 0xFF, g & 0xFF, b & 0xFF)] * self.n\n\n    def set_brightness(self, level):\n        \"\"\"Global brightness 0-31 (drive current level/31).\"\"\"\n        self.brightness = max(0, min(31, int(level)))\n\n    def show(self):\n        n = self.n\n        out = bytearray(4 + 4 * n + 4 + (n + 15) // 16)  # all zeros\n        hdr = 0xE0 | self.brightness\n        k = 4\n        for r, g, b in self.buf:\n            out[k] = hdr\n            out[k + 1] = b\n            out[k + 2] = g\n            out[k + 3] = r\n            k += 4\n        # out[k:] stays zero: 4-byte reset frame + end frame of n/2 clock edges.\n        self.spi.write(out)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom sk9822 import SK9822\n\nspi = SPI(1, baudrate=2000000, polarity=0, phase=0, sck=Pin({CI}), mosi=Pin({DI}))\nstrip = SK9822(spi, 60, brightness=8)\nstrip.fill((0, 0, 0))\nstrip.show()\ntime.sleep(1)\nfor i in range(60):\n    strip[i] = (255, 0, 0) if i % 2 == 0 else (0, 0, 255)\nstrip.show()\nprint('strip lit: red/blue')\ntime.sleep(1.5)\nstrip.fill((0, 0, 0))\nstrip.show()\nprint('strip off')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "lights",
+      "title": "The strip starts dark, lights red/blue, then goes dark again",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "strip lit: red/blue",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "strip off",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:36:00.735Z",
+    "verifiedSources": [
+      "https://www.pololu.com/product/3089",
+      "https://www.pololu.com/file/0J1234/sk9822_datasheet.pdf"
+    ]
+  }
+}

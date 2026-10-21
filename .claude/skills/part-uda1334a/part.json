@@ -1,0 +1,190 @@
+{
+  "type": "custom-uda1334a",
+  "name": "UDA1334A I2S stereo DAC",
+  "mpn": "UDA1334A",
+  "category": "output",
+  "description": "NXP UDA1334ATS low-power stereo audio DAC with I2S input and a built-in PLL, so it needs no master clock: just BCLK, WSEL and DIN. Gives a line-level stereo output (about 0.9 V RMS full scale) for headphones or an amplifier, 16-100 kHz sample rates. Sold as: Adafruit I2S Stereo Decoder - UDA1334A Breakout (product 3678), 3-5 V supply with onboard 3.3 V regulator, 3.5 mm jack, 9-pin power/I2S/line-out header plus 6-pin control header.",
+  "eli5": "Turns the digital sound your board sends out into a real audio signal you can plug headphones or a speaker amplifier into.",
+  "refPrefix": "U",
+  "interface": "i2s",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply in, 3-5 V; the onboard MIC5225 regulator makes 3.3 V for the DAC",
+      "required": true
+    },
+    {
+      "name": "3VO",
+      "role": "nc",
+      "description": "3.3 V OUTPUT of the onboard regulator (up to about 100 mA spare), not a supply input: leave unconnected",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (power and logic)",
+      "required": true
+    },
+    {
+      "name": "WSEL",
+      "role": "io",
+      "description": "I2S word select / left-right clock (LRCLK); 3.3-5 V logic",
+      "required": true,
+      "fn": "i2s.lrc"
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "description": "I2S serial data in, both channels; 3.3-5 V logic",
+      "required": true,
+      "fn": "i2s.din"
+    },
+    {
+      "name": "BCLK",
+      "role": "io",
+      "description": "I2S bit clock; 3.3-5 V logic (at most 64 x the word-select rate)",
+      "required": true,
+      "fn": "i2s.bclk"
+    },
+    {
+      "name": "Lout",
+      "role": "nc",
+      "description": "Left line-level output (about 0.9 V RMS full scale, AC-coupled), also on the 3.5 mm jack; to an amplifier input, not a GPIO",
+      "required": false
+    },
+    {
+      "name": "AGND",
+      "role": "nc",
+      "description": "Clean analog ground: reference for Lout/Rout when wiring to an amplifier",
+      "required": false
+    },
+    {
+      "name": "Rout",
+      "role": "nc",
+      "description": "Right line-level output, also on the 3.5 mm jack; to an amplifier input, not a GPIO",
+      "required": false
+    },
+    {
+      "name": "SCLK",
+      "role": "io",
+      "description": "System clock in (27 MHz, video mode only). In audio mode it selects the rate range: low (10k pull-down) = 16-50 kHz, high = 50-100 kHz",
+      "required": false
+    },
+    {
+      "name": "SF1",
+      "role": "io",
+      "description": "Serial format select 1 (10k pull-down). SF1/SF0 low/low = I2S (default)",
+      "required": false
+    },
+    {
+      "name": "MUTE",
+      "role": "io",
+      "description": "Soft mute: high mutes the output (10k pull-down = playing)",
+      "required": false
+    },
+    {
+      "name": "SF0",
+      "role": "io",
+      "description": "Serial format select 0 (10k pull-down); 3.3 V logic only, not 5 V tolerant",
+      "required": false
+    },
+    {
+      "name": "PLL",
+      "role": "io",
+      "description": "PLL mode (10k pull-down = audio mode); 3-level input, 3.3 V logic only, not 5 V tolerant",
+      "required": false
+    },
+    {
+      "name": "DEEM",
+      "role": "io",
+      "description": "De-emphasis on when high (44.1 kHz, audio mode; 10k pull-down = off). Clock output in video mode",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 8,
+  "datasheetUrl": "https://www.nxp.com/docs/en/data-sheet/UDA1334ATS.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "Adafruit UDA1334A I2S stereo decoder breakout 3678",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x15_P2.54mm_Vertical",
+  "buildNotes": [
+    "Only VIN, GND, WSEL, DIN and BCLK are needed; every control pin has a 10k pull-down giving I2S format, audio mode, no mute, no de-emphasis.",
+    "No MCLK: the PLL locks to WSEL. With SCLK left low the sample rate must be 16-50 kHz (e.g. 22050 or 44100).",
+    "The output is line level (about 0.9 V RMS): fine for headphones or an amplifier input, too weak to drive a bare speaker.",
+    "PLL and SF0 are not 5 V tolerant: drive them only from 3.3 V logic or leave them unconnected.",
+    "Keep the audio ground (AGND) and the board ground on one point to avoid hum."
+  ],
+  "keywords": [
+    "uda1334a",
+    "uda1334",
+    "i2s",
+    "dac",
+    "audio",
+    "stereo",
+    "line out",
+    "headphone",
+    "adafruit 3678"
+  ],
+  "sources": [
+    "https://www.nxp.com/docs/en/data-sheet/UDA1334ATS.pdf",
+    "https://learn.adafruit.com/adafruit-i2s-stereo-decoder-uda1334a/pinouts",
+    "https://github.com/adafruit/Adafruit-UDA1334A-I2S-Stereo-DAC-PCB",
+    "https://www.adafruit.com/product/3678"
+  ],
+  "sim": {
+    "kind": "i2s-amp"
+  },
+  "example": {
+    "code": "from machine import I2S, Pin\nimport math, struct, time\n\nRATE = 22050  # UDA1334A audio mode with SCLK low (board default): 16-50 kHz\naudio = I2S(0, sck=Pin({BCLK}), ws=Pin({WSEL}), sd=Pin({DIN}), mode=I2S.TX,\n            bits=16, format=I2S.STEREO, rate=RATE, ibuf=8000)\n\nFREQ = 441\nN = RATE // FREQ * 4            # whole cycles, so the buffer loops cleanly\nbuf = bytearray(N * 4)          # 16-bit left + 16-bit right per frame\nfor i in range(N):\n    s = int(8000 * math.sin(2 * math.pi * FREQ * i / RATE))\n    struct.pack_into('<hh', buf, i * 4, s, s)\n\ntime.sleep(1)\nprint('playing')\nt = time.ticks_ms()\nwhile time.ticks_diff(time.ticks_ms(), t) < 2000:\n    audio.write(buf)\naudio.deinit()\nprint('done')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "plays",
+      "title": "Plays a 441 Hz tone for two seconds, then stops",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "done",
+          "within": 1000
+        },
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": false,
+          "within": 1500
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:37:08.689Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/UDA1334ATS.pdf",
+      "https://learn.adafruit.com/adafruit-i2s-stereo-decoder-uda1334a/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/048/398/large1024/adafruit_products_pinout.jpg"
+    ]
+  }
+}

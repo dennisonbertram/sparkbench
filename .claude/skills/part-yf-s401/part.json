@@ -1,0 +1,120 @@
+{
+  "type": "custom-yf-s401",
+  "name": "YF-S401 water flow sensor (hall-effect, pulse output)",
+  "mpn": "YF-S401",
+  "category": "sensor",
+  "description": "Small hall-effect water flow meter: water spins a magnetic rotor past a hall-effect sensor, and the signal wire gives a square wave (50 % +/- 10 % duty) of F = 98 x Q Hz for Q in L/min (+/- 2 %), i.e. 5880 pulses per litre. Rated 0.3-6 L/min, supply DC 4.5/5-24 V at up to 15 mA; the pulse high level is close to the supply (> 4.7 V at 5 V), so a 3.3 V board needs a divider or level shifter on the signal. Sold as: YF-S401 1/4 inch (6 mm hose barb) water flow sensor with 3 flying leads, red VCC, yellow OUT signal, black GND.",
+  "eli5": "A tiny water wheel in a pipe that blinks a signal faster the faster water flows, so your board can measure how much water passes.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Red wire: supply, DC 5-24 V (4.5 V minimum); feed it from the board's 5 V pin",
+      "required": true
+    },
+    {
+      "name": "OUT",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Yellow wire: pulse output, F = 98 x Q Hz (Q in L/min); high level about the supply voltage (> 4.7 V at 5 V), so it goes to a 3.3 V GPIO through a 10 kOhm / 20 kOhm divider (Sparkbench adds it)",
+      "required": true,
+      "divider": {
+        "top": 10000,
+        "bottom": 20000
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black wire: ground",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 24,
+  "currentMa": 15,
+  "datasheetUrl": "https://iarduino.ru/lib/2377bf7550064248856024f6728d7cc3.pdf",
+  "sources": [
+    "https://iarduino.ru/lib/2377bf7550064248856024f6728d7cc3.pdf",
+    "https://wiki.dfrobot.com/SEN0216",
+    "https://www.tinytronics.nl/shop/en/sensors/liquid/yf-s401-water-flow-sensor",
+    "https://espeasy.readthedocs.io/en/latest/Plugin/P003_YFS401.html",
+    "https://www.cytron.io/tutorial/interface-water-flow-sensor-using-esp32-board"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "YF-S401 water flow sensor hall effect 0.3-6L/min",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wires: red = VCC (5-24 V), yellow = OUT pulse signal, black = GND.",
+    "Flow Q [L/min] = F [Hz] / 98; one litre = 5880 pulses. Count rising edges with a pin interrupt over a fixed window.",
+    "The signal swings to about the supply voltage (> 4.7 V at 5 V). On an ESP32 or Pico put a divider (10 kOhm from OUT to the GPIO, 20 kOhm from the GPIO to GND) or a level shifter in the signal line; never wire it straight to a 3.3 V GPIO.",
+    "Mount it with the arrow in the flow direction and within 5 degrees of vertical; below about 0.3 L/min the rotor may not turn and accuracy is poor.",
+    "The 98 Hz per L/min factor is +/- 2 % nominal; for accurate volume, time a known amount of water into a jug and adjust the factor."
+  ],
+  "keywords": [
+    "yf-s401",
+    "yfs401",
+    "flow",
+    "water flow",
+    "flow meter",
+    "hall effect",
+    "pulse",
+    "litre",
+    "sen0216"
+  ],
+  "sim": {
+    "kind": "pulse-sensor",
+    "outputPin": "OUT",
+    "quantity": "Water flow",
+    "unit": "L/min",
+    "min": 0,
+    "max": 6,
+    "default": 0,
+    "pulse": {
+      "hzPerUnit": 98,
+      "duty": 0.5
+    }
+  },
+  "driver": {
+    "filename": "yfs401.py",
+    "code": "# YF-S401 hall-effect water flow sensor, MicroPython driver.\n# A magnet on the rotor passes a hall-effect sensor; the yellow OUT wire gives a\n# square wave (50 % +/- 10 % duty) whose frequency follows the flow:\n#   F [Hz] = 98 * Q [L/min]  (+/- 2 %)   ->  5880 pulses per litre\n# Rated flow 0.3-6 L/min. Supply 4.5/5-24 V DC (red wire), 15 mA at 5 V.\n# The output high level is about the supply (> 4.7 V at 5 V), so on a 3.3 V\n# board (ESP32, Pico) put a divider or level shifter between OUT and the GPIO.\nfrom machine import Pin\nimport time\n\nHZ_PER_LPM = 98          # datasheet: F = 98 * Q\nPULSES_PER_LITRE = HZ_PER_LPM * 60   # 5880\n\n\nclass YFS401:\n    def __init__(self, pin, hz_per_lpm=HZ_PER_LPM, pull=None):\n        \"\"\"pin: GPIO number (or Pin) wired to OUT (yellow). hz_per_lpm: the\n        K factor, 98 from the datasheet; calibrate it with a measuring jug for\n        better accuracy. pull: e.g. Pin.PULL_UP if your wiring needs it.\"\"\"\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN, pull) if pull is not None else Pin(pin, Pin.IN)\n        self.pin = pin\n        self.k = hz_per_lpm\n        self._count = 0\n        self.pin.irq(handler=self._edge, trigger=Pin.IRQ_RISING)\n\n    def _edge(self, pin):\n        self._count += 1\n\n    def pulses(self):\n        \"\"\"Rising edges counted since start or reset().\"\"\"\n        return self._count\n\n    def reset(self):\n        self._count = 0\n\n    def litres(self):\n        \"\"\"Total volume since start or reset(), in litres.\"\"\"\n        return self._count / (self.k * 60)\n\n    def flow(self, window_ms=1000):\n        \"\"\"Count pulses for window_ms and return the flow rate in L/min.\"\"\"\n        start = self._count\n        t0 = time.ticks_ms()\n        time.sleep_ms(window_ms)\n        n = self._count - start\n        dt = time.ticks_diff(time.ticks_ms(), t0)\n        if dt <= 0:\n            return 0.0\n        hz = n * 1000 / dt\n        return hz / self.k\n"
+  },
+  "example": {
+    "code": "from yfs401 import YFS401\n\nsensor = YFS401({OUT})\nwhile True:\n    q = sensor.flow(1000)\n    print('Q=%.1f L/min' % q)\n",
+    "test": {
+      "id": "flow",
+      "title": "Reports the flow rate set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3
+        },
+        {
+          "kind": "wait",
+          "ms": 2500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Q=3.0 L/min",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:39:49.588Z",
+    "verifiedSources": [
+      "https://datasheet.sisoog.com/file/7a657573/datasheet/f8b54802a1169f0971c4831cc6404197681497a1.pdf",
+      "https://www.alldatasheet.com/datasheet-pdf/pdf/1242513/ETC1/YF-S401.html"
+    ]
+  }
+}

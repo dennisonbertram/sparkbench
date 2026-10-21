@@ -1,0 +1,143 @@
+{
+  "type": "custom-pcm5102a",
+  "name": "PCM5102A I2S stereo DAC (line out)",
+  "mpn": "PCM5102A",
+  "category": "output",
+  "description": "Texas Instruments 32-bit, 384 kHz stereo audio DAC with an I2S input and a 2.1 V RMS ground-centred line output (no output capacitors). Its internal PLL makes the system clock from BCK, so only three signal wires (BCK, LCK, DIN) are needed when SCK is held at ground. Line level only: it drives headphones weakly and needs an amplifier for a speaker. Sold as: GY-PCM5102 purple PCM5102A I2S DAC module with 3.5 mm stereo jack (6-pin header: VIN, GND, LCK, DIN, BCK, SCK; onboard 3.3 V regulators).",
+  "eli5": "Turns digital sound from your board into a clean audio signal you can plug into headphones or a speaker amplifier.",
+  "refPrefix": "U",
+  "interface": "i2s",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Module supply, 3.3-5 V (onboard LDOs make the chip's 3.3 V rails; 5 V gives the cleanest audio)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "LCK",
+      "role": "io",
+      "fn": "i2s.lrc",
+      "description": "LRCK word select (left/right clock), from the MCU's I2S WS pin",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "i2s.din",
+      "description": "Serial audio data in, from the MCU's I2S SD/DOUT pin",
+      "required": true
+    },
+    {
+      "name": "BCK",
+      "role": "io",
+      "fn": "i2s.bclk",
+      "description": "Bit clock, from the MCU's I2S SCK/BCLK pin (must be 32 or 64 x LRCK for the PLL)",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "gnd",
+      "description": "System (master) clock input. Tie to GND (or close the SCK solder bridge) so the PLL generates it from BCK",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 20,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/pcm5102a.pdf",
+  "priceUsd": 4,
+  "supplierQuery": "GY-PCM5102 PCM5102A I2S DAC module 3.5mm",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Tie SCK to GND (or bridge the SCK pad next to the header). With SCK at ground for 16 LRCK periods the PLL starts and makes the system clock from BCK.",
+    "The PLL needs BCK = 32 or 64 x the sample rate and at least 1.024 MHz: use 44.1 or 48 kHz with 16-bit stereo (32 x fs) or 32-bit (64 x fs). 8 kHz, and 16 kHz at 16-bit, are too slow and give silence.",
+    "Check the back solder jumpers: H1L (FLT) low = normal filter, H2L (DEMP) low = de-emphasis off, H3L (XSMT) HIGH = un-muted, H4L (FMT) low = I2S. If XSMT is left low the DAC stays muted.",
+    "The output is line level (2.1 V RMS full scale): feed an amplifier or powered speakers, not a bare speaker.",
+    "When BCK and LRCK stop for over a second the chip powers down; it restarts by itself when clocks return (expect a short delay before sound)."
+  ],
+  "keywords": [
+    "pcm5102a",
+    "pcm5102",
+    "pcm5100a",
+    "gy-pcm5102",
+    "i2s",
+    "dac",
+    "audio",
+    "line out",
+    "stereo"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/pcm5102a.pdf",
+    "https://scccltd.com/products/gy-pcm5102-i2s-dac-decoder-board-hifi-audio",
+    "https://todbot.com/blog/2023/05/16/cheap-stereo-line-out-i2s-dac-for-circuitpython-arduino-synths/",
+    "https://openhw-studio.fossee.in/docs/components/openhw-pcm5102.html",
+    "https://forum.khadas.com/t/how-to-connect-i2s-dac/693?page=2"
+  ],
+  "sim": {
+    "kind": "i2s-amp"
+  },
+  "example": {
+    "code": "from machine import I2S, Pin\nimport math, struct, time\n# PCM5102A 3-wire mode: its PLL needs BCK = 32 or 64 x LRCK and BCK >= 1.024 MHz,\n# so use 44.1 kHz, 16-bit stereo (BCK = 32 x 44100 = 1.4112 MHz).\nRATE = 44100\nTONE = 441\naudio = I2S(0, sck=Pin({BCK}), ws=Pin({LCK}), sd=Pin({DIN}), mode=I2S.TX, bits=16, format=I2S.STEREO, rate=RATE, ibuf=8000)\nN = RATE // TONE\nbuf = bytearray(N * 4)\nfor i in range(N):\n    s = int(8000 * math.sin(2 * math.pi * i / N))\n    struct.pack_into('<hh', buf, i * 4, s, s)\ntime.sleep(1)\nprint('playing %d Hz' % TONE)\nt = time.ticks_ms()\nwhile time.ticks_diff(time.ticks_ms(), t) < 2000:\n    audio.write(buf)\nprint('done')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "tone",
+      "title": "Plays a 441 Hz tone on the line output for two seconds, then stops",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "playing 441 Hz",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "done",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:39:22.182Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/pcm5102a.pdf",
+      "https://github-wiki-see.page/m/dwhinham/mt32-pi/wiki/GY-PCM5102-DAC-module",
+      "https://scccltd.com/products/gy-pcm5102-i2s-dac-decoder-board-hifi-audio"
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "type": "custom-pcm5102a",
+  "mpn": "PCM5102A",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, i2s"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; U2.LCK → D25 (GPIO25). U2.DIN → D26 (GPIO26). U2.BCK → D27 (GPIO27)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Plays a 441 Hz tone on the line output for two seconds, then stops: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "6 pins, i2s"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; U2.BCK → GP2, LCK → GP3 (I2S on the Pico needs LRC on the pin after BCLK). U2.DIN → GP6 (GPIO6)."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "13 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Plays a 441 Hz tone on the line output for two seconds, then stops: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C1520792 PCM5102APW (29 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T16:39:22.182Z"
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-yf-s401",
+  "board": "YF-S401 1/4 inch water flow sensor with flying leads (red VCC, yellow OUT, black GND)",
+  "reason": "Re-authored after the signal-level review: push-pull pulse output at the supply level (> 4.7 V at 5 V) reaches the 3.3 V pin through a 10k/20k divider that Sparkbench adds (pin divider field). check.ts PASS on ESP32 and Pico. Needs the blind datasheet verification before publishing.",
+  "datasheetUrl": "https://iarduino.ru/lib/2377bf7550064248856024f6728d7cc3.pdf",
+  "breakoutPinoutSource": "https://iarduino.ru/lib/2377bf7550064248856024f6728d7cc3.pdf (Connector Details: Red IN+, Yellow OUT, Black GND); https://www.tinytronics.nl/shop/en/sensors/liquid/yf-s401-water-flow-sensor",
+  "checkRuns": 1
+}

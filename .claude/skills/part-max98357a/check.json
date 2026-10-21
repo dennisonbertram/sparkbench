@@ -1,0 +1,79 @@
+{
+  "type": "custom-max98357a",
+  "mpn": "MAX98357A",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, i2s"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; U2.DIN → D25 (GPIO25). U2.BCLK → D26 (GPIO26). U2.LRC → D27 (GPIO27). Added a separate 5 V supply for Vin (it needs 2.5–5.5 V and up to 650 mA, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Plays a 1 kHz tone for two seconds, then goes quiet: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "7 pins, i2s"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; U2.BCLK → GP2, LRC → GP3 (I2S on the Pico needs LRC on the pin after BCLK). U2.DIN → GP6 (GPIO6). Added a separate 5 V supply for Vin (it needs 2.5–5.5 V and up to 650 mA, more than the board can give); its − joins the board's GND."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Plays a 1 kHz tone for two seconds, then goes quiet: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C910544 MAX98357AETE+T (23312 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T16:39:04.044Z"
+}

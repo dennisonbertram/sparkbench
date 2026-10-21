@@ -1,0 +1,118 @@
+{
+  "type": "custom-sk6812-rgbw-strip",
+  "name": "SK6812 RGBW LED strip (60 LEDs/m, 5 V)",
+  "mpn": "SK6812RGBW strip 60/m",
+  "category": "output",
+  "description": "Flexible strip of individually addressable SK6812RGBW LEDs (OPSCO 5050 package: red, green, blue and a white LED die plus a driver IC in each pixel), 60 per metre, chained on one 800 kbit/s data wire with 32 bits per LED (8 each of G, R, B, W). Runs on 5 V (datasheet 3.5-5.5 V absolute, characterised at 4.5-5.5 V); up to about 80 mA per LED with all four channels at full, 4.8 A per metre. Sold as: BTF-LIGHTING SK6812 RGBW LED strip, 60 LEDs/m, DC5V, 1 m (60 pixels), white PCB IP30, with a 3-pin JST-SM input lead to the +5V, DI, GND pads.",
+  "eli5": "A bendy ribbon of 60 tiny lights that can each glow any colour or a proper white, all controlled through one data wire.",
+  "refPrefix": "D",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "LED supply, 5 V regulated (4.5-5.5 V; above 5.5 V destroys the LEDs). Up to 4.8 A for 60 LEDs at full RGBW: feed it from a separate 5 V supply whose GND joins the board's GND.",
+      "required": true,
+      "supply": {
+        "vmin": 4.5,
+        "vmax": 5.5,
+        "currentMa": 4800
+      }
+    },
+    {
+      "name": "DI",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Data in to the first LED (follow the arrows printed on the strip). Datasheet VIH is 3.4 V at VDD 5 V, so 3.3 V GPIO is marginal: a 74AHCT125 level shifter is recommended, plus a 300-500 ohm series resistor.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller and the 5 V supply (white wire on many BTF/JST-SM leads)",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 4800,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/2757/p2757_SK6812RGBW_REV01.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "SK6812 RGBW LED strip 60 LEDs/m 5V 1m",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wire the INPUT end: the arrows on the strip point away from it, and its pads read +5V, DI, GND. Data sent into the DO end does nothing.",
+    "Power +5V from a separate regulated 5 V supply sized for the strip (60 LEDs x 80 mA = 4.8 A at full RGBW; 6 A supply for a full metre) and join its GND to the board's GND. Never exceed 5.5 V (datasheet absolute maximum).",
+    "The driver's default brightness of 0.1 keeps a full-white metre near 0.5 A; each dark LED still draws about 1 mA (datasheet IDD).",
+    "Datasheet logic-high threshold VIH is 3.4 V minimum at VDD 5 V, above a 3.3 V GPIO's high level: use a 74AHCT125 (or similar 5 V-supplied HCT/AHCT buffer) on DI for reliable data. Put a 300-500 ohm resistor in series with DI and a 1000 uF capacitor across +5V and GND at the strip.",
+    "Each LED takes 32 bits in G, R, B, W order. Use neopixel.NeoPixel(pin, n, bpp=4) (or the driver) and give colours as (r, g, b, w); with bpp=3 the colours shift along the strip.",
+    "Bit timing (datasheet): T0H 0.3 us, T1H 0.6 us (+-0.15 us), bit period 1.25 us +-0.6 us; a low of at least 80 us latches the data."
+  ],
+  "keywords": [
+    "sk6812",
+    "sk6812rgbw",
+    "rgbw",
+    "neopixel",
+    "addressable",
+    "led strip",
+    "grbw",
+    "60 led",
+    "white led strip"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/2757/p2757_SK6812RGBW_REV01.pdf",
+    "https://www.ledyilighting.com/wp-content/uploads/2021/10/5050smd-60leds-10mm-SK6812-RGBW-specification.pdf",
+    "https://cdn.sparkfun.com/assets/7/1/5/e/8/S60SK6812.pdf",
+    "https://thepihut.com/products/flexible-rgbw-led-strip-neopixel-ws2812-sk6812-compatible-60-led-metre",
+    "https://docs.micropython.org/en/latest/library/neopixel.html"
+  ],
+  "sim": {
+    "kind": "addressable-led",
+    "inputPin": "DI",
+    "count": 60,
+    "ledProtocol": "sk6812-rgbw"
+  },
+  "driver": {
+    "filename": "sk6812_rgbw.py",
+    "code": "# SK6812 RGBW addressable LED strip (60 LEDs/m, 5 V), MicroPython helper.\n# Uses MicroPython's built-in neopixel module with bpp=4. It produces the SK6812's\n# 800 kbit/s single-wire code (0 bit: about 0.4 us high; 1 bit: about 0.8 us high;\n# both inside the datasheet's 0.3/0.6 us +-0.15 us windows and 1.25 us +-0.6 us bit\n# period) and sends 32 bits per LED, MSB first. With bpp=4 neopixel's default byte\n# order is G, R, B, W, which is what SK6812RGBW strips expect (the OPSCO datasheet's\n# bit table prints R first, but real parts, Adafruit's NEO_GRBW and MicroPython all\n# use G-R-B-W). A low of more than 80 us after write() latches the new colours.\n#\n# brightness scales every channel (0.0-1.0). Each LED draws up to about 80 mA with\n# all four channels at full (about 4.8 A for a 60-LED metre at 5 V), so feed the\n# strip from its own 5 V supply. The default of 0.1 keeps the current low.\nimport neopixel\n\n\nclass SK6812RGBW:\n    def __init__(self, pin, n=60, brightness=0.1):\n        self.n = n\n        self.np = neopixel.NeoPixel(pin, n, bpp=4)\n        self.brightness = max(0.0, min(1.0, brightness))\n\n    def _scale(self, color):\n        if len(color) != 4:\n            raise ValueError('color must be (r, g, b, w)')\n        b = self.brightness\n        return tuple(max(0, min(255, int(c * b))) for c in color)\n\n    def pixel(self, i, color):\n        \"\"\"Set LED i (0 = first LED after DIN) to (r, g, b, w), 0-255 each. Call show() to send.\"\"\"\n        self.np[i] = self._scale(color)\n\n    def fill(self, color):\n        self.np.fill(self._scale(color))\n\n    def clear(self):\n        self.np.fill((0, 0, 0, 0))\n\n    def get(self, i):\n        \"\"\"The (r, g, b, w) bytes that will be sent to LED i (after brightness scaling).\"\"\"\n        return self.np[i]\n\n    def show(self):\n        self.np.write()\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom sk6812_rgbw import SK6812RGBW\n\nstrip = SK6812RGBW(Pin({DI}), 60, brightness=0.5)\nstrip.clear()\nstrip.show()\ntime.sleep(1)\nstrip.fill((0, 0, 0, 160))\nstrip.pixel(0, (200, 0, 0, 0))\nstrip.show()\nprint('white', strip.get(5), 'first', strip.get(0))\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "lights",
+      "title": "The strip starts dark, then lights white with a red first LED and reports the bytes sent",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "white (0, 0, 0, 80) first (100, 0, 0, 0)",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:34:34.848Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/1138/SK6812+LED+datasheet+.pdf",
+      "https://www.btf-lighting.com"
+    ]
+  }
+}

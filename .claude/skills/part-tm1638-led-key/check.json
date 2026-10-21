@@ -1,0 +1,79 @@
+{
+  "type": "custom-tm1638-led-key",
+  "mpn": "TM1638",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; TM1638 LED&KEY module (8 digits, 8 LEDs, 8 keys) needs at least 4.5 V, so it is powered from 5 V. U2.STB → D25 (GPIO25). U2.CLK → D26 (GPIO26). U2.DIO → D27 (GPIO27). Added the tm1638.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shows 2026, lights LED5 and reports S3 + S7: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; TM1638 LED&KEY module (8 digits, 8 LEDs, 8 keys) needs at least 4.5 V, so it is powered from 5 V. U2.STB → GP2 (GPIO2). U2.CLK → GP3 (GPIO3). U2.DIO → GP6 (GPIO6). Added the tm1638.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shows 2026, lights LED5 and reports S3 + S7: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C19187 TM1638 (11745 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T16:37:08.114Z"
+}

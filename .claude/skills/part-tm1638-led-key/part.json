@@ -1,0 +1,244 @@
+{
+  "type": "custom-tm1638-led-key",
+  "name": "TM1638 LED&KEY module (8 digits, 8 LEDs, 8 keys)",
+  "mpn": "TM1638",
+  "category": "display",
+  "description": "Titan Micro TM1638 LED driver with key scan on the blue 'LED&KEY' board: eight 0.36\" red common-cathode 7-segment digits (two 3461AS), eight red LEDs above them and eight push buttons S1-S8, all driven over a three-wire STB/CLK/DIO serial bus (bytes LSB first, not SPI or I2C). DIO is bidirectional: the chip shifts key data out on it open drain. The board has 10k pull-ups from STB, CLK and DIO to VCC. The chip datasheet specifies VDD 5 V +/-10 % (4.5-5.5 V) and says to power it from 5 V; with a 3.3 V microcontroller use a bidirectional level shifter on STB/CLK/DIO, because the pull-ups go to VCC. Sold as: the common 'LED&KEY' TM1638 clone module (blue PCB, J1 header VCC, GND, STB, CLK, DIO).",
+  "eli5": "A strip of eight glowing number digits with eight red lights and eight buttons underneath, all controlled with just three wires.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 5 V (datasheet VDD 4.5-5.5 V). The board pulls STB/CLK/DIO up to VCC through 10k, so with a 3.3 V microcontroller put a bidirectional level shifter on those three lines",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "STB",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Strobe (chip select): low frames each command/data transfer; 10k pull-up to VCC on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Clock, idles high; data is latched on the rising edge; 10k pull-up to VCC on the board",
+      "required": true,
+      "boardPullUp": 10000
+    },
+    {
+      "name": "DIO",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Data in/out, LSB first; when reading keys the chip drives it open drain (10k pull-up to VCC on the board)",
+      "required": true,
+      "boardPullUp": 10000
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 150,
+  "datasheetUrl": "https://raw.githubusercontent.com/mcauser/micropython-tm1638/master/docs/TM1638.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "TM1638 LED&KEY module 8 digit 8 LED 8 key",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "It is not SPI or I2C: STB low frames a transfer, the first byte is a command, bytes go LSB first and are latched on CLK rising (CLK idles high).",
+    "Display RAM: even addresses 0x00, 0x02 ... 0x0E are digits 1-8 (leftmost first, bit0 = a ... bit6 = g, bit7 = decimal point); odd addresses 0x01 ... 0x0F are LED1-LED8 (bit 0).",
+    "Write with data command 0x40 (auto-increment) or 0x44 (fixed address), then 0xC0 | address followed by data; nothing lights until display control 0x88 | brightness (0-7) is sent.",
+    "Keys: send 0x42 with STB still low, release DIO (input with pull-up), wait at least 1 us, then clock in 4 bytes LSB first. On LED&KEY all buttons are on K3: S1-S4 are bit 0 and S5-S8 are bit 4 of bytes 1-4.",
+    "Power VCC from 5 V (datasheet: VDD 4.5-5.5 V, 'TM1638 power supply should be used in 5V'). The 10k pull-ups on STB/CLK/DIO go to VCC and logic high needs 0.7 x VCC = 3.5 V, so a 3.3 V board needs a bidirectional level shifter (e.g. BSS138 type) on STB, CLK and DIO. Running the module at 3.3 V is outside the datasheet and not guaranteed.",
+    "With all segments and LEDs lit at full brightness the module draws over 100 mA; lower the brightness on a weak supply."
+  ],
+  "keywords": [
+    "tm1638",
+    "led&key",
+    "led and key",
+    "7-segment",
+    "8 digit",
+    "led display",
+    "buttons",
+    "keypad"
+  ],
+  "sources": [
+    "https://raw.githubusercontent.com/mcauser/micropython-tm1638/master/docs/TM1638.pdf",
+    "https://github.com/gavinlyonsrepo/TM1638plus/blob/master/extra/doc/tm1638/README.md",
+    "https://raw.githubusercontent.com/gavinlyonsrepo/pic_16F18446_projects/master/images/TM1638_2.jpg",
+    "https://raw.githubusercontent.com/gavinlyonsrepo/pic_16F18446_projects/master/images/TM1638.jpg",
+    "https://github.com/mcauser/micropython-tm1638"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "tm1638",
+    "digits": 8,
+    "tm1638": {
+      "leds": [
+        {
+          "name": "LED1",
+          "addr": 1,
+          "bit": 0
+        },
+        {
+          "name": "LED2",
+          "addr": 3,
+          "bit": 0
+        },
+        {
+          "name": "LED3",
+          "addr": 5,
+          "bit": 0
+        },
+        {
+          "name": "LED4",
+          "addr": 7,
+          "bit": 0
+        },
+        {
+          "name": "LED5",
+          "addr": 9,
+          "bit": 0
+        },
+        {
+          "name": "LED6",
+          "addr": 11,
+          "bit": 0
+        },
+        {
+          "name": "LED7",
+          "addr": 13,
+          "bit": 0
+        },
+        {
+          "name": "LED8",
+          "addr": 15,
+          "bit": 0
+        }
+      ],
+      "keys": [
+        {
+          "control": "S1",
+          "label": "S1",
+          "k": 3,
+          "ks": 1
+        },
+        {
+          "control": "S2",
+          "label": "S2",
+          "k": 3,
+          "ks": 3
+        },
+        {
+          "control": "S3",
+          "label": "S3",
+          "k": 3,
+          "ks": 5
+        },
+        {
+          "control": "S4",
+          "label": "S4",
+          "k": 3,
+          "ks": 7
+        },
+        {
+          "control": "S5",
+          "label": "S5",
+          "k": 3,
+          "ks": 2
+        },
+        {
+          "control": "S6",
+          "label": "S6",
+          "k": 3,
+          "ks": 4
+        },
+        {
+          "control": "S7",
+          "label": "S7",
+          "k": 3,
+          "ks": 6
+        },
+        {
+          "control": "S8",
+          "label": "S8",
+          "k": 3,
+          "ks": 8
+        }
+      ]
+    }
+  },
+  "driver": {
+    "filename": "tm1638.py",
+    "code": "# TM1638 LED&KEY module (Titan Micro TM1638: 8 digits, 8 LEDs, 8 keys), MicroPython driver.\n# Serial interface from the datasheet (not SPI hardware, not I2C): STB low frames a transfer and the\n# first byte after STB falls is a command; bytes go LSB first; the chip latches DIO on CLK rising\n# (CLK idles high, DIO changes only while CLK is low). PWCLK >= 400 ns, STB high >= 1 us,\n# CLK rise -> STB rise >= 1 us, and after the 0x42 read-keys command wait >= 1 us (tWAIT)\n# before the first CLK fall; the chip then shifts key data out on DIO (open drain, the module's\n# 10k pull-up gives the high level), one bit per clock, BYTE1..BYTE4, LSB first.\n# Display RAM (16 bytes): even addresses 00H, 02H ... 0EH = digit 1..8 segments (bit0 = a ... bit6 = g,\n# bit7 = dp); odd addresses 01H ... 0FH = LED1..LED8 on SEG9 (bit 0).\n# Keys on LED&KEY: all on K3; S1..S4 on KS1, KS3, KS5, KS7 and S5..S8 on KS2, KS4, KS6, KS8, so\n# S1..S4 are bit 0 of BYTE1..4 and S5..S8 are bit 4 of BYTE1..4.\nfrom machine import Pin\nimport time\n\n_DATA_WRITE = 0x40   # data command: write display RAM, auto-increment address, normal mode\n_DATA_FIXED = 0x44   # data command: write, fixed address\n_DATA_READ = 0x42    # data command: read key-scan data\n_ADDR = 0xC0         # address command | 00H-0FH\n_DISP = 0x80         # display control | 0x08 on | brightness 0-7 (1/16 ... 14/16 pulse width)\n\n_DIGITS = (0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F)\n_CHARS = {\n    ' ': 0x00, '-': 0x40, '_': 0x08, '*': 0x63,  # '*' = degree sign\n    'A': 0x77, 'B': 0x7C, 'C': 0x39, 'D': 0x5E, 'E': 0x79, 'F': 0x71, 'G': 0x3D, 'H': 0x76,\n    'I': 0x30, 'J': 0x1E, 'L': 0x38, 'N': 0x54, 'O': 0x5C, 'P': 0x73, 'Q': 0x67, 'R': 0x50,\n    'S': 0x6D, 'T': 0x78, 'U': 0x3E, 'Y': 0x6E,\n}\n\n\ndef encode(ch):\n    \"\"\"Segment byte for one character (digits, some letters, space, '-', '_', '*' = degree).\"\"\"\n    if '0' <= ch <= '9':\n        return _DIGITS[ord(ch) - 48]\n    return _CHARS.get(ch.upper(), 0x00)\n\n\nclass TM1638:\n    def __init__(self, stb, clk, dio, brightness=7):\n        self.stb = Pin(stb, Pin.OUT, value=1)\n        self.clk = Pin(clk, Pin.OUT, value=1)\n        self.dio = Pin(dio, Pin.OUT, value=1)\n        self._bright = brightness & 0x07\n        self._on = True\n        time.sleep_ms(1)\n        self.clear()\n        self._display_ctrl()\n\n    # --- bus primitives ---\n    def _byte(self, b):\n        for i in range(8):           # LSB first, latched on CLK rising\n            self.clk(0)\n            self.dio((b >> i) & 1)\n            time.sleep_us(1)\n            self.clk(1)\n            time.sleep_us(1)\n\n    def _begin(self):\n        self.stb(0)\n        time.sleep_us(1)\n\n    def _end(self):\n        time.sleep_us(1)             # tCLK-STB >= 1 us\n        self.stb(1)\n        time.sleep_us(1)             # PWSTB >= 1 us\n\n    def _command(self, c):\n        self._begin()\n        self._byte(c)\n        self._end()\n\n    def _display_ctrl(self):\n        self._command(_DISP | (0x08 if self._on else 0) | self._bright)\n\n    # --- display RAM ---\n    def write(self, data, addr=0):\n        \"\"\"Write raw bytes into display RAM starting at addr (0-15, auto-increment).\"\"\"\n        if not 0 <= addr <= 15 or addr + len(data) > 16:\n            raise ValueError('RAM address 0-15')\n        self._command(_DATA_WRITE)\n        self._begin()\n        self._byte(_ADDR | addr)\n        for b in data:\n            self._byte(b & 0xFF)\n        self._end()\n\n    def _put(self, addr, value):\n        self._command(_DATA_FIXED)\n        self._begin()\n        self._byte(_ADDR | addr)\n        self._byte(value & 0xFF)\n        self._end()\n\n    def clear(self):\n        self.write([0] * 16)\n\n    def brightness(self, value=None):\n        \"\"\"Get or set brightness 0-7.\"\"\"\n        if value is None:\n            return self._bright\n        if not 0 <= value <= 7:\n            raise ValueError('brightness 0-7')\n        self._bright = value\n        self._display_ctrl()\n\n    def power(self, on):\n        self._on = bool(on)\n        self._display_ctrl()\n\n    def segments(self, segs, pos=0):\n        \"\"\"Raw segment bytes for digits starting at pos (0 = leftmost).\"\"\"\n        for i, s in enumerate(segs):\n            if 0 <= pos + i < 8:\n                self._put(2 * (pos + i), s)\n\n    def show(self, text, pos=0):\n        \"\"\"Show text left aligned from digit pos; a '.' lights the previous digit's point.\"\"\"\n        segs = []\n        for ch in text:\n            if ch == '.' and segs:\n                segs[-1] |= 0x80\n            else:\n                segs.append(encode(ch))\n        self.segments(segs[:8 - pos], pos)\n\n    def number(self, n):\n        \"\"\"Show an integer right aligned (-9999999 to 99999999).\"\"\"\n        n = int(n)\n        if not -9999999 <= n <= 99999999:\n            raise ValueError('number out of range')\n        self.show('%8d' % n)\n\n    def led(self, index, on):\n        \"\"\"Switch LED1..LED8 (index 0-7) on or off.\"\"\"\n        if not 0 <= index <= 7:\n            raise ValueError('LED 0-7')\n        self._put(2 * index + 1, 1 if on else 0)\n\n    def leds(self, mask):\n        \"\"\"Set all 8 LEDs from a bitmask (bit 0 = LED1).\"\"\"\n        for i in range(8):\n            self._put(2 * i + 1, (mask >> i) & 1)\n\n    # --- keys ---\n    def read_key_bytes(self):\n        \"\"\"The four raw key-scan bytes BYTE1..BYTE4.\"\"\"\n        self._begin()\n        self._byte(_DATA_READ)\n        self.dio.init(Pin.IN, Pin.PULL_UP)   # release DIO: the chip drives it open drain\n        time.sleep_us(2)                     # tWAIT >= 1 us before the first CLK fall\n        out = []\n        for _ in range(4):\n            b = 0\n            for i in range(8):\n                self.clk(0)\n                time.sleep_us(1)\n                self.clk(1)\n                time.sleep_us(1)\n                if self.dio.value():\n                    b |= 1 << i\n            out.append(b)\n        self._end()\n        self.dio.init(Pin.OUT, value=1)\n        return out\n\n    def keys(self):\n        \"\"\"Bitmask of pressed keys, bit 0 = S1 ... bit 7 = S8.\"\"\"\n        k = 0\n        for i, b in enumerate(self.read_key_bytes()):\n            if b & 0x01:          # K3/KS(2i+1)\n                k |= 1 << i\n            if b & 0x10:          # K3/KS(2i+2)\n                k |= 1 << (i + 4)\n        return k\n"
+  },
+  "example": {
+    "code": "from tm1638 import TM1638\nimport time\n\ntm = TM1638({STB}, {CLK}, {DIO}, brightness=3)\ntm.number(2026)\ntm.led(4, 1)  # LED5\nlast = -1\nwhile True:\n    k = tm.keys()\n    if k != last:\n        print('keys 0x%02x' % k)\n        last = k\n    time.sleep_ms(50)\n",
+    "test": {
+      "id": "keys",
+      "title": "Shows 2026, lights LED5 and reports S3 + S7",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "2026",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "LED5",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "keys 0x00",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "S3",
+          "value": 1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "S7",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "keys 0x44",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:37:08.114Z",
+    "verifiedSources": [
+      "https://cdn.shopify.com/s/files/1/2386/9605/files/tm1638.pdf",
+      "https://ifuturetech.org/?p=1104"
+    ]
+  }
+}

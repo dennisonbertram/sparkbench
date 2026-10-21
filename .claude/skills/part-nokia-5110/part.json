@@ -1,0 +1,145 @@
+{
+  "type": "custom-nokia-5110",
+  "name": "Nokia 5110 84x48 LCD (PCD8544)",
+  "mpn": "PCD8544",
+  "category": "display",
+  "description": "Monochrome 84x48-pixel graphic LCD from the Nokia 5110/3310 phones, driven by a Philips PCD8544 controller over a write-only SPI-style serial bus (SCE, SCLK, SDIN, D/C, RES; 4 MHz max), with four backlight LEDs. The PCD8544 logic supply is 2.7-3.3 V and inputs must stay below VDD + 0.5 V, so run it from 3.3 V with 3.3 V logic. Sold as: Nokia 5110 LCD module, blue PCB printed \"Nokia5110 3v-5v\" (PCD8544, 8-pin header RST, CE, DC, DIN, CLK, VCC, BL, GND; the red clone has the same order with BL printed LIGHT).",
+  "eli5": "A small old-phone screen that shows black text and simple pictures on a greenish background.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "RST",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (a reset pulse is required after power-up)",
+      "required": true
+    },
+    {
+      "name": "CE",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip enable (SCE), active low",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command: low = command, high = display data",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Serial data in (SPI MOSI), sampled on the rising clock edge, MSB first",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Serial clock (SPI SCK), 4 MHz max",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 2.7-3.3 V (straight to the PCD8544, no regulator): use 3.3 V",
+      "required": true
+    },
+    {
+      "name": "BL",
+      "role": "io",
+      "description": "Backlight LEDs: drive high (3.3 V max, ideally through 330 ohm) for light, PWM to dim; leave open for no backlight",
+      "required": false
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.3,
+  "currentMa": 10,
+  "datasheetUrl": "https://www.sparkfun.com/datasheets/LCD/Monochrome/Nokia5110.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "Nokia 5110 LCD module PCD8544 84x48",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V. The board is often printed \"3v-5v\", but the PCD8544 is rated 2.7-3.3 V with inputs up to VDD + 0.5 V and the module has no regulator or level shifter.",
+    "Apply a reset pulse after power-up (RST low >= 100 ns; the datasheet warns the chip can be damaged if it is not reset). Then send 0x21 (extended set), 0x04 (temperature coefficient), 0x13 (bias 1:48), 0x80|VOP (contrast), 0x20 (basic set), 0x0C (normal display).",
+    "Contrast VOP: VLCD = 3.06 + 0.06 x VOP volts. Keep VOP at or below 90 (VLCD max 8.5 V); 0x30-0x45 suits most panels. Too low = blank, too high = all dark.",
+    "RAM is 6 banks of 84 bytes, each byte a vertical strip of 8 pixels with the LSB on top: exactly MicroPython's framebuf.MONO_VLSB layout.",
+    "SPI mode 0, MSB first, at most 4 MHz; 2 MHz is safe on jumper wires. There is no MISO.",
+    "BL feeds the backlight LEDs. Use a 330 ohm series resistor from 3.3 V or a GPIO (PWM to dim); never 5 V straight in."
+  ],
+  "keywords": [
+    "nokia 5110",
+    "nokia 3310",
+    "pcd8544",
+    "84x48",
+    "lcd",
+    "graphic lcd",
+    "monochrome",
+    "spi display"
+  ],
+  "sources": [
+    "https://www.sparkfun.com/datasheets/LCD/Monochrome/Nokia5110.pdf",
+    "https://lastminuteengineers.com/nokia-5110-lcd-arduino-tutorial/",
+    "https://lastminuteengineers.com/wp-content/uploads/arduino/Nokia-5110-LCD-Module-Pinout.png",
+    "https://learn.sparkfun.com/tutorials/graphic-lcd-hookup-guide/all"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "controller": "pcd8544",
+    "width": 84,
+    "height": 48
+  },
+  "driver": {
+    "filename": "pcd8544.py",
+    "code": "# MicroPython driver for the Philips PCD8544 84x48 mono LCD controller (Nokia 5110 module).\n# Datasheet: Philips PCD8544 product specification, 1999 Apr 12.\n# Write-only serial bus: SPI mode 0, MSB first, max 4 MHz. D/C low = command, high = display data.\nimport framebuf\nfrom micropython import const\nfrom time import sleep_ms\n\nWIDTH = const(84)\nHEIGHT = const(48)\n\n# Instruction set (datasheet Table 1)\n_FUNCTION_SET = const(0x20)   # 0 0 1 0 0 PD V H\n_PD = const(0x04)             # power-down\n_V = const(0x02)              # vertical addressing\n_H = const(0x01)              # extended instruction set\n_DISPLAY_CONTROL = const(0x08)  # H=0: 0 0 0 0 1 D 0 E\n_DISPLAY_BLANK = const(0x08)\n_DISPLAY_NORMAL = const(0x0C)\n_DISPLAY_ALL_ON = const(0x09)\n_DISPLAY_INVERSE = const(0x0D)\n_SET_Y = const(0x40)          # H=0: bank 0..5\n_SET_X = const(0x80)          # H=0: column 0..83\n_TEMP_COEFF = const(0x04)     # H=1: TC1 TC0\n_BIAS = const(0x10)           # H=1: BS2..BS0\n_SET_VOP = const(0x80)        # H=1: VOP6..VOP0, VLCD = 3.06 + VOP * 0.06 V\n\n\nclass PCD8544(framebuf.FrameBuffer):\n    \"\"\"84x48 frame buffer; draw with the framebuf methods, then call show().\"\"\"\n\n    def __init__(self, spi, cs, dc, rst=None, contrast=0x3F, bias=3, temp=0):\n        # cs/dc/rst: Pin objects or GPIO numbers. contrast = VOP (0..127): keep VLCD <= 8.5 V,\n        # i.e. VOP <= 90; 0x30..0x45 suits most modules. bias 3 = 1:48 mux (datasheet Table 4).\n        from machine import Pin\n        self.spi = spi\n        self.cs = cs if isinstance(cs, Pin) else Pin(cs)\n        self.dc = dc if isinstance(dc, Pin) else Pin(dc)\n        self.rst = None if rst is None else (rst if isinstance(rst, Pin) else Pin(rst))\n        self.cs.init(Pin.OUT, value=1)\n        self.dc.init(Pin.OUT, value=0)\n        if self.rst is not None:\n            self.rst.init(Pin.OUT, value=1)\n        self.buf = bytearray(WIDTH * HEIGHT // 8)\n        # MONO_VLSB matches the PCD8544 RAM in horizontal addressing: byte = bank*84 + x, LSB on top.\n        super().__init__(self.buf, WIDTH, HEIGHT, framebuf.MONO_VLSB)\n        self._contrast = contrast & 0x7F\n        self._bias = bias & 0x07\n        self._temp = temp & 0x03\n        self.reset()\n        self.init_display()\n\n    def reset(self):\n        # Datasheet 8.1: a RES pulse is mandatory after power-on (RES LOW >= 100 ns).\n        if self.rst is not None:\n            self.rst(0)\n            sleep_ms(1)\n            self.rst(1)\n            sleep_ms(1)\n\n    def write_cmd(self, *cmds):\n        self.dc(0)\n        self.cs(0)\n        self.spi.write(bytes(cmds))\n        self.cs(1)\n\n    def write_data(self, buf):\n        self.dc(1)\n        self.cs(0)\n        self.spi.write(buf)\n        self.cs(1)\n\n    def init_display(self):\n        # Datasheet Table 6 programming example, plus temperature coefficient and bias.\n        self.write_cmd(\n            _FUNCTION_SET | _H,               # PD=0, V=0, extended set\n            _TEMP_COEFF | self._temp,\n            _BIAS | self._bias,\n            _SET_VOP | self._contrast,\n            _FUNCTION_SET,                    # back to basic set, horizontal addressing\n            _DISPLAY_NORMAL,\n        )\n        # RAM is undefined after power-on: clear it.\n        self.fill(0)\n        self.show()\n\n    def contrast(self, vop):\n        self._contrast = vop & 0x7F\n        self.write_cmd(_FUNCTION_SET | _H, _SET_VOP | self._contrast, _FUNCTION_SET)\n\n    def invert(self, on):\n        self.write_cmd(_DISPLAY_INVERSE if on else _DISPLAY_NORMAL)\n\n    def power_off(self):\n        # Datasheet 8.3.1: fill the RAM with 0s before entering power-down.\n        self.fill(0)\n        self.show()\n        self.write_cmd(_FUNCTION_SET | _PD)\n\n    def power_on(self):\n        self.init_display()\n\n    def show(self):\n        self.write_cmd(_SET_X | 0, _SET_Y | 0)\n        self.write_data(self.buf)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport sys\nimport time\nfrom pcd8544 import PCD8544\n\n# Pico: SPI0 pins. ESP32: any pins on SPI(2). PCD8544 max clock 4 MHz.\nspi_id = 0 if sys.platform == 'rp2' else 2\nspi = SPI(spi_id, baudrate=2000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}))\nlcd = PCD8544(spi, cs={CE}, dc={DC}, rst={RST})\nn = 0\nwhile True:\n    lcd.fill(0)\n    lcd.text('NOKIA', 0, 0, 1)\n    lcd.text('Count ' + str(n), 0, 16, 1)\n    lcd.show()\n    print('count', n)\n    n += 1\n    time.sleep(1)\n",
+    "test": {
+      "id": "text",
+      "title": "Draws a title and a counting number on the LCD",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "NOKIA",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "count 2",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "Count 3",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:34:44.500Z",
+    "verifiedSources": [
+      "https://www.sparkfun.com/datasheets/LCD/Monochrome/Nokia5110.pdf",
+      "https://lastminuteengineers.com/nokia-5110-lcd-arduino-tutorial/"
+    ]
+  }
+}

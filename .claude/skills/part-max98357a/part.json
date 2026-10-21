@@ -1,0 +1,157 @@
+{
+  "type": "custom-max98357a",
+  "name": "MAX98357A I2S class-D amplifier",
+  "mpn": "MAX98357A",
+  "category": "output",
+  "description": "Analog Devices (Maxim) MAX98357A mono class-D speaker amplifier with a digital I2S input: no DAC or MCLK needed, 16/24/32-bit audio at 8, 16, 32-48 or 96 kHz, up to 3.2 W into 4 Ω at 5 V, pin-selected gain 3-15 dB (9 dB with GAIN open). SD selects shutdown / left / right / (L+R)/2. Runs on 2.5-5.5 V; logic inputs accept 3.3 V. Sold as: Adafruit I2S 3W Class D Amplifier Breakout - MAX98357A (product 3006), 7-pin header (pad 1-7 per Adafruit's board file) Vin, GND, SD, GAIN, DIN, BCLK, LRC plus a 2-pin speaker terminal block.",
+  "eli5": "Takes digital sound from your board and drives a small speaker loud enough to hear across a room.",
+  "refPrefix": "U",
+  "interface": "i2s",
+  "pins": [
+    {
+      "name": "Vin",
+      "role": "power",
+      "description": "Amplifier supply 2.5-5.5 V; 5 V for full power, up to about 650 mA into 4 Ω",
+      "required": true,
+      "supply": {
+        "vmin": 2.5,
+        "vmax": 5.5,
+        "currentMa": 650
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (common with the microcontroller and the speaker supply)",
+      "required": true
+    },
+    {
+      "name": "SD",
+      "role": "io",
+      "description": "SD_MODE shutdown / channel select; 1 M pull-up to Vin on the board (with the chip's 100 k pull-down: (L+R)/2). GND = shutdown, > 1.4 V = left only",
+      "required": false
+    },
+    {
+      "name": "GAIN",
+      "role": "io",
+      "description": "Gain select: open = 9 dB, GND = 12 dB, 100 k to GND = 15 dB, Vin = 6 dB, 100 k to Vin = 3 dB (read at power-up)",
+      "required": false
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "i2s.din",
+      "description": "I2S serial audio data in (3.3-5 V logic, VIH 1.3 V)",
+      "required": true
+    },
+    {
+      "name": "BCLK",
+      "role": "io",
+      "fn": "i2s.bclk",
+      "description": "I2S bit clock, 32, 48 or 64 x the sample rate",
+      "required": true
+    },
+    {
+      "name": "LRC",
+      "role": "io",
+      "fn": "i2s.lrc",
+      "description": "I2S word select / left-right clock (LRCLK): low = left channel, high = right",
+      "required": true
+    }
+  ],
+  "vmin": 2.5,
+  "vmax": 5.5,
+  "currentMa": 650,
+  "cabled": true,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX98357A-MAX98357B.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "Adafruit 3006 MAX98357A I2S class D amplifier breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "Speaker (4 Ω or more) goes on the + / - terminal block. The outputs are bridge-tied: never connect either speaker wire to GND.",
+    "Feed Vin from a 5 V supply that can deliver 800 mA (Adafruit's advice); join its GND to the microcontroller's GND.",
+    "Use a sample rate of 8, 16, 32-48 or 96 kHz; 22.05 kHz is outside the chip's LRCLK ranges. BCLK must be 32, 48 or 64 x LRCLK (16-bit stereo gives 32x).",
+    "Leave SD open for (L+R)/2 mono; pull it to GND (e.g. a GPIO driven low) to shut the amp down (about 0.6 µA). Send the same sample on both channels so any SD setting plays it.",
+    "On a Raspberry Pi Pico, LRC (ws) must be on the GPIO right after BCLK (sck)."
+  ],
+  "keywords": [
+    "max98357a",
+    "max98357",
+    "i2s",
+    "amplifier",
+    "class d",
+    "speaker",
+    "audio",
+    "dac"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX98357A-MAX98357B.pdf",
+    "https://cdn-shop.adafruit.com/product-files/3006/MAX98357A-MAX98357B.pdf",
+    "https://learn.adafruit.com/adafruit-max98357-i2s-class-d-mono-amp",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-max98357-i2s-class-d-mono-amp.pdf",
+    "https://www.adafruit.com/product/3006"
+  ],
+  "sim": {
+    "kind": "i2s-amp",
+    "i2sAmp": {
+      "sdPin": "SD",
+      "sdPullUpOhms": 1000000
+    }
+  },
+  "example": {
+    "code": "from machine import I2S, Pin\nimport math, struct, time\n\nRATE = 16000   # MAX98357A accepts 8, 16, 32-48 or 96 kHz (not 22.05 kHz)\nFREQ = 1000    # 16 samples per cycle at 16 kHz\naudio = I2S(0, sck=Pin({BCLK}), ws=Pin({LRC}), sd=Pin({DIN}), mode=I2S.TX,\n            bits=16, format=I2S.STEREO, rate=RATE, ibuf=8000)\n\n# 10 whole cycles, same sample on left and right so any SD channel setting plays it\nn = RATE // FREQ * 10\nbuf = bytearray(n * 4)\nfor i in range(n):\n    s = int(6000 * math.sin(2 * math.pi * FREQ * i / RATE))\n    struct.pack_into('<hh', buf, i * 4, s, s)\n\ntime.sleep(1)\nprint('tone 1000 Hz')\nt0 = time.ticks_ms()\nwhile time.ticks_diff(time.ticks_ms(), t0) < 2000:\n    audio.write(buf)\naudio.deinit()\nprint('stopped')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "tone",
+      "title": "Plays a 1 kHz tone for two seconds, then goes quiet",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": false,
+          "within": 600
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "tone 1000 Hz",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 2500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "stopped",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "buzzer",
+          "part": "{REF}",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T16:39:04.044Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/product-files/3006/MAX98357A-MAX98357B.pdf",
+      "https://learn.adafruit.com/adafruit-max98357-i2s-class-d-mono-amp/pinouts"
+    ]
+  }
+}

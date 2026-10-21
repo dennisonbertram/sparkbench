@@ -1,0 +1,16 @@
+{
+ "diffs": [
+  {
+   "diff": "header pin 2: part says OUT, datasheet reading says Yellow (OUT)",
+   "verdict": "part-correct",
+   "evidence": "Same pin under a colour+function label. YF-S401 datasheet wiring table, verbatim: 'Red : IN positive / Yellow : OUT signal output / Black : GND negative'. The part names the yellow lead by its function, OUT.",
+   "source": "https://iarduino.ru/lib/2377bf7550064248856024f6728d7cc3.pdf"
+  },
+  {
+   "diff": "flow rate (L/min), raw = pulse frequency in Hz: datasheet reading gives 0.0102040816 per count, the part's model has none",
+   "verdict": "part-correct",
+   "evidence": "Same conversion, inverted. YF-S401 datasheet, verbatim: 'Flow pulse characteristics F = (98 * Q) \u00b1 2% Q = L / MIN'. The part is a pulse-sensor with sim.pulse.hzPerUnit = 98 (F = 98 x Q), which publish.ts does not parse as a conversion; the reading's 1/98 = 0.0102040816 L/min per Hz is the same relation.",
+   "source": "https://iarduino.ru/lib/2377bf7550064248856024f6728d7cc3.pdf"
+  }
+ ]
+}

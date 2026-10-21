@@ -1,0 +1,79 @@
+{
+  "type": "custom-sk6812-rgbw-strip",
+  "mpn": "SK6812RGBW strip 60/m",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; D1.DI → D25 (GPIO25). Added a separate 5 V supply for +5V (it needs 4.5–5.5 V and up to 4.8 A, more than the board can give); its − joins the board's GND. Added the sk6812_rgbw.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The strip starts dark, then lights white with a red first LED and reports the bytes sent: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "3 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "3 pins wired; D1.DI → GP2 (GPIO2). Added a separate 5 V supply for +5V (it needs 4.5–5.5 V and up to 4.8 A, more than the board can give); its − joins the board's GND. Added the sk6812_rgbw.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "8 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "The strip starts dark, then lights white with a red first LED and reports the bytes sent: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T16:34:34.848Z"
+}
