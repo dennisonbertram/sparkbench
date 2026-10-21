@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "6 pins wired; RDM6300 125 kHz RFID reader needs at least 4.75 V, so it is powered from 5 V. U2.TX → RX2 (the board's RX), RX → TX2 (the board's TX). Added the rdm6300.py driver written from the datasheet."
+        "detail": "6 pins wired; RDM6300 125 kHz RFID reader needs at least 4.75 V, so it is powered from 5 V. U2.TX → RX2 (the board's RX), RX → TX2 (the board's TX). Added a 10 kΩ / 20 kΩ divider on TX: it swings to 5 V, and the RX2 pin takes 3.3 V at most. Added the rdm6300.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "12 build steps"
       },
       {
         "stage": "simulator",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×68.5 mm, DRC clean"
+        "detail": "50.5×67 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "6 pins wired; RDM6300 125 kHz RFID reader needs at least 4.75 V, so it is powered from 5 V. U2.TX → GP1 (the board's RX), RX → GP0 (the board's TX). Added the rdm6300.py driver written from the datasheet."
+        "detail": "6 pins wired; RDM6300 125 kHz RFID reader needs at least 4.75 V, so it is powered from 5 V. U2.TX → GP1 (the board's RX), RX → GP0 (the board's TX). Added a 10 kΩ / 20 kΩ divider on TX: it swings to 5 V, and the GP1 pin takes 3.3 V at most. Added the rdm6300.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "12 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
     }
   ],
-  "checkedAt": "2026-10-21T10:53:54.405Z"
+  "checkedAt": "2026-10-21T16:27:50.204Z"
 }

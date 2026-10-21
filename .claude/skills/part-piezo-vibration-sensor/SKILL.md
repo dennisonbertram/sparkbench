@@ -53,5 +53,9 @@ while True:
 - **Mount the disc firmly** (tape or glue it flat to the surface); a loose disc on its wires picks up little.
 - The red wire of a Gravity cable goes to NC: it is fine to leave it plugged in, nothing is powered.
 
+
+## On a 3.3 V board
+- **Analog** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 100 kΩ from Analog to the pin, 200 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.5 (the driver's `divider` / `div` argument does this).
+
 ## Datasheet
 Schematic: https://dfimg.dfrobot.com/wiki/17157/DFR0052_digital-piezo-disk-vibration-sensor_schematics_v1.0.pdf. Piezo element: https://dfimg.dfrobot.com/wiki/17157/DFR0052_digital-piezo-disk-vibration-sensor_datasheet_v1.0.pdf. Wiki: https://wiki.dfrobot.com/dfr0052/

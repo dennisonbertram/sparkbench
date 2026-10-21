@@ -1,1 +1,99 @@
-{"type": "custom-mhz-test", "name": "MH-Z19 test", "mpn": "MH-Z19B", "category": "sensor", "description": "t", "eli5": "t", "refPrefix": "U", "interface": "uart", "pins": [{"name": "VIN", "role": "power", "required": true}, {"name": "GND", "role": "gnd", "required": true}, {"name": "TX", "role": "io", "fn": "uart.tx", "required": true}, {"name": "RX", "role": "io", "fn": "uart.rx", "required": true}], "vmin": 4.5, "vmax": 5.5, "currentMa": 60, "priceUsd": 20, "supplierQuery": "MH-Z19B", "sim": {"kind": "uart-device", "uartBaud": 9600, "quantity": "CO2", "unit": "ppm", "min": 400, "max": 5000, "default": 600, "uartReplies": [{"match": "ff 01 86 00 00 00 00 00 79", "bytes": [{"const": 255, "bits": 8}, {"const": 134, "bits": 8}, {"control": "value", "bits": 16, "scale": 1}, {"const": 0, "bits": 32}, {"crc": "mhz19", "over": 8}]}]}, "example": {"code": "from machine import UART, Pin\nimport time\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\nwhile True:\n    u.write(bytes([0xFF, 0x01, 0x86, 0, 0, 0, 0, 0, 0x79]))\n    time.sleep_ms(100)\n    r = u.read(9)\n    if r and len(r) == 9 and r[0] == 0xFF and r[1] == 0x86 and (0xFF - (sum(r[1:8]) & 0xFF) + 1) & 0xFF == r[8]:\n        print('CO2=%d' % (r[2] * 256 + r[3]))\n    time.sleep(1)\n", "test": {"id": "t", "title": "co2", "source": "user", "steps": [{"kind": "set", "part": "{REF}", "control": "value", "value": 1234}, {"kind": "expect", "what": "serial", "text": "CO2=1234", "within": 4000}]}}}
+{
+ "type": "custom-mhz-test",
+ "name": "MH-Z19 test",
+ "mpn": "MH-Z19B",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "uart",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "TX",
+   "role": "io",
+   "fn": "uart.tx",
+   "required": true,
+   "levelV": 3.3
+  },
+  {
+   "name": "RX",
+   "role": "io",
+   "fn": "uart.rx",
+   "required": true
+  }
+ ],
+ "vmin": 4.5,
+ "vmax": 5.5,
+ "currentMa": 60,
+ "priceUsd": 20,
+ "supplierQuery": "MH-Z19B",
+ "sim": {
+  "kind": "uart-device",
+  "uartBaud": 9600,
+  "quantity": "CO2",
+  "unit": "ppm",
+  "min": 400,
+  "max": 5000,
+  "default": 600,
+  "uartReplies": [
+   {
+    "match": "ff 01 86 00 00 00 00 00 79",
+    "bytes": [
+     {
+      "const": 255,
+      "bits": 8
+     },
+     {
+      "const": 134,
+      "bits": 8
+     },
+     {
+      "control": "value",
+      "bits": 16,
+      "scale": 1
+     },
+     {
+      "const": 0,
+      "bits": 32
+     },
+     {
+      "crc": "mhz19",
+      "over": 8
+     }
+    ]
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import UART, Pin\nimport time\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\nwhile True:\n    u.write(bytes([0xFF, 0x01, 0x86, 0, 0, 0, 0, 0, 0x79]))\n    time.sleep_ms(100)\n    r = u.read(9)\n    if r and len(r) == 9 and r[0] == 0xFF and r[1] == 0x86 and (0xFF - (sum(r[1:8]) & 0xFF) + 1) & 0xFF == r[8]:\n        print('CO2=%d' % (r[2] * 256 + r[3]))\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "co2",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 1234
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "CO2=1234",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

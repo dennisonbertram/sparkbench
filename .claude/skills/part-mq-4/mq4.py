@@ -11,7 +11,7 @@ from machine import ADC, Pin
 
 
 class MQ4:
-    def __init__(self, ao, do=None, rl=1000, vc=5.0, divider=1.0, samples=32, vref=3.3):
+    def __init__(self, ao, do=None, rl=1000, vc=5.0, divider=1.0, samples=32, vref=3.3, div=None):
         """ao/do: GPIO numbers (or Pin objects). rl: the module's load resistor in ohms (check yours:
         many boards use 1 kOhm, marked 102). vc: module supply. divider: AO / ADC-pin voltage ratio if
         you fitted a resistor divider (e.g. 1.5 for 10k over 20k), 1.0 if AO goes straight to the pin."""
@@ -27,6 +27,12 @@ class MQ4:
         self.samples = samples
         self.vref = vref  # ADC full scale used when read_uv() is not available (e.g. Pico)
         self.r0 = None
+        # A (top, bottom) resistor divider between the output and the ADC pin scales the reading and also loads
+        # the load resistor: RL is then in parallel with top + bottom.
+        self.rl_eff = rl
+        if div:
+            self.divider = (div[0] + div[1]) / div[1]
+            self.rl_eff = rl * (div[0] + div[1]) / (rl + div[0] + div[1])
 
     def voltage(self):
         """AO voltage (VRL) in volts, averaged over several ADC samples."""
@@ -44,7 +50,12 @@ class MQ4:
         v = self.voltage()
         if v <= 0.001:
             return float('inf')  # no reading: sensor cold, unpowered or AO not wired
-        return (self.vc / v - 1) * self.rl
+        return (self.vc / v - 1) * self.rl_eff
+
+    def vrl(self):
+        """The output voltage the datasheet's formula uses, with nothing loading it: Vc * RL / (Rs + RL)."""
+        rs = self.resistance()
+        return 0.0 if rs == float('inf') else self.vc * self.rl / (rs + self.rl)
 
     def calibrate(self, r0=None):
         """Store R0. With no argument, take the current Rs as R0. The datasheet defines R0 in

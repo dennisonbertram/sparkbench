@@ -491,11 +491,6 @@
    "family": "analog"
   },
   {
-   "mpn": "Turbidity sensor",
-   "form": "turbidity sensor module (analog out)",
-   "family": "analog"
-  },
-  {
    "mpn": "Flame sensor",
    "form": "KY-026 flame sensor module (AO + DO)",
    "family": "analog"
@@ -2284,6 +2279,46 @@
    "mpn": "Adafruit anemometer",
    "form": "Adafruit anemometer wind speed sensor (analog 0.4-2 V, product 1733)",
    "family": "analog"
+  },
+  {
+   "mpn": "SK6812 RGBW strip",
+   "form": "SK6812 RGBW addressable LED strip (60/m, 5 V)",
+   "family": "addressable-led"
+  },
+  {
+   "mpn": "APA102 strip",
+   "form": "APA102 / DotStar addressable LED strip (SPI, 60/m)",
+   "family": "addressable-led"
+  },
+  {
+   "mpn": "SK9822",
+   "form": "SK9822 addressable LED strip (APA102-compatible)",
+   "family": "addressable-led"
+  },
+  {
+   "mpn": "TM1638 LED&KEY",
+   "form": "TM1638 LED&KEY module (8 digits, 8 LEDs, 8 keys)",
+   "family": "segment-display"
+  },
+  {
+   "mpn": "Nokia 5110",
+   "form": "Nokia 5110 PCD8544 84x48 LCD module",
+   "family": "tft-display"
+  },
+  {
+   "mpn": "MAX98357A",
+   "form": "MAX98357A I2S class-D amplifier breakout (Adafruit #3006)",
+   "family": "i2s-amp"
+  },
+  {
+   "mpn": "UDA1334A",
+   "form": "Adafruit I2S stereo decoder UDA1334A breakout",
+   "family": "i2s-amp"
+  },
+  {
+   "mpn": "PCM5102A",
+   "form": "PCM5102A I2S DAC module (line out)",
+   "family": "i2s-amp"
   }
  ],
  "later": [
@@ -2292,8 +2327,8 @@
    "why": "SPI storage: filesystem model"
   },
   {
-   "mpn": "MAX98357A",
-   "why": "I2S audio amp: audio model"
+   "mpn": "Turbidity sensor",
+   "why": "held back: its analog output reaches 4.5 V, so a 3.3 V board needs a divider, and the SEN0189 board's output source resistance isn't documented, so readings through the divider can't be modelled accurately"
   }
  ]
 }

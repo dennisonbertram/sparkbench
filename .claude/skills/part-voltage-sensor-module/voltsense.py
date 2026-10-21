@@ -11,13 +11,17 @@ from machine import ADC, Pin
 
 
 class VoltageSensor:
-    def __init__(self, pin, r1=30000, r2=7500, vref=3.3, samples=16):
+    def __init__(self, pin, r1=30000, r2=7500, vref=3.3, samples=16, div=None):
         self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)
         try:
             self.adc.atten(ADC.ATTN_11DB)  # ESP32: widest input range; other ports have no atten()
         except AttributeError:
             pass
         self.ratio = (r1 + r2) / r2  # 5.0 for 30k / 7.5k
+        if div:
+            # A (top, bottom) divider from S to the ADC pin sits in parallel with R2 and scales the ADC reading.
+            r2l = r2 * (div[0] + div[1]) / (r2 + div[0] + div[1])
+            self.ratio = (r1 + r2l) / r2l * (div[0] + div[1]) / div[1]
         self.vref = vref  # ADC reference for ports without read_uv() (Pico: the 3.3 V rail)
         self.samples = samples
 

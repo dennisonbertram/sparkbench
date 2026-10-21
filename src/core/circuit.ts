@@ -264,7 +264,7 @@ export class ElectricalModel {
           const cs = customSpec(part.type);
           if (cs?.sim.kind === 'analog-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 1000));
           for (const o of cs?.sim.kind === 'analog-sensor' ? (cs.sim.analogOutputs ?? []) : []) els[`out:${o.pin}`] = c.add(new VSource(`${id}.out.${o.pin}`, n(o.pin), g, 0, 1000));
-          if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
+          if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = cs.sim.openDrain ? c.add(new Switch(`${id}.out`, n(cs.sim.outputPin), g, false)) : c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
           if (cs?.sim.kind === 'ir-receiver' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
           // Pulse outputs: push-pull, or open collector (pulls low only; the high comes from a pull-up).
           if (cs?.sim.kind === 'pulse-sensor' && cs.sim.outputPin) els.out = cs.sim.pulse?.openDrain ? c.add(new Switch(`${id}.out`, n(cs.sim.outputPin), g, false)) : c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
@@ -281,6 +281,13 @@ export class ElectricalModel {
             if (cs.sim.i2sAmp.sdPullUpOhms) els.sdpu = c.add(new Resistor(`${id}.sdpu`, n(cs.sim.i2sAmp.sdPin), n(vccPin), cs.sim.i2sAmp.sdPullUpOhms));
           }
           if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'tm1638') els.tmdio = c.add(new Switch(`${id}.tmdio`, n('DIO'), g, false));
+          // Serial lines the module drives (a UART TX idles high; SPI MISO is high-impedance until selected) and the
+          // pull-ups a breakout carries to its own supply.
+          for (const p of cs?.pins ?? []) {
+            if (p.fn === 'uart.tx') els[`tx:${p.name}`] = c.add(new VSource(`${id}.tx.${p.name}`, n(p.name), g, 0, 200));
+            if (p.fn === 'spi.miso') els[`miso:${p.name}`] = c.add(new VSource(`${id}.miso.${p.name}`, n(p.name), g, 0, 1e9));
+            if (p.boardPullUp) els[`bpu:${p.name}`] = c.add(new Resistor(`${id}.bpu.${p.name}`, n(vccPin), n(p.name), p.boardPullUp));
+          }
           if (cs?.sim.kind === 'shift-register' && cs.sim.shift?.type === '165' && cs.sim.shift.serialOut) els.shout = c.add(new VSource(`${id}.shout`, n(cs.sim.shift.serialOut), g, 0, 200));
           if (cs?.sim.kind === 'hx711' && cs.sim.outputPin && cs.sim.clockPin) {
             els.hxout = c.add(new VSource(`${id}.hxout`, n(cs.sim.outputPin), g, 0, 200));
@@ -356,7 +363,17 @@ export class ElectricalModel {
         if (cs.sim.digitalOutputs?.length) {
           const vcc0 = this.moduleSupply(partId);
           const on = vcc0 >= (cs.vmin ?? 2.7) * 0.85;
-          for (const d of cs.sim.digitalOutputs) (els[`dout:${d.pin}`] as VSource).volts = on && (st[d.control] > 0) === (d.activeHigh ?? true) ? vcc0 : 0;
+          for (const d of cs.sim.digitalOutputs) (els[`dout:${d.pin}`] as VSource).volts = on && (st[d.control] > 0) === (d.activeHigh ?? true) ? Math.min(vcc0, cs.pins.find((p) => p.name === d.pin)?.levelV ?? vcc0) : 0;
+        }
+        for (const p of cs.pins) {
+          const miso = els[`miso:${p.name}`] as VSource | undefined;
+          if (miso) {
+            miso.volts = 0;
+            miso.rs = 1e9; // high-impedance (the simulator answers SPI reads itself)
+          }
+          if (p.fn !== 'uart.tx' || !els[`tx:${p.name}`]) continue;
+          const vcc0 = this.moduleSupply(partId);
+          (els[`tx:${p.name}`] as VSource).volts = vcc0 >= (cs.vmin ?? 2.7) * 0.85 ? Math.min(vcc0, p.levelV ?? vcc0) : 0;
         }
         if (cs.sim.dac) {
           // DAC outputs: VDD × code/4096, or the internal 2.048 V reference × gain (never above VDD); off when powered down.
@@ -384,7 +401,9 @@ export class ElectricalModel {
           const hi = s.max ?? 100;
           const f = hi === lo ? 0 : (st.value - lo) / (hi - lo);
           const v = (s.vAtMin ?? 0) + f * ((s.vAtMax ?? vcc) - (s.vAtMin ?? 0));
-          (els.out as VSource).volts = powered ? Math.max(0, Math.min(vcc, v)) : 0;
+          const out = els.out as VSource;
+          out.volts = powered ? Math.max(0, Math.min(vcc, v)) : 0;
+          out.rs = s.rl ? Math.max(1, s.rl * (1 - Math.min(1, Math.max(0, out.volts / (vcc || 1))))) : (s.outputOhms ?? 1000);
           for (const o of s.analogOutputs ?? []) {
             const c = s.controls?.find((x) => x.key === o.control);
             const f2 = c && c.max !== c.min ? ((st[o.control] ?? c.default ?? c.min) - c.min) / (c.max - c.min) : 0;
@@ -392,7 +411,8 @@ export class ElectricalModel {
           }
         } else if (s.kind === 'digital-sensor') {
           const high = (st.active > 0) === (s.activeHigh ?? true);
-          (els.out as VSource).volts = powered && high ? vcc : 0;
+          if (s.openDrain) (els.out as Switch).set(powered && !high);
+          else (els.out as VSource).volts = powered && high ? Math.min(vcc, cs.pins.find((p) => p.name === s.outputPin)?.levelV ?? vcc) : 0;
         } else if (s.kind === 'pulse-sensor') {
           // The simulator steps pulseLevel through the square wave; an open-collector output only pulls low.
           const high = !powered || st.pulseLevel > 0;
@@ -412,6 +432,7 @@ export class ElectricalModel {
         break;
       }
     }
+    if (this.worstCase.has(partId)) this.applyWorstCase(partId, els);
   }
 
   setPinMode(gpio: number, mode: PinMode) {
@@ -439,6 +460,47 @@ export class ElectricalModel {
     this.dirty = true;
   }
 
+  /** Parts whose outputs are held at the highest level they can reach (for the signal-level check). */
+  private worstCase = new Set<string>();
+  /** Run fn with every output of these datasheet parts at its highest level: analog outputs at the top of their range,
+   * digital and serial outputs high, open-collector outputs released, SPI MISO driven. */
+  withOutputsHigh<T>(partIds: string[], fn: () => T): T {
+    for (const id of partIds) this.worstCase.add(id);
+    for (const id of partIds) this.applyState(id);
+    this.dirty = true;
+    try {
+      return fn();
+    } finally {
+      for (const id of partIds) this.worstCase.delete(id);
+      for (const id of partIds) this.applyState(id);
+      this.dirty = true;
+    }
+  }
+  private applyWorstCase(partId: string, els: Record<string, Element>) {
+    const cs = customSpec(this.project.parts.find((p) => p.id === partId)?.type ?? '');
+    if (!cs) return;
+    const s = cs.sim;
+    const vcc = this.moduleSupply(partId);
+    const powered = s.selfPowered || vcc >= (cs.vmin ?? 2.7) * 0.85;
+    const clamp = (v: number) => (s.selfPowered ? Math.max(0, v) : Math.max(0, Math.min(vcc, v)));
+    for (const [key, el] of Object.entries(els)) {
+      if (el instanceof Switch && key === 'out') el.set(false); // open collector released: the pull-up wins
+      if (!(el instanceof VSource)) continue;
+      const pin = key.includes(':') ? key.slice(key.indexOf(':') + 1) : undefined;
+      const level = pin ? (cs.pins.find((p) => p.name === pin)?.levelV ?? vcc) : vcc;
+      if (key === 'out' && s.kind === 'analog-sensor') el.volts = powered ? clamp(Math.max(s.vAtMin ?? 0, s.vAtMax ?? vcc)) : 0;
+      else if (key.startsWith('out:')) {
+        const o = s.analogOutputs?.find((x) => x.pin === pin);
+        el.volts = powered && o ? clamp(Math.max(o.vAtMin, o.vAtMax)) : 0;
+      } else if (key === 'out' || key === 'shout' || key === 'hxout' || key.startsWith('dout:') || key.startsWith('dac:') || key.startsWith('tx:')) {
+        const lv = key === 'out' && s.outputPin ? (cs.pins.find((p) => p.name === s.outputPin)?.levelV ?? vcc) : level;
+        el.volts = powered ? Math.min(vcc, lv) : 0;
+      } else if (key.startsWith('miso:')) {
+        el.volts = powered ? Math.min(vcc, level) : 0;
+        el.rs = 200;
+      }
+    }
+  }
   /** Drive a module output pin (echo, etc.). */
   setModuleOutput(partId: string, el: string, volts: number) {
     const e = this.partEls.get(partId)?.[el] as VSource | undefined;
@@ -561,10 +623,30 @@ export class ElectricalModel {
   gpiosOnNet(partId: string, pin: string): number[] {
     const net = this.netOf.get(pinKey({ part: partId, pin }));
     if (!net || !this.board || !this.boardPartId) return [];
+    const direct = this.netGpios(net);
+    if (direct.length) return direct;
+    // A 5 V output that reaches its pin through a resistor divider (top resistor to the pin, bottom to GND) is still
+    // that pin's signal.
+    const out: number[] = [];
+    for (const r of net.pins) {
+      const res = this.project.parts.find((p) => p.id === r.part && p.type === 'resistor');
+      if (!res) continue;
+      const other = this.netOf.get(pinKey({ part: res.id, pin: r.pin === '1' ? '2' : '1' }));
+      if (!other || other === net || other === this.groundNet) continue;
+      const toGround = other.pins.some((q) => {
+        if (q.part === res.id) return false;
+        const rb = this.project.parts.find((p) => p.id === q.part && p.type === 'resistor');
+        return !!rb && this.netOf.get(pinKey({ part: rb.id, pin: q.pin === '1' ? '2' : '1' })) === this.groundNet;
+      });
+      if (toGround) out.push(...this.netGpios(other));
+    }
+    return out;
+  }
+  private netGpios(net: Net): number[] {
     const out: number[] = [];
     for (const r of net.pins) {
       if (r.part !== this.boardPartId) continue;
-      const bp = this.board.pins.find((p) => p.name === r.pin);
+      const bp = this.board!.pins.find((p) => p.name === r.pin);
       if (bp?.gpio !== undefined) out.push(bp.gpio);
     }
     return out;

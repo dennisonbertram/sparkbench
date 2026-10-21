@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "3 pins wired; MiCS-5524 CO / alcohol / VOC gas sensor breakout needs at least 4.9 V, so it is powered from 5 V. U2.Ao → D32 (GPIO32) — an analog-capable pin. Added the mics5524.py driver written from the datasheet."
+        "detail": "3 pins wired; MiCS-5524 CO / alcohol / VOC gas sensor breakout needs at least 4.9 V, so it is powered from 5 V. U2.Ao → D32 (GPIO32) — an analog-capable pin. Added a 33 kΩ / 68 kΩ divider on Ao: it swings to 5 V, and the D32 pin takes 3.3 V at most. Added the mics5524.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "10 build steps"
+        "detail": "15 build steps"
       },
       {
         "stage": "simulator",
@@ -32,7 +32,7 @@
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×66.5 mm, DRC clean"
+        "detail": "46×80 mm, DRC clean"
       }
     ],
     "pico": [
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "3 pins wired; MiCS-5524 CO / alcohol / VOC gas sensor breakout needs at least 4.9 V, so it is powered from 5 V. U2.Ao → GP28 (GPIO28) — an analog-capable pin. Added the mics5524.py driver written from the datasheet."
+        "detail": "3 pins wired; MiCS-5524 CO / alcohol / VOC gas sensor breakout needs at least 4.9 V, so it is powered from 5 V. U2.Ao → GP28 (GPIO28) — an analog-capable pin. Added a 33 kΩ / 68 kΩ divider on Ao: it swings to 5 V, and the GP28 pin takes 3.3 V at most. Added the mics5524.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "10 build steps"
+        "detail": "16 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "C3659348 MICS-5524 (893 in stock)"
     }
   ],
-  "checkedAt": "2026-10-21T12:20:51.665Z"
+  "checkedAt": "2026-10-21T16:24:27.844Z"
 }

@@ -1,18 +1,18 @@
 {
-  "type": "custom-turbidity-sensor",
-  "mpn": "SEN0189",
+  "type": "custom-yf-s201",
+  "mpn": "YF-S201",
   "pass": true,
   "boards": {
     "esp32": [
       {
         "stage": "spec",
         "status": "pass",
-        "detail": "3 pins, analog"
+        "detail": "3 pins, digital-in"
       },
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "3 pins wired; Turbidity sensor module (analog) needs at least 5 V, so it is powered from 5 V. U2.A/D → D32 (GPIO32) — an analog-capable pin. Added the turbidity.py driver written from the datasheet."
+        "detail": "3 pins wired; YF-S201 water flow sensor needs at least 4.5 V, so it is powered from 5 V. U2.OUT → D25 (GPIO25). Added a 10 kΩ / 20 kΩ divider on OUT: it swings to 5 V, and the D25 pin takes 3.3 V at most. Added a 4.7 kΩ pull-up resistor from OUT to VIN, as the datasheet requires. Added the yfs201.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,29 +22,29 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "10 build steps"
+        "detail": "17 build steps"
       },
       {
         "stage": "simulator",
         "status": "pass",
-        "detail": "Converts the A/D voltage set on the slider to NTU with DFRobot's curve: passes"
+        "detail": "Reports 16 L/min of water flow: passes"
       },
       {
         "stage": "circuit-board",
         "status": "pass",
-        "detail": "50.5×66.5 mm, DRC clean"
+        "detail": "46×77.5 mm, DRC clean"
       }
     ],
     "pico": [
       {
         "stage": "spec",
         "status": "pass",
-        "detail": "3 pins, analog"
+        "detail": "3 pins, digital-in"
       },
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "3 pins wired; Turbidity sensor module (analog) needs at least 5 V, so it is powered from 5 V. U2.A/D → GP28 (GPIO28) — an analog-capable pin. Added the turbidity.py driver written from the datasheet."
+        "detail": "3 pins wired; YF-S201 water flow sensor needs at least 4.5 V, so it is powered from 5 V. U2.OUT → GP2 (GPIO2). Added a 10 kΩ / 20 kΩ divider on OUT: it swings to 5 V, and the GP2 pin takes 3.3 V at most. Added a 4.7 kΩ pull-up resistor from OUT to VBUS, as the datasheet requires. Added the yfs201.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,12 +54,12 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "10 build steps"
+        "detail": "17 build steps"
       },
       {
         "stage": "simulator",
         "status": "pass",
-        "detail": "Converts the A/D voltage set on the slider to NTU with DFRobot's curve: passes"
+        "detail": "Reports 16 L/min of water flow: passes"
       }
     ]
   },
@@ -75,5 +75,5 @@
       "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
     }
   ],
-  "checkedAt": "2026-10-21T07:01:12.166Z"
+  "checkedAt": "2026-10-21T16:29:05.953Z"
 }

@@ -12,7 +12,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "4 pins wired; pH sensor module (PH-4502C with BNC probe) needs at least 4.8 V, so it is powered from 5 V. U2.Po → D32 (GPIO32) — an analog-capable pin. Added the ph4502c.py driver written from the datasheet."
+        "detail": "4 pins wired; pH sensor module (PH-4502C with BNC probe) needs at least 4.8 V, so it is powered from 5 V. U2.Po → D32 (GPIO32) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on Po: it swings to 5 V, and the D32 pin takes 3.3 V at most. Added the ph4502c.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -22,7 +22,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "12 build steps"
       },
       {
         "stage": "simulator",
@@ -44,7 +44,7 @@
       {
         "stage": "wiring",
         "status": "pass",
-        "detail": "4 pins wired; pH sensor module (PH-4502C with BNC probe) needs at least 4.8 V, so it is powered from 5 V. U2.Po → GP28 (GPIO28) — an analog-capable pin. Added the ph4502c.py driver written from the datasheet."
+        "detail": "4 pins wired; pH sensor module (PH-4502C with BNC probe) needs at least 4.8 V, so it is powered from 5 V. U2.Po → GP28 (GPIO28) — an analog-capable pin. Added a 10 kΩ / 20 kΩ divider on Po: it swings to 5 V, and the GP28 pin takes 3.3 V at most. Added the ph4502c.py driver written from the datasheet."
       },
       {
         "stage": "design-checks",
@@ -54,7 +54,7 @@
       {
         "stage": "breadboard",
         "status": "pass",
-        "detail": "7 build steps"
+        "detail": "12 build steps"
       },
       {
         "stage": "simulator",
@@ -75,5 +75,5 @@
       "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
     }
   ],
-  "checkedAt": "2026-10-21T10:56:40.270Z"
+  "checkedAt": "2026-10-21T16:26:45.344Z"
 }

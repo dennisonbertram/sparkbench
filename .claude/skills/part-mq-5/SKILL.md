@@ -53,7 +53,7 @@ On the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry
 ```python
 from mq5 import MQ5
 import time
-sensor = MQ5(32, 25, rl=1000, divider=1.0)   # AO GPIO, DO GPIO; divider=1.5 with a 10k/20k divider
+sensor = MQ5(32, 25, rl=1000, div=(10000, 20000))   # AO GPIO, DO GPIO; div = the 10k/20k divider on AO
 time.sleep(180)                               # warm-up
 sensor.calibrate()                            # R0 = Rs now (in your reference gas or air)
 while True:
@@ -69,6 +69,12 @@ while True:
 - **Temperature and humidity** change Rs/R0 noticeably (datasheet Fig. 4): set alarm points with that in mind.
 - **Oxygen**: the datasheet's figures assume 21 % O2; low oxygen changes sensitivity.
 - **Not a safety device**: do not use it as your only gas-leak alarm.
+
+
+## On a 3.3 V board
+- **AO** can rise above 3.3 V, so on an ESP32 or Pico it goes to the GPIO through a divider: 10 kΩ from AO to the pin, 20 kΩ from the pin to GND (Sparkbench adds both resistors). The pin then sees 0.67 × the output voltage, so multiply ADC readings by 1.5 (the driver's `divider` / `div` argument does this).
+- The divider also loads the board's 1 kΩ load resistor (RL ∥ 30 kΩ); pass `div=(top, bottom)` to the driver so Rs and VRL come out right.
+- DO is pulled up to the module's 5 V, so Sparkbench leaves it unconnected and the example compares the AO reading in code. If you wire it, use a level shifter (or the divider above) and check it still reads high.
 
 ## Datasheet
 https://files.seeedstudio.com/wiki/Grove-Gas_Sensor-MQ5/res/MQ-5.pdf
