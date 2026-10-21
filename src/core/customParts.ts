@@ -118,7 +118,7 @@ export interface I2CMeasure {
 /** One field of a command response, packed MSB-first into the reply's bit stream. */
 /** Bits a reply occupies (checksums are 8 bits except sum16). */
 export function segBits(segs: ResponseSegment[]): number {
-  return segs.reduce((n, b) => n + ('crc' in b ? (b.crc === 'sum16' ? 16 : 8) : b.bits), 0);
+  return segs.reduce((n, b) => n + ('crc' in b ? (b.crc === 'sum16' || b.crc === 'neg16' ? 16 : 8) : b.bits), 0);
 }
 
 export type ResponseSegment =
@@ -127,8 +127,8 @@ export type ResponseSegment =
   /** CRC-8 over the previous `over` bytes, poly 0x31: 'sensirion' starts at 0xFF (SHT3x/4x, SCD4x, AHT20), 'htu21d' at 0x00 (HTU21D, Si7021). */
   | { crc: 'sensirion' | 'htu21d'; over: number }
   /** Checksums of serial sensors over the previous `over` bytes: 'sum16' = 16-bit sum, big-endian (PMS5003);
-   * 'mhz19' = 0xFF − (sum of bytes after the first) + 1 (MH-Z19, SDS011-style). */
-  | { crc: 'sum16' | 'mhz19' | 'sum8'; over: number };
+   * 'mhz19' = 0xFF − (sum of bytes after the first) + 1 (MH-Z19, SDS011-style); 'neg16' = −sum as 16 bits, big-endian (DFPlayer). */
+  | { crc: 'sum16' | 'mhz19' | 'sum8' | 'neg16'; over: number };
 
 export interface CustomPartSpec {
   type: string; // "custom-bme280"
