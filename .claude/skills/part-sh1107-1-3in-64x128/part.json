@@ -1,9 +1,9 @@
 {
   "type": "custom-sh1107-1-3in-64x128",
-  "name": "SH1107 1.3\" 64×128 OLED module (Waveshare (C), SPI)",
+  "name": "SH1107 1.3\" 64\u00d7128 OLED module (Waveshare (C), SPI)",
   "mpn": "SH1107 1.3in 64x128",
   "category": "display",
-  "description": "1.3 inch monochrome OLED with a 64×128 glass (used as 128 wide × 64 tall) driven by a Sino Wealth SH1107 controller (128×128 RAM, the glass uses COM lines from 0x60). The module ships in 4-wire SPI mode (I2C after moving a resistor on the back), has a TPS61040 boost for the 9 V panel supply and NO regulator: VCC goes straight to the SH1107 logic supply, so run it from 3.3 V only. Sold as: Waveshare 1.3inch OLED Module (C), SKU 18179 (7-pin header VCC, GND, DIN, CLK, CS, DC, RST).",
+  "description": "1.3 inch monochrome OLED with a 64\u00d7128 glass (used as 128 wide \u00d7 64 tall) driven by a Sino Wealth SH1107 controller (128\u00d7128 RAM, the glass uses COM lines from 0x60). The module ships in 4-wire SPI mode (I2C after moving a resistor on the back), has a TPS61040 boost for the 9 V panel supply and NO regulator: VCC goes straight to the SH1107 logic supply, so run it from 3.3 V only. Sold as: Waveshare 1.3inch OLED Module (C), SKU 18179 (7-pin header VCC, GND, DIN, CLK, CS, DC, RST).",
   "eli5": "A small, sharp black-and-white screen that your board draws text and pictures on over a few SPI wires.",
   "refPrefix": "DS",
   "interface": "spi",
@@ -143,6 +143,7 @@
     "verifiedSources": [
       "https://www.displayfuture.com/Display/datasheet/controller/SH1107.pdf",
       "https://www.waveshare.com/wiki/1.3inch_OLED_Module_(C)"
-    ]
+    ],
+    "caveat": "The picture's mounting orientation in simulation (sim.flip) comes from the vendor driver, not from a real panel; on real hardware the image may appear mirrored or rotated 180\u00b0 and need the driver's rotate/flip option."
   }
 }

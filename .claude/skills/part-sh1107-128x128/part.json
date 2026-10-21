@@ -1,9 +1,9 @@
 {
   "type": "custom-sh1107-128x128",
-  "name": "SH1107 1.12\" 128×128 OLED display (I2C)",
+  "name": "SH1107 1.12\" 128\u00d7128 OLED display (I2C)",
   "mpn": "SH1107",
   "category": "display",
-  "description": "1.12 inch monochrome 128×128 white OLED driven by a Sino Wealth SH1107 controller over I2C at address 0x3D (0x3C with the A0 jumper bridged or A0 tied to GND). The board has a 3.3 V regulator, a 12 V boost converter for the panel and level shifting, so it runs from 3–5 V. It also has SPI (close jumper J1); this part models the default I2C mode. Sold as: Adafruit Monochrome 1.12\" 128x128 OLED Graphic Display (SH1107, STEMMA QT, product #5297), 8-pin header numbered as in Adafruit's Eagle board file (JP2 pad 1 = SDA): 1 Data (SDA), 2 Clk (SCL), 3 DC (A0), 4 Rst, 5 CS, 6 3Vo, 7 VIN, 8 GND; the silkscreen reads GND ... Data left to right, i.e. pin 8 to pin 1.",
+  "description": "1.12 inch monochrome 128\u00d7128 white OLED driven by a Sino Wealth SH1107 controller over I2C at address 0x3D (0x3C with the A0 jumper bridged or A0 tied to GND). The board has a 3.3 V regulator, a 12 V boost converter for the panel and level shifting, so it runs from 3\u20135 V. It also has SPI (close jumper J1); this part models the default I2C mode. Sold as: Adafruit Monochrome 1.12\" 128x128 OLED Graphic Display (SH1107, STEMMA QT, product #5297), 8-pin header numbered as in Adafruit's Eagle board file (JP2 pad 1 = SDA): 1 Data (SDA), 2 Clk (SCL), 3 DC (A0), 4 Rst, 5 CS, 6 3Vo, 7 VIN, 8 GND; the silkscreen reads GND ... Data left to right, i.e. pin 8 to pin 1.",
   "eli5": "A small square black-and-white screen with 128 by 128 dots that your board can draw text and pictures on using just two wires.",
   "refPrefix": "DS",
   "interface": "i2c",
@@ -151,6 +151,7 @@
       "https://www.displayfuture.com/Display/datasheet/controller/SH1107.pdf",
       "https://learn.adafruit.com/adafruit-monochrome-1-12-in-128x128-oled/pinouts",
       "https://www.adafruit.com/product/5297"
-    ]
+    ],
+    "caveat": "The picture's mounting orientation in simulation (sim.flip) comes from the vendor driver, not from a real panel; on real hardware the image may appear mirrored or rotated 180\u00b0 and need the driver's rotate/flip option."
   }
 }
