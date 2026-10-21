@@ -41,7 +41,7 @@ export interface PartVisual {
   ma?: number; // LED current
   rgb?: [number, number, number];
   pixels?: number[]; // flat r,g,b
-  oled?: number[]; // 1024 bytes GDDRAM
+  oled?: number[]; // GDDRAM pages × 128 columns (1024 bytes; 2048 for an SH1107's 128 rows)
   oledOn?: boolean;
   /** Visible panel size when it isn't 128×64 (the picture sits at the top left of oled). */
   oledSize?: [number, number];
@@ -154,7 +154,7 @@ export class SimEngine {
       if (cs?.sim.kind === 'segment-display' && cs.sim.protocol === 'ht16k33') this.devices.push({ dev: new HT16K33Device(part.id, cs.i2cAddress ?? 0x70), part });
       // An SPI OLED gets no I2C address (-1 never answers a scan); spiWrite feeds it.
       if (cs?.sim.kind === 'char-lcd') this.devices.push({ dev: new Lcd1602Device(part.id, { addr: cs.i2cAddress ?? 0x27, cols: cs.sim.lcd?.cols, rows: cs.sim.lcd?.rows, pins: cs.sim.lcd?.pins }), part });
-      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.sim.bus === 'spi' ? -1 : (cs.i2cAddress ?? 0x3c), controller: cs.sim.controller === 'sh1106' ? 'sh1106' : 'ssd1306', rows: cs.sim.rows, width: cs.sim.width, colOffset: cs.sim.colOffset }), part });
+      if (cs?.sim.kind === 'oled-display') this.devices.push({ dev: new SSD1306Device(part.id, { addr: cs.sim.bus === 'spi' ? -1 : (cs.i2cAddress ?? 0x3c), controller: cs.sim.controller === 'sh1106' || cs.sim.controller === 'sh1107' ? cs.sim.controller : 'ssd1306', rows: cs.sim.rows, width: cs.sim.width, colOffset: cs.sim.colOffset }), part });
       if (cs?.sim.kind === 'i2c-device')
         for (const sd of cs.sim.subDevices ?? [])
           this.devices.push({ part, dev: new GenericI2CDevice(part.id, sd.i2cAddress, sd.registers ?? {}, sd.measures ?? [], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, sd.responses ?? [], { regWidth: sd.regWidth, autoIncrementBit7: sd.autoIncrementBit7, constants: sd.constants, commandLatch: sd.commandLatch, promCrc4: sd.promCrc4 }) });
@@ -164,7 +164,7 @@ export class SimEngine {
           this.devices.push({ part, dev: { addr: al.addr, partId: part.id, write: () => {}, read: (n: number) => Array.from({ length: n }, () => owner()?.peek(Number(al.reg)) ?? 0) } as unknown as I2CDevice });
         }
       if (cs?.sim.kind === 'i2c-device' && cs.i2cAddress !== undefined)
-        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, fifo: cs.sim.fifo, selfClearing: cs.sim.selfClearing, wordOrder: cs.sim.wordOrder, pec: cs.sim.pec, commands: cs.sim.commands, writable: cs.sim.writable, eventFifo: cs.sim.eventFifo, dac: cs.sim.dac, onDac: (ch, d) => {
+        this.devices.push({ dev: new GenericI2CDevice(part.id, cs.i2cAddress, cs.sim.registers ?? {}, [...(cs.sim.measure ? [cs.sim.measure] : []), ...(cs.sim.measures ?? [])], (k) => (this.model.states.get(part.id) as any)?.[k] ?? 0, cs.sim.responses ?? [], { regWidth: cs.sim.regWidth, addrWidth: cs.sim.addrWidth, autoIncrementBit7: cs.sim.autoIncrementBit7, pointerless: cs.sim.pointerless, pointerlessBytes: cs.sim.pointerlessBytes, readFromZero: cs.sim.readFromZero, inputBits: cs.sim.inputBits, rtc: cs.sim.rtc, nowMs: () => this.timeUs / 1000, constants: cs.sim.constants, commandLatch: cs.sim.commandLatch, promCrc4: cs.sim.promCrc4, fifo: cs.sim.fifo, selfClearing: cs.sim.selfClearing, wordOrder: cs.sim.wordOrder, pec: cs.sim.pec, commands: cs.sim.commands, writable: cs.sim.writable, eventFifo: cs.sim.eventFifo, blockPixels: cs.sim.blockPixels, dac: cs.sim.dac, onDac: (ch, d) => {
           // The circuit model turns each channel's settings into the voltage on its pin.
           const pin = cs.sim.dac?.pins[ch];
           if (!pin) return;
@@ -326,10 +326,34 @@ export class SimEngine {
   }
   private pulseHz(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): number {
     const p = cs.sim.pulse!;
-    if (!this.model.modulePowered(part.id)) return 0;
-    const v = (this.model.states.get(part.id) as any)?.value ?? 0;
-    return Math.max(0, Math.min(p.maxHz ?? 2000, v * p.hzPerUnit + (p.offsetHz ?? 0)));
+    // The input levels only change when the program writes a pin; the edge loop asks many times per step.
+    const hit = this.pulseHzCache.get(part.id);
+    if (hit && hit.t === this.timeUs) return hit.hz;
+    let hz = 0;
+    if (this.model.modulePowered(part.id)) {
+      const st = (this.model.states.get(part.id) as any) ?? {};
+      const sel = p.select;
+      let key = 'value';
+      let factor = 1;
+      if (sel) {
+        const vcc = this.model.moduleSupply(part.id);
+        const level = (pin: string) => (this.model.gpiosOnNet(part.id, pin).length ? (this.model.pinVoltage(part.id, pin) > vcc / 2 ? 1 : 0) : (sel.defaults?.[pin] ?? 0));
+        const code = (pins: string[]) => pins.reduce((n, pin) => n * 2 + level(pin), 0);
+        if (sel.channel) key = sel.channel.controls[code(sel.channel.pins)];
+        if (sel.scale) factor = sel.scale.factors[code(sel.scale.pins)];
+        const on = !sel.enable || level(sel.enable.pin) === (sel.enable.activeLow ? 0 : 1);
+        this.model.setPartState(part.id, 'pulseHiZ', on ? 0 : 1);
+        if (!on) factor = 0;
+      }
+      const raw = ((st[key] ?? 0) * p.hzPerUnit + (p.offsetHz ?? 0)) * factor;
+      const max = p.maxHz ?? 2000;
+      if (raw > max) this.warn(`pulse-max-${part.id}`, 'warning', `${part.ref}: the ${cs.mpn} would output ${Math.round(raw)} Hz, more than the ${max} Hz the simulator steps edge by edge, so it is held at ${max} Hz.${sel?.scale ? ' Pick a lower output scaling.' : ''}`, [part.id]);
+      hz = Math.max(0, Math.min(max, raw));
+    }
+    this.pulseHzCache.set(part.id, { t: this.timeUs, hz });
+    return hz;
   }
+  private pulseHzCache = new Map<string, { t: number; hz: number }>();
   /** When the pulse output changes next (µs), or Infinity while it isn't pulsing. */
   private pulseNext(part: PartInstance, cs: NonNullable<ReturnType<typeof customSpec>>): number {
     const f = this.pulseHz(part, cs);
@@ -1501,6 +1525,11 @@ export class SimEngine {
               v.active = Object.values(v.inputs).some(Boolean);
             }
           }
+          if (cs?.sim.kind === 'i2c-device' && cs.sim.blockPixels) {
+            const d = this.devices.find((x) => x.part.id === part.id && x.dev instanceof GenericI2CDevice && x.dev.addr === cs.i2cAddress)?.dev;
+            v.powered = m.modulePowered(part.id);
+            v.pixels = v.powered && d instanceof GenericI2CDevice ? d.blockPixels() : [];
+          }
           if (cs?.sim.kind === 'shift-register' && cs.sim.shift?.type === '595') {
             v.powered = m.modulePowered(part.id);
             const st = this.shiftRegs.get(part.id);
@@ -1587,7 +1616,7 @@ export class SimEngine {
             const d = this.devices.find((x) => x.part.id === part.id)?.dev;
             v.powered = m.modulePowered(part.id);
             if (d instanceof SSD1306Device) {
-              v.oled = v.powered ? d.visibleRam() : new Array(1024).fill(0);
+              v.oled = v.powered ? d.visibleRam() : new Array(d.sh1107 ? 2048 : 1024).fill(0);
               v.oledOn = v.powered && d.on;
               v.oledSize = [d.width, d.rows];
             }

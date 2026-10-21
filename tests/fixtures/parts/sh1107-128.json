@@ -1,0 +1,80 @@
+{
+ "type": "custom-sh1107-128-test",
+ "name": "sh1107-128 test",
+ "mpn": "SH1107 128x128",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "interface": "i2c",
+ "i2cAddress": 60,
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 5.5,
+ "currentMa": 20,
+ "priceUsd": 8,
+ "supplierQuery": "SH1107 OLED",
+ "sim": {
+  "kind": "oled-display",
+  "controller": "sh1107",
+  "rows": 128,
+  "width": 128
+ },
+ "driver": {
+  "filename": "sh1107.py",
+  "code": "# Minimal SH1107 driver following the SH1107 datasheet command table (page addressing mode)\nfrom micropython import const\nimport framebuf\n\nclass SH1107_I2C(framebuf.FrameBuffer):\n    def __init__(self, width, height, i2c, addr=0x3C, col_offset=0):\n        self.width = width\n        self.height = height\n        self.i2c = i2c\n        self.addr = addr\n        self.col_offset = col_offset\n        self.pages = height // 8\n        self.buffer = bytearray(self.pages * width)\n        super().__init__(self.buffer, width, height, framebuf.MONO_VLSB)\n        for c in (b'\\xae', b'\\xdc\\x00', b'\\x81\\x2f', b'\\x20', b'\\xa0', b'\\xc0', bytes([0xa8, height - 1]),\n                  b'\\xd3\\x00', b'\\xd5\\x51', b'\\xd9\\x22', b'\\xdb\\x35', b'\\xb0', b'\\xa4', b'\\xa6', b'\\xaf'):\n            self.write_cmd(c)\n        self.fill(0)\n        self.show()\n\n    def write_cmd(self, c):\n        self.i2c.writeto(self.addr, b'\\x00' + c)\n\n    def show(self):\n        for p in range(self.pages):\n            self.write_cmd(bytes([0xb0 | p, self.col_offset & 0x0f, 0x10 | (self.col_offset >> 4)]))\n            self.i2c.writeto(self.addr, b'\\x40' + self.buffer[p * self.width:(p + 1) * self.width])\n"
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\nfrom sh1107 import SH1107_I2C\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\noled = SH1107_I2C(128, 128, i2c, col_offset=0)\noled.text('TOP', 0, 0)\noled.text('BOTTOM', 0, 120)\noled.show()\nprint('drawn')\n",
+  "test": {
+   "id": "t",
+   "title": "screen",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "drawn",
+     "within": 4000
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "BOTTOM",
+     "within": 3000
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "TOP",
+     "within": 3000
+    }
+   ]
+  }
+ }
+}

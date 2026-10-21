@@ -11,6 +11,8 @@ export interface I2CDevice {
   read(n: number): number[];
 }
 
+/** SH1107 two-byte commands (the rest are single bytes; 20H/21H take no argument, unlike the SSD1306). */
+const SH1107_ARGS: Record<number, number> = { 0x81: 1, 0xa8: 1, 0xd3: 1, 0xd5: 1, 0xd9: 1, 0xdb: 1, 0xdc: 1, 0xad: 1 };
 const CMD_ARGS: Record<number, number> = { 0x20: 1, 0x21: 2, 0x22: 2, 0x81: 1, 0xa8: 1, 0xd3: 1, 0xda: 1, 0xd5: 1, 0xd9: 1, 0xdb: 1, 0x8d: 1, 0xad: 1 };
 
 export class SSD1306Device implements I2CDevice {
@@ -35,16 +37,26 @@ export class SSD1306Device implements I2CDevice {
   frames = 0;
   /** Visible columns: small panels (0.49" 64×32, 0.66" 64×48) only show GDDRAM columns colOffset..colOffset+width−1. */
   width = 128;
-  constructor(public partId: string, opts: { addr?: number; controller?: 'ssd1306' | 'sh1106'; rows?: 32 | 48 | 64; width?: number; colOffset?: number } = {}) {
+  /** SH1107: 128 columns × 16 pages, its own command set (see sh1107Exec). */
+  sh1107 = false;
+  private vertical = false;
+  private startLine = 0;
+  private offset = 0;
+  private mux = 127;
+  constructor(public partId: string, opts: { addr?: number; controller?: 'ssd1306' | 'sh1106' | 'sh1107'; rows?: 32 | 48 | 64 | 96 | 128; width?: number; colOffset?: number } = {}) {
     if (opts.addr !== undefined) this.addr = opts.addr;
     if (opts.controller === 'sh1106') {
       this.ramWidth = 132;
       this.colOffset = 2;
     }
+    if (opts.controller === 'sh1107') {
+      this.sh1107 = true;
+      this.rows = 128;
+    }
     if (opts.rows) this.rows = opts.rows;
     if (opts.width) this.width = opts.width;
     if (opts.colOffset !== undefined) this.colOffset = opts.colOffset;
-    this.ram = new Uint8Array(this.ramWidth * 8);
+    this.ram = new Uint8Array(this.ramWidth * (this.sh1107 ? 16 : 8));
     this.col1 = this.ramWidth - 1;
   }
 
@@ -81,14 +93,14 @@ export class SSD1306Device implements I2CDevice {
   private command(b: number) {
     if (this.pendingCmd >= 0) {
       this.pending.push(b);
-      if (this.pending.length >= CMD_ARGS[this.pendingCmd]) {
+      if (this.pending.length >= (this.sh1107 ? SH1107_ARGS : CMD_ARGS)[this.pendingCmd]) {
         this.exec(this.pendingCmd, this.pending);
         this.pendingCmd = -1;
         this.pending = [];
       }
       return;
     }
-    if (CMD_ARGS[b] !== undefined) {
+    if ((this.sh1107 ? SH1107_ARGS : CMD_ARGS)[b] !== undefined) {
       this.pendingCmd = b;
       this.pending = [];
       return;
@@ -96,6 +108,7 @@ export class SSD1306Device implements I2CDevice {
     this.exec(b, []);
   }
   private exec(cmd: number, args: number[]) {
+    if (this.sh1107) return this.sh1107Exec(cmd, args);
     switch (cmd) {
       case 0xae:
         this.on = false;
@@ -129,7 +142,33 @@ export class SSD1306Device implements I2CDevice {
     }
     this.dirty = true;
   }
+  /** SH1107 commands (datasheet command table): 00–0F/10–17 column (7 bits), 20/21 page/vertical addressing, B0–BF page,
+   * DC start line, D3 display offset, A8 multiplex ratio, AE/AF, A6/A7, A4/A5, 81 contrast. Segment remap (A0/A1) and
+   * COM scan direction (C0/C8) only flip the picture, so like the SSD1306 model they are taken as upright. */
+  private sh1107Exec(cmd: number, args: number[]) {
+    if (cmd < 0x10) this.col = (this.col & 0x70) | cmd;
+    else if (cmd < 0x18) this.col = (this.col & 0x0f) | ((cmd & 0x07) << 4);
+    else if (cmd === 0x20 || cmd === 0x21) this.vertical = cmd === 0x21;
+    else if (cmd >= 0xb0 && cmd <= 0xbf) this.page = cmd & 0x0f;
+    else if (cmd === 0xdc) this.startLine = args[0] & 0x7f;
+    else if (cmd === 0xd3) this.offset = args[0] & 0x7f;
+    else if (cmd === 0xa8) this.mux = args[0] & 0x7f;
+    else if (cmd === 0xae || cmd === 0xaf) this.on = cmd === 0xaf;
+    else if (cmd === 0xa6 || cmd === 0xa7) this.invert = cmd === 0xa7;
+    else if (cmd === 0xa4 || cmd === 0xa5) this.allOn = cmd === 0xa5;
+    else if (cmd === 0x81) this.contrast = args[0];
+    this.dirty = true;
+  }
+  allOn = false;
   private data(b: number) {
+    if (this.sh1107) {
+      // Page mode: the column wraps 127 → 0 on the same page; vertical mode: the page wraps 15 → 0 in the same column.
+      this.ram[this.page * 128 + this.col] = b;
+      if (this.vertical) this.page = (this.page + 1) & 0x0f;
+      else this.col = (this.col + 1) & 0x7f;
+      this.dirty = true;
+      return;
+    }
     this.ram[this.page * this.ramWidth + (this.col % this.ramWidth)] = b;
     this.col++;
     if (this.col > this.col1) {
@@ -141,6 +180,18 @@ export class SSD1306Device implements I2CDevice {
   }
   /** The visible picture as 128×64 page-format bytes, panel window at the top left (what the frame and the screen reader use). */
   visibleRam(): number[] {
+    if (this.sh1107) {
+      // COM k shows RAM row (start line + k − display offset) mod 128; only COM0…mux are driven.
+      const out = new Array(16 * 128).fill(0);
+      for (let r = 0; r < Math.min(this.rows, this.mux + 1); r++) {
+        const row = (this.startLine + r - this.offset + 256) & 0x7f;
+        for (let x = 0; x < this.width; x++) {
+          const bit = this.allOn ? 1 : (this.ram[(row >> 3) * 128 + x + this.colOffset] >> (row & 7)) & 1;
+          if (bit) out[(r >> 3) * 128 + x] |= 1 << (r & 7);
+        }
+      }
+      return out;
+    }
     const out = new Array(1024).fill(0);
     for (let page = 0; page < this.rows / 8; page++) for (let x = 0; x < this.width; x++) out[page * 128 + x] = this.ram[page * this.ramWidth + x + this.colOffset];
     return out;
@@ -495,7 +546,7 @@ export class GenericI2CDevice implements I2CDevice {
     private measures: I2CMeasure[],
     private value: (key: string) => number,
     private responses: { match: string; bytes: ResponseSegment[] }[] = [],
-    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void; fifo?: FifoSpec; selfClearing?: { reg: string; mask: number; reset?: boolean }[]; wordOrder?: 'msb' | 'lsb'; pec?: boolean; commands?: CustomSim['commands']; writable?: Record<string, number>; eventFifo?: EventFifoSpec } = {},
+    private layout: { regWidth?: 8 | 16; addrWidth?: 8 | 16; autoIncrementBit7?: boolean; pointerless?: boolean; pointerlessBytes?: 1 | 2; inputBits?: { reg: string; bit: number; control: string; activeLow?: boolean }[]; rtc?: { reg: string; order: 'ds1307' | 'pcf8563' }; nowMs?: () => number; readFromZero?: boolean; constants?: Record<string, number | string>; commandLatch?: { reg: string; from: number; to: number }; promCrc4?: { reg: string }; dac?: { protocol: 'mcp4725' | 'mcp4728'; pins: string[] }; onDac?: (ch: number, out: DacChannel) => void; fifo?: FifoSpec; selfClearing?: { reg: string; mask: number; reset?: boolean }[]; wordOrder?: 'msb' | 'lsb'; pec?: boolean; commands?: CustomSim['commands']; writable?: Record<string, number>; eventFifo?: EventFifoSpec; blockPixels?: CustomSim['blockPixels'] } = {},
   ) {
     // Static register values; with 16-bit registers a value is the whole word (e.g. "0xFE": 0x5449).
     // A declared PROM CRC-4 is filled in, so the driver's PROM check passes.
@@ -506,6 +557,8 @@ export class GenericI2CDevice implements I2CDevice {
     const n = layout.dac?.protocol === 'mcp4728' ? 4 : layout.dac ? 1 : 0;
     this.dacs = Array.from({ length: n }, () => ({ code: 0, vref: 0, gain: 1, pd: 0 }));
     for (const c of layout.commands ?? []) this.cmdMap.set(c.code, c);
+    const bp = layout.blockPixels;
+    for (let e = 0; bp && e < bp.maxCount; e++) for (const [f, v] of Object.entries(bp.init ?? {})) this.setReg(Number(bp.base) + e * bp.stride + Number(f), v);
     for (const [k, m] of Object.entries(layout.writable ?? {})) this.writeMask.set(Number(k), m);
     for (const src of layout.eventFifo?.sources ?? []) this.lastSrc.set(src.control, value(src.control));
   }
@@ -538,18 +591,74 @@ export class GenericI2CDevice implements I2CDevice {
       this.cmd = b;
       const c = this.cmdMap.get(b);
       if (!c) continue;
+      if (c.block) {
+        i = this.blockWrite(c.block, bytes, i);
+        continue;
+      }
       const data = bytes.slice(i, i + (c.data ?? 0));
       i += data.length;
       for (const a of c.actions ?? []) {
         const r = Number(a.reg);
         const old = this.byteAt(r, 0);
         if (a.value === 'data') {
-          if (data.length) this.setReg(r, data[0]);
+          if (data.length && data[0] >= (a.min ?? 0) && data[0] <= (a.max ?? 0xff)) this.setReg(r, data[0]);
           continue;
         }
         this.setReg(r, (a.op === 'set' ? a.value : a.op === 'xor' ? old ^ a.value : a.op === 'or' ? old | a.value : old & a.value) & 0xff);
       }
     }
+  }
+  /** A block command (see CommandBlock): consumes its bytes from `at` and returns where the next command starts. */
+  private blockWrite(b: NonNullable<NonNullable<CustomSim['commands']>[number]['block']>, bytes: number[], at: number): number {
+    let i = at;
+    const addr = (e: number, f: number) => Number(b.base) + e * b.stride + f;
+    const count = Math.min(b.maxIndex + 1, b.countReg ? this.byteAt(Number(b.countReg), 0) : (b.countDefault ?? 0));
+    if (b.mode === 'clear') {
+      for (let e = 0; e < count; e++) for (const f of b.fields) this.setReg(addr(e, f), 0);
+      return i;
+    }
+    if (i >= bytes.length) return i;
+    if (b.mode === 'one') {
+      const idx = bytes[i++];
+      if (idx > b.maxIndex) return i; // rejected: the firmware reads on, treating the rest as commands
+      for (const f of b.fields) {
+        if (i >= bytes.length) return i;
+        this.setReg(addr(idx, f), bytes[i++]);
+      }
+      return i;
+    }
+    if (b.mode === 'all') {
+      const vals: number[] = [];
+      for (const _ of b.fields) {
+        if (i >= bytes.length) return i;
+        vals.push(bytes[i++]);
+      }
+      for (let e = 0; e < Math.max(1, count); e++) b.fields.forEach((f, k) => this.setReg(addr(e, f), vals[k]));
+      return i;
+    }
+    // 'array': length, offset, then the values.
+    const len = bytes[i++];
+    if (i >= bytes.length) return i;
+    const off = bytes[i++];
+    for (let e = 0; e < len && e < count; e++) {
+      if (i >= bytes.length) return i;
+      const v = bytes[i++];
+      if (e + off <= b.maxIndex) this.setReg(addr(e + off, b.fields[0]), v);
+    }
+    return i;
+  }
+  /** Pixel colours of a blockPixels LED array (flat r, g, b), scaled by each element's 5-bit brightness. */
+  blockPixels(): number[] {
+    const bp = this.layout.blockPixels;
+    if (!bp) return [];
+    const count = Math.min(bp.maxCount, bp.countReg ? this.byteAt(Number(bp.countReg), 0) || bp.countDefault : bp.countDefault);
+    const out: number[] = [];
+    for (let e = 0; e < count; e++) {
+      const at = (f: number) => this.byteAt(Number(bp.base) + e * bp.stride + f, 0);
+      const k = bp.brightness !== undefined ? (at(bp.brightness) & 31) / 31 : 1;
+      out.push(...bp.rgb.map((f) => Math.round(at(f) * k)));
+    }
+    return out;
   }
   private commandRead(n: number) {
     const c = this.cmdMap.get(this.cmd);

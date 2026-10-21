@@ -125,8 +125,9 @@ function OledScreen({ x, y, ram, on, size }: { x: number; y: number; ram: number
     ctx.putImageData(img, 0, 0);
     return c.toDataURL();
   }, [ram, on, W, H]);
-  // Half scale, like the 128×64 panel: a 64×48 glass is drawn 32×24.
-  return url ? <image href={url} x={x + (64 - W / 2) / 2} y={y} width={W / 2} height={H / 2} style={{ imageRendering: 'pixelated' }} /> : <rect x={x + (64 - W / 2) / 2} y={y} width={W / 2} height={H / 2} fill="#000" />;
+  // Half scale, like the 128×64 panel: a 64×48 glass is drawn 32×24 (quarter scale for the 128-row SH1107 panels).
+  const k = H > 64 ? 4 : 2;
+  return url ? <image href={url} x={x + (64 - W / k) / 2} y={y} width={W / k} height={H / k} style={{ imageRendering: 'pixelated' }} /> : <rect x={x + (64 - W / k) / 2} y={y} width={W / k} height={H / k} fill="#000" />;
 }
 
 function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) {
@@ -174,9 +175,9 @@ function GenericModule({ type, visual }: { type: string; visual?: PartVisual }) 
             </g>
           );
         })()
-      ) : cs.sim.kind === 'addressable-led' ? (
+      ) : cs.sim.kind === 'addressable-led' || cs.sim.blockPixels ? (
         <g>
-          {Array.from({ length: Math.min(cs.sim.count ?? 1, 12) }, (_, i) => {
+          {Array.from({ length: Math.min(cs.sim.blockPixels ? Math.max(1, (visual?.pixels?.length ?? 0) / 3) || cs.sim.blockPixels.countDefault : (cs.sim.count ?? 1), 12) }, (_, i) => {
             const px = visual?.pixels ?? [];
             const [r, g, b] = [px[i * 3] ?? 0, px[i * 3 + 1] ?? 0, px[i * 3 + 2] ?? 0];
             return <rect key={i} x={6 + i * 7} y={10} width={5} height={5} rx={1} fill={r + g + b > 10 ? `rgb(${Math.min(255, r * 2)},${Math.min(255, g * 2)},${Math.min(255, b * 2)})` : '#eee'} stroke="#999" strokeWidth={0.4} />;

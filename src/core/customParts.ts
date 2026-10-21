@@ -42,8 +42,20 @@ export interface CustomSim {
   /** pulse-sensor: frequency = value × hzPerUnit + offsetHz (YF-S201: 7.5 Hz per L/min; a tachometer: pulses per turn / 60
    * per RPM), capped at maxHz (default 2000); duty = fraction of each period spent high (default 0.5). openDrain: the
    * output only pulls low (open collector), so the high level comes from a pull-up (pin pullUp, or Pin.PULL_UP). No
-   * pulses while the frequency is 0 or the part is unpowered. */
-  pulse?: { hzPerUnit: number; offsetHz?: number; duty?: number; openDrain?: boolean; maxHz?: number };
+   * pulses while the frequency is 0 or the part is unpowered.
+   * select: the board's GPIO inputs pick what drives the output (TCS3200: S2/S3 pick the red/blue/clear/green photodiodes,
+   * S0/S1 the output scaling, OE low enables OUT). Each pin group is read as a binary number, the first pin the most
+   * significant bit (H = 1): channel.controls[n] is the control whose value sets the frequency (instead of "value"),
+   * scale.factors[n] multiplies it (0 = powered down). enable: the output pin only drives while this pin is at its
+   * active level (otherwise it floats, so the GPIO reads its pull). defaults: the level of a select pin left unwired. */
+  pulse?: {
+    hzPerUnit: number;
+    offsetHz?: number;
+    duty?: number;
+    openDrain?: boolean;
+    maxHz?: number;
+    select?: { channel?: { pins: string[]; controls: string[] }; scale?: { pins: string[]; factors: number[] }; enable?: { pin: string; activeLow?: boolean }; defaults?: Record<string, 0 | 1> };
+  };
   /** ultrasonic: TRIG is trigPin, ECHO is outputPin. A trigger pulse of at least triggerUs (default 10) starts a
    * measurement; delayUs later (default 450, the 40 kHz burst) ECHO goes high for distance × usPerCm (default 58.3:
    * 2 / 343 m/s). Distances are clamped to minCm…maxCm, except that past maxCm the echo lasts beyondUs if given (the
@@ -130,11 +142,12 @@ export interface CustomSim {
   clockPin?: string;
   countsPerUnit?: number;
   offsetCounts?: number;
-  /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64).
+  /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64; SH1107 128×128
+   * RAM in 16 pages, its own command set, for 128×128 panels or a width/colOffset window such as 64×128, rows up to 128).
    * tft-display: 'ssd1351' for the SSD1351 colour OLED command set; 'pcd8544' for the Nokia 5110 84×48 mono LCD (pins
    * fn spi.sck, spi.mosi, spi.cs = CE, tft.dc = DC, tft.reset = RST; width/height are fixed at 84×48). */
-  controller?: 'ssd1306' | 'sh1106' | 'ssd1351' | 'pcd8544';
-  rows?: 32 | 48 | 64;
+  controller?: 'ssd1306' | 'sh1106' | 'sh1107' | 'ssd1351' | 'pcd8544';
+  rows?: 32 | 48 | 64 | 96 | 128;
   /** oled-display: first GDDRAM column the panel shows (SH1106 2; 0.49" 64×32 and 0.66" 64×48 SSD1306 panels 32). With
    * width (the visible columns, default 128) only columns colOffset…colOffset+width−1 and the first rows COM lines are
    * on the glass, so a driver that forgets the offset draws off-screen just as on the real module. */
@@ -256,7 +269,12 @@ export interface CustomSim {
    * and runs its actions on internal registers; any byte becomes the current command. A read returns the live value of
    * the current command's `read` registers (0xFF past them, or when it has none), then the current command becomes `then`.
    * Actions: op 'set' (value, or 'data' = the swallowed byte), 'xor', 'or', 'and' with value. */
-  commands?: { code: number; data?: number; actions?: CommandAction[]; read?: string[]; then?: number }[];
+  commands?: { code: number; data?: number; actions?: CommandAction[]; read?: string[]; then?: number; block?: CommandBlock }[];
+  /** i2c-device: an element block (see CommandBlock) shown as RGB pixels, for firmware-driven LED boards (SparkFun Qwiic
+   * LED Stick). Element e's colour is the bytes at base + e × stride + rgb[k]; with brightness, scaled by that byte's
+   * low 5 bits / 31 (APA102 global brightness). count = the value of countReg (else countDefault) elements. init: the
+   * power-on value of fields (offset → byte) in every one of maxCount elements. Tests: what:"pixels". */
+  blockPixels?: { base: string; stride: number; rgb: [number, number, number]; brightness?: number; countReg?: string; countDefault: number; maxCount: number; init?: Record<string, number> };
   /** i2c-device: only these register bits can be written (Record<reg, mask>); others ignore writes (firmware protection maps). */
   writable?: Record<string, number>;
   /** i2c-device with an event FIFO (SparkFun Qwiic Keypad): a control edge records an event; the host sets popMask in
@@ -282,6 +300,25 @@ export interface CommandAction {
   reg: string;
   op: 'set' | 'xor' | 'or' | 'and';
   value: number | 'data';
+  /** A 'data' set only takes effect when min ≤ byte ≤ max (firmware range checks, e.g. an LED count of 1–100). */
+  min?: number;
+  max?: number;
+}
+
+/** A command that writes an indexed block of elements (an LED array: element e's fields live at base + e × stride +
+ * field), parsed as the firmware reads its bytes:
+ * 'one': index, then one byte per field (an index above maxIndex is rejected and the following bytes are read as commands);
+ * 'all': one byte per field, copied to the first count elements; 'array': length, offset, then up to min(length, count)
+ * bytes for fields[0] of elements offset, offset+1…; 'clear': no data, fields set to 0 in the first count elements.
+ * count = the value of countReg (else countDefault). A write that ends early stops the command where it ends. */
+export interface CommandBlock {
+  mode: 'one' | 'all' | 'array' | 'clear';
+  base: string;
+  stride: number;
+  fields: number[];
+  maxIndex: number;
+  countReg?: string;
+  countDefault?: number;
 }
 
 /** Event FIFO as a ring of `depth` slots with newest/oldest indexes: it holds depth − 1 events, and a new event when
@@ -528,10 +565,10 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.kind === 'oled-display') {
     const ram = s.controller === 'sh1106' ? 132 : 128;
     const w = s.width ?? 128;
-    if (s.rows !== undefined && ![32, 48, 64].includes(s.rows)) errs.push('oled-display rows must be 32, 48 or 64');
+    if (s.rows !== undefined && !(s.controller === 'sh1107' ? [32, 48, 64, 96, 128] : [32, 48, 64]).includes(s.rows)) errs.push(s.controller === 'sh1107' ? 'SH1107 rows must be 32, 48, 64, 96 or 128' : 'oled-display rows must be 32, 48 or 64 (128 needs controller sh1107)');
     if (!(Number.isInteger(w) && w >= 8 && w <= 128)) errs.push('oled-display width (visible columns) must be 8-128');
     if (s.colOffset !== undefined && !(Number.isInteger(s.colOffset) && s.colOffset >= 0 && s.colOffset + w <= ram)) errs.push(`oled-display colOffset + width must fit the controller's ${ram} RAM columns`);
-    if (s.height !== undefined) errs.push('oled-display sets its visible height with rows (32, 48 or 64), not height');
+    if (s.height !== undefined) errs.push('oled-display sets its visible height with rows, not height');
   }
   if (s.kind === 'oled-display' && s.controller === 'pcd8544') errs.push("controller 'pcd8544' (Nokia 5110 LCD) uses kind tft-display");
   if (s.ledProtocol && !['ws2812', 'sk6812-rgbw', 'apa102'].includes(s.ledProtocol)) errs.push(`ledProtocol ${s.ledProtocol} must be ws2812, sk6812-rgbw or apa102`);
@@ -684,7 +721,22 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     const p = s.pulse;
     if (!p || !(p.hzPerUnit > 0)) errs.push('pulse-sensor needs pulse.hzPerUnit > 0');
     if (p?.duty !== undefined && !(p.duty > 0 && p.duty < 1)) errs.push('pulse.duty is a fraction between 0 and 1');
-    if (p?.maxHz !== undefined && !(p.maxHz > 0 && p.maxHz <= 5000)) errs.push('pulse.maxHz must be 1–5000 Hz');
+    if (p?.maxHz !== undefined && !(p.maxHz > 0 && p.maxHz <= (p.select ? 50000 : 5000))) errs.push(`pulse.maxHz must be 1–${p.select ? 50000 : 5000} Hz (every edge is simulated)`);
+    const sel = p?.select;
+    if (sel) {
+      const group = (name: string, g: { pins: string[] } | undefined, list: unknown[] | undefined) => {
+        if (!g) return;
+        if (!g.pins?.length || g.pins.length > 3 || g.pins.some((x) => !names.has(x))) errs.push(`pulse.select.${name}.pins must be 1–3 of the part's pins`);
+        else if (list?.length !== 2 ** g.pins.length) errs.push(`pulse.select.${name} needs ${2 ** g.pins.length} entries, one per pin combination`);
+      };
+      group('channel', sel.channel, sel.channel?.controls);
+      group('scale', sel.scale, sel.scale?.factors);
+      for (const k of sel.channel?.controls ?? []) if (!keys.has(k)) errs.push(`pulse.select.channel control ${k} is not a control`);
+      if (sel.scale?.factors.some((f) => !(f >= 0 && f <= 1))) errs.push('pulse.select.scale.factors are fractions 0–1');
+      if (sel.enable && !names.has(sel.enable.pin)) errs.push(`pulse.select.enable.pin ${sel.enable.pin} is not a pin`);
+      for (const [k, v] of Object.entries(sel.defaults ?? {})) if (!names.has(k) || (v !== 0 && v !== 1)) errs.push(`pulse.select.defaults: ${k} must be a pin with level 0 or 1`);
+      if (sel.enable && p?.openDrain) errs.push('pulse.select.enable is for a driven output; an open-drain output already floats when off');
+    }
   }
   if (s.kind === 'ultrasonic') {
     const e = s.echo;
@@ -716,6 +768,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (!['nec', 'nec-ext'].includes(s.ir?.protocol ?? '')) errs.push("ir-receiver needs ir.protocol 'nec' or 'nec-ext'");
   }
   const hexReg = (r: unknown) => typeof r === 'string' && /^0x[0-9a-f]{1,2}$/i.test(r);
+  const hexAddr = (r: unknown) => typeof r === 'string' && /^0x[0-9a-f]{1,4}$/i.test(r); // element blocks may sit above 0xFF
   if (s.fifo) {
     const f = s.fifo;
     if (s.kind !== 'i2c-device' || s.regWidth === 16 || s.pointerless) errs.push('fifo is for byte-register i2c-devices');
@@ -737,22 +790,33 @@ export function validateSpec(spec: CustomPartSpec): string[] {
     if (f.rollover && (!hexReg(f.rollover.reg) || !(f.rollover.bit >= 0 && f.rollover.bit <= 7))) errs.push('fifo.rollover needs reg (hex) and bit 0–7');
     if (f.status && !hexReg(f.status.reg)) errs.push('fifo.status.reg must be a register like 0x00');
   }
-  if (s.commands?.length || s.writable || s.eventFifo) {
-    if (s.kind !== 'i2c-device') errs.push('commands, writable and eventFifo are for an i2c-device');
+  if (s.commands?.length || s.writable || s.eventFifo || s.blockPixels) {
+    if (s.kind !== 'i2c-device') errs.push('commands, writable, eventFifo and blockPixels are for an i2c-device');
     const codes = new Set<number>();
     for (const c of s.commands ?? []) {
       if (!(Number.isInteger(c.code) && c.code >= 0 && c.code <= 0xff) || codes.has(c.code)) errs.push(`command code ${c.code} must be a unique byte 0–0xFF`);
       codes.add(c.code);
       if (c.data !== undefined && !(Number.isInteger(c.data) && c.data >= 1 && c.data <= 4)) errs.push(`command 0x${c.code?.toString(16)}: data must be 1–4 bytes`);
+      const b = c.block;
+      if (b) {
+        if (c.data !== undefined || c.actions?.length) errs.push(`command 0x${c.code?.toString(16)}: a block command takes its data from block.mode; drop data and actions`);
+        if (!['one', 'all', 'array', 'clear'].includes(b.mode) || !hexAddr(b.base) || !(b.stride >= 1) || !b.fields?.length || b.fields.some((f) => !(f >= 0 && f < b.stride)) || !(b.maxIndex >= 0 && b.maxIndex <= 1023)) errs.push(`command 0x${c.code?.toString(16)}: block needs mode one|all|array|clear, a hex base, stride ≥ 1, fields within the stride and maxIndex 0–1023`);
+        if (b.mode === 'array' && b.fields?.length !== 1) errs.push(`command 0x${c.code?.toString(16)}: an 'array' block writes one field`);
+        if (b.mode !== 'one' && !b.countReg && b.countDefault === undefined) errs.push(`command 0x${c.code?.toString(16)}: block needs countReg or countDefault`);
+        if (b.countReg && !hexReg(b.countReg)) errs.push(`command 0x${c.code?.toString(16)}: block.countReg must be hex`);
+      }
       for (const a of c.actions ?? []) {
         if (!hexReg(a.reg) || !['set', 'xor', 'or', 'and'].includes(a.op)) errs.push(`command 0x${c.code?.toString(16)}: actions need a hex reg and op set|xor|or|and`);
         if (a.value === 'data' ? !(a.op === 'set' && c.data) : !(Number.isInteger(a.value) && a.value >= 0 && a.value <= 0xff)) errs.push(`command 0x${c.code?.toString(16)}: value must be a byte, or 'data' on a set for a command with data`);
+        if ((a.min !== undefined || a.max !== undefined) && a.value !== 'data') errs.push(`command 0x${c.code?.toString(16)}: min/max only apply to a 'data' set`);
       }
       for (const r of c.read ?? []) if (!hexReg(r)) errs.push(`command 0x${c.code?.toString(16)}: read registers must be hex`);
       if (c.then !== undefined && !(Number.isInteger(c.then) && c.then >= 0 && c.then <= 0xff)) errs.push(`command 0x${c.code?.toString(16)}: then must be a byte`);
     }
     if (s.commands?.length && (s.pointerless || s.readFromZero || s.responses?.length || s.measure || s.measures?.length)) errs.push('a command-driven device (commands) has no register pointer: drop pointerless, readFromZero, responses and measures');
     for (const [r, m] of Object.entries(s.writable ?? {})) if (!hexReg(r) || !(Number.isInteger(m) && m >= 0 && m <= 0xff)) errs.push(`writable ${r}: needs a hex register and a mask 0–0xFF`);
+    const bp = s.blockPixels;
+    if (bp && (!hexAddr(bp.base) || !(bp.stride >= 3) || bp.rgb?.length !== 3 || [...bp.rgb, ...(bp.brightness !== undefined ? [bp.brightness] : [])].some((f) => !(f >= 0 && f < bp.stride)) || !(bp.maxCount >= 1 && bp.maxCount <= 1024) || !(bp.countDefault >= 1 && bp.countDefault <= bp.maxCount) || (bp.countReg !== undefined && !hexReg(bp.countReg)))) errs.push('blockPixels needs a hex base, stride ≥ 3, rgb/brightness field offsets within the stride, 1 ≤ countDefault ≤ maxCount ≤ 1024 and a hex countReg');
     const e = s.eventFifo;
     if (e) {
       if (!(Number.isInteger(e.depth) && e.depth >= 2 && e.depth <= 64)) errs.push('eventFifo.depth must be 2–64 slots');
