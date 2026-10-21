@@ -178,7 +178,7 @@ Status legend: ✅ built · 🟡 partly built · ⬜ not started
 
 ### K. Trust and quality (always on)
 - ✅ K1 Every example is built end to end in CI (simulation, KiCad ERC, ngspice).
-- ✅ K2 Measured AI quality (see "Evals" below): vision, design, code and PCB evals.
+- ✅ K2 Measured AI quality ([EVALS.md](EVALS.md)): vision, design, code and PCB evals.
 - ✅ K3 Every slow or AI action says how long it takes and what it uses (your Claude Code plan or API key, or local and free).
 
 ## Manufacture-ready output package (definition of done for Journey 2)
