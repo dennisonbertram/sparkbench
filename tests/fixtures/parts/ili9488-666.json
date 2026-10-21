@@ -1,0 +1,96 @@
+{
+ "type": "custom-ili9488-test",
+ "name": "ILI9488 test",
+ "mpn": "ILI9488",
+ "category": "display",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "DS",
+ "interface": "spi",
+ "pins": [
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "VCC",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "spi.sck",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "spi.mosi",
+   "required": true
+  },
+  {
+   "name": "RES",
+   "role": "io",
+   "fn": "tft.reset",
+   "required": true
+  },
+  {
+   "name": "DC",
+   "role": "io",
+   "fn": "tft.dc",
+   "required": true
+  },
+  {
+   "name": "CS",
+   "role": "io",
+   "fn": "spi.cs",
+   "required": true
+  },
+  {
+   "name": "BLK",
+   "role": "io",
+   "required": false
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 3.6,
+ "currentMa": 40,
+ "priceUsd": 6,
+ "supplierQuery": "ST7789 240x240",
+ "sim": {
+  "kind": "tft-display",
+  "width": 320,
+  "height": 480,
+  "pixelBits": 18
+ },
+ "driver": {
+  "filename": "ili9488.py",
+  "code": "from machine import Pin, SPI\nimport framebuf\nimport time\n\n\nclass ILI9488:\n    def __init__(self, spi, dc, cs, rst, width=320, height=480):\n        self.spi, self.width, self.height = spi, width, height\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1)\n        self.rst(0)\n        time.sleep_ms(10)\n        self.rst(1)\n        time.sleep_ms(120)\n        for c, a in ((0x01, b''), (0x11, b''), (0x3A, b'\\x66'), (0x36, b'\\x00'), (0x21, b''), (0x29, b'')):\n            self._cmd(c, a)\n            time.sleep_ms(10)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        self.cs(1)\n\n    def blit(self, buf, x, y, w, h):\n        self._cmd(0x2A, bytes([x >> 8, x & 255, (x + w - 1) >> 8, (x + w - 1) & 255]))\n        self._cmd(0x2B, bytes([y >> 8, y & 255, (y + h - 1) >> 8, (y + h - 1) & 255]))\n        self._cmd(0x2C, buf)\n\n    def text(self, s, x, y, colour=0xFFFF):\n        # RGB666 over SPI: 3 bytes per pixel, 6 bits each in bits 7:2.\n        w = 8 * len(s)\n        mono = bytearray(w)\n        fb = framebuf.FrameBuffer(mono, w, 8, framebuf.MONO_HLSB)\n        fb.text(s, 0, 0, 1)\n        buf = bytearray(w * 8 * 3)\n        for yy in range(8):\n            for xx in range(w):\n                if fb.pixel(xx, yy):\n                    i = (yy * w + xx) * 3\n                    buf[i] = buf[i + 1] = buf[i + 2] = 0xFC\n        self.blit(buf, x, y, w, 8)\n"
+ },
+ "example": {
+  "code": "from machine import Pin, SPI\nfrom ili9488 import ILI9488\nimport time\nspi = SPI(1, baudrate=20000000, sck=Pin({SCL}), mosi=Pin({SDA}))\ntft = ILI9488(spi, {DC}, {CS}, {RES})\ntime.sleep(1)\ntft.text('HELLO 42', 20, 40)\nwhile True:\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "text",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "expect",
+     "what": "pixels",
+     "part": "{REF}",
+     "on": false,
+     "within": 800
+    },
+    {
+     "kind": "expect",
+     "what": "screen",
+     "part": "{REF}",
+     "text": "HELLO 42",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

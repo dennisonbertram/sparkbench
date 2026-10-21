@@ -1,0 +1,106 @@
+{
+ "type": "custom-ens210-test",
+ "name": "ENS210 test",
+ "mpn": "ENS210",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "i2c",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "SCL",
+   "role": "io",
+   "fn": "i2c.scl",
+   "required": true
+  },
+  {
+   "name": "SDA",
+   "role": "io",
+   "fn": "i2c.sda",
+   "required": true
+  }
+ ],
+ "vmin": 3.0,
+ "vmax": 3.6,
+ "currentMa": 1,
+ "i2cAddress": 67,
+ "priceUsd": 8,
+ "supplierQuery": "ENS210",
+ "sim": {
+  "kind": "i2c-device",
+  "quantity": "Temperature",
+  "unit": "\u00b0C",
+  "min": -40,
+  "max": 100,
+  "default": 21,
+  "controls": [
+   {
+    "key": "humidity",
+    "quantity": "Humidity",
+    "unit": "%",
+    "min": 0,
+    "max": 100,
+    "default": 40
+   }
+  ],
+  "registers": {
+   "0x00": 16,
+   "0x01": 2
+  },
+  "measures": [
+   {
+    "reg": "0x30",
+    "bytes": 3,
+    "scale": 0.015625,
+    "offset": -273.15,
+    "format": "ens210"
+   },
+   {
+    "reg": "0x33",
+    "bytes": 3,
+    "scale": 0.001953125,
+    "control": "humidity",
+    "format": "ens210"
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import I2C, Pin\nimport time\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\n\n\ndef crc7(val):\n    pol = 0x89 << 16\n    bit = 1 << 23\n    val = (val << 7) | 0x7F\n    while bit & (0x1FFFF << 7):\n        if bit & val:\n            val ^= pol\n        bit >>= 1\n        pol >>= 1\n    return val\n\n\nwhile True:\n    b = i2c.readfrom_mem(0x43, 0x30, 6)\n    t = b[0] | b[1] << 8 | b[2] << 16\n    h = b[3] | b[4] << 8 | b[5] << 16\n    ok = all((v >> 16) & 1 and crc7(v & 0x1FFFF) == (v >> 17) for v in (t, h))\n    if ok:\n        print('T=%.1f H=%.1f' % ((t & 0xFFFF) / 64 - 273.15, (h & 0xFFFF) / 512))\n    else:\n        print('CRC error')\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "reads",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 25.5
+    },
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "humidity",
+     "value": 63
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "T=25.5 H=63.0",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}

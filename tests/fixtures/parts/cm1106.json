@@ -1,0 +1,102 @@
+{
+ "type": "custom-cm1106-test",
+ "name": "CM1106 test",
+ "mpn": "CM1106",
+ "category": "sensor",
+ "description": "t",
+ "eli5": "t",
+ "refPrefix": "U",
+ "interface": "uart",
+ "pins": [
+  {
+   "name": "VIN",
+   "role": "power",
+   "required": true
+  },
+  {
+   "name": "GND",
+   "role": "gnd",
+   "required": true
+  },
+  {
+   "name": "TX",
+   "role": "io",
+   "fn": "uart.tx",
+   "required": true
+  },
+  {
+   "name": "RX",
+   "role": "io",
+   "fn": "uart.rx",
+   "required": true
+  }
+ ],
+ "vmin": 4.5,
+ "vmax": 5.5,
+ "currentMa": 60,
+ "priceUsd": 20,
+ "supplierQuery": "MH-Z19B",
+ "sim": {
+  "kind": "uart-device",
+  "uartBaud": 9600,
+  "quantity": "CO2",
+  "unit": "ppm",
+  "min": 400,
+  "max": 5000,
+  "default": 600,
+  "uartReplies": [
+   {
+    "match": "11 01 01 ed",
+    "bytes": [
+     {
+      "const": 22,
+      "bits": 8
+     },
+     {
+      "const": 5,
+      "bits": 8
+     },
+     {
+      "const": 1,
+      "bits": 8
+     },
+     {
+      "control": "value",
+      "bits": 16,
+      "scale": 1
+     },
+     {
+      "const": 0,
+      "bits": 16
+     },
+     {
+      "crc": "neg8",
+      "over": 7
+     }
+    ]
+   }
+  ]
+ },
+ "example": {
+  "code": "from machine import UART, Pin\nimport time\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\nwhile True:\n    u.write(bytes([0x11, 0x01, 0x01, 0xED]))\n    time.sleep_ms(100)\n    r = u.read(8)\n    if r and len(r) == 8 and r[0] == 0x16 and (256 - sum(r[:7]) % 256) % 256 == r[7]:\n        print('CO2=%d' % (r[3] * 256 + r[4]))\n    time.sleep(1)\n",
+  "test": {
+   "id": "t",
+   "title": "co2",
+   "source": "user",
+   "steps": [
+    {
+     "kind": "set",
+     "part": "{REF}",
+     "control": "value",
+     "value": 1234
+    },
+    {
+     "kind": "expect",
+     "what": "serial",
+     "text": "CO2=1234",
+     "within": 4000
+    }
+   ]
+  }
+ }
+}
