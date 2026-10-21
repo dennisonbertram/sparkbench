@@ -76,7 +76,9 @@ export function compare(spec: CustomPartSpec, v: VerifyFacts): string[] {
   if (v.vmax !== null && spec.vmax !== undefined && spec.vmax > v.vmax + 0.15) diffs.push(`maximum supply: part ${spec.vmax} V, datasheet reading ${v.vmax} V`);
   const mine = authorConversions(spec);
   for (const c of v.conversions) {
-    const hit = mine.find((m) => scaleMatch(m.per, c.scale) || scaleMatch(m.scale, c.scale));
+    // Prefer a field whose scale AND offset both match (temperature and humidity often differ by exactly 2×).
+    const cands = mine.filter((m) => scaleMatch(m.per, c.scale) || scaleMatch(m.scale, c.scale));
+    const hit = cands.find((m) => close(m.offset, c.offset, 0.02, 0.6) && (close(m.per, c.scale) || close(m.scale, c.scale))) ?? cands.find((m) => close(m.offset, c.offset, 0.02, 0.6)) ?? cands[0];
     if (!hit) diffs.push(`${c.quantity}: datasheet reading gives ${c.scale} per count, the part's model has ${mine.map((m) => +m.scale.toPrecision(4)).join(', ') || 'none'}`);
     else if (!close(hit.offset, c.offset, 0.02, 0.6)) diffs.push(`${c.quantity}: offset ${+hit.offset.toPrecision(4)} vs datasheet reading ${c.offset}`);
   }
@@ -87,7 +89,12 @@ export function compare(spec: CustomPartSpec, v: VerifyFacts): string[] {
   return diffs;
 }
 
-export function publish(slug: string): { status: 'published' | 'review' | 'not-ready'; detail: string[] } {
+/** A third reading's verdict on each difference, with evidence (see the review step). */
+interface Resolution {
+  diffs: { diff: string; verdict: 'part-correct' | 'part-fixed' | 'unresolved'; evidence: string; source: string }[];
+}
+
+export function publish(slug: string, opts: { resolved?: boolean } = {}): { status: 'published' | 'review' | 'not-ready'; detail: string[] } {
   const dir = join('parts-staging', `part-${slug}`);
   const specFile = join(dir, 'part.json');
   const checkFile = join(dir, 'check.json');
@@ -101,7 +108,15 @@ export function publish(slug: string): { status: 'published' | 'review' | 'not-r
   if (!existsSync(vf)) return { status: 'not-ready', detail: ['no independent datasheet reading yet'] };
   const spec: CustomPartSpec & { library?: unknown; sources?: string[] } = JSON.parse(readFileSync(specFile, 'utf8'));
   const facts: VerifyFacts = JSON.parse(readFileSync(vf, 'utf8'));
-  const diffs = compare(spec, facts);
+  let diffs = compare(spec, facts);
+  let resolvedNote = '';
+  if (diffs.length && opts.resolved) {
+    const res: Resolution | null = existsSync(join(dir, 'resolution.json')) ? JSON.parse(readFileSync(join(dir, 'resolution.json'), 'utf8')) : null;
+    const ok = (d: string) => res?.diffs.some((r) => r.verdict !== 'unresolved' && r.evidence.trim().length > 20 && /^https?:\/\//.test(r.source) && normDiff(r.diff) === normDiff(d));
+    const left = diffs.filter((d) => !ok(d));
+    if (!left.length) resolvedNote = `${diffs.length} difference(s) settled by a third reading with quoted evidence`;
+    diffs = left;
+  }
   if (diffs.length) {
     writeFileSync(join(dir, 'review.json'), JSON.stringify({ diffs, verify: facts }, null, 2));
     return { status: 'review', detail: diffs };
@@ -110,14 +125,17 @@ export function publish(slug: string): { status: 'published' | 'review' | 'not-r
   if (existsSync(dest)) return { status: 'review', detail: [`${dest} already exists`] };
   mkdirSync(dest, { recursive: true });
   cpSync(dir, dest, { recursive: true, filter: (f) => !/review\.json$/.test(f) });
-  spec.library = { status: 'checked', note: 'Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.', checkedAt: check.checkedAt, verifiedSources: facts.sources };
+  spec.library = { status: 'checked', note: `Passed the Sparkbench part check in simulation and matched an independent datasheet reading${resolvedNote ? ` (${resolvedNote})` : ''}. Not yet tested on real hardware.`, checkedAt: check.checkedAt, verifiedSources: facts.sources };
   writeFileSync(join(dest, 'part.json'), JSON.stringify(spec, null, 2));
   return { status: 'published', detail: [dest] };
 }
 
+const normDiff = (d: string) => d.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 if (process.argv[1]?.includes('publish')) {
-  for (const slug of process.argv.slice(2)) {
-    const r = publish(slug);
+  const resolved = process.argv.includes('--resolved');
+  for (const slug of process.argv.slice(2).filter((a) => !a.startsWith('--'))) {
+    const r = publish(slug, { resolved });
     console.log(`${r.status.toUpperCase()} ${slug}${r.detail.length ? `\n  - ${r.detail.join('\n  - ')}` : ''}`);
   }
 }
