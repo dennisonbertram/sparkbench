@@ -9,6 +9,7 @@ import type { Project } from '../src/core/types';
 import { pcbSpec, FABS, type PcbSpec, type FabId } from '../src/core/pcb';
 import { exportKicadFootprints, exportKicadProject, exportKicadSchematic } from '../src/core/kicad';
 import { partDef as partDefSync } from '../src/core/parts';
+import { revLabel } from '../src/core/revisions';
 
 const KICAD_APP = [process.env.KICAD_APP, join(homedir(), 'Applications/KiCad.app'), '/Applications/KiCad/KiCad.app', '/Applications/KiCad.app'].find((p) => p && existsSync(p));
 export const KICAD_CLI = KICAD_APP ? join(KICAD_APP, 'Contents/MacOS/kicad-cli') : ['/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find(existsSync);
@@ -99,7 +100,7 @@ export async function buildPcb(source: Project, dir: string, onStep: (msg: strin
   }
   (spec as any).fabRules = FABS[spec.fab];
   if (opts.fixed && Object.keys(opts.fixed).length) spec.fixed = opts.fixed;
-  (spec as any).rev = project.revision ?? 'A';
+  (spec as any).rev = revLabel(project);
   mkdirSync(dir, { recursive: true });
   const log: string[] = [];
   const step = (m: string) => (log.push(m), onStep(m));

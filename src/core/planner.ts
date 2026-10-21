@@ -603,9 +603,13 @@ class Builder {
           this.v5(id, 'COM');
           this.wire({ part: id, pin: 'NO' }, { part: m, pin: '+' }, WIRE_COLORS.v5);
           this.gnd(m, '-');
-          fi.parts.push(m);
-          this.groups.push({ main: id, parts: [m, id], side: 'left' });
-          this.notes.push(`The relay switches 5 V to the ${load}: COM goes to 5 V, NO (normally open) to the ${load}'s + wire, and its − wire to GND. NO means the ${load} is off until the relay clicks on.`);
+          // Flyback diode across the motor (stripe/K to +): soaks up the voltage spike when it stops.
+          const fd = this.addPart('diode', {}, 'Flyback diode');
+          this.wire({ part: fd, pin: 'K' }, { part: m, pin: '+' }, WIRE_COLORS.v5);
+          this.gnd(fd, 'A');
+          fi.parts.push(m, fd);
+          this.groups.push({ main: id, parts: [m, fd, id], side: 'left' });
+          this.notes.push(`The relay switches 5 V to the ${load}: COM goes to 5 V, NO (normally open) to the ${load}'s + wire, and its − wire to GND. NO means the ${load} is off until the relay clicks on. A diode across the ${load} (stripe towards +) absorbs the voltage spike when it switches off.`);
         } else this.groups.push({ main: id, parts: [id], side: 'left' });
         break;
       }

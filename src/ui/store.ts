@@ -4,6 +4,7 @@ import type { Project, PinRef, Wire, PartInstance } from '../core/types';
 import { annotate, pinKey } from '../core/netlist';
 import { defaultProps, partDef } from '../core/parts';
 import { registerProjectParts } from '../core/customParts';
+import { mergeProjects } from '../core/merge';
 import type { PartVisual, SimFrame, SimWarning } from '../sim/engine';
 
 export type Tab = 'breadboard' | 'schematic' | 'code' | 'bom' | 'guide' | 'pcb' | 'blog';
@@ -60,17 +61,22 @@ interface State {
   dialog: null | 'publish' | 'teach';
   classCode: string | null;
   teach: { code: string; key: string } | null;
-  room: { id: string; version: number; people?: string[]; comments?: { id: string; target: string; text: string; by: string; at: number }[]; lastBy?: string; offline?: boolean; conflict?: boolean } | null;
+  /** A teacher looking at a student's submission: the dashboard to go back to. */
+  teachReturn: { code: string; key: string; student: string } | null;
+  room: { id: string; version: number; people?: string[]; comments?: { id: string; target: string; text: string; by: string; at: number }[]; lastBy?: string; offline?: boolean; conflict?: string; unread?: number } | null;
   testRun: { key: string; running: boolean; results: import('../core/acceptance').TestResult[]; error?: string } | null;
   showWelcome: boolean;
   /** Set while the AI is working, with a short status line. */
   busy: string | null;
+  /** While Claude designs: what it is doing now (streamed from the server). */
+  designPhase: 'read' | 'wire' | 'code' | 'tests' | 'fix' | null;
   /** Net highlighted from the schematic (sticky, unlike hover). */
   pinnedNet: string | null;
   tourStep: number | null;
   aiStatus: { enabled: boolean; model?: string; via?: string; kicad?: boolean; ngspice?: boolean; pcb?: { kicad: boolean; freerouting: boolean } };
 
-  setProject(p: Project | null, opts?: { record?: boolean; keepSim?: boolean }): void;
+  /** remote: a collaborator's change (live sharing): undo history is rebased onto it so undo only takes back my own changes. */
+  setProject(p: Project | null, opts?: { record?: boolean; keepSim?: boolean; remote?: boolean }): void;
   update(fn: (p: Project) => Project, record?: boolean): void;
   undo(): void;
   redo(): void;
@@ -108,9 +114,11 @@ export const useStore = create<State>((set, get) => ({
   dialog: null,
   classCode: null,
   teach: null,
+  teachReturn: null,
   room: null,
   showWelcome: true,
   busy: null,
+  designPhase: null,
   pinnedNet: null,
   tourStep: null,
   aiStatus: { enabled: false },
@@ -126,6 +134,14 @@ export const useStore = create<State>((set, get) => ({
       set({ chat: pendingNew ? get().chat : saved });
     }
     const record = opts.record ?? true;
+    if (opts.remote && p && cur && p.id === cur.id) {
+      const rebase = (h: Project) => mergeProjects(cur, h, p, 'theirs').project;
+      const sel = get().selection;
+      const keep = sel && (sel.kind === 'part' ? p.parts.some((x) => x.id === sel.id) : p.wires.some((x) => x.id === sel.id));
+      set({ project: p, past: get().past.map(rebase), future: get().future.map(rebase), selection: keep ? sel : null, sim: opts.keepSim ? get().sim : emptySim() });
+      saveProject(p);
+      return;
+    }
     set({
       project: p,
       past: record && cur ? [...get().past.slice(-50), cur] : get().past,

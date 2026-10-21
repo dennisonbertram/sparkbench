@@ -1,6 +1,6 @@
 // "Build it step by step": walks a beginner through the exact breadboard layout, one step at a
 // time, drawing only what's placed so far and ringing the holes for the current step.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
 import { planBreadboard } from '../core/bbplace';
 import { holeXY, renderBreadboardSvg } from '../core/breadboard';
@@ -28,6 +28,18 @@ export function BuildMode() {
   const [whole, setWhole] = useState(false);
   const active = step >= 0 && step < plan.steps.length;
   const total = plan.steps.length;
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Keep the step's instruction, picture and buttons in view together on every step.
+  useEffect(() => {
+    if (active) sectionRef.current?.scrollIntoView({ block: 'start' });
+  }, [step, active]);
+  // While building, the simulator's console has nothing to show: give the step the room.
+  useEffect(() => {
+    if (!active) return;
+    document.body.classList.add('building');
+    return () => document.body.classList.remove('building');
+  }, [active]);
 
   useEffect(() => {
     const v = loadStep(project.id);
@@ -40,6 +52,7 @@ export function BuildMode() {
       if ((e.target as HTMLElement)?.closest('input, textarea, [contenteditable]')) return;
       if (e.key === 'ArrowRight') setStep((s) => Math.min(total - 1, s + 1));
       if (e.key === 'ArrowLeft') setStep((s) => Math.max(0, s - 1));
+      if (e.key === 'Escape') setStep(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -71,7 +84,7 @@ export function BuildMode() {
   if (!active) {
     const minutes = Math.max(10, Math.round(total * 1.5 / 5) * 5);
     return (
-      <section className="build-mode" data-testid="build-mode">
+      <section className="build-mode" data-testid="build-mode" ref={sectionRef}>
         <div className="bm-intro">
           <div>
             <strong>{step >= total ? 'You finished the build' : 'Build it on a breadboard'}</strong>
@@ -91,7 +104,7 @@ export function BuildMode() {
 
   const cur = plan.steps[step];
   return (
-    <section className="build-mode active" data-testid="build-mode">
+    <section className="build-mode active" data-testid="build-mode" ref={sectionRef} aria-label={`Build step ${step + 1} of ${total}`}>
       <div className="bm-head">
         <span className="bm-count">Step {step + 1} of {total}</span>
         <div className="bm-progress" aria-hidden><span style={{ width: `${((step + 1) / total) * 100}%` }} /></div>
@@ -104,14 +117,22 @@ export function BuildMode() {
         <button onClick={() => setStep(step - 1)} disabled={step === 0}>Back</button>
         <span className="bm-hint">Tip: the ← and → keys work too</span>
         {step < total - 1 ? (
-          <button className="primary" onClick={() => setStep(step + 1)} data-testid="build-next">Done, next step</button>
+          <button className="primary" onClick={() => setStep(step + 1)} data-testid="build-next" autoFocus>Done, next step</button>
         ) : (
           <button
             className="primary"
             onClick={() => {
               setStep(total);
-              document.querySelector('[data-testid=photo-check]')?.scrollIntoView({ behavior: 'smooth' });
+              // After the step view has collapsed, bring the photo check into view and point at it.
+              setTimeout(() => {
+                const pc = document.querySelector<HTMLElement>('[data-testid=photo-check]');
+                if (!pc) return;
+                pc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                pc.classList.add('flash');
+                setTimeout(() => pc.classList.remove('flash'), 2400);
+              }, 50);
             }}
+            data-testid="build-finish"
           >
             Finish and check with a photo
           </button>

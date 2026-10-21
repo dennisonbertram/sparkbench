@@ -1,6 +1,6 @@
 // Gallery, classroom and live sharing, stored on this Sparkbench server (a household, club or
 // classroom on one network). Plain JSON files in data/, no accounts: people type a display name.
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { ServerResponse } from 'node:http';
@@ -30,12 +30,27 @@ export interface GalleryEntry {
   remixes: number;
 }
 
-export function publish(project: Project, author: string, blurb: string): GalleryEntry {
-  const gid = id();
+/** Publish (or, with the entry's edit key, update) a gallery entry. The edit key stays with the author. */
+export function publish(project: Project, author: string, blurb: string, opts: { name?: string; update?: { id: string; editKey: string } } = {}): (GalleryEntry & { editKey: string }) | null {
+  const prev = opts.update && getGallery(opts.update.id);
+  if (opts.update && (!prev || (prev as any).editKey !== opts.update.editKey)) return null;
+  const gid = prev ? prev.entry.id : id();
+  const editKey: string = prev ? (prev as any).editKey : id(12);
   const remixOf = (project as any).remixOf;
-  const entry: GalleryEntry = { id: gid, name: clean(project.name, 80), author: clean(author, 40) || 'Anonymous', blurb: clean(blurb, 300), board: project.board, parts: project.parts.length, createdAt: Date.now(), likes: 0, remixes: 0, ...(remixOf ? { remixOf } : {}) };
-  writeFileSync(join(dir('gallery'), `${gid}.json`), JSON.stringify({ entry, project }));
-  if (remixOf?.id) {
+  const entry: GalleryEntry = {
+    id: gid,
+    name: clean(opts.name || project.name, 80),
+    author: clean(author, 40) || 'Anonymous',
+    blurb: clean(blurb, 300),
+    board: project.board,
+    parts: project.parts.length,
+    createdAt: prev ? prev.entry.createdAt : Date.now(),
+    likes: prev ? prev.entry.likes : 0,
+    remixes: prev ? prev.entry.remixes : 0,
+    ...(remixOf ? { remixOf } : {}),
+  };
+  writeFileSync(join(dir('gallery'), `${gid}.json`), JSON.stringify({ entry, project, editKey }));
+  if (!prev && remixOf?.id) {
     const f = join(dir('gallery'), `${remixOf.id}.json`);
     const orig = read<{ entry: GalleryEntry; project: Project }>(f);
     if (orig) {
@@ -43,17 +58,33 @@ export function publish(project: Project, author: string, blurb: string): Galler
       writeFileSync(f, JSON.stringify(orig));
     }
   }
-  return entry;
+  return { ...entry, editKey };
+}
+
+/** Take an entry down (the author's edit key is needed). */
+export function unpublish(gid: string, editKey: string): boolean {
+  const g = getGallery(gid);
+  if (!g || (g as any).editKey !== editKey) return false;
+  unlinkSync(join(dir('gallery'), `${gid}.json`));
+  return true;
 }
 
 export function listGallery(): GalleryEntry[] {
-  return readdirSync(dir('gallery'))
+  const all = readdirSync(dir('gallery'))
     .filter((f) => f.endsWith('.json'))
     .map((f) => read<{ entry: GalleryEntry }>(join(dir('gallery'), f))!.entry)
     .sort((a, b) => b.likes - a.likes || b.createdAt - a.createdAt);
+  // The same project published twice (same title, author and description) shows once.
+  const seen = new Set<string>();
+  return all.filter((e) => {
+    const k = JSON.stringify([e.name, e.author, e.blurb, e.board, e.remixOf?.id ?? '']);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
-export function getGallery(gid: string): { entry: GalleryEntry; project: Project } | null {
+export function getGallery(gid: string): { entry: GalleryEntry; project: Project; editKey?: string } | null {
   if (!/^[\w-]{4,20}$/.test(gid)) return null;
   return read(join(dir('gallery'), `${gid}.json`));
 }

@@ -38,9 +38,20 @@ export function apiPlugin(): Plugin {
       if (req.url === '/api/ai/design' && req.method === 'POST') {
         const { aiDesign, aiStatus } = await import('./ai');
         if (!aiStatus().enabled) return send(res, 400, { error: 'No AI available: set ANTHROPIC_API_KEY or log in to Claude Code.' });
-        const { prompt, project, history, images } = await body(req);
+        const { prompt, project, history, images, stream } = await body(req);
         const imgs = Array.isArray(images) ? images.filter((im: any) => /^image\/(jpeg|png|webp)$/.test(im?.mediaType) && typeof im?.data === 'string' && im.data.length < 8_000_000).slice(0, 3) : [];
-        return send(res, 200, await aiDesign(prompt, project ?? undefined, history ?? [], imgs));
+        if (!stream) return send(res, 200, await aiDesign(prompt, project ?? undefined, history ?? [], imgs));
+        // Streamed: one JSON line per phase ({"phase": "code"}), then {"result": …} or {"error": …}.
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/x-ndjson');
+        res.setHeader('Cache-Control', 'no-cache');
+        const line = (o: unknown) => !res.writableEnded && res.write(`${JSON.stringify(o)}\n`);
+        try {
+          line({ result: await aiDesign(prompt, project ?? undefined, history ?? [], imgs, (phase) => line({ phase })) });
+        } catch (e: any) {
+          line({ error: e?.message ?? String(e) });
+        }
+        return res.end();
       }
       if (req.url === '/api/ai/code' && req.method === 'POST') {
         const { aiEditFile, aiStatus } = await import('./ai');
@@ -130,13 +141,13 @@ export function apiPlugin(): Plugin {
       if (req.url === '/api/power' && req.method === 'POST') {
         const { project } = await body(req);
         const { simulate } = await import('../src/sim/node-runner');
-        const { measureLoad, batteryOptions, sleepAdvice, protectionAdvice } = await import('../src/core/power');
+        const { measureLoad, powerReport } = await import('../src/core/power');
         const { registerProjectParts } = await import('../src/core/customParts');
         registerProjectParts(project);
         const at = Array.from({ length: 120 }, (_, i) => 500 + i * 250);
         const r = await simulate(project, { untilMs: 31000, onFrameAt: at });
         const load = measureLoad(project, r.snapshots.map((s) => s.frame), 30, { wifi: (project.features ?? []).some((f: any) => f.kind === 'internet') });
-        const json = JSON.parse(JSON.stringify({ load, options: batteryOptions(project), sleep: sleepAdvice(project, load), protection: protectionAdvice(project) }, (_k, v) => (v === Infinity ? 1e12 : v)));
+        const json = JSON.parse(JSON.stringify(powerReport(project, load), (_k, v) => (v === Infinity ? 1e12 : v)));
         for (const o of json.options) if (o.mAh >= 1e12) o.mAh = null;
         return send(res, 200, json);
       }
@@ -157,13 +168,23 @@ export function apiPlugin(): Plugin {
         if (kind === 'gallery') {
           if (!key && req.method === 'GET') return send(res, 200, { entries: cm.listGallery() });
           if (!key && req.method === 'POST') {
-            const { project, author, blurb } = await body(req);
-            return send(res, 200, cm.publish(project, author, blurb));
+            const { project, author, blurb, name, update } = await body(req);
+            const e = cm.publish(project, author, blurb, { name, update });
+            return e ? send(res, 200, e) : send(res, 403, { error: 'That gallery entry can only be updated from the computer that published it.' });
           }
-          if (key && action === 'like' && req.method === 'POST') return send(res, 200, cm.like(key) ?? { error: 'not found' });
+          if (key && action === 'like' && req.method === 'POST') {
+            const e = cm.like(key);
+            return e ? send(res, 200, e) : send(res, 404, { error: 'not found' });
+          }
+          if (key && action === 'delete' && req.method === 'POST') {
+            const { editKey } = await body(req);
+            return cm.unpublish(key, editKey) ? send(res, 200, { ok: true }) : send(res, 403, { error: 'Only the person who published it can take it down.' });
+          }
           if (key && req.method === 'GET') {
             const g = cm.getGallery(key);
-            return g ? send(res, 200, g) : send(res, 404, { error: 'not found' });
+            if (!g) return send(res, 404, { error: 'not found' });
+            const { editKey: _k, ...pub } = g;
+            return send(res, 200, pub);
           }
         }
         if (kind === 'class') {
@@ -287,8 +308,14 @@ export function apiPlugin(): Plugin {
           const f = pcbFile(id, u.searchParams.get('path') ?? '');
           if (!f) return send(res, 404, { error: 'not found' });
           const types: Record<string, string> = { png: 'image/png', svg: 'image/svg+xml', csv: 'text/csv', json: 'application/json', stl: 'model/stl', md: 'text/markdown; charset=utf-8', pdf: 'application/pdf' };
+          const view = u.searchParams.has('view');
+          if (view && f.endsWith('.md')) {
+            // Show a document as a readable page (beginners can't easily open .md files).
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            return res.end(markdownPage(readFileSync(f, 'utf8')));
+          }
           res.setHeader('Content-Type', types[f.split('.').pop()!] ?? 'application/octet-stream');
-          if (!/\.(png|svg|stl)$/.test(f) || new URL(req.url, 'http://x').searchParams.has('download')) res.setHeader('Content-Disposition', `attachment; filename="${f.split('/').pop()}"`);
+          if (!view && (!/\.(png|svg|stl)$/.test(f) || u.searchParams.has('download'))) res.setHeader('Content-Disposition', `attachment; filename="${f.split('/').pop()}"`);
           return res.end(readFileSync(f));
         }
         if (u.pathname === '/api/pcb/zip') {
@@ -322,4 +349,41 @@ export function apiPlugin(): Plugin {
       server.middlewares.use(handler);
     },
   };
+}
+
+/** A small, safe Markdown-to-HTML page for the generated documents (headings, lists, checkboxes, code, bold). */
+function markdownPage(md: string): string {
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = (t: string) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const out: string[] = [];
+  let list = false;
+  let code = false;
+  let title = 'Document';
+  for (const line of md.split('\n')) {
+    if (line.startsWith('```')) {
+      if (list) (out.push('</ul>'), (list = false));
+      out.push(code ? '</pre>' : '<pre>');
+      code = !code;
+      continue;
+    }
+    if (code) {
+      out.push(esc(line));
+      continue;
+    }
+    const li = /^\s*-\s+(\[( |x)\]\s+)?(.*)$/.exec(line);
+    if (li) {
+      if (!list) (out.push('<ul>'), (list = true));
+      out.push(`<li>${li[1] ? `<input type="checkbox"${li[2] === 'x' ? ' checked' : ''}> ` : ''}${inline(li[3])}</li>`);
+      continue;
+    }
+    if (list) (out.push('</ul>'), (list = false));
+    const h = /^(#{1,3})\s+(.*)$/.exec(line);
+    if (h) {
+      if (h[1].length === 1) title = h[2];
+      out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
+    } else if (line.trim()) out.push(`<p>${inline(line)}</p>`);
+  }
+  if (list) out.push('</ul>');
+  if (code) out.push('</pre>');
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>body{font:16px/1.55 system-ui,sans-serif;max-width:760px;margin:0 auto;padding:24px 16px;color:#1d1d1f;background:#fff}h1{font-size:1.6em}li{margin:4px 0;list-style:none}ul{padding-left:4px}input{margin-right:6px}pre{background:#f4f4f4;padding:10px;overflow:auto}code{background:#f4f4f4;padding:0 3px}@media print{body{padding:0}}@media (prefers-color-scheme:dark){body{background:#151515;color:#eee}pre,code{background:#262626}}</style></head><body>${out.join('\n')}<p><button onclick="print()">Print</button></p></body></html>`;
 }

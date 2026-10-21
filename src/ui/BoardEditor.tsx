@@ -43,18 +43,33 @@ export function BoardEditor({ parts, width, height, onApply, busy }: { parts: Pl
         return { ...p, rot: (p.rot + 90) % 360, reserved: [Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.max(r[0], r[2]), Math.max(r[1], r[3])] };
       }),
     );
+  // Parts outside the outline make the board bigger when it is re-routed: say so, with the new size.
+  const grown = useMemo(() => {
+    const xs = items.flatMap((p) => [p.reserved[0], p.reserved[2]]);
+    const ys = items.flatMap((p) => [p.reserved[1], p.reserved[3]]);
+    const x0 = Math.min(0, ...xs) - (Math.min(...xs) < 0 ? 1.5 : 0);
+    const y0 = Math.min(0, ...ys) - (Math.min(...ys) < 0 ? 1.5 : 0);
+    const x1 = Math.max(width, ...xs) + (Math.max(...xs) > width ? 1.5 : 0);
+    const y1 = Math.max(height, ...ys) + (Math.max(...ys) > height ? 1.5 : 0);
+    const outside = items.filter((p) => p.reserved[0] < 0 || p.reserved[1] < 0 || p.reserved[2] > width || p.reserved[3] > height).map((p) => p.ref);
+    return outside.length ? { x0, y0, w: x1 - x0, h: y1 - y0, outside } : null;
+  }, [items, width, height]);
+  // Small parts are drawn over big ones, and the part you're holding over everything, so nothing hides under another part.
+  const area = (p: PlacedPart) => (p.reserved[2] - p.reserved[0]) * (p.reserved[3] - p.reserved[1]);
+  const drawOrder = [...items].sort((a, b) => Number(a.ref === sel) - Number(b.ref === sel) || area(b) - area(a));
   const changed = items.some((p, i) => p.x !== parts[i].x || p.y !== parts[i].y || p.rot !== parts[i].rot);
   return (
     <div className="board-editor" data-testid="board-editor" tabIndex={0} onKeyDown={(e) => sel && (e.key === 'r' || e.key === 'R') && rotate(sel)}>
       <p className="muted">Drag a part to move it; press R (or the button) to turn it 90°. Red means two parts overlap. Then re-route: Sparkbench redraws every track and re-checks everything.</p>
       <svg ref={svg} viewBox={`-10 -10 ${width + 20} ${height + 20}`} width={(width + 20) * scale} height={(height + 20) * scale} role="img" aria-label="Board layout editor">
         <rect x={0} y={0} width={width} height={height} rx={2} fill="#2d6b3c" opacity={0.25} stroke="#2d6b3c" />
-        {items.map((p) => {
+        {grown && <rect x={grown.x0} y={grown.y0} width={grown.w} height={grown.h} rx={2} fill="none" stroke="#c77700" strokeDasharray="2 1.5" strokeWidth={0.5} />}
+        {drawOrder.map((p) => {
           const [x0, y0, x1, y1] = p.reserved;
           return (
             <g
               key={p.ref}
-              className={`be-part ${sel === p.ref ? 'sel' : ''} ${overlaps.has(p.ref) ? 'bad' : ''}`}
+              className={`be-part ${sel === p.ref ? 'sel' : ''} ${overlaps.has(p.ref) ? 'bad' : ''} ${grown?.outside.includes(p.ref) ? 'outside' : ''}`}
               data-ref={p.ref}
               onPointerDown={(e) => {
                 (e.target as Element).setPointerCapture(e.pointerId);
@@ -80,6 +95,12 @@ export function BoardEditor({ parts, width, height, onApply, busy }: { parts: Pl
           );
         })}
       </svg>
+      {grown && (
+        <div className="banner warn" data-testid="be-grow">
+          {grown.outside.join(', ')} {grown.outside.length > 1 ? 'are' : 'is'} outside the board, so it will grow from {width} × {height} mm to about {Math.round(grown.w * 10) / 10} × {Math.round(grown.h * 10) / 10} mm (the dashed outline). Bigger boards cost a little more; drag {grown.outside.length > 1 ? 'them' : 'it'} back inside to keep the size.
+        </div>
+      )}
+      {overlaps.size > 0 && <div className="banner error">{[...overlaps].join(', ')} overlap. Drag them apart (the part you’re moving is drawn on top).</div>}
       <div className="be-tools">
         <button onClick={() => sel && rotate(sel)} disabled={!sel}>Rotate {sel ?? ''} 90°</button>
         <button onClick={() => setItems(parts)} disabled={!changed}>Undo my moves</button>

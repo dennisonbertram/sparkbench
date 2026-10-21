@@ -144,6 +144,8 @@ export interface Requirements {
   power: string;
   size: string;
   budget: string;
+  /** Promises from "does" that no acceptance test checks (set when Claude writes the tests). */
+  untested?: string[];
 }
 
 export interface Net {

@@ -3,6 +3,7 @@
 import type { PartDef, PartInstance, Project } from './types';
 import { partDef, formatOhms, formatFarads } from './parts';
 import { boardFor } from './boards';
+import { benchCounts, jumpersToBuy } from './toolkit';
 
 export interface SupplierLink {
   name: string; // "DigiKey", "Mouser", …
@@ -132,35 +133,26 @@ function supply(key: string, name: string, description: string, unitPrice: numbe
 /** The extra things a beginner needs to actually build the project on a bench. */
 function supplies(project: Project): BomLine[] {
   const out: BomLine[] = [];
-  const others = project.parts.filter((p) => partDef(p.type).category !== 'board');
-  const n = others.length;
-  // Breadboard
-  if (project.board === 'esp32') {
-    out.push(
-      supply('breadboard', 'Breadboard (830 points, full size)', 'Solderless breadboard, 830 tie points. The ESP32 DevKit is wide, so a full-size board (or two half-size boards side by side) leaves room for wires on both sides.', 5, '830 point solderless breadboard'),
-    );
-  } else if (n > 6 || (project.board === 'pico' && n > 4)) {
-    out.push(supply('breadboard', 'Breadboard (830 points, full size)', 'Solderless breadboard, 830 tie points.', 5, '830 point solderless breadboard'));
-  } else {
-    out.push(supply('breadboard', 'Breadboard (400 points, half size)', 'Solderless breadboard, 400 tie points.', 3, '400 point half size breadboard'));
+  // Breadboard and wires: the same counts as the Build guide's hole-by-hole layout.
+  const bench = benchCounts(project);
+  out.push(
+    supply('breadboard', bench.breadboards > 1 ? 'Breadboards (830 points, full size)' : 'Breadboard (830 points, full size)', `Solderless breadboard, 830 tie points: the Build guide's hole-by-hole layout is for this size${bench.breadboards > 1 ? ' (two boards joined end to end)' : ''}.${project.board === 'esp32' ? ' The ESP32 DevKit is wide, so a half-size board leaves no room for wires.' : ''}`, 5, '830 point solderless breadboard', { quantity: bench.breadboards }),
+  );
+  if (bench.cobbler) {
+    out.push(supply('cobbler', '40-pin T-Cobbler with ribbon cable', "Breakout board and 40-way ribbon cable that bring the Raspberry Pi's GPIO header onto the breadboard, pin names printed.", 6, 'Raspberry Pi 40 pin T-Cobbler breakout ribbon cable'));
   }
-  // Jumper wires
-  const boardPart = project.parts.find((p) => partDef(p.type).category === 'board');
-  const toPi = project.board === 'rpi4' && boardPart ? project.wires.filter((w) => w.a.part === boardPart.id || w.b.part === boardPart.id).length : 0;
-  const mm = project.wires.length - toPi;
-  if (mm > 0) {
-    const packs = Math.max(1, Math.ceil(mm / 40));
+  if (bench.jumpers > 0) {
     out.push(
-      supply('jumpers-mm', 'Jumper wires, male-to-male', `Pack of 40 breadboard jumper wires (this build uses about ${mm}).`, 3, 'male to male jumper wires 40 pack', {
-        quantity: packs,
+      supply('jumpers-mm', 'Jumper wires, male-to-male', `Pack of 40 breadboard jumper wires (this build uses ${bench.jumpers}).`, 3, 'male to male jumper wires 40 pack', {
+        quantity: Math.max(1, Math.ceil(jumpersToBuy(bench.jumpers) / 40)),
         note: 'Pre-cut solid-core wire kits also work and look tidier.',
       }),
     );
   }
-  if (toPi > 0) {
+  if (bench.femaleLeads > 0) {
     out.push(
-      supply('jumpers-fm', 'Jumper wires, female-to-male', `Pack of 40 jumper wires with a socket on one end, to plug onto the Raspberry Pi's header pins (this build uses about ${toPi}).`, 3, 'female to male jumper wires 40 pack', {
-        quantity: Math.max(1, Math.ceil(toPi / 40)),
+      supply('jumpers-fm', 'Jumper wires, female-to-male', `Pack of 40 jumper wires with a socket on one end, for the parts that sit off the breadboard (this build uses ${bench.femaleLeads}).`, 3, 'female to male jumper wires 40 pack', {
+        quantity: Math.max(1, Math.ceil(bench.femaleLeads / 40)),
       }),
     );
   }

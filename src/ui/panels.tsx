@@ -1,7 +1,8 @@
 // Side and bottom panels: copilot chat, inspector, console (serial / problems / scope), part library.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
-import { sendPrompt, suggestions as suggestFor } from './copilot';
+import { useDialog } from './useDialog';
+import { sendPrompt, suggestions as suggestFor, cancelDesign } from './copilot';
 import { marked } from 'marked';
 import { Glossed } from './Glossed';
 import { startSim } from './simClient';
@@ -31,8 +32,17 @@ export function Copilot() {
   const [text, setText] = useState('');
   const [images, setImages] = useState<Shrunk[]>([]);
   const log = useRef<HTMLDivElement>(null);
+  const first = useRef(true);
   useEffect(() => {
-    log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' });
+    const el = log.current;
+    if (!el) return;
+    const behavior = first.current ? 'auto' : 'smooth';
+    first.current = false;
+    // A finished AI reply: show its first line at the top, so the explanation is read from the start.
+    const last = chat[chat.length - 1];
+    const node = last?.role === 'ai' && !last.pending ? el.querySelector<HTMLElement>(`[data-msg="${last.id}"]`) : null;
+    if (node) el.scrollTo({ top: el.scrollTop + node.getBoundingClientRect().top - el.getBoundingClientRect().top - 8, behavior });
+    else el.scrollTo({ top: el.scrollHeight, behavior });
   }, [chat]);
   const submit = () => {
     if (!text.trim() && !images.length) return;
@@ -57,7 +67,7 @@ export function Copilot() {
           </div>
         )}
         {chat.map((m) => (
-          <div key={m.id} className={`msg ${m.role} ${m.pending ? 'pending' : ''}`}>
+          <div key={m.id} data-msg={m.id} className={`msg ${m.role} ${m.pending ? 'pending' : ''}`}>
             {m.role === 'ai' && !m.pending ? <div className="msg-text md" dangerouslySetInnerHTML={{ __html: marked.parse(m.text, { async: false, breaks: true }) as string }} /> : <div className="msg-text">{m.text}</div>}
             {m.images && m.images.length > 0 && (
               <div className="msg-images">{m.images.map((src, i) => <img key={i} src={src} alt={`Attached image ${i + 1}`} />)}</div>
@@ -86,6 +96,7 @@ export function Copilot() {
                       if (a.run === 'run' && p) startSim(p);
                       else if (a.run.startsWith('tab:')) useStore.getState().setTab(a.run.slice(4) as any);
                       else if (a.run.startsWith('bottom:')) useStore.getState().set({ bottomTab: a.run.slice(7) as any });
+                      else if (a.run === 'tour') useStore.getState().set({ tourStep: 0 });
                     }}
                   >
                     {a.label}
@@ -129,6 +140,11 @@ export function Copilot() {
         <button type="submit" className="primary" disabled={(!text.trim() && !images.length) || !!busy}>
           {busy ? 'Working…' : 'Send'}
         </button>
+        {busy && ai.enabled && (
+          <button type="button" onClick={cancelDesign} data-testid="copilot-stop">
+            Stop
+          </button>
+        )}
       </form>
     </aside>
   );
@@ -169,13 +185,13 @@ export function Inspector() {
             </div>
           )}
           <p className="muted small">{def.description}</p>
-          {running && (def.controls?.length ?? 0) > 0 && (
+          {running && (def.controls ?? []).some((c) => c.key !== 'wifi' || (project.features ?? []).some((f) => f.kind === 'internet') || /network|urequests|requests|socket/.test(project.files['main.py'] ?? '')) && (
             <section>
               <h3>Simulate</h3>
               <SimControls part={part} />
             </section>
           )}
-          {running && v && (
+          {running && v && [v.led, v.angle, v.tone, v.relay, v.powered].some((x) => x !== undefined) && (
             <section className="live">
               {v.led !== undefined && <div>LED current: {(v.ma ?? 0).toFixed(1)} mA</div>}
               {v.angle !== undefined && <div>Servo angle: {v.angle.toFixed(0)}°</div>}
@@ -363,9 +379,9 @@ export function Console() {
         </button>
         <button role="tab" aria-selected={tab === 'problems'} className={tab === 'problems' ? 'active' : ''} onClick={() => useStore.getState().set({ bottomTab: 'problems' })}>
           Problems
-          {errs > 0 && <span className="count err">{errs}</span>}
-          {warns > 0 && <span className="count warn">{warns}</span>}
-          {infos > 0 && errs + warns === 0 && <span className="count info" title="Tips, not problems">{infos}</span>}
+          {errs > 0 && <span className="count err" title={`${errs} problem${errs === 1 ? '' : 's'} to fix`}>{errs}</span>}
+          {warns > 0 && <span className="count warn" title={`${warns} warning${warns === 1 ? '' : 's'}`}>{warns}</span>}
+          {infos > 0 && <span className="count info" title={`${infos} tip${infos === 1 ? '' : 's'}, not problems`}>{infos}</span>}
           {errs + warns + infos === 0 && <span className="count ok">✓</span>}
         </button>
         {!discrete && (
@@ -404,11 +420,13 @@ export function Console() {
           )}
           {sim.warnings.map((w) => (
             <div key={w.id} className={`problem ${w.severity}`}>
+              {w.severity === 'info' && <span className="tip-tag">Tip</span>}
               <b>Simulation:</b> {w.text}
             </div>
           ))}
           {checks.map((c) => (
             <div key={c.id} className={`problem ${c.severity}`}>
+              {c.severity === 'info' && <span className="tip-tag">Tip</span>}
               <b>{c.title}</b> — {c.detail}
               {c.fix && (
                 <button className="link" onClick={() => applyFix(c.fix!.action)}>
@@ -451,15 +469,20 @@ function PinsPanel() {
           {rows.map(([g, p]) => {
             const bp = bpins.find((x) => x.fn === `gpio${g}`);
             const net = board && bp ? netOf.get(pinKey({ part: board.id, pin: bp.name })) : undefined;
-            const others = (net?.pins ?? []).filter((r) => r.part !== board?.id).map((r) => `${project.parts.find((x) => x.id === r.part)?.ref}.${r.pin}`);
+            const others = (net?.pins ?? [])
+              .filter((r) => r.part !== board?.id)
+              .map((r) => {
+                const part = project.parts.find((x) => x.id === r.part);
+                return part ? `${part.label ?? partDef(part.type).name} ${part.ref} (its ${r.pin} pin)` : r.pin;
+              });
             return (
               <tr key={g}>
                 <td className="mono">{bp?.name ?? `GPIO${g}`} <span className="muted">GPIO{g}</span></td>
-                <td>{p.mode === 'out' ? 'output' : p.mode === 'in' ? 'input' : p.mode}</td>
+                <td title={p.mode === 'pwm' ? 'PWM: the pin switches on and off very fast; the % is how much of the time it is on' : undefined}>{p.mode === 'out' ? 'output' : p.mode === 'in' ? 'input' : p.mode === 'pwm' ? 'PWM output' : p.mode}</td>
                 <td>
                   <span className={`lvl ${p.level ? 'hi' : 'lo'}`}>{p.level ? 'HIGH' : 'LOW'}</span>
                 </td>
-                <td className="mono">{p.mode === 'pwm' ? `${Math.round(((p.duty ?? 0) / 65535) * 100)}% @ ${p.freq} Hz` : ''}</td>
+                <td className="mono">{p.mode === 'pwm' ? `on ${Math.round(((p.duty ?? 0) / 65535) * 100)}% of the time, ${p.freq}× a second` : ''}</td>
                 <td className="num mono">{p.v.toFixed(2)}</td>
                 <td className="num mono">{Math.abs(p.ma) >= 0.05 ? p.ma.toFixed(1) : ''}</td>
                 <td className="small">{others.join(', ')}</td>
@@ -563,10 +586,11 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
   const list = PARTS.filter((p) => p.category !== 'board' && !p.production).filter((p) => match(`${p.name} ${p.description} ${p.keywords.join(' ')}`));
   const myList = mine.filter((s) => match(`${s.name} ${s.mpn} ${s.description}`));
   const cats = ['display', 'input', 'sensor', 'output', 'actuator', 'passive', 'ic', 'power'];
+  const ref = useDialog<HTMLDivElement>(onClose, { trap: false, autoFocus: false });
   return (
-    <div className="library" role="dialog" aria-label="Add a part" onPointerDown={(e) => e.stopPropagation()}>
+    <div className="library" role="dialog" aria-label="Add a part" onPointerDown={(e) => e.stopPropagation()} ref={ref}>
       <div className="library-head">
-        <input autoFocus placeholder="Search parts (e.g. button, OLED, servo)" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && onClose()} />
+        <input autoFocus placeholder="Search parts (e.g. button, OLED, servo)" value={q} onChange={(e) => setQ(e.target.value)} />
         <button className="ghost" onClick={onClose} aria-label="Close">
           ✕
         </button>

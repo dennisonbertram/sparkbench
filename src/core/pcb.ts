@@ -20,6 +20,8 @@ export interface PcbPart {
   /** Plain-English role, for placement hints and the assembly notes. */
   role: 'board' | 'connector' | 'module' | 'ic' | 'passive' | 'indicator' | 'input' | 'power';
   description: string;
+  /** LED colour for the 3D model ("Green", "Yellow", "Blue", "Clear"; default red). */
+  ledColor?: string;
   /** Cables plug in here (off-board screen, servo, battery…): place it at the board edge. */
   edge?: boolean;
   /** ESP32 DevKit: keep copper away from its antenna end. */
@@ -80,6 +82,9 @@ const ROLE: Record<string, PcbPart['role']> = {
   actuator: 'connector',
 };
 
+/** KiCad ships 5 mm LED 3D models in these colours (the plain one is red). */
+const LED_MODEL: Record<string, string> = { green: 'Green', yellow: 'Yellow', orange: 'Yellow', blue: 'Blue', white: 'Clear', warmwhite: 'Clear' };
+
 export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
   const proj = project.parts.some((p) => !p.ref) ? annotate(project) : project;
   const { nets, netOf } = buildNets(proj);
@@ -106,6 +111,7 @@ export function pcbSpec(project: Project, opts: { fab?: FabId } = {}): PcbSpec {
       ...(p.type === 'pi-pico' ? { usbPads: ['1', '40'] as [string, string] } : {}),
       ...(p.type === 'usb-micro' ? { flushEdge: 2.6875 } : {}),
       ...(MODULE_BODY[p.type] ? { module: MODULE_BODY[p.type] } : {}),
+      ...(p.type === 'led' && LED_MODEL[p.props?.color] ? { ledColor: LED_MODEL[p.props.color] } : {}),
     };
   });
   const power = nets.filter((n) => n.pins.length > 1 && /^(GND|\+3V3|\+5V|VBAT)/.test(n.name)).map((n) => n.name);

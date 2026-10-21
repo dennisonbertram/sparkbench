@@ -13,7 +13,7 @@ await p.waitForSelector('[data-testid=ai-proposal]', { timeout: 240000 });
 await p.screenshot({ path: 'test-results/ai-code-proposal.png' });
 console.log('proposal:', (await p.textContent('.proposal-head')).slice(0, 400));
 await p.click('button:has-text("Accept & run")');
-await p.click('.tabs button:has-text("Breadboard")');
+await p.click('.tabs button:has-text("Wiring")');
 await p.waitForTimeout(7000);
 const serial = await p.textContent('[data-testid=serial]');
 console.log('serial:', serial.slice(-300));

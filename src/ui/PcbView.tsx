@@ -1,6 +1,6 @@
 // "Circuit board" tab: turns the design into a real, routed printed circuit board (KiCad +
 // Freerouting on the local server) and hands over the files a PCB factory needs.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
 import { slug } from './exporters';
 import { Revisions } from './Revisions';
@@ -40,6 +40,11 @@ const PLAIN: Record<string, string> = {
   courtyards_overlap: 'Two parts are placed too close to each other to solder.',
   silk_overlap: 'Some printed labels overlap. That only affects looks.',
   silk_over_copper: 'A printed label runs over a solder pad. That only affects looks.',
+  silk_edge_clearance: 'A printed label runs off the edge of the board, so part of it may be cut off.',
+  text_height: 'Some printed text is very small and may be hard to read.',
+  text_thickness: 'Some printed text is very thin and may print faintly.',
+  hole_clearance: 'A hole is very close to copper; the factory can usually still make it.',
+  copper_edge_clearance: 'Some copper is very close to the board edge.',
   lib_footprint_mismatch: 'A footprint differs slightly from the library version. This is harmless.',
   'schematic_parity:net_conflict': 'A pad is connected differently from the schematic.',
   'schematic_parity:missing_footprint': 'A part in the schematic is missing from the board.',
@@ -47,6 +52,9 @@ const PLAIN: Record<string, string> = {
 };
 
 const jobKey = (id: string) => `sb-pcb-job-${id}`;
+/** Which design (and revision) the remembered board was built from, so it is known after a reload too. */
+const builtKey = (id: string) => `sb-pcb-built-${id}`;
+const sentence = (t: string) => (/[.!?]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
 
 export function PcbView() {
   const project = useStore((s) => s.project)!;
@@ -66,8 +74,18 @@ export function PcbView() {
   const [variant, setVariant] = useState<'prototype' | 'product'>('prototype');
   const [panel, setPanel] = useState('1x1');
   const [error, setError] = useState('');
-  const designKey = useMemo(() => JSON.stringify([project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b]), project.revision]), [project]);
-  const [builtFor, setBuiltFor] = useState<string | null>(null);
+  const designKey = useMemo(() => JSON.stringify([project.board, project.parts.map((p) => [p.id, p.type, p.props]), project.wires.map((w) => [w.a, w.b])]), [project]);
+  const [builtFor, setBuiltFor] = useState<{ job: string; design: string; rev: string | null } | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(builtKey(project.id)) ?? 'null');
+    } catch {
+      return null;
+    }
+  });
+  const [started, setStarted] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const retried = useRef(false);
+  const rebuild = useRef<(() => void) | null>(null);
 
   // Poll the job until it finishes.
   useEffect(() => {
@@ -77,13 +95,20 @@ export function PcbView() {
       try {
         const r = await fetch(`/api/pcb/status?id=${job}`);
         if (r.status === 404) {
+          // The server forgot this build (it restarted). Start a build you are watching again, once.
           setJob(null);
+          if (stop || !started) return;
+          if (!retried.current) {
+            retried.current = true;
+            rebuild.current?.();
+          } else setError('The board builder restarted before your board was finished. Click the button above to try again.');
           return;
         }
         const s: Status = await r.json();
         if (stop) return;
         setStatus(s);
-        if (!s.done) setTimeout(tick, 900);
+        if (s.done) retried.current = false;
+        else setTimeout(tick, 900);
       } catch {
         if (!stop) setTimeout(tick, 2000);
       }
@@ -98,13 +123,17 @@ export function PcbView() {
     setError('');
     setStatus(null);
     setEditing(false);
+    rebuild.current = () => build(fixed);
     try {
       const r = await fetch('/api/pcb/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, fab, qrUrl, fixed, variant, panel: { rows: Number(panel[0]), cols: Number(panel[2]) } }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? 'Could not start the board design.');
       setJob(d.id);
-      setBuiltFor(designKey);
+      setStarted(Date.now());
+      const built = { job: d.id, design: designKey, rev: project.revision ?? null };
+      setBuiltFor(built);
       try {
+        localStorage.setItem(builtKey(project.id), JSON.stringify(built));
         localStorage.setItem(jobKey(project.id), d.id);
       } catch {
         /* not remembered across reloads */
@@ -115,8 +144,25 @@ export function PcbView() {
   }
 
   const res = status?.result;
+  // When a build finishes while you watch, bring its result into view (the progress list is above it).
   const running = !!job && !!status && !status.done;
-  const stale = res && builtFor && builtFor !== designKey;
+  const watching = useRef(false);
+  if (running) watching.current = true;
+  useEffect(() => {
+    if (!res || !watching.current) return;
+    watching.current = false;
+    document.querySelector('[data-testid=pcb-result]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [!!res]);
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+  const known = builtFor && builtFor.job === job ? builtFor : null;
+  // A board remembered from before this was tracked: we can't tell what it was built from, so treat it as out of date.
+  const stale = !!res && (!known || known.design !== designKey);
+  const revStale = !!res && !stale && (known?.rev ?? null) !== (project.revision ?? null);
+  const label = (r: string | null | undefined) => (r ? `Rev ${r}` : 'Draft');
   const file = (path: string) => `/api/pcb/file?id=${job}&path=${encodeURIComponent(path)}`;
   const name = slug(project.name);
   const ok = res && res.routed && res.drc.errors.length === 0 && res.drc.unconnected === 0 && res.problems.length === 0;
@@ -142,7 +188,7 @@ export function PcbView() {
           {!running && <CostHint kind="pcb" />}
           {!running && (
             <button className="primary" onClick={() => build()} data-testid="pcb-build">
-              {res ? (stale ? 'Update the board for the changed design' : 'Design it again') : 'Design my circuit board'}
+              {res ? (stale ? 'Update the board for the changed design' : revStale ? `Rebuild so the board prints ${label(project.revision)}` : 'Design it again') : 'Design my circuit board'}
             </button>
           )}
         </div>
@@ -187,6 +233,8 @@ export function PcbView() {
         {tools && !tools.freerouting && <div className="banner">Automatic track routing needs Java and Freerouting. Without them you get the placed board and you route it yourself in KiCad.</div>}
 
         {(running || (status && !res && !status.error)) && (
+          <>
+          <p className="pcb-elapsed" role="status">Working… {started ? `${Math.max(0, Math.round((now - started) / 1000))} s so far · ` : ''}usually 15–40 s, longer for big boards.</p>
           <ol className="pcb-steps" data-testid="pcb-progress">
             {[
               { label: 'Placing the parts and routing the copper tracks', at: 1 },
@@ -195,8 +243,10 @@ export function PcbView() {
               { label: 'Rendering the board in 3D', at: 5 },
             ].map((st, i, all) => {
               const n = status?.log.length ?? 0;
-              const done = status?.done || n > st.at || (i < all.length - 1 && n >= all[i + 1].at);
-              const current = !done && n >= st.at;
+              const last = i === all.length - 1;
+              // The last step stays "running" until the finished board actually arrives.
+              const done = !!status?.done || (!last && (n > st.at || n >= all[i + 1].at));
+              const current = !done && (n >= st.at || (last && n > all[i - 1].at));
               return (
                 <li key={st.label} className={done ? 'done' : current ? 'current' : ''}>
                   {i === 0 && status?.log[1] ? `${st.label}: ${status.log[1].toLowerCase()}` : st.label}
@@ -204,12 +254,14 @@ export function PcbView() {
               );
             })}
           </ol>
+          </>
         )}
         {status?.error && <div className="banner error">The board design failed: {status.error}</div>}
 
         {res && (
           <div className="pcb-result" data-testid="pcb-result">
-            {stale && <div className="banner">You changed the design since this board was made. Click <strong>Update the board</strong> to redo it.</div>}
+            {stale && <div className="banner warn" data-testid="pcb-stale">{known ? 'You changed the design since this board was made.' : 'This board was made earlier and may not match your current design.'} Click <strong>Update the board</strong> to redo it before you order: the files below are for the old design.</div>}
+            {revStale && <div className="banner" data-testid="pcb-rev-stale">Your design hasn’t changed, but you released {label(project.revision)}. This board still prints “{label(known?.rev)}”. Click <strong>Rebuild</strong> so the board and its documents say {label(project.revision)}.</div>}
             {res.variant === 'product' && res.productNotes.length > 0 && (
               <div className="pcb-product-notes" data-testid="pcb-product-notes">
                 <strong>Product version: what changed</strong>
@@ -232,18 +284,28 @@ export function PcbView() {
                 </ul>
               )}
               {res.panel && <p data-testid="pcb-panel-note">Panel: {res.panel.rows * res.panel.cols} boards on one sheet with V-score lines to snap them apart, rails with fiducials and tooling holes for assembly. {res.panel.drcErrors ? `KiCad found ${res.panel.drcErrors} problem${res.panel.drcErrors > 1 ? 's' : ''} on the panel.` : 'KiCad’s rule check on the panel found no errors.'}</p>}
-              {res.drc.warnings.length > 0 && <p className="pcb-note">{res.drc.warnings.length} minor note{res.drc.warnings.length === 1 ? '' : 's'}: {[...new Set(res.drc.warnings.map((w) => PLAIN[w.type] ?? w.description))].join(' ')}</p>}
+              {res.drc.warnings.length > 0 &&
+                (() => {
+                  const notes = [...new Set(res.drc.warnings.map((w) => sentence(PLAIN[w.type] ?? w.description)))];
+                  return (
+                    <div className="pcb-note" data-testid="pcb-minor">
+                      {notes.length === 1 ? `Minor note: ${notes[0]}` : `${notes.length} minor notes:`}
+                      {notes.length > 1 && <ul>{notes.map((n) => <li key={n}>{n}</li>)}</ul>}
+                    </div>
+                  );
+                })()}
             </div>
 
-            <div className="pcb-downloads">
+            <div className={`pcb-downloads${stale ? ' stale' : ''}`} title={stale ? 'These files are for the old design: update the board first' : undefined}>
               <a className="button primary" href={`/api/pcb/zip?id=${job}&kind=fab&name=${name}`} data-testid="pcb-gerbers">Download files for the factory (.zip)</a>
+              <a className="button" href="#pcb-order" onClick={(e) => (e.preventDefault(), document.getElementById('pcb-order')?.scrollIntoView({ behavior: 'smooth' }))}>How to order it</a>
               <a className="button" href={`/api/pcb/zip?id=${job}&kind=all&name=${name}`}>All board files: KiCad, 3D, assembly (.zip)</a>
               <a className="button" href={file(`fab/bom-jlcpcb.csv`)}>Assembly parts list (BOM)</a>
               <a className="button" href={file(`fab/cpl-jlcpcb.csv`)}>Part positions (CPL)</a>
               {res.panel && <a className="button" href={`/api/pcb/zip?id=${job}&kind=panel&name=${name}`} data-testid="pcb-panel-zip">Panel of {res.panel.rows * res.panel.cols} for the factory (.zip)</a>}
-              <a className="button" href={file('fab/assembly.pdf')}>Assembly drawing (PDF)</a>
-              <a className="button" href={file('TEST.md')}>Test procedure</a>
-              <a className="button" href={file('COMPLIANCE.md')}>Selling it? Compliance checklist</a>
+              <a className="button" href={`${file('fab/assembly.pdf')}&view`} target="_blank" rel="noreferrer">Assembly drawing (PDF)</a>
+              <a className="button" href={`${file('TEST.md')}&view`} target="_blank" rel="noreferrer">Test procedure</a>
+              <a className="button" href={`${file('COMPLIANCE.md')}&view`} target="_blank" rel="noreferrer">Selling it? Compliance checklist</a>
             </div>
 
             <div className="pcb-arrange">
@@ -270,16 +332,20 @@ export function PcbView() {
                     <li key={i} className={d.level}>{d.level === 'ok' ? '✓' : d.level === 'warn' ? '!' : 'ℹ'} {d.text}</li>
                   ))}
                 </ul>
-                <h3>What the parts cost</h3>
+                <h3>What the parts cost (parts only)</h3>
                 <table className="bom pcb-cost">
-                  <thead><tr><th>Boards</th><th className="num">Parts (LCSC, live)</th><th className="num">Per board</th></tr></thead>
+                  <thead><tr><th>Boards</th><th className="num">Parts for all boards (LCSC, live)</th><th className="num">Parts per board</th></tr></thead>
                   <tbody>
                     {res.sourcing.cost.map((c) => (
                       <tr key={c.boards}><td>{c.boards}</td><td className="num">${c.parts.toFixed(2)}</td><td className="num">${c.perBoard.toFixed(2)}</td></tr>
                     ))}
                   </tbody>
                 </table>
-                <p className="pcb-note">Live LCSC prices for the parts that go on the board (sockets for plug-in boards and modules; buy those separately{res.sourcing.cost[0].missing ? `, plus ${res.sourcing.cost[0].missing} part${res.sourcing.cost[0].missing > 1 ? 's' : ''} not stocked at LCSC` : ''}). The bare boards are priced by the maker when you upload the files: <a href={res.fab.quote} target="_blank" rel="noreferrer">get a {res.fab.name} quote</a>.</p>
+                <p className="pcb-note">
+                  Not included: the circuit boards themselves, assembly and shipping
+                  {res.variant === 'prototype' && project.board !== 'none' ? `, and the ${project.board === 'esp32' ? 'ESP32 board' : project.board === 'pico' ? 'Pico' : 'Raspberry Pi'} and modules that plug into the sockets (the sockets are included)` : ''}
+                  {res.sourcing.cost[0].missing ? `, and ${res.sourcing.cost[0].missing} part${res.sourcing.cost[0].missing > 1 ? 's' : ''} LCSC doesn’t stock (marked “buy separately” below)` : ''}. The bare boards are priced by the maker when you upload the files: <a href={res.fab.quote} target="_blank" rel="noreferrer">get a {res.fab.name} quote</a>.
+                </p>
                 <details>
                   <summary>Parts for the board ({res.sourcing.lines.length})</summary>
                   <table className="bom">
@@ -303,7 +369,7 @@ export function PcbView() {
 
             {job && <CaseSection jobId={job} />}
 
-            <div className="prose pcb-order">
+            <div className="prose pcb-order" id="pcb-order">
               <h3>How to order it</h3>
               <ol>
                 <li>Click <strong>Download files for the factory</strong>. The zip holds the Gerber and drill files, the standard format every PCB maker accepts.</li>

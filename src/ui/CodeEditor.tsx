@@ -44,7 +44,7 @@ const errorField = StateField.define<DecorationSet>({
 const explainHover = hoverTooltip((view, pos) => {
   const line = view.state.doc.lineAt(pos);
   const st = useStore.getState();
-  const text = explainLine(line.text, st.project);
+  const text = explainLine(line.text, st.project, { source: view.state.doc.toString(), line: line.number });
   if (!text) return null;
   return {
     pos: line.from,

@@ -90,10 +90,10 @@ export function generateSelfTest(project: Project): string | null {
     if (pi) {
       add('from smbus2 import SMBus', 'found = []', 'with SMBus(1) as bus:', '    for a in range(0x08, 0x78):', '        try:', '            bus.read_byte(a)', '            found.append(a)', '        except OSError:', '            pass');
     } else add('found = i2c.scan()');
-    add("print('INFO I2C: devices at ' + ', '.join(hex(a) for a in found))");
+    add("print('INFO I2C: %d part(s) answered on the shared SDA/SCL data wires' % len(found))");
     for (const [f, p] of want) {
       const addr = partDef(p!.type).i2cAddress!;
-      add(`report(${JSON.stringify(f.label)}, ${addr} in found, ${JSON.stringify(`answers on I2C at 0x${addr.toString(16)}`)} if ${addr} in found else ${JSON.stringify(`no reply at 0x${addr.toString(16)}: check SDA (${f.pins.sda}) and SCL (${f.pins.scl}) are not swapped, and its VCC/GND`)})`);
+      add(`report(${JSON.stringify(f.label)}, ${addr} in found, 'is connected and answering' if ${addr} in found else ${JSON.stringify(`didn't answer: check its SDA wire goes to ${pinWords(f.pins.sda)} and SCL to ${pinWords(f.pins.scl)} (not swapped), and its power and GND wires`)})`);
     }
     add('');
   }
@@ -129,7 +129,7 @@ function guardedSetup(setup: string[], fs: FeatureInstance[]): string[] {
 function featureTest(f: FeatureInstance, pi: boolean): string[] {
   const n = f.name;
   const label = JSON.stringify(f.label);
-  const pin = Object.values(f.pins).join('/');
+  const pin = Object.values(f.pins).map(pinWords).join('/');
   const out = (on: string, off: string) => [`${on}`, 'sleep_ms(300)', `${off}`, 'sleep_ms(300)'];
   switch (f.kind) {
     case 'oled':
@@ -200,6 +200,13 @@ function featureTest(f: FeatureInstance, pi: boolean): string[] {
     default:
       return [];
   }
+}
+
+/** Board pin names in words that can't be mistaken for breadboard holes: ESP32 "D22" (hole d22?) → "pin D22 (GPIO22)". */
+export function pinWords(pin: string | number | undefined): string {
+  const s = String(pin ?? '');
+  const d = /^D(\d+)$/.exec(s);
+  return d ? `pin D${d[1]} (GPIO${d[1]})` : /^GP\d+$/.test(s) ? `pin ${s}` : s;
 }
 
 export interface SelfTestLine {

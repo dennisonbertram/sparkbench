@@ -259,8 +259,9 @@ export function buildCase(input: CaseInput): CaseResult {
     const len = od * 0.8;
     const rise = Math.tan((20 * Math.PI) / 180) * len;
     const wedge = rotateY(-Math.PI / 2, rotateZ(0, extrudeLinear({ height: ow }, primitives.polygon({ points: [[0, 0], [rise + 4, 0], [4, len], [0, len]] }))));
-    const lip = translate([-ow, len - 4, rise + 4], cuboid({ size: [ow, 3, 6], center: [ow / 2, 1.5, 3] }));
-    parts.push({ name: 'desk-stand', geom: union(translate([ow, 0, 0], wedge), translate([ow, 0, 0], lip)), note: 'Prop the case on it: it leans back 20° so the screen faces you.' });
+    // The lip runs along the low front edge, joined to the wedge, so the case can't slide off.
+    const lip = translate([-ow, len - 3, 0], cuboid({ size: [ow, 3, 10], center: [ow / 2, 1.5, 5] }));
+    parts.push({ name: 'desk-stand', geom: union(translate([ow, 0, 0], wedge), translate([ow, 0, 0], lip)), note: `Prop the case on it: it leans back 20° so the ${Object.values(types).some((t) => t === 'ssd1306' || t === 'lcd1602' || t === 'epaper29') ? 'screen faces' : 'top of the case faces'} you.` });
     openings.push({ ref: '', what: 'separate desk stand (20° tilt)', where: 'floor' });
   }
   return { parts, outer: { w: round(ow), d: round(od), h: round(oh) }, openings, warnings, tallest: { ref: tallest.ref, h: round(tallest.h) } };

@@ -20,10 +20,24 @@ const STYLES = [
   { id: 'desk-stand', label: 'Desk stand' },
 ] as const;
 
+/** What the case will have, from this project's real parts (no promises of buttons it doesn't have). */
+function features(types: string[]): string {
+  const has = (...t: string[]) => types.some((x) => t.includes(x));
+  const f = ['posts for its mounting holes'];
+  if (has('pushbutton')) f.push('holes for the buttons (with printed caps)');
+  if (has('led', 'rgb-led')) f.push('windows for the LEDs');
+  if (has('ssd1306', 'lcd1602', 'epaper29')) f.push('a window for the screen');
+  if (has('dht22', 'ldr', 'ntc', 'pir', 'hcsr04', 'bme280')) f.push('openings so the sensors can sense the room');
+  if (has('potentiometer', 'slide-switch')) f.push('holes for the knobs and switches');
+  if (has('buzzer')) f.push('sound holes');
+  if (types.some((t) => ['esp32-devkit', 'pi-pico', 'usb-micro'].includes(t))) f.push('the USB opening');
+  return f.length > 1 ? `${f.slice(0, -1).join(', ')} and ${f[f.length - 1]}` : f[0];
+}
+
 export function CaseSection({ jobId }: { jobId: string }) {
   const project = useStore((s) => s.project)!;
   const [style, setStyle] = useState<(typeof STYLES)[number]['id']>('rounded');
-  const [info, setInfo] = useState<CaseInfo | null>(null);
+  const [info, setInfo] = useState<(CaseInfo & { style: string }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function make(st = style) {
@@ -33,7 +47,7 @@ export function CaseSection({ jobId }: { jobId: string }) {
       const r = await fetch('/api/pcb/enclosure', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: jobId, project, style: st }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? 'Could not make the case');
-      setInfo(d);
+      setInfo({ ...d, style: st });
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -44,7 +58,7 @@ export function CaseSection({ jobId }: { jobId: string }) {
   return (
     <section className="case-section" data-testid="case-section">
       <h3>A case for it</h3>
-      <p className="muted">A 3D-printable case made to fit this exact board: posts for its mounting holes, holes for the buttons (with printed caps), LEDs and screen, vents for the sensors, and the USB opening.</p>
+      <p className="muted">A 3D-printable case made to fit this exact board: {features(project.parts.map((p) => p.type))}.</p>
       <div className="case-styles" role="radiogroup" aria-label="Case style">
         {STYLES.map((s) => (
           <button
@@ -67,7 +81,7 @@ export function CaseSection({ jobId }: { jobId: string }) {
       {error && <div className="banner error">{error}</div>}
       {info && (
         <>
-          <CaseViewer jobId={jobId} files={info.files} outer={info.outer} board={info.board} />
+          <CaseViewer jobId={jobId} files={info.files} outer={info.outer} board={info.board} style={info.style} />
           <p data-testid="case-summary">
             Outside {info.outer.w} × {info.outer.d} × {info.outer.h} mm (tallest part: {info.tallest.ref}, {info.tallest.h} mm). Openings: {info.openings.map((o) => `${o.ref ? `${o.ref} ` : ''}${o.what}`).join('; ')}.
           </p>

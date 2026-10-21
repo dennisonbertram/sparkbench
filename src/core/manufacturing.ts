@@ -5,6 +5,7 @@ import type { AcceptanceTest, TestStep } from './acceptance';
 import type { MeterCheck } from './multimeter';
 import { partDef } from './parts';
 import { boardFor } from './boards';
+import { revLabel } from './revisions';
 
 function stepText(s: TestStep): string {
   switch (s.kind) {
@@ -22,7 +23,7 @@ function stepText(s: TestStep): string {
 export function testProcedure(project: Project, opts: { tests: AcceptanceTest[]; selftestExpected: string; meter: MeterCheck[] }): string {
   const board = boardFor(project.board);
   const polar = project.parts.filter((p) => ['led', 'rgb-led', 'electrolytic', 'diode', 'buzzer', 'ne555', 'mcp3008', 'npn'].includes(p.type));
-  const L: string[] = [`# ${project.name}: board test procedure (Rev ${project.revision ?? 'A'})`, '', 'Do these in order on every new board. Tick each box.', ''];
+  const L: string[] = [`# ${project.name}: board test procedure (${revLabel(project)})`, '', 'Do these in order on every new board. Tick each box.', ''];
   L.push('## 1. Look before you power it', '');
   L.push('- [ ] No solder bridges between neighbouring pads (look closely at sockets and chips).');
   for (const p of polar) {
@@ -32,7 +33,7 @@ export function testProcedure(project: Project, opts: { tests: AcceptanceTest[];
   }
   L.push('- [ ] Sockets: pin 1 of each plug-in board/module matches the pin names printed beside the socket.', '');
   L.push('## 2. Check for shorts (power OFF)', '');
-  L.push('- [ ] Multimeter on resistance (Ω): between + and GND you should read more than 100 Ω (a beep/0 Ω means a short — don’t power it).', '');
+  L.push('- [ ] Multimeter on resistance (Ω): touch one probe to the board’s + supply (the 3V3/5V/VIN pin or the + battery pad) and the other to GND (ground, the − side). You should read more than 100 Ω. A beep or 0 Ω means a short circuit: don’t power it.', '');
   L.push('## 3. Power on and measure', '');
   if (opts.meter.length) {
     L.push('Multimeter on DC volts, black probe on GND:', '');
@@ -86,7 +87,7 @@ export function complianceChecklist(project: Project): string {
     '',
     '## Labels and paperwork',
     '',
-    `- [ ] Product label: name (${project.name}), model/revision (Rev ${project.revision ?? 'A'}), power rating (e.g. "5 V ⎓ 0.5 A"), your company name and address, serial number.`,
+    `- [ ] Product label: name (${project.name}), model/revision (${revLabel(project)}), power rating (e.g. "5 V ⎓ 0.5 A"), your company name and address, serial number.`,
     '- [ ] Marks: FCC statement (USA), CE/UKCA mark (EU/UK), WEEE crossed-out bin (EU), recycling note.',
     '- [ ] User manual with safety warnings and how to dispose of it.',
     '',

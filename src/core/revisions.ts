@@ -47,8 +47,16 @@ export function diffDesigns(prev: Revision['snapshot'], cur: Revision['snapshot'
 
 export const snapshotOf = (p: Project): Revision['snapshot'] => ({ parts: p.parts, wires: p.wires, files: p.files, board: p.board });
 
+/** Today's date in the user's time zone (YYYY-MM-DD). */
+export function localDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** What boards and documents print: "Rev B" once released, "Draft" before the first release. */
+export const revLabel = (p: Pick<Project, 'revision'>) => (p.revision ? `Rev ${p.revision}` : 'Draft');
+
 /** Release the current design as the next revision. */
-export function releaseRevision(p: Project, note: string, date = new Date().toISOString().slice(0, 10)): Project {
+export function releaseRevision(p: Project, note: string, date = localDate()): Project {
   const prev = p.revisions?.[p.revisions.length - 1];
   const rev = nextLetter(prev?.rev);
   const changes = prev ? diffDesigns(prev.snapshot, snapshotOf(p)) : ['First release.'];

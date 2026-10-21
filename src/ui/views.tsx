@@ -39,7 +39,7 @@ export function SchematicView() {
   const aiStatus = useStore((s) => s.aiStatus);
   const theme = useTheme();
   const [kicad, setKicad] = useState<{ svg?: string; erc?: any; error?: string; busy?: boolean } | null>(null);
-  const [zoom, setZoom] = useState(1.4);
+  const [zoom, setZoom] = useState(1);
   const svg = useMemo(() => {
     try {
       return renderSchematicSvg(project, { theme, highlightNet: pinnedName });
@@ -48,13 +48,8 @@ export function SchematicView() {
     }
   }, [project.parts, project.wires, project.name, theme, pinnedName]);
   const name = slug(project.name);
-  // Pick a zoom where pin labels are readable: the drawing is in millimetres; ~7 px per mm at the view's width.
-  useEffect(() => {
-    const vb = /viewBox="[\d.-]+ [\d.-]+ ([\d.]+) /.exec(svg);
-    const wmm = vb ? Number(vb[1]) : 300;
-    const viewPx = Math.max(600, (document.querySelector('.view') as HTMLElement | null)?.clientWidth ?? 900) - 40;
-    setZoom(Math.min(4, Math.max(1, +((7 * wmm) / viewPx).toFixed(2))));
-  }, [project.id, svg.length > 0]);
+  // Open showing the whole sheet; the zoom buttons (or ctrl/⌘ + scroll) get closer.
+  useEffect(() => setZoom(1), [project.id]);
   const renderKicad = async () => {
     setKicad({ busy: true });
     try {
@@ -73,20 +68,26 @@ export function SchematicView() {
         <span className="doc-title">Schematic</span>
         <button onClick={() => download(`${name}-schematic.svg`, renderSchematicSvg(project, { theme: 'light' }), 'image/svg+xml')}>Download SVG</button>
         <button onClick={() => svgToPng(renderSchematicSvg(project, { theme: 'light' })).then((b) => download(`${name}-schematic.png`, b))}>Download PNG</button>
-        <button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Open in KiCad's Schematic Editor">KiCad schematic</button>
-        <button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))}>KiCad project</button>
-        <button onClick={() => download(`${name}.net`, exportKicadNetlist(project))}>Netlist</button>
-        <button onClick={() => download(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)))} title="SPICE netlist for ngspice">SPICE (.cir)</button>
         <span className="zoom-group">
           <button onClick={() => setZoom((z) => Math.max(0.6, z / 1.25))} aria-label="Zoom out">−</button>
-          <button onClick={() => setZoom(1)} title="Fit width">{Math.round(zoom * 100)}%</button>
+          <button onClick={() => setZoom(1)} title="Fit the whole sheet in the window">Fit</button>
           <button onClick={() => setZoom((z) => Math.min(5, z * 1.25))} aria-label="Zoom in">+</button>
+          <span className="zoom-pct">{Math.round(zoom * 100)}%</span>
         </span>
-        {aiStatus.kicad && (
-          <button onClick={renderKicad} disabled={kicad?.busy} title="Run the exported file through kicad-cli to check it">
-            {kicad?.busy ? 'Running KiCad…' : 'Check in KiCad'}
-          </button>
-        )}
+        <details className="doc-more">
+          <summary>Files for engineering tools</summary>
+          <div className="doc-more-list">
+            <button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Opens in KiCad, the free circuit design program">KiCad schematic</button>
+            <button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))} title="A KiCad project you can open and turn into a circuit board">KiCad project</button>
+            <button onClick={() => download(`${name}.net`, exportKicadNetlist(project))} title="Netlist: the list of which pins connect to which, for other design tools">Netlist</button>
+            <button onClick={() => download(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)))} title="SPICE: a circuit file for electronics simulators such as ngspice">SPICE (.cir)</button>
+            {aiStatus.kicad && (
+              <button onClick={renderKicad} disabled={kicad?.busy} title="Open the schematic in KiCad on this computer and check it for wiring errors">
+                {kicad?.busy ? 'Running KiCad…' : 'Check in KiCad'}
+              </button>
+            )}
+          </div>
+        </details>
       </div>
       {kicad?.error && <div className="banner warn">KiCad: {kicad.error}</div>}
       {kicad?.svg && (
@@ -95,7 +96,7 @@ export function SchematicView() {
         </div>
       )}
       <div
-        className={`schematic ${hoverNet ? 'has-hl' : ''}`}
+        className={`schematic ${hoverNet ? 'has-hl' : ''} ${zoom === 1 ? 'fit' : ''}`}
         style={{ ['--z' as any]: zoom }}
         onWheel={(e) => {
           if (!e.ctrlKey && !e.metaKey) return;
@@ -177,12 +178,13 @@ export function CodeView() {
         {project.codeCustom && (
           <button
             className="ghost"
+            title="Throw away all changes to main.py (yours and the AI's) and go back to the code Sparkbench generated from the circuit"
             onClick={() => {
-              if (!confirm('Replace main.py with freshly generated code? Your edits will be lost.')) return;
+              if (!confirm('Go back to the code Sparkbench generated from the circuit? All changes to main.py, by you or the AI, will be lost.')) return;
               useStore.getState().update((p) => ({ ...p, files: { ...p.files, ...generateFiles(p) }, codeCustom: false }));
             }}
           >
-            Regenerate main.py
+            Reset main.py
           </button>
         )}
         <ArduinoButton />
@@ -269,8 +271,12 @@ export function BomView() {
   }
   const liveFor = (key: string) => live?.find((x) => x.key === key)?.part;
   const price = (p: NonNullable<LiveLine['part']>, q: number) => p.prices.reduce((v, [min, u]) => (q >= min ? u : v), p.prices[0]?.[1] ?? 0);
-  const lcscCsv = () => ['LCSC Part Number,Quantity,Comment', ...(live ?? []).filter((l) => l.part).map((l) => `${l.part!.lcsc},${l.quantity},${l.name.replace(/,/g, ' ')}`)].join('\n') + '\n';
+  // LCSC sells small parts in minimum quantities: the cart (and subtotal) order at least that many.
+  const orderQty = (p: NonNullable<LiveLine['part']>, q: number) => Math.max(q, p.prices[0]?.[0] ?? 1);
+  const lcscCsv = () => ['LCSC Part Number,Quantity,Comment', ...(live ?? []).filter((l) => l.part).map((l) => `${l.part!.lcsc},${orderQty(l.part!, l.quantity)},${l.name.replace(/,/g, ' ')}`)].join('\n') + '\n';
   const found = (live ?? []).filter((l) => l.part);
+  const missing = (live ?? []).filter((l) => !l.part);
+  const lcscSubtotal = found.reduce((n, l) => n + price(l.part!, orderQty(l.part!, l.quantity)) * orderQty(l.part!, l.quantity), 0);
   return (
     <div className="docview">
       <div className="doc-toolbar">
@@ -283,7 +289,7 @@ export function BomView() {
       {liveErr && <div className="banner error">{liveErr}</div>}
       {live && (
         <div className="banner" data-testid="bom-live-note">
-          {found.length} of {live.length} parts are stocked at LCSC right now (prices below). To order them in one go, download the LCSC cart and upload it at <a href="https://www.lcsc.com/bom" target="_blank" rel="noreferrer">lcsc.com/bom</a>. Boards and plug-in modules are sold by hobby stores: use the links in the Buy column.
+          Sparkbench looked up the {live.length} component line{live.length === 1 ? '' : 's'} at LCSC: {found.length} {found.length === 1 ? 'is' : 'are'} in stock (green lines below){missing.length ? `, ${missing.length} ${missing.length === 1 ? 'isn’t' : 'aren’t'} (marked “not at LCSC”)` : ''}. The LCSC subtotal for those is <strong>${lcscSubtotal.toFixed(2)}</strong>: LCSC sells small parts in minimum quantities (often 10–100 pieces), so the cart orders at least that many, and shipping (about $5–20) is extra. The breadboard, wires and cables aren’t looked up; buy them, the board and plug-in modules from a hobby store with the links in the Buy column. To order the LCSC parts in one go, download the cart and upload it at <a href="https://www.lcsc.com/bom" target="_blank" rel="noreferrer">lcsc.com/bom</a>.
         </div>
       )}
       <table className="bom" data-testid="bom">
@@ -309,9 +315,10 @@ export function BomView() {
                   <div className="bom-desc">{l.description}</div>
                   {lp && (
                     <div className="bom-live" data-testid="bom-live-part">
-                      LCSC <a href={lp.url} target="_blank" rel="noreferrer">{lp.lcsc}</a> · {lp.mfr} · {lp.stock.toLocaleString()} in stock · ${price(lp, l.quantity).toFixed(3)} each
+                      LCSC <a href={lp.url} target="_blank" rel="noreferrer">{lp.lcsc}</a> · {lp.mfr} · {lp.stock.toLocaleString()} in stock · ${price(lp, orderQty(lp, l.quantity)).toFixed(3)} each{orderQty(lp, l.quantity) > l.quantity ? ` (sold in packs of at least ${orderQty(lp, l.quantity)})` : ''}
                     </div>
                   )}
+                  {live && !lp && l.kind === 'part' && live.some((x) => x.key === l.key) && <div className="bom-live missing" data-testid="bom-not-lcsc">Not at LCSC: buy it with the links in the Buy column.</div>}
                 </td>
                 <td>{l.value ?? ''}</td>
                 <td className="refs">{Array.isArray(l.references) ? l.references.join(', ') : l.references ?? ''}</td>
@@ -330,7 +337,7 @@ export function BomView() {
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={5}>Estimated total (hobby-store prices)</td>
+            <td colSpan={5}>Estimated total (hobby-store prices, from the Each column){live && found.length ? `; LCSC subtotal for the ${found.length} green lines: $${lcscSubtotal.toFixed(2)} plus shipping` : ''}</td>
             <td className="num">${Number(typeof total === 'number' ? total : (total as any).total ?? 0).toFixed(2)}</td>
             <td />
           </tr>
@@ -366,9 +373,9 @@ export function MarkdownView({ kind }: { kind: 'guide' | 'blog' }) {
         <button onClick={() => navigator.clipboard?.writeText(md)}>Copy Markdown</button>
         <button onClick={() => window.print()}>Print</button>
       </div>
-      {kind === 'guide' && <Toolkit />}
       {kind === 'guide' && <BuildMode />}
       {kind === 'guide' && <PhotoCheck />}
+      {kind === 'guide' && <Toolkit />}
       <article className="prose" data-testid={`doc-${kind}`} dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );

@@ -13,10 +13,10 @@ export function Revisions() {
   return (
     <details className="revisions" data-testid="revisions" open={revs.length > 0}>
       <summary>
-        Revision {project.revision ? `Rev ${project.revision}` : 'not released yet'}
+        Revision: {project.revision ? `Rev ${project.revision}` : 'not released yet (boards made now are marked “Draft”)'}
         {pending.length > 0 && <span className="rev-pending"> · {pending.length} change{pending.length > 1 ? 's' : ''} since Rev {project.revision}</span>}
       </summary>
-      <p className="muted">Release the design when you order boards, so you always know which files made which boards. The revision letter is printed on the board.</p>
+      <p className="muted">Release the design when you order boards, so you always know which files made which boards. The revision letter is printed on the board and its documents, so after releasing, design the board again to print the new letter.</p>
       {pending.length > 0 && (
         <ul className="rev-changes">{pending.map((c, i) => <li key={i}>{c}</li>)}</ul>
       )}

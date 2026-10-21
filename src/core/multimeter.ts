@@ -27,13 +27,29 @@ function covered(plan: ReturnType<typeof planBreadboard>): Set<string> {
   const out = new Set<string>();
   for (const bp of plan.layout.parts) {
     const cols = Object.values(bp.legs).map((h) => Number(/\d+$/.exec(h)![0]));
-    const lo = Math.min(...cols);
-    const hi = Math.max(...cols);
+    const [lo, hi] = bp.span ?? [Math.min(...cols), Math.max(...cols)];
     const rows = bp.kind === 'esp32' ? 'bcdefghi' : bp.kind === 'pico' || bp.kind === 'cobbler' ? 'cdefgh' : bp.kind === 'module' ? 'ab' : '';
-    for (let c = lo; c <= hi + (bp.kind === 'esp32' ? 4 : 0); c++) for (const r of rows) out.add(`${r}${c}`);
+    for (let c = lo; c <= hi + (bp.kind === 'esp32' ? 4 : 0); c++) {
+      for (const r of rows) out.add(`${r}${c}`);
+      if (bp.flat) out.add(`T+${c}`).add(`T-${c}`);
+    }
   }
   return out;
 }
+
+/** "the OLED display SCL", "resistor R2", "LED D1 + leg": a part's pin in words a beginner can find. */
+function pinName(project: Project, partId: string, pin: string): string {
+  const part = project.parts.find((p) => p.id === partId)!;
+  const def = partDef(part.type);
+  const ref = part.ref ?? part.id;
+  const f = project.features?.find((x) => x.parts[0] === partId);
+  const name = f ? `${f.label} (${ref})` : `${def.name.split(' (')[0].replace(/ \d.*$/, '').toLowerCase()} ${ref}`;
+  if (part.type === 'led') return `${name} ${pin === 'A' ? '+ (long) leg' : '− (short) leg'}`;
+  if (def.pins.length <= 2 && !['electrolytic', 'buzzer', 'diode'].includes(part.type)) return name;
+  return `${name} ${pin.replace(/\.\d+$/, '')}`;
+}
+
+const listWords = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 /** `samples`: net id → voltages over a short run (one per snapshot). */
 export function multimeterChecks(project: Project, samples: Record<string, number[]>): MeterCheck[] {
@@ -62,6 +78,8 @@ export function multimeterChecks(project: Project, samples: Record<string, numbe
     return [...rows].map((r) => `${r}${col}`).find((h) => !used.has(h));
   };
   const ground = freeIn('railB-') ?? freeIn('railT-') ?? 'a − rail hole';
+  const battery = project.parts.find((p) => p.type === 'battery-9v');
+  const supplyV = plan.railVoltage ? parseFloat(plan.railVoltage) : 0;
   const out: MeterCheck[] = [];
   for (const net of nets) {
     if (net.pins.length < 2 || /^GND/.test(net.name)) continue;
@@ -74,18 +92,20 @@ export function multimeterChecks(project: Project, samples: Record<string, numbe
     if (!hole) continue;
     const supply = /^(\+3V3|\+5V|VBAT)/.test(net.name);
     const gpio = board && net.pins.some((r) => project.parts.find((p) => p.id === r.part && partDef(p.type).category === 'board') && /^(GPIO|D\d|GP\d)/.test(r.pin.replace(/\.\d+$/, '')) === true);
-    const members = net.pins
-      .filter((r) => partDef(project.parts.find((p) => p.id === r.part)!.type).category !== 'board')
-      .map((r) => `${refById.get(r.part)} ${r.pin}`)
-      .slice(0, 3)
-      .join(', ');
-    const what = supply ? `the ${net.name.replace('+', '')} supply${members ? ` (feeds ${members})` : ''}` : members ? `the point joining ${members}` : net.name;
+    const members = [...new Set(net.pins.filter((r) => partDef(project.parts.find((p) => p.id === r.part)!.type).category !== 'board').map((r) => pinName(project, r.part, r.pin)))].slice(0, 3);
+    const supplyName = net.name.startsWith('+3V3') ? '3.3 V supply' : net.name.startsWith('+5V') ? '5 V supply' : battery ? `battery's + (${battery.props.volts ?? 9} V)` : `${net.name} supply`;
+    const what = supply ? `the ${supplyName}${members.length ? ` (feeds ${listWords(members)})` : ''}` : members.length ? `${members.length > 1 ? 'the point joining ' : ''}${listWords(members)}` : net.name;
+    const level = swings ? Math.max(...vs) : v;
+    // Reads the full supply when it is right (a pull-up line, an idle input, a switched-off output…).
+    const atSupply = !swings && supplyV > 0 && Math.abs(level - supplyV) < 0.2;
     const ifWrong = supply
-      ? 'If you read 0 V, power isn’t reaching this point: check the red jumper to the + rail and that the board is plugged in. Much lower than expected means something is drawing too much — feel for a hot part.'
+      ? `If you read 0 V, power isn’t reaching this point: check the red jumper to the + rail${battery ? ', and that the battery is clipped on with its leads in the + and − rails' : board ? ` and that the ${board.short} is plugged in` : ''}. Much lower than expected means something is drawing too much — feel for a hot part.`
       : v < 0.2
         ? 'This should be near 0 V. A reading near the supply voltage means it is connected to + somewhere it shouldn’t be.'
-        : 'If you read 0 V, a connection to this point is missing (a leg one hole off is the usual cause). If you read the full supply voltage, the part between here and ground is missing or not touching.';
-    out.push({ hole, ground, expectV: Math.round((swings ? Math.max(...vs) : v) * 100) / 100, what, ifWrong, varies: !!gpio || swings, ...(swings ? { range: [Math.round(Math.min(...vs) * 10) / 10, Math.round(Math.max(...vs) * 10) / 10] as [number, number] } : {}) });
+        : atSupply
+          ? 'Reading the full supply here is correct. If you read 0 V, this point is shorted to ground or the part that holds it up (its pull-up resistor or the part’s own power) is missing.'
+          : 'If you read 0 V, a connection to this point is missing (a leg one hole off is the usual cause). If you read the full supply voltage, the part between here and ground is missing or not touching.';
+    out.push({ hole, ground, expectV: Math.round(level * 100) / 100, what, ifWrong, varies: !!gpio || swings, ...(swings ? { range: [Math.round(Math.min(...vs) * 10) / 10, Math.round(Math.max(...vs) * 10) / 10] as [number, number] } : {}) });
   }
   // Supplies first, then the rest by voltage.
   return out.sort((a, b) => Number(/supply/.test(b.what)) - Number(/supply/.test(a.what)) || b.expectV - a.expectV);

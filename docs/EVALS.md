@@ -70,7 +70,7 @@ such as text near the board edge.
 - **Prototype (19/19):** boards from 35×94 mm to 104×45 mm, with 0 to 1 vias.
 - **Product (19/19):** ESP32-WROOM modules, USB-C/micro-USB with a 3.3 V regulator, and the parts
   soldered directly to the board. The first run had one failure: `esp32-tilt-game` had a 0.1989 mm gap
-  against a 0.2 mm rule. Freerouting now routes with a 0.22 mm margin, and the rebuilt board passes.
+  against a 0.2 mm rule. Freerouting now routes with a 0.22 mm margin. The full rebuild after the new-user review fixes passes 19/19 for both versions on the first try.
 
 ## What these evals don't cover
 

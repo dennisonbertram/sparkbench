@@ -21,7 +21,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'esp32-weather-imu',
     title: 'Weather & motion station',
-    blurb: 'ESP32 with an OLED, two buttons, a DHT22 and an MPU-6050. Shows readings and a bubble level.',
+    blurb: 'A small screen, two buttons, a temperature & humidity sensor (DHT22) and a motion sensor (MPU-6050) on an ESP32. Shows readings and a bubble level.',
     prompt: 'ESP32 with an OLED screen, two buttons, a temperature sensor and an IMU',
     board: 'esp32',
     level: 'Intermediate',
@@ -39,7 +39,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'esp32-parking-sensor',
     title: 'Parking sensor',
-    blurb: 'HC-SR04 ultrasonic sensor and a buzzer that beeps faster as you get closer, with a warning LED.',
+    blurb: 'A distance sensor (HC-SR04 ultrasonic) and a buzzer that beeps faster as you get closer, with a warning light.',
     prompt: 'ESP32 parking sensor with an ultrasonic distance sensor, a buzzer and a red LED',
     board: 'esp32',
     level: 'Beginner',
@@ -57,7 +57,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'rpi-plant-waterer',
     title: 'Plant waterer',
-    blurb: 'Raspberry Pi with a soil moisture probe (via an MCP3008), a 16×2 LCD and a pump relay.',
+    blurb: 'A Raspberry Pi checks a soil moisture probe, shows it on a text screen and switches a water pump on when the soil is dry.',
     prompt: 'Raspberry Pi plant monitor with a soil moisture sensor, a relay for a water pump and an LCD',
     board: 'rpi4',
     level: 'Intermediate',
@@ -66,7 +66,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'esp32-motion-alarm',
     title: 'Motion alarm',
-    blurb: 'PIR sensor, siren buzzer, warning LED and an arm/disarm button.',
+    blurb: 'A motion detector (PIR), a siren buzzer, a warning light and a button to arm and disarm it.',
     prompt: 'ESP32 motion alarm with a PIR sensor, a buzzer, a red LED and a button',
     board: 'esp32',
     level: 'Beginner',
@@ -84,7 +84,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'esp32-neopixel-thermo',
     title: 'NeoPixel thermometer',
-    blurb: 'A 12-LED NeoPixel ring glows blue when cold and red when hot.',
+    blurb: 'A ring of 12 colour LEDs (NeoPixel) glows blue when cold and red when hot.',
     prompt: 'ESP32 with a neopixel ring that shows the temperature from a DHT22',
     board: 'esp32',
     level: 'Intermediate',
@@ -93,7 +93,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'rpi-thermostat',
     title: 'Fan thermostat',
-    blurb: 'Raspberry Pi reads a DHT22, shows it on an OLED and switches a fan relay above 28 °C.',
+    blurb: 'A Raspberry Pi reads a temperature sensor, shows it on a small screen and switches a fan on above 28 °C.',
     prompt: 'Raspberry Pi thermostat with a DHT22 temperature sensor, an OLED display and a relay for a fan',
     board: 'rpi4',
     level: 'Intermediate',
@@ -102,7 +102,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'esp32-tilt-game',
     title: 'Tilt maze level',
-    blurb: 'An IMU-driven bubble level on an OLED with a buzzer click when you tilt too far.',
+    blurb: 'A tilt sensor drives a bubble level on a small screen, with a click from a buzzer when you tilt too far.',
     prompt: 'ESP32 tilt meter with an IMU, an OLED and a buzzer',
     board: 'esp32',
     level: 'Beginner',
@@ -120,7 +120,7 @@ export const EXAMPLES: Example[] = [
   {
     id: '555-blinker',
     title: '555 LED blinker',
-    blurb: 'No microcontroller: an NE555 timer, two resistors and a capacitor blink an LED at 1.4 Hz.',
+    blurb: 'No code at all: a 555 timer chip, two resistors and a capacitor blink an LED about once a second.',
     prompt: '555 timer LED blinker with no microcontroller',
     board: 'none',
     level: 'Beginner',
@@ -147,7 +147,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'esp32-eink-weather',
     title: 'E-ink weather station',
-    blurb: 'A 2.9″ e-paper dashboard with a drawn weather icon, big outside temperature, a 3-day forecast from the internet and the room climate from a DHT22.',
+    blurb: 'A 2.9″ e-paper screen with a weather icon, the outside temperature, a 3-day forecast from the internet and the room temperature and humidity.',
     prompt: 'ESP32 e-ink weather station with an indoor temperature sensor and a refresh button that gets the forecast from the internet',
     board: 'esp32',
     level: 'Advanced',
@@ -177,7 +177,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'esp32-pedometer',
     title: 'Step counter',
-    blurb: 'Real step detection on MPU-6050 data (filtered magnitude + peak detection) with cadence, distance, calories and a one-minute bar graph on an OLED.',
+    blurb: 'Counts your steps with a motion sensor (MPU-6050) and shows pace, distance, calories and a one-minute bar graph on a small screen.',
     prompt: 'ESP32 step counter with an accelerometer, an OLED and a button',
     board: 'esp32',
     level: 'Advanced',
@@ -187,7 +187,7 @@ export const EXAMPLES: Example[] = [
   {
     id: 'rpi-weather-dashboard',
     title: 'Raspberry Pi weather dashboard',
-    blurb: 'Downloads the Open-Meteo forecast with requests, shows NOW / TODAY / 3-DAY pages on an OLED and lights a red LED when rain is likely today.',
+    blurb: 'Downloads the weather forecast, shows now, today and 3-day pages on a small screen, and lights a red LED when rain is likely.',
     prompt: 'Raspberry Pi weather dashboard with an OLED, a button and a red LED rain warning that gets the forecast from the internet',
     board: 'rpi4',
     level: 'Advanced',

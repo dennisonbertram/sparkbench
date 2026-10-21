@@ -27,6 +27,7 @@ for (const st of ['Desk stand', 'Wall-mount']) {
   await p.waitForTimeout(2000);
   const links = await p.$$eval('[data-testid=case-section] .pcb-downloads a', (as) => as.map((a) => a.textContent));
   console.log(st, '→', links.join(', '));
+  await p.locator('[data-testid=case-viewer]').screenshot({ path: `test-results/case-${ex}-${st.replace(/\W+/g, '-').toLowerCase()}.png` });
 }
 console.log('errors:', errors);
 await b.close();

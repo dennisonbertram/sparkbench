@@ -26,6 +26,13 @@ export function holeXY(h: Hole): { x: number; y: number } {
   throw new Error(`bad hole ${h}`);
 }
 
+/** A hole name in words: "hole d22" or "the bottom − rail (hole B−3)". */
+export function holeWords(h: Hole): string {
+  const r = /^([TB])([+-])(\d+)$/.exec(h);
+  if (r) return `the ${r[1] === 'T' ? 'top' : 'bottom'} ${r[2] === '+' ? '+ (red)' : '− (blue)'} rail, hole ${r[1]}${r[2] === '+' ? '+' : '−'}${r[3]}`;
+  return /^[a-j]\d+$/.test(h) ? `hole ${h}` : h;
+}
+
 /** The metal strip a hole belongs to: a–e of a column, f–j of a column, or a whole rail. */
 export function stripOf(h: Hole): string {
   const m = /^([a-j])(\d+)$/.exec(h);
@@ -56,6 +63,10 @@ export interface BbPart {
   leadColors?: Record<string, string>;
   /** Body colour for modules / off-board parts. */
   body?: string;
+  /** Modules: the columns the board's body covers (it can be wider than its header). */
+  span?: [number, number];
+  /** Modules: lies flat over the top rails instead of standing up. */
+  flat?: boolean;
 }
 
 export interface BbWire {
@@ -170,7 +181,7 @@ function renderBoard(cols = COLS): string {
       const x = X0 + (c - 1) * PITCH;
       out.push(`<rect x="${x - 3.5}" y="${y - 3.5}" width="7" height="7" rx="1" fill="#3b3833"/>`);
     }
-    out.push(`<text x="28" y="${y + 5}" font-size="13" fill="${plus ? '#d33' : '#36c'}" font-family="Arial" font-weight="bold">${plus ? '+' : '−'}</text>`);
+    out.push(`<text x="${r.startsWith('T') ? 22 : 22}" y="${y + 4}" font-size="11" fill="${plus ? '#d33' : '#36c'}" font-family="Arial" font-weight="bold" text-anchor="middle">${r[0]}${plus ? '+' : '−'}</text>`);
   }
   for (const [r, y] of Object.entries(ROW_Y)) {
     out.push(`<text x="36" y="${y + 4}" font-size="11" fill="#6d665a" font-family="Arial">${r}</text>`);
@@ -312,19 +323,33 @@ function renderPart(p: BbPart, layout: BbLayout): string {
       return `${pts.map((q) => lead(q, { x: cx, y: cy })).join('')}<g filter="url(#sh)"><circle cx="${cx}" cy="${cy}" r="22" fill="#1a1a1a"/><circle cx="${cx}" cy="${cy}" r="3" fill="#444"/><text x="${plus.x}" y="${cy - 9}" font-size="10" fill="#ddd" text-anchor="middle" font-family="Arial">+</text></g>`;
     }
     case 'module': {
-      // Breakout board standing in one row of holes; its body covers the row nearer the board edge.
       const xs = pts.map((q) => q.x);
-      const x1 = Math.min(...xs) - 12;
-      const x2 = Math.max(...xs) + 12;
+      const fill = p.body ?? '#1f4e9a';
+      const ys = pts.map((q) => q.y);
+      const art = (x1: number, x2: number, top: number, h: number) => (p.label?.includes('OLED') ? `<rect x="${x1 + 8}" y="${top + 8}" width="${x2 - x1 - 16}" height="${h - 40}" rx="2" fill="#05070c"/>` : '');
+      if (Math.min(...ys) < (ROW_Y.e + ROW_Y.f) / 2 && Math.max(...ys) > (ROW_Y.e + ROW_Y.f) / 2) {
+        // Two headers across the centre gap: a small board covering the rows between them.
+        const x1 = Math.min(...xs) - 12;
+        const x2 = Math.max(...xs) + 12;
+        const y1 = Math.min(...ys) - 10;
+        const y2 = Math.max(...ys) + 10;
+        return `<g filter="url(#sh)"><rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" rx="4" fill="${fill}"/><text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 + 3}" fill="#fff" font-size="8" text-anchor="middle" font-family="Arial" font-weight="bold">${esc(p.label ?? p.ref)}</text>${pts.map((q) => `<circle cx="${q.x}" cy="${q.y}" r="4.5" fill="#d8c27a" stroke="#9c8742"/>`).join('')}</g>`;
+      }
       const up = cy < (ROW_Y.e + ROW_Y.f) / 2;
-      const yEdge = up ? cy + 10 : cy - 10;
-      const yFar = up ? cy - 68 : cy + 68;
+      const x1 = (p.span ? X0 + (p.span[0] - 1) * PITCH : Math.min(...xs)) - 10;
+      const x2 = (p.span ? X0 + (p.span[1] - 1) * PITCH : Math.max(...xs)) + 10;
+      if (p.flat) {
+        // Lying flat: the header in row b, the board reaching out over the top rails and past the edge.
+        const top = -24;
+        const bottom = cy + 10;
+        return `<g filter="url(#sh)"><rect x="${x1}" y="${top}" width="${x2 - x1}" height="${bottom - top}" rx="4" fill="${fill}"/>${art(x1, x2, top, bottom - top)}<text x="${(x1 + x2) / 2}" y="${bottom - 30}" fill="#fff" font-size="9" text-anchor="middle" font-family="Arial" font-weight="bold">${esc(p.label ?? p.ref)}</text>${pts.map((q) => `<circle cx="${q.x}" cy="${q.y}" r="4.5" fill="#d8c27a" stroke="#9c8742"/>`).join('')}</g>`;
+      }
+      // Standing up in one row of holes: seen from above, a thin board just over row a.
+      const yEdge = up ? cy + 8 : cy - 8;
+      const yFar = up ? cy - 34 : cy + 34;
       const top = Math.min(yEdge, yFar);
       const h = Math.abs(yFar - yEdge);
-      const fill = p.body ?? '#1f4e9a';
-      const labels = Object.entries(L).map(([n, q]) => `<circle cx="${q.x}" cy="${q.y}" r="4.5" fill="#d8c27a" stroke="#9c8742"/><text x="${q.x}" y="${up ? q.y - 9 : q.y + 14}" fill="#fff" font-size="6.5" text-anchor="middle" font-family="Arial">${esc(p.pinLabels?.[n] ?? n)}</text>`).join('');
-      const art = p.label?.includes('OLED') ? `<rect x="${x1 + 6}" y="${up ? top + 6 : top + 22}" width="${x2 - x1 - 12}" height="${h - 30}" rx="2" fill="#05070c"/>` : '';
-      return `<g filter="url(#sh)"><rect x="${x1}" y="${top}" width="${x2 - x1}" height="${h}" rx="4" fill="${fill}"/>${art}<text x="${(x1 + x2) / 2}" y="${up ? top + h - 26 : top + 30}" fill="#fff" font-size="8" text-anchor="middle" font-family="Arial" font-weight="bold">${esc(p.label ?? p.ref)}</text>${labels}</g>`;
+      return `<g filter="url(#sh)"><rect x="${x1}" y="${top}" width="${x2 - x1}" height="${h}" rx="4" fill="${fill}"/><text x="${(x1 + x2) / 2}" y="${up ? top + 12 : top + h - 4}" fill="${/^#e|^#f/i.test(fill) ? '#333' : '#fff'}" font-size="8" text-anchor="middle" font-family="Arial" font-weight="bold">${esc(p.label ?? p.ref)}</text>${pts.map((q) => `<circle cx="${q.x}" cy="${q.y}" r="4.5" fill="#d8c27a" stroke="#9c8742"/>`).join('')}</g>`;
     }
     case 'offboard': {
       // A part off the breadboard (screen, servo, Raspberry Pi…), joined by leads ending in holes.
@@ -389,18 +414,40 @@ export function renderBreadboardSvg(layout: BbLayout, opts: BbRenderOptions = {}
           const pts = Object.values(p.legs).map(holeXY);
           const x = pts.reduce((a, q) => a + q.x, 0) / pts.length;
           const y = Math.max(...pts.map((q) => q.y));
-          const below = y > (ROW_Y.e + ROW_Y.f) / 2 ? y + 13 : Math.min(...pts.map((q) => q.y)) - 8;
-          return `<text x="${x}" y="${p.kind === 'dip' ? (ROW_Y.e + ROW_Y.f) / 2 + 22 : below}" font-size="9" font-weight="bold" fill="#3d2b6b" text-anchor="middle" font-family="Arial" stroke="#f1ede3" stroke-width="2.5" paint-order="stroke">${esc(p.ref)}</text>`;
+          if (p.kind === 'dip') return `<text x="${x}" y="${(ROW_Y.e + ROW_Y.f) / 2 - 8}" font-size="9" font-weight="bold" fill="#eee" text-anchor="middle" font-family="Arial">${esc(p.ref)}</text>`;
+          const top = Math.min(...pts.map((q) => q.y));
+          // Lifted parts lean one way: put the label on the other side so the body doesn't cover it.
+          const lifted = ['led', 'rgbled', 'ldr', 'ntc', 'capacitor', 'electrolytic', 'to92'].includes(p.kind) ? liftFor(p, layout, x, (y + top) / 2) : 0;
+          const ly = lifted > 0 ? y + 14 : lifted < 0 ? top - 9 : y > (ROW_Y.e + ROW_Y.f) / 2 ? y + 13 : top - 8;
+          return `<text x="${x}" y="${ly}" font-size="9" font-weight="bold" fill="#3d2b6b" text-anchor="middle" font-family="Arial" stroke="#f1ede3" stroke-width="2.5" paint-order="stroke">${esc(p.ref)}</text>`;
         })
         .join('')
     : '';
   const rings = (opts.highlight ?? [])
     .map((h) => {
       const q = holeXY(h);
-      return `<circle cx="${q.x}" cy="${q.y}" r="9" fill="none" stroke="#f5c518" stroke-width="3.5"><animate attributeName="r" values="8;11;8" dur="1.4s" repeatCount="indefinite"/></circle><text x="${q.x}" y="${q.y - 13}" font-size="9" font-weight="bold" fill="#7a5a00" text-anchor="middle" font-family="Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(h)}</text>`;
+      // Rail holes sit in tight rows: label them beside the hole, not above it.
+      const rail = /^[TB][+-]/.test(h);
+      return `<circle cx="${q.x}" cy="${q.y}" r="9" fill="none" stroke="#f5c518" stroke-width="3.5"><animate attributeName="r" values="8;11;8" dur="1.4s" repeatCount="indefinite"/></circle><text x="${rail ? q.x + 13 : q.x}" y="${rail ? q.y + 3.5 : q.y - 13}" font-size="9" font-weight="bold" fill="#7a5a00" text-anchor="${rail ? 'start' : 'middle'}" font-family="Arial" stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(h.replace('-', '−'))}</text>`;
     })
     .join('');
-  const body = [renderBoard(layout.cols), ...parts.map((p) => renderPart(p, layout)), ...wires.map(([w, i]) => renderWire(w, i)), labels, rings].join('');
+  // Pin names on modules and boards, and LED + marks, go on top of the wires so they stay readable.
+  const pinText = parts
+    .flatMap((p) => {
+      if (p.kind === 'module')
+        return Object.entries(p.legs).map(([n, h]) => {
+          const q = holeXY(h);
+          const above = q.y < (ROW_Y.e + ROW_Y.f) / 2;
+          return `<text x="${q.x}" y="${above ? q.y - 8 : q.y + 14}" fill="#fff" font-size="6.5" text-anchor="middle" font-family="Arial" stroke="#0009" stroke-width="2" paint-order="stroke">${esc(p.pinLabels?.[n] ?? n)}</text>`;
+        });
+      if (p.kind === 'led' && p.legs.A) {
+        const q = holeXY(p.legs.A);
+        return [`<text x="${q.x - 7}" y="${q.y + 4}" fill="#c00" font-size="10" font-weight="bold" text-anchor="middle" font-family="Arial" stroke="#fff" stroke-width="2" paint-order="stroke">+</text>`];
+      }
+      return [];
+    })
+    .join('');
+  const body = [renderBoard(layout.cols), ...parts.map((p) => renderPart(p, layout)), ...wires.map(([w, i]) => renderWire(w, i)), pinText, labels, rings].join('');
   const ats = layout.parts.flatMap((p) => (p.at ? [p.at] : []));
   const minY = Math.min(-m, ...ats.map((a) => a.y - 20));
   const maxY = Math.max(BOARD_H + m, ...ats.map((a) => a.y + a.h + 20));

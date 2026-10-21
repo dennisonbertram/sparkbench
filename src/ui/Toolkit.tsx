@@ -84,6 +84,13 @@ const ICONS: Record<ToolItem['id'], React.ReactNode> = {
       <path d="M40 10 q 2 -4 4 2" />
     </g>
   ),
+  cobbler: (
+    <g {...S}>
+      <rect x="18" y="10" width="28" height="44" rx="2" />
+      <path d="M24 16 v32 M40 16 v32" strokeDasharray="2 3" />
+      <path d="M18 20 H 6 M18 28 H 6 M18 36 H 6" />
+    </g>
+  ),
   microsd: (
     <g {...S}>
       <path d="M18 8 h22 l8 8 v40 h-30 z" />

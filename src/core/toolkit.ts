@@ -4,20 +4,62 @@ import type { Project } from './types';
 import { planBreadboard } from './bbplace';
 
 export interface ToolItem {
-  id: 'breadboard' | 'jumpers' | 'jumpers-mf' | 'usb-micro' | 'usb-c-power' | 'computer' | 'battery-snap' | 'multimeter' | 'soldering' | 'screwdriver' | 'tweezers' | 'microsd';
+  id: 'breadboard' | 'cobbler' | 'jumpers' | 'jumpers-mf' | 'usb-micro' | 'usb-c-power' | 'computer' | 'battery-snap' | 'multimeter' | 'soldering' | 'screwdriver' | 'tweezers' | 'microsd';
   name: string;
   why: string;
   required: boolean;
 }
 
+export interface BenchCounts {
+  /** Full-size (830-hole) breadboards the layout uses. */
+  breadboards: number;
+  /** Male-to-male jumpers in the hole-by-hole layout. */
+  jumpers: number;
+  /** Male-to-female leads to parts that sit off the breadboard. */
+  femaleLeads: number;
+  /** Raspberry Pi: a 40-pin T-Cobbler + ribbon cable brings the GPIO header onto the breadboard. */
+  cobbler: boolean;
+  /** Hole-by-hole build steps, and the time estimate every page quotes. */
+  steps: number;
+  minutes: number;
+}
+
+const counted = new WeakMap<Project, BenchCounts>();
+
+/** The one source of truth for breadboard size, wire counts and build time (from the breadboard layout). */
+export function benchCounts(project: Project): BenchCounts {
+  const hit = counted.get(project);
+  if (hit) return hit;
+  let plan: ReturnType<typeof planBreadboard>;
+  try {
+    plan = planBreadboard(project);
+  } catch {
+    // No layout possible (unknown parts): fall back to the schematic's wire count.
+    const n = project.wires.length;
+    return { breadboards: 1, jumpers: n, femaleLeads: 0, cobbler: false, steps: n + project.parts.length, minutes: Math.max(10, Math.round(((n + project.parts.length) * 1.5) / 5) * 5) };
+  }
+  const steps = plan.steps.length;
+  const out: BenchCounts = {
+    breadboards: (plan.layout.cols ?? 63) > 63 ? 2 : 1,
+    jumpers: plan.layout.wires.length,
+    femaleLeads: plan.layout.parts.filter((p) => p.kind === 'offboard').reduce((n, p) => n + Object.keys(p.legs).length, 0),
+    cobbler: plan.layout.parts.some((p) => p.kind === 'cobbler'),
+    steps,
+    minutes: Math.max(10, Math.round((steps * 1.5) / 5) * 5),
+  };
+  counted.set(project, out);
+  return out;
+}
+
+/** "at least 25": a pack size with a few spares. */
+export const jumpersToBuy = (n: number) => Math.ceil((n + 4) / 5) * 5;
+
 export function toolkit(project: Project): ToolItem[] {
   const out: ToolItem[] = [];
-  const plan = planBreadboard(project);
-  const twoBoards = (plan.layout.cols ?? 63) > 63;
-  const jumpers = plan.layout.wires.length;
-  const offBoard = plan.layout.parts.filter((p) => p.kind === 'offboard').reduce((n, p) => n + Object.keys(p.legs).length, 0);
-  out.push({ id: 'breadboard', name: twoBoards ? 'Two full-size breadboards (830 holes each)' : 'A full-size breadboard (830 holes)', why: 'Everything plugs into it, no soldering. The layout in this guide is for this size.', required: true });
-  out.push({ id: 'jumpers', name: `Male-to-male jumper wires (at least ${Math.ceil((jumpers + 4) / 5) * 5})`, why: `This build uses ${jumpers} jumpers. A mixed-length kit is easiest; pre-cut "breadboard jumper" kits lie flat and make mistakes easy to see.`, required: true });
+  const { breadboards, jumpers, femaleLeads: offBoard, cobbler } = benchCounts(project);
+  out.push({ id: 'breadboard', name: breadboards > 1 ? 'Two full-size breadboards (830 holes each)' : 'A full-size breadboard (830 holes)', why: 'Everything plugs into it, no soldering. The layout in this guide is for this size.', required: true });
+  if (cobbler) out.push({ id: 'cobbler', name: '40-pin T-Cobbler breakout with ribbon cable', why: "Brings the Pi's GPIO pins onto the breadboard with the pin names printed next to them, so you don't wire straight onto the Pi.", required: true });
+  out.push({ id: 'jumpers', name: `Male-to-male jumper wires (at least ${jumpersToBuy(jumpers)})`, why: `This build uses ${jumpers} jumpers. A mixed-length kit is easiest; pre-cut "breadboard jumper" kits lie flat and make mistakes easy to see.`, required: true });
   if (offBoard) out.push({ id: 'jumpers-mf', name: `Male-to-female jumper wires (${offBoard})`, why: 'For the parts that sit off the breadboard (screens, servos, modules with pins): the female end slides onto their pins.', required: true });
   if (project.board === 'esp32' || project.board === 'pico') {
     out.push({ id: 'usb-micro', name: 'Micro-USB data cable', why: `Powers the ${project.board === 'esp32' ? 'ESP32 DevKit' : 'Pico'} and carries the program. Many cables only charge: if the computer doesn't see the board, try another cable.`, required: true });

@@ -79,9 +79,21 @@ export function TestsPanel() {
   return (
     <div className="tests" data-testid="tests">
       <p className="tests-intro">
-        Each test checks one thing your project should do, by running it in the simulator: pressing buttons, moving sensor sliders, and reading the screen, LEDs and serial output. They run again after every change.
+        Each test checks one thing your project should do in the simulator (pressing buttons, moving sliders, reading the screen, LEDs and serial output). They run again after every change.
         {run?.running && <span className="muted"> Running…</span>}
       </p>
+      <form
+        className="test-add"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}
+      >
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder={ai.enabled ? 'Add a test in plain words, e.g. "when I press SW1 the buzzer beeps"' : 'Adding tests in plain words needs Claude'} disabled={!ai.enabled || adding} aria-label="Describe a new test" />
+        <button type="submit" disabled={!ai.enabled || adding || !text.trim()}>{adding ? 'Writing the test…' : 'Add test'}</button>
+        {ai.enabled && <CostHint kind="test" />}
+      </form>
+      {error && <div className="problem error">{error}</div>}
       {run?.error && <div className="problem error">The tests couldn't run: {run.error}</div>}
       <ul className="test-list">
         {(run?.results ?? []).map((r) => (
@@ -101,18 +113,6 @@ export function TestsPanel() {
           Fix the code with AI
         </button>
       )}
-      <form
-        className="test-add"
-        onSubmit={(e) => {
-          e.preventDefault();
-          add();
-        }}
-      >
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder={ai.enabled ? 'Add a test in plain words, e.g. "when I press SW1 the buzzer beeps"' : 'Adding tests in plain words needs Claude'} disabled={!ai.enabled || adding} aria-label="Describe a new test" />
-        <button type="submit" disabled={!ai.enabled || adding || !text.trim()}>{adding ? 'Writing the test…' : 'Add test'}</button>
-        {ai.enabled && <CostHint kind="test" />}
-      </form>
-      {error && <div className="problem error">{error}</div>}
     </div>
   );
 }

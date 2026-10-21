@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useStore, listSaved, loadCurrent, deleteSaved, type Tab } from './store';
 import { Breadboard } from './Breadboard';
 import { Copilot, Inspector, Console, PartLibrary } from './panels';
 import { SchematicView, CodeView, BomView, MarkdownView } from './views';
 import { startSim, stopSim, setSpeed, simSupported } from './simClient';
-import { sendPrompt } from './copilot';
+import { sendPrompt, cancelDesign } from './copilot';
 import { EXAMPLES, buildExample } from '../core/examples';
 import { downloadZip, download, slug } from './exporters';
 import { audio } from './audio';
 import { Tour } from './Tour';
 import { PcbView } from './PcbView';
 import { useTestRunner } from './TestsPanel';
+import { useMenu, fitMenu } from './useDialog';
 import { BoardPanel } from './BoardPanel';
 import { AttachImages } from './Attach';
 import { QuestionsCard } from './Requirements';
@@ -20,7 +21,7 @@ import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'breadboard', label: 'Breadboard' },
+  { id: 'breadboard', label: 'Wiring' },
   { id: 'schematic', label: 'Schematic' },
   { id: 'code', label: 'Code' },
   { id: 'bom', label: 'Parts list' },
@@ -68,7 +69,12 @@ export function App() {
   useEffect(() => {
     if (!project) return;
     try {
-      if (!localStorage.getItem('sparkbench.tour.done') && !new URL(location.href).searchParams.has('notour')) setTimeout(() => useStore.getState().set({ tourStep: 0 }), 600);
+      const q = new URL(location.href).searchParams;
+      // Not when arriving through a shared room, a class or a teacher's link: the design is someone else's.
+      const visiting = ['notour', 'room', 'class', 'teach', 'gallery'].some((k) => q.has(k)) || !!useStore.getState().room || !!useStore.getState().classCode;
+      // A design Claude just made: let them read the result first; the reply offers the tour instead.
+      const justDesigned = useStore.getState().chat.some((m) => m.role === 'ai' && !m.pending && m.requirements);
+      if (!localStorage.getItem('sparkbench.tour.done') && !visiting && !justDesigned) setTimeout(() => !useStore.getState().room && useStore.getState().set({ tourStep: 0 }), 600);
     } catch {}
   }, [!!project]);
 
@@ -91,6 +97,10 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => {
+    document.querySelector('.tabs [aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [tab, !!project]);
 
   if (teach) return <TeacherDashboard code={teach.code} teacherKey={teach.key} />;
   const dialogs = (
@@ -162,14 +172,20 @@ function Topbar() {
   const [speed, setSpd] = useState(1);
   const [sound, setSound] = useState(false);
   const [menu, setMenu] = useState<null | 'projects' | 'export'>(null);
+  const projectsRef = useMenu<HTMLDivElement>(menu === 'projects', () => setMenu(null));
+  const exportRef = useMenu<HTMLDivElement>(menu === 'export', () => setMenu(null));
   const running = status === 'running' || status === 'booting';
   const board = project.board === 'none' ? 'No microcontroller' : BOARDS[project.board].name;
   return (
     <header className="topbar">
-      <button className="brand" onClick={() => setMenu(menu === 'projects' ? null : 'projects')} title="Projects">
-        <Logo />
-        <span>Sparkbench</span>
-      </button>
+      <div className="menu-anchor brand-anchor" ref={projectsRef}>
+        <button className="brand" onClick={() => setMenu(menu === 'projects' ? null : 'projects')} title="Projects: new, open, share" aria-haspopup="menu" aria-expanded={menu === 'projects'}>
+          <Logo />
+          <span>Sparkbench</span>
+          <span className="brand-caret">Projects ▾</span>
+        </button>
+        {menu === 'projects' && <ProjectsMenu onClose={() => setMenu(null)} />}
+      </div>
       <input className="project-name" value={project.name} aria-label="Project name" onChange={(e) => useStore.getState().update((p) => ({ ...p, name: e.target.value }), false)} />
       <span className="board-chip" title="Target board">
         {board}
@@ -218,31 +234,32 @@ function Topbar() {
         <span className={`status status-${status}`}>{statusText(status)}</span>
       </div>
       <span className="spacer" />
-      <button className="ghost" onClick={() => useStore.getState().undo()} disabled={!past} title="Undo (⌘Z)">
-        Undo
+      <button className="ghost" onClick={() => useStore.getState().undo()} disabled={!past} title="Undo (⌘Z)" aria-label="Undo">
+        <span aria-hidden>↶</span>
+        <span className="undo-label"> Undo</span>
       </button>
-      <button className="ghost" onClick={() => useStore.getState().redo()} disabled={!future} title="Redo (⇧⌘Z)">
-        Redo
+      <button className="ghost" onClick={() => useStore.getState().redo()} disabled={!future} title="Redo (⇧⌘Z)" aria-label="Redo">
+        <span aria-hidden>↷</span>
+        <span className="undo-label"> Redo</span>
       </button>
       <button className="ghost" onClick={() => useStore.getState().set({ tourStep: 0 })}>
         Tour
       </button>
-      <button className="board-btn" onClick={() => useStore.getState().set({ boardPanel: !useStore.getState().boardPanel })} data-testid="board-open" title="Program and test the real hardware over USB">
+      <button className="board-btn" onClick={() => useStore.getState().set({ boardPanel: !useStore.getState().boardPanel })} data-testid="board-open" data-tour="board" title="Program and test the real hardware over USB">
         Your board
       </button>
-      <div className="menu-anchor">
-        <button className="primary" onClick={() => setMenu(menu === 'export' ? null : 'export')} data-tour="export">
+      <div className="menu-anchor" ref={exportRef}>
+        <button className="primary" onClick={() => setMenu(menu === 'export' ? null : 'export')} data-tour="export" aria-haspopup="menu" aria-expanded={menu === 'export'}>
           Export
         </button>
         {menu === 'export' && (
-          <div className="menu" onMouseLeave={() => setMenu(null)}>
-            <button onClick={() => downloadZip(project).then(() => setMenu(null))}>Everything (.zip)</button>
-            <button onClick={() => download(`${slug(project.name)}.sparkbench.json`, JSON.stringify(project, null, 2), 'application/json')}>Project file (.json)</button>
+          <div className="menu" role="menu" ref={fitMenu}>
+            <button role="menuitem" onClick={() => downloadZip(project).then(() => setMenu(null))}>Everything (.zip)</button>
+            <button role="menuitem" onClick={() => (download(`${slug(project.name)}.sparkbench.json`, JSON.stringify(project, null, 2), 'application/json'), setMenu(null))}>Project file (.json)</button>
             <div className="menu-note">KiCad, SPICE, BOM and docs are also on their own tabs.</div>
           </div>
         )}
       </div>
-      {menu === 'projects' && <ProjectsMenu onClose={() => setMenu(null)} />}
     </header>
   );
 }
@@ -255,7 +272,7 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
   const saved = listSaved();
   const [, force] = useState(0);
   return (
-    <div className="menu projects-menu" onMouseLeave={onClose}>
+    <div className="menu projects-menu" role="menu" ref={fitMenu}>
       <button
         onClick={() => {
           stopSim(true);
@@ -342,16 +359,26 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
   );
 }
 
-const STEPS = ['Reading your description', 'Choosing parts', 'Assigning pins and wiring', 'Writing the code', 'Testing it in the simulator'];
+const PHASES = [
+  { id: 'read', label: 'Reading your idea and choosing parts' },
+  { id: 'wire', label: 'Assigning pins and wiring' },
+  { id: 'code', label: 'Writing the program' },
+  { id: 'tests', label: 'Writing tests and checking it in the simulator' },
+  { id: 'fix', label: 'Fixing what the tests found' },
+] as const;
 
-/** Shown while Claude designs a project from the welcome screen (it can take up to a minute). */
+/** The waiting screen while Claude designs: real phases streamed from the server, elapsed time and Cancel. */
 function Designing({ text, status }: { text: string; status: string }) {
   const [t, setT] = useState(0);
+  const phase = useStore((s) => s.designPhase);
+  const seen = useRef(new Set<string>());
+  if (phase) seen.current.add(phase);
   useEffect(() => {
     const id = setInterval(() => setT((x) => x + 1), 1000);
     return () => clearInterval(id);
   }, []);
-  const step = Math.min(STEPS.length - 1, Math.floor(t / 9));
+  const at = PHASES.findIndex((p) => p.id === phase);
+  const shown = PHASES.filter((p) => p.id !== 'fix' || seen.current.has('fix'));
   return (
     <div className="welcome designing" aria-live="polite">
       <header className="welcome-top">
@@ -363,13 +390,25 @@ function Designing({ text, status }: { text: string; status: string }) {
         <p className="lede">“{text}”</p>
         <h1>{status}</h1>
         <ol className="design-steps">
-          {STEPS.map((s, i) => (
-            <li key={s} className={i < step ? 'done' : i === step ? 'now' : ''}>
-              {s}
-            </li>
-          ))}
+          {shown.map((p) => {
+            const i = PHASES.findIndex((x) => x.id === p.id);
+            const cls = p.id === phase ? 'now' : seen.current.has(p.id) ? 'done' : at > i ? 'skip' : '';
+            return (
+              <li key={p.id} className={cls}>
+                {p.label}
+                {cls === 'skip' && <span className="muted"> (not needed)</span>}
+              </li>
+            );
+          })}
         </ol>
-        <p className="hero-hint">{t} s — designs with custom code usually take 30–60 seconds.</p>
+        <p className="hero-hint">
+          {t < 60
+            ? `${t} s — most designs take 30–90 seconds.`
+            : `${t} s — still working. Designs with custom code and tests can take 2–3 minutes; this is normal.`}
+        </p>
+        <button className="ghost" onClick={cancelDesign} data-testid="design-cancel">
+          Cancel
+        </button>
       </section>
     </div>
   );
@@ -390,12 +429,22 @@ export function Logo() {
   );
 }
 
+const LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
+const isTouch = () => typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
+
 function Welcome() {
   const [text, setText] = useState('');
   const [images, setImages] = useState<Shrunk[]>([]);
   const busy = useStore((s) => s.busy);
   const chat = useStore((s) => s.chat);
   const lastAi = [...chat].reverse().find((m) => m.role === 'ai' && !m.pending);
+  const [community, setCommunity] = useState(0);
+  useEffect(() => {
+    fetch('/api/gallery')
+      .then((r) => r.json())
+      .then((d) => setCommunity(d.entries?.length ?? 0))
+      .catch(() => {});
+  }, []);
   if (busy) return <Designing text={useStore.getState().chat.find((m) => m.role === 'user')?.text ?? ''} status={busy} />;
   const saved = listSaved();
   const go = () => (text.trim() || images.length) && sendPrompt(text, images);
@@ -407,11 +456,15 @@ function Welcome() {
         <span className="brand">
           <Logo /> <span>Sparkbench</span>
         </span>
-        {saved.length > 0 && (
-          <button className="ghost" onClick={() => useStore.getState().setProject(saved[0], { record: false })}>
-            Continue “{saved[0].name}”
-          </button>
-        )}
+        <nav className="welcome-nav">
+          <a href="#examples">Examples</a>
+          {community > 0 && <a href="#community">Community projects ({community})</a>}
+          {saved.length > 0 && (
+            <button className="ghost" onClick={() => useStore.getState().setProject(saved[0], { record: false })}>
+              Continue “{saved[0].name}”
+            </button>
+          )}
+        </nav>
       </header>
       <section className="hero">
         <h1>Describe a gadget. Get a circuit you can run.</h1>
@@ -424,7 +477,7 @@ function Welcome() {
           }}
         >
           <textarea
-            autoFocus
+            autoFocus={!isTouch()}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="e.g. An ESP32 with a small screen, two buttons, a temperature sensor and a motion sensor"
@@ -453,10 +506,10 @@ function Welcome() {
         <p className="hero-hint">Works with ESP32, Raspberry Pi Pico, Raspberry Pi 4, or plain components (555 timers, transistors).</p>
         <JoinClass />
       </section>
-      <section className="gallery" aria-label="Example projects">
+      <section className="gallery" id="examples" aria-label="Example projects">
         <h2>Or open a working example</h2>
         <div className="cards">
-          {EXAMPLES.map((ex) => (
+          {[...EXAMPLES].sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level)).map((ex) => (
             <button key={ex.id} className="card" data-example={ex.id} onClick={() => useStore.getState().setProject(buildExample(ex.id), { record: false })}>
               <span className="card-meta">
                 <span className="chip">{boardName(ex.board)}</span>

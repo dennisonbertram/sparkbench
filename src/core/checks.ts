@@ -12,9 +12,10 @@ const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2
 const BUDGET_3V3: Record<string, number> = { esp32: 500, pico: 300, rpi4: 50 };
 const BUDGET_5V: Record<string, number> = { esp32: 500, pico: 500, rpi4: 1000 };
 /** Worst-case draw (stalled servo, NeoPixels at full white) where it differs a lot from typical. */
-const WORST_MA: Record<string, (p: PartInstance) => number> = {
+export const WORST_MA: Record<string, (p: PartInstance) => number> = {
   servo: () => 650,
   'neopixel-ring': (p) => 60 * Number(p.props?.pixels ?? 12),
+  'dc-motor': () => 250, // start-up surge of a small pump/fan
 };
 /** Module pins that must be driven by the board (so they can't go to an input-only pin). */
 const NEEDS_OUTPUT: Record<string, string[]> = {
@@ -774,25 +775,46 @@ function checkAnalog(c: Ctx) {
   }
 }
 
-function checkPowerBudget(c: Ctx) {
+export interface RailLoad {
+  rail: 3 | 5;
+  /** "VIN (5 V from USB)" */
+  name: string;
+  /** What the supply can give (mA). */
+  budget: number;
+  /** Datasheet typical and worst-case draw (mA), including the board itself on its 5 V input. */
+  typ: number;
+  worst: number;
+  who: string[];
+  /** The board's own share included in typ/worst. */
+  base: number;
+}
+
+/** Datasheet current per supply rail: the one estimate the Problems tab and the Power card share. */
+function railLoads(c: Ctx): RailLoad[] {
   const b = c.board;
-  if (!b || !c.boardId) return;
+  if (!b || !c.boardId) return [];
   const rail3 = c.net({ part: c.boardId, pin: b.supply3v3 });
   const rail5 = c.net({ part: c.boardId, pin: b.supply5v });
   const tally = { 3: { typ: 0, worst: 0, who: [] as string[] }, 5: { typ: 0, worst: 0, who: [] as string[] } };
   for (const part of c.project.parts) {
     const d = c.def(part);
     if (!d || d.category === 'board') continue;
-    const pp = d.pins.find((p) => p.role === 'power');
-    if (!pp) continue;
-    const net = c.net({ part: part.id, pin: pp.name });
-    const rail = net && net === rail3 ? 3 : net && net === rail5 ? 5 : undefined;
+    let rail: 3 | 5 | undefined;
+    if (part.type === 'dc-motor') {
+      // A pump/fan switched by a relay from the 5 V supply: count it while it runs.
+      rail = c.project.board === 'none' ? undefined : 5;
+    } else {
+      const pp = d.pins.find((p) => p.role === 'power');
+      if (!pp) continue;
+      const net = c.net({ part: part.id, pin: pp.name });
+      rail = net && net === rail3 ? 3 : net && net === rail5 ? 5 : undefined;
+    }
     if (!rail) continue;
     const typ = d.currentMa ?? 5;
     const worst = WORST_MA[part.type]?.(part) ?? typ;
     tally[rail].typ += typ;
     tally[rail].worst += worst;
-    tally[rail].who.push(`${c.partName(part)} ~${worst === typ ? typ : `${typ}–${worst}`} mA`);
+    tally[rail].who.push(`${c.partName(part)} ~${worst === typ ? typ : `${typ}–${worst}`} mA${part.type === 'dc-motor' ? ' while running' : ''}`);
   }
   // LEDs driven from GPIOs come out of the 3.3 V regulator too.
   const m = c.model;
@@ -819,10 +841,18 @@ function checkPowerBudget(c: Ctx) {
     [3, `${b.supply3v3} (3.3 V)`, BUDGET_3V3[b.id] ?? 300, 0],
     [5, b.id === 'rpi4' ? '5V' : `${b.supply5v} (5 V from USB)`, BUDGET_5V[b.id] ?? 500, b.id === 'rpi4' ? 0 : own],
   ];
-  for (const [rail, name, budget, base] of rails) {
-    const t = tally[rail];
-    const typ = Math.round(t.typ + base);
-    const worst = Math.round(t.worst + base);
+  return rails.map(([rail, name, budget, base]) => ({ rail, name, budget, base, typ: Math.round(tally[rail].typ + base), worst: Math.round(tally[rail].worst + base), who: tally[rail].who }));
+}
+
+/** Datasheet typical / worst-case current per supply rail (same numbers the Problems tab uses). */
+export function supplyLoads(project: Project): RailLoad[] {
+  return railLoads(new Ctx(project));
+}
+
+function checkPowerBudget(c: Ctx) {
+  const b = c.board;
+  if (!b) return;
+  for (const { rail, name, budget, base, typ, worst, who } of railLoads(c)) {
     if (worst <= budget) continue;
     const severity: Severity = typ > budget * 2 ? 'error' : typ > budget || worst > budget * 1.4 ? 'warning' : 'info';
     const boardNote = base ? ` (including about ${base} mA for the ${b.short} itself)` : '';
@@ -836,7 +866,7 @@ function checkPowerBudget(c: Ctx) {
       id: `budget:${rail}v`,
       severity,
       title: typ > budget ? `Too much current on ${name}: about ${typ} mA` : `${name} could need up to ${worst} mA`,
-      detail: `The ${name} supply can give about ${budget} mA. Expected draw is about ${typ} mA${worst > typ ? `, rising to ${worst} mA at worst (a servo straining, or NeoPixels at full white use 60 mA each)` : ''}${boardNote}. When the supply runs out the voltage dips and the board can reset at random. Parts on this rail: ${t.who.join(', ') || 'LEDs'}. ${advice}`,
+      detail: `The ${name} supply can give about ${budget} mA. Datasheet figures put the draw at about ${typ} mA${worst > typ ? `, rising to ${worst} mA at worst (a servo straining, a pump running, or NeoPixels at full white use 60 mA each)` : ''}${boardNote}. Your program may use less (the Power and batteries card measures it), but the supply has to cope with the worst moment: when it runs out the voltage dips and the board can reset at random. Parts on this rail: ${who.join(', ') || 'LEDs'}. ${advice}`,
     });
   }
 }
@@ -885,6 +915,19 @@ function checkSafety(c: Ctx) {
         detail: 'The relay itself may be rated for mains, but breadboards, jumper wires and hobby boards are not. Use it for low-voltage loads (a 5–12 V pump, fan or LED strip) unless a qualified person builds the mains side in a proper enclosure.',
         parts: [p.id],
       });
+    if (p.type === 'dc-motor') {
+      const plus = c.net({ part: p.id, pin: '+' });
+      const minus = c.net({ part: p.id, pin: '-' });
+      const across = c.project.parts.some((d) => d.type === 'diode' && plus && minus && c.net({ part: d.id, pin: 'K' }) === plus && c.net({ part: d.id, pin: 'A' }) === minus);
+      if (!across)
+        c.add({
+          id: `safety:flyback:${p.id}`,
+          severity: 'warning',
+          title: `${c.partName(p)} needs a flyback diode`,
+          detail: `When a motor or pump switches off it kicks back a voltage spike that can reset the board or wear out the relay contacts. Put a diode (1N4148 for a small pump, 1N4007 or 1N5819 for bigger motors) straight across its two wires: the striped end (K) to the + wire, the other end (A) to −. A 100 µF capacitor across the supply nearby helps too.`,
+          parts: [p.id],
+        });
+    }
     if (p.type === 'dc-motor' && c.boardId) {
       const pins = partDef(p.type).pins.map((pin) => c.net({ part: p.id, pin: pin.name }));
       const onGpio = pins.some((net) => net && c.gpios(net).length > 0);

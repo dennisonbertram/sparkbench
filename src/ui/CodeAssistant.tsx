@@ -6,6 +6,7 @@ import { useStore } from './store';
 import { startSim } from './simClient';
 import { getEditorSelection } from './CodeEditor';
 import type { Project } from '../core/types';
+import { Elapsed } from './Elapsed';
 
 interface Proposal {
   file: string;
@@ -15,6 +16,7 @@ interface Proposal {
   log: string[];
   ok: boolean;
   behavior?: Project['behavior'];
+  instruction: string;
 }
 
 export function CodeAssistant({ file }: { file: string }) {
@@ -24,12 +26,14 @@ export function CodeAssistant({ file }: { file: string }) {
   const [busy, setBusy] = useState(false);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState<string | null>(null);
 
   const ask = async (instruction: string, withError?: string) => {
     const project = useStore.getState().project!;
     setBusy(true);
     setError(null);
     setProposal(null);
+    setAccepted(null);
     try {
       const selection = getEditorSelection();
       const res = await fetch('/api/ai/code', {
@@ -40,7 +44,7 @@ export function CodeAssistant({ file }: { file: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'AI request failed');
       const after = (data.project as Project).files[file];
-      setProposal({ file, before: project.files[file], after, reply: data.reply, log: data.log ?? [], ok: data.ok, behavior: (data.project as Project).behavior });
+      setProposal({ file, before: project.files[file], after, reply: data.reply, log: data.log ?? [], ok: data.ok, behavior: (data.project as Project).behavior, instruction });
       setText('');
     } catch (e: any) {
       setError(String(e?.message ?? e));
@@ -63,7 +67,16 @@ export function CodeAssistant({ file }: { file: string }) {
           Fix this crash with AI
         </button>
       )}
-      {proposal && <ProposalView p={proposal} onDone={() => setProposal(null)} />}
+      {proposal && (
+        <ProposalView
+          p={proposal}
+          onDone={(ok) => {
+            setProposal(null);
+            if (ok) setAccepted(proposal.instruction);
+          }}
+        />
+      )}
+      {accepted && !busy && <AfterAccept instruction={accepted} onClose={() => setAccepted(null)} />}
       {error && <div className="banner error">{error}</div>}
       <form
         className="assistant-form"
@@ -90,18 +103,69 @@ export function CodeAssistant({ file }: { file: string }) {
           {busy ? 'Working…' : 'Ask AI'}
         </button>
       </form>
-      {busy && <div className="assistant-status">Claude is editing {file} and testing it in the simulator… this takes 15–60 seconds.</div>}
+      {busy && (
+        <div className="assistant-status">
+          <Elapsed label={`Claude is editing ${file} and trying it in the simulator…`} usual={60} />
+        </div>
+      )}
+      {!busy && !proposal && <div className="assistant-note muted">This box changes only the code. To add, remove or move parts, use the Copilot on the left.</div>}
     </div>
   );
 }
 
-function ProposalView({ p, onDone }: { p: Proposal; onDone(): void }) {
+/** After a change is accepted: the tests re-run, and a test for the new behaviour is one click away. */
+function AfterAccept({ instruction, onClose }: { instruction: string; onClose(): void }) {
+  const run = useStore((s) => s.testRun);
+  const [adding, setAdding] = useState(false);
+  const [msg, setMsg] = useState('');
+  const passed = run?.results.filter((r) => r.pass).length ?? 0;
+  const addTest = async () => {
+    setAdding(true);
+    setMsg('');
+    try {
+      const project = useStore.getState().project!;
+      const r = await fetch('/api/ai/tests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project, text: instruction }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? 'Could not write that test');
+      if (!d.tests.length) throw new Error("Couldn't turn this change into a test. Add one in the Tests tab in your own words.");
+      useStore.getState().update((p) => ({ ...p, tests: [...(p.tests ?? []), ...d.tests] }));
+      setMsg(`Added ${d.tests.length === 1 ? 'a test' : `${d.tests.length} tests`} for this change; see the Tests tab.`);
+    } catch (e: any) {
+      setMsg(e.message ?? String(e));
+    } finally {
+      setAdding(false);
+    }
+  };
+  return (
+    <div className="after-accept" data-testid="after-accept">
+      {!run || run.running ? (
+        <span>Re-running the tests in the simulator…</span>
+      ) : (
+        <span>
+          Tests: {passed}/{run.results.length} pass.{' '}
+          {msg || 'They were written before this change, so they may not check it yet.'}
+        </span>
+      )}{' '}
+      {!msg && (
+        <button className="link" onClick={addTest} disabled={adding}>
+          {adding ? 'Writing the test…' : 'Add a test for this change'}
+        </button>
+      )}{' '}
+      <button className="link" onClick={onClose} aria-label="Close">
+        Close
+      </button>
+    </div>
+  );
+}
+
+function ProposalView({ p, onDone }: { p: Proposal; onDone(accepted: boolean): void }) {
   const diff = lineDiff(p.before, p.after);
   const added = diff.filter((d) => d.t === '+').length;
   const removed = diff.filter((d) => d.t === '-').length;
   const accept = () => {
     useStore.getState().update((pr) => ({ ...pr, files: { ...pr.files, [p.file]: p.after }, codeCustom: p.file === 'main.py' ? true : pr.codeCustom, behavior: p.file === 'main.py' ? p.behavior : pr.behavior }));
-    onDone();
+    useStore.getState().addChat({ role: 'ai', text: `I changed ${p.file} (from the box under the code): ${p.reply}` });
+    onDone(true);
     const project = useStore.getState().project!;
     startSim(project);
   };
@@ -121,7 +185,7 @@ function ProposalView({ p, onDone }: { p: Proposal; onDone(): void }) {
           <button className="primary" onClick={accept}>
             Accept & run
           </button>
-          <button onClick={onDone}>Discard</button>
+          <button onClick={() => onDone(false)}>Discard</button>
         </div>
       </div>
       <pre className="diff">

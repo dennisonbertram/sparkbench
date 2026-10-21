@@ -13,6 +13,7 @@ interface Job {
   id: string;
   log: string[];
   done: boolean;
+  started: number;
   error?: string;
   result?: PcbResult;
 }
@@ -22,8 +23,9 @@ const ROOT = join(tmpdir(), 'sparkbench-pcb');
 export function startPcb(project: Project, opts: PcbOptions = {}): Job {
   const id = createHash('sha1').update(JSON.stringify([pcbSpec(project, { fab: opts.fab }), opts.qrUrl ?? '', project.revision ?? 'A', opts.fixed ?? null, opts.variant ?? 'prototype', opts.panel ?? null])).digest('hex').slice(0, 16);
   const existing = jobs.get(id);
-  if (existing && !existing.error) return existing;
-  const job: Job = { id, log: [], done: false };
+  // Reuse a finished or running build, unless it failed or stalled (e.g. the server reloaded mid-build).
+  if (existing && !existing.error && (existing.done || Date.now() - existing.started < 10 * 60_000)) return existing;
+  const job: Job = { id, log: [], done: false, started: Date.now() };
   jobs.set(id, job);
   buildPcb(project, join(ROOT, id), (m) => job.log.push(m), opts)
     .then((r) => (job.result = r))
@@ -81,7 +83,7 @@ export async function buildEnclosure(id: string, project: Project, style: import
       files.push(`enclosure/${style}/${part.name}.step`);
     }
   }
-  const notes = [`# ${p.name} case (${style})`, '', `Outside: ${r.outer.w} × ${r.outer.d} × ${r.outer.h} mm. Tallest part: ${r.tallest.ref} (${r.tallest.h} mm above the board).`, '', '## Print', '', ...r.parts.map((x) => `- \`${x.name}.stl\`: ${x.note}`), '', '## Openings', '', ...r.openings.map((o) => `- ${o.where}: ${o.ref ? `${o.ref} — ` : ''}${o.what}`), '', '## Assemble', '', '1. Screw the board onto the four posts with M3 × 6 mm self-tapping screws.', '2. Push the button caps into their lid holes from inside (flange inside).', '3. Press the lid on; the lip holds it. A dab of glue makes it permanent.', ...(r.warnings.length ? ['', '## Notes', '', ...r.warnings.map((w) => `- ${w}`)] : []), ''].join('\n');
+  const notes = [`# ${p.name} case (${style})`, '', `Outside: ${r.outer.w} × ${r.outer.d} × ${r.outer.h} mm. Tallest part: ${r.tallest.ref} (${r.tallest.h} mm above the board).`, '', '## Print', '', ...r.parts.map((x) => `- \`${x.name}.stl\`: ${x.note}`), '', '## Openings', '', ...r.openings.map((o) => `- ${o.where}: ${o.ref ? `${o.ref} — ` : ''}${o.what}`), '', '## Assemble', '', ...['Screw the board onto the four posts with M3 × 6 mm self-tapping screws.', ...(r.parts.some((x) => x.name.startsWith('button-cap')) ? ['Push the button caps into their lid holes from inside (flange inside).'] : []), 'Press the lid on; the lip holds it. A dab of glue makes it permanent.', ...(style === 'desk-stand' ? ['Stand the closed case in the desk stand’s lip.'] : style === 'wall-mount' ? ['Put two screws in the wall at the keyhole spacing, then hang the case on them.'] : [])].map((t, i) => `${i + 1}. ${t}`), ...(r.warnings.length ? ['', '## Notes', '', ...r.warnings.map((w) => `- ${w}`)] : []), ''].join('\n');
   writeFileSync(join(dir, 'CASE.md'), notes);
   files.push(`enclosure/${style}/CASE.md`);
   job.result.files = [...new Set([...job.result.files, ...files])];

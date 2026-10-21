@@ -206,6 +206,23 @@ export function Breadboard() {
               onPointerDown={(e) => onPartDown(e, part.id)}
               data-part={part.id}
               title={`${part.ref ?? ''} ${part.label ?? partDef(part.type).name}`}
+              tabIndex={0}
+              role="button"
+              aria-pressed={sel}
+              aria-label={`${part.ref ?? ''} ${part.label ?? partDef(part.type).name}${sel ? ' (selected: arrow keys move it, Delete removes it)' : ''}`}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  useStore.getState().select({ kind: 'part', id: part.id });
+                }
+                const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+                if (d && sel) {
+                  e.preventDefault();
+                  const step = e.shiftKey ? 40 : 10;
+                  useStore.getState().update((p) => ({ ...p, parts: p.parts.map((x) => (x.id === part.id ? { ...x, x: x.x + d[0] * step, y: x.y + d[1] * step } : x)) }));
+                }
+              }}
             >
               <PartView part={part} visual={v} onPins={onPins} onInput={onInput} inputs={sim.inputs} />
               <div className="part-tag">{partTag(part)}</div>

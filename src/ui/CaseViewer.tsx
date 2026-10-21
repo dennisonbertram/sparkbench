@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { CASE_DIMS } from '../core/enclosure';
 
-export function CaseViewer({ jobId, files, outer, board }: { jobId: string; files: string[]; outer: { w: number; d: number; h: number }; board: { w: number; d: number } }) {
+export function CaseViewer({ jobId, files, outer, board, style = 'rounded' }: { jobId: string; files: string[]; outer: { w: number; d: number; h: number }; board: { w: number; d: number }; style?: string }) {
   const host = useRef<HTMLDivElement>(null);
   const [exploded, setExploded] = useState(true);
   const lidRef = useRef<THREE.Mesh | null>(null);
@@ -23,9 +23,12 @@ export function CaseViewer({ jobId, files, outer, board }: { jobId: string; file
     const camera = new THREE.PerspectiveCamera(35, w / h, 1, 2000);
     const span = Math.max(outer.w, outer.d, outer.h * 2);
     camera.up.set(0, 0, 1);
-    camera.position.set(outer.w * 1.4, -outer.d * 1.3, span * 1.5);
+    const stand = style === 'desk-stand';
+    // Wall-mount: look from underneath so the keyhole slots in the floor are visible.
+    if (style === 'wall-mount') camera.position.set(outer.w * 1.2, -outer.d * 1.1, -span * 1.3);
+    else camera.position.set(outer.w * (stand ? 2.2 : 1.4), -outer.d * 1.6, span * 1.5);
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(outer.w / 2, outer.d / 2, outer.h / 2);
+    controls.target.set(stand ? outer.w : outer.w / 2, outer.d / 2, outer.h / 2);
     controls.update();
     scene.add(new THREE.HemisphereLight('#ffffff', '#8a8f8c', 1.6));
     const sun = new THREE.DirectionalLight('#ffffff', 1.6);
@@ -38,17 +41,24 @@ export function CaseViewer({ jobId, files, outer, board }: { jobId: string; file
     const loader = new STLLoader();
     const url = (f: string) => `/api/pcb/file?id=${jobId}&path=${encodeURIComponent(f)}`;
     let stopped = false;
-    for (const f of files.filter((x) => /case-(base|lid)\.stl$/.test(x))) {
+    for (const f of files.filter((x) => /(case-(base|lid)|desk-stand)\.stl$/.test(x))) {
       loader.load(url(f), (geom) => {
         if (stopped) return;
         geom.computeVertexNormals();
-        const isLid = /lid/.test(f);
+        const isLid = /case-lid\.stl$/.test(f);
         if (isLid) {
           // The lid is exported upside down for printing: turn it back over.
           geom.rotateX(Math.PI);
           geom.translate(0, outer.d, CASE_DIMS.LID);
         }
-        const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color: isLid ? '#f2f2ee' : '#c9d3dc', roughness: 0.8, transparent: isLid, opacity: isLid ? 0.92 : 1 }));
+        const isStand = /(^|\/)desk-stand\.stl$/.test(f);
+        // The stand is exported beside the case; leave a small gap so both are easy to see.
+        if (isStand) {
+          geom.computeBoundingBox();
+          const bb = geom.boundingBox!;
+          geom.translate(outer.w + 15 - bb.min.x, -bb.min.y, -bb.min.z);
+        }
+        const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ color: isLid ? '#f2f2ee' : isStand ? '#d8b98a' : '#c9d3dc', roughness: 0.8, transparent: isLid, opacity: isLid ? 0.92 : 1, side: THREE.DoubleSide }));
         if (isLid) {
           mesh.position.z = outer.h - CASE_DIMS.LID + 30;
           lidRef.current = mesh;
@@ -74,7 +84,7 @@ export function CaseViewer({ jobId, files, outer, board }: { jobId: string; file
       renderer.dispose();
       el.removeChild(renderer.domElement);
     };
-  }, [jobId, files.join('|')]);
+  }, [jobId, files.join('|'), style]);
 
   useEffect(() => {
     if (host.current) (host.current as any).__exploded = exploded;
@@ -85,7 +95,7 @@ export function CaseViewer({ jobId, files, outer, board }: { jobId: string; file
       <div ref={host} className="case-canvas" />
       <div className="case-viewer-tools">
         <button onClick={() => setExploded((x) => !x)}>{exploded ? 'Close the lid' : 'Open the lid'}</button>
-        <span className="muted">Drag to turn it, scroll to zoom.</span>
+        <span className="muted">{style === 'wall-mount' ? 'Seen from below: the two keyhole slots hang on wall screws. ' : style === 'desk-stand' ? 'The tan wedge beside it is the desk stand. ' : ''}Drag to turn it, scroll to zoom.</span>
       </div>
     </div>
   );

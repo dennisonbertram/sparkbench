@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import { useStore } from './store';
 import { shrinkImage as shrink } from './images';
 import { CostHint } from './CostHint';
+import { Elapsed } from './Elapsed';
 
 interface Issue { parts: string[]; problem: string; fix: string; confidence: 'high' | 'medium' | 'low' }
 interface Result { verdict: 'looks-right' | 'problems' | 'cant-tell'; summary: string; issues: Issue[]; could_not_check: string[]; photo_tips: string | null }
@@ -21,7 +22,7 @@ export function PhotoCheck() {
     setError('');
     setResult(null);
     try {
-      setPhotos((await Promise.all([...files].slice(0, 4).map(shrink))));
+      setPhotos((await Promise.all([...files].slice(0, 4).map((f) => shrink(f)))));
     } catch {
       setError("That file couldn't be opened as a picture. Try a JPEG or PNG.");
     }
@@ -55,7 +56,7 @@ export function PhotoCheck() {
           <button onClick={() => input.current?.click()}>{photos.length ? 'Choose other photos' : 'Choose photo'}</button>
           {photos.length > 0 && (
             <button className="primary" disabled={busy || !ai?.enabled} onClick={check} title={ai?.enabled ? '' : 'Needs Claude: log in to Claude Code or set ANTHROPIC_API_KEY'}>
-              {busy ? 'Checking… (about 30 s)' : 'Check wiring'}
+              {busy ? <Elapsed label="Checking…" usual={30} /> : 'Check wiring'}
             </button>
           )}
           {photos.length > 0 && ai?.enabled && (

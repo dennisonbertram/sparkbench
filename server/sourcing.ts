@@ -122,9 +122,9 @@ function queries(type: string, props: Record<string, any>): { q: string[]; ok: (
     case 'potentiometer':
       return { q: ['RK09K 10K', 'RK09K'], ok: tht };
     case 'pushbutton':
-      return { q: ['tactile switch 6x6mm Plugin', 'tact switch Plugin 6x6'], ok: (p) => tht(p) && /switch/i.test(p.description) };
+      return { q: ['Tactile Switches 6x6', 'tactile switch 6x6mm Plugin'], ok: (p) => tht(p) && /6x6/.test(p.pkg) && /switch|button|SPST/i.test(p.description) };
     case 'dht22':
-      return { q: ['AM2302', 'DHT22'], ok: () => true };
+      return { q: ['AM2302', 'DHT22'], ok: (p) => /humidity|temperature/i.test(p.description) && /sensor|AM2302|DHT22/i.test(p.description + p.mfr) };
     default:
       return null;
   }
@@ -215,7 +215,7 @@ export async function sourcePcb(project: Project): Promise<PcbSourced[]> {
       continue;
     }
     const spec = queries(p.type, p.props ?? {});
-    out.push({ ref, item: def.name, quantity: 1, part: spec ? await bestFor(spec.q, spec.ok, 1, spec.pages ?? 1).catch(() => null) : null });
+    out.push({ ref, item: p.props?.color && /led/.test(p.type) ? `${def.name}, ${p.props.color}` : def.name, quantity: 1, part: spec ? await bestFor(spec.q, spec.ok, 1, spec.pages ?? 1).catch(() => null) : null });
   }
   return out;
 }

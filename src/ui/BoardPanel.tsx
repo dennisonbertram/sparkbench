@@ -3,16 +3,40 @@
 // output, and ask the AI what's wrong.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
+import { useDialog } from './useDialog';
 import { RawRepl } from '../board/rawrepl';
 import { SerialLink, serialSupported } from '../board/webserial';
 import { installEsp32, installPico } from '../board/install';
-import { parseSelfTest, type SelfTestLine } from '../core/selftest';
+import { parseSelfTest, pinWords, type SelfTestLine } from '../core/selftest';
 import { download, slug } from './exporters';
 import { MultimeterGuide } from './MultimeterGuide';
 import { CostHint } from './CostHint';
 import { otaPy, otaBootPy, otaToken } from '../core/ota';
+import { Elapsed } from './Elapsed';
 
 type Phase = 'idle' | 'connecting' | 'connected' | 'busy';
+
+/** Turn browser / esptool errors into advice a beginner can act on. */
+export function friendlyError(label: string, e: unknown): string {
+  const msg = String((e as any)?.message ?? e ?? '');
+  if (/setSignals|Failed to connect|Timed out|timeout|Wrong boot mode|No serial data|sync/i.test(msg))
+    return `${label} didn't work: the board didn't answer its USB connection. Hold the BOOT button on the board, click again, and let go once the progress bar moves. If it still fails, try another USB cable (some only carry power) or another USB port.`;
+  if (/already open|InvalidStateError|Failed to open|busy/i.test(msg)) return `${label} didn't work: another program (Thonny, the Arduino IDE or another browser tab) is using the board. Close it and try again.`;
+  if (/lost|disconnected|NetworkError|device has been/i.test(msg)) return `${label} didn't work: the board was unplugged or restarted part-way. Plug it back in, click Connect board, and try again.`;
+  if (/No port selected|NotFoundError/i.test(msg)) return 'No board was chosen. Click Connect board and pick the board in the list.';
+  if (/fetch|download|firmware/i.test(msg)) return `${label} didn't work: MicroPython couldn't be downloaded. Check this computer's internet connection and try again.`;
+  return `${label} didn't work (${msg}). Unplug the board, plug it back in, and try again.`;
+}
+
+/** What the self-test will ask the user to do, for this project. */
+function selfTestAsks(project: { features?: { kind: string }[] }): string {
+  const kinds = new Set((project.features ?? []).map((f) => f.kind));
+  const act = [kinds.has('button') && 'press buttons', kinds.has('pot') && 'turn the knob', kinds.has('switch') && 'flip the switch', kinds.has('pir') && 'wave at the motion sensor'].filter(Boolean) as string[];
+  const see = [(kinds.has('led') || kinds.has('rgb') || kinds.has('neopixel')) && 'lights', (kinds.has('oled') || kinds.has('lcd') || kinds.has('epaper')) && 'the screen', kinds.has('buzzer') && 'the buzzer', kinds.has('servo') && 'the servo', kinds.has('relay') && 'the relay'].filter(Boolean) as string[];
+  const join = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  if (!act.length && !see.length) return 'It checks each part and says what to fix.';
+  return `It checks each part${act.length ? `, asks you to ${join(act)}` : ''}${see.length ? `${act.length ? ' and' : ','} has you watch ${join(see)}` : ''}.`;
+}
 
 interface DebugAnswer {
   summary: string;
@@ -23,6 +47,7 @@ interface DebugAnswer {
 export function BoardPanel({ onClose }: { onClose: () => void }) {
   const project = useStore((s) => s.project)!;
   const ai = useStore((s) => s.aiStatus);
+  const panelRef = useDialog<HTMLElement>(onClose, { trap: false });
   const [phase, setPhase] = useState<Phase>('idle');
   const [info, setInfo] = useState('');
   const [needsMp, setNeedsMp] = useState(false);
@@ -36,6 +61,8 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
   const [answer, setAnswer] = useState<DebugAnswer | null>(null);
   const [asking, setAsking] = useState(false);
   const [ota, setOta] = useState(false);
+  const [confirmErase, setConfirmErase] = useState(false);
+  const [stale, setStale] = useState(false);
   const [ssid, setSsid] = useState('');
   const [wifiPass, setWifiPass] = useState('');
   const [otaHost, setOtaHost] = useState('');
@@ -51,6 +78,11 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [log]);
   useEffect(() => () => void link.current?.close(), []);
+  // Wide screens: make room for the panel instead of covering the canvas and the tabs.
+  useEffect(() => {
+    document.body.classList.add('board-panel-open');
+    return () => document.body.classList.remove('board-panel-open');
+  }, []);
 
   // What a correct build prints, from the simulator, to compare against.
   useEffect(() => {
@@ -67,7 +99,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
     try {
       return await fn();
     } catch (e: any) {
-      setError(`${label}: ${e?.message ?? e}`);
+      setError(friendlyError(label, e));
     } finally {
       setPhase(link.current ? 'connected' : 'idle');
       setProgress(null);
@@ -103,11 +135,12 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
       setPhase('connected');
     } catch (e: any) {
       setPhase('idle');
-      if (!/No port selected/i.test(String(e?.message))) setError(`Couldn't connect: ${e?.message ?? e}`);
+      if (!/No port selected/i.test(String(e?.message))) setError(friendlyError('Connecting', e));
     }
   }
 
   async function disconnect() {
+    if (selftest) setStale(true);
     await link.current?.close();
     link.current = null;
     repl.current = null;
@@ -116,6 +149,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
   }
 
   async function install() {
+    setConfirmErase(false);
     if (kind === 'esp32') {
       const port = link.current?.port;
       if (!port) return;
@@ -154,6 +188,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
     if (!r) return;
     setSelftest('');
     setLooked({});
+    setStale(false);
     await run('Running the self-test', async () => {
       const d = await fetch('/api/selftest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project }) }).then((x) => x.json());
       await r.enter();
@@ -165,7 +200,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
 
   async function stop() {
     const r = repl.current;
-    if (r) await run('Stopping', async () => (await r.enter(), await r.exit()));
+    if (r) await run('Stopping', async () => (await r.enter(), await r.exit(), append('\n[program stopped — click Restart it to run main.py again]\n')));
   }
 
   async function askAi() {
@@ -192,10 +227,16 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
     return checks(want.lines)[checks(parsed.lines).indexOf(l)];
   };
   const connected = phase === 'connected' || phase === 'busy';
+  const wifiMissing = ota && kind === 'esp32' && !project.files['secrets.py'] && !ssid.trim();
+  const problems = (parsed.done?.failed ?? 0) + parsed.lines.filter((l, i) => l.kind === 'LOOK' && looked[i] === false).length;
+  const lookPin = (label: string) => {
+    const f = project.features?.find((x) => x.label === label);
+    return f ? Object.values(f.pins).map(pinWords).join(' / ') : '';
+  };
   const busy = phase === 'busy' || phase === 'connecting';
 
   return (
-    <aside className="board-panel" data-testid="board-panel" aria-label="Your board">
+    <aside className="board-panel" data-testid="board-panel" aria-label="Your board" ref={panelRef}>
       <header className="panel-head">
         <h2>Your board</h2>
         <button className="ghost" onClick={onClose} aria-label="Close">✕</button>
@@ -209,14 +250,14 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
         )}
         {kind === 'rpi4' && (
           <>
-            <p>A Raspberry Pi runs your program itself, so you copy the files over the network rather than over USB:</p>
+            <p>A Raspberry Pi runs your program itself, so you copy the files to it rather than over a USB cable:</p>
             <ol className="bp-steps">
-              <li>Click <strong>Export → Everything (.zip)</strong> and unzip it.</li>
-              <li>Copy the <code>firmware</code> folder to the Pi, for example <code>scp -r firmware pi@raspberrypi.local:~/{slug(project.name)}</code>.</li>
-              <li>On the Pi, run <code>python3 selftest.py</code> in that folder and paste what it prints below.</li>
+              <li>Click <strong>Export → Everything (.zip)</strong> and unzip it. The <code>firmware</code> folder holds your program and <code>selftest.py</code>.</li>
+              <li>Copy the <code>firmware</code> folder to the Pi: with a keyboard and screen on the Pi, use a USB stick; from this computer, run <code>scp -r firmware pi@raspberrypi.local:~/{slug(project.name)}</code> in a terminal (Terminal on a Mac, PowerShell on Windows).</li>
+              <li>Open a terminal on the Pi (the black <code>&gt;_</code> icon in its top bar, or <code>ssh pi@raspberrypi.local</code> from this computer), go into the folder with <code>cd ~/{slug(project.name)}</code>, run <code>python3 selftest.py</code> and paste what it prints below.</li>
               <li>Then start your program with <code>python3 main.py</code>.</li>
             </ol>
-            <button onClick={() => fetch('/api/selftest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project }) }).then((r) => r.json()).then((d) => download('selftest.py', d.code, 'text/x-python'))}>Download selftest.py</button>
+            <button className="link" onClick={() => fetch('/api/selftest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project }) }).then((r) => r.json()).then((d) => download('selftest.py', d.code, 'text/x-python'))}>Or download just selftest.py</button>
             <label className="bp-paste">
               Self-test output from the Pi
               <textarea value={selftest} onChange={(e) => setSelftest(e.target.value)} rows={5} placeholder="Paste what python3 selftest.py printed" />
@@ -239,17 +280,24 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
                   ) : (
                     <span className="bp-row">
                       <button className="primary" onClick={connect} disabled={busy} data-testid="board-connect">{phase === 'connecting' ? 'Connecting…' : 'Connect board'}</button>
-                      <span className="muted">Pick the port called {kind === 'esp32' ? '"CP2102" or "USB Serial"' : '"Board in FS mode" or "Pico"'}.</span>
+                      <span className="muted">Pick the port called {kind === 'esp32' ? '"CP2102" or "USB Serial"' : '"Board in FS mode" or "Pico"'}.{kind === 'esp32' && ' If it can’t connect, hold the BOOT button on the board while you click.'}</span>
                     </span>
                   )}
                 </li>
-                <li>
-                  <strong>Install MicroPython</strong> {needsMp ? <span className="bp-warn">(needed: the board didn't answer)</span> : <span className="muted">(only once per board)</span>}
+                <li className={connected && !needsMp ? 'done' : ''}>
+                  <strong>Install MicroPython</strong> {needsMp ? <span className="bp-warn">(needed: the board didn't answer)</span> : connected ? <span className="bp-ok" data-testid="mp-installed">✓ already installed — skip this step</span> : <span className="muted">(only once per board)</span>}
                   {kind === 'esp32' ? (
-                    <span className="bp-row">
-                      <button onClick={install} disabled={!connected || busy}>Install MicroPython (erases the board)</button>
-                      <span className="muted">If it can't connect: hold the BOOT button while clicking.</span>
-                    </span>
+                    confirmErase ? (
+                      <span className="bp-row bp-confirm" role="alert">
+                        <span>This erases everything on the board, including any program already on it. Continue?</span>
+                        <button className="primary" onClick={install} data-testid="board-install-confirm">Erase and install</button>
+                        <button className="link" onClick={() => setConfirmErase(false)}>Cancel</button>
+                      </span>
+                    ) : (
+                      <span className="bp-row">
+                        <button className={needsMp ? 'primary' : connected ? 'link' : ''} onClick={() => setConfirmErase(true)} disabled={!connected || busy} data-testid="board-install">{needsMp || !connected ? 'Install MicroPython (erases the board)' : 'Reinstall MicroPython anyway…'}</button>
+                      </span>
+                    )
                   ) : (
                     <span className="bp-row">
                       <span className="muted">Unplug the Pico, hold its BOOTSEL button while plugging it back in, then</span>
@@ -271,14 +319,15 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
                     </span>
                   )}
                   <span className="bp-row">
-                    <button className="primary" onClick={copyProgram} disabled={!connected || busy || needsMp} data-testid="board-copy">Copy to the board and run it</button>
+                    <button className="primary" onClick={copyProgram} disabled={!connected || busy || needsMp || wifiMissing} data-testid="board-copy">Copy to the board and run it</button>
+                    {wifiMissing && <span className="bp-warn">Type your Wi-Fi name (and password) first, or untick the Wi-Fi option.</span>}
                   </span>
                 </li>
                 <li>
                   <strong>Check every part</strong>
                   <span className="bp-row">
                     <button onClick={runSelfTest} disabled={!connected || busy || needsMp} data-testid="board-selftest">Run the self-test</button>
-                    <span className="muted">It asks you to press buttons and watch LEDs.</span>
+                    <span className="muted">{selfTestAsks(project)}</span>
                   </span>
                 </li>
               </ol>
@@ -292,9 +341,9 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
         {kind === 'esp32' && (
           <details className="bp-ota" data-testid="board-ota-section">
             <summary>Update over Wi-Fi</summary>
-            <p className="muted">After you’ve copied the program once with “Also set up updates over Wi-Fi”, the board prints its address when it starts (e.g. “OTA: send updates to http://192.168.1.42:8266”). Type it here to send a new version without the cable.</p>
+            <p className="muted">After you’ve copied the program once with “Also set up updates over Wi-Fi”, the board prints its network address in the serial monitor when it starts, e.g. “OTA: send updates to http://192.168.1.42:8266” (OTA means “over the air”, i.e. over Wi-Fi). Type the address here to send a new version without the cable.</p>
             <span className="bp-row">
-              <input value={otaHost} onChange={(e) => setOtaHost(e.target.value)} placeholder="Board address, e.g. 192.168.1.42" aria-label="Board address" />
+              <input value={otaHost} onChange={(e) => setOtaHost(e.target.value)} placeholder="e.g. 192.168.1.42" aria-label="Board address" />
               <button
                 disabled={!otaHost.trim() || busy}
                 onClick={async () => {
@@ -312,8 +361,8 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {parsed.lines.length > 0 && (
-          <div className="selftest" data-testid="selftest-results">
-            <h3>Self-test {parsed.done ? (parsed.done.failed ? `— ${parsed.done.failed} problem${parsed.done.failed > 1 ? 's' : ''}` : '— all automatic checks passed') : '— running…'}</h3>
+          <div className={`selftest${stale ? ' stale' : ''}`} data-testid="selftest-results">
+            <h3>Self-test {parsed.done ? (problems ? `— ${problems} problem${problems > 1 ? 's' : ''}` : '— all automatic checks passed') : stale ? '' : '— running…'}{stale && <span className="muted"> (from before you disconnected)</span>}</h3>
             <ul>
               {parsed.lines.map((l, i) =>
                 l.kind === 'START' || l.kind === 'DONE' ? null : (
@@ -324,9 +373,18 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
                       <span className="st-look">
                         Did it?{' '}
                         <button className={looked[i] === true ? 'on' : ''} onClick={() => setLooked((x) => ({ ...x, [i]: true }))}>Yes</button>
-                        <button className={looked[i] === false ? 'on' : ''} onClick={() => setLooked((x) => ({ ...x, [i]: false }))}>No</button>
+                        <button
+                          className={looked[i] === false ? 'on' : ''}
+                          onClick={() => {
+                            setLooked((x) => ({ ...x, [i]: false }));
+                            setSymptom((s) => s || `The self-test asked me to check that the ${l.part} ${l.text.replace(/\s*\(.*\)\s*$/, '')}, and it didn't.`);
+                          }}
+                        >
+                          No
+                        </button>
                       </span>
                     )}
+                    {l.kind === 'LOOK' && looked[i] === false && <div className="st-hint">Check its power and GND wires{lookPin(l.part) ? ` and its signal wire to ${lookPin(l.part)}` : ''}, and that it's the right way round. Still stuck? Click <strong>Ask AI what is wrong</strong> below — your answer is already filled in.</div>}
                     {(l.kind === 'PASS' || l.kind === 'FAIL') && expectFor(l) && expectFor(l)!.text !== l.text && <div className="st-sim">In the simulator: {expectFor(l)!.text}</div>}
                   </li>
                 ),
@@ -351,9 +409,9 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
           <div className="bp-debug">
             <h3>Something not working?</h3>
             <textarea value={symptom} onChange={(e) => setSymptom(e.target.value)} rows={2} placeholder='Describe it, e.g. "the screen stays black" or "the LED never lights"' aria-label="Describe the problem" />
-            <button className="primary" onClick={askAi} disabled={!ai.enabled || asking || !symptom.trim()} data-testid="board-ask">{asking ? 'Thinking… (about 30 s)' : 'Ask AI what is wrong'}</button>
+            <button className="primary" onClick={askAi} disabled={!ai.enabled || asking || !symptom.trim()} data-testid="board-ask">{asking ? <Elapsed label="Thinking…" usual={30} /> : 'Ask AI what is wrong'}</button>
             {!ai.enabled ? <span className="muted"> Needs Claude.</span> : <CostHint kind="debug" />}
-            <p className="muted">It looks at your description, the serial output and self-test above, what the simulator expects, and the wiring.</p>
+            <p className="muted">{kind === 'rpi4' ? 'It looks at your description, the self-test output you pasted above, what the simulator expects, and the wiring.' : 'It looks at your description, the serial monitor and self-test above, what the simulator expects, and the wiring.'}</p>
             {answer && (
               <div className="bp-answer" data-testid="board-answer">
                 <p><strong>{answer.summary}</strong></p>
@@ -369,7 +427,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
                 <p><strong>Next:</strong> {answer.next_step}</p>
               </div>
             )}
-            {kind !== 'rpi4' && <MultimeterGuide />}
+            <MultimeterGuide />
           </div>
         )}
       </div>

@@ -13,6 +13,28 @@ import { simulate } from '../src/sim/node-runner';
 import { askJson, backend, MODEL, type Turn } from './llm';
 import { runChecks } from '../src/core/checks';
 import { registerProjectParts } from '../src/core/customParts';
+import { deriveRequirements } from '../src/core/requirements';
+import { buildBom, bomTotal, formatUsd } from '../src/core/bom';
+
+/** Claude's requirements, with size and budget taken from the real parts list (one source of truth). */
+function measuredRequirements(project: Project, r: Requirements): Requirements {
+  try {
+    const d = deriveRequirements(project);
+    return { ...r, size: d.size, budget: d.budget };
+  } catch {
+    return r;
+  }
+}
+
+/** The shopping list Sparkbench shows, so answers about what to buy match the Parts list. */
+function shoppingContext(p: Project): string {
+  try {
+    const bom = buildBom(p);
+    return `\nParts list Sparkbench shows (use exactly these items, sizes and counts when asked what to buy or what it costs; total ${formatUsd(bomTotal(bom))} at hobby-store prices):\n${bom.map((l) => `- ${l.quantity} × ${l.name}${l.value && !l.name.includes(l.value) ? ` (${l.value})` : ''}${l.kind === 'supply' ? `: ${l.description}` : ''}${l.optional ? ' (recommended)' : ''}`).join('\n')}`;
+  } catch {
+    return '';
+  }
+}
 
 const FEATURE_KINDS = Object.keys(FEATURE_LABELS) as [string, ...string[]];
 
@@ -65,6 +87,7 @@ const TestsSchema = z.object({
   tests: z
     .array(z.object({ title: z.string().describe('The promise in plain words, e.g. "When the soil is dry, the screen says Water me"'), steps: z.array(StepSchema) }))
     .describe('2-6 tests that check what the USER asked for (not generic boot checks)'),
+  untested: z.array(z.string()).describe('Promises from the requirements list (copied word for word) that none of your tests checks, e.g. timing over an hour that the simulator cannot reach. Empty when every promise has a test, or when no requirements list was given.'),
 });
 
 const TESTS_SYSTEM = `You write acceptance tests for hardware projects in Sparkbench. Each test is a short script run in the simulator:
@@ -72,7 +95,7 @@ const TESTS_SYSTEM = `You write acceptance tests for hardware projects in Sparkb
 - press: press and release a button (part SW1)
 - wait: let time pass
 - expect: check an output, waiting up to "within" ms: screen text (OLED/LCD/e-paper, read off the display), serial text, LED on/off, buzzer on/off, servo angle range, relay, motor, NeoPixels lit, or no-error.
-Test what the user asked for, using the parts and controls listed. Prefer short words that will certainly be on screen (e.g. "Water", "31"). Allow generous "within" times when the program updates slowly (read the code). Don't test things the request didn't ask for.`;
+Test what the user asked for, using the parts and controls listed. When a requirements list is given, write a test for every promise on it that the simulator can check (buzzer beeps, LEDs, screen text, serial text), and list the ones you could not test in "untested". Prefer short words that will certainly be on screen (e.g. "Water", "31"). Allow generous "within" times when the program updates slowly (read the code). Don't test things the request didn't ask for.`;
 
 const FileEditSchema = z.object({
   reply: z.string().describe('1-4 sentences: what you changed and why, for a beginner'),
@@ -86,25 +109,27 @@ const SYSTEM = `You are the design copilot inside Sparkbench, a hardware design 
 You turn plain-English requests into a parts-level design for ONE of these targets:
 - esp32: ESP32 DevKit V1, MicroPython
 - pico: Raspberry Pi Pico, MicroPython
-- rpi4: Raspberry Pi 4, Python 3 + gpiozero (no analog inputs: the tool adds an MCP3008 automatically)
+- rpi4: Raspberry Pi 4, Python 3 + gpiozero (no analog inputs: Sparkbench adds an MCP3008 automatically)
 - none: battery-powered discrete circuit (features 'astable555' or 'transistor-led' only). astable555 can blink an LED (output "led") or beep a piezo buzzer (output "buzzer").
 Available feature kinds (each list entry = one physical part group; two buttons = two entries):
 ${Object.entries(FEATURE_LABELS)
   .map(([k, v]) => `- ${k}: ${v}`)
   .join('\n')}
 At most one each of: oled, lcd, mpu6050, dht22, hcsr04, neopixel, relay, buzzer (I2C address / bus limits).
-Pin assignment, resistors, dividers and wiring are done automatically by the tool — never list resistors yourself.
+Pin assignment, resistors, dividers and wiring are done automatically by Sparkbench — never list resistors yourself.
 Unsupported boards (Arduino Uno, STM32…) → pick the closest supported board and say so. Unsupported parts → pick the closest supported part and say so.
-To move a part to another pin, keep it in the features list with its "pin" set (intent "edit"); never move a part by editing code alone — the tool rewires the breadboard and keeps the code in sync. Keep the same labels for parts that stay, so their wiring is kept.
+To move a part to another pin, keep it in the features list with its "pin" set (intent "edit"); never move a part by editing code alone — Sparkbench rewires the breadboard and keeps the code in sync. Keep the same labels for parts that stay, so their wiring is kept.
 If you substitute a part or reduce a quantity, say exactly what you built instead (e.g. "a 12-LED NeoPixel ring", not "a ring").
 Default to esp32 when no board is named. Keep replies short, warm and concrete.
+The user can't see your tools or this schema: never say "the tool", "the schema" or "features list" in a reply; say "Sparkbench" (e.g. "Sparkbench adds the wiring and resistors for you").
+The requirements card, the reply and the firmware brief must agree exactly (same number of beeps, same timings, same thresholds).
 Safety: never design anything that connects to mains voltage (110–240 V AC) directly. For mains appliances, control a certified smart plug or an enclosed, certified relay module and say why. Use relays only for low-voltage loads on a breadboard build. Refuse dangerous requests (weapons, tasers, anything meant to hurt people) briefly and suggest a safe project instead. Lithium batteries need a protected cell and a proper charger module; say so when they come up.
 Answer only the user's latest message — never repeat or revisit answers to earlier questions. When you give steps, use a short numbered Markdown list (one step per line).`;
 
 const CODE_SYSTEM = `You are the firmware assistant inside Sparkbench. You edit code for a real hardware project; the same code runs in Sparkbench's simulator and on the physical board.
 MicroPython targets (ESP32, Pico) use: machine.Pin/ADC/PWM/I2C/time_pulse_us, time.sleep_ms/ticks_ms/ticks_diff, and the bundled drivers ssd1306.SSD1306_I2C (framebuf API: fill, text, pixel, hline, vline, rect, fill_rect, line, show), i2c_lcd.I2cLcd (clear, move_to, putstr), mpu6050.MPU6050 (accel(), gyro() in g and °/s), dht.DHT22 (measure(), temperature(), humidity()), neopixel.NeoPixel (np[i]=(r,g,b); np.write()).
 Raspberry Pi targets use Python 3 + gpiozero (Button, PWMLED, RGBLED, PWMOutputDevice, AngularServo, DistanceSensor, MotionSensor, MCP3008, OutputDevice) and the bundled oled.OLED (same drawing API), i2c_lcd.I2cLcd, mpu6050.MPU6050, adafruit_dht.DHT22 (board.D<n>), neopixel.NeoPixel (pixels[i]=..., pixels.show()).
-Rules: keep the existing pin numbers (they match the wiring), keep the program structure and helpful comments, write clear beginner-friendly code with comments, keep a main loop that sleeps (time.sleep_ms / time.sleep) so the board stays responsive, and never invent libraries that are not listed. Return the COMPLETE file.`;
+Rules: keep the existing pin numbers (they match the wiring); in comments write pins as GPIO32 (board pin D32), never with leading zeros; keep the program structure and helpful comments, write clear beginner-friendly code with comments, keep a main loop that sleeps (time.sleep_ms / time.sleep) so the board stays responsive, and never invent libraries that are not listed. Return the COMPLETE file.`;
 
 export function aiStatus() {
   const b = backend();
@@ -123,7 +148,7 @@ export interface AiDesignResult {
 
 function projectContext(p?: Project) {
   if (!p) return 'There is no current design yet.';
-  return `Current design: ${JSON.stringify({ title: p.name, board: p.board, features: (p.spec?.features ?? []).map((f) => ({ kind: f.kind, label: f.label ?? null })) })}
+  return `Current design: ${JSON.stringify({ title: p.name, board: p.board, features: (p.spec?.features ?? []).map((f) => ({ kind: f.kind, label: f.label ?? null })) })}${shoppingContext(p)}
 Current main.py:
 \`\`\`python
 ${p.files['main.py'] ?? '(none)'}
@@ -143,9 +168,13 @@ function partSkills(p: Project): string {
     .join('\n\n')}\n`;
 }
 
-export async function aiDesign(prompt: string, current?: Project, history: Turn[] = [], images: { data: string; mediaType: string }[] = []): Promise<AiDesignResult> {
+/** What the design request is doing right now, streamed to the waiting screen. */
+export type DesignPhase = 'read' | 'wire' | 'code' | 'tests' | 'fix';
+
+export async function aiDesign(prompt: string, current?: Project, history: Turn[] = [], images: { data: string; mediaType: string }[] = [], onPhase: (p: DesignPhase) => void = () => {}): Promise<AiDesignResult> {
   registerProjectParts(current);
   const log: string[] = [];
+  onPhase('read');
   const pictured = images.length ? `\n\nThe user attached ${images.length === 1 ? 'a photo or sketch' : `${images.length} photos or sketches`}: work out what the gadget does (screens, buttons, lights, sensors, sounds, motors, how it's powered) and design the closest version Sparkbench can build. Say in your reply what you saw and anything you substituted.` : '';
   const d = await askJson(SYSTEM, [...history.slice(-6), { role: 'user', content: `${projectContext(current)}\n\nRequest: ${prompt}${pictured}` }], DesignSchema, { images: images as any });
   if (images.length) log.push(`Read ${images.length} image${images.length > 1 ? 's' : ''} you attached.`);
@@ -155,8 +184,9 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
     return { reply: d.reply, intent: 'clarify', log, questions: d.questions.slice(0, 3), requirements: d.requirements };
   }
   if (d.intent === 'code' && current) {
+    onPhase('code');
     const r = await aiEditFile(current, 'main.py', d.firmware_brief ?? prompt);
-    const t = await testAndRepair(r.project, prompt, log);
+    const t = await testAndRepair(r.project, prompt, log, onPhase);
     return finish(t.project, `${d.reply}\n\n${r.reply}`.trim(), 'code', [...log, ...r.log], undefined, t.results);
   }
   const boardDef = d.board === 'none' ? undefined : BOARDS[d.board];
@@ -180,21 +210,25 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
     })),
   };
   const isEdit = d.intent === 'edit' && !!current;
+  onPhase('wire');
   let project = buildProject(spec, { name: isEdit ? renameForBoard(current!, d.board) : d.title, prompt, previous: isEdit ? { ...current!, codeCustom: false } : undefined });
   if (isEdit && current!.codeCustom && project.board !== 'none' && current!.board === project.board) {
     // The user's (or Claude's) custom program must survive a wiring change: adapt it rather than replace it.
+    onPhase('code');
     const adapted = { ...project, files: { ...project.files, 'main.py': current!.files['main.py'] }, behavior: current!.behavior };
     const r = await aiEditFile(adapted, 'main.py', `The hardware design just changed (${prompt}). Update this program so it uses the new wiring listed above${d.write_firmware && d.firmware_brief ? ` and also: ${d.firmware_brief}` : ''}. Keep everything else it already does.`);
-    const t = await testAndRepair({ ...r.project, requirements: d.requirements, tests: current!.tests }, prompt, log);
+    const t = await testAndRepair({ ...r.project, requirements: measuredRequirements(r.project, d.requirements), tests: current!.tests }, prompt, log, onPhase);
     return finish(t.project, d.reply, d.intent, [...log, ...r.log], undefined, t.results);
   }
   if (d.write_firmware && d.firmware_brief && project.board !== 'none') {
+    onPhase('code');
     const r = await aiEditFile(project, 'main.py', d.firmware_brief);
     project = r.project;
     log.push(...r.log);
   }
-  project = { ...project, requirements: d.requirements, tests: isEdit ? current!.tests : undefined };
-  const t = project.board === 'none' ? { project, results: await runTests(project, deriveTests(project)) } : await testAndRepair(project, `${history.filter((x) => x.role === 'user').map((x) => x.content).join('\n')}\n${prompt}`, log);
+  project = { ...project, requirements: measuredRequirements(project, d.requirements), tests: isEdit ? current!.tests : undefined };
+  onPhase('tests');
+  const t = project.board === 'none' ? { project, results: await runTests(project, deriveTests(project)) } : await testAndRepair(project, `${history.filter((x) => x.role === 'user').map((x) => x.content).join('\n')}\n${prompt}`, log, onPhase);
   return finish(t.project, d.reply, d.intent, log, current, t.results);
 }
 
@@ -209,37 +243,54 @@ function toStep(s: z.infer<typeof StepSchema>): TestStep | null {
 
 /** Claude writes acceptance tests for what the user asked for (A4). */
 export async function aiWriteTests(project: Project, request: string, source: AcceptanceTest['source'] = 'ai'): Promise<AcceptanceTest[]> {
+  return (await aiWriteTestsFor(project, request, source)).tests;
+}
+
+/** Tests for the request (and each promise on the requirements card), plus the promises no test covers. */
+async function aiWriteTestsFor(project: Project, request: string, source: AcceptanceTest['source'] = 'ai', requirements?: string[]): Promise<{ tests: AcceptanceTest[]; untested: string[] }> {
   const out = await askJson(
     TESTS_SYSTEM,
     [
       {
         role: 'user',
-        content: `Project: ${project.name}\nParts and their simulator controls: ${JSON.stringify(partControls(project))}\nmain.py:\n\`\`\`python\n${project.files['main.py'] ?? ''}\n\`\`\`\n\nWhat the user asked for:\n${request}`,
+        content: `Project: ${project.name}\nParts and their simulator controls: ${JSON.stringify(partControls(project))}\nmain.py:\n\`\`\`python\n${project.files['main.py'] ?? ''}\n\`\`\`\n\nWhat the user asked for:\n${request}${requirements?.length ? `\n\nRequirements list (what the device promises to do):\n${requirements.map((d) => `- ${d}`).join('\n')}` : ''}`,
       },
     ],
     TestsSchema,
     { effort: 'low' },
   );
-  return out.tests.map((t, i) => ({ id: `${source}-${Date.now().toString(36)}-${i}`, title: t.title, source, steps: t.steps.map(toStep).filter((x): x is TestStep => !!x) })).filter((t) => t.steps.length);
+  const tests = out.tests.map((t, i) => ({ id: `${source}-${Date.now().toString(36)}-${i}`, title: t.title, source, steps: t.steps.map(toStep).filter((x): x is TestStep => !!x) })).filter((t) => t.steps.length);
+  return { tests, untested: requirements?.length ? out.untested.filter((u) => u.trim()) : [] };
 }
 
 /**
  * Write tests for the request, run them with the derived ones, and if the program fails them,
  * let Claude change the program until they pass (two rounds max). Results are reported honestly.
  */
-async function testAndRepair(project: Project, request: string, log: string[]): Promise<{ project: Project; results: TestResult[] }> {
+async function testAndRepair(project: Project, request: string, log: string[], onPhase: (p: DesignPhase) => void = () => {}): Promise<{ project: Project; results: TestResult[] }> {
+  onPhase('tests');
   let tests = project.tests?.length ? project.tests : [];
   try {
-    if (!tests.length) tests = await aiWriteTests(project, request);
+    if (!tests.length) {
+      const w = await aiWriteTestsFor(project, request, 'ai', project.requirements?.does);
+      tests = w.tests;
+      if (project.requirements) project = { ...project, requirements: { ...project.requirements, untested: w.untested } };
+    }
   } catch (e: any) {
     log.push(`Couldn't write acceptance tests: ${e.message}`);
   }
   let current: Project = { ...project, tests };
   let results = await runTests(current, [...deriveTests(current), ...tests]);
   log.push(`Acceptance tests: ${results.filter((r) => r.pass).length}/${results.length} pass in the simulator.`);
+  // The exact steps (values set, waits, time allowed), so the program can be made to meet them.
+  const stepsOf = (title: string) => {
+    const t = tests.find((x) => x.title === title);
+    return t ? `\n  steps: ${JSON.stringify(t.steps)}` : '';
+  };
   for (let round = 0; round < 2 && results.some((r) => !r.pass); round++) {
+    onPhase('fix');
     const failing = results.filter((r) => !r.pass);
-    const r = await aiEditFile(current, 'main.py', `Make the program do what the user asked: ${request}\nThese acceptance tests fail in the simulator:\n${failing.map((f) => `- ${f.title}: ${f.detail}`).join('\n')}\nThe tests read the screen text as drawn, the serial output, and LED/buzzer/servo states. Change the program so they pass, keeping everything else it does.`);
+    const r = await aiEditFile(current, 'main.py', `Make the program do what the user asked: ${request}\nThese acceptance tests fail in the simulator:\n${failing.map((f) => `- ${f.title}: ${f.detail}${stepsOf(f.title)}`).join('\n')}\nThe tests read the screen text as drawn, the serial output, and LED/buzzer/servo states. Change the program so they pass, keeping everything else it does.`);
     const next = await runTests(r.project, [...deriveTests(r.project), ...tests]);
     log.push(`Fix round ${round + 1}: ${next.filter((x) => x.pass).length}/${next.length} pass.`);
     if (next.filter((x) => x.pass).length >= results.filter((x) => x.pass).length) {
@@ -265,6 +316,8 @@ function finish(project: Project, reply: string, intent: AiDesignResult['intent'
   if (results?.length) {
     const passed = results.filter((r) => r.pass).length;
     extra += passed === results.length ? `\n\nI checked it in the simulator: all ${results.length} acceptance tests pass (see the Tests tab).` : `\n\n${passed} of ${results.length} acceptance tests pass in the simulator. The Tests tab shows what still fails and why.`;
+    const untested = project.requirements?.untested ?? [];
+    if (untested.length) extra += ` No test checks ${untested.length === 1 ? 'this promise' : 'these promises'} yet, so try ${untested.length === 1 ? 'it' : 'them'} yourself: ${untested.map((u) => `“${u.replace(/\.$/, '')}”`).join('; ')}.`;
   }
   return { project, reply: reply + extra, intent, log, results, requirements: project.requirements };
 }
@@ -306,7 +359,7 @@ File to edit: ${file}
 \`\`\`python
 ${project.files[file] ?? ''}
 \`\`\`
-${opts.selection ? `The user selected this part of the file:\n\`\`\`python\n${opts.selection}\n\`\`\`\n` : ''}${opts.error ? `The program currently crashes with:\n${opts.error}\n` : ''}
+${project.requirements?.does?.length ? `The project's requirements card promises:\n${project.requirements.does.map((d) => `- ${d}`).join('\n')}\nKeep the program and your behaviour list consistent with these promises (same counts, timings and thresholds) unless the request changes them.\n` : ''}${opts.selection ? `The user selected this part of the file:\n\`\`\`python\n${opts.selection}\n\`\`\`\n` : ''}${opts.error ? `The program currently crashes with:\n${opts.error}\n` : ''}
 Request: ${instruction}`,
     },
   ];
@@ -315,12 +368,13 @@ Request: ${instruction}`,
   for (let attempt = 0; attempt < 3; attempt++) {
     const out = await askJson(CODE_SYSTEM, turns, FileEditSchema, { effort: 'medium' });
     reply = reply || out.reply;
-    const candidate: Project = { ...project, files: { ...project.files, [file]: out.content }, codeCustom: file === 'main.py' ? true : project.codeCustom, behavior: file === 'main.py' ? out.behavior : project.behavior };
+    const content = out.content.replace(/\bGPIO0+(\d)/g, 'GPIO$1');
+    const candidate: Project = { ...project, files: { ...project.files, [file]: content }, codeCustom: file === 'main.py' ? true : project.codeCustom, behavior: file === 'main.py' ? out.behavior : project.behavior };
     best = candidate;
     if (project.board === 'none') return { project: candidate, reply, log, ok: true };
     const { engine } = await simulate(candidate, { untilMs: 4000 });
     if (!engine.error) {
-      log.push(`Simulated the new code for 4 s without errors${attempt ? ` (after ${attempt} automatic fix${attempt > 1 ? 'es' : ''})` : ''}.`);
+      log.push(`Ran the new code in the simulator for 4 s: it starts and runs without crashing${attempt ? ` (after ${attempt} automatic fix${attempt > 1 ? 'es' : ''})` : ''}. That doesn't prove the new behaviour yet: the Tests tab checks that.`);
       const errs = engine.allWarnings.filter((w) => w.severity === 'error');
       if (errs.length) log.push(`Simulator warnings: ${errs.map((w) => w.text).join(' ')}`);
       return { project: candidate, reply, log, ok: true };

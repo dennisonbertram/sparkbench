@@ -3,7 +3,7 @@
 // Everything is written for a total beginner and derived from the actual design
 // (parts, wires, pins, firmware), so it stays correct when the design changes.
 import { planBreadboard } from './bbplace';
-import { toolkit } from './toolkit';
+import { benchCounts, toolkit } from './toolkit';
 import type { FeatureInstance, FeatureKind, PartDef, PartInstance, PinRef, Project, Wire } from './types';
 import { partDef, formatOhms, formatFarads } from './parts';
 import { boardFor, boardPin, type BoardDef } from './boards';
@@ -153,29 +153,8 @@ export function wireEndLabel(project: Project, ref: PinRef): string {
   return `${partTag(part)} · ${pin}`;
 }
 
-const COLOR_NAMES: [string, string][] = [
-  ['#1f2328', 'black'], ['#000000', 'black'], ['#d32f2f', 'red'], ['#ef6c00', 'orange'], ['#1e88e5', 'blue'], ['#f9a825', 'yellow'],
-  ['#2e7d32', 'green'], ['#8e24aa', 'purple'], ['#00838f', 'teal'], ['#c2185b', 'pink'], ['#6d4c41', 'brown'], ['#5c6bc0', 'indigo'],
-  ['#7cb342', 'light green'], ['#546e7a', 'grey'], ['#ffffff', 'white'],
-];
-/** Nearest friendly colour name for a hex wire colour. */
-export function colourName(hex?: string): string {
-  if (!hex || !/^#?[0-9a-f]{6}$/i.test(hex)) return 'any colour';
-  const h = hex.startsWith('#') ? hex.toLowerCase() : `#${hex.toLowerCase()}`;
-  const rgb = (x: string) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16));
-  const [r, g, b] = rgb(h);
-  let best = 'any colour';
-  let bd = Infinity;
-  for (const [hx, name] of COLOR_NAMES) {
-    const [r2, g2, b2] = rgb(hx);
-    const d2 = (r - r2) ** 2 + (g - g2) ** 2 + (b - b2) ** 2;
-    if (d2 < bd) {
-      bd = d2;
-      best = name;
-    }
-  }
-  return best;
-}
+export { colourName } from './colours';
+import { colourName } from './colours';
 
 /** Board end last, so rows read "part pin → board pin". */
 function orientWire(c: Ctx, w: Wire): [PinRef, PinRef] {
@@ -914,10 +893,11 @@ export function buildGuide(project: Project): string {
   const b = c.board;
   const out: string[] = [];
   const nParts = project.parts.filter((p) => p.id !== c.boardId).length;
-  const minutes = Math.max(20, Math.round((project.wires.length * 2 + nParts * 3) / 5) * 5);
+  // Same time and jumper count as the step-by-step mode and the tools list (from the breadboard layout).
+  const bench = benchCounts(project);
   out.push(`# How to build: ${project.name}`, '');
   out.push(`> ${capFirst(designPhrase(c))}.`, '');
-  out.push(`**Difficulty:** ${project.wires.length > 18 || project.board === 'rpi4' ? 'Intermediate' : 'Beginner'} · **Build time:** about ${minutes} minutes · **Parts:** ${nParts + (c.boardId ? 1 : 0)} · **Wires:** ${project.wires.length}`, '');
+  out.push(`**Difficulty:** ${project.wires.length > 18 || project.board === 'rpi4' ? 'Intermediate' : 'Beginner'} · **Build time:** about ${bench.minutes} minutes · **Parts:** ${nParts + (c.boardId ? 1 : 0)} · **Jumpers:** ${bench.jumpers}${bench.femaleLeads ? ` (+ ${bench.femaleLeads} leads to off-board parts)` : ''}`, '');
 
   // ---- what you need
   out.push('## What you need', '');
@@ -950,14 +930,15 @@ export function buildGuide(project: Project): string {
   const plan = planBreadboard(project);
   if (!plan.problems.length) {
     out.push('## Hole-by-hole breadboard layout', '');
-    out.push(`One tested way to lay this out on a standard 830-hole breadboard. Hole names are column number plus row letter, like **j12**. Sparkbench checked that these holes and jumpers make exactly the connections in the wiring table. In the app, **Build it step by step** shows one step at a time with the holes highlighted.`, '');
+    out.push(`**Follow these steps to build it.** This is one tested way to lay it out on a standard 830-hole breadboard: hole names are row letter plus column number, like **j12**, and rail holes start with T (top) or B (bottom), like **T−5**. Sparkbench checked that these holes and jumpers make exactly the connections in the wiring table, with the same wire colours. In the app, **Build it step by step** shows one step at a time with the holes highlighted, and you can scroll the picture sideways to see the whole board.`, '');
     out.push('![Breadboard layout](breadboard.svg)', '');
     plan.steps.forEach((st, i) => out.push(`${i + 1}. ${st.text}`));
     out.push('');
   }
 
   // ---- assembly
-  out.push(plan.problems.length ? '## Step-by-step assembly' : '## Step-by-step assembly (by connection)', '');
+  out.push(plan.problems.length ? '## Step-by-step assembly' : '## Step-by-step assembly (by connection, for checking)', '');
+  if (!plan.problems.length) out.push('You don’t need to follow this section if you built it hole by hole above. It goes through the same connections part by part, with what each one is for, so you can check your work or wire it your own way.', '');
   let n = 1;
   out.push(`### Step ${n++}: ${b ? `Place the ${b.name}` : 'Get your breadboard ready'}`, '', boardPlacement(c), '');
   const power = powerStep(c);

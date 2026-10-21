@@ -31,7 +31,41 @@ export function looksLikeNewProject(text: string, current: Project | null) {
 }
 
 function setBusy(label: string | null) {
-  useStore.getState().set({ busy: label });
+  useStore.getState().set({ busy: label, ...(label ? {} : { designPhase: null }) });
+}
+
+let inflight: AbortController | null = null;
+
+/** Stop waiting for the AI: the design (or change) is dropped and nothing is applied. */
+export function cancelDesign() {
+  inflight?.abort();
+}
+
+/** POST /api/ai/design as a stream: phases update the waiting screen, the last line is the result. */
+async function designRequest(body: unknown, signal: AbortSignal): Promise<any> {
+  const res = await fetch('/api/ai/design', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(body as object), stream: true }), signal });
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? 'AI request failed');
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    buf += dec.decode(value ?? new Uint8Array(), { stream: !done });
+    let nl: number;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (!line) continue;
+      const msg = JSON.parse(line);
+      if (msg.phase) useStore.getState().set({ designPhase: msg.phase });
+      if (msg.error) throw new Error(msg.error);
+      if (msg.result) return msg.result;
+    }
+    if (done) throw new Error('The AI stopped without an answer');
+  }
 }
 
 export async function sendPrompt(text: string, images: Shrunk[] = []) {
@@ -58,21 +92,25 @@ export async function sendPrompt(text: string, images: Shrunk[] = []) {
         .filter((m) => !m.pending && m.id !== pending)
         .slice(-7, -1)
         .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+      inflight = new AbortController();
       try {
-        const res = await fetch('/api/ai/design', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: trimmed, project: current, history, images: images.map(({ data, mediaType }) => ({ data, mediaType })) }) });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? 'AI request failed');
+        const data = await designRequest({ prompt: trimmed, project: current, history, images: images.map(({ data, mediaType }) => ({ data, mediaType })) }, inflight.signal);
         if (data.intent === 'clarify') {
           st.patchChat(pending, { text: data.reply, questions: data.questions, pending: false });
           return;
         }
         if (data.project) applyProject(data.project, data.intent === 'new');
         if (data.project && data.results) st.set({ testRun: null });
-        st.patchChat(pending, { text: data.reply, details: data.log, pending: false, requirements: data.intent === 'new' ? (data.requirements ?? data.project?.requirements) : undefined, actions: data.project ? nextActions(data.results) : undefined });
+        st.patchChat(pending, { text: data.reply, details: data.log, pending: false, requirements: data.intent === 'new' ? (data.project?.requirements ?? data.requirements) : undefined, actions: data.project ? nextActions(data.results) : undefined });
         return;
       } catch (e: any) {
+        if (e?.name === 'AbortError') {
+          st.patchChat(pending, { text: 'Stopped. Nothing was changed: ask again whenever you like.', pending: false });
+          return;
+        }
         st.patchChat(pending, { text: `Claude was unavailable (${e?.message ?? e}); using the offline planner instead.` });
       } finally {
+        inflight = null;
         setBusy(null);
       }
     }
@@ -154,8 +192,13 @@ function summarizeChecks(p: Project) {
 }
 
 function nextActions(results?: { pass: boolean }[]) {
+  let toured = true;
+  try {
+    toured = !!localStorage.getItem('sparkbench.tour.done');
+  } catch {}
   return [
     { label: '▶ Run the simulation', run: 'run' },
+    ...(toured ? [] : [{ label: 'Take the 30-second tour', run: 'tour' }]),
     ...(results?.length ? [{ label: `Tests: ${results.filter((r) => r.pass).length}/${results.length} pass`, run: 'bottom:tests' }] : []),
     { label: 'Show the schematic', run: 'tab:schematic' },
     { label: 'Build guide', run: 'tab:guide' },

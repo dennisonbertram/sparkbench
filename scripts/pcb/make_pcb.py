@@ -469,6 +469,20 @@ def main():
         except Exception:
             pass
         fp.SetValue(p['value'])
+        if p.get('ledColor'):
+            # Coloured LED body in the 3D render (KiCad's plain 5 mm LED model is red).
+            # (The model list hands out copies, so rebuild it.)
+            models = fp.Models()
+            recoloured = []
+            for m in models:
+                c = pcbnew.FP_3DMODEL()
+                for a in ('m_Scale', 'm_Rotation', 'm_Offset', 'm_Opacity', 'm_Show'):
+                    setattr(c, a, getattr(m, a))
+                c.m_Filename = m.m_Filename.replace('LED_D5.0mm.', 'LED_D5.0mm_%s.' % p['ledColor'])
+                recoloured.append(c)
+            models.clear()
+            for c in recoloured:
+                models.push_back(c)
         # Thermal vias inside a footprint's ground pad that are smaller than the factory can drill
         # (e.g. ESP32-WROOM's 0.2 mm ones): drop them; the pad still connects through the pour.
         min_drill = (spec.get('fabRules') or {}).get('drill', 0.3)
@@ -538,7 +552,7 @@ def main():
         h.Value().SetVisible(False)
         board.Add(h)
     add_text(board, spec['title'], (x0 + x1) / 2, y1 - 2.6, 1.4)
-    add_text(board, 'Sparkbench · Rev ' + spec.get('rev', 'A'), (x0 + x1) / 2 + 1.6, y0 + 2.6, 1.0)
+    add_text(board, 'Sparkbench · ' + spec.get('rev', 'Draft'), (x0 + x1) / 2 + 1.6, y0 + 2.6, 1.0)
     add_logo(board, (x0 + x1) / 2 - 12.5, y0 + 1.4)
 
     pcb_path = os.path.join(work, spec['name'] + '.kicad_pcb')

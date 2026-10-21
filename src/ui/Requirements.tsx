@@ -40,6 +40,8 @@ export function QuestionsCard({ questions }: { questions: { question: string; op
   );
 }
 
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
 export function RequirementsCard({ requirements: r, compact }: { requirements: Requirements; compact?: boolean }) {
   const busy = useStore((s) => s.busy);
   const [editing, setEditing] = useState(false);
@@ -73,7 +75,18 @@ export function RequirementsCard({ requirements: r, compact }: { requirements: R
     <div className={`req-card ${compact ? 'compact' : ''}`} data-testid="requirements">
       <div className="req-row">
         <span className="req-label">What it will do</span>
-        <ul>{r.does.map((d, i) => <li key={i}>{d}</li>)}</ul>
+        <ul>
+          {r.does.map((d, i) => (
+            <li key={i}>
+              {d}
+              {r.untested?.some((u) => norm(u) === norm(d)) && (
+                <span className="req-untested" title="No simulator test checks this promise yet: try it yourself on the real build.">
+                  {' '}not tested
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="req-row"><span className="req-label">Power</span><span>{r.power}</span></div>
       <div className="req-row"><span className="req-label">Size</span><span>{r.size}</span></div>

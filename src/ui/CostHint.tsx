@@ -19,9 +19,9 @@ const KINDS = {
 export function CostHint({ kind }: { kind: keyof typeof KINDS }) {
   const ai = useStore((s) => s.aiStatus);
   const k = KINDS[kind];
-  const who = k.ai ? (ai.via === 'api' ? 'uses Claude (billed to your Anthropic API key, usually a few cents)' : 'uses Claude through your Claude Code plan') : 'where' in k ? k.where : '';
+  const who = k.ai ? (ai.via === 'api' ? 'uses the Claude AI (a few cents on your API key)' : 'uses the Claude AI (included in your Claude plan)') : 'where' in k ? k.where : '';
   return (
-    <span className="cost-hint" data-testid={`cost-${kind}`}>
+    <span className="cost-hint" data-testid={`cost-${kind}`} title={k.ai ? 'Sparkbench asks the Claude AI to do this; it takes a little while.' : undefined}>
       {k.time}
       {who ? ` · ${who}` : ''}
       {!k.ai ? ' · free' : ''}
