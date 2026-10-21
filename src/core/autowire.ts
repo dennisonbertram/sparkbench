@@ -3,8 +3,9 @@
 import type { Project, Wire, PinRef } from './types';
 import { partDef } from './parts';
 import { boardFor, type BoardPin } from './boards';
-import { customSpec } from './customParts';
-import { boardPart } from './netlist';
+import { customSpec, registerCustomPart, type CustomPartSpec } from './customParts';
+import { annotate, boardPart } from './netlist';
+import { partSize } from './layout';
 
 const COLORS = ['#2e7d32', '#8e24aa', '#00838f', '#c2185b', '#6d4c41', '#5c6bc0'];
 
@@ -75,4 +76,28 @@ export function autoWirePart(project: Project, partId: string): { project: Proje
     notes.push(`Added the ${spec.driver.filename} driver written from the datasheet.`);
   }
   return { project: { ...project, wires: [...project.wires, ...wires], files }, notes };
+}
+
+/** Add a datasheet/library part to a design (registered, placed to the right, wired to the board when there is one). */
+export function withCustomPart(project: Project, spec: CustomPartSpec, opts: { wire?: boolean; label?: string } = {}): { project: Project; notes: string[]; id: string } {
+  registerCustomPart(spec);
+  const base = spec.type.replace(/[^a-z0-9]/g, '');
+  let n = 1;
+  while (project.parts.some((x) => x.id === `${base}${n}`)) n++;
+  const id = `${base}${n}`;
+  const right = Math.max(...project.parts.map((x) => x.x + partSize(x.type)[0]), 0) + 60;
+  const top = Math.min(...project.parts.map((x) => x.y), 40);
+  let next = annotate({ ...project, customParts: [...(project.customParts ?? []).filter((c) => c.type !== spec.type), spec], parts: [...project.parts, { id, type: spec.type, label: opts.label ?? spec.name, props: {}, x: right, y: top }] });
+  let notes: string[] = [];
+  if (opts.wire !== false && project.board !== 'none') ({ project: next, notes } = autoWirePart(next, id));
+  return { project: next, notes, id };
+}
+
+/** Remove a datasheet/library part (and its wires) from a design. */
+export function withoutCustomPart(project: Project, type: string): Project {
+  const ids = new Set(project.parts.filter((p) => p.type === type).map((p) => p.id));
+  const spec = project.customParts?.find((c) => c.type === type);
+  const files = { ...project.files };
+  if (spec?.driver) delete files[spec.driver.filename];
+  return { ...project, parts: project.parts.filter((p) => !ids.has(p.id)), wires: project.wires.filter((w) => !ids.has(w.a.part) && !ids.has(w.b.part)), customParts: project.customParts?.filter((c) => c.type !== type), files };
 }

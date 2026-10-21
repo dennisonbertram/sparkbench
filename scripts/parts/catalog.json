@@ -1,0 +1,694 @@
+{
+ "supported": [
+  {
+   "mpn": "AHT20",
+   "form": "AHT20 temperature & humidity breakout (4-pin VIN GND SCL SDA)",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "BH1750",
+   "form": "GY-302 BH1750 light sensor module (5-pin VCC GND SCL SDA ADDR)",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "SHT40",
+   "form": "SHT40/SHT41 temperature & humidity breakout",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "SHT30",
+   "form": "SHT30 temperature & humidity module",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "HTU21D",
+   "form": "GY-21 HTU21D temperature & humidity module",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "SI7021",
+   "form": "GY-21 Si7021 temperature & humidity module",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "SCD40",
+   "form": "SCD40/SCD41 CO2 sensor breakout",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "HDC1080",
+   "form": "CJMCU-1080 HDC1080 temperature & humidity module",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "AHT10",
+   "form": "AHT10 temperature & humidity module",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "SGP30",
+   "form": "SGP30 air quality (TVOC/eCO2) breakout",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "SGP40",
+   "form": "SGP40 VOC sensor breakout",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "SHT45",
+   "form": "SHT45 temperature & humidity breakout",
+   "family": "i2c-command"
+  },
+  {
+   "mpn": "ADS1115",
+   "form": "ADS1115 16-bit 4-channel ADC module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "INA219",
+   "form": "INA219 current & voltage sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "BMP280",
+   "form": "GY-BMP280 pressure & temperature module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "ADXL345",
+   "form": "GY-291 ADXL345 accelerometer module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "QMC5883L",
+   "form": "GY-271 QMC5883L 3-axis compass module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "HMC5883L",
+   "form": "GY-273 HMC5883L 3-axis compass module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MCP9808",
+   "form": "MCP9808 precision temperature sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "TMP102",
+   "form": "TMP102 temperature sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "LM75A",
+   "form": "CJMCU-75 LM75A temperature sensor module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "DS3231",
+   "form": "DS3231 real-time clock module (ZS-042)",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MLX90614",
+   "form": "GY-906 MLX90614 infrared thermometer module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "TCS34725",
+   "form": "TCS34725 RGB colour sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "VEML7700",
+   "form": "VEML7700 ambient light sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "AS5600",
+   "form": "AS5600 magnetic rotary encoder module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "INA226",
+   "form": "INA226 current & power monitor module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MAX17048",
+   "form": "MAX17048 LiPo fuel gauge breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "APDS9960",
+   "form": "APDS-9960 proximity, gesture & colour sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "VCNL4040",
+   "form": "VCNL4040 proximity & light sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "LIS3DH",
+   "form": "LIS3DH 3-axis accelerometer breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MMA8452Q",
+   "form": "MMA8452Q 3-axis accelerometer breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "BME280",
+   "form": "GY-BME280 temperature, humidity & pressure module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "VL53L1X",
+   "form": "VL53L1X time-of-flight distance sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "VL6180X",
+   "form": "VL6180X time-of-flight proximity sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "LTR390",
+   "form": "LTR390 UV & ambient light sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "VEML6070",
+   "form": "VEML6070 UV light sensor module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "ADS1015",
+   "form": "ADS1015 12-bit 4-channel ADC module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "DS1307",
+   "form": "DS1307 real-time clock module (Tiny RTC)",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "OPT3001",
+   "form": "OPT3001 ambient light sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "INA3221",
+   "form": "INA3221 3-channel current & voltage monitor module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MPU9250",
+   "form": "GY-9250 MPU-9250 9-axis IMU module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "LSM6DS3",
+   "form": "LSM6DS3 accelerometer & gyroscope breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "BMP180",
+   "form": "GY-68 BMP180 pressure sensor module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MS5611",
+   "form": "GY-63 MS5611 barometric pressure module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "TSL2561",
+   "form": "TSL2561 luminosity sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MAX44009",
+   "form": "GY-49 MAX44009 ambient light sensor module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "BMP388",
+   "form": "BMP388 pressure sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "HTS221",
+   "form": "HTS221 temperature & humidity breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "LPS22HB",
+   "form": "LPS22HB pressure sensor breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "CCS811",
+   "form": "CJMCU-811 CCS811 air quality sensor module",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "MCP9600",
+   "form": "MCP9600 thermocouple amplifier breakout",
+   "family": "i2c-register"
+  },
+  {
+   "mpn": "LM35",
+   "form": "LM35 analog temperature sensor (TO-92)",
+   "family": "analog"
+  },
+  {
+   "mpn": "KY-023",
+   "form": "KY-023 analog joystick module (2 axes + push button)",
+   "family": "analog"
+  },
+  {
+   "mpn": "MQ-2",
+   "form": "MQ-2 smoke & flammable gas sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "MQ-135",
+   "form": "MQ-135 air quality gas sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "MQ-3",
+   "form": "MQ-3 alcohol gas sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "MQ-7",
+   "form": "MQ-7 carbon monoxide gas sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "MQ-4",
+   "form": "MQ-4 methane gas sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "ACS712",
+   "form": "ACS712 5 A current sensor module",
+   "family": "analog"
+  },
+  {
+   "mpn": "Capacitive soil moisture sensor v1.2",
+   "form": "capacitive soil moisture sensor v1.2 (3-pin)",
+   "family": "analog"
+  },
+  {
+   "mpn": "Water level sensor",
+   "form": "water level / depth sensor module (3-pin S + -)",
+   "family": "analog"
+  },
+  {
+   "mpn": "Rain sensor",
+   "form": "FC-37 / YL-83 rain sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "KY-038",
+   "form": "KY-038 sound sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "MAX4466",
+   "form": "MAX4466 electret microphone amplifier breakout",
+   "family": "analog"
+  },
+  {
+   "mpn": "GUVA-S12SD",
+   "form": "GUVA-S12SD UV sensor module",
+   "family": "analog"
+  },
+  {
+   "mpn": "TEMT6000",
+   "form": "TEMT6000 ambient light sensor breakout",
+   "family": "analog"
+  },
+  {
+   "mpn": "SS49E",
+   "form": "SS49E linear Hall-effect sensor (KY-035)",
+   "family": "analog"
+  },
+  {
+   "mpn": "Voltage sensor module",
+   "form": "0-25 V voltage sensor module (5:1 divider)",
+   "family": "analog"
+  },
+  {
+   "mpn": "MCP9700",
+   "form": "MCP9700 analog temperature sensor (TO-92)",
+   "family": "analog"
+  },
+  {
+   "mpn": "Slide potentiometer module",
+   "form": "slide potentiometer module (10 k\u03a9, 3-pin)",
+   "family": "analog"
+  },
+  {
+   "mpn": "KY-013",
+   "form": "KY-013 analog temperature module",
+   "family": "analog"
+  },
+  {
+   "mpn": "TDS sensor",
+   "form": "TDS (total dissolved solids) water quality meter module",
+   "family": "analog"
+  },
+  {
+   "mpn": "Turbidity sensor",
+   "form": "turbidity sensor module (analog out)",
+   "family": "analog"
+  },
+  {
+   "mpn": "Flame sensor",
+   "form": "KY-026 flame sensor module (AO + DO)",
+   "family": "analog"
+  },
+  {
+   "mpn": "Force sensitive resistor module",
+   "form": "FSR402 force sensor with divider module",
+   "family": "analog"
+  },
+  {
+   "mpn": "Piezo vibration sensor",
+   "form": "piezo vibration sensor module (analog)",
+   "family": "analog"
+  },
+  {
+   "mpn": "RCWL-0516",
+   "form": "RCWL-0516 microwave radar motion sensor",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "AM312",
+   "form": "AM312 mini PIR motion sensor",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "FC-51",
+   "form": "FC-51 IR obstacle avoidance sensor module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "TCRT5000",
+   "form": "TCRT5000 IR line tracking sensor module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "TTP223",
+   "form": "TTP223 capacitive touch button module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "A3144",
+   "form": "A3144 Hall-effect switch module (KY-003)",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "SW-420",
+   "form": "SW-420 vibration sensor module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-025",
+   "form": "KY-025 reed switch module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "SW-520D",
+   "form": "SW-520D tilt switch",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-020",
+   "form": "KY-020 ball tilt switch module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-031",
+   "form": "KY-031 knock sensor module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "MC-38",
+   "form": "MC-38 magnetic door/window switch",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-010",
+   "form": "KY-010 photo interrupter module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "H206",
+   "form": "H206 / LM393 slotted speed sensor module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "LM393 light sensor",
+   "form": "LM393 light sensor module (DO only)",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "Float switch",
+   "form": "vertical float switch (water level)",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-040",
+   "form": "KY-040 rotary encoder module (CLK, DT, SW)",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "Limit switch",
+   "form": "KW11 micro limit switch",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-004",
+   "form": "KY-004 push button module",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "HC-SR505",
+   "form": "HC-SR505 mini PIR motion sensor",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "LD2410",
+   "form": "HLK-LD2410 24 GHz human presence radar (OUT pin)",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-036",
+   "form": "KY-036 metal touch sensor module (DO)",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "Sound sensor DO",
+   "form": "LM393 sound detection module (DO only)",
+   "family": "digital-sensor"
+  },
+  {
+   "mpn": "KY-012",
+   "form": "KY-012 active buzzer module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "KY-008",
+   "form": "KY-008 laser module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "Vibration motor module",
+   "form": "coin vibration motor module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "IRF520 MOSFET module",
+   "form": "IRF520 MOSFET driver module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "G3MB-202P",
+   "form": "G3MB-202P solid state relay module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "2-channel relay module",
+   "form": "2-channel 5 V relay module (IN1, IN2)",
+   "family": "actuator"
+  },
+  {
+   "mpn": "L9110S",
+   "form": "L9110S DC motor driver module (2 channels)",
+   "family": "actuator"
+  },
+  {
+   "mpn": "TB6612FNG",
+   "form": "TB6612FNG dual DC motor driver breakout",
+   "family": "actuator"
+  },
+  {
+   "mpn": "L298N",
+   "form": "L298N dual H-bridge motor driver module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "DRV8833",
+   "form": "DRV8833 dual motor driver breakout",
+   "family": "actuator"
+  },
+  {
+   "mpn": "ULN2003",
+   "form": "ULN2003 stepper motor driver board (28BYJ-48)",
+   "family": "actuator"
+  },
+  {
+   "mpn": "KY-005",
+   "form": "KY-005 infrared LED transmitter module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "KY-011",
+   "form": "KY-011 two-colour LED module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "KY-016",
+   "form": "KY-016 RGB LED module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "Traffic light LED module",
+   "form": "traffic light LED module (R, Y, G, GND)",
+   "family": "actuator"
+  },
+  {
+   "mpn": "Electromagnet module",
+   "form": "5 V electromagnet module (KK-P20/15)",
+   "family": "actuator"
+  },
+  {
+   "mpn": "Active buzzer 5V",
+   "form": "TMB12A05 active buzzer (bare)",
+   "family": "actuator"
+  },
+  {
+   "mpn": "Water pump MOSFET module",
+   "form": "D4184 MOSFET switch module",
+   "family": "actuator"
+  },
+  {
+   "mpn": "A4988",
+   "form": "A4988 stepper motor driver (STEP/DIR/EN)",
+   "family": "actuator"
+  },
+  {
+   "mpn": "DRV8825",
+   "form": "DRV8825 stepper motor driver (STEP/DIR/EN)",
+   "family": "actuator"
+  }
+ ],
+ "later": [
+  {
+   "mpn": "DS18B20",
+   "why": "1-Wire: needs a 1-Wire simulator model"
+  },
+  {
+   "mpn": "MAX7219",
+   "why": "SPI LED matrix/7-seg: needs SPI + display model"
+  },
+  {
+   "mpn": "TM1637",
+   "why": "4-digit display: custom 2-wire protocol + display model"
+  },
+  {
+   "mpn": "ST7789",
+   "why": "SPI colour TFT: display model"
+  },
+  {
+   "mpn": "ILI9341",
+   "why": "SPI colour TFT: display model"
+  },
+  {
+   "mpn": "SH1106",
+   "why": "I2C OLED: display model"
+  },
+  {
+   "mpn": "RC522",
+   "why": "SPI RFID reader: SPI model"
+  },
+  {
+   "mpn": "MAX31855",
+   "why": "SPI thermocouple: SPI model"
+  },
+  {
+   "mpn": "MAX6675",
+   "why": "SPI thermocouple: SPI model"
+  },
+  {
+   "mpn": "NEO-6M",
+   "why": "UART GPS: UART model"
+  },
+  {
+   "mpn": "HX711",
+   "why": "load cell amp: custom clocked protocol"
+  },
+  {
+   "mpn": "MAX30102",
+   "why": "heart-rate sensor: FIFO model"
+  },
+  {
+   "mpn": "PCA9685",
+   "why": "16-ch PWM driver: output model"
+  },
+  {
+   "mpn": "PCF8574",
+   "why": "I/O expander: output model"
+  },
+  {
+   "mpn": "MCP23017",
+   "why": "I/O expander: output model"
+  },
+  {
+   "mpn": "WS2812B strip",
+   "why": "LED strip: covered by the built-in NeoPixel ring; strip variant needs layout"
+  },
+  {
+   "mpn": "SD card module",
+   "why": "SPI storage: filesystem model"
+  },
+  {
+   "mpn": "MAX98357A",
+   "why": "I2S audio amp: audio model"
+  },
+  {
+   "mpn": "VS1838B",
+   "why": "IR receiver: protocol timing model"
+  },
+  {
+   "mpn": "DFPlayer Mini",
+   "why": "UART MP3 player: UART model"
+  },
+  {
+   "mpn": "HC-05",
+   "why": "UART Bluetooth: UART model"
+  },
+  {
+   "mpn": "Keypad 4x4",
+   "why": "matrix scanning model"
+  }
+ ]
+}

@@ -4,6 +4,8 @@
 // Claude writes main.py. Code: Claude edits a file on request. Every firmware change is run in
 // the simulator; crashes are fed back to Claude to repair (up to two rounds).
 import { z } from 'zod';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { DesignSpec, Project, Requirements } from '../src/core/types';
 import { deriveTests, partControls, type AcceptanceTest, type TestResult, type TestStep } from '../src/core/acceptance';
 import { runTests } from '../src/sim/run-tests';
@@ -12,7 +14,9 @@ import { BOARDS } from '../src/core/boards';
 import { simulate } from '../src/sim/node-runner';
 import { askJson, backend, MODEL, type Turn } from './llm';
 import { runChecks } from '../src/core/checks';
-import { registerProjectParts } from '../src/core/customParts';
+import { registerProjectParts, type CustomPartSpec } from '../src/core/customParts';
+import { withCustomPart, withoutCustomPart } from '../src/core/autowire';
+import { listParts } from './parts';
 import { deriveRequirements } from '../src/core/requirements';
 import { buildBom, bomTotal, formatUsd } from '../src/core/bom';
 
@@ -54,6 +58,7 @@ const DesignSchema = z.object({
       }),
     )
     .describe('Every part-level feature in the FINAL design (for edits: the full updated list; for code/question: the current list unchanged)'),
+  library_parts: z.array(z.string()).describe('MPNs from the parts library (listed in the instructions) that the FINAL design uses, e.g. ["SCD40"]; use one when the request needs a sensor/module that no feature kind covers. Empty if none. For edits: the full updated list.'),
   reply: z.string().describe('2-6 friendly sentences for a beginner: what you designed/changed and why. Mention anything unsupported and the alternative you chose.'),
   write_firmware: z.boolean().describe('true when the request asks for behaviour beyond simple defaults (e.g. "beep when too hot", "count steps", "show in Fahrenheit", a game, a menu)'),
   firmware_brief: z.string().nullable().describe('If write_firmware: precise description of the behaviour the firmware must implement'),
@@ -168,6 +173,39 @@ function partSkills(p: Project): string {
     .join('\n\n')}\n`;
 }
 
+/** Library parts (datasheet parts that passed the part check), offered to the designer. */
+function libraryParts(): CustomPartSpec[] {
+  try {
+    return listParts().filter((p) => {
+      if ((p as any).library?.status === 'checked') return true;
+      const f = join(process.cwd(), '.claude', 'skills', `part-${p.type.replace(/^custom-/, '')}`, 'check.json');
+      return existsSync(f) && JSON.parse(readFileSync(f, 'utf8')).pass === true;
+    });
+  } catch {
+    return [];
+  }
+}
+
+function libraryPrompt(lib: CustomPartSpec[]): string {
+  if (!lib.length) return '';
+  return `\nParts library (sensors and modules beyond the feature kinds; add them with library_parts by MPN — Sparkbench wires them and adds their driver; they work on esp32 and pico, not rpi4 or none):\n${lib.map((p) => `- ${p.mpn}: ${p.name} (${p.interface}${p.i2cAddress !== undefined ? ` 0x${p.i2cAddress.toString(16)}` : ''})`).join('\n')}\nTwo I2C parts can't share an address.`;
+}
+
+/** Make the design's library parts match the requested list: add missing ones (wired), drop ones no longer wanted. */
+function applyLibraryParts(project: Project, mpns: string[], lib: CustomPartSpec[], log: string[]): Project {
+  if (project.board !== 'esp32' && project.board !== 'pico') return project;
+  const want = mpns.map((m) => lib.find((p) => p.mpn.toLowerCase() === m.toLowerCase().trim())).filter((p): p is CustomPartSpec => !!p);
+  const wantTypes = new Set(want.map((p) => p.type));
+  for (const c of project.customParts ?? []) if (lib.some((l) => l.type === c.type) && !wantTypes.has(c.type)) project = withoutCustomPart(project, c.type);
+  for (const spec of want) {
+    if (project.parts.some((p) => p.type === spec.type)) continue;
+    const r = withCustomPart(project, spec);
+    project = r.project;
+    log.push(`Added the ${spec.name} from the parts library${r.notes.length ? `: ${r.notes.join(' ')}` : ''}.`);
+  }
+  return project;
+}
+
 /** What the design request is doing right now, streamed to the waiting screen. */
 export type DesignPhase = 'read' | 'wire' | 'code' | 'tests' | 'fix';
 
@@ -176,7 +214,8 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
   const log: string[] = [];
   onPhase('read');
   const pictured = images.length ? `\n\nThe user attached ${images.length === 1 ? 'a photo or sketch' : `${images.length} photos or sketches`}: work out what the gadget does (screens, buttons, lights, sensors, sounds, motors, how it's powered) and design the closest version Sparkbench can build. Say in your reply what you saw and anything you substituted.` : '';
-  const d = await askJson(SYSTEM, [...history.slice(-6), { role: 'user', content: `${projectContext(current)}\n\nRequest: ${prompt}${pictured}` }], DesignSchema, { images: images as any });
+  const library = libraryParts();
+  const d = await askJson(SYSTEM + libraryPrompt(library), [...history.slice(-6), { role: 'user', content: `${projectContext(current)}\n\nRequest: ${prompt}${pictured}` }], DesignSchema, { images: images as any });
   if (images.length) log.push(`Read ${images.length} image${images.length > 1 ? 's' : ''} you attached.`);
   log.push(`Claude: intent=${d.intent}, board=${d.board}, ${d.features.length} part groups.`);
   if (d.intent === 'question') return { reply: d.reply, intent: 'question', log };
@@ -212,6 +251,7 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
   const isEdit = d.intent === 'edit' && !!current;
   onPhase('wire');
   let project = buildProject(spec, { name: isEdit ? renameForBoard(current!, d.board) : d.title, prompt, previous: isEdit ? { ...current!, codeCustom: false } : undefined });
+  project = applyLibraryParts(project, d.library_parts ?? [], library, log);
   if (isEdit && current!.codeCustom && project.board !== 'none' && current!.board === project.board) {
     // The user's (or Claude's) custom program must survive a wiring change: adapt it rather than replace it.
     onPhase('code');
@@ -220,9 +260,11 @@ export async function aiDesign(prompt: string, current?: Project, history: Turn[
     const t = await testAndRepair({ ...r.project, requirements: measuredRequirements(r.project, d.requirements), tests: current!.tests }, prompt, log, onPhase);
     return finish(t.project, d.reply, d.intent, [...log, ...r.log], undefined, t.results);
   }
-  if (d.write_firmware && d.firmware_brief && project.board !== 'none') {
+  const libraryAdded = (project.customParts ?? []).filter((c) => library.some((l) => l.type === c.type) && !current?.customParts?.some((x) => x.type === c.type));
+  if (((d.write_firmware && d.firmware_brief) || libraryAdded.length) && project.board !== 'none') {
     onPhase('code');
-    const r = await aiEditFile(project, 'main.py', d.firmware_brief);
+    const brief = [d.firmware_brief, ...libraryAdded.map((c) => `Use the ${c.name} (${c.mpn}) through its driver and show or print its readings as the request needs.`)].filter(Boolean).join(' ');
+    const r = await aiEditFile(project, 'main.py', brief);
     project = r.project;
     log.push(...r.log);
   }

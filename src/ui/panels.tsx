@@ -20,7 +20,7 @@ import type { Shrunk } from './images';
 import type { CheckResult, FixAction } from '../core/types';
 import { annotate } from '../core/netlist';
 import { registerCustomPart, type CustomPartSpec } from '../core/customParts';
-import { autoWirePart } from '../core/autowire';
+import { withCustomPart } from '../core/autowire';
 import { partSize } from '../core/layout';
 
 // ------------------------------------------------------------------ Copilot
@@ -599,18 +599,24 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
         <AddAnyComponent initial={list.length + myList.length === 0 ? q : ''} onDone={onClose} />
         {myList.length > 0 && (
           <div>
-            <div className="lib-cat">Your components (from datasheets)</div>
-            {myList.map((s) => (
+            <div className="lib-cat">Parts library</div>
+            {myList.map((s) => {
+              const checked = (s as any).library?.status === 'checked';
+              return (
               <button key={s.type} className="lib-item" onClick={() => addCustomPart(s).then(onClose)}>
                 <span className="lib-name">
-                  {s.name} <span className="ds-badge">datasheet</span>
+                  {s.name}{' '}
+                  <span className={`ds-badge${checked ? ' checked' : ''}`} title={checked ? (s as any).library.note : 'Read from the datasheet by Claude; not checked by the part check yet.'}>
+                    {checked ? '✓ checked in simulation' : 'from a datasheet'}
+                  </span>
                 </span>
                 <span className="lib-desc">
                   {s.eli5} · {s.vmin}–{s.vmax} V
                 </span>
                 <span className="lib-price">${s.priceUsd.toFixed(2)}</span>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
         {cats.map((c) => {
@@ -647,19 +653,10 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
 
 /** Add a datasheet-defined part to the open project, wired to the board when possible. */
 export async function addCustomPart(spec: CustomPartSpec, wire = true) {
-  registerCustomPart(spec);
   const st = useStore.getState();
   const p = st.project;
   if (!p) return;
-  const base = spec.type.replace(/[^a-z0-9]/g, '');
-  let n = 1;
-  while (p.parts.some((x) => x.id === `${base}${n}`)) n++;
-  const id = `${base}${n}`;
-  const right = Math.max(...p.parts.map((x) => x.x + partSize(x.type)[0]), 0) + 60;
-  const top = Math.min(...p.parts.map((x) => x.y), 40);
-  let next = annotate({ ...p, customParts: [...(p.customParts ?? []).filter((c) => c.type !== spec.type), spec], parts: [...p.parts, { id, type: spec.type, label: spec.name, props: {}, x: right, y: top }] });
-  let notes: string[] = [];
-  if (wire && p.board !== 'none') ({ project: next, notes } = autoWirePart(next, id));
+  const { project: next, notes, id } = withCustomPart(p, spec, { wire });
   st.update(() => next);
   st.select({ kind: 'part', id });
   st.addChat({ role: 'ai', text: `Added the ${spec.name} (${spec.mpn}) from its datasheet${wire && p.board !== 'none' ? ' and wired it to the board' : ''}. Ask me to “use the ${spec.mpn} in the code” and I'll update the program.${spec.datasheetUrl ? ` [Datasheet](${spec.datasheetUrl})` : ''}`, details: notes });
