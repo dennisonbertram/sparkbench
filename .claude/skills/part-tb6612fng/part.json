@@ -1,0 +1,228 @@
+{
+  "type": "custom-tb6612fng",
+  "name": "TB6612FNG dual DC motor driver",
+  "mpn": "TB6612FNG",
+  "category": "actuator",
+  "description": "Toshiba TB6612FNG dual H-bridge with low-resistance MOSFET outputs (0.5 Ohm upper+lower): runs two DC motors (or one bipolar stepper) clockwise, counter-clockwise, short-braked or coasting, 1.2 A average / 3.2 A peak per channel, PWM speed up to 100 kHz, from 2.7-5.5 V logic and a 2.5-13.5 V motor supply. Thermal shutdown, under-voltage lockout and a standby pin. Sold as: SparkFun Motor Driver - Dual TB6612FNG (1A), ROB-14450 (ROB-14451 with headers), 16 pins in two rows: GND B01 B02 A02 A01 GND VCC VM | PWMA AIN2 AIN1 STBY BIN1 BIN2 PWMB GND (the 2nd and 3rd GND are named GND2/GND3 here); also cloned as generic purple/red TB6612FNG modules with the same labels.",
+  "eli5": "Lets your board make two small motors spin forwards or backwards at any speed, using a battery for the motor power.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (all GND pins are joined on the board): common to the motor supply and the microcontroller",
+      "required": true
+    },
+    {
+      "name": "B01",
+      "role": "io",
+      "description": "Motor B output 1 (BO1); connect the motor, never the microcontroller",
+      "required": false
+    },
+    {
+      "name": "B02",
+      "role": "io",
+      "description": "Motor B output 2 (BO2)",
+      "required": false
+    },
+    {
+      "name": "A02",
+      "role": "io",
+      "description": "Motor A output 2 (AO2)",
+      "required": false
+    },
+    {
+      "name": "A01",
+      "role": "io",
+      "description": "Motor A output 1 (AO1); connect the motor, never the microcontroller",
+      "required": false
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Second GND pin (printed GND on the board; joined to the other GND pins)",
+      "required": true
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Logic supply 2.7-5.5 V: use the microcontroller's 3.3 V so its GPIO highs reach 0.7 x VCC",
+      "required": true
+    },
+    {
+      "name": "VM",
+      "role": "power",
+      "description": "Motor supply 2.5-13.5 V (15 V absolute max); a 4xAA pack or 2S LiPo is typical. Use 4.5 V or more for the full 1.2 A per channel",
+      "required": true
+    },
+    {
+      "name": "PWMA",
+      "role": "io",
+      "description": "Channel A PWM speed input (high = drive, low = short brake); 200 kOhm pull-down inside; up to 100 kHz",
+      "required": true,
+      "fn": "pwm"
+    },
+    {
+      "name": "AIN2",
+      "role": "io",
+      "description": "Channel A direction input 2 (200 kOhm pull-down inside)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "AIN1",
+      "role": "io",
+      "description": "Channel A direction input 1 (200 kOhm pull-down inside)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "STBY",
+      "role": "io",
+      "description": "Standby, shared by both channels: low = everything off; must be driven (or tied to VCC) high to run. 200 kOhm pull-down inside",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "BIN1",
+      "role": "io",
+      "description": "Channel B direction input 1 (200 kOhm pull-down inside)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "BIN2",
+      "role": "io",
+      "description": "Channel B direction input 2 (200 kOhm pull-down inside)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "PWMB",
+      "role": "io",
+      "description": "Channel B PWM speed input (200 kOhm pull-down inside)",
+      "required": false,
+      "fn": "pwm"
+    },
+    {
+      "name": "GND3",
+      "role": "gnd",
+      "description": "Third GND pin (printed GND on the board; joined to the other GND pins)",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 5.5,
+  "currentMa": 1.8,
+  "datasheetUrl": "https://toshiba.semicon-storage.com/info/docget.jsp?did=10660&prodName=TB6612FNG",
+  "priceUsd": 5,
+  "supplierQuery": "TB6612FNG dual motor driver breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "Truth table (Toshiba datasheet): STBY high, then IN1 high/IN2 low = CW, IN1 low/IN2 high = CCW, IN1 = IN2 = high = short brake, IN1 = IN2 = low = stop (outputs off, motor coasts). PWM low with a direction set = short brake, so PWM sets the speed.",
+    "STBY, PWMx and the IN pins have 200 kOhm pull-downs inside: with STBY or PWMA unconnected the motor never turns. Drive STBY from a GPIO or tie it to VCC.",
+    "VCC is the logic supply (2.7-5.5 V): power it from the same 3.3 V as an ESP32/Pico, because an input counts as high only above 0.7 x VCC (3.85 V on a 5.5 V VCC).",
+    "VM is the motor supply, 2.5-13.5 V (absolute max 15 V). Small motors can run from USB 5 V; anything larger needs its own battery, with its minus joined to GND.",
+    "Per channel: 1.2 A average, 3.2 A peak for 10 ms; with VM below 4.5 V only 0.4 A. The SparkFun board has no heatsink and the chip shuts down at about 175 C.",
+    "Connect motors to A01/A02 and B01/B02 only; never wire a motor output to a GPIO.",
+    "The board already has the 0.1 uF and 10 uF supply capacitors; add a 100 uF electrolytic across VM-GND for motors with long leads."
+  ],
+  "keywords": [
+    "tb6612fng",
+    "tb6612",
+    "h-bridge",
+    "motor driver",
+    "dc motor",
+    "dual motor driver",
+    "stepper",
+    "sparkfun"
+  ],
+  "sources": [
+    "https://toshiba.semicon-storage.com/info/docget.jsp?did=10660&prodName=TB6612FNG",
+    "https://cdn.sparkfun.com/datasheets/Robotics/TB6612FNG.pdf",
+    "https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide/all",
+    "https://github.com/sparkfun/Motor_Driver-Dual_TB6612FNG/blob/master/Hardware/SparkFun_Motor_Driver-TB6612FNG_v11.brd",
+    "https://www.sparkfun.com/products/14450"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "AIN1",
+      "AIN2",
+      "PWMA",
+      "STBY",
+      "BIN1",
+      "BIN2",
+      "PWMB"
+    ]
+  },
+  "driver": {
+    "filename": "tb6612fng.py",
+    "code": "# TB6612FNG dual DC motor driver (Toshiba), MicroPython driver for ONE channel (one DC motor).\n# Make one TB6612FNG object per motor: channel A = AIN1, AIN2, PWMA; channel B = BIN1, BIN2, PWMB.\n# Both channels share STBY: pass the same STBY pin to both, or tie STBY to VCC on the board.\n# H-SW control function (Toshiba datasheet, page 4), STBY = H:\n#   IN1 = H, IN2 = L, PWM = H -> CW   (OUT1 = H, OUT2 = L)\n#   IN1 = L, IN2 = H, PWM = H -> CCW  (OUT1 = L, OUT2 = H)\n#   IN1 = H, IN2 = H          -> short brake (OUT1 = OUT2 = L)\n#   IN1 or IN2 high, PWM = L  -> short brake (so PWM gives \"drive / brake\" speed control)\n#   IN1 = L, IN2 = L, PWM = H -> stop: outputs off (high impedance), motor coasts\n#   STBY = L                  -> standby: outputs off, < 1 uA supply current\n# Every input (IN1, IN2, PWM, STBY) has an internal 200 kOhm pull-down, so the motor is off while\n# the GPIOs float. Input high >= 0.7 x VCC: run VCC from the same 3.3 V as the microcontroller.\n# PWM frequency: up to 100 kHz (datasheet fPWM max); 20 kHz is above hearing range.\nfrom machine import Pin, PWM\n\n\nclass TB6612FNG:\n    def __init__(self, in1, in2, pwm, stby=None, freq=20000):\n        \"\"\"in1, in2, pwm: GPIO numbers of AIN1/AIN2/PWMA (or BIN1/BIN2/PWMB).\n        stby: GPIO number wired to STBY, or None if STBY is tied to VCC.\"\"\"\n        self.in1 = Pin(in1, Pin.OUT, value=0)\n        self.in2 = Pin(in2, Pin.OUT, value=0)\n        self.pwm = PWM(Pin(pwm), freq=min(freq, 100000), duty_u16=0)\n        self.stby = Pin(stby, Pin.OUT, value=1) if stby is not None else None\n\n    def wake(self):\n        \"\"\"Leave standby (STBY high).\"\"\"\n        if self.stby is not None:\n            self.stby.value(1)\n\n    def standby(self):\n        \"\"\"Standby (STBY low): both channels off, chip draws < 1 uA. Shared by channels A and B.\"\"\"\n        if self.stby is not None:\n            self.stby.value(0)\n\n    def drive(self, speed):\n        \"\"\"speed -100..100 %: positive = CW (OUT1 high), negative = CCW (OUT2 high), 0 = stop (coast).\"\"\"\n        speed = max(-100, min(100, int(speed)))\n        if speed == 0:\n            self.stop()\n            return\n        self.wake()\n        # Set direction first, then duty: PWM low phases give short brake, high phases drive.\n        if speed > 0:\n            self.in2.value(0)\n            self.in1.value(1)\n        else:\n            self.in1.value(0)\n            self.in2.value(1)\n        self.pwm.duty_u16(abs(speed) * 65535 // 100)\n\n    def forward(self, speed=100):\n        self.drive(abs(speed))\n\n    def reverse(self, speed=100):\n        self.drive(-abs(speed))\n\n    def brake(self):\n        \"\"\"Short brake: IN1 = IN2 = H (outputs both low, motor stops quickly).\"\"\"\n        self.wake()\n        self.in1.value(1)\n        self.in2.value(1)\n        self.pwm.duty_u16(65535)\n\n    def stop(self):\n        \"\"\"Stop: IN1 = IN2 = L with PWM high, outputs high impedance, motor coasts.\"\"\"\n        self.in1.value(0)\n        self.in2.value(0)\n        self.pwm.duty_u16(65535)\n"
+  },
+  "example": {
+    "code": "import time\nfrom tb6612fng import TB6612FNG\n\n# Motor A on AIN1/AIN2/PWMA, STBY driven by a GPIO.\nmotor = TB6612FNG({AIN1}, {AIN2}, {PWMA}, stby={STBY})\nwhile True:\n    motor.forward(75)\n    print('motor A forward 75%')\n    time.sleep(1)\n    motor.stop()\n    print('motor A stopped')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Motor A runs forward, then stops",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "AIN1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "AIN2",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "STBY",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A forward 75%",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "AIN1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A stopped",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (9 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:27:55.305Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/datasheets/Robotics/TB6612FNG.pdf",
+      "https://www.sparkfun.com/products/14450",
+      "https://learn.sparkfun.com/tutorials/tb6612fng-hookup-guide",
+      "https://cdn.sparkfun.com/assets/parts/1/2/4/8/4/14451-01.jpg"
+    ],
+    "simNote": "This board has pins on more than one edge, so Sparkbench connects it with jumper cables: off the breadboard, and to a single-row cable connector at the edge of the circuit board."
+  }
+}

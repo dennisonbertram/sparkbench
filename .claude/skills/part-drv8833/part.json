@@ -1,0 +1,219 @@
+{
+  "type": "custom-drv8833",
+  "name": "DRV8833 dual H-bridge motor driver",
+  "mpn": "DRV8833",
+  "category": "actuator",
+  "description": "TI DRV8833 dual H-bridge motor driver with MOSFET bridges: runs two small DC motors (or one bipolar stepper) forwards, backwards, braked or coasting from 3.3 V logic, motor supply 2.7-10.8 V, about 1.2 A per bridge (1 A current limit as fitted). Sold as: Adafruit DRV8833 DC/Stepper Motor Driver Breakout Board (#3297), 8-pin header VM GND FLT BIN1 BIN2 SLP AIN2 AIN1, opposite side AOUT1 AOUT2 BOUT2 BOUT1 AS BS, plus a VMotor screw terminal.",
+  "eli5": "Lets your board make two small motors spin forwards or backwards, using a battery for the motors' power.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "VM",
+      "role": "power",
+      "description": "Motor supply VM, 2.7-10.8 V (also powers the chip; no separate logic supply). Header pin is not reverse-polarity protected; the VMotor screw terminal is",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground: shared by the motor supply and the microcontroller",
+      "required": true
+    },
+    {
+      "name": "FLT",
+      "role": "io",
+      "description": "nFAULT output, open-drain: pulled low on overcurrent, overtemperature or undervoltage. Needs a pull-up (e.g. the GPIO's internal one)",
+      "required": false
+    },
+    {
+      "name": "BIN1",
+      "role": "io",
+      "description": "Bridge B input 1 (high >= 2 V, max 5.75 V; PWM for speed)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "BIN2",
+      "role": "io",
+      "description": "Bridge B input 2",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "SLP",
+      "role": "io",
+      "description": "nSLEEP: drive high (>= 2.5 V) to run. 500 kOhm pull-down on the chip, so the driver sleeps if this is left open",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "AIN2",
+      "role": "io",
+      "description": "Bridge A input 2",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "AIN1",
+      "role": "io",
+      "description": "Bridge A input 1 (high >= 2 V, max 5.75 V; PWM for speed)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "AOUT1",
+      "role": "io",
+      "description": "Motor A output 1; connect the motor, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "AOUT2",
+      "role": "io",
+      "description": "Motor A output 2",
+      "required": false
+    },
+    {
+      "name": "BOUT2",
+      "role": "io",
+      "description": "Motor B output 2",
+      "required": false
+    },
+    {
+      "name": "BOUT1",
+      "role": "io",
+      "description": "Motor B output 1",
+      "required": false
+    },
+    {
+      "name": "AS",
+      "role": "io",
+      "description": "Bridge A current sense (AISEN): 0.2 Ohm to GND on the board = 1 A limit. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "BS",
+      "role": "io",
+      "description": "Bridge B current sense (BISEN): 0.2 Ohm to GND on the board = 1 A limit. Leave unconnected",
+      "required": false
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 10.8,
+  "currentMa": 3,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/drv8833.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "DRV8833 dual motor driver breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x14_P2.54mm_Vertical",
+  "buildNotes": [
+    "Truth table (TI datasheet Table 1): IN1 high/IN2 low = forward, IN1 low/IN2 high = reverse, both high = brake, both low = coast (outputs off).",
+    "SLP must be driven high (>= 2.5 V) or the chip stays asleep: it has a 500 kOhm pull-down. Wire it to a GPIO or to 3V3; if you tie it to VM above 6.5 V use a 20-75 kOhm resistor.",
+    "Speed: PWM one input. Slow decay (smoother): hold IN1 high and PWM IN2, motor runs while IN2 is low. Fast decay: PWM IN1 with IN2 low.",
+    "Motor supply 2.7-10.8 V into the VMotor terminal (reverse-polarity protected) or the VM pin (not protected). Under 5 V the bridge resistance rises and less current is available.",
+    "Connect the board GND to the microcontroller GND.",
+    "The 0.2 Ohm sense resistors limit each bridge to about 1 A (I = 0.2 V / R). Leave AS/BS unconnected unless you change the limit.",
+    "Logic inputs take at most 5.75 V; never connect them to VM.",
+    "FLT is open-drain and goes low on a fault; use a pull-up (the GPIO's internal one is enough) if you read it."
+  ],
+  "keywords": [
+    "drv8833",
+    "h-bridge",
+    "motor driver",
+    "dc motor",
+    "stepper",
+    "dual h bridge",
+    "adafruit 3297"
+  ],
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/drv8833.pdf",
+    "https://learn.adafruit.com/adafruit-drv8833-dc-stepper-motor-driver-breakout-board/pinouts",
+    "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB",
+    "https://github.com/adafruit/Fritzing-Library/blob/master/parts/Adafruit%20DRV8833%20DC-Stepper%20Motor%20Driver.fzpz",
+    "https://www.adafruit.com/product/3297"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "AIN1",
+      "AIN2",
+      "BIN1",
+      "BIN2",
+      "SLP"
+    ]
+  },
+  "driver": {
+    "filename": "drv8833.py",
+    "code": "# DRV8833 dual H-bridge motor driver (TI DRV8833), MicroPython driver for ONE bridge (one DC motor).\n# Make one DRV8833 object per motor: bridge A = AIN1, AIN2; bridge B = BIN1, BIN2.\n# H-bridge logic from the TI datasheet (SLVSAR1E, Table 1):\n#   xIN1 = 0, xIN2 = 0 -> outputs Hi-Z: coast / fast decay\n#   xIN1 = 0, xIN2 = 1 -> reverse\n#   xIN1 = 1, xIN2 = 0 -> forward\n#   xIN1 = 1, xIN2 = 1 -> brake / slow decay\n# Speed control (Table 2), slow decay: forward = xIN1 high + PWM on xIN2, reverse = PWM on xIN1 + xIN2 high.\n# In slow decay the motor is driven while the PWM pin is LOW, so the PWM duty is (100 - speed) %.\n# Inputs: high >= 2 V, low <= 0.7 V, max 5.75 V, so 3.3 V GPIOs work. nSLEEP (SLP) needs >= 2.5 V and\n# has a 500 kOhm pull-down: the chip sleeps (outputs off) until SLP is driven high; it needs up to 1 ms to wake.\nfrom machine import Pin, PWM\nimport time\n\n\nclass DRV8833:\n    def __init__(self, in1, in2, slp=None, freq=20000):\n        \"\"\"in1, in2: GPIO numbers of the bridge's inputs (AIN1/AIN2 or BIN1/BIN2).\n        slp: GPIO number wired to SLP (nSLEEP), or None if SLP is tied high elsewhere.\n        freq: PWM frequency for speed control (20 kHz is above hearing).\"\"\"\n        self._n1 = in1\n        self._n2 = in2\n        self._freq = freq\n        self._pwm = None\n        self.a = Pin(in1, Pin.OUT, value=0)\n        self.b = Pin(in2, Pin.OUT, value=0)\n        self.slp = None\n        if slp is not None:\n            self.slp = Pin(slp, Pin.OUT, value=0)\n            self.wake()\n\n    def wake(self):\n        \"\"\"Drive nSLEEP high and wait the 1 ms start-up time (tWAKE).\"\"\"\n        if self.slp is not None:\n            self.slp.value(1)\n            time.sleep_ms(1)\n\n    def sleep(self):\n        \"\"\"nSLEEP low: H-bridges off, about 1.6 uA from VM. Shared by both bridges on the board.\"\"\"\n        if self.slp is not None:\n            self.slp.value(0)\n\n    def _digital(self, v1, v2):\n        if self._pwm is not None:\n            self._pwm.deinit()\n            self._pwm = None\n            self.a = Pin(self._n1, Pin.OUT)\n            self.b = Pin(self._n2, Pin.OUT)\n        self.a.value(v1)\n        self.b.value(v2)\n\n    def _slow_decay(self, high_pin, pwm_pin, speed):\n        # high_pin held at 1, pwm_pin low for `speed` % of each period (driving), high otherwise (braking).\n        speed = max(0, min(100, speed))\n        if speed >= 100:\n            return False\n        if self._pwm is not None:\n            self._pwm.deinit()\n            self._pwm = None\n        Pin(high_pin, Pin.OUT, value=1)\n        self._pwm = PWM(Pin(pwm_pin), freq=self._freq, duty_u16=(100 - speed) * 65535 // 100)\n        return True\n\n    def forward(self, speed=100):\n        \"\"\"Spin one way (xOUT1 high, xOUT2 low). speed 0-100 %.\"\"\"\n        if not self._slow_decay(self._n1, self._n2, speed):\n            self._digital(1, 0)\n\n    def reverse(self, speed=100):\n        \"\"\"Spin the other way (xOUT1 low, xOUT2 high). speed 0-100 %.\"\"\"\n        if not self._slow_decay(self._n2, self._n1, speed):\n            self._digital(0, 1)\n\n    def brake(self):\n        \"\"\"Both inputs high: both outputs low, the motor is shorted and stops quickly.\"\"\"\n        self._digital(1, 1)\n\n    def coast(self):\n        \"\"\"Both inputs low: outputs Hi-Z, the motor spins down freely.\"\"\"\n        self._digital(0, 0)\n\n    def stop(self):\n        self.brake()\n\n\ndef fault(pin_no):\n    \"\"\"True while FLT (nFAULT, open-drain, low on overcurrent/overtemperature/undervoltage) is asserted.\n    Uses the GPIO's internal pull-up; the Adafruit board has no pull-up on FLT.\"\"\"\n    return Pin(pin_no, Pin.IN, Pin.PULL_UP).value() == 0\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom drv8833 import DRV8833\n\n# Motor A on AIN1/AIN2; SLP driven high by the driver to wake the chip.\nmotor = DRV8833({AIN1}, {AIN2}, slp={SLP})\nwhile True:\n    motor.forward()\n    print('motor A forward')\n    time.sleep(1)\n    motor.coast()\n    print('motor A coasting')\n    time.sleep(1)\n",
+    "test": {
+      "id": "spins",
+      "title": "Wakes the driver, runs motor A forward, then lets it coast",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SLP",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "AIN1",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "AIN2",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "AIN1",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "motor A coasting",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "SLP",
+          "on": true
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (8 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:28:07.852Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/drv8833.pdf",
+      "https://learn.adafruit.com/adafruit-drv8833-dc-stepper-motor-driver-breakout-board/pinouts",
+      "https://www.adafruit.com/product/3297"
+    ],
+    "simNote": "This board has pins on more than one edge, so Sparkbench connects it with jumper cables: off the breadboard, and to a single-row cable connector at the edge of the circuit board."
+  }
+}

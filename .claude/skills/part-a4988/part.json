@@ -1,0 +1,235 @@
+{
+  "type": "custom-a4988",
+  "name": "A4988 stepper motor driver",
+  "mpn": "A4988",
+  "category": "actuator",
+  "description": "Allegro A4988 microstepping driver for one bipolar stepper motor: STEP/DIR control with a built-in translator, full to 1/16 step, adjustable current limit (trimpot, up to about 1 A per coil without cooling, 2 A with), motor supply 8-35 V, logic supply 3-5.5 V. Sold as: Pololu A4988 Stepper Motor Driver Carrier (#1182, and the many same-pinout clone modules), 16 pins in two rows: EN MS1 MS2 MS3 RST SLP STEP DIR, opposite side top to bottom VMOT GND 2B 2A 1A 1B VDD GND.",
+  "eli5": "Turns a stepper motor exactly one small click every time your board sends it a pulse, in the direction you choose.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "EN",
+      "role": "io",
+      "description": "ENABLE, active low: low = motor outputs on, high = outputs off (shaft free). 100 kOhm pull-down on the board, so it is enabled if left open",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "MS1",
+      "role": "io",
+      "description": "Microstep select 1 (100 kOhm pull-down in the chip). MS1/MS2/MS3: LLL full, HLL 1/2, LHL 1/4, HHL 1/8, HHH 1/16",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "MS2",
+      "role": "io",
+      "description": "Microstep select 2 (50 kOhm pull-down in the chip)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "MS3",
+      "role": "io",
+      "description": "Microstep select 3 (100 kOhm pull-down in the chip)",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "RESET, active low: must be HIGH for the driver to run. Floating on the board: drive it high from a GPIO or jumper it to SLP",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "SLP",
+      "role": "io",
+      "description": "SLEEP, active low: low = sleep (< 10 uA). 100 kOhm pull-up to VDD on the board, so it is awake if left open. Wait 1 ms after waking before stepping",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "STEP",
+      "role": "io",
+      "description": "STEP: each low-to-high edge moves the motor one (micro)step. Min 1 us high, 1 us low. No pull on the board: never leave floating",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "DIR",
+      "role": "io",
+      "description": "DIR: direction, read on each STEP rising edge. No pull on the board: never leave floating",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "VMOT",
+      "role": "power",
+      "description": "Motor supply 8-35 V from a separate supply (not the microcontroller), with a >= 47 uF electrolytic capacitor across VMOT/GND close to the board",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Motor supply ground (printed GND, next to VMOT): the return for the VMOT supply; joined to the logic GND on the board",
+      "required": true
+    },
+    {
+      "name": "2B",
+      "role": "io",
+      "description": "Motor coil 2, second wire (OUT2B)",
+      "required": false
+    },
+    {
+      "name": "2A",
+      "role": "io",
+      "description": "Motor coil 2, first wire (OUT2A)",
+      "required": false
+    },
+    {
+      "name": "1A",
+      "role": "io",
+      "description": "Motor coil 1, first wire (OUT1A)",
+      "required": false
+    },
+    {
+      "name": "1B",
+      "role": "io",
+      "description": "Motor coil 1, second wire (OUT1B). Connect the motor, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Logic supply 3-5.5 V. Logic high must be >= 0.7 x VDD, so use 3.3 V with a 3.3 V microcontroller",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Logic ground (printed GND, bottom pin next to VDD): connect to the microcontroller GND; joined to the motor GND on the board",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 8,
+  "datasheetUrl": "https://www.allegromicro.com/-/media/files/datasheets/a4988-datasheet.pdf",
+  "priceUsd": 3,
+  "supplierQuery": "A4988 stepper motor driver module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two supplies: logic VDD 3-5.5 V from the microcontroller (3.3 V for an ESP32/Pico, since logic high must be >= 0.7 x VDD) and motor VMOT 8-35 V from a separate supply. Join the grounds.",
+    "Put a 47 uF or larger electrolytic capacitor across VMOT and GND right at the board: the ceramic capacitors on it alone let voltage spikes exceed the 35 V rating.",
+    "RST floats on the board and the driver ignores STEP while it is low. Drive it high from a GPIO or jumper it to the neighbouring SLP pin (pulled up to VDD).",
+    "Never connect or disconnect the motor while VMOT is powered: it destroys the driver.",
+    "Set the current limit before running the motor: VREF (measured between the trimpot and GND) = 8 x I x Rcs. Pololu boards since 2017 have Rcs = 0.068 Ohm (1 A -> 0.54 V); many clones use 0.1 Ohm (1 A -> 0.8 V).",
+    "Microstepping (Table 1): MS1/MS2/MS3 = LLL full, HLL half, LHL quarter, HHL eighth, HHH sixteenth. Left open they read low (full step).",
+    "STEP pulses: at least 1 us high and 1 us low; change DIR at least 200 ns before the STEP rising edge. After SLP goes high wait 1 ms before stepping.",
+    "Above about 1 A per coil the chip needs a heat sink or airflow; it shuts down when it overheats."
+  ],
+  "keywords": [
+    "a4988",
+    "stepper driver",
+    "stepper motor",
+    "step dir",
+    "microstepping",
+    "pololu 1182",
+    "nema 17",
+    "bipolar stepper"
+  ],
+  "sources": [
+    "https://www.allegromicro.com/-/media/files/datasheets/a4988-datasheet.pdf",
+    "https://www.pololu.com/product/1182",
+    "https://a.pololu-files.com/picture/0J10061.1200.jpg (Pololu pinout photo with silkscreen)",
+    "https://a.pololu-files.com/picture/0J3359.1200.png (Pololu carrier schematic)",
+    "Fritzing core/pololu0002_a988.fzp (Pololu A4988 pins)"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "STEP",
+      "DIR",
+      "RST",
+      "EN",
+      "SLP",
+      "MS1",
+      "MS2",
+      "MS3"
+    ]
+  },
+  "driver": {
+    "filename": "a4988.py",
+    "code": "# A4988 microstepping bipolar stepper driver (Allegro A4988), MicroPython driver.\n# Written from the Allegro A4988 datasheet (A4988-DS) and the Pololu A4988 carrier (#1182) schematic.\n#   STEP: each LOW->HIGH edge moves the motor one (micro)step. Min HIGH pulse 1 us, min LOW 1 us (tA, tB).\n#   DIR:  direction, sampled on the STEP rising edge. Setup/hold time to STEP: 200 ns (tC, tD).\n#   RESET (RST, active low): low = translator to Home, all FET outputs off, STEP ignored. Must be HIGH to run.\n#         The Pololu board leaves RST floating: drive it high from a GPIO (rst=) or jumper it to SLP.\n#   SLEEP (SLP, active low): low = sleep. Board pull-up 100 kOhm to VDD. After waking, wait 1 ms before stepping.\n#   ENABLE (EN, active low): high = all FET outputs off (motor free). Board pull-down 100 kOhm, so enabled if open.\n#   MS1 MS2 MS3 (Table 1): LLL full, HLL 1/2, LHL 1/4, HHL 1/8, HHH 1/16. Internal pull-downs (full step if open).\n#         A new step mode takes effect on the next STEP rising edge.\n# Logic HIGH must be >= 0.7 x VDD: with a 3.3 V microcontroller power VDD from 3.3 V, not 5 V.\nfrom machine import Pin\nimport time\n\n_MODES = {1: (0, 0, 0), 2: (1, 0, 0), 4: (0, 1, 0), 8: (1, 1, 0), 16: (1, 1, 1)}\n\n\nclass A4988:\n    def __init__(self, step, dir, rst=None, slp=None, en=None, ms=None):\n        \"\"\"step, dir: GPIO numbers wired to STEP and DIR (both needed; neither has a pull on the board).\n        rst: GPIO wired to RST, or None if RST is jumpered to SLP. Driven high here.\n        slp: GPIO wired to SLP, or None (board pull-up keeps it awake).\n        en: GPIO wired to EN, or None (board pull-down keeps the outputs enabled).\n        ms: (ms1, ms2, ms3) GPIO numbers, or None (full step via the internal pull-downs).\"\"\"\n        self.step_pin = Pin(step, Pin.OUT, value=0)\n        self.dir_pin = Pin(dir, Pin.OUT, value=0)\n        self.en = Pin(en, Pin.OUT, value=0) if en is not None else None\n        self.slp = Pin(slp, Pin.OUT, value=1) if slp is not None else None\n        self.ms = [Pin(p, Pin.OUT, value=0) for p in ms] if ms is not None else None\n        self.rst = Pin(rst, Pin.OUT, value=1) if rst is not None else None\n        self.position = 0\n        # Leaving reset / sleep: charge pump needs 1 ms before the first STEP (datasheet, Sleep Mode).\n        time.sleep_ms(1)\n\n    def set_microstep(self, div):\n        \"\"\"div = 1, 2, 4, 8 or 16 (full, half, quarter, eighth, sixteenth step). Needs ms= pins.\"\"\"\n        if self.ms is None:\n            raise ValueError('MS1-MS3 not wired: board is fixed at full step')\n        bits = _MODES[div]\n        for p, b in zip(self.ms, bits):\n            p.value(b)\n\n    def direction(self, forward):\n        \"\"\"Set DIR (1 = forward). Takes effect on the next STEP rising edge.\"\"\"\n        self.dir_pin.value(1 if forward else 0)\n        time.sleep_us(1)  # >= 200 ns setup before STEP\n\n    def step(self, n, delay_us=1000):\n        \"\"\"Move n steps; n < 0 runs backwards. delay_us = time per step (>= 2, i.e. 1 us high + 1 us low).\"\"\"\n        if n == 0:\n            return\n        self.direction(n > 0)\n        half = max(1, delay_us // 2)\n        s = self.step_pin\n        for _ in range(abs(n)):\n            s.value(1)\n            time.sleep_us(half)   # tA >= 1 us\n            s.value(0)\n            time.sleep_us(half)   # tB >= 1 us\n        self.position += n\n\n    def enable(self, on=True):\n        \"\"\"EN low = outputs on (motor holds torque); EN high = outputs off (shaft turns freely).\"\"\"\n        if self.en is not None:\n            self.en.value(0 if on else 1)\n\n    def disable(self):\n        self.enable(False)\n\n    def sleep(self):\n        \"\"\"SLP low: outputs, regulator and charge pump off (< 10 uA).\"\"\"\n        if self.slp is not None:\n            self.slp.value(0)\n\n    def wake(self):\n        \"\"\"SLP high, then the 1 ms charge-pump start-up before stepping.\"\"\"\n        if self.slp is not None:\n            self.slp.value(1)\n            time.sleep_ms(1)\n\n    def reset(self):\n        \"\"\"Pulse RST low: translator back to Home, outputs off while low.\"\"\"\n        if self.rst is not None:\n            self.rst.value(0)\n            time.sleep_us(10)\n            self.rst.value(1)\n            time.sleep_ms(1)\n\n\ndef vref_for_current(amps, rcs=0.068):\n    \"\"\"VREF (volts, measured on the trimpot) for a current limit per coil: ITripMAX = VREF / (8 x Rcs).\n    Pololu boards made since 2017 have Rcs = 0.068 Ohm (older green-resistor boards 0.050 Ohm).\n    Clone boards often use 0.1 Ohm (R100): check the sense resistors on yours.\"\"\"\n    return 8 * amps * rcs\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom a4988 import A4988\n\n# STEP/DIR to GPIOs, RST driven high (it floats on the board). Full step: MS1-MS3 left open.\nmotor = A4988({STEP}, {DIR}, rst={RST})\nwhile True:\n    motor.step(200)           # one revolution of a 1.8 degree motor\n    print('moved 200 steps forward')\n    time.sleep(1)\n    motor.step(-200)\n    print('moved 200 steps back')\n    time.sleep(1)\n",
+    "test": {
+      "id": "steps",
+      "title": "Holds RST high, steps 200 forward (DIR high) then 200 back (DIR low)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RST",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moved 200 steps forward",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "STEP",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moved 200 steps back",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RST",
+          "on": true
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:27:44.585Z",
+    "verifiedSources": [
+      "https://www.pololu.com/product/1182",
+      "https://www.allegromicro.com/-/media/files/datasheets/a4988-datasheet.pdf"
+    ],
+    "simNote": "This board has pins on more than one edge, so Sparkbench connects it with jumper cables: off the breadboard, and to a single-row cable connector at the edge of the circuit board."
+  }
+}

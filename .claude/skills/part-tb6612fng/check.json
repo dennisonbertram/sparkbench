@@ -1,0 +1,74 @@
+{
+  "type": "custom-tb6612fng",
+  "mpn": "TB6612FNG",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "9 pins wired; U2.PWMA → D25 (GPIO25). U2.AIN2 → D26 (GPIO26). U2.AIN1 → D27 (GPIO27). U2.STBY → D13 (GPIO13). Added the tb6612fng.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor A runs forward, then stops: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "9 pins wired; U2.PWMA → GP2 (GPIO2). U2.AIN2 → GP3 (GPIO3). U2.AIN1 → GP6 (GPIO6). U2.STBY → GP7 (GPIO7). Added the tb6612fng.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Motor A runs forward, then stops: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical"
+    }
+  ],
+  "checkedAt": "2026-10-21T07:27:55.305Z"
+}

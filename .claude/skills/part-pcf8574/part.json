@@ -1,0 +1,272 @@
+{
+  "type": "custom-pcf8574",
+  "name": "PCF8574 8-bit I/O expander",
+  "mpn": "PCF8574",
+  "category": "ic",
+  "description": "TI/NXP 8-bit quasi-bidirectional I/O expander for I2C (100 kHz): one written byte sets P7..P0, one read byte returns their levels; no direction register. A pin latched high is a weak 30-310 uA pull-up that can be read as an input; latched low it sinks up to 25 mA (100 mA total), so drive LEDs active-low from VCC. Chip supply 2.5-6 V, I2C address 0x20-0x27 (0100 A2 A1 A0). Sold as: Adafruit PCF8574 I2C GPIO Expander Breakout (#5545), two headers modelled as one 16-pin row: power/I2C row VIN, GND, SCL, SDA, INT, A0, then I/O row +, P7, P6, P5, P4, P3, P2, P1, P0, -; STEMMA QT connectors; address 0x20 with A0 and the A1/A2 jumpers open.",
+  "eli5": "Gives your board eight extra on/off pins over just two I2C wires, for buttons and LEDs.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 3-5 V: use the same voltage as your microcontroller's logic (chip: 2.5-6 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 k pull-up on the board), 100 kHz max",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 k pull-up on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, open-drain, active low: goes low when an input pin changes; cleared by reading or writing the port",
+      "required": false
+    },
+    {
+      "name": "A0",
+      "role": "io",
+      "description": "Address bit 0: unconnected = 0x20, tie to VIN = 0x21 (A1/A2 are solder jumpers on the back)",
+      "required": false
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "I/O-row supply pin (same net as VIN), for powering LEDs/buttons on the P pins",
+      "required": false
+    },
+    {
+      "name": "P7",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 7: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P6",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 6: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P5",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 5: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P4",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 4: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P3",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 3: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P2",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 2: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P1",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 1: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "P0",
+      "role": "io",
+      "description": "Quasi-bidirectional I/O 0: latched high = weak pull-up/input, latched low = sinks up to 25 mA",
+      "required": false
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "I/O-row ground pin (same net as GND)",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 0.1,
+  "i2cAddress": 32,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/pcf8574.pdf",
+  "priceUsd": 4.95,
+  "supplierQuery": "Adafruit PCF8574 I2C GPIO expander breakout 5545",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "Run the I2C bus at 100 kHz (I2C(..., freq=100000)): the PCF8574 is a standard-mode part and 400 kHz is out of spec.",
+    "There are no registers: write one byte to set all eight pins, read one byte to get all eight levels (bit 7 = P7).",
+    "A pin can only pull high weakly (about 100 uA). Wire LEDs from + through a resistor (e.g. 1 k) into the P pin so they light when the pin is written 0.",
+    "To use a pin as an input, write it 1 first (all pins are 1 at power-on), then wire the button from the pin to GND: pressed reads 0.",
+    "Address 0x20 by default; tie A0 to VIN or close the A0/A1/A2 jumpers on the back for 0x21-0x27 (up to 8 boards on one bus).",
+    "Never short a pin that is written 0 to VIN: it sinks up to 25 mA per pin and 100 mA in total."
+  ],
+  "keywords": [
+    "pcf8574",
+    "io expander",
+    "gpio expander",
+    "i2c expander",
+    "port expander",
+    "pcf8574a"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "pointerless": true,
+    "registers": {
+      "0x00": 255
+    },
+    "outputBits": [
+      {
+        "reg": "0x00",
+        "bit": 0,
+        "name": "P0"
+      },
+      {
+        "reg": "0x00",
+        "bit": 1,
+        "name": "P1"
+      },
+      {
+        "reg": "0x00",
+        "bit": 2,
+        "name": "P2"
+      },
+      {
+        "reg": "0x00",
+        "bit": 3,
+        "name": "P3"
+      },
+      {
+        "reg": "0x00",
+        "bit": 4,
+        "name": "P4"
+      },
+      {
+        "reg": "0x00",
+        "bit": 5,
+        "name": "P5"
+      },
+      {
+        "reg": "0x00",
+        "bit": 6,
+        "name": "P6"
+      },
+      {
+        "reg": "0x00",
+        "bit": 7,
+        "name": "P7"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x00",
+        "bit": 7,
+        "control": "button",
+        "label": "Button on P7 (to GND)",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "pcf8574.py",
+    "code": "# PCF8574 8-bit quasi-bidirectional I/O expander (TI SCPS068), MicroPython driver.\n# The chip has no registers: writing one byte sets the output latch of P7..P0 (bit 7 = P7),\n# reading one byte returns the levels on P7..P0. At power-on every latch is high.\n# A pin latched high is a weak (~100 uA) pull-up, so it doubles as an input; a pin latched low sinks\n# up to 25 mA. Write a pin high before reading it as an input. I2C clock: 100 kHz maximum.\n\n\nclass PCF8574:\n    def __init__(self, i2c, addr=0x20):\n        self.i2c = i2c\n        self.addr = addr  # 0x20 + (A2 << 2) + (A1 << 1) + A0\n        self._out = 0xFF  # power-on state: all pins high (inputs)\n        self.i2c.writeto(self.addr, bytes([self._out]))\n\n    def read_port(self):\n        \"\"\"The level on P7..P0 as one byte (pins latched low always read 0).\"\"\"\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def write_port(self, value):\n        \"\"\"Set all eight latches at once (bit 7 = P7).\"\"\"\n        self._out = value & 0xFF\n        self.i2c.writeto(self.addr, bytes([self._out]))\n\n    def pin(self, n, value=None):\n        \"\"\"pin(n) reads Pn; pin(n, v) sets Pn's latch (1 = high / input, 0 = low, sinks current).\"\"\"\n        if not 0 <= n <= 7:\n            raise ValueError('pin must be 0-7')\n        if value is None:\n            return (self.read_port() >> n) & 1\n        if value:\n            self._out |= 1 << n\n        else:\n            self._out &= ~(1 << n) & 0xFF\n        self.i2c.writeto(self.addr, bytes([self._out]))\n\n    def toggle(self, n):\n        self.pin(n, 0 if (self._out >> n) & 1 else 1)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom pcf8574 import PCF8574\n\n# The PCF8574 is a 100 kHz (standard-mode) I2C device.\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\nio = PCF8574(i2c, 0x20)\n# Button from P7 to GND; LED + 1 k resistor from + to P0 (lights when P0 is pulled low).\nwhile True:\n    pressed = io.pin(7) == 0      # P7 stays latched high, so it reads the button\n    io.pin(0, 0 if pressed else 1)\n    print('BUTTON=%s LED=%s' % ('PRESSED' if pressed else 'RELEASED', 'ON' if pressed else 'OFF'))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "button-led",
+      "title": "Reads the button on P7 and sinks P0 low to light the LED",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=PRESSED LED=ON",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": false,
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "BUTTON=RELEASED LED=OFF",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "P0",
+          "on": true,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/pcf8574.pdf",
+    "https://learn.adafruit.com/adafruit-pcf8574/pinouts",
+    "https://www.adafruit.com/product/5545",
+    "https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/svg/contrib/breadboard/adafruit_04438b87e8b6eacd3157afd472814067_1_breadboard_24.svg"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T07:28:21.379Z",
+    "verifiedSources": [
+      "https://www.nxp.com/docs/en/data-sheet/PCF8574_PCF8574A.pdf",
+      "https://learn.adafruit.com/adafruit-pcf8574/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/113/859/large1024/adafruit_products_PCF8574_pinouts_guide.jpg",
+      "https://www.adafruit.com/product/5545"
+    ],
+    "simNote": "This board has pins on more than one edge, so Sparkbench connects it with jumper cables: off the breadboard, and to a single-row cable connector at the edge of the circuit board."
+  }
+}

@@ -1,0 +1,52 @@
+{
+ "diffs": [
+  {
+   "diff": "header pin 1: part says VM, datasheet reading says AIN1",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 1 is on signal 'VMOTOR' (<contactref element=\"JP5\" pad=\"1\"/>); pad 1 sits at y=20.32 mm next to silkscreen text 'VM' (y=22.606). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  },
+  {
+   "diff": "header pin 2: part says GND, datasheet reading says AIN2",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 2 is on signal 'GND' (<contactref element=\"JP5\" pad=\"2\"/>); pad 2 sits at y=17.78 mm next to silkscreen text 'GND' (y=16.51). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  },
+  {
+   "diff": "header pin 3: part says FLT, datasheet reading says SLP",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 3 is on signal 'NFAULT' (<contactref element=\"JP5\" pad=\"3\"/>); pad 3 sits at y=15.24 mm next to silkscreen text 'FLT' (y=13.97). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  },
+  {
+   "diff": "header pin 4: part says BIN1, datasheet reading says BIN2",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 4 is on signal 'BIN1' (<contactref element=\"JP5\" pad=\"4\"/>); pad 4 sits at y=12.70 mm next to silkscreen text 'BIN1' (y=11.303). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  },
+  {
+   "diff": "header pin 5: part says BIN2, datasheet reading says BIN1",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 5 is on signal 'BIN2' (<contactref element=\"JP5\" pad=\"5\"/>); pad 5 sits at y=10.16 mm next to silkscreen text 'BIN2' (y=8.636). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  },
+  {
+   "diff": "header pin 6: part says SLP, datasheet reading says FLT",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 6 is on signal '!SLEEP' (<contactref element=\"JP5\" pad=\"6\"/>); pad 6 sits at y=7.62 mm next to silkscreen text 'SLP' (y=6.35). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  },
+  {
+   "diff": "header pin 7: part says AIN2, datasheet reading says GND",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 7 is on signal 'AIN2' (<contactref element=\"JP5\" pad=\"7\"/>); pad 7 sits at y=5.08 mm next to silkscreen text 'AIN2' (y=3.81). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  },
+  {
+   "diff": "header pin 8: part says AIN1, datasheet reading says VM",
+   "verdict": "part-correct",
+   "evidence": "Adafruit's Eagle board file for #3297: 8-pin header JP5 (package 1X08_ROUND_70 at y=11.43, rot R270) pad 8 is on signal 'AIN1' (<contactref element=\"JP5\" pad=\"8\"/>); pad 8 sits at y=2.54 mm next to silkscreen text 'AIN1' (y=1.27). Silkscreen order from pad 1 to pad 8: VM GND FLT BIN1 BIN2 SLP AIN2 AIN1. The second reading lists the same eight pins in exact reverse order, i.e. it counted from the AIN1 end; pad 1 is the VM end. The pin's identity and function are the same, only the numbering differs. The TI datasheet only covers the chip package, not this header.",
+   "source": "https://github.com/adafruit/Adafruit-DRV8833-Motor-Driver-Breakout-PCB/blob/master/Adafruit%20DRV8833.brd"
+  }
+ ]
+}
