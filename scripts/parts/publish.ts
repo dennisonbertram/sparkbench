@@ -38,7 +38,7 @@ function authorConversions(spec: CustomPartSpec): { scale: number; offset: numbe
   const out: { scale: number; offset: number; per: number }[] = [];
   const s = spec.sim;
   for (const m of [...(s.measure ? [s.measure] : []), ...(s.measures ?? [])]) out.push({ scale: m.scale, offset: m.offset ?? 0, per: m.scale / 2 ** (m.shift ?? 0) });
-  for (const r of s.responses ?? []) for (const b of r.bytes as ResponseSegment[]) if ('control' in b) out.push({ scale: b.scale, offset: b.offset ?? 0, per: b.scale });
+  for (const r of s.responses ?? []) for (const b of r.bytes as ResponseSegment[]) if ('control' in b) out.push({ scale: b.scale ?? 1, offset: b.offset ?? 0, per: b.scale ?? 1 });
   if (s.kind === 'analog-sensor' && s.min !== undefined && s.max !== undefined && s.vAtMin !== undefined && s.vAtMax !== undefined && s.vAtMax !== s.vAtMin) {
     // value per volt at the output pin
     const k = (s.max - s.min) / (s.vAtMax - s.vAtMin);

@@ -618,7 +618,13 @@ export function packResponse(segs: ResponseSegment[], value: (key: string) => nu
       else push(crc8Sensirion(prev, s.crc === 'htu21d' ? 0 : 0xff), 8);
     }
     else if ('const' in s) push(s.const, s.bits);
-    else {
+    else if ('float32' in s) {
+      const dv = new DataView(new ArrayBuffer(4));
+      dv.setFloat32(0, (value(s.control) - (s.offset ?? 0)) / (s.scale ?? 1));
+      if (s.float32 === 'hi') push(dv.getUint16(0), 16);
+      else if (s.float32 === 'lo') push(dv.getUint16(2), 16);
+      else push(dv.getUint32(0), 32);
+    } else {
       let raw = Math.round((value(s.control) - (s.offset ?? 0)) / (s.scale || 1));
       if (s.signed && raw < 0) raw += 2 ** s.bits;
       push(Math.max(0, Math.min(2 ** s.bits - 1, raw)), s.bits);

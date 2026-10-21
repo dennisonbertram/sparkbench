@@ -91,3 +91,20 @@ describe('word registers and 16-bit addresses', () => {
     expect(crc8Sensirion([0x68, 0x3a], 0)).toBe(0x7c);
   });
 });
+
+describe('float fields', () => {
+  it('packs IEEE-754 floats big-endian with a CRC per word (SCD30 style)', () => {
+    const b = packResponse([{ control: 'value', float32: true, bits: 32 }], () => 1234.5);
+    const dv = new DataView(new Uint8Array(b).buffer);
+    expect(dv.getFloat32(0)).toBeCloseTo(1234.5, 3);
+  });
+});
+
+describe('split float fields', () => {
+  it('splits a float into words with a CRC after each (SCD30 read_measurement)', () => {
+    const b = packResponse([{ control: 'value', float32: 'hi', bits: 16 }, { crc: 'sensirion', over: 2 }, { control: 'value', float32: 'lo', bits: 16 }, { crc: 'sensirion', over: 2 }], () => 812.25);
+    expect(b[2]).toBe(crc8Sensirion(b.slice(0, 2)));
+    expect(b[5]).toBe(crc8Sensirion(b.slice(3, 5)));
+    expect(new DataView(new Uint8Array([b[0], b[1], b[3], b[4]]).buffer).getFloat32(0)).toBeCloseTo(812.25, 3);
+  });
+});
