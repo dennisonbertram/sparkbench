@@ -1,0 +1,110 @@
+{
+  "type": "custom-adafruit-anemometer",
+  "name": "Adafruit anemometer wind speed sensor",
+  "mpn": "Adafruit 1733",
+  "category": "sensor",
+  "description": "Three-cup wind speed sensor (QS-FS type) with a linear analog voltage output: 0.4 V at 0 m/s up to 2.0 V at 32.4 m/s (20.25 m/s per volt). Needs a 7-24 V DC supply; the 0.4-2.0 V signal goes straight to a 3.3 V ADC. Sold as: Adafruit Anemometer Wind Speed Sensor w/Analog Voltage Output (product 1733), 99 cm cable with three wires: brown = power, black = ground, blue = signal.",
+  "eli5": "Spinning cups that catch the wind. The faster they spin, the higher the voltage on the blue wire, so your board can work out how windy it is. It needs its own 7-24 V power supply.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "PWR",
+      "role": "power",
+      "description": "Brown wire (plug pin 1): supply, 7-24 V DC from a separate supply (e.g. a 9 V or 12 V adapter). Not the board's 3V3/5V.",
+      "required": true,
+      "supply": {
+        "vmin": 7,
+        "vmax": 24
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Black wire (plug pin 2): power and signal ground. Join it to the supply negative and the microcontroller GND.",
+      "required": true
+    },
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Blue wire (plug pin 3): analog wind speed, 0.4 V (0 m/s) to 2.0 V (32.4 m/s). Safe for a 3.3 V ADC pin.",
+      "required": true
+    }
+  ],
+  "vmin": 7,
+  "vmax": 24,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/product-files/1733/C2192-002_datasheet.pdf",
+  "sources": [
+    "https://cdn-shop.adafruit.com/product-files/1733/C2192-002_datasheet.pdf",
+    "https://www.adafruit.com/product/1733"
+  ],
+  "priceUsd": 44.95,
+  "supplierQuery": "Adafruit 1733 anemometer wind speed sensor analog voltage output",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+  "buildNotes": [
+    "Wires: brown = PWR (7-24 V DC), black = GND, blue = SIG. The plug's pin 4 is not connected.",
+    "Power the brown wire from a separate 7-24 V DC supply (Adafruit used 9 V). Join the supply negative, the black wire and the microcontroller GND.",
+    "Wind speed (m/s) = (V_SIG - 0.4) x 32.4 / 1.6 = (V_SIG - 0.4) x 20.25. 0.4 V = calm, 2.0 V = 32.4 m/s; km/h = m/s x 3.6.",
+    "SIG stays between 0.4 V and 2.0 V, so it goes straight to an ESP32 ADC1 pin (GPIO32-39) or a Pico ADC pin (GP26-28). Average many samples.",
+    "Mount it level and clear of obstacles; the sensor is not IP rated per Adafruit, so shield the twist-lock plug from rain."
+  ],
+  "keywords": [
+    "anemometer",
+    "wind speed",
+    "wind",
+    "weather station",
+    "adafruit 1733",
+    "qs-fs",
+    "cup anemometer",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "Wind speed",
+    "unit": "m/s",
+    "min": 0,
+    "max": 32.4,
+    "default": 5,
+    "vAtMin": 0.4,
+    "vAtMax": 2
+  },
+  "driver": {
+    "filename": "anemometer.py",
+    "code": "# Adafruit anemometer wind speed sensor (product 1733, QS-FS analog voltage type), MicroPython driver.\n# Supply 7-24 V DC on the brown wire (NOT from the 3.3 V / 5 V pins). The blue signal wire is linear:\n# 0.4 V at 0 m/s up to 2.0 V at 32.4 m/s (Adafruit product page; QS-FS datasheet range 0-32.4 m/s),\n# i.e. wind (m/s) = (V - 0.4) * 32.4 / 1.6 = (V - 0.4) * 20.25.\nfrom machine import ADC, Pin\n\n\nclass Anemometer:\n    V_ZERO = 0.4       # output at 0 m/s\n    V_FULL = 2.0       # output at full scale\n    FULL_MS = 32.4     # full-scale wind speed in m/s\n\n    def __init__(self, pin, samples=32, vref=3.3):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n\n    def voltage(self):\n        \"\"\"Average several ADC samples and return the signal voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def speed(self, v=None):\n        \"\"\"Wind speed in m/s (0.4 V = 0 m/s, 2.0 V = 32.4 m/s). Readings below 0.4 V count as calm.\"\"\"\n        if v is None:\n            v = self.voltage()\n        ms = (v - self.V_ZERO) * self.FULL_MS / (self.V_FULL - self.V_ZERO)\n        return ms if ms > 0 else 0.0\n\n    def speed_kmh(self):\n        return self.speed() * 3.6\n"
+  },
+  "skill": "---\nname: part-adafruit-anemometer\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Adafruit anemometer wind speed sensor with analog voltage output (product 1733, QS-FS cup anemometer, 0.4-2.0 V for 0-32.4 m/s, 7-24 V supply). Use when designing, wiring, simulating or writing code for a wind speed sensor / anemometer in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Adafruit anemometer wind speed sensor (product 1733)\n\n## Overview\nA three-cup aluminium anemometer (QS-FS wind speed sensor, analog voltage type) for weather stations. Built-in electronics turn the cup speed into a **linear voltage**: **0.4 V at 0 m/s** up to **2.0 V at 32.4 m/s**. There is no chip to talk to: read the blue wire with an ADC.\n- Range 0-32.4 m/s (voltage version), start wind speed 0.2 m/s (Adafruit) / up to 0.8 m/s (datasheet), resolution 0.1 m/s\n- Accuracy ±(0.3 + 0.03 × V) m/s (datasheet), worst case about 1 m/s (Adafruit)\n- **Supply 7-24 V DC** (Adafruit used 9 V); it does not run from 3.3 V or 5 V\n- 99 cm cable with a twist-lock 4-pin plug at the sensor; not IP rated per Adafruit\n\n## Pinout (cable wires; plug pin 1-3, pin 4 not connected)\n| Wire | Sparkbench pin | Function |\n|---|---|---|\n| Brown | PWR | Supply, 7-24 V DC from a separate supply |\n| Black | GND | Power and signal ground (tie to the microcontroller GND) |\n| Blue | SIG | Analog wind speed output, 0.4-2.0 V |\n\nThe sensor has bare wire leads, so it is wired with jumper leads / a screw terminal rather than plugged into the breadboard.\n\n## Electrical limits\n- PWR: 7 V min, 24 V max. Use a 9 V or 12 V adapter; never connect it to the board's 3V3/5V pin.\n- SIG: 0.4-2.0 V, safe for a 3.3 V ADC input directly (no divider needed).\n- Common ground: the supply's negative, the black wire and the microcontroller GND must all be joined.\n\n## Interface details\n```\nwind (m/s) = (V_sig − 0.4) × 32.4 / 1.6 = (V_sig − 0.4) × 20.25\n```\nExamples: 0.4 V = 0 m/s, 0.99 V ≈ 12 m/s, 1.2 V = 16.2 m/s, 2.0 V = 32.4 m/s. km/h = m/s × 3.6. Readings a little under 0.4 V are calm air (offset/ADC error).\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| Brown (PWR) | external 7-24 V + | external 7-24 V + | external 7-24 V + |\n| Black (GND) | GND + supply − | GND + supply − | GND + supply − |\n| Blue (SIG) | GPIO32-39 (ADC1) | GP26/27/28 (ADC) | External ADC (ADS1115 / MCP3008) |\n\nUse an ADC1 pin on the ESP32 (ADC2 stops working while Wi-Fi is on). The Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom anemometer import Anemometer\nimport time\nwind = Anemometer(34)            # GPIO the blue wire is on\nwhile True:\n    print('Wind=%.1f m/s' % wind.speed())\n    time.sleep(1)\n```\nThe driver averages 32 samples, using calibrated `read_uv()` where available (ESP32), otherwise `read_u16()` × 3.3 V / 65535 (pass `vref=` for a different reference).\n\n## Gotchas\n- **Power it from 7-24 V**, not the board. On 3.3/5 V the output is meaningless.\n- ESP32 ADCs are least accurate near 0 V-0.15 V and above ~2.5 V; 0.4-2.0 V sits in the good range, but calibration still helps (check the 0.4 V calm reading).\n- Gusts: average over several seconds for a steady reading, keep the max for gust speed.\n- Mount it level and clear of buildings; seal the plug if it is exposed to rain.\n\n## Datasheet\nhttps://cdn-shop.adafruit.com/product-files/1733/C2192-002_datasheet.pdf (QS-FS wind speed sensor) and https://www.adafruit.com/product/1733\n",
+  "example": {
+    "code": "from anemometer import Anemometer\nimport time\n\nwind = Anemometer({SIG})\nwhile True:\n    print('Wind=%.1f m/s' % wind.speed())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the wind speed set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 12
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "Wind=12.0 m/s",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:45:17.935Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/1733",
+      "https://media.digikey.com/pdf/Data%20Sheets/Adafruit%20PDFs/1733_Web.pdf"
+    ]
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "type": "custom-aj-sr04m",
+  "name": "AJ-SR04M waterproof ultrasonic distance sensor (trigger/echo mode)",
+  "mpn": "AJ-SR04M",
+  "category": "sensor",
+  "description": "Waterproof ultrasonic rangefinder: a sealed 40 kHz transceiver probe on a 2.5 m cable plus a control board. In its factory mode 1 (R19 open) it works like an HC-SR04: a >10 us high pulse on Trig starts a measurement and Echo then goes high for the sound's round trip (about 58 us per cm). Range 20-800 cm (20 cm blind zone), 3-5.5 V supply, about 30 mA while measuring and under 2 mA standby; Echo swings to the supply voltage. Sold as: AJ-SR04M waterproof ultrasonic module (blue control board with 4-pin header 5V, Trig, Echo, GND; RX/TX printed above Trig/Echo for the serial modes), R19 left open.",
+  "eli5": "A waterproof 'ear' on a long cable chirps sound too high for you to hear and times how long the echo takes to come back, so your board can work out how far away the water, wall or object is.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, DC 3-5.5 V despite the label. Power it from 3V3 on an ESP32 or Pico so Echo stays at 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "Trig",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Trigger input (RX in the serial modes 3-5): a high pulse of more than 10 us starts one measurement",
+      "required": true
+    },
+    {
+      "name": "Echo",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Echo output (TX in the serial modes): high for the round-trip time, about 58.3 us per cm. Swings to the supply voltage",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 30,
+  "datasheetUrl": "https://www.fabian.com.mt/viewer/42585/pdf.pdf",
+  "sources": [
+    "https://www.fabian.com.mt/viewer/42585/pdf.pdf",
+    "https://www.fabian.com.mt/viewer/42586/pdf.pdf",
+    "https://probots.co.in/technical_data/AJ-SR04M%20Ultrasonic%20Sensor%20Module%20_DataSheet.pdf",
+    "https://components.espressif.com/components/cyrilb1531/aj_sr04m/versions/0.1.0/readme"
+  ],
+  "priceUsd": 8,
+  "supplierQuery": "AJ-SR04M waterproof ultrasonic module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Leave R19 (next to the header) open: that is mode 1, trigger/echo. 300k = low-power trigger mode (needs a >1 ms trigger), 120k = automatic serial, 47k = serial on request, 0 ohm = ASCII serial. The mode is read only at power-up.",
+    "Header order on the board: 5V, Trig, Echo, GND (RX and TX are printed above Trig and Echo for the serial modes).",
+    "Power the 5V pin from 3V3 when using an ESP32 or Pico: the module runs on 3-5.5 V and Echo swings to its supply, so at 5 V Echo would put 5 V on a 3.3 V GPIO. If you must use 5 V, add a divider (e.g. 10k/20k) on Echo.",
+    "Plug the probe cable into the white 2-pin socket on the back before powering up.",
+    "Objects closer than 20 cm are in the blind zone and read wrong; aim the probe squarely at a flat surface.",
+    "Leave at least 60 ms between measurements so the previous echo has died away."
+  ],
+  "keywords": [
+    "aj-sr04m",
+    "ajsr04m",
+    "jsn-sr04t",
+    "waterproof",
+    "ultrasonic",
+    "distance",
+    "sonar",
+    "tank level",
+    "hc-sr04",
+    "rangefinder"
+  ],
+  "sim": {
+    "kind": "ultrasonic",
+    "outputPin": "Echo",
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 0,
+    "max": 900,
+    "default": 100,
+    "echo": {
+      "trigPin": "Trig",
+      "minCm": 20,
+      "maxCm": 800,
+      "usPerCm": 58.3,
+      "triggerUs": 10
+    }
+  },
+  "driver": {
+    "filename": "aj_sr04m.py",
+    "code": "# AJ-SR04M waterproof ultrasonic module, mode 1 (R19 open, factory default):\n# HC-SR04 compatible trigger/echo. MicroPython driver.\n# Datasheet (user manual): a TTL high pulse of more than 10 us on Trig starts a\n# measurement; the module sends a 40 kHz burst and then holds Echo high for the\n# sound's round-trip time (\"distance height\"). Range 20-800 cm (blind zone 20 cm).\n# Distance = echo high time x speed of sound / 2  (343 m/s at 20 C -> 58.3 us per cm).\nfrom machine import Pin, time_pulse_us\nimport time\n\nUS_PER_CM = 58.3          # 2 / 343 m/s, round trip at about 20 C\nMIN_CM = 20               # blind zone\nMAX_CM = 800              # furthest range in the datasheet\n\n\nclass AJSR04M:\n    def __init__(self, trig, echo, timeout_us=60000):\n        # 800 cm needs about 46.6 ms of echo, so 60 ms covers the full range.\n        self.trig = Pin(trig, Pin.OUT, value=0)\n        self.echo = Pin(echo, Pin.IN)\n        self.timeout_us = timeout_us\n\n    def pulse_us(self):\n        \"\"\"Echo high time in us, or None on timeout / no echo.\"\"\"\n        self.trig.value(0)\n        time.sleep_us(5)\n        self.trig.value(1)\n        time.sleep_us(15)          # datasheet: > 10 us TTL trigger\n        self.trig.value(0)\n        t = time_pulse_us(self.echo, 1, self.timeout_us)\n        if t < 0:\n            return None\n        return t\n\n    def distance_cm(self, temp_c=None):\n        \"\"\"Distance in cm (about 20-800), or None if there was no valid echo.\n        Pass temp_c to correct the speed of sound for air temperature.\"\"\"\n        t = self.pulse_us()\n        if t is None:\n            return None\n        if temp_c is None:\n            return t / US_PER_CM\n        v = 331.3 + 0.606 * temp_c          # m/s\n        return t * v / 20000                # us * m/s / 2 -> cm\n\n    def distance_mm(self):\n        d = self.distance_cm()\n        return None if d is None else d * 10\n"
+  },
+  "example": {
+    "code": "from aj_sr04m import AJSR04M\nimport time\n\nsensor = AJSR04M({TRIG}, {ECHO})\nwhile True:\n    d = sensor.distance_cm()\n    if d is None:\n        print('no echo')\n    else:\n        print('D=%dcm' % round(d))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Times the echo pulse (58.3 us per cm): 150 cm reads D=150cm, 640 cm reads D=640cm",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 150
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=150cm",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 640
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=640cm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:45:32.393Z",
+    "verifiedSources": [
+      "https://mantech.co.za/Datasheets/Products/AJ-SR04M-200925A.pdf",
+      "https://raw.githubusercontent.com/tomaskovacik/kicad-library/master/library/datasheet/K02-AJ-SR04/AJ-SRO4M-RD.en.pdf",
+      "https://duckduckgo.com/html/?q=AJ-SR04M+pinout+5V+Trig+Echo+GND"
+    ]
+  }
+}

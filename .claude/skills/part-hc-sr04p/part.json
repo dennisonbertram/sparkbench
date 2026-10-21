@@ -1,0 +1,133 @@
+{
+  "type": "custom-hc-sr04p",
+  "name": "HC-SR04P ultrasonic distance sensor (3-5.5 V)",
+  "mpn": "HC-SR04P",
+  "category": "sensor",
+  "description": "Ultrasonic rangefinder that times the echo of a 40 kHz burst: hold Trig high for 10 µs and Echo goes high for the sound's round-trip time (µs / 58 = cm). Measures about 2–400 cm at 3.3 V (about 450 cm at 5 V), ±3 mm. The 'P' version uses the RCWL-9610 controller and runs on 3–5.5 V, so on a 3.3 V supply its Echo output is 3.3 V and needs no divider. Sold as: HC-SR04P 3-5.5 V ultrasonic distance sensor module (RCWL-9610 controller, blue board, 4-pin header VCC, Trig, Echo, GND).",
+  "eli5": "Squeaks a sound too high to hear and times how long the echo takes to come back, which tells your board how far away the nearest thing is.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3–5.5 V. Use 3.3 V on ESP32/Pico so Echo is 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "Trig",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Trigger input: a 10 µs high pulse starts one measurement",
+      "required": true
+    },
+    {
+      "name": "Echo",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Echo output: high for the round-trip time of the sound (µs / 58 = cm); swings to VCC",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 15,
+  "datasheetUrl": "https://www.mikrocontroller.net/attachment/618319/RCWL-9610-V3.0.pdf",
+  "priceUsd": 2,
+  "supplierQuery": "HC-SR04P ultrasonic sensor 3.3V 5V",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power VCC from 3.3 V on an ESP32 or Pico: Echo then swings only to 3.3 V. Powered from 5 V, Echo is 5 V and needs a divider (e.g. 1 kΩ / 2 kΩ) before a 3.3 V GPIO.",
+    "Start a reading with a 10 µs high pulse on Trig, then time the high pulse on Echo: distance cm = µs / 58 (58.3 at 20 °C).",
+    "Leave at least 60 ms between readings so a late echo is not taken for the next one.",
+    "Range drops to about 400 cm on 3.3 V (450 cm on 5 V); objects closer than 2 cm are in the blind zone.",
+    "Aim at a flat, hard target of at least 0.5 m²; soft, small or angled objects may give no echo."
+  ],
+  "keywords": [
+    "hc-sr04p",
+    "hc-sr04",
+    "hcsr04",
+    "rcwl-9610",
+    "ultrasonic",
+    "distance",
+    "sonar",
+    "range finder",
+    "3.3v"
+  ],
+  "sources": [
+    "https://www.mikrocontroller.net/attachment/618319/RCWL-9610-V3.0.pdf",
+    "https://www.fredscave.com/sensors/dis-011hc-sr04p.html",
+    "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf",
+    "https://www.handsontec.com/dataspecs/HC-SR04-Ultrasonic.pdf",
+    "https://sigmanortec.ro/en/ultrasonic-sensor-hc-sr-04p-3-55v"
+  ],
+  "sim": {
+    "kind": "ultrasonic",
+    "outputPin": "Echo",
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 0,
+    "max": 500,
+    "default": 100,
+    "echo": {
+      "trigPin": "Trig",
+      "minCm": 2,
+      "maxCm": 400,
+      "triggerUs": 10
+    }
+  },
+  "driver": {
+    "filename": "hcsr04p.py",
+    "code": "# HC-SR04P ultrasonic distance sensor (RCWL-9610 controller, HC-SR04 compatible GPIO mode),\n# MicroPython driver.\n# Datasheet behaviour: hold Trig high for at least 10 us; the module then sends eight 40 kHz\n# pulses and raises Echo for the round-trip time of the sound.\n# Distance: cm = high-time(us) / 58 (speed of sound 340 m/s; 58.3 at 343 m/s, 20 degC).\n# Leave at least 60 ms between measurements so the last echo has died away.\n# Runs on 3-5.5 V; Echo swings to VCC, so power it from 3.3 V on 3.3 V boards.\nfrom machine import Pin, time_pulse_us\nimport time\n\nUS_PER_CM = 58.3      # 2 / 0.0343 cm/us (sound at about 20 degC)\nMIN_CM = 2            # blind zone\nMAX_CM = 400          # rated range at 3.3 V (about 450 cm at 5 V)\n\n\nclass HCSR04P:\n    def __init__(self, trig, echo, timeout_us=30000):\n        self.trig = Pin(trig, Pin.OUT, value=0) if isinstance(trig, int) else trig\n        self.echo = Pin(echo, Pin.IN) if isinstance(echo, int) else echo\n        self.timeout_us = timeout_us\n        self._last = time.ticks_ms() - 60\n\n    def pulse_us(self):\n        \"\"\"Echo high time in us, or None if no echo arrived within the timeout.\"\"\"\n        wait = 60 - time.ticks_diff(time.ticks_ms(), self._last)\n        if wait > 0:\n            time.sleep_ms(wait)\n        self.trig.value(0)\n        time.sleep_us(5)\n        self.trig.value(1)\n        time.sleep_us(10)          # trigger: at least 10 us high\n        self.trig.value(0)\n        t = time_pulse_us(self.echo, 1, self.timeout_us)\n        self._last = time.ticks_ms()\n        if t < 0:                  # -1: echo never went high, -2: still high at timeout\n            return None\n        return t\n\n    def distance_cm(self):\n        \"\"\"Distance in cm (float), or None when there is no valid echo / out of range.\"\"\"\n        t = self.pulse_us()\n        if t is None:\n            return None\n        cm = t / US_PER_CM\n        if cm < MIN_CM or cm > MAX_CM + 50:\n            return None\n        return cm\n\n    def distance_mm(self):\n        cm = self.distance_cm()\n        return None if cm is None else cm * 10\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom hcsr04p import HCSR04P\n\nsensor = HCSR04P(trig={TRIG}, echo={ECHO})\nwhile True:\n    d = sensor.distance_cm()\n    if d is None:\n        print('out of range')\n    else:\n        print('D=%dcm' % round(d))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 123
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=123cm",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=37cm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:45:18.376Z",
+    "verifiedSources": [
+      "https://www.fredscave.com/sensors/dis-011hc-sr04p.html",
+      "https://www.mikrocontroller.net/attachment/618319/RCWL-9610-V3.0.pdf",
+      "https://uelectronics.com/producto/hc-sr04p-sensor-ultrasonico-3-5v/"
+    ]
+  }
+}

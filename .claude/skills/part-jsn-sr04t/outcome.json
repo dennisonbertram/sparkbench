@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-jsn-sr04t",
+  "board": "JSN-SR04T-2.0 waterproof ultrasonic module (blue control board, 4-pin header 5V/Trig/Echo/GND, R27 open = mode 1, 2.5 m probe cable)",
+  "reason": "Modelled mode 1 (TRIG/ECHO) from the JSN-SR04T-2.0 datasheet: 58.82 us/cm (340 m/s), 20-600 cm, 38 ms no-echo pulse, 3.0-5.5 V; the check passed on ESP32 and Pico, including the spec, wiring, simulator test (150 cm, 342 cm, out of range) and PCB DRC.",
+  "datasheetUrl": "https://components101.com/sites/default/files/component_datasheet/JSN-SR04-Datasheet.pdf",
+  "breakoutPinoutSource": "JSN-SR04T-2.0 datasheet wiring table (3-5.5V, Trig(RX), Echo(TX), GND) and components101 pinout (5V, Trig, Echo, GND left to right): https://components101.com/node/1522",
+  "checkRuns": 2
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lc709203f",
+  "board": "Adafruit LC709203F LiPoly / LiIon Fuel Gauge and Battery Monitor (product 4712)",
+  "reason": "Check passed on ESP32 and Pico: SMBus words low byte first with CRC-8-ATM PEC (verified against both datasheet examples), cell voltage 0x09 in mV, RSOC 0x0D in %, ITE 0x0F in 0.1 %, and the datasheet start-up flow in the driver. The real chip runs from the battery on the JST connector; the sim powers it from VIN.",
+  "datasheetUrl": "https://www.onsemi.com/pdf/datasheet/lc709203f-d.pdf",
+  "breakoutPinoutSource": "Adafruit-LC709203F-PCB Eagle files (github.com/adafruit/Adafruit-LC709203F-PCB): JP1 1x06 silkscreen VIN, GND, SCL, SDA, INT, Therm; confirmed by the Adafruit learn guide pinouts page",
+  "checkRuns": 1
+}

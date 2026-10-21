@@ -1,0 +1,178 @@
+{
+  "type": "custom-lc709203f",
+  "name": "LC709203F LiPo fuel gauge",
+  "mpn": "LC709203F",
+  "category": "sensor",
+  "description": "onsemi single-cell Li-ion/LiPo fuel gauge: reports cell voltage (1 mV steps, ±7.5 mV at 25 °C) and state of charge (RSOC 0–100 %, ITE 0.0–100.0 %) over I2C with SMBus CRC-8, no sense resistor. The chip runs from the battery itself (2.5–4.5 V); VIN only feeds the I2C pull-ups and power LED. Sold as: Adafruit LC709203F LiPoly / LiIon Fuel Gauge and Battery Monitor (product 4712, 6-pin header VIN, GND, SCL, SDA, INT, Therm, two JST-PH battery connectors, STEMMA QT), I2C address 0x0B.",
+  "eli5": "Plugs in between your LiPo battery and your project and tells your board how full the battery is.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "sources": [
+    "https://cdn-learn.adafruit.com/assets/assets/000/094/597/original/LC709203F-D.PDF",
+    "https://www.onsemi.com/pdf/datasheet/lc709203f-d.pdf",
+    "https://learn.adafruit.com/adafruit-lc709203f-lipo-lipoly-battery-monitor/pinouts",
+    "https://github.com/adafruit/Adafruit-LC709203F-PCB",
+    "https://www.adafruit.com/product/4712"
+  ],
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Logic supply for the pull-ups and LED, 3–5 V (match your board's logic level). The gauge chip itself is powered by the battery on the JST-PH connector.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, common with the battery's negative",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "ALARMB alarm output, open drain, 10 kΩ pull-up to VIN; goes low below the low-RSOC or low-voltage threshold",
+      "required": false
+    },
+    {
+      "name": "Therm",
+      "role": "io",
+      "description": "Connect a 10 kΩ NTC thermistor (to GND) to measure the battery temperature; leave open otherwise",
+      "required": false
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 2,
+  "i2cAddress": 11,
+  "datasheetUrl": "https://www.onsemi.com/pdf/datasheet/lc709203f-d.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "Adafruit LC709203F LiPo fuel gauge battery monitor 4712",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Plug a single-cell 3.7 V LiPo/Li-ion into one JST-PH connector; the other JST-PH passes the battery on to your project. The chip is powered from the battery, so with no battery it does not answer on I2C.",
+    "Every word is low byte first and followed by a CRC-8 (poly 0x07, init 0): reads cover 0x16, command, 0x17, low, high; writes need a CRC over 0x16, command, low, high or the chip ignores them.",
+    "Start-up: set Operational mode (0x15 = 0x0001, sent twice to wake it from sleep), set APA (0x0B) for your battery capacity, the battery profile (0x12; 1 = 3.7 V/4.2 V cells), wait 100 ms, then 0x07 = 0xAA55 to initialise RSOC.",
+    "Cell voltage 0x09 in mV, RSOC 0x0D in %, ITE 0x0F in 0.1 %. The state of charge settles over a few minutes after start-up.",
+    "The I2C pins tolerate 5.5 V at most; power VIN from your board's logic supply (3V3 on an ESP32 or Pico)."
+  ],
+  "keywords": [
+    "lc709203f",
+    "fuel gauge",
+    "battery monitor",
+    "lipo",
+    "li-ion",
+    "state of charge",
+    "battery percentage",
+    "adafruit 4712"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "regWidth": 16,
+    "wordOrder": "lsb",
+    "pec": true,
+    "quantity": "Cell voltage",
+    "unit": "mV",
+    "min": 2500,
+    "max": 4500,
+    "default": 3700,
+    "controls": [
+      {
+        "key": "charge",
+        "quantity": "State of charge",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "registers": {
+      "0x06": 3380,
+      "0x08": 2982,
+      "0x0A": 0,
+      "0x0C": 30,
+      "0x12": 0,
+      "0x13": 8,
+      "0x14": 0,
+      "0x15": 1,
+      "0x16": 0,
+      "0x1A": 769
+    },
+    "measures": [
+      {
+        "reg": "0x09",
+        "bytes": 2,
+        "scale": 1,
+        "control": "value"
+      },
+      {
+        "reg": "0x0D",
+        "bytes": 2,
+        "scale": 1,
+        "control": "charge"
+      },
+      {
+        "reg": "0x0F",
+        "bytes": 2,
+        "scale": 0.1,
+        "control": "charge"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "lc709203f.py",
+    "code": "# LC709203F LiPo/Li-ion fuel gauge (onsemi), MicroPython driver.\n# SMBus word protocol from the datasheet: every word is low byte first and is followed by a CRC-8-ATM\n# (poly 0x07, init 0x00). Reads: CRC over 0x16, command, 0x17, low, high. Writes: CRC over 0x16,\n# command, low, high; the chip ignores a write without a correct CRC.\nimport time\n\nADDR = 0x0B\n\nREG_BEFORE_RSOC = 0x04\nREG_THERMISTOR_B = 0x06\nREG_INITIAL_RSOC = 0x07\nREG_CELL_TEMPERATURE = 0x08\nREG_CELL_VOLTAGE = 0x09\nREG_CURRENT_DIRECTION = 0x0A\nREG_APA = 0x0B\nREG_APT = 0x0C\nREG_RSOC = 0x0D\nREG_ITE = 0x0F\nREG_IC_VERSION = 0x11\nREG_CHANGE_PARAMETER = 0x12\nREG_ALARM_LOW_RSOC = 0x13\nREG_ALARM_LOW_VOLTAGE = 0x14\nREG_IC_POWER_MODE = 0x15\nREG_STATUS_BIT = 0x16\nREG_NUMBER_OF_PARAMETER = 0x1A\n\nPOWER_OPERATIONAL = 0x0001\nPOWER_SLEEP = 0x0002\n\n# Typical APA (0x0B) for battery type 01/03 (3.7 V / 4.2 V or 3.8 V / 4.35 V cells), datasheet Table 7.\nAPA = {100: 0x08, 200: 0x0B, 500: 0x10, 1000: 0x19, 2000: 0x2D, 3000: 0x36}\n\n\ndef crc8(data):\n    crc = 0\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x07) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass LC709203F:\n    def __init__(self, i2c, addr=ADDR, capacity_mah=500, profile=1, init=True):\n        \"\"\"profile 1 = 3.7 V nominal / 4.2 V charge cells (most hobby LiPos); 0 = the chip's other\n        profile (see datasheet Table 8). capacity_mah picks APA from Table 7.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        if init:\n            self.begin(capacity_mah, profile)\n\n    def _read_word(self, cmd):\n        d = self.i2c.readfrom_mem(self.addr, cmd, 3)\n        a = self.addr << 1\n        if crc8(bytes((a, cmd, a | 1, d[0], d[1]))) != d[2]:\n            raise OSError('LC709203F CRC mismatch: check the wiring')\n        return d[0] | (d[1] << 8)\n\n    def _write_word(self, cmd, value):\n        lo, hi = value & 0xFF, (value >> 8) & 0xFF\n        crc = crc8(bytes((self.addr << 1, cmd, lo, hi)))\n        self.i2c.writeto_mem(self.addr, cmd, bytes((lo, hi, crc)))\n\n    def wake(self):\n        \"\"\"Datasheet starting flow: in Sleep mode the first transfer only wakes the chip (an SDA\n        pulse), so 'Set Operational mode' is sent twice.\"\"\"\n        try:\n            self._write_word(REG_IC_POWER_MODE, POWER_OPERATIONAL)\n        except OSError:\n            pass\n        time.sleep_ms(1)  # TWU is at most 400 us\n        self._write_word(REG_IC_POWER_MODE, POWER_OPERATIONAL)\n\n    def begin(self, capacity_mah=500, profile=1):\n        self.wake()\n        sizes = sorted(APA)\n        best = min(sizes, key=lambda s: abs(s - capacity_mah))\n        self._write_word(REG_APA, APA[best])\n        self._write_word(REG_CHANGE_PARAMETER, profile)\n        time.sleep_ms(100)  # changing the parameter re-initialises the chip (TINIT up to 90 ms)\n        self._write_word(REG_INITIAL_RSOC, 0xAA55)\n        time.sleep_ms(2)  # RSOC initialisation takes up to 1.5 ms\n\n    def voltage_mv(self):\n        \"\"\"Cell voltage in mV (1 mV per LSB).\"\"\"\n        return self._read_word(REG_CELL_VOLTAGE)\n\n    def voltage(self):\n        return self.voltage_mv() / 1000\n\n    def percent(self):\n        \"\"\"RSOC, relative state of charge, 0-100 % (1 % per LSB).\"\"\"\n        return self._read_word(REG_RSOC)\n\n    def ite(self):\n        \"\"\"Indicator to empty, 0.0-100.0 % (0.1 % per LSB).\"\"\"\n        return self._read_word(REG_ITE) / 10\n\n    def temperature(self):\n        \"\"\"Cell temperature in degC (0.1 K per LSB, 0x0AAC = 0.0 degC).\"\"\"\n        return (self._read_word(REG_CELL_TEMPERATURE) - 0x0AAC) / 10\n\n    def set_temperature(self, celsius):\n        \"\"\"I2C temperature mode: tell the gauge the cell temperature (-20 to 60 degC).\"\"\"\n        raw = int(round(celsius * 10)) + 0x0AAC\n        self._write_word(REG_CELL_TEMPERATURE, max(0x09E4, min(0x0D04, raw)))\n\n    def use_thermistor(self, b_constant=3950):\n        \"\"\"Measure a 10k NTC on THERM instead (set its B constant).\"\"\"\n        self._write_word(REG_THERMISTOR_B, b_constant)\n        self._write_word(REG_STATUS_BIT, 0x0001)\n\n    def use_i2c_temperature(self):\n        self._write_word(REG_STATUS_BIT, 0x0000)\n\n    def set_alarm_percent(self, pct):\n        \"\"\"ALARMB (INT) goes low below this RSOC; 0 disables.\"\"\"\n        self._write_word(REG_ALARM_LOW_RSOC, pct)\n\n    def set_alarm_voltage(self, mv):\n        \"\"\"ALARMB (INT) goes low below this cell voltage in mV; 0 disables.\"\"\"\n        self._write_word(REG_ALARM_LOW_VOLTAGE, mv)\n\n    def ic_version(self):\n        return self._read_word(REG_IC_VERSION)\n\n    def sleep(self):\n        self._write_word(REG_IC_POWER_MODE, POWER_SLEEP)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom lc709203f import LC709203F\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=100000)\ngauge = LC709203F(i2c, capacity_mah=500)\nwhile True:\n    print('V=%.3fV RSOC=%d%% ITE=%.1f%%' % (gauge.voltage(), gauge.percent(), gauge.ite()))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the cell voltage and state of charge set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 3850
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "charge",
+          "value": 72
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "V=3.850V RSOC=72% ITE=72.0%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:42:44.268Z",
+    "verifiedSources": [
+      "https://github.com/adafruit/Adafruit-LC709203F-PCB",
+      "https://raw.githubusercontent.com/adafruit/Adafruit-LC709203F-PCB/master/assets/4712.jpg",
+      "https://raw.githubusercontent.com/adafruit/Adafruit_LC709203F/master/Adafruit_LC709203F.h",
+      "https://www.adafruit.com/product/4712"
+    ]
+  }
+}

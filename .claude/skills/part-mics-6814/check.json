@@ -1,0 +1,79 @@
+{
+  "type": "custom-mics-6814",
+  "mpn": "MiCS-6814",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; MiCS-6814 CO / NO2 / NH3 three-channel gas sensor breakout needs at least 4.9 V, so it is powered from 5 V. U2.CO → D32 (GPIO32) — an analog-capable pin. U2.NH3 → D33 (GPIO33) — an analog-capable pin. U2.NO2 → D34 (GPIO34) — an analog-capable pin. Added a 100 kΩ resistor from CO to 3V3, as the datasheet's circuit requires. Added a 100 kΩ resistor from NH3 to 3V3, as the datasheet's circuit requires. Added a 10 kΩ resistor from NO2 to 3V3, as the datasheet's circuit requires. Added the mics6814.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "21 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports each channel's sensing resistance from the datasheet load-resistor divider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×68 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, analog"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; MiCS-6814 CO / NO2 / NH3 three-channel gas sensor breakout needs at least 4.9 V, so it is powered from 5 V. U2.CO → GP28 (GPIO28) — an analog-capable pin. U2.NH3 → GP27 (GPIO27) — an analog-capable pin. U2.NO2 → GP26 (GPIO26) — an analog-capable pin. Added a 100 kΩ resistor from CO to 3V3, as the datasheet's circuit requires. Added a 100 kΩ resistor from NH3 to 3V3, as the datasheet's circuit requires. Added a 10 kΩ resistor from NO2 to 3V3, as the datasheet's circuit requires. Added the mics6814.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "22 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports each channel's sensing resistance from the datasheet load-resistor divider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C5117910 MICS-6814 (2 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T15:43:13.795Z"
+}

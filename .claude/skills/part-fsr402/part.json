@@ -1,0 +1,118 @@
+{
+  "type": "custom-fsr402",
+  "name": "Interlink FSR 402 force sensing resistor",
+  "mpn": "FSR402",
+  "category": "sensor",
+  "description": "Interlink FSR 402 force sensing resistor: a 13 mm round polymer pad whose resistance falls with force (>10 MOhm untouched, about 10 kOhm at 170 g, 2.7 kOhm at 1 kg; 0.2-20 N range). Wired as the datasheet's divider: pin 1 to 3.3 V, pin 2 to an ADC input with a 10 kOhm measuring resistor to GND, so VOUT = 3.3 V x 10k / (10k + RFSR) rises with force. Not polarised. Sold as: SparkFun Force Sensitive Resistor 0.5\" (SEN-09375, Interlink 402 with solder tabs, two pins at 0.1\" pitch).",
+  "eli5": "A thin round pad that becomes a better conductor the harder you press it. With one resistor it turns your squeeze into a voltage your board can read.",
+  "refPrefix": "R",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "1",
+      "role": "power",
+      "required": true,
+      "description": "FSR lead to V+ (3.3 V). The tabs are interchangeable."
+    },
+    {
+      "name": "2",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "load": {
+        "ohms": 10000,
+        "to": "gnd"
+      },
+      "description": "Other FSR lead: to an ADC pin, with the 10 kOhm measuring resistor RM to GND. Voltage rises with force (0 to 3.3 V)."
+    }
+  ],
+  "vmin": 0,
+  "vmax": 3.3,
+  "currentMa": 0.4,
+  "datasheetUrl": "https://www.interlinkelectronics.com/datasheets/Datasheet_FSR.pdf",
+  "sources": [
+    "https://www.interlinkelectronics.com/datasheets/Datasheet_FSR.pdf",
+    "https://www.sparkfun.com/force-sensitive-resistor-0-5.html",
+    "https://learn.sparkfun.com/tutorials/force-sensitive-resistor-hookup-guide",
+    "https://learn.adafruit.com/force-sensitive-resistor-fsr"
+  ],
+  "priceUsd": 10.95,
+  "supplierQuery": "Interlink FSR 402 force sensitive resistor SEN-09375",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two unmarked, interchangeable tabs at 0.1\" pitch: one to 3.3 V, the other to the ADC pin plus a 10 kOhm resistor to GND.",
+    "RFSR = 10 kOhm x (3.3 V - V) / V. Below about 10 mV treat it as not pressed (>10 MOhm untouched).",
+    "Force is only approximate: F ~= 170 g x (10 kOhm / RFSR)^1.25 from the datasheet's typical curve; +/-6 % part to part and +10 % hysteresis.",
+    "Feed it from 3.3 V, not 5 V, so a hard press cannot push the ADC pin above 3.3 V.",
+    "Solder the tabs very quickly or use a female header / terminal block; the plastic melts easily.",
+    "On the ESP32 use an ADC1 pin (GPIO32-39) with 11 dB attenuation."
+  ],
+  "keywords": [
+    "fsr",
+    "fsr402",
+    "fsr 402",
+    "interlink",
+    "force sensor",
+    "force sensitive resistor",
+    "force sensing resistor",
+    "pressure pad",
+    "sen-09375",
+    "squeeze",
+    "touch",
+    "analog"
+  ],
+  "sim": {
+    "kind": "resistive-sensor",
+    "quantity": "Force on the pad",
+    "unit": "g",
+    "min": 20,
+    "max": 2000,
+    "default": 20,
+    "resistive": [
+      {
+        "pin": "2",
+        "to": "1",
+        "curve": "power",
+        "rRef": 10000,
+        "ref": 170,
+        "exponent": -0.8
+      }
+    ]
+  },
+  "driver": {
+    "filename": "fsr402.py",
+    "code": "# Interlink FSR 402 force sensing resistor, MicroPython driver.\n# Wiring (FSR 400 Series datasheet, \"simple force-to-voltage conversion\"): one FSR lead to V+\n# (3.3 V), the other lead to an ADC pin and through a measuring resistor RM (10 kOhm) to GND.\n#   VOUT = RM * V+ / (RM + RFSR)     ->     RFSR = RM * (V+ - VOUT) / VOUT\n# VOUT rises with force. Untouched the FSR is > 10 MOhm, so VOUT is only a few mV.\n# force_g() is a rough estimate from the datasheet's typical force-vs-resistance graph\n# (about 16 kOhm at 100 g, 10 kOhm at 170 g, 2.7 kOhm at 1 kg, 1.5 kOhm at 2 kg):\n#   RFSR ~= 10 kOhm * (F / 170 g) ** -0.8   ->   F ~= 170 g * (10 kOhm / RFSR) ** 1.25\n# Interlink: +/-6 % part to part, +10 % hysteresis, and values depend on the actuation\n# mechanics. It is a touch/squeeze sensor, not a scale.\nfrom machine import ADC, Pin\n\n\nclass FSR402:\n    def __init__(self, pin, rm=10000, vplus=3.3, vref=3.3, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V input range\n        except AttributeError:\n            pass\n        self.rm = rm          # measuring resistor from the ADC pin to GND (ohms)\n        self.vplus = vplus    # voltage on the other FSR lead\n        self.vref = vref      # ADC full scale for read_u16() (Pico: 3.3 V)\n        self.samples = samples\n\n    def volts(self):\n        \"\"\"Average several ADC samples and return VOUT in volts.\"\"\"\n        total = 0\n        for _ in range(self.samples):\n            total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def resistance(self, v=None):\n        \"\"\"FSR resistance in ohms, or None when not pressed (VOUT < 10 mV, i.e. > ~3 MOhm).\"\"\"\n        if v is None:\n            v = self.volts()\n        if v < 0.01:\n            return None\n        if v >= self.vplus:\n            return 0.0\n        return self.rm * (self.vplus - v) / v\n\n    def pressed(self, threshold_v=0.3):\n        \"\"\"True when VOUT is above threshold_v (about 100 kOhm with RM = 10 kOhm: a light touch).\"\"\"\n        return self.volts() > threshold_v\n\n    def force_g(self, r=None):\n        \"\"\"Rough force in grams from the datasheet's typical curve (0 when not pressed).\n        Only meaningful over about 20 g - 2 kg (0.2-20 N).\"\"\"\n        if r is None:\n            r = self.resistance()\n        if r is None:\n            return 0\n        if r <= 0:\n            return 2000\n        return 170 * (10000 / r) ** 1.25\n"
+  },
+  "skill": "---\nname: part-fsr402\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the bare Interlink FSR 402 force sensing resistor (13 mm round pad, two 0.1\" pins; SparkFun SEN-09375). Use when designing, wiring, simulating or writing code for an FSR 402 / round force sensor / pressure pad wired as a voltage divider in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Interlink FSR 402 force sensing resistor (FSR402)\n\n## Overview\nThe **Interlink FSR 402** is a thin polymer pad (14.7 mm active circle, 56 mm tail) whose resistance **falls as you press it**: above 10 MΩ untouched, roughly 16 kΩ at 100 g, 10 kΩ at 170 g, 2.7 kΩ at 1 kg and 1.5 kΩ at 2 kg (datasheet typical curve). Force sensitivity about 0.2–20 N (20 g–2 kg). It is a plain two-wire resistor with no polarity, so you turn it into a voltage with a measuring resistor. Hobbyists buy it as **SparkFun SEN-09375 \"Force Sensitive Resistor 0.5\\\"\"** (Interlink 402 with solder tabs, two pins at 0.1\" pitch that plug straight into a breadboard).\n\n## Pinout\n| Pin | Function |\n|---|---|\n| 1 | One FSR lead: connect to 3.3 V (V+) |\n| 2 | Other FSR lead: ADC input, plus a 10 kΩ measuring resistor to GND |\n\nThe two tabs are unmarked and interchangeable (the FSR is not polarised).\n\n## Electrical limits\n- No supply pin and no rated voltage; use 3.3 V so the ADC pin can never see more than 3.3 V.\n- Current: V+ / (RM + RFSR), at most 0.33 mA with 3.3 V and a 10 kΩ RM. Never connect it straight across the supply without RM: pressed hard it is only ~1 kΩ.\n- Do not solder slowly on the tabs (the plastic melts) and do not crease the tail.\n\n## Interface details\nDatasheet divider (FSR from V+ to VOUT, RM from VOUT to GND):\n```\nVOUT = RM × V+ / (RM + RFSR)\nRFSR = RM × (V+ − VOUT) / VOUT\nforce ≈ 170 g × (10 kΩ / RFSR)^1.25      (rough fit to the typical curve, 100 g – 2 kg)\n```\nWith RM = 10 kΩ and V+ = 3.3 V: 0.3 V ≈ 100 kΩ (light touch), 1.4 V ≈ 14 kΩ (~110 g), 2.3 V ≈ 4.2 kΩ (~500 g), 2.8 V ≈ 1.8 kΩ (~1.4 kg). A larger RM (e.g. 47 kΩ) is more sensitive to light touches; a smaller one (3 kΩ) spreads out heavy forces.\n\n## Wiring\n| FSR / resistor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| Pin 1 | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| Pin 2 | GPIO34 (ADC1) | GP26 / ADC0 | ADS1115 A0 (the Pi has no ADC) |\n| 10 kΩ from pin 2 | to GND | to GND | to GND |\n\n## Using the driver\n```python\nfrom fsr402 import FSR402\nimport time\nfsr = FSR402(34)                # GPIO of the ADC pin; rm=10000, vplus=3.3 by default\nwhile True:\n    r = fsr.resistance()\n    if r is None:\n        print('not pressed')\n    else:\n        print('R=%.1fk F=%dg' % (r / 1000, int(round(fsr.force_g(r) / 10)) * 10))\n    time.sleep(0.5)\n```\nAlso `volts()` and `pressed(threshold_v=0.3)`.\n\n## Gotchas\n- **Not a load cell:** ±6 % part to part, +10 % hysteresis and drift under a standing load. Use an HX711 + load cell for weighing.\n- **Press evenly on the round area:** a small rubber puck or a firm flat backing makes readings far more repeatable; pressing on the edge or the tail gives odd values.\n- **Untouched reads a few mV, not 0:** treat < 10 mV as not pressed.\n- **ESP32:** use an ADC1 pin (GPIO32–39) with 11 dB attenuation; ADC2 stops working when Wi-Fi is on.\n\n## Datasheet\nhttps://www.interlinkelectronics.com/datasheets/Datasheet_FSR.pdf (Interlink FSR 400 Series)\n\n---\n*Generated by Sparkbench from the datasheet. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from fsr402 import FSR402\nimport time\n\nfsr = FSR402({2})\nwhile True:\n    r = fsr.resistance()\n    if r is None:\n        print('not pressed')\n    else:\n        print('R=%.1fk F=%dg' % (r / 1000, int(round(fsr.force_g(r) / 10)) * 10))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the FSR resistance and rough force for the force set on the control",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 500
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=4.2k F=500g",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:45:43.330Z",
+    "verifiedSources": [
+      "https://www.interlinkelectronics.com/datasheets/Datasheet_FSR.pdf",
+      "https://www.sparkfun.com/force-sensitive-resistor-0-5.html"
+    ]
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "type": "custom-mics-6814",
+  "name": "MiCS-6814 CO / NO2 / NH3 three-channel gas sensor breakout",
+  "mpn": "MiCS-6814",
+  "category": "sensor",
+  "description": "SGX Sensortech (Amphenol) MiCS-6814 MEMS metal-oxide sensor with three independent elements: RED (CO 1-1000 ppm and other reducing gases, R0 100-1500 kOhm, Rs falls with gas), OX (NO2 0.05-10 ppm, R0 0.8-20 kOhm, Rs rises with NO2) and NH3 (1-300 ppm, R0 10-1500 kOhm). The board only has the datasheet heater resistors (about 88 mA from 5 V); each output pin is a sensing resistor to GND, so you add a load resistor from each output to 3.3 V (100k on CO and NH3, 10k on NO2) and Vout = 3.3 V x Rs / (Rs + RL). Readings are relative, not ppm, and it is not a safety alarm. Sold as: CJMCU-6814 MiCS-6814 gas sensor module (purple), 5-pin header CO, NH3, NO2, GND, +5V.",
+  "eli5": "A tiny electronic nose with three noses inside, each with a little heater. Gases change how much each one resists electricity: carbon monoxide and ammonia make two of them conduct better, nitrogen dioxide makes the third conduct worse. You add a resistor to each so your board can measure them. It is a learning toy, not a safety alarm.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "CO",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "load": {
+        "ohms": 100000,
+        "to": "3v3"
+      },
+      "description": "RED sensing resistor output (header pin 1): Rs from this pin to GND. Needs a load resistor to 3.3 V (100 kOhm, at least 820 Ohm); Vout = 3.3 V x Rs / (Rs + RL) falls with CO and other reducing gases."
+    },
+    {
+      "name": "NH3",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "load": {
+        "ohms": 100000,
+        "to": "3v3"
+      },
+      "description": "NH3 sensing resistor output (header pin 2): Rs to GND. Needs a load resistor to 3.3 V (100 kOhm); output falls with ammonia."
+    },
+    {
+      "name": "NO2",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "load": {
+        "ohms": 10000,
+        "to": "3v3"
+      },
+      "description": "OX sensing resistor output (header pin 3): Rs to GND. Needs a load resistor to 3.3 V (10 kOhm); output rises with NO2."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (header pin 4), common to heaters and sensing resistors."
+    },
+    {
+      "name": "+5V",
+      "role": "power",
+      "required": true,
+      "description": "Heater supply (header pin 5), 4.9-5.1 V, about 88 mA through the on-board heater resistors. Use the board's 5 V / VIN / VBUS, never 3.3 V."
+    }
+  ],
+  "vmin": 4.9,
+  "vmax": 5.1,
+  "currentMa": 90,
+  "datasheetUrl": "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf",
+  "sources": [
+    "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf",
+    "https://store.siqma.com/mics-6814-air-quality-sensor-module.html",
+    "https://store.siqma.com/image/cache/catalog/store/SQ3977/MICS6814_Air_Quality_Sensor_Module_8e6cd67928f9b457c-500x500.jpg",
+    "https://forum.arduino.cc/t/cjmcu-6814-adapter-board-with-mics-6814-co-nh3-no2-sensor/595612"
+  ],
+  "priceUsd": 12,
+  "supplierQuery": "CJMCU-6814 MiCS-6814 gas sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order as printed on the CJMCU-6814, left to right with the sensor up: CO, NH3, NO2, GND, +5V.",
+    "Power +5V from the board's 5 V (USB 5V / VIN / VBUS), 4.9-5.1 V, about 88 mA. Heater voltage above the rating destroys the sensor.",
+    "The board has no load resistors. Fit one from each output to 3.3 V: 100 kOhm on CO, 100 kOhm on NH3, 10 kOhm on NO2 (never below 820 Ohm). Pulling to 3.3 V keeps the outputs inside the ADC range.",
+    "Rs = RL x Vout / (3.3 V - Vout). CO and NH3 voltages fall with gas, NO2 voltage rises with NO2.",
+    "R0 (clean air) differs per sensor: calibrate it yourself after several minutes of warm-up.",
+    "Not a safety gas alarm."
+  ],
+  "keywords": [
+    "mics-6814",
+    "mics6814",
+    "cjmcu-6814",
+    "gas",
+    "co",
+    "no2",
+    "nh3",
+    "ammonia",
+    "nitrogen dioxide",
+    "carbon monoxide",
+    "air quality",
+    "analog"
+  ],
+  "sim": {
+    "kind": "resistive-sensor",
+    "quantity": "RED (CO) sensing resistance Rs",
+    "unit": "kΩ",
+    "min": 1,
+    "max": 1500,
+    "default": 300,
+    "controls": [
+      {
+        "key": "nh3",
+        "quantity": "NH3 sensing resistance Rs",
+        "unit": "kΩ",
+        "min": 1,
+        "max": 1500,
+        "default": 300
+      },
+      {
+        "key": "ox",
+        "quantity": "OX (NO2) sensing resistance Rs",
+        "unit": "kΩ",
+        "min": 0.8,
+        "max": 200,
+        "default": 10
+      }
+    ],
+    "resistive": [
+      {
+        "pin": "CO",
+        "to": "GND",
+        "curve": "linear",
+        "rAtMin": 1000,
+        "rAtMax": 1500000
+      },
+      {
+        "pin": "NH3",
+        "to": "GND",
+        "control": "nh3",
+        "curve": "linear",
+        "rAtMin": 1000,
+        "rAtMax": 1500000
+      },
+      {
+        "pin": "NO2",
+        "to": "GND",
+        "control": "ox",
+        "curve": "linear",
+        "rAtMin": 800,
+        "rAtMax": 200000
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mics6814.py",
+    "code": "# MiCS-6814 three-channel MOS gas sensor (SGX Sensortech / Amphenol), CJMCU-6814 breakout, MicroPython driver.\n# Header (as printed): CO, NH3, NO2, GND, +5V.\n# The CJMCU-6814 carries only the sensor and the datasheet's heater resistors (27 / 820 / 130-ish Ohm from +5V),\n# so the three heaters run at about VhRED 2.4 V, VhNH3 2.2 V, VhOX 1.7 V (about 88 mA in total).\n# Each sensing resistor Rs runs from its output pin to GND inside the sensor (datasheet pins B, F, J grounded).\n# There are NO load resistors on the board: you add one load resistor RL from each output pin to the\n# measuring supply Vc (3.3 V here, so the output can never exceed the ADC's range). Datasheet measurement circuit:\n#     Vout = Vc * Rs / (Rs + RL)         so         Rs = RL * Vout / (Vc - Vout)\n# RL must be at least 820 Ohm (datasheet) so the sensing layer is not damaged.\n# RED (CO pin): Rs falls with CO, ethanol, H2, NH3, hydrocarbons. R0 in air 100-1500 kOhm.\n# OX  (NO2 pin): Rs RISES with NO2. R0 in air 0.8-20 kOhm.\n# NH3 (NH3 pin): Rs falls with NH3 (and ethanol, H2...). R0 in air 10-1500 kOhm.\n# Concentrations come from Rs/R0 on the datasheet's log-log charts; R0 differs for every sensor, so calibrate\n# it in clean air yourself. No ppm is invented here.\nfrom machine import ADC, Pin\n\n\nclass _Channel:\n    def __init__(self, pin, rl, vc, samples, vref):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.rl = rl\n        self.vc = vc\n        self.samples = samples\n        self.vref = vref\n        self.r0 = None\n\n    def voltage(self):\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def resistance(self):\n        \"\"\"Rs in ohms from the datasheet divider: Rs = RL * Vout / (Vc - Vout).\"\"\"\n        v = self.voltage()\n        if v >= self.vc - 0.005:\n            return float('inf')  # open: sensor missing, unpowered or Rs far above RL\n        if v < 0:\n            v = 0\n        return self.rl * v / (self.vc - v)\n\n\nclass MICS6814:\n    def __init__(self, co, nh3, no2, rl_co=100000, rl_nh3=100000, rl_no2=10000, vc=3.3, samples=32, vref=3.3):\n        \"\"\"co, nh3, no2: GPIO numbers (or Pins) of the CO (RED), NH3 and NO2 (OX) outputs.\n        rl_*: the load resistor you fitted from each output to vc (the 3.3 V rail). vref: ADC full scale\n        used when read_uv() is not available (e.g. Pico).\"\"\"\n        self.red = _Channel(co, rl_co, vc, samples, vref)\n        self.nh3 = _Channel(nh3, rl_nh3, vc, samples, vref)\n        self.ox = _Channel(no2, rl_no2, vc, samples, vref)\n\n    def resistances(self):\n        \"\"\"(Rs_RED, Rs_NH3, Rs_OX) in ohms.\"\"\"\n        return self.red.resistance(), self.nh3.resistance(), self.ox.resistance()\n\n    def voltages(self):\n        \"\"\"(V_CO, V_NH3, V_NO2) output voltages in volts.\"\"\"\n        return self.red.voltage(), self.nh3.voltage(), self.ox.voltage()\n\n    def calibrate(self):\n        \"\"\"Store the present Rs of each channel as R0 (do this in clean air after a long warm-up).\"\"\"\n        for c in (self.red, self.nh3, self.ox):\n            c.r0 = c.resistance()\n        return self.red.r0, self.nh3.r0, self.ox.r0\n\n    def ratios(self):\n        \"\"\"(Rs/R0 RED, NH3, OX): the ordinates of the datasheet's sensitivity charts. Needs calibrate() first.\"\"\"\n        out = []\n        for c in (self.red, self.nh3, self.ox):\n            if not c.r0:\n                raise ValueError('call calibrate() first')\n            out.append(c.resistance() / c.r0)\n        return tuple(out)\n"
+  },
+  "example": {
+    "code": "from mics6814 import MICS6814\nimport time\n\ns = MICS6814({CO}, {NH3}, {NO2})\nwhile True:\n    red, nh3, ox = s.resistances()\n    print('CO=%.0fk NH3=%.0fk NO2=%.1fk' % (red / 1000, nh3 / 1000, ox / 1000))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports each channel's sensing resistance from the datasheet load-resistor divider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "nh3",
+          "value": 50
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ox",
+          "value": 20
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO=100k NH3=50k NO2=20.0k",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-mics-6814\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the MiCS-6814 three-channel CO / NO2 / NH3 gas sensor (SGX Sensortech / Amphenol MiCS-6814, CJMCU-6814 analog breakout with CO, NH3, NO2, GND, +5V header). Use when designing, wiring, simulating or writing code for a MiCS-6814 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# MiCS-6814 three-channel gas sensor (CJMCU-6814 breakout)\n\n## Overview\nThe **MiCS-6814** (SGX Sensortech, now Amphenol) holds three independent MEMS metal-oxide gas sensors in one package, each with its own heater:\n- **RED** (reducing gases, the board's **CO** pin): CO 1–1000 ppm, ethanol, H2, NH3, methane, propane. Rs **falls** with gas. R0 in air **100–1500 kΩ**.\n- **OX** (oxidising gases, the board's **NO2** pin): NO2 0.05–10 ppm. Rs **rises** with NO2. R0 in air **0.8–20 kΩ**.\n- **NH3** (the board's **NH3** pin): NH3 1–300 ppm. Rs **falls** with gas. R0 in air **10–1500 kΩ**.\n\nThe common purple **CJMCU-6814** breakout carries only the sensor and the datasheet's heater resistors. **It has no load resistors**: each output pin is one end of a sensing resistor whose other end is grounded. You must add a load resistor from each output to 3.3 V to read it. It gives relative readings, **not calibrated ppm**.\n\n## Pinout (header, left to right as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | CO | RED sensing resistor (to GND). Add RL to 3.3 V, read with an ADC |\n| 2 | NH3 | NH3 sensing resistor (to GND). Add RL to 3.3 V, read with an ADC |\n| 3 | NO2 | OX sensing resistor (to GND). Add RL to 3.3 V, read with an ADC |\n| 4 | GND | Ground |\n| 5 | +5V | Heater supply, 4.9–5.1 V, about 88 mA |\n\n## Electrical limits\n- +5V: **4.9–5.1 V** (datasheet Vsupply). Heater voltage above the rating destroys the sensor. The board's heater resistors (datasheet circuit: 27 Ω, 820 Ω, 130 Ω) set VhRED 2.4 V, VhNH3 2.2 V, VhOX 1.7 V; current 32 + 30 + 26 mA ≈ 88 mA. Use the board's 5 V / VIN / VBUS, never 3.3 V.\n- Load resistors: **RL ≥ 820 Ω** (datasheet, to protect the sensing layer); max sensitive-layer power 8 mW. Pulling them to **3.3 V** (as in the datasheet's measurement circuit, VCC = the MCU supply) keeps every output within 0–3.3 V, safe for ESP32 and Pico ADCs.\n- Suggested RL: **100 kΩ** on CO and NH3, **10 kΩ** on NO2 (datasheet: a single 56 kΩ may be enough; pick RL near your sensor's R0 for best resolution).\n\n## Interface details\nDatasheet measurement circuit (Rs to GND, RL to VCC):\n```\nVout = Vc × Rs / (Rs + RL)        Rs = RL × Vout / (Vc − Vout)        Vc = 3.3 V\n```\nSo **CO and NH3 outputs fall with gas**, the **NO2 output rises with NO2**. Gas concentration comes from **Rs/R0** on the datasheet's log-log charts (continuous power, 25 °C, 50 % RH). R0 differs a lot between sensors: **calibrate R0 in clean air** after warm-up. Let it heat for several minutes (ideally much longer the first time) before trusting readings.\n\n## Wiring\n| Breakout | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| +5V | 5V / VIN | VBUS (pin 40) | 5V (pin 2) |\n| GND | GND | GND | GND |\n| CO | GPIO32–39 (ADC1) + 100 kΩ to 3V3 | GP26 + 100 kΩ to 3V3 | external ADC (MCP3008 / ADS1115) |\n| NH3 | GPIO32–39 (ADC1) + 100 kΩ to 3V3 | GP27 + 100 kΩ to 3V3 | external ADC |\n| NO2 | GPIO32–39 (ADC1) + 10 kΩ to 3V3 | GP28 + 10 kΩ to 3V3 | external ADC |\n\nOn the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi 4 has no ADC.\n\n## Using the driver\n```python\nfrom mics6814 import MICS6814\nimport time\ns = MICS6814(co=32, nh3=33, no2=34)    # rl_co=100000, rl_nh3=100000, rl_no2=10000, vc=3.3\ntime.sleep(600)                         # warm-up\ns.calibrate()                           # R0 = Rs now (clean air)\nwhile True:\n    red, nh3, ox = s.resistances()\n    print('CO %.0fk NH3 %.0fk NO2 %.1fk' % (red / 1000, nh3 / 1000, ox / 1000), s.ratios())\n    time.sleep(1)\n```\nPass the load resistor values you actually fitted (`rl_co`, `rl_nh3`, `rl_no2`). `voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V).\n\n## Gotchas\n- **No load resistors on the board.** Without them the outputs float and read nonsense. Never pull them to 5 V when wiring straight to a 3.3 V ADC.\n- **Not a safety device.** Do not use it as a CO, NO2 or ammonia alarm.\n- **Not selective**: the RED channel reacts to many reducing gases; NH3 also sees ethanol and hydrogen.\n- **OX is inverted**: NO2 raises Rs, so its voltage rises while the others fall.\n- **R0 spread is huge**: calibrate each channel of your own sensor.\n- **Poisoning**: organic solvents, silicone vapours and cigarette smoke damage the sensing layers (datasheet precautions).\n- Some sellers call the Seeed Grove Multichannel Gas Sensor or Pimoroni MICS6814 breakout \"MiCS-6814\": those are I2C boards, not this analog one.\n\n## Datasheet\nhttps://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf. Machine-readable definition: `part.json`.*\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:43:13.795Z",
+    "verifiedSources": [
+      "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf"
+    ]
+  }
+}

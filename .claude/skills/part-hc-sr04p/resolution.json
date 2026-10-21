@@ -1,0 +1,10 @@
+{
+  "diffs": [
+    {
+      "diff": "distance_cm: datasheet reading gives 0.017 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "HC-SR04 datasheet (the RCWL-9610 'P' version keeps the same GPIO timing): \"Test distance = (high level time x velocity of sound (340M/S) / 2\" and \"Formula: uS / 58 = centimeters\". 340 m/s / 2 = 0.017 cm per us of Echo high time, i.e. 1/58.8. The model uses exactly this conversion in equivalent form: the driver divides the Echo pulse width by US_PER_CM = 58.3 (= 0.01715 cm/us, using 343 m/s at 20 degC, within 1% of 0.017), and part.json/buildNotes state 'distance cm = us / 58'. The gate reports 'none' only because the 'ultrasonic' sim kind expresses the conversion as echo timing (sim.echo) rather than a raw-count scale field; the formula itself agrees.",
+      "source": "https://cdn.sparkfun.com/datasheets/Sensors/Proximity/HCSR04.pdf"
+    }
+  ]
+}

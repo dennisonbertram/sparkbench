@@ -1,0 +1,75 @@
+---
+name: part-mics-6814
+description: Pinout, electrical limits, wiring and MicroPython driver for the MiCS-6814 three-channel CO / NO2 / NH3 gas sensor (SGX Sensortech / Amphenol MiCS-6814, CJMCU-6814 analog breakout with CO, NH3, NO2, GND, +5V header). Use when designing, wiring, simulating or writing code for a MiCS-6814 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.
+---
+
+# MiCS-6814 three-channel gas sensor (CJMCU-6814 breakout)
+
+## Overview
+The **MiCS-6814** (SGX Sensortech, now Amphenol) holds three independent MEMS metal-oxide gas sensors in one package, each with its own heater:
+- **RED** (reducing gases, the board's **CO** pin): CO 1–1000 ppm, ethanol, H2, NH3, methane, propane. Rs **falls** with gas. R0 in air **100–1500 kΩ**.
+- **OX** (oxidising gases, the board's **NO2** pin): NO2 0.05–10 ppm. Rs **rises** with NO2. R0 in air **0.8–20 kΩ**.
+- **NH3** (the board's **NH3** pin): NH3 1–300 ppm. Rs **falls** with gas. R0 in air **10–1500 kΩ**.
+
+The common purple **CJMCU-6814** breakout carries only the sensor and the datasheet's heater resistors. **It has no load resistors**: each output pin is one end of a sensing resistor whose other end is grounded. You must add a load resistor from each output to 3.3 V to read it. It gives relative readings, **not calibrated ppm**.
+
+## Pinout (header, left to right as printed on the board)
+| Pin | Name | Function |
+|-----|------|----------|
+| 1 | CO | RED sensing resistor (to GND). Add RL to 3.3 V, read with an ADC |
+| 2 | NH3 | NH3 sensing resistor (to GND). Add RL to 3.3 V, read with an ADC |
+| 3 | NO2 | OX sensing resistor (to GND). Add RL to 3.3 V, read with an ADC |
+| 4 | GND | Ground |
+| 5 | +5V | Heater supply, 4.9–5.1 V, about 88 mA |
+
+## Electrical limits
+- +5V: **4.9–5.1 V** (datasheet Vsupply). Heater voltage above the rating destroys the sensor. The board's heater resistors (datasheet circuit: 27 Ω, 820 Ω, 130 Ω) set VhRED 2.4 V, VhNH3 2.2 V, VhOX 1.7 V; current 32 + 30 + 26 mA ≈ 88 mA. Use the board's 5 V / VIN / VBUS, never 3.3 V.
+- Load resistors: **RL ≥ 820 Ω** (datasheet, to protect the sensing layer); max sensitive-layer power 8 mW. Pulling them to **3.3 V** (as in the datasheet's measurement circuit, VCC = the MCU supply) keeps every output within 0–3.3 V, safe for ESP32 and Pico ADCs.
+- Suggested RL: **100 kΩ** on CO and NH3, **10 kΩ** on NO2 (datasheet: a single 56 kΩ may be enough; pick RL near your sensor's R0 for best resolution).
+
+## Interface details
+Datasheet measurement circuit (Rs to GND, RL to VCC):
+```
+Vout = Vc × Rs / (Rs + RL)        Rs = RL × Vout / (Vc − Vout)        Vc = 3.3 V
+```
+So **CO and NH3 outputs fall with gas**, the **NO2 output rises with NO2**. Gas concentration comes from **Rs/R0** on the datasheet's log-log charts (continuous power, 25 °C, 50 % RH). R0 differs a lot between sensors: **calibrate R0 in clean air** after warm-up. Let it heat for several minutes (ideally much longer the first time) before trusting readings.
+
+## Wiring
+| Breakout | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |
+|---|---|---|---|
+| +5V | 5V / VIN | VBUS (pin 40) | 5V (pin 2) |
+| GND | GND | GND | GND |
+| CO | GPIO32–39 (ADC1) + 100 kΩ to 3V3 | GP26 + 100 kΩ to 3V3 | external ADC (MCP3008 / ADS1115) |
+| NH3 | GPIO32–39 (ADC1) + 100 kΩ to 3V3 | GP27 + 100 kΩ to 3V3 | external ADC |
+| NO2 | GPIO32–39 (ADC1) + 10 kΩ to 3V3 | GP28 + 10 kΩ to 3V3 | external ADC |
+
+On the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi 4 has no ADC.
+
+## Using the driver
+```python
+from mics6814 import MICS6814
+import time
+s = MICS6814(co=32, nh3=33, no2=34)    # rl_co=100000, rl_nh3=100000, rl_no2=10000, vc=3.3
+time.sleep(600)                         # warm-up
+s.calibrate()                           # R0 = Rs now (clean air)
+while True:
+    red, nh3, ox = s.resistances()
+    print('CO %.0fk NH3 %.0fk NO2 %.1fk' % (red / 1000, nh3 / 1000, ox / 1000), s.ratios())
+    time.sleep(1)
+```
+Pass the load resistor values you actually fitted (`rl_co`, `rl_nh3`, `rl_no2`). `voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V).
+
+## Gotchas
+- **No load resistors on the board.** Without them the outputs float and read nonsense. Never pull them to 5 V when wiring straight to a 3.3 V ADC.
+- **Not a safety device.** Do not use it as a CO, NO2 or ammonia alarm.
+- **Not selective**: the RED channel reacts to many reducing gases; NH3 also sees ethanol and hydrogen.
+- **OX is inverted**: NO2 raises Rs, so its voltage rises while the others fall.
+- **R0 spread is huge**: calibrate each channel of your own sensor.
+- **Poisoning**: organic solvents, silicone vapours and cigarette smoke damage the sensing layers (datasheet precautions).
+- Some sellers call the Seeed Grove Multichannel Gas Sensor or Pimoroni MICS6814 breakout "MiCS-6814": those are I2C boards, not this analog one.
+
+## Datasheet
+https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf
+
+---
+*Generated by Sparkbench from the datasheet: https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf. Machine-readable definition: `part.json`.*

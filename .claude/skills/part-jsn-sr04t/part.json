@@ -1,0 +1,144 @@
+{
+  "type": "custom-jsn-sr04t",
+  "name": "JSN-SR04T waterproof ultrasonic distance sensor",
+  "mpn": "JSN-SR04T-2.0",
+  "category": "sensor",
+  "description": "Waterproof ultrasonic rangefinder: a sealed 40 kHz probe on a cable plus a small control board. In its default mode (R27 not fitted) it works like an HC-SR04: a TRIG pulse of at least 10 us starts a measurement and ECHO goes high for the sound's round trip (distance = time x 340 m/s / 2, 58.82 us per cm), about 20-600 cm with a 20 cm blind zone; with no echo, ECHO stays high about 38 ms. Runs on 3.0-5.5 V, under 8 mA; ECHO swings to the supply voltage. Sold as: JSN-SR04T-2.0 waterproof ultrasonic module (blue control board, 4-pin header 5V, Trig, Echo, GND, R27 open = mode 1, 2.5 m probe cable).",
+  "eli5": "A waterproof sound 'eye' on a cable: it chirps too high for you to hear and times how long the echo takes, so your board knows how far away the water or wall is.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 3.0-5.5 V (datasheet). ECHO swings to this voltage, so use 3.3 V on ESP32/Pico or add a divider on ECHO when powered from 5 V",
+      "required": true
+    },
+    {
+      "name": "Trig",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Trigger input: a high pulse of at least 10 us starts one measurement (RX in serial modes)",
+      "required": true
+    },
+    {
+      "name": "Echo",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Echo output: high for the round-trip time, 58.82 us per cm; about 38 ms if nothing is detected (TX in serial modes)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 8,
+  "datasheetUrl": "https://components101.com/sites/default/files/component_datasheet/JSN-SR04-Datasheet.pdf",
+  "priceUsd": 6,
+  "supplierQuery": "JSN-SR04T-2.0 waterproof ultrasonic distance module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Leave R27 empty (factory default) for trigger/echo mode; a 47 k resistor there switches to automatic serial output and 120 k to serial on request (0x55).",
+    "ECHO is driven to the supply voltage. Power the module from 3.3 V for a direct ESP32/Pico connection, or from 5 V with a divider (e.g. 1 k / 2 k) on ECHO.",
+    "Pulse TRIG high for at least 10 us (20 us is more reliable at 3.3 V); distance cm = ECHO high time in us / 58.82.",
+    "Wait at least 50-60 ms between measurements. With nothing in range ECHO stays high about 38 ms; treat that as out of range.",
+    "Objects closer than about 20-25 cm sit in the blind zone and read wrong. Mount the probe facing straight at a flat target (water surface) with nothing in its 75 degree cone."
+  ],
+  "keywords": [
+    "jsn-sr04t",
+    "jsn-sr04t-2.0",
+    "aj-sr04m",
+    "waterproof",
+    "ultrasonic",
+    "distance",
+    "sonar",
+    "tank level",
+    "hc-sr04"
+  ],
+  "sources": [
+    "https://components101.com/sites/default/files/component_datasheet/JSN-SR04-Datasheet.pdf",
+    "https://components101.com/node/1522",
+    "https://esphome.io/components/sensor/jsn_sr04t.html",
+    "https://ardupilot.org/copter/docs/common-jsn-sr04t.html"
+  ],
+  "sim": {
+    "kind": "ultrasonic",
+    "outputPin": "Echo",
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 0,
+    "max": 700,
+    "default": 100,
+    "echo": {
+      "trigPin": "Trig",
+      "minCm": 20,
+      "maxCm": 600,
+      "usPerCm": 58.82,
+      "beyondUs": 38000
+    }
+  },
+  "driver": {
+    "filename": "jsnsr04t.py",
+    "code": "# JSN-SR04T-2.0 waterproof ultrasonic distance module, MicroPython driver.\n# Mode 1 (factory default, R27 not fitted): trigger/echo pulses.\n# Datasheet: hold TRIG high for at least 10 us; the module sends 8 x 40 kHz and\n# drives ECHO high for the sound's round trip. distance = high time x 340 m/s / 2,\n# i.e. 58.82 us per cm. With no echo, ECHO stays high about 38 ms (and drops by\n# 60 ms at the latest). Measure no more often than every 50-60 ms.\nfrom machine import Pin, time_pulse_us\nimport time\n\nUS_PER_CM = 58.82      # 2 / 340 m/s, from the datasheet formula\nMIN_CM = 20            # blind zone (datasheet \"recent range\")\nMAX_CM = 600           # datasheet \"farthest range\"\n_MAX_US = 36000        # longer than a 600 cm echo, shorter than the 38 ms no-echo pulse\n_CYCLE_MS = 60         # datasheet: cycle period no less than 50 ms; ECHO ends by 60 ms\n\n\nclass JSNSR04T:\n    def __init__(self, trig, echo, trigger_us=20):\n        # trig / echo: GPIO numbers or Pin objects\n        self.trig = trig if isinstance(trig, Pin) else Pin(trig, Pin.OUT, value=0)\n        self.trig.init(Pin.OUT, value=0)\n        self.echo = echo if isinstance(echo, Pin) else Pin(echo, Pin.IN)\n        # 10 us is the datasheet minimum; 20 us is more reliable on 3.3 V supplies\n        self.trigger_us = max(10, trigger_us)\n        self._last = time.ticks_add(time.ticks_ms(), -_CYCLE_MS)\n\n    def pulse_us(self):\n        \"\"\"Raw ECHO high time in us, or None if no valid echo.\"\"\"\n        wait = _CYCLE_MS - time.ticks_diff(time.ticks_ms(), self._last)\n        if wait > 0:\n            time.sleep_ms(wait)\n        self.trig.value(0)\n        time.sleep_us(5)\n        self.trig.value(1)\n        time.sleep_us(self.trigger_us)\n        self.trig.value(0)\n        self._last = time.ticks_ms()\n        t = time_pulse_us(self.echo, 1, 70000)\n        if t < 0 or t > _MAX_US:\n            return None   # timeout, or the 38 ms \"nothing detected\" pulse\n        return t\n\n    def distance_cm(self):\n        \"\"\"Distance in cm (about 20-600), or None if out of range / no echo.\"\"\"\n        t = self.pulse_us()\n        if t is None:\n            return None\n        return t / US_PER_CM\n\n    def distance_mm(self):\n        d = self.distance_cm()\n        return None if d is None else int(d * 10 + 0.5)\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom jsnsr04t import JSNSR04T\n\nsensor = JSNSR04T({TRIG}, {ECHO})\nwhile True:\n    d = sensor.distance_cm()\n    if d is None:\n        print('out of range')\n    else:\n        print('D=%dcm' % round(d))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider, and out of range past 600 cm",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 150
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=150cm",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 342
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=342cm",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 650
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "out of range",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:42:44.166Z",
+    "verifiedSources": [
+      "https://www.mikrocontroller.net/attachment/541933/JSN-SR04T-2.0.pdf",
+      "https://shillehtek.com/blogs/shillehtek-product-manuals/jsn-sr04t-waterproof-ultrasonic-distance-sensor-arduino-esp32-manual"
+    ]
+  }
+}

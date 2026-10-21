@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mics-6814",
+  "board": "CJMCU-6814 MiCS-6814 gas sensor module (purple, 5-pin header CO, NH3, NO2, GND, +5V)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, PCB DRC). Modelled as a resistive-sensor: each output is the datasheet sensing resistor Rs to GND (RED/NH3/OX, controls in kOhm) with user-added load resistors to 3.3 V (100k/100k/10k, >= 820 Ohm per datasheet); the driver inverts Vout = Vc*Rs/(Rs+RL). Header order from the vendor's board photo silkscreen.",
+  "datasheetUrl": "https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf",
+  "breakoutPinoutSource": "https://store.siqma.com/image/cache/catalog/store/SQ3977/MICS6814_Air_Quality_Sensor_Module_8e6cd67928f9b457c-500x500.jpg",
+  "checkRuns": 1
+}

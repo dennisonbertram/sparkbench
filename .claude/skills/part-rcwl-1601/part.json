@@ -1,0 +1,134 @@
+{
+  "type": "custom-rcwl-1601",
+  "name": "RCWL-1601 ultrasonic distance sensor (3.3 V / 5 V, HC-SR04 compatible)",
+  "mpn": "RCWL-1601",
+  "category": "sensor",
+  "description": "Ultrasonic rangefinder (about 2-450 cm, 1 mm resolution, 40 kHz) that works exactly like an HC-SR04: a 10 us pulse on Trig starts a measurement and Echo goes high for the sound's round-trip time (about 58 us per cm). Unlike the HC-SR04 it runs on 3.0-5.5 V and its Echo output follows VCC, so powered from 3.3 V it is safe on ESP32 and Pico pins with no divider. Sold as: Adafruit Ultrasonic Distance Sensor - 3V or 5V - HC-SR04 compatible - RCWL-1601 (#4007), 4-pin header Vcc, Trig, Echo, Gnd.",
+  "eli5": "Chirps a sound too high to hear and holds a wire high until the echo comes back, so your board can time it and work out how far away things are.",
+  "refPrefix": "U",
+  "interface": "digital-in",
+  "pins": [
+    {
+      "name": "Vcc",
+      "role": "power",
+      "description": "Supply, 3.0-5.5 V. Power it from 3.3 V on 3.3 V boards: the Echo output swings to VCC",
+      "required": true
+    },
+    {
+      "name": "Trig",
+      "role": "io",
+      "fn": "digital-out",
+      "description": "Trigger input: drive high for at least 10 us to start a measurement (also marked RX/SCL for the UART/I2C modes, which are not fitted on this board)",
+      "required": true
+    },
+    {
+      "name": "Echo",
+      "role": "io",
+      "fn": "digital-in",
+      "description": "Echo output: high for the round-trip time of the sound, about 58.3 us per cm (also marked TX/SDA for the UART/I2C modes)",
+      "required": true
+    },
+    {
+      "name": "Gnd",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.5,
+  "currentMa": 2.2,
+  "datasheetUrl": "https://www.adafruit.com/product/4007",
+  "priceUsd": 3.95,
+  "supplierQuery": "RCWL-1601 ultrasonic distance sensor 3V 5V HC-SR04 compatible",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order, sensors facing you: Vcc, Trig, Echo, Gnd (same order as an HC-SR04).",
+    "Power Vcc from the same voltage as your board's logic (3.3 V for ESP32/Pico/Raspberry Pi): Echo swings to Vcc, so no voltage divider is needed at 3.3 V. Do not power it from 5 V on a 3.3 V board.",
+    "Trigger: pull Trig high for at least 10 us. Echo then goes high for the sound's round trip; distance cm = echo us x 0.0343 / 2 (about echo us / 58.3).",
+    "Leave at least 50 ms between measurements so old echoes die away.",
+    "Range 2-450 cm on a flat wall at 5 V (about 400 cm at 3.3 V), +/-15 deg beam; best results 10-250 cm."
+  ],
+  "keywords": [
+    "rcwl-1601",
+    "rcwl1601",
+    "ultrasonic",
+    "distance",
+    "sonar",
+    "range finder",
+    "hc-sr04",
+    "3.3v",
+    "trig",
+    "echo"
+  ],
+  "sources": [
+    "https://www.adafruit.com/product/4007",
+    "https://cdn-shop.adafruit.com/970x728/4007-07.jpg",
+    "https://cdn-shop.adafruit.com/product-files/4007/4007_diagram.png",
+    "https://learn.adafruit.com/ultrasonic-sonar-distance-sensors",
+    "https://www.tinytronics.nl/nl/ultrasonische-sensor-rcwl-1601"
+  ],
+  "sim": {
+    "kind": "ultrasonic",
+    "outputPin": "Echo",
+    "quantity": "Distance",
+    "unit": "cm",
+    "min": 2,
+    "max": 450,
+    "default": 100,
+    "echo": {
+      "trigPin": "Trig",
+      "minCm": 2,
+      "maxCm": 450,
+      "usPerCm": 58.3,
+      "triggerUs": 10
+    }
+  },
+  "driver": {
+    "filename": "rcwl1601.py",
+    "code": "# RCWL-1601 ultrasonic distance sensor (HC-SR04 compatible, GPIO mode), MicroPython driver.\n# Trig: hold high for at least 10 us to start a measurement.\n# Echo: goes high for the time the 40 kHz burst takes to reach the object and come back.\n# Distance = echo time x speed of sound / 2  (343 m/s at 20 degC -> about 58.3 us per cm).\n# Wait at least 50 ms between measurements (datasheet measurement cycle).\nfrom machine import Pin, time_pulse_us\nimport time\n\nSOUND_CM_PER_US = 0.0343  # 343 m/s at about 20 degC\n\n\nclass RCWL1601:\n    def __init__(self, trig, echo, timeout_us=30000):\n        # timeout 30 ms covers the 450 cm maximum range (about 26 ms round trip)\n        self.trig = Pin(trig, Pin.OUT, value=0)\n        self.echo = Pin(echo, Pin.IN)\n        self.timeout_us = timeout_us\n        self._last = time.ticks_ms() - 60\n\n    def pulse_us(self):\n        \"\"\"Echo pulse width in microseconds, or None if no echo arrived.\"\"\"\n        wait = 50 - time.ticks_diff(time.ticks_ms(), self._last)\n        if wait > 0:\n            time.sleep_ms(wait)\n        self.trig.value(0)\n        time.sleep_us(2)\n        self.trig.value(1)\n        time.sleep_us(10)\n        self.trig.value(0)\n        self._last = time.ticks_ms()\n        t = time_pulse_us(self.echo, 1, self.timeout_us)\n        if t < 0:\n            return None\n        return t\n\n    def distance_cm(self):\n        \"\"\"Distance to the nearest object in cm (about 2-450), or None if no echo.\"\"\"\n        t = self.pulse_us()\n        if t is None:\n            return None\n        return t * SOUND_CM_PER_US / 2\n\n    def distance_mm(self):\n        cm = self.distance_cm()\n        return None if cm is None else cm * 10\n"
+  },
+  "example": {
+    "code": "from rcwl1601 import RCWL1601\nimport time\n\nsensor = RCWL1601({TRIG}, {ECHO})\nwhile True:\n    d = sensor.distance_cm()\n    if d is None:\n        print('no echo')\n    else:\n        print('D=%dcm' % round(d))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the distance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 123
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=123cm",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 37
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "D=37cm",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:45:07.544Z",
+    "verifiedSources": [
+      "https://www.adafruit.com/product/4007",
+      "https://learn.adafruit.com/distance-measurement-ultrasound-hcsr04"
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "type": "custom-flex-sensor-2-2in",
+  "mpn": "FS-L-0055-253-ST",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "2 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.2 → D32 (GPIO32) — an analog-capable pin. Added a 47 kΩ resistor from 2 to GND.1, as the datasheet's circuit requires. Added the flex_sensor.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the flex resistance and bend angle for the angle set on the control: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "49×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "2 pins, passive"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "2 pins wired; U2.2 → GP28 (GPIO28) — an analog-capable pin. Added a 47 kΩ resistor from 2 to GND.1, as the datasheet's circuit requires. Added the flex_sensor.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "12 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the flex resistance and bend angle for the angle set on the control: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "skip",
+      "detail": "chip not found in stock at LCSC (buy the module from a hobby shop)"
+    }
+  ],
+  "checkedAt": "2026-10-21T15:45:48.701Z"
+}

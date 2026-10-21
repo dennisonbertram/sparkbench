@@ -1,0 +1,113 @@
+{
+  "type": "custom-flex-sensor-2-2in",
+  "name": "Flex sensor 2.2in",
+  "mpn": "FS-L-0055-253-ST",
+  "category": "sensor",
+  "description": "Spectra Symbol 2.2\" flex/bend sensor (55.37 mm active length): a resistive strip that measures about 25 kOhm flat (+/-30 %) and 45-125 kOhm when bent, depending on bend radius (about 100 kOhm fully bent). Read it as a divider: pin 1 to 3.3 V, pin 2 to an ADC input with a 47 kOhm resistor to GND, R = 47k x (3.3 V - V) / V. Sold as: Adafruit Short Flex/Bend Sensor (product 1070), Spectra Symbol FS-L-0055-253-ST, two unlabelled 2.54 mm solder tabs.",
+  "eli5": "A bendy strip that changes its resistance when you curl it. Bend it more and the voltage your board reads drops, so it can tell how far a finger or a hinge is bent.",
+  "refPrefix": "U",
+  "interface": "passive",
+  "pins": [
+    {
+      "name": "1",
+      "role": "power",
+      "description": "One end of the resistive strip (tab 1, not polarised): wire to 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "2",
+      "role": "io",
+      "fn": "adc",
+      "description": "Other end (tab 2): wire to an ADC input, with a 47 kOhm resistor to GND (added by Sparkbench).",
+      "required": true,
+      "load": {
+        "ohms": 47000,
+        "to": "gnd"
+      }
+    }
+  ],
+  "vmin": 0,
+  "vmax": 5,
+  "currentMa": 0.2,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/SpectraFlex2inch.pdf",
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/SpectraFlex2inch.pdf",
+    "https://www.adafruit.com/product/1070",
+    "https://learn.sparkfun.com/tutorials/flex-sensor-hookup-guide"
+  ],
+  "priceUsd": 8,
+  "supplierQuery": "Spectra Symbol flex sensor 2.2 inch",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+  "buildNotes": [
+    "Not polarised: either tab can go to 3.3 V. Wire the other tab to an ADC pin and a 47 kOhm resistor to GND.",
+    "R = 47 kOhm x (3.3 V - V) / V; flat about 25 kOhm (2.15 V), 100 kOhm (1.06 V) fully bent.",
+    "Angle is not in the datasheet: calibrate flat and 90-degree resistance for your own sensor (+/-30 % part to part).",
+    "Tape or glue the tab end down so the strip does not bend at the crimped tabs; it bends in one direction only.",
+    "On the ESP32 use an ADC1 pin (GPIO32-39) with 11 dB attenuation."
+  ],
+  "keywords": [
+    "flex sensor",
+    "bend sensor",
+    "flex",
+    "spectra symbol",
+    "fs-l-0055-253-st",
+    "adafruit 1070",
+    "resistive",
+    "glove",
+    "angle",
+    "analog"
+  ],
+  "sim": {
+    "kind": "resistive-sensor",
+    "quantity": "Bend angle",
+    "unit": "°",
+    "min": 0,
+    "max": 90,
+    "default": 0,
+    "resistive": [
+      {
+        "pin": "2",
+        "to": "1",
+        "curve": "linear",
+        "rAtMin": 25000,
+        "rAtMax": 100000
+      }
+    ]
+  },
+  "driver": {
+    "filename": "flex_sensor.py",
+    "code": "# Spectra Symbol 2.2\" flex sensor (FS-L-0055-253-ST, Adafruit 1070), MicroPython driver.\n# The sensor is a plain resistor: about 25 kOhm flat (+/-30 %), rising to 45-125 kOhm when bent,\n# depending on bend radius (Spectra Symbol datasheet). Read it as a voltage divider:\n#   pin 1 -> 3.3 V, pin 2 -> ADC input and a fixed resistor R_LOAD (47 kOhm) to GND.\n#   V(ADC) = VCC * R_LOAD / (R_LOAD + R_FLEX)\n#   R_FLEX = R_LOAD * (VCC - V) / V\n# The datasheet gives no angle formula: angle() interpolates linearly between two calibration\n# points (flat resistance and resistance at 90 degrees). Defaults are the typical 25 kOhm flat and\n# about 100 kOhm fully bent (Adafruit); measure your own sensor and pass r_flat / r_bent.\nfrom machine import ADC, Pin\n\n\nclass FlexSensor:\n    def __init__(self, pin, r_load=47000, vcc=3.3, r_flat=25000, r_bent=100000, samples=16):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.r_load = r_load\n        self.vcc = vcc\n        self.r_flat = r_flat\n        self.r_bent = r_bent\n        self.samples = samples\n\n    def volts(self):\n        \"\"\"Average several samples and return the divider voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vcc / 65535\n        return total / self.samples\n\n    def resistance(self, v=None):\n        \"\"\"Flex sensor resistance in ohms, or None if the sensor looks open (V near 0).\"\"\"\n        if v is None:\n            v = self.volts()\n        if v < 0.01:\n            return None\n        if v >= self.vcc:\n            return 0.0\n        return self.r_load * (self.vcc - v) / v\n\n    def angle(self, r=None):\n        \"\"\"Approximate bend angle in degrees from the two-point calibration (0 = flat).\"\"\"\n        if r is None:\n            r = self.resistance()\n        if r is None:\n            return None\n        return (r - self.r_flat) * 90 / (self.r_bent - self.r_flat)\n"
+  },
+  "skill": "---\nname: part-flex-sensor-2-2in\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Spectra Symbol 2.2\" flex / bend sensor (FS-L-0055-253-ST, Adafruit 1070 Short Flex Sensor, ~25 kΩ flat). Use when designing, wiring, simulating or writing code for a flex sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Flex sensor 2.2in (Spectra Symbol FS-L-0055-253-ST)\n\n## Overview\nA **Spectra Symbol 2.2\" flex sensor** (active length 55.37 mm, part length 73.66 mm), sold by Adafruit as the **Short Flex/Bend Sensor (product 1070)**. It is a thin strip whose resistance rises when it is bent (printed side outward): about **25 kΩ flat** (±30 %), **45–125 kΩ bent** depending on bend radius, about 100 kΩ fully bent (Adafruit). It bends in one direction only. There is no chip and no supply: you read it with a voltage divider into an ADC.\n\n## Pinout (two tabs at the end, 2.54 mm pitch)\n| Pin | Function |\n|---|---|\n| 1 | One end of the resistive strip; wire to 3.3 V |\n| 2 | Other end; wire to an ADC pin and a 47 kΩ resistor to GND |\n\nThe two tabs are not polarised and not labelled; either way round works. Sparkbench adds the 47 kΩ resistor from pin 2 to GND.\n\n## Electrical limits\n- Power rating 0.5 W continuous, 1 W peak (never close in a 3.3/5 V divider: about 0.1 mW).\n- Temperature −35 to +80 °C, life > 1 million bends, 0.43 mm thick.\n- Current in the divider: 3.3 V / (25 kΩ + 47 kΩ) ≈ 0.05 mA.\n\n## Interface details\n```\nV(ADC) = 3.3 V × 47 kΩ / (47 kΩ + R_flex)\nR_flex = 47 kΩ × (3.3 V − V) / V\nangle  ≈ (R_flex − R_flat) × 90° / (R_bent − R_flat)    (two-point calibration)\n```\nTypical: flat 25 kΩ → 2.15 V; 75 kΩ → 1.27 V; 100 kΩ → 1.06 V. The datasheet gives no angle formula; the driver's angle is a linear fit between the flat resistance and the 90° resistance (defaults 25 kΩ / 100 kΩ). Calibrate your own sensor, since resistance varies ±30 % between sensors. The simulator models the same linear 25 kΩ (0°) → 100 kΩ (90°) relation.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| 1 | 3V3 | 3V3(OUT) | 3.3 V (pin 1) |\n| 2 | GPIO34 (ADC1) + 47 kΩ to GND | GP26 / ADC0 + 47 kΩ to GND | ADS1115 A0 + 47 kΩ to GND (the Pi has no ADC) |\n\n## Using the driver\n```python\nfrom flex_sensor import FlexSensor\nimport time\nflex = FlexSensor(34)                # ADC GPIO wired to pin 2\nwhile True:\n    r = flex.resistance()\n    print('R=%dk A=%d' % (round(r / 1000), round(flex.angle(r))))\n    time.sleep(0.5)\n```\n`FlexSensor(pin, r_load=47000, vcc=3.3, r_flat=25000, r_bent=100000)`; `volts()`, `resistance()`, `angle()`.\n\n## Gotchas\n- **Strain the base:** the area near the tabs is fragile. Glue or tape the tab end down so bending happens along the strip, not at the crimps, and do not bend it sharply at the base.\n- **One direction only:** bending the other way changes the resistance very little.\n- **Solder carefully:** the tabs are crimped onto a plastic film; use a female header or a quick solder joint, or the film melts.\n- **ESP32:** use ADC1 pins (GPIO32–39); ADC2 stops working with Wi-Fi on.\n- A larger load resistor than 47 kΩ gives more voltage swing for these 25–125 kΩ values; change `r_load` to match.\n\n## Datasheet\nhttps://cdn-shop.adafruit.com/datasheets/SpectraFlex2inch.pdf (Spectra Symbol, FS-L-0055-253-ST)\n",
+  "example": {
+    "code": "from flex_sensor import FlexSensor\nimport time\n\nflex = FlexSensor({2})\nwhile True:\n    r = flex.resistance()\n    if r is None:\n        print('open')\n    else:\n        print('R=%dk A=%d' % (round(r / 1000), round(flex.angle(r))))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the flex resistance and bend angle for the angle set on the control",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 60
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "R=75k A=60",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:45:48.701Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/SpectraFlex2inch.pdf",
+      "https://www.adafruit.com/product/1070"
+    ]
+  }
+}

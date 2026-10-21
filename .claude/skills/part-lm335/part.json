@@ -1,0 +1,117 @@
+{
+  "type": "custom-lm335",
+  "name": "LM335 precision temperature sensor",
+  "mpn": "LM335Z",
+  "category": "sensor",
+  "description": "Precision temperature sensor from Texas Instruments that works like a 2-terminal zener: its breakdown voltage is 10 mV per kelvin (2.98 V at 25 °C), specified from −40 °C to 100 °C at 0.4–5 mA bias current. It has no supply pin; a bias resistor (2.2 kΩ from 5 V) feeds V+, which is also the output read by the ADC. Sold as: LM335Z in a TO-92 3-pin through-hole package (TI LM335Z/NOPB or ST LM335Z; flat face towards you, legs down: ADJ, V+, V−), ...",
+  "eli5": "A tiny three-legged thermometer that behaves like a special diode: fed through a resistor from 5 V, the voltage across it is the temperature in kelvin divided by 100 (2.98 V at 25 °C), which your board reads with its analog input.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "ADJ",
+      "role": "nc",
+      "required": false,
+      "description": "Calibration adjust (pin 1, left with the flat face towards you). Leave unconnected for basic use; for trimming, a 10 kΩ pot across V+ and V− with its wiper here."
+    },
+    {
+      "name": "V+",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "load": {
+        "ohms": 2200,
+        "to": "supply"
+      },
+      "description": "Positive terminal and output (pin 2, middle): 10 mV/K, 2.98 V at 25 °C. Needs a 2.2 kΩ bias resistor from 5 V (0.4–5 mA), then to an ADC pin. Above about 57 °C it exceeds 3.3 V."
+    },
+    {
+      "name": "V-",
+      "role": "gnd",
+      "required": true,
+      "description": "Negative terminal (pin 3, right), to GND."
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 1,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm335.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/lm335.pdf",
+    "https://www.ti.com/product/LM335",
+    "https://randomnerdtutorials.com/arduino-lm35-lm335-lm34-temperature-sensor/",
+    "https://forum.arduino.cc/t/lm335z-temp-sensor/17664"
+  ],
+  "priceUsd": 1.5,
+  "supplierQuery": "LM335Z TO-92 temperature sensor",
+  "footprint": "Package_TO_SOT_THT:TO-92_Inline",
+  "buildNotes": [
+    "Pin order with the flat face towards you, legs down: left = ADJ, middle = V+, right = V− (the datasheet drawing is a bottom view with the same left-to-right order).",
+    "Put a 2.2 kΩ resistor from 5 V (USB 5V / VIN / VBUS) to V+, and wire V+ to an ADC pin. V− goes to GND. Never connect V+ straight to a supply without the resistor.",
+    "Leave ADJ unconnected unless you calibrate with a 10 kΩ pot across the sensor (wiper on ADJ, trim to 2.982 V at 25 °C).",
+    "Temperature (K) = Vout (mV) / 10; °C = K − 273.15.",
+    "V+ goes above 3.3 V above about 57 °C. For hotter measurements add a divider or use an external ADC so the GPIO stays under 3.3 V.",
+    "Average many ADC samples (1 °C is only 10 mV) and do a one-point calibration: the uncalibrated LM335 can be off by up to 6 °C."
+  ],
+  "keywords": [
+    "lm335",
+    "lm335z",
+    "lm335a",
+    "analog",
+    "temperature",
+    "sensor",
+    "kelvin",
+    "zener",
+    "ti"
+  ],
+  "sim": {
+    "kind": "resistive-sensor",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 50,
+    "default": 25,
+    "shunt": {
+      "pin": "V+",
+      "vAtMin": 2.3315,
+      "vAtMax": 3.2315,
+      "rz": 0.6,
+      "minUa": 400
+    }
+  },
+  "driver": {
+    "filename": "lm335.py",
+    "code": "# LM335 / LM335A precision temperature sensor (Texas Instruments, SNIS160E), MicroPython driver.\n# The LM335 is a 2-terminal zener whose breakdown voltage is proportional to absolute\n# temperature: 10 mV/K, so 2.98 V at 25 C (298.15 K). It must be biased with a resistor\n# from a supply to V+ so that 0.4 mA to 5 mA flows (datasheet Recommended Operating\n# Conditions; 1 mA nominal). Read the voltage at V+ with an ADC:\n#     T(K) = Vout(mV) / 10        T(C) = T(K) - 273.15\nfrom machine import ADC, Pin\n\n\nclass LM335:\n    MV_PER_K = 10.0  # datasheet output voltage temperature coefficient\n\n    def __init__(self, pin, samples=32, vref=3.3):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n        self.scale = 1.0  # one-point calibration factor (see calibrate())\n\n    def millivolts(self):\n        \"\"\"Average several ADC samples and return the voltage across the LM335 in mV.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref * 1000 / 65535\n        return total / self.samples\n\n    def kelvin(self):\n        \"\"\"Absolute temperature: T(K) = Vout / 10 mV per K, times the calibration factor.\"\"\"\n        return self.millivolts() / self.MV_PER_K * self.scale\n\n    def temperature(self):\n        \"\"\"Temperature in degrees C.\"\"\"\n        return self.kelvin() - 273.15\n\n    def calibrate(self, true_c):\n        \"\"\"One-point calibration at a known temperature. The output is proportional to\n        absolute temperature, so a single scale factor corrects the slope error over the\n        whole range (datasheet 7.3.1). Same idea as the ADJ-pin trim, done in software.\"\"\"\n        self.scale = 1.0\n        self.scale = (true_c + 273.15) / self.kelvin()\n"
+  },
+  "skill": "---\nname: part-lm335\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the LM335 precision temperature sensor (LM335Z / LM335AZ, TO-92, 10 mV/K 2-terminal zener). Use when designing, wiring, simulating or writing code for an LM335 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# LM335 precision temperature sensor (LM335Z, TO-92)\n\n## Overview\nThe **LM335** (Texas Instruments, also made by ST) is a temperature sensor that works like a **2-terminal zener diode**. Its breakdown voltage is proportional to **absolute temperature**, so it reads in kelvin, not °C. Hobbyists usually buy the bare **LM335Z** (or the tighter **LM335AZ**) in a 3-pin TO-92 package.\n- Scale factor: **10 mV/K**, so **2.98 V at 25 °C** (298.15 K), 2.73 V at 0 °C, 3.73 V at 100 °C\n- Specified **−40 °C to 100 °C** (intermittent to 125 °C)\n- Operating current: **0.4 mA to 5 mA** (1 mA nominal), dynamic impedance under 1 Ω\n- Uncalibrated error at 25 °C: LM335 ±2 °C typ / ±6 °C max; LM335A ±1 °C typ / ±3 °C max\n- It has **no supply pin**: it needs a **bias resistor** from a supply to V+\n\n## Pinout (TO-92, flat face towards you, legs down)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 (left) | ADJ | Calibration adjust (leave unconnected for basic use) |\n| 2 (middle) | V+ | Positive terminal = the output; bias resistor to +5 V, and to the ADC |\n| 3 (right) | V− | Negative terminal, to GND |\n\nThe datasheet drawing is a **bottom view** with the flat edge at the top; the left-to-right order is the same: ADJ, +, −.\n\n## Electrical limits\n- Operating (reverse) current 0.4–5 mA; absolute max 15 mA reverse, 10 mA forward.\n- Below 0.4 mA the reading is wrong (it just follows the resistor).\n- With a 2.2 kΩ resistor from 5 V: about 0.9 mA at 25 °C (1.2 mA at −40 °C, 0.8 mA at 50 °C).\n- **V+ exceeds 3.3 V above about 57 °C** (3.30 V = 330 K). A 3.3 V microcontroller input is only safe up to about 3.6 V, so for hotter measurements use a voltage divider (e.g. 10 k / 22 k) or an external ADC.\n\n## Interface details\nConversion formula (datasheet: 10 mV/K, proportional to absolute temperature):\n```\nT(K)  = Vout(mV) / 10\nT(°C) = T(K) − 273.15\n```\nExamples: 2.732 V = 0 °C, 2.982 V = 25 °C, 3.032 V = 30 °C.\nBias resistor: R = (Vsupply − Vout) / I. From 5 V at about 1 mA: **2.2 kΩ** (2 kΩ also fine).\nCalibration: because the output is proportional to absolute temperature, one-point calibration fixes the whole range. Either a 10 kΩ pot across the sensor with its wiper on ADJ (datasheet Figure 12, trim to 2.982 V at 25 °C), or in software with `calibrate()`.\n\n## Wiring\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| ADJ | not connected | not connected | not connected |\n| V+ | GPIO34 (ADC1), plus 2.2 kΩ to 5V/VIN | GP26 / ADC0, plus 2.2 kΩ to VBUS | External ADC input (e.g. ADS1115 A0), plus 2.2 kΩ to 5V |\n| V− | GND | GND | GND |\n\nThe Raspberry Pi 4 has **no built-in ADC**, so you need an external ADC. On the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on).\n\n## Using the driver\n```python\nfrom lm335 import LM335\nimport time\nsensor = LM335(26)          # GPIO number of the ADC pin V+ is wired to\n# sensor.calibrate(22.0)    # optional: one-point calibration at a known temperature\nwhile True:\n    print('T=%.1fC' % sensor.temperature())\n    time.sleep(1)\n```\nThe driver averages 32 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535 (pass `vref=` if your 3V3 rail is different).\n\n## Gotchas\n- **Kelvin, not Celsius:** subtract 273.15. Don't use the LM35 formula (mV / 10 = °C); that gives about 298 \"°C\".\n- **Bias resistor is mandatory:** never wire V+ straight to 5 V or 3.3 V; with no resistor the current is not limited and the part overheats.\n- **3.3 V is too low a bias supply:** at 25 °C only 0.32 V is left across the resistor, so the current is too small over most of the range. Bias from 5 V.\n- **Reversed:** wired backwards it acts as a forward-biased diode (about 0.7 V). The reading is nonsense, and without a resistor the current can be high.\n- **ADC range:** the output sits near the top of a 3.3 V ADC. ESP32 readings above about 3.1 V are compressed; check against a thermometer and calibrate, or use a divider.\n- **Self-heating and placement:** keep the current near 1 mA; the copper legs carry board heat into the chip. Thermal time constant in still air is about 80 s.\n- **Look-alikes:** the LM35 (3 pins with a supply, 10 mV/°C from 0 V) and TMP36 (500 mV offset) look the same, so check the marking.\n\n## Datasheet\nhttps://www.ti.com/lit/ds/symlink/lm335.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://www.ti.com/lit/ds/symlink/lm335.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from lm335 import LM335\nimport time\n\nsensor = LM335({V_})\nwhile True:\n    print('T=%.0fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T15:42:11.653Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm335.pdf"
+    ]
+  }
+}

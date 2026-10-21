@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-lm335",
+  "board": "LM335Z bare TO-92 (TI LM335Z/NOPB or ST LM335Z)",
+  "reason": "Modelled as a resistive-sensor shunt reference (10 mV/K, 2.3315-3.2315 V over -40..50 C) with a 2.2 kOhm bias load to the 5 V supply; driver converts T = Vout/10 mV - 273.15 per the TI datasheet. Check passed on ESP32 and Pico on the first run.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/lm335.pdf",
+  "breakoutPinoutSource": "TI SNIS160E section 5, TO-92 (LP) bottom view: ADJ, +, - (same left-to-right order as the front view with the flat face towards you)",
+  "checkRuns": 1
+}
