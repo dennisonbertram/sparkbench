@@ -290,8 +290,53 @@ export class SimEngine {
     }
     return 0;
   }
+  /** HX711-style bridge ADCs: clock edges on PD_SCK shift the 24-bit reading out on DOUT. */
+  private hx = new Map<string, { bit: number; raw: number; readyAt: number }>();
+  private hxParts() {
+    return this.project.parts.flatMap((part) => {
+      const cs = customSpec(part.type);
+      return cs?.sim.kind === 'hx711' && cs.sim.clockPin && cs.sim.outputPin ? [{ part, cs }] : [];
+    });
+  }
+  private hxDrive(partId: string, high: boolean) {
+    const vcc = this.model.moduleSupply(partId);
+    this.model.setModuleOutput(partId, 'hxout', high ? vcc : 0);
+  }
+  /** Ready again once the next conversion is done (DOUT low). */
+  private hxUpdate() {
+    for (const { part } of this.hxParts()) {
+      const st = this.hx.get(part.id) ?? { bit: 0, raw: 0, readyAt: 0 };
+      this.hx.set(part.id, st);
+      if (st.bit < 0 && this.timeUs >= st.readyAt) st.bit = 0;
+      if (st.bit === 0) this.hxDrive(part.id, !this.model.modulePowered(part.id));
+    }
+  }
+  private hxClock(g: number) {
+    for (const { part, cs } of this.hxParts()) {
+      if (!this.model.gpiosOnNet(part.id, cs.sim.clockPin!).includes(g)) continue;
+      const st = this.hx.get(part.id) ?? { bit: 0, raw: 0, readyAt: 0 };
+      this.hx.set(part.id, st);
+      if (st.bit < 0) continue; // still converting
+      if (st.bit === 0) {
+        const value = (this.model.states.get(part.id) as any)?.value ?? 0;
+        let raw = Math.round(value * (cs.sim.countsPerUnit ?? 1) + (cs.sim.offsetCounts ?? 0));
+        raw = Math.max(-0x800000, Math.min(0x7fffff, raw));
+        st.raw = raw < 0 ? raw + 0x1000000 : raw;
+      }
+      st.bit++;
+      if (st.bit <= 24) this.hxDrive(part.id, ((st.raw >> (24 - st.bit)) & 1) === 1);
+      else {
+        // 25th pulse: the read is over; DOUT stays high until the next conversion (80 samples/s).
+        this.hxDrive(part.id, true);
+        st.bit = -1;
+        st.readyAt = this.timeUs + 12500;
+      }
+    }
+  }
+
   pinWrite(g: number, v: number) {
     this.tick();
+    if (v && !(this.outLevel.get(g) ?? 0)) this.hxClock(g);
     if (this.board?.id === 'pico' && g === 25) {
       this.outLevel.set(25, v);
       return;
@@ -319,6 +364,7 @@ export class SimEngine {
   }
   pinRead(g: number): number {
     this.tick();
+    this.hxUpdate();
     const v = this.readPin(g);
     const volts = this.model.gpioVoltage(g);
     if (volts > 3.7) this.warn(`overv${g}`, 'error', `GPIO${g} sees ${volts.toFixed(1)} V — more than the 3.3 V it can take. Use a voltage divider or level shifter.`);

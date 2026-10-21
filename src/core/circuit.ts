@@ -219,6 +219,10 @@ export class ElectricalModel {
           if (cs?.sim.kind === 'digital-sensor' && cs.sim.outputPin) els.out = c.add(new VSource(`${id}.out`, n(cs.sim.outputPin), g, 0, 200));
           if (cs?.sim.kind === 'actuator') for (const pin of new Set([...(cs.sim.inputPin ? [cs.sim.inputPin] : []), ...(cs.sim.inputPins ?? [])])) els[`in:${pin}`] = c.add(new Resistor(`${id}.in.${pin}`, n(pin), g, 10000));
           for (const d of cs?.sim.digitalOutputs ?? []) els[`dout:${d.pin}`] = c.add(new VSource(`${id}.dout.${d.pin}`, n(d.pin), g, 0, 200));
+          if (cs?.sim.kind === 'hx711' && cs.sim.outputPin && cs.sim.clockPin) {
+            els.hxout = c.add(new VSource(`${id}.hxout`, n(cs.sim.outputPin), g, 0, 200));
+            els.hxclk = c.add(new Resistor(`${id}.hxclk`, n(cs.sim.clockPin), g, 50000));
+          }
           if (part.type === 'epaper29') els.busy = c.add(new VSource(`${id}.busy`, n('BUSY'), g, 0, 200));
           if (part.type === 'level-shifter') {
             // Each channel has a 10 kΩ pull-up on both sides; the MOSFET only conducts when a side is pulled low.

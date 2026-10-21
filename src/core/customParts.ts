@@ -13,8 +13,13 @@ export interface CustomSim {
    * i2c-device: answers at its address with a register map
    * onewire-temp: a DS18x20-family thermometer on the 1-Wire bus (MicroPython's onewire + ds18x20 modules)
    * oled-display: a monochrome I2C OLED (SSD1306/SH1106 command set); tests can read its text
+   * hx711: a 24-bit bridge ADC read by clocking PD_SCK and sampling DOUT (HX711/HX710 load-cell amplifiers)
    */
-  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'none';
+  kind: 'analog-sensor' | 'digital-sensor' | 'actuator' | 'i2c-device' | 'onewire-temp' | 'oled-display' | 'hx711' | 'none';
+  /** hx711: the PD_SCK pin (outputPin is DOUT); raw 24-bit reading = round(value × countsPerUnit + offsetCounts). */
+  clockPin?: string;
+  countsPerUnit?: number;
+  offsetCounts?: number;
   /** oled-display: the controller chip and visible rows (SSD1306 128×64 / 128×32, SH1106 1.3" 128×64). */
   controller?: 'ssd1306' | 'sh1106';
   rows?: 32 | 64;
@@ -112,7 +117,7 @@ const REGISTRY = new Map<string, { spec: CustomPartSpec; def: PartDef }>();
 export function specToDef(spec: CustomPartSpec): PartDef {
   const controls: SimControl[] = [];
   const s = spec.sim;
-  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
+  if (s.kind === 'analog-sensor' || s.kind === 'onewire-temp' || s.kind === 'hx711' || (s.kind === 'i2c-device' && (s.measure || s.measures?.length || s.responses?.length))) {
     const min = s.min ?? 0;
     const max = s.max ?? 100;
     controls.push({ key: 'value', label: s.quantity ?? 'Value', kind: 'slider', min, max, step: (max - min) / 200 >= 1 ? 1 : +((max - min) / 200).toPrecision(1), default: s.default ?? (min + max) / 2, unit: s.unit ? ` ${s.unit}`.replace(/^ (°|%)/, '$1') : '' });
@@ -184,6 +189,7 @@ export function validateSpec(spec: CustomPartSpec): string[] {
   if (s.kind === 'i2c-device' && spec.i2cAddress === undefined) errs.push('i2c-device without i2cAddress');
   if (s.kind === 'onewire-temp' && !s.outputPin) errs.push('onewire-temp needs outputPin (the DQ line)');
   if (s.kind === 'oled-display' && spec.i2cAddress === undefined) errs.push('oled-display needs i2cAddress');
+  if (s.kind === 'hx711' && (!s.outputPin || !s.clockPin || !names.has(s.clockPin) || !s.countsPerUnit)) errs.push('hx711 needs outputPin (DOUT), clockPin (PD_SCK) and countsPerUnit');
   if (s.kind === 'onewire-temp' && s.family !== undefined && ![0x10, 0x22, 0x28, 0x3b, 0x42].includes(s.family)) errs.push(`1-Wire family 0x${s.family.toString(16)} is not a DS18x20-type thermometer`);
   const keys = new Set(['value', 'active', ...(s.controls ?? []).map((c) => c.key), ...(s.digitalOutputs ?? []).map((d) => d.control)]);
   for (const m of [...(s.measures ?? []), ...(s.measure ? [s.measure] : [])]) {
