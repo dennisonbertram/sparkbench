@@ -1,0 +1,79 @@
+{
+  "type": "custom-max7219-4-in-1-matrix",
+  "mpn": "MAX7219",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; Added a separate 5 V supply for VCC (it needs 4–5.5 V and up to 1.3 A, more than the board can give); its − joins the board's GND. Added the max7219.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shows AB12 across the four blocks, then shuts the display down: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, spi"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "5 pins wired; Added a separate 5 V supply for VCC (it needs 4–5.5 V and up to 1.3 A, more than the board can give); its − joins the board's GND. Added the max7219.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shows AB12 across the four blocks, then shuts the display down: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C29160 MAX7219CNG+ (51 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T12:45:56.147Z"
+}

@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-l76k",
+  "board": "Waveshare L76K GPS Module (SKU 23721, 5-pin VCC, GND, TX, RX, PPS, IPEX active antenna)",
+  "reason": "Modelled as a uart-device NMEA stream (GGA+RMC at 9600 baud 8N1 per the Quectel L76K hardware design); the checksum-verifying driver accepts any talker (GN/GP/BD/GL), uses CASIC $PCAS settings, and the check passed on ESP32 and Pico (simulator, breadboard, circuit board, footprint).",
+  "datasheetUrl": "https://files.waveshare.com/upload/d/db/Quectel_L76K_Hardware_Design_V1.0.pdf",
+  "breakoutPinoutSource": "https://files.waveshare.com/upload/d/df/L76X_GPS_Module_SchDoc.pdf",
+  "checkRuns": 1
+}

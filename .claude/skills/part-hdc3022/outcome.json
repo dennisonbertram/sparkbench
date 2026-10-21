@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-hdc3022",
+  "board": "Adafruit HDC3022 Precision Temperature & Humidity Sensor - STEMMA QT / Qwiic (product 5989; 6-pin header VIN, GND, SCL, SDA, RST, ALERT)",
+  "reason": "Check passed on ESP32 and Pico on the first run. The model answers trigger-on-demand 0x2400 with T/RH words plus CRC-8 (poly 0x31, init 0xFF), encoded with TI's T = -45 + 175*raw/65535 and RH = 100*raw/65535, and answers manufacturer ID 0x3781 with 0x3000 + CRC. The driver checks that ID, triggers the measurement, waits 15 ms (12.5 ms typical in LPM0) and checks both CRCs.",
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/hdc3022.pdf",
+  "breakoutPinoutSource": "https://github.com/adafruit/Adafruit-HDC3021-Precision-Temperature-Humidity-Sensor-PCB",
+  "checkRuns": 1
+}

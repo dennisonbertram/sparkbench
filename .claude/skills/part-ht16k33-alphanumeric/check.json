@@ -1,0 +1,79 @@
+{
+  "type": "custom-ht16k33-alphanumeric",
+  "mpn": "HT16K33",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; HT16K33 quad 14-segment alphanumeric display (I2C backpack) needs at least 4.5 V, so it is powered from 5 V. It shares the I2C bus (SDA D21, SCL D22) at address 0x70. Added the ht16k33alpha.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shows Hi42 on the four alphanumeric digits: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×66.5 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "5 pins, i2c"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; HT16K33 quad 14-segment alphanumeric display (I2C backpack) needs at least 4.5 V, so it is powered from 5 V. It shares the I2C bus (SDA GP4, SCL GP5) at address 0x70. Added the ht16k33alpha.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "11 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Shows Hi42 on the four alphanumeric digits: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C5444733 HT16K33A-20SOP (821 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T13:04:43.279Z"
+}

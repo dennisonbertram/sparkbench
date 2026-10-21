@@ -1,0 +1,22 @@
+{
+  "diffs": [
+    {
+      "diff": "PM1.0 (ug/m3): datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "Winsen ZH03B manual V2.1, Initiative upload table: 'Byte 11 Data 4 high 8 bits PM1.0 concentration (ug/m3) / Byte 12 low 8 bits'; worked example: 'PM1.0 value=0x00*256+0x54=84ug/m3'. Q&A example: 'PM1.0 value=0x00*256+0x65=101ug/m3'. The part's model already uses this 1:1 scaling: sim.uartStream and sim.uartReplies encode each PM field with \"scale\": 1 (16-bit big-endian, value in ug/m3), and the driver returns (high<<8)|low unchanged. The gate's authorConversions() only reads sim.measure/measures/responses, not uartStream/uartReplies, so it reports 'none' even though the model agrees with the datasheet.",
+      "source": "https://www.winsen-sensor.com/d/files/ZH03B.pdf"
+    },
+    {
+      "diff": "PM2.5 (ug/m3): datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "Winsen ZH03B manual V2.1, Initiative upload table: 'Byte 13 Data 5 high 8 bits PM2.5 concentration (ug/m3) / Byte 14 low 8 bits'; worked example: 'PM2.5 value=0x00*256+0x6E=110ug/m3'. Q&A example: 'PM2.5 value=0x00*256+0x85=133ug/m3'. The part's model already uses this 1:1 scaling: sim.uartStream and sim.uartReplies encode each PM field with \"scale\": 1 (16-bit big-endian, value in ug/m3), and the driver returns (high<<8)|low unchanged. The gate's authorConversions() only reads sim.measure/measures/responses, not uartStream/uartReplies, so it reports 'none' even though the model agrees with the datasheet.",
+      "source": "https://www.winsen-sensor.com/d/files/ZH03B.pdf"
+    },
+    {
+      "diff": "PM10 (ug/m3): datasheet reading gives 1 per count, the part's model has none",
+      "verdict": "part-correct",
+      "evidence": "Winsen ZH03B manual V2.1, Initiative upload table: 'Byte 15 Data 6 high 8 bits PM10 concentration (ug/m3) / Byte 16 low 8 bits'; worked example: 'PM10 value=0x00*256+0x7C=124ug/m3'. Q&A example: 'PM10 value=0x00*256+0x96=150ug/m3'. The part's model already uses this 1:1 scaling: sim.uartStream and sim.uartReplies encode each PM field with \"scale\": 1 (16-bit big-endian, value in ug/m3), and the driver returns (high<<8)|low unchanged. The gate's authorConversions() only reads sim.measure/measures/responses, not uartStream/uartReplies, so it reports 'none' even though the model agrees with the datasheet.",
+      "source": "https://www.winsen-sensor.com/d/files/ZH03B.pdf"
+    }
+  ]
+}

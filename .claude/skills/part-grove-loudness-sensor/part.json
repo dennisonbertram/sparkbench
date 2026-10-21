@@ -1,0 +1,117 @@
+{
+  "type": "custom-grove-loudness-sensor",
+  "name": "Grove Loudness Sensor",
+  "mpn": "Grove - Loudness Sensor (LM2904)",
+  "category": "sensor",
+  "description": "Microphone and LM2904 dual op-amp that turn sound into a positive DC envelope on SIG: about 0 V in silence, rising with loudness up to about VCC - 1.5 V (the LM2904 output limit). Gain is set with a trimmer. Runs on 3.5-10 V (use 5 V). Sold as: Seeed Studio Grove - Loudness Sensor v0.9b (Grove 4-pin connector SIG, NC, VCC, GND), sold by Seeed and its distributors.",
+  "eli5": "An ear that tells you how loud it is. Its SIG pin is near 0 V when it's quiet and goes higher the louder the sound is.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Loudness envelope output (Grove pin 1, yellow wire): ~0 V in silence, up to ~VCC - 1.5 V. Has 47 kOhm in series on the board. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (Grove pin 2, white wire)",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.5-10 V (Grove pin 3, red wire). Use 5 V.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black wire)",
+      "required": true
+    }
+  ],
+  "vmin": 3.5,
+  "vmax": 10,
+  "currentMa": 2,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Loudness_Sensor/res/LM2904DR.pdf",
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove-Loudness_Sensor/res/LM2904DR.pdf",
+    "https://wiki.seeedstudio.com/Grove-Loudness_Sensor/",
+    "https://files.seeedstudio.com/wiki/Grove-Loudness_Sensor/res/Grove%20-%20Loudness%20Sensor%20Eagle%20File_v0.9b.zip"
+  ],
+  "priceUsd": 6.5,
+  "supplierQuery": "Seeed Grove Loudness Sensor",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order from Seeed's schematic (J2 pins 1-4): SIG (yellow), NC (white), VCC (red), GND (black). Use a Grove-to-female-jumper cable.",
+    "Power VCC from 5 V: the board is specified for 3.5-10 V, so 3.3 V is too low.",
+    "SIG is an envelope, not audio: ~0 V in silence, rising with loudness to about VCC - 1.5 V (~3.5 V at 5 V). The 47 kOhm series resistor on SIG keeps a 3.3 V ADC pin safe; very loud sound just reads full scale.",
+    "Average fast samples over ~50 ms to remove ripple; turn the gain trimmer down if ordinary sound already reads near the top.",
+    "On the ESP32 use an ADC1 pin (GPIO32-39); the Raspberry Pi has no ADC, so add one."
+  ],
+  "keywords": [
+    "grove",
+    "loudness",
+    "sound",
+    "microphone",
+    "mic",
+    "lm2904",
+    "envelope",
+    "noise",
+    "clap",
+    "seeed",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "Loudness (SIG envelope voltage)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.5,
+    "default": 0.05,
+    "vAtMin": 0,
+    "vAtMax": 3.5
+  },
+  "driver": {
+    "filename": "grove_loudness.py",
+    "code": "# Seeed Grove - Loudness Sensor (v0.9b, Grove pins SIG, NC, VCC, GND), MicroPython driver.\n# No bus, no registers: an electret/MEMS microphone feeds an LM2904 dual op-amp (TI datasheet).\n# From the Seeed schematic: U1A is a unity-gain buffer and U1B a non-inverting amplifier\n# (gain 1 + 560k / (1k + 1k trimmer)), both with their inputs referenced to GND on a single supply,\n# so only the positive half of the audio is amplified. R6 47k + C3 1 uF (47 ms) then smooth it into a\n# positive ENVELOPE on SIG: about 0 V in silence, rising with loudness, up to the LM2904's\n# high-level output limit (about VCC - 1.5 V, so ~3.5 V on a 5 V supply).\n# Loudness is therefore read as a DC level: average a few fast samples to remove the ripple.\nfrom machine import ADC, Pin\nimport time\n\n\nclass GroveLoudness:\n    def __init__(self, sig, vref=3.3):\n        \"\"\"sig: GPIO number (or Pin) wired to SIG. vref: ADC full scale in volts, used when\n        read_uv() is not available (e.g. Pico, where full scale is the 3.3 V supply).\"\"\"\n        self.adc = ADC(Pin(sig) if isinstance(sig, int) else sig)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V input range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vref = vref\n\n    def voltage(self):\n        \"\"\"One SIG reading in volts.\"\"\"\n        if hasattr(self.adc, 'read_uv'):\n            return self.adc.read_uv() / 1e6\n        return self.adc.read_u16() * self.vref / 65535\n\n    def level(self, window_ms=50):\n        \"\"\"Envelope level in volts: SIG averaged over window_ms (about one RC time constant).\n        Near 0 V in silence, larger for louder sound.\"\"\"\n        total = 0.0\n        n = 0\n        t0 = time.ticks_ms()\n        while True:\n            total += self.voltage()\n            n += 1\n            if time.ticks_diff(time.ticks_ms(), t0) >= window_ms:\n                break\n        return total / n\n\n    def peak(self, window_ms=50):\n        \"\"\"Highest SIG reading over window_ms, in volts (catches short sounds such as claps).\"\"\"\n        hi = self.voltage()\n        t0 = time.ticks_ms()\n        while time.ticks_diff(time.ticks_ms(), t0) < window_ms:\n            v = self.voltage()\n            if v > hi:\n                hi = v\n        return hi\n\n    def raw10(self, vcc=5.0):\n        \"\"\"Level as the 0-1023 number the Seeed Arduino examples print (10-bit ADC with vcc full scale).\"\"\"\n        return min(1023, int(self.level() * 1023 / vcc + 0.5))\n"
+  },
+  "example": {
+    "code": "from grove_loudness import GroveLoudness\nimport time\n\nmic = GroveLoudness({SIG})\nwhile True:\n    print('LEVEL=%.1fV' % mic.level())\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "loudness",
+      "title": "Reports the envelope level set on the loudness slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LEVEL=1.2V",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-loudness-sensor\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Loudness Sensor (LM2904 op-amp, analog sound envelope on SIG, Grove pins SIG/NC/VCC/GND). Use when designing, wiring, simulating or writing code for a Grove Loudness Sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Loudness Sensor (LM2904)\n\n## Overview\nThe **Seeed Grove - Loudness Sensor** (v0.9b) puts a microphone in front of a **TI LM2904** dual op-amp. Unlike a plain microphone breakout it does not output the audio waveform: the op-amp stages are referenced to GND on a single supply, so only the positive half of the sound is amplified, and a 47 kΩ / 1 µF filter (47 ms) smooths it into a **positive envelope**.\n- **SIG ≈ 0 V in silence** and rises with loudness.\n- The top is set by the LM2904 output limit, **about VCC − 1.5 V** (≈ 3.5 V on 5 V).\n- Gain (about 1 + 560k / (1k + trimmer)) is set with the screw potentiometer.\n- It is a relative loudness level, not a calibrated dB meter. Seeed's Arduino example simply prints `analogRead()` 0–1023.\n\n## Pinout (Grove connector, pin 1 to 4, from Seeed's schematic)\n| Pin | Name | Wire | Function |\n|-----|------|------|----------|\n| 1 | SIG | yellow | Envelope output (analog) |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Supply, 3.5–10 V |\n| 4 | GND | black | Ground |\n\n## Electrical limits\n- Supply: **3.5–10 V** (Seeed spec; the LM2904 itself runs from 3–26 V). Power it from **5 V**: 3.3 V is below its minimum.\n- Current: LM2904 0.7 mA typ / 1.2 mA max at 5 V (both amplifiers), plus the microphone: about 2 mA total.\n- SIG can reach ~3.5 V on a 5 V supply, a little above a 3.3 V ADC's range. The 47 kΩ resistor in series with SIG limits the current to a few µA, so it is safe, but very loud sounds read as full scale.\n\n## Interface details\n- Analog only: SIG straight to an ADC pin.\n- Read it as a level: average fast samples over ~50 ms to remove the ripple left by the 47 ms filter.\n- A threshold (e.g. > 0.05 V, or Seeed's \"value > 10\" out of 1023) detects a loud sound.\n\n## Wiring\n| Board | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC | 5V / VIN | VBUS (pin 40) | 5 V (pin 2) |\n| GND | GND | GND | GND (pin 6) |\n| SIG | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (e.g. ADS1115) |\n| NC | – | – | – |\n\nUse a Grove-to-female-jumper cable (the board has a 2 mm Grove socket, not header pins). On the ESP32 use ADC1 pins (ADC2 stops working while Wi-Fi is on).\n\n## Using the driver\n```python\nfrom grove_loudness import GroveLoudness\nimport time\nmic = GroveLoudness(34)       # GPIO wired to SIG\nwhile True:\n    print('level=%.2fV peak=%.2fV' % (mic.level(), mic.peak()))\n    time.sleep(0.2)\n```\n`level(window_ms=50)` averages SIG in volts; `peak()` is the highest reading in the window; `raw10()` gives Seeed's 0–1023 scale (10-bit, 5 V full scale).\n\n## Gotchas\n- **It is not a waveform**: don't compute peak-to-peak like a MAX4466; the envelope already is the loudness.\n- **3.3 V supply**: below the 3.5 V minimum, the output range shrinks to almost nothing. Use 5 V.\n- **Slow response**: the 47 ms filter smooths out very short clicks; use `peak()` for claps.\n- **Gain too high**: SIG sits at the top limit for ordinary sound. Turn the trimmer down.\n\n## Datasheet\nLM2904: https://files.seeedstudio.com/wiki/Grove-Loudness_Sensor/res/LM2904DR.pdf. Board: https://wiki.seeedstudio.com/Grove-Loudness_Sensor/\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:47:23.537Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/lm2904.pdf",
+      "https://wiki.seeedstudio.com/Grove-Loudness_Sensor/"
+    ]
+  }
+}

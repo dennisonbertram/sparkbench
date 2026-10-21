@@ -1,0 +1,228 @@
+{
+  "type": "custom-m5stack-env-iv",
+  "name": "M5Stack ENV IV temperature, humidity & pressure unit",
+  "mpn": "U001-D",
+  "category": "sensor",
+  "description": "M5Stack environment sensor unit with two chips on one I2C bus: a Sensirion SHT40 for temperature (-40 to 125 °C, ±0.2 °C) and relative humidity (0–100 %, ±1.8 %) at address 0x44, and a Bosch BMP280 for air pressure (300–1100 hPa) at address 0x76. The unit has an HT7533 3.3 V regulator and 4.7 kΩ pull-ups to 3.3 V on SDA/SCL, so it takes 5 V on its Grove port and its I2C lines are safe for 3.3 V boards. Sold as: M5Stack ENV IV Unit (SKU U001-D, SHT40 + BMP280), 4-pin HY2.0-4P Grove connector GND, 5V, SDA, SCL, supplied with a 20 cm Grove cable.",
+  "eli5": "A little weather station block: it tells your board the temperature, how damp the air is and the air pressure.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (black wire of the Grove cable)",
+      "required": true
+    },
+    {
+      "name": "5V",
+      "role": "power",
+      "description": "Supply, 5 V nominal (red wire). An on-board HT7533 regulator makes 3.3 V for both sensors; 3.3 V in also works (the regulator then passes about 3.2 V).",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (yellow wire), 4.7 kΩ pull-up to the unit's 3.3 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (white wire), 4.7 kΩ pull-up to the unit's 3.3 V",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5.5,
+  "currentMa": 1.5,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://sensirion.com/resource/datasheet/sht4x",
+  "priceUsd": 6.95,
+  "supplierQuery": "M5Stack ENV IV Unit U001-D SHT40 BMP280",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two I2C devices on one cable: i2c.scan() should show 0x44 (SHT40) and 0x76 (BMP280). Both addresses are fixed.",
+    "Grove wire colours on M5Stack cables: black GND, red 5V, yellow SDA, white SCL. Cut the cable or use a Grove-to-jumper lead for a breadboard.",
+    "Feed 5 V (the unit's 3.3 V regulator and pull-ups keep the I2C lines at 3.3 V, safe for an ESP32 or Pico).",
+    "SHT40: send 0xFD, wait 10 ms, read 6 bytes and check both CRCs (poly 0x31, init 0xFF). RH = -6 + 125 × raw / 65535, cropped to 0–100 %.",
+    "BMP280: check chip id 0x58 at 0xD0, read calibration 0x88–0x9F, use forced mode and compute temperature before pressure (t_fine).",
+    "Use the SHT40 for air temperature; the BMP280's temperature is only for its pressure compensation."
+  ],
+  "keywords": [
+    "m5stack",
+    "env iv",
+    "env4",
+    "envIV",
+    "u001-d",
+    "sht40",
+    "bmp280",
+    "temperature",
+    "humidity",
+    "pressure",
+    "barometer",
+    "grove"
+  ],
+  "sources": [
+    "https://docs.m5stack.com/en/unit/Unit_ENV-IV",
+    "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/573/Sch_UNIT_ENVIV.pdf",
+    "https://sensirion.com/resource/datasheet/sht4x",
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf",
+    "https://www.digikey.com/en/products/detail/m5stack-technology-co-ltd/U001-D/21702603"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      },
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "hPa",
+        "min": 300,
+        "max": 1100,
+        "default": 1013.25
+      }
+    ],
+    "responses": [
+      {
+        "match": "fd",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0019073777370870527,
+            "offset": -6
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ],
+    "subDevices": [
+      {
+        "i2cAddress": 118,
+        "registers": {
+          "0x88": 120,
+          "0x89": 105,
+          "0x8a": 176,
+          "0x8b": 104,
+          "0x8c": 0,
+          "0x8d": 0,
+          "0x8e": 160,
+          "0x8f": 140,
+          "0x90": 0,
+          "0x91": 0,
+          "0x92": 0,
+          "0x93": 0,
+          "0x94": 240,
+          "0x95": 10,
+          "0x96": 0,
+          "0x97": 0,
+          "0x98": 0,
+          "0x99": 0,
+          "0x9a": 152,
+          "0x9b": 58,
+          "0x9c": 80,
+          "0x9d": 201,
+          "0x9e": 0,
+          "0x9f": 0,
+          "0xd0": 88,
+          "0xf3": 0
+        },
+        "measures": [
+          {
+            "reg": "0xFA",
+            "bytes": 3,
+            "shift": 4,
+            "scale": 0.00031948089599609375,
+            "offset": -138.0157470703125,
+            "control": "value"
+          },
+          {
+            "reg": "0xF7",
+            "bytes": 3,
+            "shift": 4,
+            "scale": -0.0016897519429524737,
+            "offset": 1705.5074462890623,
+            "control": "pressure"
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "env4.py",
+    "code": "# M5Stack ENV IV unit (U001-D) MicroPython driver: Sensirion SHT40 (0x44) + Bosch BMP280 (0x76) on one I2C bus.\n# SHT40: Sensirion SHT4x datasheet - single-shot high precision command 0xFD (max 8.3 ms), 6-byte reply with\n#   CRC-8 (poly 0x31, init 0xFF); T = -45 + 175*S/65535 degC, RH = -6 + 125*S/65535 %, RH cropped to 0..100 %.\n# BMP280: Bosch BST-BMP280-DS001 - chip id 0x58 at 0xD0, calibration 0x88..0x9F (little-endian),\n#   forced mode via 0xF4, data burst 0xF7..0xFC, floating-point compensation from section 8.1.\nimport time\n\nSHT40_ADDR = 0x44\nBMP280_ADDR = 0x76\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\ndef _s16(v):\n    return v - 65536 if v > 32767 else v\n\n\nclass SHT40:\n    def __init__(self, i2c, addr=SHT40_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(1)  # power-up time, max 1 ms\n\n    def reset(self):\n        self.i2c.writeto(self.addr, b'\\x94')  # soft reset, ready after 1 ms\n        time.sleep_ms(1)\n\n    def read(self):\n        \"\"\"Measure once; returns (temperature degC, relative humidity %).\"\"\"\n        self.i2c.writeto(self.addr, b'\\xfd')\n        time.sleep_ms(10)  # high precision takes up to 8.3 ms\n        d = self.i2c.readfrom(self.addr, 6)\n        if _crc8(d[0:2]) != d[2] or _crc8(d[3:5]) != d[5]:\n            raise OSError('SHT40 CRC mismatch: check the Grove cable')\n        t = -45 + 175 * ((d[0] << 8) | d[1]) / 65535\n        rh = -6 + 125 * ((d[3] << 8) | d[4]) / 65535\n        return t, min(max(rh, 0.0), 100.0)\n\n\nclass BMP280:\n    def __init__(self, i2c, addr=BMP280_ADDR, osrs_t=1, osrs_p=1):\n        \"\"\"osrs codes: 1=x1, 2=x2, 3=x4, 4=x8, 5=x16.\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(0xD0, 1)[0]\n        if cid != 0x58:\n            raise OSError('BMP280 not found at 0x%02X (chip id 0x%02X)' % (addr, cid))\n        self._w(0xE0, 0xB6)  # soft reset\n        time.sleep_ms(3)  # start-up 2 ms max\n        for _ in range(50):\n            if not (self._r(0xF3, 1)[0] & 0x01):  # im_update: NVM copy running\n                break\n            time.sleep_ms(1)\n        c = self._r(0x88, 24)\n        w = [c[2 * k] | (c[2 * k + 1] << 8) for k in range(12)]\n        self.T1 = w[0]\n        self.T2 = _s16(w[1])\n        self.T3 = _s16(w[2])\n        self.P1 = w[3]\n        self.P2, self.P3, self.P4, self.P5, self.P6, self.P7, self.P8, self.P9 = [_s16(x) for x in w[4:12]]\n        self.osrs_t = osrs_t & 7\n        self.osrs_p = osrs_p & 7\n        self._w(0xF5, 0x00)  # filter off, standby default (written in sleep mode)\n        self._w(0xF4, (self.osrs_t << 5) | (self.osrs_p << 2))  # sleep mode\n        self.t_fine = 0\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _raw(self):\n        self._w(0xF4, (self.osrs_t << 5) | (self.osrs_p << 2) | 0x01)  # forced mode: one conversion\n        time.sleep_ms(7)  # x1/x1 takes 6.4 ms max (table 13)\n        for _ in range(50):\n            if not (self._r(0xF3, 1)[0] & 0x08):  # measuring bit\n                break\n            time.sleep_ms(2)\n        d = self._r(0xF7, 6)  # one burst so both values come from the same conversion\n        adc_p = (d[0] << 12) | (d[1] << 4) | (d[2] >> 4)\n        adc_t = (d[3] << 12) | (d[4] << 4) | (d[5] >> 4)\n        return adc_t, adc_p\n\n    def _comp_t(self, adc_t):\n        var1 = (adc_t / 16384.0 - self.T1 / 1024.0) * self.T2\n        var2 = (adc_t / 131072.0 - self.T1 / 8192.0) * (adc_t / 131072.0 - self.T1 / 8192.0) * self.T3\n        self.t_fine = int(var1 + var2)\n        return (var1 + var2) / 5120.0\n\n    def _comp_p(self, adc_p):\n        var1 = self.t_fine / 2.0 - 64000.0\n        var2 = var1 * var1 * self.P6 / 32768.0\n        var2 = var2 + var1 * self.P5 * 2.0\n        var2 = var2 / 4.0 + self.P4 * 65536.0\n        var1 = (self.P3 * var1 * var1 / 524288.0 + self.P2 * var1) / 524288.0\n        var1 = (1.0 + var1 / 32768.0) * self.P1\n        if var1 == 0.0:\n            return 0.0\n        p = 1048576.0 - adc_p\n        p = (p - var2 / 4096.0) * 6250.0 / var1\n        var1 = self.P9 * p * p / 2147483648.0\n        var2 = p * self.P8 / 32768.0\n        return p + (var1 + var2 + self.P7) / 16.0  # Pa\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure hPa).\"\"\"\n        adc_t, adc_p = self._raw()\n        if adc_t == 0x80000:\n            raise OSError('BMP280 temperature skipped')\n        t = self._comp_t(adc_t)  # first: sets t_fine for the pressure formula\n        return t, self._comp_p(adc_p) / 100.0\n\n\nclass ENV4:\n    \"\"\"Both sensors of the ENV IV unit. read() -> (temperature degC from SHT40, humidity %, pressure hPa).\"\"\"\n\n    def __init__(self, i2c):\n        self.sht = SHT40(i2c)\n        self.bmp = BMP280(i2c)\n\n    def read(self):\n        t, rh = self.sht.read()\n        _, p = self.bmp.read()\n        return t, rh, p\n\n    def altitude(self, sea_level_hpa=1013.25):\n        p = self.bmp.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_hpa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom env4 import ENV4\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nenv = ENV4(i2c)\nwhile True:\n    t, h, p = env.read()\n    print('T=%.1fC H=%.0f%% P=%.1fhPa' % (t, h, p))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature, humidity and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 27.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 42
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 955.3
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=27.5C H=42% P=955.3hPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:49:56.133Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/d/5/f/d/6/SHT40_Datasheet.pdf",
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf",
+      "https://docs.m5stack.com/en/unit/Unit_ENV-IV"
+    ]
+  }
+}

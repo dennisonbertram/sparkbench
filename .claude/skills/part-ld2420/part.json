@@ -1,0 +1,115 @@
+{
+  "type": "custom-ld2420",
+  "name": "HLK-LD2420 24 GHz human presence radar",
+  "mpn": "LD2420",
+  "category": "sensor",
+  "description": "Hi-Link 24 GHz FMCW mmWave radar that senses moving and micro-moving (sitting, breathing) people up to about 8 m, +/-60 degrees. Its OT2 pin goes high (3.3 V) while the area is occupied and low when unoccupied, after the configurable disappearance delay; results and settings are also on a 115200-baud UART (OT1 = TX, RX). Runs on 3.0-3.6 V (3.3 V typ., about 50 mA). Sold as: HLK-LD2420 module (Hi-Link, 20 x 20 mm, 5-hole 2.54 mm header J2: 3V3, GND, OT1, RX, OT2; pins not fitted).",
+  "eli5": "A tiny radar that tells your board 'someone is in the room', even if they are sitting still.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Power input 3.0-3.6 V, 3.3 V typical. Not 5 V (J2 pin 1)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (J2 pin 2)",
+      "required": true
+    },
+    {
+      "name": "OT1",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "UART TX from the module (115200 baud 8N1, 0-3.3 V). Optional (J2 pin 3)",
+      "required": false
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "UART RX into the module, for configuration (0-3.3 V only). Optional (J2 pin 4)",
+      "required": false
+    },
+    {
+      "name": "OT2",
+      "role": "io",
+      "description": "Detection status: HIGH (3.3 V) when occupied, LOW when unoccupied. Direct to a 3.3 V GPIO (J2 pin 5)",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 3.6,
+  "currentMa": 50,
+  "datasheetUrl": "https://www.elemon.com.ar/images/productos/hojas-de-datos/radar-modulos/hlk-ld2420.pdf",
+  "sources": [
+    "https://www.elemon.com.ar/images/productos/hojas-de-datos/radar-modulos/hlk-ld2420.pdf",
+    "https://openelab.com/blogs/learn/what-is-hlk-ld2420-and-how-to-use-it"
+  ],
+  "priceUsd": 4,
+  "supplierQuery": "HLK-LD2420 24GHz human presence radar sensor module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header J2 order as printed: 3V3, GND, OT1, RX, OT2 (2.54 mm pitch). The module ships without pins: solder a 5-pin header.",
+    "Power from 3.3 V only (3.0-3.6 V); 5 V damages it.",
+    "OT2 is the presence output (high = occupied), 3.3 V logic: wire it straight to a GPIO, no pull-up.",
+    "OT1 is UART TX and RX is UART RX (115200 baud); only needed to read results or change settings.",
+    "Leave the 4-pin J1 SWD header (GND, DIO, CLK, 3V3) unconnected.",
+    "Mount it firmly with the antenna facing the room; keep moving objects and metal out of view."
+  ],
+  "keywords": [
+    "ld2420",
+    "hlk-ld2420",
+    "mmwave",
+    "24ghz",
+    "radar",
+    "human presence",
+    "presence sensor",
+    "occupancy",
+    "motion"
+  ],
+  "sim": {
+    "kind": "digital-sensor",
+    "outputPin": "OT2",
+    "quantity": "Person present",
+    "activeHigh": true
+  },
+  "driver": {
+    "filename": "ld2420.py",
+    "code": "# HLK-LD2420 24 GHz human presence radar, OT2 pin, MicroPython driver.\n# Hi-Link HLK-LD2420 User Manual V1.1, Table 3-2 (J2 header, 2.54 mm):\n#   J2 pin 5 OT2 \"IO for reporting detection status: high for occupied, low for unoccupied\", 0-3.3 V.\n# OT2 is a 3.3 V logic output, so it connects straight to an ESP32 / Pico GPIO (no pull-up, no level shifter).\n# After the person leaves, OT2 stays high for the \"target disappearance delay time\" set with\n# Hi-Link's HLK-LD2420_TOOL; any detection during that time restarts it. Moving and micro-moving\n# (sitting, breathing) people both count as occupied.\n# Range, thresholds and that delay are configured over the UART (OT1 = TX, RX; 115200 baud), not this pin.\nfrom machine import Pin\n\n\nclass LD2420:\n    def __init__(self, pin):\n        if isinstance(pin, int):\n            pin = Pin(pin, Pin.IN)\n        self.pin = pin\n\n    def value(self):\n        \"\"\"Raw level on OT2: 1 = occupied, 0 = unoccupied.\"\"\"\n        return self.pin.value()\n\n    def present(self):\n        \"\"\"True while the radar reports the area as occupied.\"\"\"\n        return self.pin.value() == 1\n\n    def irq(self, handler, on_arrive=True):\n        \"\"\"Call handler(pin) when the area becomes occupied (rising edge) or, with on_arrive=False,\n        when it has been empty for the disappearance delay (falling edge).\"\"\"\n        self.pin.irq(handler=handler, trigger=Pin.IRQ_RISING if on_arrive else Pin.IRQ_FALLING)\n"
+  },
+  "skill": "---\nname: part-ld2420\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the HLK-LD2420 24 GHz mmWave human presence radar (Hi-Link LD2420), read through its OT2 pin. Use when designing, wiring, simulating or writing code for an LD2420 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# HLK-LD2420 human presence radar (LD2420)\n\n## Overview\nThe **HLK-LD2420** from Hi-Link is a 24 GHz FMCW millimetre-wave radar that senses **moving and micro-moving** (sitting, breathing) people up to about 8 m, which a PIR sensor cannot. It reports presence on a plain digital **OT2** pin (high = occupied) and, optionally, results and configuration over a UART (OT1 = TX, RX). Hobbyists buy it as the **HLK-LD2420 module**: a 20 x 20 mm board with a 5-hole 2.54 mm header J2 that ships **without pins**, so you solder a header on.\n\n## Pinout (HLK-LD2420 J2, header order, labels as printed)\n| Pin | Label | Function |\n|---|---|---|\n| 1 | 3V3 | Supply 3.0-3.6 V (3.3 V typ.) |\n| 2 | GND | Ground |\n| 3 | OT1 | UART TX from the module (115200 baud, 3.3 V), optional |\n| 4 | RX | UART RX into the module (configuration), optional |\n| 5 | OT2 | Detection status: HIGH when occupied, LOW when unoccupied |\n\n(The 4-pin J1 header GND/DIO/CLK/3V3 is the SWD programming port; leave it unconnected.)\n\n## Electrical limits\n- Supply: **3.0-3.6 V**, 3.3 V typical, about 50 mA average. **Do not feed it 5 V**: use the board's 3V3 pin.\n- All IO is 0-3.3 V, so OT2, OT1 and RX connect directly to ESP32 / Pico GPIOs. A 5 V Arduino needs level shifting on RX.\n- Detection: moving person up to 8 m (wall mount) / 5 m (ceiling), micro-motion 6 m / 4 m, +/-60 degrees, 10 Hz refresh, -40 to 85 C.\n\n## Interface details\n- OT2: active high, 3.3 V logic, no pull-up needed. `1` = occupied, `0` = unoccupied.\n- After the area empties, OT2 stays high for the **target disappearance delay** (configurable, 0-65535, in HLK-LD2420_TOOL); a detection within that time restarts the timer.\n- UART: 115200 baud 8N1 per the manual (some early firmware used 256000). Min/max distance gates (0-15, 0.7 m each), trigger and maintain thresholds and the delay are set with Hi-Link's HLK-LD2420_TOOL over this UART. Basic use needs only OT2.\n\n## Wiring\n- ESP32: 3V3 -> 3V3, GND -> GND, OT2 -> GPIO4. OT1/RX optional (OT1 -> GPIO16 RX2, RX -> GPIO17 TX2).\n- Pico: 3V3 -> 3V3(OUT), GND -> GND, OT2 -> GP15. OT1/RX optional (OT1 -> GP1, RX -> GP0, UART0).\n- Raspberry Pi 4: 3V3 -> pin 1, GND -> pin 6, OT2 -> GPIO17 (pin 11).\n\n## Using the driver\n```python\nfrom ld2420 import LD2420\nimport time\nradar = LD2420(4)        # GPIO wired to OT2\nwhile True:\n    print('PRESENCE=%d' % radar.present())\n    time.sleep(0.5)\n```\n`radar.irq(handler)` calls `handler(pin)` when someone arrives (rising edge); `on_arrive=False` fires when the area has been empty for the disappearance delay.\n\n## Gotchas\n- It is a **3.3 V part**, unlike the 5 V LD2410: 5 V on 3V3 or RX can destroy it.\n- OT1 is the UART **TX**, not a second presence output; OT2 is the presence pin.\n- OT2 staying high after you leave is the disappearance delay, not a fault.\n- Radar sees through plastic and thin walls; fans, swaying curtains, plants in a draught or a shaky mount trigger it. Shield the back side with metal if things move behind it.\n- Keep several 24 GHz radars from pointing straight at each other.\n\n## Datasheet\nhttps://www.elemon.com.ar/images/productos/hojas-de-datos/radar-modulos/hlk-ld2420.pdf\n",
+  "example": {
+    "code": "from ld2420 import LD2420\nimport time\n\nradar = LD2420({OT2})  # OT2: high while the area is occupied\nwhile True:\n    print('PRESENCE=%d' % radar.present())\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports presence when a person is detected",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "active",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PRESENCE=1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:57:09.810Z",
+    "verifiedSources": [
+      "https://www.elemon.com.ar/images/productos/hojas-de-datos/radar-modulos/hlk-ld2420.pdf"
+    ]
+  }
+}

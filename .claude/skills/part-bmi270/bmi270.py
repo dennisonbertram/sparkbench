@@ -1,0 +1,259 @@
+# BMI270 6-axis IMU (Bosch Sensortec BMI270), MicroPython I2C driver.
+# Written from the datasheet BST-BMI270-DS000-08:
+#  - CHIP_ID (0x00) reads 0x24.
+#  - Initialization (section 4.4): PWR_CONF.adv_power_save = 0, wait >= 450 us, INIT_CTRL = 0x00,
+#    burst-write the 8 kB configuration file to INIT_DATA (0x5E) - in chunks, with INIT_ADDR_0/1 (0x5B/0x5C)
+#    = chunk offset / 2 before each chunk - then INIT_CTRL = 0x01 (only once per POR / soft reset) and wait
+#    until INTERNAL_STATUS (0x21) bits 3..0 = 0b0001 (at most 20 ms).
+#  - Normal mode (quick start 3): PWR_CTRL 0x7D = 0x0E, ACC_CONF 0x40 = 0xA8, GYR_CONF 0x42 = 0xA9, PWR_CONF 0x7C = 0x02.
+#  - Data (16-bit two's complement, LSB first): accel X/Y/Z 0x0C-0x11, gyro X/Y/Z 0x12-0x17.
+#  - ACC_RANGE 0x41: 0=2g 16384, 1=4g 8192, 2=8g 4096, 3=16g 2048 LSB/g.
+#  - GYR_RANGE 0x43: 0=2000 16.4, 1=1000 32.8, 2=500 65.6, 3=250 131.2, 4=125 262.4 LSB/(deg/s).
+#  - TEMPERATURE 0x22-0x23: 0x0000 = 23 degC, 512 LSB/K, 0x8000 = invalid.
+# The configuration blob is bmi270_config_file from Bosch's BMI270_SensorAPI (bmi270.c, BSD-3-Clause,
+# Copyright (c) 2023 Bosch Sensortec GmbH), stored base64-encoded below.
+import time
+import binascii
+
+_CHIP_ID = 0x00
+_DATA_ACC = 0x0C
+_INTERNAL_STATUS = 0x21
+_TEMP = 0x22
+_ACC_CONF = 0x40
+_ACC_RANGE = 0x41
+_GYR_CONF = 0x42
+_GYR_RANGE = 0x43
+_INIT_CTRL = 0x59
+_INIT_ADDR_0 = 0x5B
+_INIT_DATA = 0x5E
+_PWR_CONF = 0x7C
+_PWR_CTRL = 0x7D
+_CMD = 0x7E
+
+_ACC = {2: (0x00, 16384.0), 4: (0x01, 8192.0), 8: (0x02, 4096.0), 16: (0x03, 2048.0)}
+_GYR = {2000: (0x00, 16.4), 1000: (0x01, 32.8), 500: (0x02, 65.6), 250: (0x03, 131.2), 125: (0x04, 262.4)}
+
+_CHUNK = 256  # bytes per INIT_DATA burst (even, so INIT_ADDR = offset / 2 stays exact)
+
+_CONFIG_B64 = (
+    b'yC4ALoAuPbHILgAugC6RA4AuvLCALqMDyC4ALoAuALBQMCEuWfUQMCEuavWALjsDAAAAAAgZAQAi'
+    b'AHUAABAAENEAs0OALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAu'
+    b'AMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4A'
+    b'wYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDB'
+    b'gC4AwYAuAMHgXwAAAAABAAAAAAAAAAAAAACSAAAAAAAAAAAAAAAAAAAAAAAIGQAAiAAAAAAAAAAF'
+    b'4Ko4BeCQMPoAlgBLCREAEQACAC0B1Hs7Adt6BAA/e81swwSFCcME7OYMRgEAJwAZAJYAoAABAAwA'
+    b'8DwAAQEAAwABAA4AAAAyAAUA7gYEAMgAAAAEAKgF7gYABLwCswCFBwAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAtAABALkAAQCYAAAAAAAAAAAAAQCAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACALgDB/S3e'
+    b'AOsA2gAADP8PAATAAFv1yQEe8oAAP/8Z9Fj1ZvVk9cDx8ADgAM0B0wHbAf9//wHkAHT38wD6AP8/'
+    b'ygNsOFb+RP28AvkGAPwSAq4BWPqa/XcFuwKWAZUBfwGCAYkBhwGIAYoBjAGPAY0BkgGRAd0AnwF+'
+    b'AdsAtgFwaSbTnAcfBZ0AAAi8BTf6ogGqAaEBqAGgAagFtAG0Ac4A0AD8AMUB//uxAAA4ADD99fz1'
+    b'zQGgAF//AED/AACAbQ/rAH//wvVo97PxZw9bD2EPgA9Y91v3gw+GAHIPhQ/G8X8PbPcA4AD/0fWH'
+    b'D4oP/wPwP4sAjgCQALkALfXK9csBIPIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAAAAAAAAAAAAAAAAAMFCYLtcOUDKYLvoDADDwfwAuAC7QLgAuAYAIovsvmC66AyEuGQABLu4A'
+    b'ALIHLwEuGQAAsgMvAVADUpguB8wBLt0AALInLwUuigAFUpgux8EDLukAQLLwfwgvAS4ZAACyBC8A'
+    b'MCEu6QCYLrSxAS4YAACyEC8FUJguTcMFUJguWseYLvm0mC5UspguZ7aYLheyEDAhLncAAS7vAACy'
+    b'BC+YLnq3ADAhLu8AAS7UAASuCy8BLt0AALIHLwVSmC6ODgCyAi8QMCEufQABLn0AAJCQLvECAS7X'
+    b'AACyBC+YLi8OADAhLnsAAS57AACyEi8BLtQAAJACL5guHw4JLZgugQ0BLtQABJACL1AymC76AwAw'
+    b'IS57AAEufAAAspAuCQMBLnwAATEBCACyBC+YLkfLEDAhLncAgTABLnwAAQgAsmEvAy6JAAEu1ACY'
+    b'vJi4BbIPWCMvB5AJVAAwNy8VQQRB3L5Evty6LAFhAA9WSg8ML9FClLjBQhEwBS5q9yy9L7mAsggi'
+    b'mC7DtyEtYTAjLtQAmC7DtwAwIS5a9Rgt4X9QMJgu+gMPUgdQUEJwMA1UQkJ+guJvgLJCQgUvIS7U'
+    b'ABAwmC7DtwMtYDAhLtQAAS7UAAaQGC8BLnYAC1QHUuB/mC56weFvCBpAMAgvIS7UACAwmC6vt1Ay'
+    b'mC76AwUtmC44DgAwIS7UAAAwIS58ABgtAS7UAAOqAS+YLkUOAS7UAD+AA6IBLwAuAi2YLlsOMDCY'
+    b'Ls63ADAhLn0AUDKYLvoDAS53AACyJC+YLvXLAy7VABFUAQq8hIOGIS7JAeBAE1LEQIJAqLlSQkO+'
+    b'U0IEClBC4X/wMUFA8m8lvQgIAgrQf5guqM8GvNFv4m8ICoBCmC5YtwAwIS7uACEudwAhLt0AgC70'
+    b'ARokIgCALuwBEFD7f5gu8wNXUPtvATBxVBFCQg78L8AuAULwX4AuAMH9LQEAAAAAAAAAAAAAAJoB'
+    b'NAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAgUOd/9n8GMg8uYfX+CcCzBC8XMC8u7wAtLmH19m/nb+BfyC4gUOd/9n9GMA8upPG+CYCzBi8N'
+    b'LtQAhK8CLxYwLS57AIYwLS5g9fZv52/gX8guAS539wm8D7gAshBQ+38QMAsvAy6KAJa8n7hAsgUv'
+    b'Ay5o9568n7hAsgcvAy5+AEGQAS+YLtwDAywAMCEufgD7b/BfuC4gUOB/+38ALidQmC47yClQmC6n'
+    b'yAFQmC5VzOFvK1CYLuDJ+28AMOBfIS5+ALguc1ABMFdUEUJCDvwvuC4hLln1EDDALiEuSvGQUPd/'
+    b'5n/Vf8R/s3+hf5B/gn97f5guNbcAspAul7ADLo8ABy6RAAUusQA/up+4AS6xAKO9TAoFLrEABL6/'
+    b'ucsKT7oivQEuswDcCi+5Ay64AAq+mgrPuZu8AS6XAJ+4kwoPvJEKD7iQCiUuGAAFLsH1Lr0uuQEu'
+    b'GQAxMIoEAJAHLwEu1AAEogMvAS4YAACyDC8ZUAVSmC5NtwUueACAkBAwAS8hLngAJS7dAJguPrcA'
+    b'sgIwATAELwEuGQAAsgAvITABLuoACBoOLyMu6gAzMBtQCwkBQBdWRr5LCEwKAUIKgBVSAUIALgEu'
+    b'GAAAsh8vAy7A9fAwSAhHqnQwBy56AGEiSxoFLwcuZvW/vb+5wJALLx1WKzDSQttCAQTCQgS9/oCB'
+    b'hCMuegACQgIyJS5i9QUu1gCBhCUu1gACMSUuYPUFLooAC1CQCICyCy8FLsr18D6QCCUuyvUFLln1'
+    b'4D+QCCUuWfWQb6Fvs2/Eb9Vv5m/3b3tvgm9wX8guwFCQf+V/1H/Df7F/on+Hf/Z/e38ALgEuYPVg'
+    b'f5guNbcCMGNvFVJQf2J/WiwCMhoJALMULwCyAy8JLhgAAJEML0N/mC6Xtx9QAooCMgQwJS5k9RVS'
+    b'UG9Db0RDJS5g9dkIwLI2L5guPrcAsgYvAS4ZAACyAi9QbwCQCi8BLnkAAJAZLxAwIS55AAAwmC7c'
+    b'AxMtAS7D9Qy8D7gSMBAEA7AmJSFQA1KYLk23EDAhLu4AAjBgfyUueQBgbwCQBS8AMCEu6gAVUCEu'
+    b'ZPUVUiMuYPUCMlBvAJACLwMwJy54AAcuYPUaCQCRoy8ZCQCRoC+Qb6JvsW/Db9Rv5W97b/Zvh29A'
+    b'X8guwFDnf/Z/JjAPLmH1Ly58AA8ufAC+CaJ/gH+As9V/xH+zf5F/e38LLyNQGiUSQEJ/dIISQFJ/'
+    b'AC4AQGB/mC5q1oEwAS58AAEIALJCLwMuiQABLokAl7wGvJ+4D7gAkCMu2AAQMAEwKi8DLtQARLIF'
+    b'L0eyADAtLyEufAArLQMu/fWevJ+4QJAULwMu/PWZvJ+4QJAOLwMuSfElVEoIQJAIL5guNbcAshAw'
+    b'Ay9QMCEu1AAQLZgur7cAMCEufAAKLQUuafctvS+5gLIBLyEufQAjLnwA4DEhLmH19m/nb4Bvom+z'
+    b'b8Rv1W97b5FvQF/ILmBRCiU2iPR/638AMjFSMjATMJguFcsKJTOE0n9DMAVQLVKYLpXB0m8nUpgu'
+    b'18cqJbCGwH/Tf6+EKVDxb5guTcgqJa6KqojybitQwW/Tb/R/mC62yOBuALIyLzNUg4bxb8N/BDAw'
+    b'MPR/0H+yf+MwxW9WQEVBKAgDFA60CLyCQBAKL1QmBZF/RCijf5gu2cAIuTMwUwnBb9Nv9G+DF0dA'
+    b'bBWyb74JdQuQQkVCUQ4yvAKJoW9+hvR/0H+yfwQwkW/WL+tvoF64LgMulwAbvGBQn7wMuPB/QLLr'
+    b'fysvAy5/AEFAAS7IAAEaES83WCMuyAAQQaB/OIEBQdB/sX+YLmTP0G8HgKFvEUIALrFvAUIRMAEu'
+    b'/AAAqAMwyyJKJQEufwA8iTVSBVSYLsTOwW/wb5gulc8ELQEw8G+YLpXP62+gX7guAy6zAAIy8DAD'
+    b'MTBQiggICMsI4H+AsvN/238lLwMuygBBkAQvATAjLsoAmC4/A8CyBS8DLtoAADBBBCMu2gCYLpKy'
+    b'ECXwbwCyBS8BLtoAAjAQBCEu2gBAsgEvIy7IAdtv4G/QX4Aulc8BMOBvmC6VzxEwIy7KANtv0F+4'
+    b'LtBQCiUzhFVQ0n/ifwOMwH+7fwAwBVo5VFFBpX+Wf4B/mC7ZwAUw9X8gJZFvO1g9XDtWmC5nzMFv'
+    b'1W9SQFBDwX/VfxAlmC7+yRAlmC50wIZvMCiSb4KMpW9vUmkOOVTbLxmgFTADLwAwIS6BAQotAS6B'
+    b'AQUoQjYhLoEBAg4BL5gu8wNXUBIwAUCYLv7JUW8LXI4OO29XWAIwIS6VAUVvKo3Sf8t/Ey8CMD9Q'
+    b'0n+oDg4vwG9TVAIAUVRCDhAwWVICMAEvAC4DLVBCQkISMNJ/gLIDLwAwIS6AARItAS7JAAKABS6A'
+    b'AREwkSgAQCUugAEQDgUvAS5/AQGQAS+YLvMDAC6gQQGQpn+QLuO0AS6VAQCokC7jtFtUlYCCQICy'
+    b'AkAtjD9Sln+QLsKzKQ52LwEuyQAAQIEoRVKzMJguD8pdVIB/AC6hQHJ/goCCQGB/mC7+yRAlmC50'
+    b'wGJvBTCHQMCRBDAFLwUugwGAshQwAC8EMAUuyQBzb4FA4kBpBBEP4UAWMP4py0ACL4Nvgw8iL0dW'
+    b'Ew8SMHcvSVRCDhIwcy8AkQovAS6LARmoAjBsL2NQAC4XQgVCaCwSMAslCA9QMAIvIS6DAQMtQDAh'
+    b'LoMBKy6FAVosEjAAkSslBC9jUAIwF0IXLAJCmC7+yRAlmC50wAUuyQCBhFswgkA3LoMBAg4HL19S'
+    b'QDBiQEFAkQ4BLyEugwEFMCsuhQESMDYsFjAVJYF/mC7+yRAlmC50wBmiFjAVLwUulwGAb4IOBS8B'
+    b'LoYBBighLoYBCy0DLocBX1ROKJFCAC6CQJAOAS8hLogBAjATLAUwwG8IHKgPFjAFMFtQCS8CgC0u'
+    b'ggEFQgWAAC4CQj6AAC4GQgIwkG8+iAFABEFMKAFCB4AQJSRAAEAAqPUiIylEQnqCfohDQARBAKv1'
+    b'I98oQ0LZoBQvAJACL9JvgbIFL2NUBiiQQoVCCSwCMFtQA4ApLn4BKy6CAQVCEjArLoMBRYIALkBA'
+    b'eoICoAgvY1A7MBVCBUI3gDcufgEFQhIwAS7JAAKMQECEQXqMBA8DLwEuiwEZpAQvKy6CAZgu8wMS'
+    b'MIGQYVIIL2VCZUJDgDmEgogFQkVChUIFQwAugEEAkJAu4bRlVMFvgEAAskNYaVBEL1Vct4eMDw0u'
+    b'lgHEQDYvQVaLDiovC1KhDgovBS6PARQlmC7+yUtUAg9pUAUwZVQVLwMujgFNXI4POi8FLo8BmC7+'
+    b'yU9Ugg8FMGlQZVQwL21SFTBCjEVCBDArLIRDa1JCjAAuhUMVMCQsRUKODyAvDS6OAbEOHC8jLo4B'
+    b'Gi0ODhcvoQ8VLyMujQETLZgudMBDVMIOCi9lUASACzAGggtCeYBBQBIwJS6MAQFCBTBpUGVUhIJD'
+    b'hL6MhECGQSYplEK+jtV/GaFDQAsujAGEQMdBXSknKUVChELCfwEvwLMdLwUulAGZoAEvgLMTL4Cz'
+    b'GC/AsxYvEkABQJJ/mC50wJJvEA8gMAMvEDAhLn4BCi0hLn4BBy0gMCEufgEDLRAwIS5+AcJvAS7J'
+    b'ALyEAoCCQABAkA7VbwIvFTCYLvMDQZEFMAcvZ1A9gCsujwEFQgSAAC4FQgIsADAAMKJvmIqGQICn'
+    b'BS+YLvMDwDAhLpUBBiUaJeJvdoKWQFZDUQ77L7tvMF+4LgEuuAABMUEIQLIgUPIwAgj7fwEwEC8F'
+    b'LswAgZDgfwMvIy7MAJguVbaYLh21ECX7b+Bv4F+ALpXPmC6VzxAwIS7MAPtv4F+4LgBRBVjrfyol'
+    b'iVJvWolQE0EGQLMBFkLLFgZA8wITQmUO9S8FQBQwLCkEQgihADCQLlK2s4iwiraEpH/Ef7V/1X+S'
+    b'f3MwBDBVQEJAihfzCGsBkAJTuEuCrb5xf0UKCVSEf5gu2cCjb3tU0EKjf/J/YH8gJXFvdVp3WHlc'
+    b'dVaYLmfMsW9ib1BCsX+zMBAlmC4PyoRvIClxb5JvpW92gmoOczAAMNAv0m/Rf7R/mC4rtxW9C7gC'
+    b'CsJvwH+YLiu3Fb0LuEIKwG8IF0EYiRbhGNAYoX8nJRYlmC55wItUkH+zMIJAgJANL31Skm+YLg/K'
+    b'sm+QDgYvi1AUMEJvUW8UQhJCAUIALjFvmC50wEFvgH+YLnTAgm8QBENSAQ8FLssAADAEMCEvUW9D'
+    b'WIwOBDAcL4WIQW8EQYwPBDAWL4SIAC4EQQQFjA4EMA8vgogxbwRBBAWMDgQwCC+DiAAuBEGMDwQw'
+    b'Ai8hLq0BFDAAkRQvAy6hAUGQDi8DLq0BFDBMKCMurQFGoAYvgYSNUkiCgkAhLqEBQkJcLAIwBS6q'
+    b'AYCyAjBVLwMuqQGSb7MwmC4PyrJvkA8AMAIwSi+ib4dSkQCFUlEOAi8ALkMsAjDCb39SkQ4CMDwv'
+    b'UW+BVJgu/skQJbMwISWYLg/KMm/Af7MwEiWYLg/KQm+wf7MwEiWYLg/Ksm+QKINSmC7+ycJvkA8A'
+    b'MAIwHS8FLqEBgLISMA8vQm8DLqsBkQ4CMBIvUm8DLqwBkQ8CMAwvIS6qAQosEjADLssAjVgIiUFA'
+    b'EUMAQyUuoQHUb49SAEM6iQAuEEMQQ2EO+y8DLqABERoCLwIlIS6gAetvAF+4LpFSEDACMJVWUkJL'
+    b'DvwvjVSIgpNWgEJTQkBCQoaDVMAuwkIALqNSAFFSQEdAGiUBLpcAj75yhvt/CzB8v6VQEAjfunCI'
+    b'+L/LQtN/bLv8u8UKkH8bfwtDwLLlf7d/pn/Ef5AuHLcHLtIAwLILL5dSAS7NAIJ/mC67zAswNy7S'
+    b'AIJvkG8aJQCyi38UL6a9Jb22uS+5gLLUsAwvmVSbVgswCy6xAKFYm0LbQmwJKy6xAItCy0KGf3OE'
+    b'p1bDCDlSBVByf2N/mC7CwOFvYm/RCgEuzQDVb8Rvcm+XUp1cmC4GzSNvkG+ZUsCyBL1UQK+5RUDh'
+    b'fwIwBi/AsgIwAy+bXBIwlEOFQwO/b7uAsyAvBm8mARZvbgNFQsCQKS7OAJtSFC+bXAAuk0GGQeME'
+    b'rgeAqwQvgJEKL4Zvcw8HL4NvwLIEL1RCRUISMAQsETACLBEwETACvA+40n8AsgovAS78AAUuxwEQ'
+    b'GgIvIS7HAQMtAiwBMAEwsG+YLpXP0W+gb5gulc/ib59SAS7OAIJAUEIMLEJCETAjLtIAATCwb5gu'
+    b'lc+gbwEwmC6VzwAu+28AX7gug4YBMAAwlEAkGAYAUw5PAvkvuC6pUgAuYEBBQA28mLzALgEKD7ir'
+    b'UlM8UkBAQEsAghYmuQG4QUAQCJe4AQjALhEwAQhDhiVABEDYviwLIhFUQgOASw72L7gun1AQUK1S'
+    b'BS7TAPt/AC4TQJNCQQ77L5gupbeYLofPAS7ZAACy+28LLwEuafexPwEIATDwXyMu2QAhLmn3gC56'
+    b't/BfuC4BLsD4Ay789RVUr1aCCAsuaffLCrFYgJDdvkwIX7lZIoCQBy8DNMMI8joKCAI1wJBKCkgi'
+    b'wC4jLvz1EFD7f5guVseYLknDEDD7b/BfIS7MACEuygC4LgMu0wAWuAI0SgwhLi31wC4jLtMAA7wh'
+    b'LtUAAy7VAECyEDAhLncAATAFLwUu2ACAkAEvIy5v9cAuIS7ZABEwgQgBLmr3cT8jvQEIAgrALiEu'
+    b'avcwJQAwIS5a9RBQIS57ACEufAD7f5guw7dAMCEu1AD7b/BfAyWALq+3gC4AwYAuAMGALgDBgC4A'
+    b'wYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBAS5d9wi8gKwOuwIv'
+    b'ADBBBIIGwKQAMBEvQKkDL0CRDS8ApwsvgLOzWAIvkKEmEyAjgJAQMAEvzA4ALwAwuC61UBgICLyI'
+    b'tg0Xxr1WvLdY2roEAR0KEFAFMDIlRQP7f/YwISWYLjfKFrWavAa4gKhBCg4vgJACLy1QSA8JL7+g'
+    b'BC+/kAYvt1TKDwMvAC4CLLdSLVLyM5gu2cD7b/E3wC4BCPBfv1a5VNBAxEALLv3zv1KQQpRClUIF'
+    b'MMFQD4gGQARBlkLFQki+czANLtgAT7qEQgNCgbMCLysub/UGLQUud/e9VpMIJS5397tUJS7C9Qcu'
+    b'/fNCMLQz2gpMACcu/fNDQNQ/3AhDQgAuAC5DQCQw3ApDQgSAAy7980oKIy7982E0wC4BQgAuYFAa'
+    b'JXqG4H/zfwMlw1JBhNt/MzCYLhbCGiV9gvBv4m8yJRZAlEAmAYVAjhfEQm4DlUJBDvQv22+gX7gu'
+    b'sFH7f5gu6A1aJZguDw7LWDKHxH9liWuNxVplf+F/g3+mf3R/0H+2f5R/FzDHUslUUX8ALoVvQn8A'
+    b'LlFBRYFCQRNAO4oAQEsE0AbArIV/Ai8CMFEE0wZBhAUwXQLJFt8I0wCNAq+8sblZCmVvEUOhtFJB'
+    b'U0EBQzR/ZX8mMeVv1G+YLjfKMm91b4NAQkEjfxJ/9jBAJVElmC43yhRvIAVwbyVvaQeibzFvCzAE'
+    b'QptCi0JVQjJ/QKnDb3F/AjDQQMN/Ay9AkRUvAKcTLwCkES+EvZguecpVb7dUVEGCAPM/RUHLAvYw'
+    b'mC43yjVvpG9BQwMsAEOkbzVvFzBCb1Fvk0BCggBBwwADQ1F/AC6UQEFBTALEb9FWYw50b1FDpX+K'
+    b'Lwku2AABsyEvy1iQbxNBtm/kfwAukUEUQJJBFUAXLm/1tn/Qf8t/mC4ADAcVwm8UCykub/XDo8GP'
+    b'5G/Qb+YvFDAFLm/1FAspLm/1GC3NVgQytW8cAVFBUkHDQLV/5H+YLh8M5G8hhwBDBDLPVFoO7y8V'
+    b'VAkud/ciCykud/f7b1BeuC4QUAEu1AAAsvt/US8BskgvArJCLwOQVi/XUnmAQkCBhABAQkKYLpMM'
+    b'2VTXUKFAmL2CQD6C2gpEQIsW4wBTQgAuQ0CaAlJCAC5BQBVUSg46LzqCADBBQCEuhQ9AsgovmC6x'
+    b'DJguRQ6YLlsO+2/wXwAwgC7Ot91S01RCQk+EczDbUoNCGzBrQiMwJy7XADcu1AAhLtYAeoQXLEJC'
+    b'MDAhLtQAEi0hMAAwIy7UACEue/cLLRcwmC5RDNVQDIJyMC8u1AAlLnv3QEIALvtv8F+4LnBQCiU5'
+    b'hvt/4TJiMJguwsS1VqVvqwiRb0sI31bEbyMJTbqTvIwL0W8LCctS4V5WQq8JTbojvZQK5W9ou+sI'
+    b'vbljvvtvUkLjCsAuQ0KQX9FQAy4l8xNAAECbvJu0CL24uZi82goItokWwC4ZAGICEFD7f5gugQ0B'
+    b'LtQAMTAIBPtvATDwXyMu1gAhLtcAuC4BLtcAAy7WAEgOAS+ALh8OuC7jUCE0AUKCMMEyJS5i9QEA'
+    b'IjABQEoKAUK4LuNU8DuDQNgI5VKDQgAwgzBQQsQyJy5k9ZQAUEJAQtM/hEB9guMIQEKDQrgu3VIA'
+    b'MEBCfIa5UgkucA+/VMRC04ZUQFVAlEKFQiEu1wBCQCUu/fPAQn6CBS59AICyFC8FLokAJ70vuYCQ'
+    b'Ai8hLm/1DC0HLnEPFDAcCQUud/e9Vke+kwiUCiUud/fnVFBCSg78L7guUFACMEOG5VD7f+N/0n/A'
+    b'f7F/AC5BQABASASYLnTAHqrTbxQwsW/jIsBvUkDkb0wOEkLTf+svAy6GD0CQETADLyMuhg8CLAAw'
+    b'0G/7b7BfuC5AUPF/CiU8hut/QTMiMJguwsTTb/Qw3AlHWMJvlAnrWGq73Ai0ubG96VqVCCG99r93'
+    b'C1G+8W/rb1JCVELALkNCwF9QUPVQMTARQvt/ezALQhEwAoAjMwFCAwAHLoADBS7TACNS4n/Tf8B/'
+    b'mC62DtFvCAoaJXuG0H8BMxIwmC7CxNFvCAoAsg0v428BLoADUTDHhiMuIfIIvMBCmC6ltwAuAC7Q'
+    b'LrBvC7gDLhsACBqwf3AwBC8hLiHyAC4ALtAumC5twJguXcDtUJguRMvvUJguRsPxUJguU8c1UJgu'
+    b'ZM8QMJgu3AMgJsBvAjESQqszC0I3gAEwAULzN/dS+1BEQKIKQkKLMQkuXvf5VOMIg0IbQiMzSwC8'
+    b'hAtAMzCDQgtC4H/Rf5guWLfRb4AwQEIDMOBv81QEMAAuAC4BiWIO+i9DQhEw+2/ALgFCsF/BSgAA'
+    b'bVcAAHeOAADg////0////+X////u4f//fBMAAEbm//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgC4AwYAuAMGALgDBgC4AwYAuAMGALgDB'
+    b'gC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGA'
+    b'LgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAu'
+    b'AMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4A'
+    b'wYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAME='
+)
+
+
+def _s16(lo, hi):
+    v = lo | (hi << 8)
+    return v - 65536 if v & 0x8000 else v
+
+
+class BMI270:
+    def __init__(self, i2c, addr=0x68, accel_range=2, gyro_range=2000):
+        # SparkFun SEN-22397: ADR is pulled to GND by default (0x68); move the ADR jumper for 0x69.
+        self.i2c = i2c
+        self.addr = addr
+        cid = self._r(_CHIP_ID, 1)[0]
+        if cid != 0x24:
+            raise OSError('BMI270 not found (chip id 0x%02X): check wiring and address' % cid)
+        # Soft reset so the config load (allowed once per reset) also works after a MicroPython soft reboot.
+        self._w(_CMD, 0xB6)
+        time.sleep_ms(2)
+        self._load_config()
+        a_code, self._acc_lsb = _ACC[accel_range]
+        g_code, self._gyr_lsb = _GYR[gyro_range]
+        # Configure while the sensors are still disabled, so the settings apply at once (datasheet 4.6.16).
+        self._w(_ACC_CONF, 0xA8)   # performance filter, normal bandwidth, 100 Hz
+        self._w(_ACC_RANGE, a_code)
+        self._w(_GYR_CONF, 0xA9)   # performance filter, normal bandwidth, 200 Hz
+        self._w(_GYR_RANGE, g_code)
+        self._w(_PWR_CTRL, 0x0E)   # accelerometer, gyroscope and temperature on
+        self._w(_PWR_CONF, 0x02)   # advanced power save off, FIFO self wake-up on
+        time.sleep_ms(50)          # gyroscope start-up 45 ms
+
+    def _load_config(self):
+        self._w(_PWR_CONF, 0x00)   # advanced power save off
+        time.sleep_ms(1)           # >= 450 us
+        self._w(_INIT_CTRL, 0x00)  # prepare config load
+        cfg = binascii.a2b_base64(_CONFIG_B64)
+        if len(cfg) != 8192:
+            raise ValueError('BMI270 config blob corrupted')
+        mv = memoryview(cfg)
+        for i in range(0, len(cfg), _CHUNK):
+            w = i // 2
+            self.i2c.writeto_mem(self.addr, _INIT_ADDR_0, bytes([w & 0x0F, (w >> 4) & 0xFF]))
+            self.i2c.writeto_mem(self.addr, _INIT_DATA, mv[i:i + _CHUNK])
+        self._w(_INIT_CTRL, 0x01)  # complete config load
+        for _ in range(15):
+            time.sleep_ms(20)
+            st = self._r(_INTERNAL_STATUS, 1)[0] & 0x0F
+            if st == 0x01:
+                return
+        raise OSError('BMI270 initialization failed (INTERNAL_STATUS message %d)' % st)
+
+    def _w(self, reg, val):
+        self.i2c.writeto_mem(self.addr, reg, bytes([val]))
+
+    def _r(self, reg, n):
+        return self.i2c.readfrom_mem(self.addr, reg, n)
+
+    def read(self):
+        """Return ((ax, ay, az) in g, (gx, gy, gz) in deg/s), read in one burst."""
+        d = self._r(_DATA_ACC, 12)
+        a = tuple(_s16(d[i], d[i + 1]) / self._acc_lsb for i in (0, 2, 4))
+        g = tuple(_s16(d[i], d[i + 1]) / self._gyr_lsb for i in (6, 8, 10))
+        return a, g
+
+    def acceleration(self):
+        return self.read()[0]
+
+    def gyro(self):
+        return self.read()[1]
+
+    def temperature(self):
+        """Die temperature in degC, or None while no valid sample exists (raw 0x8000)."""
+        d = self._r(_TEMP, 2)
+        raw = _s16(d[0], d[1])
+        if raw == -32768:
+            return None
+        return 23 + raw / 512

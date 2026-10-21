@@ -1,0 +1,181 @@
+{
+  "type": "custom-hdc3022",
+  "name": "HDC3022 temperature & humidity sensor",
+  "mpn": "HDC3022",
+  "category": "sensor",
+  "description": "Texas Instruments digital temperature (-40 to 125 °C, ±0.1 °C typical) and relative humidity (0–100 %, ±0.5 % typical) sensor with an I2C interface, CRC-checked data and a dust/water-resistant PTFE filter cover. Runs on 1.8–5.5 V with no regulator, so logic levels follow VIN. Sold as: Adafruit HDC3022 Precision Temperature & Humidity Sensor - STEMMA QT / Qwiic (product 5989; 6-pin header VIN, GND, SCL, SDA, RST, ALERT), I2C address 0x44 (0x45–0x47 with the A0/A1 jumpers on the back), 10 kΩ pull-ups on SDA/SCL.",
+  "eli5": "Tells your board how warm the air is and how damp it is, very accurately, through a little filter that keeps dust and splashes out.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply, 1.8–5.5 V (no regulator: use the same voltage as your board's logic, 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (10 kΩ pull-up to VIN on the board)",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "description": "Reset input, active low (internal ~49 kΩ pull-up); leave unconnected for basic use",
+      "required": false
+    },
+    {
+      "name": "ALERT",
+      "role": "io",
+      "description": "Push-pull alert/interrupt output for threshold alerts, not needed for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 1.8,
+  "vmax": 5.5,
+  "currentMa": 0.5,
+  "i2cAddress": 68,
+  "datasheetUrl": "https://www.ti.com/lit/ds/symlink/hdc3022.pdf",
+  "sources": [
+    "https://www.ti.com/lit/ds/symlink/hdc3022.pdf",
+    "https://www.adafruit.com/product/5989",
+    "https://learn.adafruit.com/adafruit-hdc3021-precision-temperature-humidity-sensor/pinouts",
+    "https://github.com/adafruit/Adafruit-HDC3021-Precision-Temperature-Humidity-Sensor-PCB"
+  ],
+  "priceUsd": 13,
+  "supplierQuery": "Adafruit HDC3022 temperature humidity sensor STEMMA QT 5989",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical",
+  "buildNotes": [
+    "Trigger-on-demand command 0x24 0x00 (low power mode 0), then wait at least 12.5 ms before reading 6 bytes: temperature MSB, LSB, CRC, humidity MSB, LSB, CRC. Reading too early is NACKed.",
+    "Check each CRC (CRC-8 poly 0x31, init 0xFF; 0xABCD gives 0x6F). A mismatch almost always means a loose SDA/SCL wire.",
+    "T = -45 + 175 × raw / 65535 °C and RH = 100 × raw / 65535 %.",
+    "Default address 0x44; close the A0 jumper for 0x45, A1 for 0x46, both for 0x47.",
+    "Do not remove the white PTFE filter cover; peel off the protective sticker if one is fitted.",
+    "Keep the sensor away from the microcontroller and regulators, which warm the air around them."
+  ],
+  "keywords": [
+    "hdc3022",
+    "hdc3021",
+    "hdc3020",
+    "hdc302x",
+    "temperature",
+    "humidity",
+    "texas instruments",
+    "stemma qt"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 125,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "responses": [
+      {
+        "match": "24 00",
+        "bytes": [
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 0.002670328831921874,
+            "offset": -45
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          },
+          {
+            "control": "humidity",
+            "bits": 16,
+            "scale": 0.0015259021896696422
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      },
+      {
+        "match": "37 81",
+        "bytes": [
+          {
+            "const": 12288,
+            "bits": 16
+          },
+          {
+            "crc": "sensirion",
+            "over": 2
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "hdc3022.py",
+    "code": "# HDC3022 temperature & humidity sensor (Texas Instruments HDC302x), MicroPython driver.\n# Trigger-on-demand measurement in low power mode 0 (command 0x2400, 12.5 ms typical),\n# every data word CRC-8 checked as in the datasheet (CRC-8/NRSC-5: poly 0x31, init 0xFF).\nimport time\n\n\ndef _crc8(data):\n    crc = 0xFF\n    for b in data:\n        crc ^= b\n        for _ in range(8):\n            crc = ((crc << 1) ^ 0x31) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF\n    return crc\n\n\nclass HDC3022:\n    def __init__(self, i2c, addr=0x44):\n        self.i2c = i2c\n        self.addr = addr\n        time.sleep_ms(5)  # power-up ready: 5 ms max\n        if self.manufacturer_id() != 0x3000:\n            raise OSError('HDC3022 not found: manufacturer ID is not 0x3000')\n\n    def _word(self, d):\n        if _crc8(d[0:2]) != d[2]:\n            raise OSError('HDC3022 CRC mismatch: check the wiring')\n        return (d[0] << 8) | d[1]\n\n    def manufacturer_id(self):\n        \"\"\"Texas Instruments ID, 0x3000 (command 0x3781).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x37\\x81')\n        return self._word(self.i2c.readfrom(self.addr, 3))\n\n    def reset(self):\n        \"\"\"Soft reset (command 0x30A2); the sensor is ready again within 3 ms.\"\"\"\n        self.i2c.writeto(self.addr, b'\\x30\\xa2')\n        time.sleep_ms(3)\n\n    def read(self):\n        \"\"\"Measure once and return (temperature in °C, relative humidity in %).\"\"\"\n        self.i2c.writeto(self.addr, b'\\x24\\x00')\n        time.sleep_ms(15)  # LPM0 conversion: 12.5 ms typical (T + RH)\n        d = self.i2c.readfrom(self.addr, 6)  # T MSB, T LSB, CRC, RH MSB, RH LSB, CRC\n        t_raw = self._word(d[0:3])\n        h_raw = self._word(d[3:6])\n        return -45 + 175 * t_raw / 65535, 100 * h_raw / 65535\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom hdc3022 import HDC3022\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = HDC3022(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.0f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 30
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 65
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=30.0C H=65%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:52:24.018Z",
+    "verifiedSources": [
+      "https://www.ti.com/lit/ds/symlink/hdc3022.pdf",
+      "https://www.adafruit.com/product/5989",
+      "https://learn.adafruit.com/adafruit-hdc3021-precision-temperature-humidity-sensor/pinouts"
+    ]
+  }
+}

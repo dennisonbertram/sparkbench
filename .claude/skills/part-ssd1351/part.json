@@ -1,0 +1,148 @@
+{
+  "type": "custom-ssd1351",
+  "name": "SSD1351 1.5\" 128x128 RGB OLED",
+  "mpn": "SSD1351",
+  "category": "display",
+  "description": "Solomon Systech SSD1351 driver with a 1.5-inch 128×128-pixel colour OLED (65K colours in RGB565, or 262K) on a write-only 4-wire SPI bus with a data/command pin. The board has an RT9193 3.3 V regulator for the chip and an SX1308 boost converter that makes the 13 V panel supply, so VCC takes 3.3 V or 5 V, but the chip's logic runs at 3.3 V: drive it from 3.3 V GPIO only. Sold as: Waveshare 1.5inch RGB OLED Module (SSD1351, 128×128, 7-pin header VCC, GND, DIN, CLK, CS, DC, RST, plus the same signals on a PH2.0 cable socket).",
+  "eli5": "A small, bright colour screen with no backlight: each pixel makes its own light, so black is truly black.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3 V or 5 V (RT9193 regulator to 3.3 V on the board; a boost converter makes the 13 V panel voltage)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data in (MOSI, the chip's SDIN/D1); 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (the chip's SCLK/D0), at most 4.5 MHz; 3.3 V logic",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "Chip select, active low",
+      "required": true
+    },
+    {
+      "name": "DC",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select: low = command, high = data (the chip's D/C#)",
+      "required": true
+    },
+    {
+      "name": "RST",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "Reset, active low (at least 2 µs low)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 60,
+  "datasheetUrl": "https://files.waveshare.com/upload/a/a7/SSD1351-Revision_1.5.pdf",
+  "priceUsd": 18,
+  "supplierQuery": "1.5 inch RGB OLED module SSD1351 128x128 SPI",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical",
+  "buildNotes": [
+    "VCC can be 3.3 V or 5 V (the board regulates it to 3.3 V), but DIN, CLK, CS, DC and RST go straight to the SSD1351, whose inputs are rated to VDDIO + 0.3 V (about 3.6 V). Drive them from 3.3 V GPIO (ESP32, Pico); never from 5 V logic.",
+    "Current is about 60 mA with the whole screen white and about 4 mA when black (Waveshare, at 3.3 V): an OLED draws power only for lit pixels.",
+    "Init order (datasheet + panel maker's example): RES# low ≥ 2 µs, wait 300 ms; FDh 12h and FDh B1h to unlock; AEh display off; B3h F1h; CAh 7Fh; A2h 00h; A1h 00h; A0h 74h (65K colour, RGB order, COM127→0); B5h 00h; ABh 01h; B4h A0h B5h 55h; C1h C8h 80h C8h; C7h 0Fh; B1h 32h; B2h A4h 00h 00h; BBh 17h; B6h 01h; BEh 05h; A6h; clear the RAM; AFh display on.",
+    "Drawing: 15h column start/end, 75h row start/end (one byte each, 0–127), then 5Ch and the pixels, 2 bytes each in RGB565, high byte first.",
+    "SPI mode 0, write-only (no MISO). The datasheet minimum 4-wire clock cycle is 220 ns, so keep the clock at 4.5 MHz or below (the example uses 4 MHz).",
+    "The BS resistor on the back must stay in the 0 (4-wire SPI) position; in 3-wire mode the DC pin is not used."
+  ],
+  "keywords": [
+    "ssd1351",
+    "oled",
+    "rgb oled",
+    "color oled",
+    "colour oled",
+    "1.5 inch",
+    "128x128",
+    "spi display",
+    "waveshare"
+  ],
+  "sources": [
+    "https://files.waveshare.com/upload/a/a7/SSD1351-Revision_1.5.pdf",
+    "https://www.waveshare.net/w/upload/3/36/1.5inch_RGB_OLED_Module_DS.pdf",
+    "https://www.waveshare.com/wiki/1.5inch_RGB_OLED_Module",
+    "https://files.waveshare.com/upload/a/a3/1.5inch_RGB_OLED_Module_Schematic.pdf",
+    "https://www.waveshare.com/w/upload/b/b6/1.5inch_rgb_oled_module.png"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 128,
+    "height": 128,
+    "controller": "ssd1351"
+  },
+  "driver": {
+    "filename": "ssd1351.py",
+    "code": "# SSD1351 1.5\" 128x128 colour OLED (Waveshare 1.5inch RGB OLED Module), MicroPython driver.\n# Written from the Solomon Systech SSD1351 Rev 1.5 datasheet and the panel's application example:\n# 4-wire SPI (mode 0, MSB first, clock cycle >= 220 ns so <= 4.5 MHz), D/C low = command byte,\n# D/C high = its parameters and pixel data. 65k-colour mode: RGB565, 2 bytes per pixel, high byte first.\nfrom machine import Pin\nimport framebuf\nimport time\n\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\nCYAN = 0x07FF\n\nWIDTH = 128\nHEIGHT = 128\n\n\ndef rgb(r, g, b):\n    \"\"\"24-bit colour -> RGB565.\"\"\"\n    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)\n\n\nclass SSD1351:\n    def __init__(self, spi, dc, cs, rst=None):\n        self.spi = spi\n        self.width, self.height = WIDTH, HEIGHT\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.rst = Pin(rst, Pin.OUT, value=1) if rst is not None else None\n        if self.rst:\n            # RES# low for at least 2 us resets the chip (datasheet 8.9 / Table 13-1).\n            time.sleep_ms(1)\n            self.rst(0)\n            time.sleep_ms(1)\n            self.rst(1)\n        # Datasheet 8.9: wait at least 300 ms after VCI is stable before sending commands.\n        time.sleep_ms(300)\n        self._cmd(0xFD, b'\\x12')  # command lock: unlock the MCU interface\n        self._cmd(0xFD, b'\\xB1')  # make A2/B1/B3/BB/BE/C1 accessible\n        self._cmd(0xAE)  # sleep mode on (display off) while configuring\n        self._cmd(0xB3, b'\\xF1')  # front clock divider /2, oscillator frequency 0xF\n        self._cmd(0xCA, b'\\x7F')  # multiplex ratio 128\n        self._cmd(0xA2, b'\\x00')  # display offset 0\n        self._cmd(0xA1, b'\\x00')  # display start line 0\n        # Re-map / colour depth 0x74: horizontal increment, column 0 -> SEG0, colour order C-B-A\n        # (red in the top bits of RGB565), COM scan COM127 -> COM0, COM split odd/even, 65k colours.\n        # Same orientation bits as the panel maker's example (0xB4), but 16-bit pixels.\n        self._cmd(0xA0, b'\\x74')\n        self._cmd(0xB5, b'\\x00')  # GPIO0/1 high impedance, input disabled\n        self._cmd(0xAB, b'\\x01')  # function selection: internal VDD regulator on\n        self._cmd(0xB4, b'\\xA0\\xB5\\x55')  # segment low voltage: external VSL\n        self._cmd(0xC1, b'\\xC8\\x80\\xC8')  # contrast current for colours A, B, C\n        self._cmd(0xC7, b'\\x0F')  # master contrast: full\n        self._cmd(0xB1, b'\\x32')  # phase 1 = 5 DCLKs, phase 2 = 3 DCLKs\n        self._cmd(0xB2, b'\\xA4\\x00\\x00')  # display enhancement\n        self._cmd(0xBB, b'\\x17')  # pre-charge voltage\n        self._cmd(0xB6, b'\\x01')  # second pre-charge period 1 DCLK\n        self._cmd(0xBE, b'\\x05')  # VCOMH 0.82 x VCC\n        self._cmd(0xA6)  # normal display mode\n        self.fill(BLACK)  # clear the RAM before switching on (panel power-up sequence)\n        self._cmd(0xAF)  # sleep mode off (display on); SEG/COM come on within 200 ms\n        time.sleep_ms(200)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)\n            self.spi.write(data)\n        self.cs(1)\n\n    def _window(self, x, y, w, h):\n        self._cmd(0x15, bytes([x, x + w - 1]))  # set column address (start, end)\n        self._cmd(0x75, bytes([y, y + h - 1]))  # set row address (start, end)\n\n    def blit(self, buf, x, y, w, h):\n        \"\"\"Write w*h big-endian RGB565 pixels (2 bytes each) at (x, y).\"\"\"\n        self._window(x, y, w, h)\n        self._cmd(0x5C, buf)  # write RAM\n\n    def fill_rect(self, x, y, w, h, colour):\n        x, y = max(0, x), max(0, y)\n        w, h = min(w, self.width - x), min(h, self.height - y)\n        if w <= 0 or h <= 0:\n            return\n        self._window(x, y, w, h)\n        line = bytes([colour >> 8, colour & 255]) * w\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(b'\\x5C')\n        self.dc(1)\n        for _ in range(h):\n            self.spi.write(line)\n        self.cs(1)\n\n    def fill(self, colour):\n        self.fill_rect(0, 0, self.width, self.height, colour)\n\n    def pixel(self, x, y, colour):\n        self.fill_rect(x, y, 1, 1, colour)\n\n    def text(self, s, x, y, colour=WHITE, bg=BLACK):\n        \"\"\"Draw text with MicroPython's built-in 8x8 font.\"\"\"\n        w = 8 * len(s)\n        buf = bytearray(w * 8 * 2)\n        fb = framebuf.FrameBuffer(buf, w, 8, framebuf.RGB565)\n        # framebuf stores RGB565 low byte first; the SSD1351 wants the high byte first, so swap.\n        sw = lambda c: ((c & 0xFF) << 8) | (c >> 8)\n        fb.fill(sw(bg))\n        fb.text(s, 0, 0, sw(colour))\n        self.blit(buf, x, y, w, 8)\n\n    def contrast(self, level):\n        \"\"\"Master contrast 0..15 (command C7h).\"\"\"\n        self._cmd(0xC7, bytes([level & 0x0F]))\n\n    def invert(self, on=True):\n        self._cmd(0xA7 if on else 0xA6)\n\n    def display(self, on=True):\n        self._cmd(0xAF if on else 0xAE)  # sleep mode off / on\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport sys\nimport time\nfrom ssd1351 import SSD1351, WHITE, YELLOW\n\n# Pico: GP18/GP19 belong to SPI0. ESP32: any pins work on SPI(2).\nspi_id = 0 if sys.platform == 'rp2' else 2\n# SSD1351 4-wire SPI clock cycle >= 220 ns: 4 MHz is within the datasheet limit.\nspi = SPI(spi_id, baudrate=4000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}))\noled = SSD1351(spi, dc={DC}, cs={CS}, rst={RST})\ntime.sleep(1)\noled.text('SPARKBENCH', 24, 40, YELLOW)\noled.text('SSD1351 OK', 24, 60, WHITE)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "text",
+      "title": "Draws two lines of text on the screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SPARKBENCH",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "SSD1351 OK",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:44:27.055Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/SSD1351-Revision+1.3.pdf",
+      "https://www.waveshare.com/wiki/1.5inch_RGB_OLED_Module"
+    ]
+  }
+}

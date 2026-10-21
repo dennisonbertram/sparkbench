@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-grove-light-sensor-v1-2",
+  "board": "Seeed Grove - Light Sensor v1.2 (SKU 101020132, LS06-S phototransistor + LM358 follower)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator test L=6.0lx, PCB DRC). Modelled from Seeed's LS06-S schematic (68 kOhm emitter load, LM358 follower, Grove J1 order SIG/NC/VCC/GND) and the LS06-S datasheet (25 uA typ at 10 lx), giving 0.17 V/lx; the model stops at 10 lx because the LM358 output tops out at VCC-1.5 V (1.8 V on a 3.3 V supply).",
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove_Light_Sensor/res/LS06-M%CE%A65_datasheet.pdf",
+  "breakoutPinoutSource": "Seeed Grove - Light Sensor(P) v1.1 (LS06-S) Eagle schematic J1: 1 SIG, 2 NC, 3 VCC, 4 GND (https://files.seeedstudio.com/wiki/Grove_Light_Sensor/resources/Grove%20-%20Light%20Sensor%28P%29%20v1.1.zip) and Seeed wiki wire table (https://wiki.seeedstudio.com/Grove-Light_Sensor/)",
+  "checkRuns": 1
+}

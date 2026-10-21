@@ -1,0 +1,173 @@
+{
+  "type": "custom-cm1106",
+  "name": "Cubic CM1106 NDIR CO2 sensor",
+  "mpn": "CM1106",
+  "category": "sensor",
+  "description": "Cubic single-beam infrared (NDIR) CO2 sensor, 0-2000 ppm standard, accuracy ±(50 ppm + 5 % of reading), 1 ppm resolution. UART at 9600 baud with 3.3 V logic; needs a 5 V ± 5 % supply (70 mA average, 120 mA peak). Sold as: Cubic CM1106 module (standard 0-2000 ppm) with 5-pin CON5 and 4-pin CON4 pin headers (CON5: +3.3V, RX, TX, R/T, CA; CON4: +5V, GND, A, PWM).",
+  "eli5": "Measures how much carbon dioxide is in the air, so you know when a room needs fresh air.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "+3.3V",
+      "role": "io",
+      "description": "CON5 pin 1: 3.3 V regulator OUTPUT (100 mA max); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "CON5 pin 2: UART data into the sensor (3.3 V TTL): wire to the microcontroller's TX",
+      "required": true
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "CON5 pin 3: UART data out of the sensor (3.3 V TTL): wire to the microcontroller's RX",
+      "required": true
+    },
+    {
+      "name": "R/T",
+      "role": "nc",
+      "description": "CON5 pin 4: RS485 direction control (reserved); leave unconnected",
+      "required": false
+    },
+    {
+      "name": "CA",
+      "role": "io",
+      "description": "CON5 pin 5: manual calibration, short to GND for 2 s to calibrate to 400 ppm (6 s later)",
+      "required": false
+    },
+    {
+      "name": "+5V",
+      "role": "power",
+      "description": "CON4 pin 1: supply input, 5 V ± 5 % (use 5 V, not 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "CON4 pin 2: ground",
+      "required": true
+    },
+    {
+      "name": "A",
+      "role": "io",
+      "description": "CON4 pin 3: alarm output (reserved)",
+      "required": false
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "description": "CON4 pin 4: PWM output, 1004 ms period, high time = ppm/2 + 2 ms",
+      "required": false
+    }
+  ],
+  "vmin": 4.75,
+  "vmax": 5.25,
+  "currentMa": 70,
+  "datasheetUrl": "https://www.energiazero.org/cartelle/project-work/Monitor%20CO2/CM1106%20CO2%20SENSOR%20MODULE%20INTRODUCTION.pdf",
+  "priceUsd": 18,
+  "supplierQuery": "Cubic CM1106 NDIR CO2 sensor UART",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power +5V from 5 V (ESP32 VIN/5V, Pico VBUS); the supply must deliver 120 mA peaks.",
+    "Cross the serial lines: microcontroller TX to sensor RX, microcontroller RX to sensor TX. 9600 baud, 8N1, 3.3 V logic.",
+    "Read CO2 by sending 11 01 01 ED; the reply is 16 05 01 DF1 DF2 DF3 DF4 CS, CO2 = DF1*256 + DF2 ppm, DF3 = status bits.",
+    "Checksum CS = 256 - (sum of every previous byte) mod 256. A mismatch usually means a loose wire or the wrong baud rate.",
+    "The +3.3V pin is an output: never connect it to the board's 3V3. Leave R/T, A and CA unconnected for basic use."
+  ],
+  "keywords": [
+    "cm1106",
+    "cubic",
+    "co2",
+    "carbon dioxide",
+    "ndir",
+    "air quality",
+    "gassensor"
+  ],
+  "sources": [
+    "https://www.energiazero.org/cartelle/project-work/Monitor%20CO2/CM1106%20CO2%20SENSOR%20MODULE%20INTRODUCTION.pdf",
+    "https://endrich.com/Datenbl%C3%A4tter/Sensoren/Gassensoren/CM1106H-NS.pdf",
+    "https://endrich.com/Datenbl%C3%A4tter/Sensoren/Gassensoren/CM1106LS.pdf"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "CO2 concentration",
+    "unit": "ppm",
+    "min": 0,
+    "max": 2000,
+    "default": 400,
+    "uartReplies": [
+      {
+        "match": "11 01 01 ed",
+        "bytes": [
+          {
+            "const": 22,
+            "bits": 8
+          },
+          {
+            "const": 5,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "const": 0,
+            "bits": 16
+          },
+          {
+            "crc": "neg8",
+            "over": 7
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "cm1106.py",
+    "code": "# Cubic CM1106 single-beam NDIR CO2 sensor, MicroPython driver (UART, 9600 8N1).\n# Frames (Cubic UART protocol): host sends 0x11 LEN CMD DATA... CS, module answers 0x16 LEN CMD DATA... CS.\n# CS = 256 - (HEAD + LEN + CMD + DATA) % 256, i.e. all bytes before it, header included.\nimport time\n\n\ndef _cs(frame):\n    return (-sum(frame)) & 0xFF\n\n\nclass CM1106:\n    def __init__(self, uart, timeout_ms=300):\n        \"\"\"uart: machine.UART at 9600 baud, 8N1; MCU TX -> sensor RX, MCU RX <- sensor TX (3.3 V TTL).\"\"\"\n        self.uart = uart\n        self.timeout_ms = timeout_ms\n        self.status = 0\n\n    def _cmd(self, cmd, data=b'', reply_len=0):\n        f = bytearray([0x11, len(data) + 1, cmd]) + bytearray(data)\n        f.append(_cs(f))\n        while self.uart.any():  # drop stale bytes\n            self.uart.read()\n        self.uart.write(f)\n        if not reply_len:\n            return None\n        buf = b''\n        t0 = time.ticks_ms()\n        while len(buf) < reply_len and time.ticks_diff(time.ticks_ms(), t0) < self.timeout_ms:\n            d = self.uart.read(reply_len - len(buf))\n            if d:\n                buf += d\n            else:\n                time.sleep_ms(5)\n        if len(buf) < reply_len:\n            raise OSError('CM1106: no reply (check TX/RX are crossed and +5V is powered)')\n        if buf[0] != 0x16 or buf[2] != cmd or buf[1] != reply_len - 3:\n            raise OSError('CM1106: bad frame')\n        if _cs(buf[:-1]) != buf[-1]:\n            raise OSError('CM1106: checksum mismatch')\n        return buf\n\n    def read_co2(self):\n        \"\"\"Command 0x01: return CO2 in ppm (DF1*256 + DF2). Status byte DF3 is kept in self.status.\"\"\"\n        r = self._cmd(0x01, reply_len=8)  # 16 05 01 DF1 DF2 DF3 DF4 CS\n        self.status = r[5]\n        return r[3] * 256 + r[4]\n\n    def preheating(self):\n        return bool(self.status & 0x01)\n\n    def error(self):\n        return bool(self.status & 0x02)\n\n    def calibrate(self, ppm=400):\n        \"\"\"Command 0x03: set the current reading to `ppm` (400-1500). Hold that CO2 level stable for 2 min first.\"\"\"\n        if not 400 <= ppm <= 1500:\n            raise ValueError('target must be 400-1500 ppm')\n        self._cmd(0x03, bytes([ppm >> 8, ppm & 0xFF]), reply_len=4)  # 16 01 03 E6\n\n    def set_abc(self, on, days=7, base=400):\n        \"\"\"Command 0x10: auto baseline correction on/off, cycle 1-30 days, base value (default 400 ppm).\"\"\"\n        data = bytes([0x64, 0 if on else 2, days, base >> 8, base & 0xFF, 0x64])\n        self._cmd(0x10, data, reply_len=4)  # 16 01 10 D9\n"
+  },
+  "skill": "---\nname: part-cm1106\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Cubic CM1106 single-beam NDIR CO2 sensor module (Wuhan Cubic CM1106, UART). Use when designing, wiring, simulating or writing code for a CM1106 in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Cubic CM1106 NDIR CO2 sensor (CM1106)\n\n## Overview\nThe **CM1106** from Wuhan Cubic Optoelectronics is a small (33 × 19.7 × 8.9 mm) single-beam infrared (NDIR) CO2 sensor. The standard version measures 0–2000 ppm (5000 / 10000 ppm versions are made to order), accurate to ±(50 ppm + 5 % of reading), with 1 ppm resolution. It talks UART at 9600 baud with **3.3 V logic** but **needs a 5 V supply**. Hobbyists buy the **Cubic CM1106 module with two pin headers** (this part): a 5-pin CON5 (UART side) and a 4-pin CON4 (power side) on opposite edges, so it is wired with jumper leads.\n\n## Pinout (Cubic CM1106 \"I/O definitions\", header by header)\n| Header | Pin | Name | Function |\n|---|---|---|---|\n| CON5 | 1 | +3.3V | 3.3 V output (100 mA max) – leave unconnected |\n| CON5 | 2 | RX | UART receive (wire to the microcontroller's TX) |\n| CON5 | 3 | TX | UART transmit (wire to the microcontroller's RX) |\n| CON5 | 4 | R/T | RS485 direction (reserved) |\n| CON5 | 5 | CA | Manual calibration: short to GND for 2 s |\n| CON4 | 1 | +5V | Supply input |\n| CON4 | 2 | GND | Ground |\n| CON4 | 3 | A | Alarm output (reserved) |\n| CON4 | 4 | PWM | PWM output, 1004 ms period, high time = ppm/2 + 2 ms |\n\n## Electrical limits\n- Supply: DC 5 V ± 5 % (4.75–5.25 V); average 70 mA, peak 120 mA.\n- UART levels: 3.3 V TTL, so RX/TX connect straight to an ESP32 or Pico.\n- Response T90 < 120 s; working −10 to 50 °C, 0–95 % RH non-condensing.\n\n## Interface details\n- UART 9600 baud, 8 data bits, 1 stop bit, no parity.\n- Frame: host sends `11 LEN CMD DATA… CS`, module answers `16 LEN CMD DATA… CS`. LEN = data bytes + 1 (CMD).\n- Checksum CS = 256 − (sum of all previous bytes, header included) mod 256.\n- Read CO2: send `11 01 01 ED`; reply `16 05 01 DF1 DF2 DF3 DF4 CS`. CO2 (ppm) = DF1 × 256 + DF2. DF3 = status (bit0 preheating, bit1 sensor error, bit2 over range, bit3 under range, bit4 not calibrated, bit5 light aging, bit6 drift). Datasheet example: `16 05 01 02 58 00 00 8A` = 600 ppm.\n- Calibrate: `11 03 03 DF1 DF2 CS` sets the reading to DF1×256+DF2 ppm (400–1500), reply `16 01 03 E6`.\n- ABC: `11 07 10 64 DF2 DF3 01 90 64 CS`, DF2 0 = on / 2 = off, DF3 = cycle in days (default 7); reply `16 01 10 D9`.\n\n## Wiring\n- ESP32: +5V → 5V (VIN/USB), GND → GND, RX → GPIO17 (UART2 TX), TX → GPIO16 (UART2 RX).\n- Pico: +5V → VBUS (pin 40), GND → GND, RX → GP4 (UART1 TX), TX → GP5 (UART1 RX).\n- Raspberry Pi 4: +5V → pin 2 (5 V), GND → pin 6, RX → pin 8 (TXD), TX → pin 10 (RXD).\n\n## Using the driver\n```python\nfrom machine import UART, Pin\nfrom cm1106 import CM1106\nu = UART(2, baudrate=9600, tx=Pin(17), rx=Pin(16))\nprint('CO2=%d ppm' % CM1106(u).read_co2())\n```\n\n## Gotchas\n- TX and RX cross over: microcontroller TX → sensor RX, microcontroller RX ← sensor TX.\n- Power from 5 V, not 3.3 V. Do not feed anything into the +3.3V pin – it is an output.\n- Ignore readings while status bit0 (preheating) is set after power-up.\n- ABC treats the lowest reading of each cycle as 400 ppm; turn it off (`set_abc(False)`) where the sensor never sees fresh air.\n- Manual calibration (CA to GND for 2 s, or `calibrate(400)`) only in stable outdoor-level air.\n\n## Datasheet\nhttps://www.energiazero.org/cartelle/project-work/Monitor%20CO2/CM1106%20CO2%20SENSOR%20MODULE%20INTRODUCTION.pdf\n(UART protocol: https://endrich.com/Datenbl%C3%A4tter/Sensoren/Gassensoren/CM1106H-NS.pdf)\n",
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom cm1106 import CM1106\n\nu = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\nsensor = CM1106(u)\nwhile True:\n    try:\n        print('CO2=%d ppm' % sensor.read_co2())\n    except OSError as e:\n        print(e)\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the CO2 concentration set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1234
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "CO2=1234 ppm",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:43:23.171Z",
+    "verifiedSources": [
+      "https://www.energiazero.org/cartelle/project-work/Monitor CO2/CM1106 CO2 SENSOR MODULE INTRODUCTION.pdf"
+    ]
+  }
+}

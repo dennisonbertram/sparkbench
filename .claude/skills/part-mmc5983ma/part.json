@@ -1,0 +1,240 @@
+{
+  "type": "custom-mmc5983ma",
+  "name": "MMC5983MA 3-axis magnetometer",
+  "mpn": "MMC5983MA",
+  "category": "sensor",
+  "description": "MEMSIC MMC5983MA three-axis AMR magnetic sensor: ±8 gauss on X, Y and Z with 18-bit resolution (16384 counts per gauss, 0.0625 mG), 0.4 mG RMS noise, built-in SET/RESET degaussing and a die temperature sensor, I2C address 0x30 (SPI also possible). Used as a high-accuracy electronic compass. Sold as: SparkFun Triple Axis Magnetometer - MMC5983MA (Qwiic), SparkX SEN-19034, two 0.1\" headers (GND, 3.3V, SCL, SDA, INT and GND, 3.3V, COPI, CIPO, SCK, CS) plus two Qwiic connectors, 3.3 V only (2.8–3.6 V, no regulator), 2.2k I2C pull-ups on the board, I2C address 0x30.",
+  "eli5": "A very sensitive compass chip: it feels the magnetic field in three directions so your board can find north or notice a nearby magnet.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (top header, pin 1)",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 3.3 V (2.8–3.6 V). Feeds the chip's VDD and VDDIO directly, no regulator: never 5 V",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK in SPI mode); 2.2 kΩ pull-up to 3.3 V on the board",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI COPI in SPI mode); 2.2 kΩ pull-up to 3.3 V on the board",
+      "required": true
+    },
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active high, hi-Z until enabled (measurement done); not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "GND_2",
+      "role": "gnd",
+      "description": "Second header (opposite edge), printed GND: ground",
+      "required": false
+    },
+    {
+      "name": "3.3V_2",
+      "role": "power",
+      "description": "Second header (opposite edge), printed 3.3V: same 3.3 V supply net as 3.3V; leave unconnected",
+      "required": false
+    },
+    {
+      "name": "COPI",
+      "role": "nc",
+      "description": "Second header: SPI data in, the same net as SDA. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "CIPO",
+      "role": "nc",
+      "description": "Second header: SPI data out (SDO), only active in SPI mode. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "SCK",
+      "role": "nc",
+      "description": "Second header: SPI clock, the same net as SCL. Leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "nc",
+      "description": "Second header: SPI chip select (active low), held high by a 10 kΩ pull-up through the closed SPI jumper so the chip runs in I2C mode. Leave unconnected for I2C",
+      "required": false
+    }
+  ],
+  "vmin": 2.8,
+  "vmax": 3.6,
+  "currentMa": 2,
+  "i2cAddress": 48,
+  "datasheetUrl": "https://www.memsic.com/Public/Uploads/uploadfile/files/20220119/MMC5983MADatasheetRevA.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "SparkFun Triple Axis Magnetometer MMC5983MA Qwiic SEN-19034",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x11_P2.54mm_Vertical",
+  "buildNotes": [
+    "3.3 V ONLY: the board has no regulator and the chip's absolute maximum supply is 3.6 V. Feed 3.3V from the board's 3V3 pin, never 5 V.",
+    "Address 0x30 is fixed (no address pin); Product ID register 0x2F reads 0x30.",
+    "One-shot reading per the datasheet: write 0x08 (SET) to 0x09, then 0x01 (TM_M) to 0x09, wait until bit 0 (Meas_M_Done) of status 0x08 is set (8 ms at the default bandwidth), then read 7 bytes from 0x00.",
+    "Each axis is 18-bit UNSIGNED: 0x00/0x01 hold bits 17..2, the two low bits are in 0x06 (X bits 7..6, Y 5..4, Z 3..2). Subtract 131072 (null field) and divide by 16384 to get gauss.",
+    "The board has 2.2k I2C pull-ups; if you chain several Qwiic boards, cut the I2C jumper on all but one.",
+    "Leave CS unconnected for I2C (it is pulled high on the board); COPI/SCK are the same nets as SDA/SCL.",
+    "Keep it away from motors, speakers, magnets and steel screws, and calibrate hard/soft-iron offsets (record min/max while rotating) before trusting a heading."
+  ],
+  "keywords": [
+    "mmc5983ma",
+    "mmc5983",
+    "memsic",
+    "magnetometer",
+    "compass",
+    "magnetic field",
+    "heading",
+    "sparkfun 19034",
+    "qwiic"
+  ],
+  "sources": [
+    "https://www.memsic.com/Public/Uploads/uploadfile/files/20220119/MMC5983MADatasheetRevA.pdf",
+    "https://cdn.sparkfun.com/assets/2/e/1/8/0/MMC5983MA_RevA_4-3-19.pdf",
+    "https://www.sparkfun.com/products/19034",
+    "https://cdn.sparkfun.com/assets/3/3/3/0/6/Schematic.pdf",
+    "https://github.com/sparkfunX/Qwiic_High_Performance_Magnetometer_MMC5983MA",
+    "https://www.sparkfun.com/media/catalog/product/1/9/19034-Triple_Axis_Magnetometer_-_MMC5983MA__Qwiic_-01.jpg"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Magnetic field X",
+    "unit": "G",
+    "min": -8,
+    "max": 8,
+    "default": 0.2,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Magnetic field Y",
+        "unit": "G",
+        "min": -8,
+        "max": 8,
+        "default": 0
+      },
+      {
+        "key": "z",
+        "quantity": "Magnetic field Z",
+        "unit": "G",
+        "min": -8,
+        "max": 8,
+        "default": -0.4
+      },
+      {
+        "key": "temp",
+        "quantity": "Temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 105,
+        "default": 25
+      }
+    ],
+    "registers": {
+      "0x06": 0,
+      "0x08": 3,
+      "0x2F": 48
+    },
+    "measures": [
+      {
+        "reg": "0x00",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "offset": -8,
+        "control": "value"
+      },
+      {
+        "reg": "0x02",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "offset": -8,
+        "control": "y"
+      },
+      {
+        "reg": "0x04",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "offset": -8,
+        "control": "z"
+      },
+      {
+        "reg": "0x07",
+        "bytes": 1,
+        "scale": 0.8,
+        "offset": -75,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "mmc5983ma.py",
+    "code": "# MMC5983MA 3-axis AMR magnetometer (MEMSIC datasheet Rev A, 4/3/2019), MicroPython driver, I2C.\n# One-shot measurement as in the datasheet's \"Example measurement\": write TM_M (0x01) to\n# Internal Control 0 (0x09), poll Status (0x08) bit 0 Meas_M_Done, then read 0x00..0x06.\n# Each axis is an 18-bit UNSIGNED value: out[17:10] in 0x00/02/04, out[9:2] in 0x01/03/05,\n# out[1:0] in 0x06 (X bits 7..6, Y bits 5..4, Z bits 3..2). Null field = 131072 counts,\n# 16384 counts/G (16-bit mode: 32768 and 4096). Range +-8 G.\n# Temperature: TM_T (0x02) to 0x09, poll bit 1 Meas_T_Done, T = -75 + 0.8 * Tout (0x07) degrees C.\nimport time\n\n_REG_XOUT0 = 0x00\n_REG_TOUT = 0x07\n_REG_STATUS = 0x08\n_REG_CTRL0 = 0x09\n_REG_CTRL1 = 0x0A\n_REG_CTRL2 = 0x0B\n_REG_PRODUCT_ID = 0x2F\n\n_PRODUCT_ID = 0x30\n\n# Internal Control 0 bits\n_TM_M = 0x01\n_TM_T = 0x02\n_DO_SET = 0x08\n_DO_RESET = 0x10\n# Internal Control 1 bits\n_SW_RST = 0x80\n\n# Status bits\n_MEAS_M_DONE = 0x01\n_MEAS_T_DONE = 0x02\n\n_NULL_FIELD = 131072  # 18-bit null-field output\n_COUNTS_PER_GAUSS = 16384.0  # 18-bit operation\n\n# Bandwidth (Internal Control 1 bits 1..0): measurement time 8 / 4 / 2 / 0.5 ms.\nBW_8MS = 0\nBW_4MS = 1\nBW_2MS = 2\nBW_0_5MS = 3\n_MEAS_TIMEOUT_MS = 50\n\n\nclass MMC5983MA:\n    def __init__(self, i2c, addr=0x30, bw=BW_8MS):\n        self.i2c = i2c\n        self.addr = addr\n        self._write(_REG_CTRL1, _SW_RST)\n        time.sleep_ms(15)  # power-on time after SW_RST is 10 ms\n        pid = self._read(_REG_PRODUCT_ID, 1)[0]\n        if pid != _PRODUCT_ID:\n            raise OSError('MMC5983MA: product ID 0x%02X, expected 0x30 (check wiring / address 0x30)' % pid)\n        self._write(_REG_CTRL1, bw & 0x03)\n        self._write(_REG_CTRL2, 0x00)  # continuous mode off: one-shot measurements\n        self.set_reset()\n\n    def _write(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _read(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def set_reset(self):\n        \"\"\"SET then RESET pulse to clear magnetisation left by a strong field (>10 G).\"\"\"\n        self._write(_REG_CTRL0, _DO_SET)\n        time.sleep_ms(1)  # the SET current pulse lasts 500 ns; 1 ms is ample\n        self._write(_REG_CTRL0, _DO_RESET)\n        time.sleep_ms(1)\n\n    def _wait(self, mask):\n        t0 = time.ticks_ms()\n        while not (self._read(_REG_STATUS, 1)[0] & mask):\n            if time.ticks_diff(time.ticks_ms(), t0) > _MEAS_TIMEOUT_MS:\n                raise OSError('MMC5983MA: measurement timed out')\n            time.sleep_ms(1)\n\n    def read_raw(self):\n        \"\"\"Take one measurement after a SET pulse; return signed 18-bit counts (x, y, z), null field removed.\"\"\"\n        self._write(_REG_CTRL0, _DO_SET)  # datasheet: SET, then MEASUREMENT\n        time.sleep_ms(1)\n        self._write(_REG_CTRL0, _TM_M)\n        self._wait(_MEAS_M_DONE)\n        d = self._read(_REG_XOUT0, 7)\n        x = (d[0] << 10) | (d[1] << 2) | ((d[6] >> 6) & 0x03)\n        y = (d[2] << 10) | (d[3] << 2) | ((d[6] >> 4) & 0x03)\n        z = (d[4] << 10) | (d[5] << 2) | ((d[6] >> 2) & 0x03)\n        return x - _NULL_FIELD, y - _NULL_FIELD, z - _NULL_FIELD\n\n    def read(self):\n        \"\"\"Return the magnetic field (x, y, z) in gauss (1 G = 100 uT).\"\"\"\n        x, y, z = self.read_raw()\n        k = _COUNTS_PER_GAUSS\n        return x / k, y / k, z / k\n\n    def temperature(self):\n        \"\"\"Die temperature in degrees C (about 0.8 C per count, -75 to 125 C).\"\"\"\n        self._write(_REG_CTRL0, _TM_T)\n        self._wait(_MEAS_T_DONE)\n        return -75 + 0.8 * self._read(_REG_TOUT, 1)[0]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom mmc5983ma import MMC5983MA\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nmag = MMC5983MA(i2c)  # address 0x30\nwhile True:\n    x, y, z = mag.read()\n    t = mag.temperature()\n    print('X=%.4fG Y=%.4fG Z=%.4fG T=%.1fC' % (x, y, z, t))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the X, Y, Z field and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 0.25
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": -0.125
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "z",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 33
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=0.2500G Y=-0.1250G Z=0.5000G T=33.0C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:57:05.141Z",
+    "verifiedSources": [
+      "https://cdn.sparkfun.com/assets/2/e/1/8/0/MMC5983MA_RevA_4-3-19.pdf",
+      "https://cdn.sparkfun.com/assets/3/3/3/0/6/Schematic.pdf",
+      "https://sparkfun.com/products/19034"
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+{"diffs":[
+{"diff":"header pin 2: part says 3.3V, datasheet reading says SCL","verdict":"part-correct","evidence":"SparkFun MMC5983MA Qwiic board schematic, '0.1\" Headers' block, connector J3: pin 1 = GND, pin 2 = 3.3V (net drawn up to the 3.3V supply arrow), pin 3 = SCL/SCK, pin 4 = SDA/COPI, pin 5 = INT. Pin 2 is the 3.3V supply, not SCL, so the second reading swapped pins 2 and 3. (J4: 1 GND, 2 3.3V, 3 SDA/COPI, 4 CIPO, 5 SCL/SCK, 6 CS, which also matches the model's order.)","source":"https://cdn.sparkfun.com/assets/3/3/3/0/6/Schematic.pdf"},
+{"diff":"header pin 3: part says SCL, datasheet reading says 3V3","verdict":"part-correct","evidence":"Same schematic, connector J3: pin 3 is wired to the SCL/SCK net label; the 3.3V supply goes to pin 2. Header order is GND, 3.3V, SCL, SDA, INT, as in the model.","source":"https://cdn.sparkfun.com/assets/3/3/3/0/6/Schematic.pdf"}
+]}

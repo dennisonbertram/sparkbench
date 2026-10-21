@@ -1,0 +1,180 @@
+{
+  "type": "custom-gt-u7",
+  "name": "GT-U7 GPS module",
+  "mpn": "GT-U7",
+  "category": "sensor",
+  "description": "Goouuu Tech GT-U7 GPS receiver (u-blox 6 positioning engine, NEO-6M compatible) that streams NMEA sentences (position, altitude, speed, UTC time) over a UART at 9600 baud, once per second. The GT-U7 module itself runs on 2.7-3.6 V; the breakout's 3.3 V regulator lets it run from 3.3-5 V. Sold as: Goouuu Tech GT-U7 GPS module (MakerFocus and others; 5-pin header VCC, GND, RXD, TXD, PPS, micro-USB, IPEX antenna socket with patch antenna, backup battery, EEPROM), sold as a NEO-6M compatible GPS board.",
+  "eli5": "Listens to GPS satellites and tells your board where on Earth it is, once a second.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (on-board 3.3 V regulator feeds the 2.7-3.6 V GT-U7 module)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module serial input (3.3 V logic, 510 ohm series resistor on board): connect to the board's UART TX. Only needed to send configuration commands",
+      "required": false
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module serial output, NMEA at 9600 baud 8N1: connect to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "PPS",
+      "role": "io",
+      "description": "Time pulse output (TIMEPULSE, 1 pulse per second once a fix is available); optional, for precise timing",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 45,
+  "datasheetUrl": "https://images-na.ssl-images-amazon.com/images/I/91tuvtrO2jL.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "GT-U7 GPS module NEO-6M compatible",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header order (component side, left to right): VCC, GND, RXD, TXD, PPS. The labels are printed on the back of the board.",
+    "Cross the serial lines: module TXD goes to the board's UART RX pin, module RXD (optional) to the board's UART TX pin.",
+    "Default is 9600 baud, 8 data bits, no parity, 1 stop bit; open the UART at 9600 or the sentences come out as garbage.",
+    "The GT-U7's I/O pins are 3.3 V logic (absolute maximum 3.6 V). ESP32 and Pico are 3.3 V, so wire them directly; use a divider on RXD from 5 V logic.",
+    "Plug the patch antenna into the IPEX (U.FL) socket and give it a view of the sky. A cold start outdoors takes about 30 s or more; indoors it may never get a fix.",
+    "The LED on the board blinks once a second (driven by the time pulse) only when the module has a fix.",
+    "Peak supply current is about 67 mA during acquisition; power it from the board's 3V3 or 5V/VBUS pin, not a GPIO."
+  ],
+  "keywords": [
+    "gt-u7",
+    "gtu7",
+    "goouuu",
+    "gps",
+    "gnss",
+    "nmea",
+    "neo-6m",
+    "u-blox",
+    "location"
+  ],
+  "sources": [
+    "https://images-na.ssl-images-amazon.com/images/I/91tuvtrO2jL.pdf",
+    "https://fabacademy.org/2024/labs/puebla/students/ximena-cisneros/assets/files/W11/gpsdatasheet.pdf",
+    "https://content.u-blox.com/sites/default/files/products/documents/NEO-6_DataSheet_%28GPS.G6-HW-09005%29.pdf",
+    "https://content.u-blox.com/sites/default/files/products/documents/u-blox6_ReceiverDescrProtSpec_%28GPS.G6-SW-10018%29_Public.pdf",
+    "https://forum.fritzing.org/t/part-request-gt-u7-gps-module/22709",
+    "https://forum.fritzing.org/uploads/default/original/3X/b/c/bc95e5fd6079efa37e75f024c2cc975898c9a753.jpeg",
+    "https://shillehtek.com/blogs/shillehtek-product-manuals/gt-u7-gps-module-presoldered-1-manual"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Latitude",
+    "unit": "°",
+    "min": -90,
+    "max": 90,
+    "default": 51.5,
+    "controls": [
+      {
+        "key": "lat",
+        "quantity": "Latitude",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 51.5
+      },
+      {
+        "key": "lon",
+        "quantity": "Longitude",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": -0.12
+      },
+      {
+        "key": "alt",
+        "quantity": "Altitude above sea level",
+        "unit": "m",
+        "min": -100,
+        "max": 5000,
+        "default": 35
+      },
+      {
+        "key": "speed",
+        "quantity": "Speed over ground",
+        "unit": "knots",
+        "min": 0,
+        "max": 100,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "nmea": true
+    }
+  },
+  "driver": {
+    "filename": "gtu7.py",
+    "code": "# Goouuu Tech GT-U7 GPS module (u-blox 6 positioning engine, NEO-6M compatible), MicroPython NMEA driver.\n# The GT-U7 streams NMEA 0183 sentences (protocol 2.3) on its UART at 9600 baud, 8N1 by default,\n# once per second. Each sentence is \"$<talker><type>,<fields>*<cs>\\r\\n\" where cs is the XOR of every\n# character between '$' and '*' (u-blox 6 Receiver Description, NMEA protocol). GGA and RMC are decoded;\n# latitude is ddmm.mmmmm and longitude dddmm.mmmmm (degrees + decimal minutes), S/W are negative.\n\n\ndef _checksum_ok(line):\n    # line: str without CR/LF, starting with '$'\n    star = line.rfind('*')\n    if line[:1] != '$' or star < 0 or len(line) < star + 3:\n        return False\n    cs = 0\n    for c in line[1:star]:\n        cs ^= ord(c)\n    try:\n        return cs == int(line[star + 1:star + 3], 16)\n    except ValueError:\n        return False\n\n\ndef _deg(field, hemi, dlen):\n    # 'ddmm.mmmmm' (dlen=2) or 'dddmm.mmmmm' (dlen=3) -> signed decimal degrees, None if empty\n    if not field or not hemi:\n        return None\n    d = int(field[:dlen]) + float(field[dlen:]) / 60\n    return -d if hemi in ('S', 'W') else d\n\n\ndef _num(field):\n    return float(field) if field else None\n\n\nclass GTU7:\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 9600 baud whose rx pin is wired to the module's TXD.\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.fix = False          # GGA fix quality > 0, or RMC status 'A'\n        self.fix_quality = 0      # GGA: 0 none, 1 GPS, 2 DGPS, 6 dead reckoning\n        self.latitude = None      # decimal degrees, + north\n        self.longitude = None     # decimal degrees, + east\n        self.altitude = None      # metres above mean sea level (GGA)\n        self.satellites = 0       # satellites used (GGA)\n        self.hdop = None\n        self.speed_knots = None   # speed over ground (RMC)\n        self.course = None        # course over ground, degrees true (RMC)\n        self.utc_time = None      # (hh, mm, ss)\n        self.date = None          # (day, month, 2-digit year)\n        self.bad_checksums = 0\n\n    def update(self):\n        \"\"\"Read what has arrived and decode complete sentences. Returns True if a GGA or RMC was decoded.\"\"\"\n        n = self.uart.any()\n        if n:\n            data = self.uart.read(n)\n            if data:\n                self._buf += data\n        got = False\n        while True:\n            nl = self._buf.find(b'\\n')\n            if nl < 0:\n                break\n            raw = self._buf[:nl].strip()\n            self._buf = self._buf[nl + 1:]\n            try:\n                line = raw.decode()\n            except UnicodeError:   # line noise / wrong baud rate\n                self.bad_checksums += 1\n                continue\n            try:\n                if line and self._parse(line):\n                    got = True\n            except (ValueError, IndexError):   # malformed field\n                pass\n        if len(self._buf) > 512:   # no newline for a long time: garbage, drop it\n            self._buf = b''\n        return got\n\n    def _parse(self, line):\n        if not _checksum_ok(line):\n            self.bad_checksums += 1\n            return False\n        f = line[1:line.rfind('*')].split(',')\n        kind = f[0][2:]   # skip the talker id (GP, GN, ...)\n        if kind == 'GGA' and len(f) >= 10:\n            self._time(f[1])\n            self.fix_quality = int(f[6]) if f[6] else 0\n            self.fix = self.fix_quality > 0\n            self.satellites = int(f[7]) if f[7] else 0\n            self.hdop = _num(f[8])\n            if self.fix:\n                self.latitude = _deg(f[2], f[3], 2)\n                self.longitude = _deg(f[4], f[5], 3)\n                self.altitude = _num(f[9])\n            return True\n        if kind == 'RMC' and len(f) >= 10:\n            self._time(f[1])\n            self.fix = f[2] == 'A'\n            if self.fix:\n                self.latitude = _deg(f[3], f[4], 2)\n                self.longitude = _deg(f[5], f[6], 3)\n                self.speed_knots = _num(f[7])\n                self.course = _num(f[8])\n            if len(f[9]) == 6:\n                self.date = (int(f[9][0:2]), int(f[9][2:4]), int(f[9][4:6]))\n            return True\n        return False\n\n    def _time(self, t):\n        if len(t) >= 6:\n            self.utc_time = (int(t[0:2]), int(t[2:4]), int(float(t[4:])))\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom gtu7 import GTU7\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\ngps = GTU7(uart)\nwhile True:\n    if gps.update():\n        if gps.fix and gps.latitude is not None:\n            print('LAT=%.4f LON=%.4f ALT=%.1fm SPD=%.2fkn' % (gps.latitude, gps.longitude, gps.altitude or 0, gps.speed_knots or 0))\n        else:\n            print('Waiting for fix...')\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "fix",
+      "title": "Reports the position, altitude and speed set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lat",
+          "value": 48.8584
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lon",
+          "value": 2.2945
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "alt",
+          "value": 330
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "speed",
+          "value": 12.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LAT=48.8584 LON=2.2945 ALT=330.0m SPD=12.50kn",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:00:00.147Z",
+    "verifiedSources": [
+      "https://content.u-blox.com/sites/default/files/products/documents/NEO-6_DataSheet_%28GPS.G6-HW-09005%29.pdf",
+      "https://shillehtek.com/blogs/shillehtek-product-manuals/gt-u7-gps-module-presoldered-1-manual"
+    ]
+  }
+}

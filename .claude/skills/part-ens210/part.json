@@ -1,0 +1,153 @@
+{
+  "type": "custom-ens210",
+  "name": "ENS210 temperature & humidity sensor",
+  "mpn": "ENS210",
+  "category": "sensor",
+  "description": "ScioSense (formerly ams) digital relative humidity (0–100 %RH, ±2 %RH typical) and temperature (−40 to 100 °C, ±0.15 °C typical from 0 to 70 °C) sensor with an I2C interface and CRC-7 protected readings. The chip runs on 1.71–3.6 V only: do not power it from 5 V. Sold as: Elektor ENS210 humidity/temperature sensor BOB (PCB 180306-1, 4-pin header 3V3, SCL, SDA, GND, no I2C pull-ups fitted), I2C address 0x43 (fixed).",
+  "eli5": "Tells your board how warm the air is and how damp it is, with a built-in check that the reading arrived intact.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 1.71–3.6 V (use 3.3 V, never 5 V)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock; the board's pull-up pads are not fitted, so add a pull-up (e.g. 4.7 kΩ) to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data; the board's pull-up pads are not fitted, so add a pull-up (e.g. 4.7 kΩ) to 3.3 V",
+      "required": true,
+      "pullUp": 4700
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 1.71,
+  "vmax": 3.6,
+  "currentMa": 0.07,
+  "i2cAddress": 67,
+  "datasheetUrl": "https://www.sciosense.com/wp-content/uploads/2023/12/ENS210-Datasheet.pdf",
+  "priceUsd": 8,
+  "supplierQuery": "ENS210 humidity temperature sensor breakout",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Supply 1.71–3.6 V only: wire 3V3 to the 3.3 V pin, never 5 V, and pull SDA/SCL up to 3.3 V (not 5 V).",
+    "The Elektor board has footprints R1/R2 for I2C pull-ups but they are not mounted: fit 4.7 kΩ pull-ups to 3.3 V on SDA and SCL.",
+    "Single-shot T+RH: write 0x03 to SENS_START (0x22), wait at least 130 ms, then read 6 bytes from T_VAL (0x30): T_VAL then H_VAL, 3 bytes each, low byte first.",
+    "Each value carries a VALID bit (bit 16) and a CRC-7 (poly 0x89, init 0x7F) in bits 23:17; a CRC mismatch usually means a loose SDA/SCL wire.",
+    "Temperature = data / 64 − 273.15 °C; relative humidity = data / 512 %RH.",
+    "PART_ID (0x0210) is only readable while the chip is active: clear LOW_POWER in SYS_CTRL (0x10) first and set it again afterwards."
+  ],
+  "keywords": [
+    "ens210",
+    "sciosense",
+    "ams",
+    "temperature",
+    "humidity",
+    "rh",
+    "elektor"
+  ],
+  "sources": [
+    "https://www.sciosense.com/wp-content/uploads/2023/12/ENS210-Datasheet.pdf",
+    "https://www.elektormagazine.com/labs/ens210-humiditytemperature-sensor-bob",
+    "https://www.elektormagazine.com/assets/upload/img/public/original/180306.jpg",
+    "https://github.com/maarten-pennings/ENS210"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 100,
+    "default": 21,
+    "controls": [
+      {
+        "key": "humidity",
+        "quantity": "Relative humidity",
+        "unit": "%",
+        "min": 0,
+        "max": 100,
+        "default": 50
+      }
+    ],
+    "registers": {
+      "0x00": 16,
+      "0x01": 2,
+      "0x10": 1,
+      "0x11": 1
+    },
+    "measures": [
+      {
+        "reg": "0x30",
+        "bytes": 3,
+        "scale": 0.015625,
+        "offset": -273.15,
+        "format": "ens210"
+      },
+      {
+        "reg": "0x33",
+        "bytes": 3,
+        "scale": 0.001953125,
+        "control": "humidity",
+        "format": "ens210"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "ens210.py",
+    "code": "# ENS210 relative humidity & temperature sensor (ScioSense, formerly ams), MicroPython driver.\n# Written from the ENS210 datasheet (SC-000897-DS-7 v5): fixed I2C address 0x43,\n# single-shot T+RH measurement (SENS_START = 0x03, conversion <= 130 ms),\n# T_VAL/H_VAL are 3 bytes, little endian: 16-bit data, VALID in bit 16,\n# CRC-7 (poly x^7+x^3+1 = 0x89, init 0x7F) over the 17-bit payload in bits 23:17.\nimport time\n\nENS210_ADDR = 0x43\n\n_PART_ID = 0x00\n_SYS_CTRL = 0x10\n_SYS_STAT = 0x11\n_SENS_RUN = 0x21\n_SENS_START = 0x22\n_T_VAL = 0x30\n\n_CONV_MS = 130  # T and RH, single shot, incl. booting (datasheet max)\n_BOOT_MS = 2    # booting time 1.2 ms max\n\n\ndef crc7(val):\n    \"\"\"CRC-7 of a 17-bit value, exactly as the datasheet's crc7() routine.\"\"\"\n    pol = 0x89 << 16          # polynomial aligned with the data MSB (incl. room for CRC)\n    bit = 1 << 23             # DATA7MSB << CRC7WIDTH\n    val = (val << 7) | 0x7F   # make room for the CRC and insert the initial vector\n    while bit & (0x1FFFF << 7):\n        if bit & val:\n            val ^= pol\n        bit >>= 1\n        pol >>= 1\n    return val\n\n\ndef _decode(b0, b1, b2):\n    v = b0 | (b1 << 8) | (b2 << 16)\n    data = v & 0xFFFF\n    valid = (v >> 16) & 1\n    if crc7(v & 0x1FFFF) != (v >> 17) & 0x7F:\n        raise OSError('ENS210 CRC mismatch: check the wiring')\n    if not valid:\n        raise OSError('ENS210 data not valid yet')\n    return data\n\n\nclass ENS210:\n    def __init__(self, i2c, addr=ENS210_ADDR):\n        self.i2c = i2c\n        self.addr = addr\n        self._w(_SYS_CTRL, 0x80)        # RESET\n        time.sleep_ms(_BOOT_MS)\n        self._w(_SENS_RUN, 0x00)        # both sensors single shot\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def part_id(self):\n        \"\"\"Read PART_ID (0x0210 for an ENS210). Only readable in active state, so low power\n        is switched off for the read and back on afterwards, as the datasheet describes.\"\"\"\n        self._w(_SYS_CTRL, 0x00)        # LOW_POWER = 0 -> device goes active\n        time.sleep_ms(_BOOT_MS)\n        b = self.i2c.readfrom_mem(self.addr, _PART_ID, 2)\n        self._w(_SYS_CTRL, 0x01)        # LOW_POWER = 1 (default)\n        return b[0] | (b[1] << 8)\n\n    def read(self):\n        \"\"\"Start one T+RH measurement and return (temperature in C, relative humidity in %).\"\"\"\n        self._w(_SENS_START, 0x03)      # T_START | H_START\n        time.sleep_ms(_CONV_MS)\n        b = self.i2c.readfrom_mem(self.addr, _T_VAL, 6)\n        t = _decode(b[0], b[1], b[2])   # 1/64 K\n        h = _decode(b[3], b[4], b[5])   # 1/512 %RH\n        return t / 64 - 273.15, h / 512\n\n    def temperature(self):\n        return self.read()[0]\n\n    def humidity(self):\n        return self.read()[1]\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ens210 import ENS210\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = ENS210(i2c)\nwhile True:\n    t, h = sensor.read()\n    print('T=%.1fC H=%.1f%%' % (t, h))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and humidity set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 31.2
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "humidity",
+          "value": 47
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=31.2C H=47.0%",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:44:13.276Z",
+    "verifiedSources": [
+      "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/8389/ENS210.pdf",
+      "https://www.elektormagazine.com/labs/ens210-humiditytemperature-sensor-bob",
+      "https://www.elektormagazine.com/assets/upload/img/public/original/180306.jpg"
+    ]
+  }
+}

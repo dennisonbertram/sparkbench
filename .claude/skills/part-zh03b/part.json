@@ -1,0 +1,347 @@
+{
+  "type": "custom-zh03b",
+  "name": "ZH03B laser dust sensor",
+  "mpn": "ZH03B",
+  "category": "sensor",
+  "description": "Winsen laser-scattering particulate (dust) module with built-in fan: measures PM1.0, PM2.5 and PM10 in ug/m3 (0-1000 ug/m3, particles 0.3-10 um). Sends a 24-byte frame once a second over a 9600-baud UART (3.3 V logic) by default, can be switched to question-and-answer mode or put to sleep, and also has a PWM output for PM2.5. Runs on 4.9-5.5 V, under 120 mA. Sold as: Winsen ZH03B laser dust module with its 8-pin 1.25 mm cable (pins 1-8: VDD, GND, NC, RXD, TXD, NC, NC, PWM).",
+  "eli5": "A tiny fan pulls air past a laser and counts the dust and smoke specks it sees, then tells your board how dirty the air is.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Pin 1: supply 5 V (4.9-5.5 V), up to 120 mA for the fan and laser",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Pin 2: ground",
+      "required": true
+    },
+    {
+      "name": "NC3",
+      "role": "nc",
+      "description": "Pin 3: not connected",
+      "required": false
+    },
+    {
+      "name": "RXD",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Pin 4: module serial input, 3.3 V TTL: wire to the board's UART TX; only needed to send commands (Q&A mode, sleep)",
+      "required": false
+    },
+    {
+      "name": "TXD",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Pin 5: module serial output, 3.3 V TTL, 9600 baud: wire to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "NC6",
+      "role": "nc",
+      "description": "Pin 6: leave unconnected (reserved)",
+      "required": false
+    },
+    {
+      "name": "NC7",
+      "role": "nc",
+      "description": "Pin 7: not connected",
+      "required": false
+    },
+    {
+      "name": "PWM",
+      "role": "io",
+      "description": "Pin 8: PWM output, 3.3 V, 1 s period, PM2.5 = 1000 x TH / (TH + TL) ug/m3 (optional)",
+      "required": false
+    }
+  ],
+  "vmin": 4.9,
+  "vmax": 5.5,
+  "currentMa": 120,
+  "cabled": true,
+  "datasheetUrl": "https://www.winsen-sensor.com/d/files/ZH03B.pdf",
+  "priceUsd": 15,
+  "supplierQuery": "Winsen ZH03B laser dust sensor PM2.5 module UART",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x08_P2.54mm_Vertical",
+  "buildNotes": [
+    "The module has an 8-pin 1.25 mm connector, not breadboard pins: use its cable and jumper wires.",
+    "Power VDD from 5 V (4.9-5.5 V, up to 120 mA): it will not run from 3.3 V. The UART pins are 3.3 V TTL, so TXD goes straight into an ESP32 or Pico RX pin.",
+    "Cross the serial wires: module TXD (pin 5) -> board RX, module RXD (pin 4) -> board TX (RXD is only needed to send commands).",
+    "9600 baud 8N1. By default the module sends 42 4D 00 14 followed by nine 16-bit fields and a 16-bit checksum once a second: PM1.0 = bytes 11-12, PM2.5 = bytes 13-14, PM10 = bytes 15-16 (ug/m3). Checksum = 16-bit sum of bytes 1-22; drop frames that fail it.",
+    "Wait about 30 s after power-on before trusting readings. Keep the inlet and the fan outlet clear (2 cm) and out of strong drafts.",
+    "Leave pins 3, 6 and 7 unconnected. Do not remove the metal shield."
+  ],
+  "keywords": [
+    "zh03b",
+    "zh03",
+    "winsen",
+    "pm2.5",
+    "pm10",
+    "pm1.0",
+    "particulate",
+    "dust",
+    "laser",
+    "air quality"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "PM2.5",
+    "unit": "µg/m³",
+    "min": 0,
+    "max": 1000,
+    "default": 12,
+    "controls": [
+      {
+        "key": "pm1",
+        "quantity": "PM1.0",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 8
+      },
+      {
+        "key": "pm10",
+        "quantity": "PM10",
+        "unit": "µg/m³",
+        "min": 0,
+        "max": 1000,
+        "default": 15
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "bytes": [
+        {
+          "const": 66,
+          "bits": 8
+        },
+        {
+          "const": 77,
+          "bits": 8
+        },
+        {
+          "const": 20,
+          "bits": 16
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm1",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "value",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "control": "pm10",
+          "bits": 16,
+          "scale": 1
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "const": 0,
+          "bits": 16
+        },
+        {
+          "crc": "sum16",
+          "over": 22
+        }
+      ]
+    },
+    "uartReplies": [
+      {
+        "match": "FF 01 86 00 00 00 00 00 79",
+        "bytes": [
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 134,
+            "bits": 8
+          },
+          {
+            "control": "value",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm10",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "control": "pm1",
+            "bits": 16,
+            "scale": 1
+          },
+          {
+            "crc": "mhz19",
+            "over": 8
+          }
+        ]
+      },
+      {
+        "match": "FF 01 A7 01",
+        "bytes": [
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 167,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "crc": "mhz19",
+            "over": 8
+          }
+        ]
+      },
+      {
+        "match": "FF 01 A7 00",
+        "bytes": [
+          {
+            "const": 255,
+            "bits": 8
+          },
+          {
+            "const": 167,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "const": 0,
+            "bits": 8
+          },
+          {
+            "crc": "mhz19",
+            "over": 8
+          }
+        ]
+      }
+    ]
+  },
+  "driver": {
+    "filename": "zh03b.py",
+    "code": "# Winsen ZH03B laser dust (particulate) module, MicroPython driver.\n# From the Winsen ZH03B manual V2.1: UART 9600 8N1, 3.3 V logic, 5 V supply.\n# Default mode is initiative (active) upload: once a second a 24-byte frame\n#   42 4D 00 14  D1 D2 D3  PM1.0 PM2.5 PM10  D7 D8 D9  CS\n# every Dn / PM field is 16 bits big-endian, PM values in ug/m3 (0-1000),\n# D1-D3 and D7-D9 reserved; CS = 16-bit sum of bytes 1..22 (big-endian).\n# Q&A mode: send FF 01 86 00 00 00 00 00 79, reply\n#   FF 86 PM2.5(2) PM10(2) PM1.0(2) SUM, SUM = (NOT(byte1+...+byte7)) + 1.\nimport time\n\nCMD_QA_MODE = b'\\xff\\x01\\x78\\x41\\x00\\x00\\x00\\x00\\x46'\nCMD_ACTIVE_MODE = b'\\xff\\x01\\x78\\x40\\x00\\x00\\x00\\x00\\x47'\nCMD_READ = b'\\xff\\x01\\x86\\x00\\x00\\x00\\x00\\x00\\x79'\nCMD_SLEEP = b'\\xff\\x01\\xa7\\x01\\x00\\x00\\x00\\x00\\x57'\nCMD_WAKE = b'\\xff\\x01\\xa7\\x00\\x00\\x00\\x00\\x00\\x58'\n\n\ndef _qa_checksum(frame):\n    return (~sum(frame[1:8]) + 1) & 0xFF\n\n\nclass ZH03B:\n    def __init__(self, uart):\n        self.uart = uart\n        self._buf = b''\n\n    def _drain(self):\n        while self.uart.any():\n            self.uart.read()\n        self._buf = b''\n\n    def read(self, timeout_ms=2500):\n        \"\"\"Initiative-upload mode (default): next frame as a dict of ug/m3 values.\"\"\"\n        t0 = time.ticks_ms()\n        buf = self._buf\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            n = self.uart.any()\n            if n:\n                buf += self.uart.read(n)\n            while len(buf) >= 24:\n                if buf[0] == 0x42 and buf[1] == 0x4D and buf[2] == 0x00 and buf[3] == 0x14:\n                    f = buf[:24]\n                    if (sum(f[:22]) & 0xFFFF) == ((f[22] << 8) | f[23]):\n                        self._buf = buf[24:]\n                        return {\n                            'pm1_0': (f[10] << 8) | f[11],\n                            'pm2_5': (f[12] << 8) | f[13],\n                            'pm10': (f[14] << 8) | f[15],\n                        }\n                buf = buf[1:]\n            if not n:\n                time.sleep_ms(10)\n        self._buf = buf[-23:]\n        raise OSError('ZH03B: no valid frame (check TXD wiring, 5 V supply, 9600 baud)')\n\n    def set_qa_mode(self):\n        self.uart.write(CMD_QA_MODE)\n        time.sleep_ms(100)\n        self._drain()\n\n    def set_active_mode(self):\n        self.uart.write(CMD_ACTIVE_MODE)\n\n    def query(self, timeout_ms=1000):\n        \"\"\"Q&A mode only: returns dict of ug/m3 values.\"\"\"\n        self._drain()\n        self.uart.write(CMD_READ)\n        f = self._reply(0x86, timeout_ms)\n        return {\n            'pm2_5': (f[2] << 8) | f[3],\n            'pm10': (f[4] << 8) | f[5],\n            'pm1_0': (f[6] << 8) | f[7],\n        }\n\n    def sleep(self, timeout_ms=1000):\n        \"\"\"Dormant mode (fan and laser off). Returns True on success.\"\"\"\n        self._drain()\n        self.uart.write(CMD_SLEEP)\n        return self._reply(0xA7, timeout_ms)[2] == 0x01\n\n    def wake(self, timeout_ms=1000):\n        self._drain()\n        self.uart.write(CMD_WAKE)\n        return self._reply(0xA7, timeout_ms)[2] == 0x01\n\n    def _reply(self, cmd, timeout_ms):\n        t0 = time.ticks_ms()\n        buf = b''\n        while time.ticks_diff(time.ticks_ms(), t0) < timeout_ms:\n            n = self.uart.any()\n            if n:\n                buf += self.uart.read(n)\n                while len(buf) >= 9:\n                    if buf[0] == 0xFF and buf[1] == cmd and _qa_checksum(buf) == buf[8]:\n                        return buf[:9]\n                    buf = buf[1:]\n            else:\n                time.sleep_ms(10)\n        raise OSError('ZH03B: no reply to command 0x%02X' % cmd)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nfrom zh03b import ZH03B\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RXD}), rx=Pin({TXD}))\nsensor = ZH03B(uart)\nwhile True:\n    r = sensor.read()\n    print('PM1=%d PM2.5=%d PM10=%d' % (r['pm1_0'], r['pm2_5'], r['pm10']))\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the PM1.0, PM2.5 and PM10 set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 57
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm1",
+          "value": 33
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pm10",
+          "value": 91
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PM1=33 PM2.5=57 PM10=91",
+          "within": 5000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.winsen-sensor.com/d/files/ZH03B.pdf",
+    "https://www.winsen-sensor.com/product/zh03b.html"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (3 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:58:58.219Z",
+    "verifiedSources": [
+      "https://www.winsen-sensor.com/d/files/ZH03B.pdf",
+      "https://www.winsen-sensor.com/product/zh03b.html"
+    ]
+  }
+}

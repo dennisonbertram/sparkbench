@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-mmc5983ma",
+  "board": "SparkFun Triple Axis Magnetometer - MMC5983MA (Qwiic), SparkX SEN-19034",
+  "reason": "Check passed on ESP32 and Pico on the first run. The X/Y/Z encoding follows the MEMSIC Rev A datasheet (18-bit unsigned, null 131072, 16384 counts/G, high 16 bits at 0x00-0x05) and so does the temperature (-75 + 0.8 x Tout at 0x07). The driver does SET, then a TM_M one-shot through 0x09, polls status 0x08 and checks ID 0x2F = 0x30. Register 0x06 reads 0 in the simulator, so simulated readings have 1/4096 G resolution.",
+  "datasheetUrl": "https://www.memsic.com/Public/Uploads/uploadfile/files/20220119/MMC5983MADatasheetRevA.pdf",
+  "breakoutPinoutSource": "SparkFun SEN-19034 schematic https://cdn.sparkfun.com/assets/3/3/3/0/6/Schematic.pdf (J3: GND, 3.3V, SCL, SDA, INT; J4: GND, 3.3V, COPI, CIPO, SCK, CS), checked against the board silkscreen in the product photo and the sparkfunX/Qwiic_High_Performance_Magnetometer_MMC5983MA .brd file",
+  "checkRuns": 1
+}

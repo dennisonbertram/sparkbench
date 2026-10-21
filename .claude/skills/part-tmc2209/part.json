@@ -1,0 +1,242 @@
+{
+  "type": "custom-tmc2209",
+  "name": "TMC2209 silent stepper motor driver",
+  "mpn": "TMC2209",
+  "category": "actuator",
+  "description": "Trinamic (Analog Devices) TMC2209 silent driver for one bipolar stepper motor: STEP/DIR control, 1/8, 1/16, 1/32 or 1/64 step selected by MS1/MS2 and interpolated to 1/256, near-silent stealthChop2 by default (spreadCycle, stallGuard4 and coolStep by UART), current set by a trimpot (1.4 A RMS per coil continuous, 2.8 A peak), motor supply 5.5-28 V, logic I/O 3-5 V. EN is pulled up on the board, so the motor only runs when EN is driven low. Sold as: BIGTREETECH TMC2209 V1.2 (StepStick format), 16 pins in two rows: EN MS1 MS2 PDN PDN CLK STEP DIR, opposite side VM GND A2 A1 B1 B2 VDD GND, plus VREF/INDEX/DIAG pads on the top edge.",
+  "eli5": "Turns a stepper motor one tiny, quiet click every time your board sends it a pulse, in the direction you choose.",
+  "refPrefix": "U",
+  "interface": "digital-out",
+  "pins": [
+    {
+      "name": "EN",
+      "role": "io",
+      "description": "ENN, active low: low = motor outputs on, high = outputs off (shaft free) and DIAG error reset. The BTT V1.2 board pulls it UP to VDD (R1 20 kOhm), so the motor stays off until you drive EN low",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "MS1",
+      "role": "io",
+      "description": "MS1_AD0 microstep select (internal pull-down). MS2/MS1: 00 = 1/8, 01 = 1/32, 10 = 1/64, 11 = 1/16 step (differs from the TMC2208). Also UART address bit 0",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "MS2",
+      "role": "io",
+      "description": "MS2_AD1 microstep select (internal pull-down). Also UART address bit 1",
+      "required": false,
+      "fn": "digital-out"
+    },
+    {
+      "name": "PDN",
+      "role": "io",
+      "description": "PDN_UART (factory jumper T1 routes the chip's PDN_UART to this pin; pulled to GND by R5 20 kOhm = automatic standstill current reduction). Single-wire UART for register setup. Leave unconnected in STEP/DIR mode",
+      "required": false
+    },
+    {
+      "name": "PDN2",
+      "role": "nc",
+      "description": "Second pin printed PDN: only connected to PDN_UART if jumper T1 is moved. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "description": "External clock input, pulled to GND on the board (R3 20 kOhm) = internal 12 MHz clock. Leave unconnected",
+      "required": false
+    },
+    {
+      "name": "STEP",
+      "role": "io",
+      "description": "STEP: each low-to-high edge moves the motor one microstep. Min 100 ns high and 100 ns low. No pull on the board: never leave floating",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "DIR",
+      "role": "io",
+      "description": "DIR: direction, read on each STEP rising edge (internal pull-down)",
+      "required": true,
+      "fn": "digital-out"
+    },
+    {
+      "name": "VM",
+      "role": "power",
+      "description": "Motor supply 5.5-28 V (chip VS with its internal 5 V regulator) from a separate supply, not the microcontroller, with a >= 100 uF electrolytic capacitor across VM/GND at the board. The chip's logic and the VREF trimpot also run from VM",
+      "required": true,
+      "supply": {
+        "vmin": 5.5,
+        "vmax": 28,
+        "currentMa": 2000
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Motor supply ground (printed GND, next to VM); joined to the logic GND on the board",
+      "required": true
+    },
+    {
+      "name": "A2",
+      "role": "io",
+      "description": "Motor coil A, second wire (OA2)",
+      "required": false
+    },
+    {
+      "name": "A1",
+      "role": "io",
+      "description": "Motor coil A, first wire (OA1)",
+      "required": false
+    },
+    {
+      "name": "B1",
+      "role": "io",
+      "description": "Motor coil B, first wire (OB1)",
+      "required": false
+    },
+    {
+      "name": "B2",
+      "role": "io",
+      "description": "Motor coil B, second wire (OB2). Connect the motor, not the microcontroller",
+      "required": false
+    },
+    {
+      "name": "VDD",
+      "role": "power",
+      "description": "Logic I/O supply VCC_IO 3.0-5.25 V. Use 3.3 V with a 3.3 V microcontroller (input thresholds scale with VCC_IO)",
+      "required": true
+    },
+    {
+      "name": "GND2",
+      "role": "gnd",
+      "description": "Logic ground (printed GND, next to VDD): connect to the microcontroller GND",
+      "required": true
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5.25,
+  "currentMa": 1,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/TMC2209_datasheet_rev1.09.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "BIGTREETECH TMC2209 V1.2 stepper driver",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical",
+  "buildNotes": [
+    "Two supplies: logic VDD (VCC_IO) 3-5 V from the microcontroller (3.3 V for an ESP32/Pico) and motor VM 5.5-28 V from a separate supply (12 V or 24 V typical). Join the grounds.",
+    "The TMC2209's own logic runs from an internal regulator fed by VM: with only VDD connected the chip does nothing.",
+    "EN is pulled up to VDD on the BTT V1.2 board (outputs off). Drive it low from a GPIO, or tie it to GND, or the motor never moves.",
+    "Put a 100 uF or larger electrolytic capacitor across VM and GND right at the board.",
+    "Never connect or disconnect the motor while VM is powered: it destroys the driver.",
+    "Set the current with the trimpot (VM must be on to measure it): IRMS = 0.325 V / (Rsense + 0.02 Ohm) / sqrt(2) x VREF / 2.5 V. With the board's 0.11 Ohm sense resistors, IRMS = 0.71 x VREF (factory VREF about 1.2 V -> 0.85 A RMS). Keep it at or below 1.4 A RMS (VREF about 2.0 V) for continuous running.",
+    "Microstepping (MS2 MS1): 00 = 1/8 (default, pins open), 01 = 1/32, 10 = 1/64, 11 = 1/16. This differs from the TMC2208 and A4988 tables.",
+    "Insert the board the right way round (EN opposite VM). Plugged in backwards it is destroyed when powered.",
+    "The chip is cooled through the board: fit the heat sink (not touching any pin) and give it airflow. It shuts down when it overheats.",
+    "The VREF, INDEX and DIAG pads on the top edge are optional: DIAG goes high on a driver error or stall (stallGuard, UART setup needed)."
+  ],
+  "keywords": [
+    "tmc2209",
+    "silentstepstick",
+    "stepper driver",
+    "stepper motor",
+    "step dir",
+    "silent",
+    "stealthchop",
+    "stallguard",
+    "bigtreetech",
+    "nema 17",
+    "bipolar stepper"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/TMC2209_datasheet_rev1.09.pdf",
+    "https://raw.githubusercontent.com/makerbase-mks/MKS-StepStick-Driver/master/MKS%20TMC2209/U0000000291%20IC%20TMC2209-LA%20%20QFN28.pdf (TMC2209 datasheet copy used for reading: ratings, timing, AT#1, current formula)",
+    "https://github.com/bigtreetech/BIGTREETECH-TMC2209-V1.2 (Schematic/TMC2209-V1.2.pdf; manual/TMC2209-V1.2-manual.pdf pin designation image, MS1/MS2 table, current formula)",
+    "https://learn.watterott.com/silentstepstick/pinconfig/tmc2209/ (MS1/MS2 step table: 1/8, 1/32, 1/64, 1/16)"
+  ],
+  "sim": {
+    "kind": "actuator",
+    "inputPins": [
+      "STEP",
+      "DIR",
+      "EN",
+      "MS1",
+      "MS2"
+    ]
+  },
+  "driver": {
+    "filename": "tmc2209.py",
+    "code": "# TMC2209 silent stepper motor driver (Trinamic / ADI TMC2209), MicroPython driver, STEP/DIR standalone mode.\n# Written from the TMC2209 datasheet and the BIGTREETECH TMC2209 V1.2 schematic and manual.\n#   STEP:  each LOW->HIGH edge moves the motor one microstep (DEDGE=0, the power-up default).\n#          Min HIGH and min LOW time 100 ns (tSH, tSL). No pull on the board: never leave it floating.\n#   DIR:   direction, sampled on the STEP edge. Setup and hold time to STEP: 20 ns (tDSU, tDSH).\n#   ENN (board pin EN, active low): high = power stage off, all motor outputs floating; also resets a DIAG error.\n#          The BTT V1.2 board pulls EN UP to VCC_IO (VDD) with 20 kOhm (R1), so the motor stays OFF until EN is low.\n#   MS1/MS2 (internal pull-downs): MS2 MS1 = 00 -> 1/8, 01 -> 1/32, 10 -> 1/64, 11 -> 1/16 microsteps\n#          (NOT the TMC2208 table!), interpolated to 1/256 inside the chip. Left open = 1/8 step\n#          (1600 pulses per turn of a 200-step motor). In UART mode the same pins set the UART address.\n#   stealthChop2 automatic tuning (AT#1): after the outputs switch on, keep the motor at standstill for\n#          up to 130 ms (2^20 + 2*2^18 clocks at 12 MHz) before the first move.\n# Logic thresholds scale with VCC_IO (board pin VDD, 3.0-5.25 V): with a 3.3 V microcontroller power VDD from 3.3 V.\n# The chip's logic runs from its internal 5 V regulator, fed from VM: nothing moves without the motor supply.\nfrom machine import Pin\nimport time\n\n# microsteps -> (MS1, MS2), datasheet table \"MS1/MS2: configuration of microstep resolution for STEP input\"\n_MODES = {8: (0, 0), 32: (1, 0), 64: (0, 1), 16: (1, 1)}\n\n_AT1_MS = 130  # stealthChop AT#1 standstill time with the internal 12 MHz clock\n\n\nclass TMC2209:\n    def __init__(self, step, dir, en=None, ms=None):\n        \"\"\"step, dir: GPIO numbers wired to STEP and DIR (both required).\n        en: GPIO wired to EN. The BTT V1.2 board pulls EN up (outputs off): if you pass None,\n            EN must be tied to GND by a wire. Starts disabled (EN high).\n        ms: (ms1, ms2) GPIO numbers, or None (1/8 step through the internal pull-downs).\"\"\"\n        self.step_pin = Pin(step, Pin.OUT, value=0)\n        self.dir_pin = Pin(dir, Pin.OUT, value=0)\n        self.en = Pin(en, Pin.OUT, value=1) if en is not None else None\n        self.ms = [Pin(p, Pin.OUT, value=0) for p in ms] if ms is not None else None\n        self.microsteps = 8\n        self.position = 0\n        self._on = en is None\n\n    def set_microstep(self, div):\n        \"\"\"div = 8, 16, 32 or 64 microsteps per full step. Needs ms= pins.\"\"\"\n        if self.ms is None:\n            raise ValueError('MS1/MS2 not wired: board is fixed at 1/8 step')\n        if div not in _MODES:\n            raise ValueError('TMC2209 pins select 8, 16, 32 or 64 microsteps')\n        for p, b in zip(self.ms, _MODES[div]):\n            p.value(b)\n        self.microsteps = div\n\n    def enable(self, on=True):\n        \"\"\"EN low = motor outputs on (holds torque). EN high = outputs floating (shaft turns freely).\"\"\"\n        if self.en is None:\n            return\n        self.en.value(0 if on else 1)\n        if on and not self._on:\n            time.sleep_ms(_AT1_MS)  # AT#1: standstill at run current before the first step\n        self._on = on\n\n    def disable(self):\n        self.enable(False)\n\n    def direction(self, forward):\n        \"\"\"Set DIR (1 = forward). Read by the chip on the next STEP rising edge.\"\"\"\n        self.dir_pin.value(1 if forward else 0)\n        time.sleep_us(1)  # >= 20 ns setup before STEP\n\n    def step(self, n, delay_us=500):\n        \"\"\"Send n microstep pulses; n < 0 runs backwards. delay_us = time per microstep (>= 2).\"\"\"\n        if n == 0:\n            return\n        self.direction(n > 0)\n        half = max(1, delay_us // 2)\n        s = self.step_pin\n        for _ in range(abs(n)):\n            s.value(1)\n            time.sleep_us(half)   # tSH >= 100 ns\n            s.value(0)\n            time.sleep_us(half)   # tSL >= 100 ns\n        self.position += n\n\n    def steps_per_rev(self, full_steps=200):\n        \"\"\"Microstep pulses for one shaft turn (200 full steps for a 1.8 degree motor).\"\"\"\n        return full_steps * self.microsteps\n\n\ndef irms_from_vref(vref, rsense=0.11):\n    \"\"\"Standalone RMS coil current (A) set by the VREF trimpot voltage (datasheet):\n    IRMS = 325 mV / (RSENSE + 20 mOhm) x 1/sqrt(2) x VREF / 2.5 V.\n    The BTT TMC2209 V1.2 uses RSENSE = 0.11 Ohm (R2, R4).\"\"\"\n    return 0.325 / (rsense + 0.02) / 1.41421356 * vref / 2.5\n\n\ndef vref_for_current(irms, rsense=0.11):\n    \"\"\"VREF (volts, measured between the trimpot and GND with VM powered) for an RMS coil current.\"\"\"\n    v = irms * 2.5 * 1.41421356 * (rsense + 0.02) / 0.325\n    if v > 2.5:\n        raise ValueError('needs VREF > 2.5 V: current too high for this sense resistor')\n    return v\n"
+  },
+  "example": {
+    "code": "from machine import Pin\nimport time\nfrom tmc2209 import TMC2209\n\n# STEP/DIR/EN to GPIOs. MS1/MS2 left open = 1/8 step, so 1600 pulses turn a 200-step motor once.\nmotor = TMC2209({STEP}, {DIR}, en={EN})\nwhile True:\n    motor.enable()            # EN low: outputs on\n    motor.step(800)           # half a turn forward\n    print('moved 800 steps forward')\n    time.sleep(0.5)\n    motor.step(-800)\n    print('moved 800 steps back')\n    motor.disable()           # EN high: outputs off, shaft free\n    print('outputs off')\n    time.sleep(1)\n",
+    "test": {
+      "id": "steps",
+      "title": "Drives EN low, steps 800 forward (DIR high) and 800 back (DIR low), then EN high",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moved 800 steps forward",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "EN",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": true
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "STEP",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "moved 800 steps back",
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "DIR",
+          "on": false
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "outputs off",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "EN",
+          "on": true
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:00:25.770Z",
+    "verifiedSources": [
+      "https://raw.githubusercontent.com/bigtreetech/BIGTREETECH-TMC2209-V1.2/master/manual/TMC2209-V1.2-manual.pdf",
+      "https://github.com/bigtreetech/BIGTREETECH-TMC2209-V1.2"
+    ]
+  }
+}

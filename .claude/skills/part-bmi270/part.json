@@ -1,0 +1,612 @@
+{
+  "type": "custom-bmi270",
+  "name": "BMI270 6-axis IMU (accelerometer + gyroscope)",
+  "mpn": "BMI270",
+  "category": "sensor",
+  "description": "Bosch Sensortec ultra-low-power 16-bit 3-axis accelerometer (±2/4/8/16 g) and 3-axis gyroscope (±125 to ±2000 °/s) with I2C/SPI and an on-chip temperature sensor; needs an 8 kB configuration file uploaded after every power-up. Sold as: SparkFun 6DoF IMU Breakout - BMI270 (Qwiic), SEN-22397 (1x1 inch, two Qwiic connectors, two 6-pin 0.1 inch headers on opposite edges: GND, 3V3, SDA, SCL, ADR, CS and ASDX, ASCX, INT1, INT2, OCS, OSDO; no regulator, 1.71-3.6 V; 2.2 kΩ I2C pull-ups), I2C address 0x68 (0x69 with the ADR jumper moved).",
+  "eli5": "Feels which way is down and how fast it is turning, so your board knows tilt, shakes and spins.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (bottom header pin 1)",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply straight to the chip's VDD and VDDIO, 1.71-3.6 V (no regulator on the board: never 5 V)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SPI PICO/MOSI); 2.2 kΩ pull-up to 3.3 V on the board (I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SPI SCK); 2.2 kΩ pull-up to 3.3 V on the board (I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "ADR",
+      "role": "io",
+      "description": "Address select (chip SDO, SPI POCI/MISO): 100 kΩ to GND by default = 0x68; ADR jumper to the 3.3 V side = 0x69",
+      "required": false
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "description": "Chip select (CSB), 100 kΩ pull-up = I2C mode; leave unconnected for I2C",
+      "required": false
+    },
+    {
+      "name": "ASDX",
+      "role": "io",
+      "description": "Auxiliary I2C data for an external magnetometer (top header pin 1). Not used for basic use",
+      "required": false
+    },
+    {
+      "name": "ASCX",
+      "role": "io",
+      "description": "Auxiliary I2C clock for an external magnetometer. Not used for basic use",
+      "required": false
+    },
+    {
+      "name": "INT1",
+      "role": "io",
+      "description": "Interrupt output 1 (programmable). Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "INT2",
+      "role": "io",
+      "description": "Interrupt output 2 (programmable). Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "OCS",
+      "role": "io",
+      "description": "OCSB, OIS secondary SPI chip select. Not used for basic use",
+      "required": false
+    },
+    {
+      "name": "OSDO",
+      "role": "io",
+      "description": "OIS secondary SPI data out. Not used for basic use",
+      "required": false
+    }
+  ],
+  "vmin": 1.71,
+  "vmax": 3.6,
+  "currentMa": 2,
+  "i2cAddress": 104,
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf",
+  "priceUsd": 17,
+  "supplierQuery": "SparkFun 6DoF IMU Breakout BMI270 Qwiic SEN-22397",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x12_P2.54mm_Vertical",
+  "buildNotes": [
+    "Power from 3.3 V only: the 3V3 pin goes straight to the BMI270 (1.71-3.6 V, absolute max 4 V). There is no regulator, so never connect it to 5 V.",
+    "The board answers at 0x68 (ADR pulled to GND through 100 kΩ). Move the ADR solder jumper to the 3.3 V side for 0x69. Leave CS unconnected: its 100 kΩ pull-up keeps the chip in I2C mode.",
+    "The BMI270 does nothing useful until its 8 kB configuration file is written to INIT_DATA (0x5E) after every power-up or soft reset; the driver carries the blob and checks INTERNAL_STATUS (0x21) = 1.",
+    "Data is little-endian two's complement: accel X/Y/Z at 0x0C-0x11, gyro X/Y/Z at 0x12-0x17. The driver sets ±2 g (16384 LSB/g) and ±2000 °/s (16.4 LSB/°/s).",
+    "The board has 2.2 kΩ pull-ups on SDA/SCL; cut the I2C jumper if several boards with pull-ups share the bus.",
+    "Temperature (0x22) is the die temperature, 23 °C + raw/512; 0x8000 means no valid sample yet."
+  ],
+  "keywords": [
+    "bmi270",
+    "imu",
+    "accelerometer",
+    "gyroscope",
+    "6dof",
+    "6-axis",
+    "bosch",
+    "sparkfun",
+    "qwiic",
+    "sen-22397"
+  ],
+  "sources": [
+    "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf",
+    "https://github.com/boschsensortec/BMI270_SensorAPI/blob/master/bmi270.c",
+    "https://github.com/boschsensortec/BMI270_SensorAPI/blob/master/bmi2.c",
+    "https://www.sparkfun.com/products/22397",
+    "https://github.com/sparkfun/SparkFun_Qwiic_6DoF_BMI270",
+    "https://github.com/sparkfun/SparkFun_Qwiic_6DoF_BMI270/blob/main/docs/hardware_overview.md",
+    "https://github.com/sparkfun/SparkFun_Qwiic_6DoF_BMI270/blob/main/Hardware/Qwiic%201x1/SparkFun_Qwiic_6DoF_BMI270.brd"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Acceleration Z",
+    "unit": "g",
+    "min": -1.99,
+    "max": 1.99,
+    "default": 1,
+    "registers": {
+      "0x00": 36,
+      "0x21": 1,
+      "0x40": 168,
+      "0x41": 2,
+      "0x42": 169,
+      "0x43": 0
+    },
+    "controls": [
+      {
+        "key": "ax",
+        "quantity": "Acceleration X",
+        "unit": "g",
+        "min": -1.99,
+        "max": 1.99,
+        "default": 0
+      },
+      {
+        "key": "ay",
+        "quantity": "Acceleration Y",
+        "unit": "g",
+        "min": -1.99,
+        "max": 1.99,
+        "default": 0
+      },
+      {
+        "key": "gx",
+        "quantity": "Rotation rate X",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "gy",
+        "quantity": "Rotation rate Y",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "gz",
+        "quantity": "Rotation rate Z",
+        "unit": "°/s",
+        "min": -1990,
+        "max": 1990,
+        "default": 0
+      },
+      {
+        "key": "temp",
+        "quantity": "Chip temperature",
+        "unit": "°C",
+        "min": -40,
+        "max": 85,
+        "default": 25
+      }
+    ],
+    "measures": [
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax",
+        "when": {
+          "reg": "0x41",
+          "equals": 0,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 0.0001220703125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax",
+        "when": {
+          "reg": "0x41",
+          "equals": 1,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax",
+        "when": {
+          "reg": "0x41",
+          "equals": 2,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0C",
+        "bytes": 2,
+        "scale": 0.00048828125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ax",
+        "when": {
+          "reg": "0x41",
+          "equals": 3,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay",
+        "when": {
+          "reg": "0x41",
+          "equals": 0,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 0.0001220703125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay",
+        "when": {
+          "reg": "0x41",
+          "equals": 1,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay",
+        "when": {
+          "reg": "0x41",
+          "equals": 2,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x0E",
+        "bytes": 2,
+        "scale": 0.00048828125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "ay",
+        "when": {
+          "reg": "0x41",
+          "equals": 3,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "scale": 0.00006103515625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "when": {
+          "reg": "0x41",
+          "equals": 0,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "scale": 0.0001220703125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "when": {
+          "reg": "0x41",
+          "equals": 1,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "scale": 0.000244140625,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "when": {
+          "reg": "0x41",
+          "equals": 2,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x10",
+        "bytes": 2,
+        "scale": 0.00048828125,
+        "signed": true,
+        "littleEndian": true,
+        "control": "value",
+        "when": {
+          "reg": "0x41",
+          "equals": 3,
+          "mask": 3
+        }
+      },
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "scale": 0.06097560975609757,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx",
+        "when": {
+          "reg": "0x43",
+          "equals": 0,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "scale": 0.030487804878048783,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx",
+        "when": {
+          "reg": "0x43",
+          "equals": 1,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "scale": 0.015243902439024392,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx",
+        "when": {
+          "reg": "0x43",
+          "equals": 2,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "scale": 0.007621951219512196,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx",
+        "when": {
+          "reg": "0x43",
+          "equals": 3,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x12",
+        "bytes": 2,
+        "scale": 0.003810975609756098,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gx",
+        "when": {
+          "reg": "0x43",
+          "equals": 4,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 0.06097560975609757,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy",
+        "when": {
+          "reg": "0x43",
+          "equals": 0,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 0.030487804878048783,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy",
+        "when": {
+          "reg": "0x43",
+          "equals": 1,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 0.015243902439024392,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy",
+        "when": {
+          "reg": "0x43",
+          "equals": 2,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 0.007621951219512196,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy",
+        "when": {
+          "reg": "0x43",
+          "equals": 3,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x14",
+        "bytes": 2,
+        "scale": 0.003810975609756098,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gy",
+        "when": {
+          "reg": "0x43",
+          "equals": 4,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.06097560975609757,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz",
+        "when": {
+          "reg": "0x43",
+          "equals": 0,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.030487804878048783,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz",
+        "when": {
+          "reg": "0x43",
+          "equals": 1,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.015243902439024392,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz",
+        "when": {
+          "reg": "0x43",
+          "equals": 2,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.007621951219512196,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz",
+        "when": {
+          "reg": "0x43",
+          "equals": 3,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x16",
+        "bytes": 2,
+        "scale": 0.003810975609756098,
+        "signed": true,
+        "littleEndian": true,
+        "control": "gz",
+        "when": {
+          "reg": "0x43",
+          "equals": 4,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x22",
+        "bytes": 2,
+        "scale": 0.001953125,
+        "offset": 23,
+        "signed": true,
+        "littleEndian": true,
+        "control": "temp"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "bmi270.py",
+    "code": "# BMI270 6-axis IMU (Bosch Sensortec BMI270), MicroPython I2C driver.\n# Written from the datasheet BST-BMI270-DS000-08:\n#  - CHIP_ID (0x00) reads 0x24.\n#  - Initialization (section 4.4): PWR_CONF.adv_power_save = 0, wait >= 450 us, INIT_CTRL = 0x00,\n#    burst-write the 8 kB configuration file to INIT_DATA (0x5E) - in chunks, with INIT_ADDR_0/1 (0x5B/0x5C)\n#    = chunk offset / 2 before each chunk - then INIT_CTRL = 0x01 (only once per POR / soft reset) and wait\n#    until INTERNAL_STATUS (0x21) bits 3..0 = 0b0001 (at most 20 ms).\n#  - Normal mode (quick start 3): PWR_CTRL 0x7D = 0x0E, ACC_CONF 0x40 = 0xA8, GYR_CONF 0x42 = 0xA9, PWR_CONF 0x7C = 0x02.\n#  - Data (16-bit two's complement, LSB first): accel X/Y/Z 0x0C-0x11, gyro X/Y/Z 0x12-0x17.\n#  - ACC_RANGE 0x41: 0=2g 16384, 1=4g 8192, 2=8g 4096, 3=16g 2048 LSB/g.\n#  - GYR_RANGE 0x43: 0=2000 16.4, 1=1000 32.8, 2=500 65.6, 3=250 131.2, 4=125 262.4 LSB/(deg/s).\n#  - TEMPERATURE 0x22-0x23: 0x0000 = 23 degC, 512 LSB/K, 0x8000 = invalid.\n# The configuration blob is bmi270_config_file from Bosch's BMI270_SensorAPI (bmi270.c, BSD-3-Clause,\n# Copyright (c) 2023 Bosch Sensortec GmbH), stored base64-encoded below.\nimport time\nimport binascii\n\n_CHIP_ID = 0x00\n_DATA_ACC = 0x0C\n_INTERNAL_STATUS = 0x21\n_TEMP = 0x22\n_ACC_CONF = 0x40\n_ACC_RANGE = 0x41\n_GYR_CONF = 0x42\n_GYR_RANGE = 0x43\n_INIT_CTRL = 0x59\n_INIT_ADDR_0 = 0x5B\n_INIT_DATA = 0x5E\n_PWR_CONF = 0x7C\n_PWR_CTRL = 0x7D\n_CMD = 0x7E\n\n_ACC = {2: (0x00, 16384.0), 4: (0x01, 8192.0), 8: (0x02, 4096.0), 16: (0x03, 2048.0)}\n_GYR = {2000: (0x00, 16.4), 1000: (0x01, 32.8), 500: (0x02, 65.6), 250: (0x03, 131.2), 125: (0x04, 262.4)}\n\n_CHUNK = 256  # bytes per INIT_DATA burst (even, so INIT_ADDR = offset / 2 stays exact)\n\n_CONFIG_B64 = (\n    b'yC4ALoAuPbHILgAugC6RA4AuvLCALqMDyC4ALoAuALBQMCEuWfUQMCEuavWALjsDAAAAAAgZAQAi'\n    b'AHUAABAAENEAs0OALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAu'\n    b'AMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4A'\n    b'wYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDB'\n    b'gC4AwYAuAMHgXwAAAAABAAAAAAAAAAAAAACSAAAAAAAAAAAAAAAAAAAAAAAIGQAAiAAAAAAAAAAF'\n    b'4Ko4BeCQMPoAlgBLCREAEQACAC0B1Hs7Adt6BAA/e81swwSFCcME7OYMRgEAJwAZAJYAoAABAAwA'\n    b'8DwAAQEAAwABAA4AAAAyAAUA7gYEAMgAAAAEAKgF7gYABLwCswCFBwAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAtAABALkAAQCYAAAAAAAAAAAAAQCAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACALgDB/S3e'\n    b'AOsA2gAADP8PAATAAFv1yQEe8oAAP/8Z9Fj1ZvVk9cDx8ADgAM0B0wHbAf9//wHkAHT38wD6AP8/'\n    b'ygNsOFb+RP28AvkGAPwSAq4BWPqa/XcFuwKWAZUBfwGCAYkBhwGIAYoBjAGPAY0BkgGRAd0AnwF+'\n    b'AdsAtgFwaSbTnAcfBZ0AAAi8BTf6ogGqAaEBqAGgAagFtAG0Ac4A0AD8AMUB//uxAAA4ADD99fz1'\n    b'zQGgAF//AED/AACAbQ/rAH//wvVo97PxZw9bD2EPgA9Y91v3gw+GAHIPhQ/G8X8PbPcA4AD/0fWH'\n    b'D4oP/wPwP4sAjgCQALkALfXK9csBIPIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAAAAAAAAAAAAAAAAAMFCYLtcOUDKYLvoDADDwfwAuAC7QLgAuAYAIovsvmC66AyEuGQABLu4A'\n    b'ALIHLwEuGQAAsgMvAVADUpguB8wBLt0AALInLwUuigAFUpgux8EDLukAQLLwfwgvAS4ZAACyBC8A'\n    b'MCEu6QCYLrSxAS4YAACyEC8FUJguTcMFUJguWseYLvm0mC5UspguZ7aYLheyEDAhLncAAS7vAACy'\n    b'BC+YLnq3ADAhLu8AAS7UAASuCy8BLt0AALIHLwVSmC6ODgCyAi8QMCEufQABLn0AAJCQLvECAS7X'\n    b'AACyBC+YLi8OADAhLnsAAS57AACyEi8BLtQAAJACL5guHw4JLZgugQ0BLtQABJACL1AymC76AwAw'\n    b'IS57AAEufAAAspAuCQMBLnwAATEBCACyBC+YLkfLEDAhLncAgTABLnwAAQgAsmEvAy6JAAEu1ACY'\n    b'vJi4BbIPWCMvB5AJVAAwNy8VQQRB3L5Evty6LAFhAA9WSg8ML9FClLjBQhEwBS5q9yy9L7mAsggi'\n    b'mC7DtyEtYTAjLtQAmC7DtwAwIS5a9Rgt4X9QMJgu+gMPUgdQUEJwMA1UQkJ+guJvgLJCQgUvIS7U'\n    b'ABAwmC7DtwMtYDAhLtQAAS7UAAaQGC8BLnYAC1QHUuB/mC56weFvCBpAMAgvIS7UACAwmC6vt1Ay'\n    b'mC76AwUtmC44DgAwIS7UAAAwIS58ABgtAS7UAAOqAS+YLkUOAS7UAD+AA6IBLwAuAi2YLlsOMDCY'\n    b'Ls63ADAhLn0AUDKYLvoDAS53AACyJC+YLvXLAy7VABFUAQq8hIOGIS7JAeBAE1LEQIJAqLlSQkO+'\n    b'U0IEClBC4X/wMUFA8m8lvQgIAgrQf5guqM8GvNFv4m8ICoBCmC5YtwAwIS7uACEudwAhLt0AgC70'\n    b'ARokIgCALuwBEFD7f5gu8wNXUPtvATBxVBFCQg78L8AuAULwX4AuAMH9LQEAAAAAAAAAAAAAAJoB'\n    b'NAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAgUOd/9n8GMg8uYfX+CcCzBC8XMC8u7wAtLmH19m/nb+BfyC4gUOd/9n9GMA8upPG+CYCzBi8N'\n    b'LtQAhK8CLxYwLS57AIYwLS5g9fZv52/gX8guAS539wm8D7gAshBQ+38QMAsvAy6KAJa8n7hAsgUv'\n    b'Ay5o9568n7hAsgcvAy5+AEGQAS+YLtwDAywAMCEufgD7b/BfuC4gUOB/+38ALidQmC47yClQmC6n'\n    b'yAFQmC5VzOFvK1CYLuDJ+28AMOBfIS5+ALguc1ABMFdUEUJCDvwvuC4hLln1EDDALiEuSvGQUPd/'\n    b'5n/Vf8R/s3+hf5B/gn97f5guNbcAspAul7ADLo8ABy6RAAUusQA/up+4AS6xAKO9TAoFLrEABL6/'\n    b'ucsKT7oivQEuswDcCi+5Ay64AAq+mgrPuZu8AS6XAJ+4kwoPvJEKD7iQCiUuGAAFLsH1Lr0uuQEu'\n    b'GQAxMIoEAJAHLwEu1AAEogMvAS4YAACyDC8ZUAVSmC5NtwUueACAkBAwAS8hLngAJS7dAJguPrcA'\n    b'sgIwATAELwEuGQAAsgAvITABLuoACBoOLyMu6gAzMBtQCwkBQBdWRr5LCEwKAUIKgBVSAUIALgEu'\n    b'GAAAsh8vAy7A9fAwSAhHqnQwBy56AGEiSxoFLwcuZvW/vb+5wJALLx1WKzDSQttCAQTCQgS9/oCB'\n    b'hCMuegACQgIyJS5i9QUu1gCBhCUu1gACMSUuYPUFLooAC1CQCICyCy8FLsr18D6QCCUuyvUFLln1'\n    b'4D+QCCUuWfWQb6Fvs2/Eb9Vv5m/3b3tvgm9wX8guwFCQf+V/1H/Df7F/on+Hf/Z/e38ALgEuYPVg'\n    b'f5guNbcCMGNvFVJQf2J/WiwCMhoJALMULwCyAy8JLhgAAJEML0N/mC6Xtx9QAooCMgQwJS5k9RVS'\n    b'UG9Db0RDJS5g9dkIwLI2L5guPrcAsgYvAS4ZAACyAi9QbwCQCi8BLnkAAJAZLxAwIS55AAAwmC7c'\n    b'AxMtAS7D9Qy8D7gSMBAEA7AmJSFQA1KYLk23EDAhLu4AAjBgfyUueQBgbwCQBS8AMCEu6gAVUCEu'\n    b'ZPUVUiMuYPUCMlBvAJACLwMwJy54AAcuYPUaCQCRoy8ZCQCRoC+Qb6JvsW/Db9Rv5W97b/Zvh29A'\n    b'X8guwFDnf/Z/JjAPLmH1Ly58AA8ufAC+CaJ/gH+As9V/xH+zf5F/e38LLyNQGiUSQEJ/dIISQFJ/'\n    b'AC4AQGB/mC5q1oEwAS58AAEIALJCLwMuiQABLokAl7wGvJ+4D7gAkCMu2AAQMAEwKi8DLtQARLIF'\n    b'L0eyADAtLyEufAArLQMu/fWevJ+4QJAULwMu/PWZvJ+4QJAOLwMuSfElVEoIQJAIL5guNbcAshAw'\n    b'Ay9QMCEu1AAQLZgur7cAMCEufAAKLQUuafctvS+5gLIBLyEufQAjLnwA4DEhLmH19m/nb4Bvom+z'\n    b'b8Rv1W97b5FvQF/ILmBRCiU2iPR/638AMjFSMjATMJguFcsKJTOE0n9DMAVQLVKYLpXB0m8nUpgu'\n    b'18cqJbCGwH/Tf6+EKVDxb5guTcgqJa6KqojybitQwW/Tb/R/mC62yOBuALIyLzNUg4bxb8N/BDAw'\n    b'MPR/0H+yf+MwxW9WQEVBKAgDFA60CLyCQBAKL1QmBZF/RCijf5gu2cAIuTMwUwnBb9Nv9G+DF0dA'\n    b'bBWyb74JdQuQQkVCUQ4yvAKJoW9+hvR/0H+yfwQwkW/WL+tvoF64LgMulwAbvGBQn7wMuPB/QLLr'\n    b'fysvAy5/AEFAAS7IAAEaES83WCMuyAAQQaB/OIEBQdB/sX+YLmTP0G8HgKFvEUIALrFvAUIRMAEu'\n    b'/AAAqAMwyyJKJQEufwA8iTVSBVSYLsTOwW/wb5gulc8ELQEw8G+YLpXP62+gX7guAy6zAAIy8DAD'\n    b'MTBQiggICMsI4H+AsvN/238lLwMuygBBkAQvATAjLsoAmC4/A8CyBS8DLtoAADBBBCMu2gCYLpKy'\n    b'ECXwbwCyBS8BLtoAAjAQBCEu2gBAsgEvIy7IAdtv4G/QX4Aulc8BMOBvmC6VzxEwIy7KANtv0F+4'\n    b'LtBQCiUzhFVQ0n/ifwOMwH+7fwAwBVo5VFFBpX+Wf4B/mC7ZwAUw9X8gJZFvO1g9XDtWmC5nzMFv'\n    b'1W9SQFBDwX/VfxAlmC7+yRAlmC50wIZvMCiSb4KMpW9vUmkOOVTbLxmgFTADLwAwIS6BAQotAS6B'\n    b'AQUoQjYhLoEBAg4BL5gu8wNXUBIwAUCYLv7JUW8LXI4OO29XWAIwIS6VAUVvKo3Sf8t/Ey8CMD9Q'\n    b'0n+oDg4vwG9TVAIAUVRCDhAwWVICMAEvAC4DLVBCQkISMNJ/gLIDLwAwIS6AARItAS7JAAKABS6A'\n    b'AREwkSgAQCUugAEQDgUvAS5/AQGQAS+YLvMDAC6gQQGQpn+QLuO0AS6VAQCokC7jtFtUlYCCQICy'\n    b'AkAtjD9Sln+QLsKzKQ52LwEuyQAAQIEoRVKzMJguD8pdVIB/AC6hQHJ/goCCQGB/mC7+yRAlmC50'\n    b'wGJvBTCHQMCRBDAFLwUugwGAshQwAC8EMAUuyQBzb4FA4kBpBBEP4UAWMP4py0ACL4Nvgw8iL0dW'\n    b'Ew8SMHcvSVRCDhIwcy8AkQovAS6LARmoAjBsL2NQAC4XQgVCaCwSMAslCA9QMAIvIS6DAQMtQDAh'\n    b'LoMBKy6FAVosEjAAkSslBC9jUAIwF0IXLAJCmC7+yRAlmC50wAUuyQCBhFswgkA3LoMBAg4HL19S'\n    b'QDBiQEFAkQ4BLyEugwEFMCsuhQESMDYsFjAVJYF/mC7+yRAlmC50wBmiFjAVLwUulwGAb4IOBS8B'\n    b'LoYBBighLoYBCy0DLocBX1ROKJFCAC6CQJAOAS8hLogBAjATLAUwwG8IHKgPFjAFMFtQCS8CgC0u'\n    b'ggEFQgWAAC4CQj6AAC4GQgIwkG8+iAFABEFMKAFCB4AQJSRAAEAAqPUiIylEQnqCfohDQARBAKv1'\n    b'I98oQ0LZoBQvAJACL9JvgbIFL2NUBiiQQoVCCSwCMFtQA4ApLn4BKy6CAQVCEjArLoMBRYIALkBA'\n    b'eoICoAgvY1A7MBVCBUI3gDcufgEFQhIwAS7JAAKMQECEQXqMBA8DLwEuiwEZpAQvKy6CAZgu8wMS'\n    b'MIGQYVIIL2VCZUJDgDmEgogFQkVChUIFQwAugEEAkJAu4bRlVMFvgEAAskNYaVBEL1Vct4eMDw0u'\n    b'lgHEQDYvQVaLDiovC1KhDgovBS6PARQlmC7+yUtUAg9pUAUwZVQVLwMujgFNXI4POi8FLo8BmC7+'\n    b'yU9Ugg8FMGlQZVQwL21SFTBCjEVCBDArLIRDa1JCjAAuhUMVMCQsRUKODyAvDS6OAbEOHC8jLo4B'\n    b'Gi0ODhcvoQ8VLyMujQETLZgudMBDVMIOCi9lUASACzAGggtCeYBBQBIwJS6MAQFCBTBpUGVUhIJD'\n    b'hL6MhECGQSYplEK+jtV/GaFDQAsujAGEQMdBXSknKUVChELCfwEvwLMdLwUulAGZoAEvgLMTL4Cz'\n    b'GC/AsxYvEkABQJJ/mC50wJJvEA8gMAMvEDAhLn4BCi0hLn4BBy0gMCEufgEDLRAwIS5+AcJvAS7J'\n    b'ALyEAoCCQABAkA7VbwIvFTCYLvMDQZEFMAcvZ1A9gCsujwEFQgSAAC4FQgIsADAAMKJvmIqGQICn'\n    b'BS+YLvMDwDAhLpUBBiUaJeJvdoKWQFZDUQ77L7tvMF+4LgEuuAABMUEIQLIgUPIwAgj7fwEwEC8F'\n    b'LswAgZDgfwMvIy7MAJguVbaYLh21ECX7b+Bv4F+ALpXPmC6VzxAwIS7MAPtv4F+4LgBRBVjrfyol'\n    b'iVJvWolQE0EGQLMBFkLLFgZA8wITQmUO9S8FQBQwLCkEQgihADCQLlK2s4iwiraEpH/Ef7V/1X+S'\n    b'f3MwBDBVQEJAihfzCGsBkAJTuEuCrb5xf0UKCVSEf5gu2cCjb3tU0EKjf/J/YH8gJXFvdVp3WHlc'\n    b'dVaYLmfMsW9ib1BCsX+zMBAlmC4PyoRvIClxb5JvpW92gmoOczAAMNAv0m/Rf7R/mC4rtxW9C7gC'\n    b'CsJvwH+YLiu3Fb0LuEIKwG8IF0EYiRbhGNAYoX8nJRYlmC55wItUkH+zMIJAgJANL31Skm+YLg/K'\n    b'sm+QDgYvi1AUMEJvUW8UQhJCAUIALjFvmC50wEFvgH+YLnTAgm8QBENSAQ8FLssAADAEMCEvUW9D'\n    b'WIwOBDAcL4WIQW8EQYwPBDAWL4SIAC4EQQQFjA4EMA8vgogxbwRBBAWMDgQwCC+DiAAuBEGMDwQw'\n    b'Ai8hLq0BFDAAkRQvAy6hAUGQDi8DLq0BFDBMKCMurQFGoAYvgYSNUkiCgkAhLqEBQkJcLAIwBS6q'\n    b'AYCyAjBVLwMuqQGSb7MwmC4PyrJvkA8AMAIwSi+ib4dSkQCFUlEOAi8ALkMsAjDCb39SkQ4CMDwv'\n    b'UW+BVJgu/skQJbMwISWYLg/KMm/Af7MwEiWYLg/KQm+wf7MwEiWYLg/Ksm+QKINSmC7+ycJvkA8A'\n    b'MAIwHS8FLqEBgLISMA8vQm8DLqsBkQ4CMBIvUm8DLqwBkQ8CMAwvIS6qAQosEjADLssAjVgIiUFA'\n    b'EUMAQyUuoQHUb49SAEM6iQAuEEMQQ2EO+y8DLqABERoCLwIlIS6gAetvAF+4LpFSEDACMJVWUkJL'\n    b'DvwvjVSIgpNWgEJTQkBCQoaDVMAuwkIALqNSAFFSQEdAGiUBLpcAj75yhvt/CzB8v6VQEAjfunCI'\n    b'+L/LQtN/bLv8u8UKkH8bfwtDwLLlf7d/pn/Ef5AuHLcHLtIAwLILL5dSAS7NAIJ/mC67zAswNy7S'\n    b'AIJvkG8aJQCyi38UL6a9Jb22uS+5gLLUsAwvmVSbVgswCy6xAKFYm0LbQmwJKy6xAItCy0KGf3OE'\n    b'p1bDCDlSBVByf2N/mC7CwOFvYm/RCgEuzQDVb8Rvcm+XUp1cmC4GzSNvkG+ZUsCyBL1UQK+5RUDh'\n    b'fwIwBi/AsgIwAy+bXBIwlEOFQwO/b7uAsyAvBm8mARZvbgNFQsCQKS7OAJtSFC+bXAAuk0GGQeME'\n    b'rgeAqwQvgJEKL4Zvcw8HL4NvwLIEL1RCRUISMAQsETACLBEwETACvA+40n8AsgovAS78AAUuxwEQ'\n    b'GgIvIS7HAQMtAiwBMAEwsG+YLpXP0W+gb5gulc/ib59SAS7OAIJAUEIMLEJCETAjLtIAATCwb5gu'\n    b'lc+gbwEwmC6VzwAu+28AX7gug4YBMAAwlEAkGAYAUw5PAvkvuC6pUgAuYEBBQA28mLzALgEKD7ir'\n    b'UlM8UkBAQEsAghYmuQG4QUAQCJe4AQjALhEwAQhDhiVABEDYviwLIhFUQgOASw72L7gun1AQUK1S'\n    b'BS7TAPt/AC4TQJNCQQ77L5gupbeYLofPAS7ZAACy+28LLwEuafexPwEIATDwXyMu2QAhLmn3gC56'\n    b't/BfuC4BLsD4Ay789RVUr1aCCAsuaffLCrFYgJDdvkwIX7lZIoCQBy8DNMMI8joKCAI1wJBKCkgi'\n    b'wC4jLvz1EFD7f5guVseYLknDEDD7b/BfIS7MACEuygC4LgMu0wAWuAI0SgwhLi31wC4jLtMAA7wh'\n    b'LtUAAy7VAECyEDAhLncAATAFLwUu2ACAkAEvIy5v9cAuIS7ZABEwgQgBLmr3cT8jvQEIAgrALiEu'\n    b'avcwJQAwIS5a9RBQIS57ACEufAD7f5guw7dAMCEu1AD7b/BfAyWALq+3gC4AwYAuAMGALgDBgC4A'\n    b'wYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBAS5d9wi8gKwOuwIv'\n    b'ADBBBIIGwKQAMBEvQKkDL0CRDS8ApwsvgLOzWAIvkKEmEyAjgJAQMAEvzA4ALwAwuC61UBgICLyI'\n    b'tg0Xxr1WvLdY2roEAR0KEFAFMDIlRQP7f/YwISWYLjfKFrWavAa4gKhBCg4vgJACLy1QSA8JL7+g'\n    b'BC+/kAYvt1TKDwMvAC4CLLdSLVLyM5gu2cD7b/E3wC4BCPBfv1a5VNBAxEALLv3zv1KQQpRClUIF'\n    b'MMFQD4gGQARBlkLFQki+czANLtgAT7qEQgNCgbMCLysub/UGLQUud/e9VpMIJS5397tUJS7C9Qcu'\n    b'/fNCMLQz2gpMACcu/fNDQNQ/3AhDQgAuAC5DQCQw3ApDQgSAAy7980oKIy7982E0wC4BQgAuYFAa'\n    b'JXqG4H/zfwMlw1JBhNt/MzCYLhbCGiV9gvBv4m8yJRZAlEAmAYVAjhfEQm4DlUJBDvQv22+gX7gu'\n    b'sFH7f5gu6A1aJZguDw7LWDKHxH9liWuNxVplf+F/g3+mf3R/0H+2f5R/FzDHUslUUX8ALoVvQn8A'\n    b'LlFBRYFCQRNAO4oAQEsE0AbArIV/Ai8CMFEE0wZBhAUwXQLJFt8I0wCNAq+8sblZCmVvEUOhtFJB'\n    b'U0EBQzR/ZX8mMeVv1G+YLjfKMm91b4NAQkEjfxJ/9jBAJVElmC43yhRvIAVwbyVvaQeibzFvCzAE'\n    b'QptCi0JVQjJ/QKnDb3F/AjDQQMN/Ay9AkRUvAKcTLwCkES+EvZguecpVb7dUVEGCAPM/RUHLAvYw'\n    b'mC43yjVvpG9BQwMsAEOkbzVvFzBCb1Fvk0BCggBBwwADQ1F/AC6UQEFBTALEb9FWYw50b1FDpX+K'\n    b'Lwku2AABsyEvy1iQbxNBtm/kfwAukUEUQJJBFUAXLm/1tn/Qf8t/mC4ADAcVwm8UCykub/XDo8GP'\n    b'5G/Qb+YvFDAFLm/1FAspLm/1GC3NVgQytW8cAVFBUkHDQLV/5H+YLh8M5G8hhwBDBDLPVFoO7y8V'\n    b'VAkud/ciCykud/f7b1BeuC4QUAEu1AAAsvt/US8BskgvArJCLwOQVi/XUnmAQkCBhABAQkKYLpMM'\n    b'2VTXUKFAmL2CQD6C2gpEQIsW4wBTQgAuQ0CaAlJCAC5BQBVUSg46LzqCADBBQCEuhQ9AsgovmC6x'\n    b'DJguRQ6YLlsO+2/wXwAwgC7Ot91S01RCQk+EczDbUoNCGzBrQiMwJy7XADcu1AAhLtYAeoQXLEJC'\n    b'MDAhLtQAEi0hMAAwIy7UACEue/cLLRcwmC5RDNVQDIJyMC8u1AAlLnv3QEIALvtv8F+4LnBQCiU5'\n    b'hvt/4TJiMJguwsS1VqVvqwiRb0sI31bEbyMJTbqTvIwL0W8LCctS4V5WQq8JTbojvZQK5W9ou+sI'\n    b'vbljvvtvUkLjCsAuQ0KQX9FQAy4l8xNAAECbvJu0CL24uZi82goItokWwC4ZAGICEFD7f5gugQ0B'\n    b'LtQAMTAIBPtvATDwXyMu1gAhLtcAuC4BLtcAAy7WAEgOAS+ALh8OuC7jUCE0AUKCMMEyJS5i9QEA'\n    b'IjABQEoKAUK4LuNU8DuDQNgI5VKDQgAwgzBQQsQyJy5k9ZQAUEJAQtM/hEB9guMIQEKDQrgu3VIA'\n    b'MEBCfIa5UgkucA+/VMRC04ZUQFVAlEKFQiEu1wBCQCUu/fPAQn6CBS59AICyFC8FLokAJ70vuYCQ'\n    b'Ai8hLm/1DC0HLnEPFDAcCQUud/e9Vke+kwiUCiUud/fnVFBCSg78L7guUFACMEOG5VD7f+N/0n/A'\n    b'f7F/AC5BQABASASYLnTAHqrTbxQwsW/jIsBvUkDkb0wOEkLTf+svAy6GD0CQETADLyMuhg8CLAAw'\n    b'0G/7b7BfuC5AUPF/CiU8hut/QTMiMJguwsTTb/Qw3AlHWMJvlAnrWGq73Ai0ubG96VqVCCG99r93'\n    b'C1G+8W/rb1JCVELALkNCwF9QUPVQMTARQvt/ezALQhEwAoAjMwFCAwAHLoADBS7TACNS4n/Tf8B/'\n    b'mC62DtFvCAoaJXuG0H8BMxIwmC7CxNFvCAoAsg0v428BLoADUTDHhiMuIfIIvMBCmC6ltwAuAC7Q'\n    b'LrBvC7gDLhsACBqwf3AwBC8hLiHyAC4ALtAumC5twJguXcDtUJguRMvvUJguRsPxUJguU8c1UJgu'\n    b'ZM8QMJgu3AMgJsBvAjESQqszC0I3gAEwAULzN/dS+1BEQKIKQkKLMQkuXvf5VOMIg0IbQiMzSwC8'\n    b'hAtAMzCDQgtC4H/Rf5guWLfRb4AwQEIDMOBv81QEMAAuAC4BiWIO+i9DQhEw+2/ALgFCsF/BSgAA'\n    b'bVcAAHeOAADg////0////+X////u4f//fBMAAEbm//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'\n    b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgC4AwYAuAMGALgDBgC4AwYAuAMGALgDB'\n    b'gC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGA'\n    b'LgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAu'\n    b'AMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4A'\n    b'wYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAMGALgDBgC4AwYAuAME='\n)\n\n\ndef _s16(lo, hi):\n    v = lo | (hi << 8)\n    return v - 65536 if v & 0x8000 else v\n\n\nclass BMI270:\n    def __init__(self, i2c, addr=0x68, accel_range=2, gyro_range=2000):\n        # SparkFun SEN-22397: ADR is pulled to GND by default (0x68); move the ADR jumper for 0x69.\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(_CHIP_ID, 1)[0]\n        if cid != 0x24:\n            raise OSError('BMI270 not found (chip id 0x%02X): check wiring and address' % cid)\n        # Soft reset so the config load (allowed once per reset) also works after a MicroPython soft reboot.\n        self._w(_CMD, 0xB6)\n        time.sleep_ms(2)\n        self._load_config()\n        a_code, self._acc_lsb = _ACC[accel_range]\n        g_code, self._gyr_lsb = _GYR[gyro_range]\n        # Configure while the sensors are still disabled, so the settings apply at once (datasheet 4.6.16).\n        self._w(_ACC_CONF, 0xA8)   # performance filter, normal bandwidth, 100 Hz\n        self._w(_ACC_RANGE, a_code)\n        self._w(_GYR_CONF, 0xA9)   # performance filter, normal bandwidth, 200 Hz\n        self._w(_GYR_RANGE, g_code)\n        self._w(_PWR_CTRL, 0x0E)   # accelerometer, gyroscope and temperature on\n        self._w(_PWR_CONF, 0x02)   # advanced power save off, FIFO self wake-up on\n        time.sleep_ms(50)          # gyroscope start-up 45 ms\n\n    def _load_config(self):\n        self._w(_PWR_CONF, 0x00)   # advanced power save off\n        time.sleep_ms(1)           # >= 450 us\n        self._w(_INIT_CTRL, 0x00)  # prepare config load\n        cfg = binascii.a2b_base64(_CONFIG_B64)\n        if len(cfg) != 8192:\n            raise ValueError('BMI270 config blob corrupted')\n        mv = memoryview(cfg)\n        for i in range(0, len(cfg), _CHUNK):\n            w = i // 2\n            self.i2c.writeto_mem(self.addr, _INIT_ADDR_0, bytes([w & 0x0F, (w >> 4) & 0xFF]))\n            self.i2c.writeto_mem(self.addr, _INIT_DATA, mv[i:i + _CHUNK])\n        self._w(_INIT_CTRL, 0x01)  # complete config load\n        for _ in range(15):\n            time.sleep_ms(20)\n            st = self._r(_INTERNAL_STATUS, 1)[0] & 0x0F\n            if st == 0x01:\n                return\n        raise OSError('BMI270 initialization failed (INTERNAL_STATUS message %d)' % st)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val]))\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def read(self):\n        \"\"\"Return ((ax, ay, az) in g, (gx, gy, gz) in deg/s), read in one burst.\"\"\"\n        d = self._r(_DATA_ACC, 12)\n        a = tuple(_s16(d[i], d[i + 1]) / self._acc_lsb for i in (0, 2, 4))\n        g = tuple(_s16(d[i], d[i + 1]) / self._gyr_lsb for i in (6, 8, 10))\n        return a, g\n\n    def acceleration(self):\n        return self.read()[0]\n\n    def gyro(self):\n        return self.read()[1]\n\n    def temperature(self):\n        \"\"\"Die temperature in degC, or None while no valid sample exists (raw 0x8000).\"\"\"\n        d = self._r(_TEMP, 2)\n        raw = _s16(d[0], d[1])\n        if raw == -32768:\n            return None\n        return 23 + raw / 512\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom bmi270 import BMI270\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\nimu = BMI270(i2c)  # 0x68 on the SparkFun board (ADR jumper default)\nwhile True:\n    (ax, ay, az), (gx, gy, gz) = imu.read()\n    t = imu.temperature()\n    ts = '--' if t is None else '%.1f' % t\n    print('A=%.2f,%.2f,%.2fg G=%.1f,%.1f,%.1fdps T=%sC' % (ax, ay, az, gx, gy, gz, ts))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the acceleration, rotation and temperature set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": -1
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "ax",
+          "value": 0.5
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gz",
+          "value": 500
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "gx",
+          "value": -100
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "temp",
+          "value": 30
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "A=0.50,0.00,-1.00g G=-100.0,0.0,500.0dps T=30.0C",
+          "within": 8000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:56:00.969Z",
+    "verifiedSources": [
+      "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf",
+      "https://docs.sparkfun.com/SparkFun_Qwiic_6DoF_BMI270/hardware_overview/",
+      "https://cdn.sparkfun.com/assets/2/6/4/0/2/SparkFun_Qwiic_6DoF_BMI270-BoardOutline.png"
+    ]
+  }
+}

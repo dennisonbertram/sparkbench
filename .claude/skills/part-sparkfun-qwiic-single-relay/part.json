@@ -1,0 +1,168 @@
+{
+  "type": "custom-sparkfun-qwiic-single-relay",
+  "name": "SparkFun Qwiic Single Relay",
+  "mpn": "COM-15093",
+  "category": "actuator",
+  "description": "I2C-controlled relay board: an ATtiny85 running SparkFun's Qwiic Relay firmware drives an Omron G5LE-1 3 VDC SPDT relay (5.5 A continuous at 240 VAC, NO/COM/NC screw terminal) through a transistor. Runs on 3.3 V only, about 100 mA with the relay on; I2C address 0x18 (0x19 with the ADDR jumper closed, or any address set in software). Sold as: SparkFun Qwiic Single Relay (COM-15093), 2 Qwiic connectors plus a 4-pin 0.1\" header GND, 3.3V, SDA, SCL and a 3-way NO/COM/NC screw terminal.",
+  "eli5": "A switch for big things (lamps, pumps, fans) that your board flips on and off over two I2C wires.",
+  "refPrefix": "K",
+  "interface": "i2c",
+  "cabled": true,
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 3.3 V only (board has no regulator; the 3 V relay coil and ATtiny85 run straight from it). About 100 mA when the relay is on. Never 5 V.",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 k pull-up to 3.3 V on the board, jumper JP7)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 k pull-up to 3.3 V on the board, jumper JP7)",
+      "required": true
+    }
+  ],
+  "vmin": 3.2,
+  "vmax": 3.6,
+  "currentMa": 100,
+  "i2cAddress": 24,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/0/7/b/1/6/Qwiic_Single_Relay.pdf",
+  "priceUsd": 17,
+  "supplierQuery": "SparkFun Qwiic Single Relay COM-15093",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Commands are single bytes written to 0x18: 0x01 = relay on, 0x00 = relay off. Write 0x05 then read 1 byte for the state (1 on, 0 off); write 0x04 then read 2 bytes for the firmware version (major, minor).",
+    "There is no toggle command: read the state, then send on or off.",
+    "Power it from 3.3 V only. The relay coil (23.5 ohm, 3 VDC) sits behind a 10 ohm resistor and pulls about 100 mA, so several boards on one bus may need their own 3.3 V supply.",
+    "Closing the ADDR jumper selects 0x19; write 0x03 <addr> to store a new address (0x08-0x77) in EEPROM.",
+    "Mains on NO/COM/NC is dangerous: COM to the live wire, NO (off at rest) or NC (on at rest) to the load. Keep fingers off the screw terminal while it is plugged in.",
+    "The board has 2.2 k I2C pull-ups; cut JP7 if many pulled-up boards share the bus."
+  ],
+  "keywords": [
+    "qwiic relay",
+    "qwiic single relay",
+    "com-15093",
+    "sparkfun relay",
+    "i2c relay",
+    "relay",
+    "g5le"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "pointerless": true,
+    "registers": {
+      "0x00": 0
+    },
+    "outputBits": [
+      {
+        "reg": "0x00",
+        "bit": 0,
+        "name": "RELAY"
+      }
+    ],
+    "responses": [
+      {
+        "match": "04",
+        "bytes": [
+          {
+            "const": 1,
+            "bits": 8
+          },
+          {
+            "const": 1,
+            "bits": 8
+          }
+        ]
+      },
+      {
+        "match": "05",
+        "bytes": []
+      },
+      {
+        "match": "03",
+        "bytes": []
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_relay.py",
+    "code": "# SparkFun Qwiic Single Relay (COM-15093), MicroPython driver.\n# The board's ATtiny85 runs SparkFun's Qwiic_Relay firmware: a one-byte command protocol,\n# not a register map. 0x01 = relay on, 0x00 = relay off, 0x04 = firmware version\n# (then read 2 bytes: major, minor), 0x05 = status (then read 1 byte: 1 on, 0 off),\n# 0x03 <addr> = change the I2C address (stored in EEPROM, 0x08-0x77).\n# There is no toggle command: toggle() reads the status and sends on/off, as SparkFun's library does.\nimport time\n\nCMD_OFF = 0x00\nCMD_ON = 0x01\nCMD_CHANGE_ADDRESS = 0x03\nCMD_VERSION = 0x04\nCMD_STATUS = 0x05\n\n\nclass QwiicRelay:\n    def __init__(self, i2c, addr=0x18):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _cmd(self, c):\n        self.i2c.writeto(self.addr, bytes([c]))\n\n    def on(self):\n        self._cmd(CMD_ON)\n\n    def off(self):\n        self._cmd(CMD_OFF)\n\n    def value(self, v=None):\n        \"\"\"relay.value(1) / relay.value(0) switches it; relay.value() returns the state.\"\"\"\n        if v is None:\n            return self.state()\n        self._cmd(CMD_ON if v else CMD_OFF)\n\n    def state(self):\n        \"\"\"1 if the relay is energised (NO closed to COM), 0 if not.\"\"\"\n        self._cmd(CMD_STATUS)\n        time.sleep_ms(1)  # give the ATtiny's I2C interrupt time to latch the command\n        return self.i2c.readfrom(self.addr, 1)[0]\n\n    def toggle(self):\n        if self.state() == 1:\n            self.off()\n        else:\n            self.on()\n\n    def version(self):\n        \"\"\"Firmware version as a string, e.g. '1.1'.\"\"\"\n        self._cmd(CMD_VERSION)\n        time.sleep_ms(1)\n        d = self.i2c.readfrom(self.addr, 2)\n        return '%d.%d' % (d[0], d[1])\n\n    def change_address(self, new_addr):\n        \"\"\"Store a new I2C address (0x08-0x77) in the board's EEPROM; it answers there at once.\"\"\"\n        if not 0x07 < new_addr < 0x78:\n            raise ValueError('address must be 0x08-0x77')\n        self.i2c.writeto(self.addr, bytes([CMD_CHANGE_ADDRESS, new_addr]))\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_relay import QwiicRelay\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nrelay = QwiicRelay(i2c)  # 0x18; 0x19 with the ADDR jumper closed\nprint('FW %s' % relay.version())\nwhile True:\n    relay.on()\n    print('RELAY=%d' % relay.state())\n    time.sleep(1)\n    relay.off()\n    print('RELAY=%d' % relay.state())\n    time.sleep(1)\n",
+    "test": {
+      "id": "switches",
+      "title": "The relay switches on and off over I2C and reports its state",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "FW 1.1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELAY=1",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RELAY",
+          "on": true,
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELAY=0",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "active",
+          "part": "{REF}",
+          "text": "RELAY",
+          "on": false,
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.sparkfun.com/sparkfun-qwiic-single-relay.html",
+    "https://learn.sparkfun.com/tutorials/qwiic-single-relay-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/0/7/b/1/6/Qwiic_Single_Relay.pdf",
+    "https://cdn.sparkfun.com/assets/parts/1/3/4/5/1/15093-SparkFun_Qwiic_Single_Relay-01.jpg",
+    "https://github.com/sparkfun/Qwiic_Relay/blob/master/Firmware/Qwiic_Relay_Firmware/Qwiic_Relay_Firmware.ino",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Relay_Arduino_Library",
+    "https://cdn.sparkfun.com/assets/5/e/e/d/f/3V_Relay_Datasheet_en-g5le.pdf"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:51:40.036Z",
+    "verifiedSources": [
+      "https://learn.sparkfun.com/tutorials/qwiic-single-relay-hookup-guide",
+      "https://www.sparkfun.com/sparkfun-qwiic-single-relay.html",
+      "https://cdn.sparkfun.com/assets/5/e/e/d/f/3V_Relay_Datasheet_en-g5le.pdf"
+    ]
+  }
+}

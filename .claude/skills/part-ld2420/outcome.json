@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-ld2420",
+  "board": "HLK-LD2420 module (Hi-Link, 20 x 20 mm, 5-hole 2.54 mm header J2: 3V3, GND, OT1, RX, OT2)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring at 3.3 V, design checks, breadboard, simulator test PRESENCE=1, PCB DRC clean, footprint). Modelled as an active-high digital-sensor on OT2 per Hi-Link's manual Table 3-2 (OT2 high = occupied, 0-3.3 V IO, 3.0-3.6 V supply, 50 mA); OT1 (UART TX) and RX marked as optional UART pins.",
+  "datasheetUrl": "https://www.elemon.com.ar/images/productos/hojas-de-datos/radar-modulos/hlk-ld2420.pdf",
+  "breakoutPinoutSource": "Hi-Link HLK-LD2420 User Manual V1.1, Table 3-2 J2 Pin Description: J2 pin1 3V3, pin2 GND, pin3 OT1 (UART_TX), pin4 RX (UART_RX), pin5 OT2 (high occupied / low unoccupied), 2.54 mm pitch",
+  "checkRuns": 1
+}

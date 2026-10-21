@@ -1,0 +1,16 @@
+{
+ "diffs": [
+  {
+   "diff": "header pin 4 (VIO): part says io, datasheet reading says power",
+   "verdict": "part-correct",
+   "evidence": "Adafruit pinout page (both backpack versions): 'VIO/VCC - This is power for the backpack. It can be 3V-5V. To power the backpack, give it the same power as the logic level of your microcontroller'; STEMMA QT revision: 'VHi - ... connect 5V to the VHi pin' and 'Wiring VHi to 3v on the Stemma QT version will result in the display not activating.' So VIO is the 3-5 V logic-level rail and must match the MCU (3.3 V on ESP32/Pico), while VHi is the 5 V chip/LED supply (HT16K33 datasheet: operating voltage 4.5-5.5 V). The model already describes VIO this way (powers the 10k SDA/SCL pull-ups, and the chip through a Schottky diode; connect to 3.3 V, never 5 V). It is the same pin with the same function. Only the role label differs. In this schema a 'power' pin gets the part's supply rail, which is 5 V here because vmin = 4.5. Tried in-session: with role 'power' the autowirer wired VIO to 5 V on the ESP32 and Pico, which would pull the I2C bus up to 5 V, above the 3.6 V pin limit. The 'io' role keeps VIO off the 5 V rail, so the model stays as is.",
+   "source": "https://learn.adafruit.com/adafruit-led-backpack/pinouts"
+  },
+  {
+   "diff": "maximum supply: part 5.5 V, datasheet reading 5 V",
+   "verdict": "part-correct",
+   "evidence": "HT16K33 datasheet Rev 1.10, Features: 'Operating voltage: 4.5V~5.5V'; D.C. Characteristics table: 'VDD Operating Voltage  min 4.5  typ 5  max 5.5 V' (Absolute Maximum: Supply Voltage VSS-0.3V to VSS+6.5V). The model's vmin/vmax 4.5/5.5 describe the chip supply on VHi. The second reading's 3-5 V is Adafruit's VIO logic-level range ('It can be 3V-5V'), a different quantity.",
+   "source": "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf"
+  }
+ ]
+}

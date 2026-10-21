@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-bmi270",
+  "board": "SparkFun 6DoF IMU Breakout - BMI270 (Qwiic), SEN-22397",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint, LCSC). The driver follows the datasheet's init sequence and uploads Bosch's 8 kB config file in chunks with INIT_ADDR before reading the data. The sim encodes accel and gyro per the selected ACC_RANGE/GYR_RANGE, plus the temperature as 23 + raw/512.",
+  "datasheetUrl": "https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf",
+  "breakoutPinoutSource": "https://github.com/sparkfun/SparkFun_Qwiic_6DoF_BMI270/blob/main/Hardware/Qwiic%201x1/SparkFun_Qwiic_6DoF_BMI270.brd (J4: GND,3V3,SDA,SCL,ADR,CS; J3: ASDX,ASCX,INT1,INT2,OCS,OSDO) and docs/hardware_overview.md",
+  "checkRuns": 2
+}

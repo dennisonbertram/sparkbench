@@ -1,0 +1,132 @@
+{
+  "type": "custom-ht16k33-alphanumeric",
+  "name": "HT16K33 quad 14-segment alphanumeric display (I2C backpack)",
+  "mpn": "HT16K33",
+  "category": "display",
+  "description": "Four 0.54\" 14-segment alphanumeric LED digits (letters, digits and symbols, each with a decimal point) driven by a Holtek HT16K33 RAM-mapped LED controller over I2C (up to 400 kHz). 16-step dimming, hardware blink, address 0x70-0x77 set by solder jumpers A0-A2. HT16K33 supply 4.5-5.5 V on VHi; VIO sets the I2C logic level (3-5 V). Sold as: Adafruit Quad Alphanumeric Display 0.54\" Digits w/ I2C Backpack - STEMMA QT (product 1911 red, 1912 blue, other colours; backpack alone 1910), 5-pin header SCL, SDA, GND, VIO, VHi plus two STEMMA QT connectors.",
+  "eli5": "Four little light-up character windows that can spell short words and numbers your board sends over two wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SCL); 10 kOhm pull-up to VIO on the backpack (silkscreen 'C' on the back)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SDA); 10 kOhm pull-up to VIO on the backpack (silkscreen 'D' on the back)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Common ground for power and logic (silkscreen '-' on the back)",
+      "required": true
+    },
+    {
+      "name": "VIO",
+      "role": "io",
+      "description": "Logic level, 3-5 V: powers the 10 kOhm SDA/SCL pull-ups (and the chip through a Schottky diode when VHi is unused). Connect to the microcontroller's own logic supply: 3.3 V on an ESP32 / Pico / Raspberry Pi, never 5 V there (silkscreen '+' on the back)",
+      "required": false
+    },
+    {
+      "name": "VHi",
+      "role": "power",
+      "description": "HT16K33 and LED supply, 5 V (chip spec 4.5-5.5 V). Feed it from the board's 5 V (VBUS/VIN) pin; wiring VHi to 3.3 V leaves the display dark (silkscreen 'Vh' on the back)",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 150,
+  "i2cAddress": 112,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+  "priceUsd": 14,
+  "supplierQuery": "Adafruit quad alphanumeric display 0.54 I2C backpack HT16K33 1911",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Init sequence from the datasheet: 0x21 (oscillator on), 0xE0|brightness (0-15), then 0x81 (display on, no blink). At power-up the oscillator is stopped and the display is off, so nothing lights until these are sent.",
+    "Write display RAM with one I2C write: 0x00 followed by the data bytes. Digit n (0 = leftmost) is a 16-bit segment word stored low byte first at RAM bytes 2n and 2n+1. Bits 0-5 = A-F, 6 = G1, 7 = G2, 8-13 = H, J, K, L, M, N, bit 14 = decimal point (Adafruit LED Backpack font).",
+    "Wire VHi to 5 V and VIO to the microcontroller's logic voltage (3.3 V on ESP32 / Pico / Raspberry Pi). The SDA/SCL 10 kOhm pull-ups go to VIO, so VIO must be connected or the bus has no pull-ups. Never tie VIO to 5 V with a 3.3 V board.",
+    "With VHi at 5 V the HT16K33 input-high threshold is 0.7 x VDD = 3.5 V; Adafruit sells this board for 3.3 V boards and it works in practice, but if the bus is unreliable use a bidirectional I2C level shifter.",
+    "Default address 0x70; close the A0/A1/A2 solder jumpers to add 1/2/4 (0x71-0x77) for up to eight displays on one bus.",
+    "All segments lit at full brightness draws on the order of 150 mA from VHi: power it from the 5 V (VBUS/VIN) pin, not a GPIO."
+  ],
+  "keywords": [
+    "ht16k33",
+    "alphanumeric",
+    "14-segment",
+    "fourteen segment",
+    "quad alphanumeric",
+    "led backpack",
+    "adafruit 1911",
+    "adafruit 1912",
+    "i2c display",
+    "text display"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+    "https://www.adafruit.com/product/1911",
+    "https://learn.adafruit.com/adafruit-led-backpack/0-54-alphanumeric",
+    "https://learn.adafruit.com/adafruit-led-backpack/pinouts",
+    "https://github.com/adafruit/Adafruit-LED-Backpacks/blob/master/Adafruit%200.54%20Alphanumeric%20STEMMA%20QT.brd",
+    "https://github.com/adafruit/Adafruit-LED-Backpacks/blob/master/Adafruit%200.54%20Alphanumeric%20STEMMA%20QT.sch",
+    "https://github.com/adafruit/Adafruit_LED_Backpack/blob/master/Adafruit_LEDBackpack.cpp",
+    "https://github.com/adafruit/Adafruit_CircuitPython_HT16K33/blob/main/adafruit_ht16k33/segments.py"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "ht16k33",
+    "digits": 4,
+    "digitMap": [
+      0,
+      2,
+      4,
+      6
+    ],
+    "segments": 14
+  },
+  "driver": {
+    "filename": "ht16k33alpha.py",
+    "code": "# HT16K33 quad 14-segment alphanumeric backpack (Adafruit 0.54\" display, product 1911/1912), MicroPython driver.\n# Written from the Holtek HT16K33 datasheet (Rev 1.10) and the Adafruit backpack schematic / library:\n#   0x21        system setup: S = 1, internal oscillator on (normal operation)\n#   0x80|B<<1|D display setup: D = display on, B = blink (0 off, 1 = 2 Hz, 2 = 1 Hz, 3 = 0.5 Hz)\n#   0xE0|P      dimming set: P = 0..15 -> 1/16 .. 16/16 duty\n#   0x00 + data display RAM write from address 0 (the address pointer auto-increments)\n# Each digit n (0 = leftmost) is driven by COM n; its 16-bit segment word is stored low byte first in\n# RAM bytes 2n and 2n+1. Segment bits: bit0..bit5 = A..F, bit6 = G1, bit7 = G2, bit8..bit13 = H, J, K, L, M, N,\n# bit14 = decimal point (Adafruit LED Backpack font).\nfrom micropython import const\n\n_OSC_ON = const(0x21)\n_DISPLAY = const(0x80)\n_DIMMING = const(0xE0)\n_DP = const(0x4000)\n\n# Glyphs for ASCII 0x20 (space) .. 0x7E (~), from Adafruit_LEDBackpack alphafonttable.\nFONT = (\n    0x0000, 0x0006, 0x0220, 0x12CE, 0x12ED, 0x0C24, 0x235D, 0x0400,\n    0x2400, 0x0900, 0x3FC0, 0x12C0, 0x0800, 0x00C0, 0x4000, 0x0C00,\n    0x0C3F, 0x0006, 0x00DB, 0x008F, 0x00E6, 0x2069, 0x00FD, 0x0007,\n    0x00FF, 0x00EF, 0x1200, 0x0A00, 0x2400, 0x00C8, 0x0900, 0x1083,\n    0x02BB, 0x00F7, 0x128F, 0x0039, 0x120F, 0x00F9, 0x0071, 0x00BD,\n    0x00F6, 0x1209, 0x001E, 0x2470, 0x0038, 0x0536, 0x2136, 0x003F,\n    0x00F3, 0x203F, 0x20F3, 0x00ED, 0x1201, 0x003E, 0x0C30, 0x2836,\n    0x2D00, 0x1500, 0x0C09, 0x0039, 0x2100, 0x000F, 0x0C03, 0x0008,\n    0x0100, 0x1058, 0x2078, 0x00D8, 0x088E, 0x0858, 0x0071, 0x048E,\n    0x1070, 0x1000, 0x000E, 0x3600, 0x0030, 0x10D4, 0x1050, 0x00DC,\n    0x0170, 0x0486, 0x0050, 0x2088, 0x0078, 0x001C, 0x2004, 0x2814,\n    0x28C0, 0x200C, 0x0848, 0x0949, 0x1200, 0x2489, 0x0520,\n)\n\n\nclass HT16K33Alpha:\n    def __init__(self, i2c, address=0x70, brightness=15):\n        self.i2c = i2c\n        self.address = address\n        self.buf = bytearray(16)\n        self._cmd(_OSC_ON)            # leave standby: start the internal oscillator\n        self.brightness(brightness)\n        self.show()                   # clear RAM before switching the display on\n        self.blink(0)                 # display on, no blinking\n\n    def _cmd(self, c):\n        self.i2c.writeto(self.address, bytes((c,)))\n\n    def brightness(self, level):\n        \"\"\"0 (dimmest, 1/16 duty) .. 15 (brightest, 16/16 duty).\"\"\"\n        self._cmd(_DIMMING | max(0, min(15, int(level))))\n\n    def blink(self, rate):\n        \"\"\"0 = steady, 1 = 2 Hz, 2 = 1 Hz, 3 = 0.5 Hz. Also switches the display on.\"\"\"\n        self._cmd(_DISPLAY | ((rate & 3) << 1) | 1)\n\n    def off(self):\n        self._cmd(_DISPLAY)\n\n    def clear(self):\n        for i in range(16):\n            self.buf[i] = 0\n\n    def raw(self, digit, mask):\n        \"\"\"Set digit 0..3 (left to right) to a raw 16-bit segment mask.\"\"\"\n        self.buf[2 * digit] = mask & 0xFF\n        self.buf[2 * digit + 1] = (mask >> 8) & 0xFF\n\n    @staticmethod\n    def glyph(ch):\n        c = ord(ch)\n        return FONT[c - 32] if 32 <= c <= 126 else 0\n\n    def _masks(self, s):\n        masks = []\n        for ch in str(s):\n            if ch == '.' and masks and not masks[-1] & _DP:\n                masks[-1] |= _DP      # '.' lights the previous digit's decimal point\n            else:\n                masks.append(self.glyph(ch))\n        return masks\n\n    def text(self, s, right=False):\n        \"\"\"Show up to 4 characters (left-aligned, or right-aligned with right=True) and update the display.\"\"\"\n        masks = self._masks(s)[:4] if not right else self._masks(s)[-4:]\n        pad = [0] * (4 - len(masks))\n        masks = pad + masks if right else masks + pad\n        for i in range(4):\n            self.raw(i, masks[i])\n        self.show()\n\n    def number(self, value, decimals=0):\n        \"\"\"Show a number right-aligned; shows '----' if it does not fit.\"\"\"\n        s = ('%.' + str(int(decimals)) + 'f') % value if decimals else '%d' % round(value)\n        if len(s.replace('.', '')) > 4:\n            s = '----'\n        self.text(s, right=True)\n\n    def scroll(self, s, delay_ms=300):\n        \"\"\"Scroll a longer message across the four digits once.\"\"\"\n        import time\n        masks = [0] * 4 + self._masks(s) + [0] * 4\n        for k in range(len(masks) - 3):\n            for i in range(4):\n                self.raw(i, masks[k + i])\n            self.show()\n            time.sleep_ms(delay_ms)\n\n    def show(self):\n        self.i2c.writeto(self.address, b'\\x00' + self.buf)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ht16k33alpha import HT16K33Alpha\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\ndisp = HT16K33Alpha(i2c, 0x70, brightness=8)\nmsg = 'Hi42'\ndisp.text(msg)\nprint('shown ' + msg)\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-text",
+      "title": "Shows Hi42 on the four alphanumeric digits",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "shown Hi42",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "Hi42",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:04:43.279Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+      "https://learn.adafruit.com/adafruit-led-backpack/pinouts",
+      "https://cdn-learn.adafruit.com/assets/assets/000/115/303/large1024/led_matrices_QAB_pinouts_guide.jpg",
+      "https://www.adafruit.com/product/1911"
+    ]
+  }
+}

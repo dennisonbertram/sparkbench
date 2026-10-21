@@ -1,0 +1,58 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 6: part says SLP, datasheet reading says SLEEP",
+      "verdict": "part-correct",
+      "evidence": "Same pin, different label. Pololu schematic (0J4350) names the net to left-header pin 3 from the bottom 'SLP' (chip pin 22 nSLEEP); the board silkscreen/wiring diagram (0J4345) prints it as SLEEP (with overbar), 6th pin on the left row after ENABLE, M0, M1, (CONFIG), (VREF). Role (active-low sleep input, must be driven high) matches.",
+      "source": "https://a.pololu-files.com/picture/0J4345.1200.png"
+    },
+    {
+      "diff": "header pin 9: part says VMOT, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 9 = VMOT is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    },
+    {
+      "diff": "header pin 10: part says GND, datasheet reading says FAULT",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 10 = GND is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    },
+    {
+      "diff": "header pin 11: part says B2, datasheet reading says A2",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 11 = B2 is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    },
+    {
+      "diff": "header pin 12: part says B1, datasheet reading says A1",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 12 = B1 is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    },
+    {
+      "diff": "header pin 13: part says A1, datasheet reading says B1",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 13 = A1 is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    },
+    {
+      "diff": "header pin 14: part says A2, datasheet reading says B2",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 14 = A2 is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    },
+    {
+      "diff": "header pin 15: part says FLT, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 15 = FLT is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    },
+    {
+      "diff": "header pin 16: part says GND2, datasheet reading says VMOT",
+      "verdict": "part-correct",
+      "evidence": "Pololu carrier schematic (0J4350) right-hand 8-pin connector, pins 1-8 top to bottom: 1=VMOT (VM), 2=GND, 3=B2 (BOUT2), 4=B1 (BOUT1), 5=A1 (AOUT1), 6=A2 (AOUT2), 7=FLT (nFAULT via R4 1.5k, R5 10k to SLP), 8=GND. Pololu minimal wiring diagrams (0J4345, 0J4344) show the same right column top to bottom: VMOT, GND, B2, B1, A1, A2, FAULT, GND. The model lists the second row top to bottom (same convention as the A4988/DRV8825 parts: pin 9 = top right); the second reading listed that row bottom to top (GND, FAULT, A2, A1, B1, B2, GND, VMOT), i.e. exactly reversed, which is the same physical board in counter-clockwise numbering, not a different pinout. Model's pin 16 = GND2 (second GND, printed GND) is correct.",
+      "source": "https://a.pololu-files.com/picture/0J4350.1200.png"
+    }
+  ]
+}

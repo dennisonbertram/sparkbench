@@ -1,0 +1,116 @@
+{
+  "type": "custom-ht16k33-8x8-matrix",
+  "name": "HT16K33 8x8 LED matrix (I2C backpack)",
+  "mpn": "HT16K33",
+  "category": "display",
+  "description": "Single-colour 1.2\" 8x8 LED dot matrix (64 LEDs) driven by a Holtek HT16K33 RAM-mapped LED controller over I2C (up to 400 kHz). 16-step whole-display dimming, hardware blink, address 0x70-0x77 set by solder jumpers A0-A2. HT16K33 supply 4.5-5.5 V; 10 kOhm SDA/SCL pull-ups to + on the backpack. Sold as: Adafruit Small 1.2\" 8x8 LED Matrix w/I2C Backpack (product 1049 red; 1050, 1051, 1052, 1632 other colours; 1614/1857 white; STEMMA QT revision), 4-pin header C, D, -, +.",
+  "eli5": "A little 8 by 8 grid of lights you can draw letters and pictures on using just two wires.",
+  "refPrefix": "DS",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "C",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (SCL), 10 kOhm pull-up to + on the backpack",
+      "required": true
+    },
+    {
+      "name": "D",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (SDA), 10 kOhm pull-up to + on the backpack",
+      "required": true
+    },
+    {
+      "name": "-",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "+",
+      "role": "power",
+      "description": "VDD supply for the HT16K33 and LEDs, 5 V (chip spec 4.5-5.5 V); the SDA/SCL pull-ups go to this pin",
+      "required": true
+    }
+  ],
+  "vmin": 4.5,
+  "vmax": 5.5,
+  "currentMa": 160,
+  "i2cAddress": 112,
+  "datasheetUrl": "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+  "priceUsd": 11,
+  "supplierQuery": "Adafruit 1.2 inch 8x8 LED matrix I2C backpack HT16K33",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Init sequence from the datasheet: 0x21 (oscillator on), 0xE0|brightness (0-15), then 0x81 (display on, no blink). At power-up the oscillator is stopped and the display is off, so nothing lights until these are sent.",
+    "Write display RAM with one I2C write: 0x00 followed by 16 data bytes. Matrix row y (top = 0) is RAM byte 2*y; the odd bytes are unused. Column x (left = 0) is bit (x + 7) % 8 of that byte, because the backpack wires the columns to ROW0-ROW7 shifted by one (same mapping as Adafruit's library).",
+    "Solder the matrix with its printed side on the same side as the filled-dot corner of the backpack, or the image comes out mirrored/rotated.",
+    "The backpack's 10 kOhm SDA/SCL pull-ups go to the + pin. With + on 5 V the bus idles at 5 V, above an ESP32's or Pico's 3.6 V pin limit: use a bidirectional I2C level shifter (BSS138 type) between a 3.3 V board and the backpack. Adafruit reports + on 3.3 V also works (dimmer, below the HT16K33's 4.5 V spec).",
+    "Default address 0x70; close A0/A1/A2 jumpers to add 1/2/4 (0x71-0x77). On the 1.2\" 8x8 backpack Adafruit notes the A1 and A2 labels are swapped.",
+    "With every LED lit at full brightness the matrix draws up to about 160 mA from +: feed it from the 5 V (VBUS/VIN) pin."
+  ],
+  "keywords": [
+    "ht16k33",
+    "8x8",
+    "led matrix",
+    "dot matrix",
+    "led backpack",
+    "adafruit 1049",
+    "adafruit 1050",
+    "i2c display"
+  ],
+  "sources": [
+    "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+    "https://www.adafruit.com/product/1049",
+    "https://cdn-learn.adafruit.com/downloads/pdf/adafruit-led-backpack.pdf",
+    "https://github.com/adafruit/Adafruit-LED-Backpacks/blob/master/Adafruit%201.2inch%208x8%20backpack.sch",
+    "https://github.com/adafruit/Adafruit-LED-Backpacks/blob/master/Adafruit%201.2inch%208x8%20backpack.brd",
+    "https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/svg/contrib/breadboard/adafruit_4126ff1bf9ec5b5891ca743383bed56e_5_breadboard_81.svg",
+    "https://github.com/adafruit/Adafruit_LED_Backpack/blob/master/Adafruit_LEDBackpack.cpp",
+    "https://github.com/adafruit/Adafruit_CircuitPython_HT16K33/blob/main/adafruit_ht16k33/matrix.py"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "ht16k33",
+    "matrix": true
+  },
+  "driver": {
+    "filename": "ht16k33matrix.py",
+    "code": "# HT16K33 8x8 LED matrix backpack (Adafruit Small 1.2\" 8x8 LED Matrix w/I2C Backpack), MicroPython driver.\n# Written from the Holtek HT16K33 datasheet (Rev 1.10) and the Adafruit backpack schematic / library:\n#   0x21        system setup: oscillator on (leave standby)\n#   0x80|B<<1|D display setup: D = display on, B = blink (0 off, 1 = 2 Hz, 2 = 1 Hz, 3 = 0.5 Hz)\n#   0xE0|P      dimming: P = 0..15 -> 1/16 .. 16/16 duty\n#   0x00 + data display RAM write from address 0 (address pointer auto-increments)\n# On this backpack matrix row y is driven by COM y, so row y is RAM byte 2*y (the odd bytes,\n# ROW8..ROW15, are unused). The columns are wired to ROW0..ROW7 shifted by one:\n# column x is bit (x + 7) % 8 (same mapping as Adafruit_LEDBackpack drawPixel).\nimport framebuf\nfrom micropython import const\n\n_OSC_ON = const(0x21)\n_DISPLAY = const(0x80)\n_DIMMING = const(0xE0)\n\n\nclass HT16K33Matrix(framebuf.FrameBuffer):\n    \"\"\"8x8 framebuffer: use pixel(), fill(), text(), line(), rect() ... then show().\"\"\"\n\n    def __init__(self, i2c, address=0x70, brightness=15):\n        self.i2c = i2c\n        self.address = address\n        self.buf = bytearray(8)          # MONO_HLSB: one byte per row, bit 7 = x 0\n        super().__init__(self.buf, 8, 8, framebuf.MONO_HLSB)\n        self.ram = bytearray(17)         # command 0x00 + 16 display RAM bytes\n        self._cmd(_OSC_ON)               # oscillator on (power-up default is standby)\n        self.brightness(brightness)\n        self.fill(0)\n        self.show()                      # clear RAM before switching the display on\n        self.blink(0)                    # display on, no blinking\n\n    def _cmd(self, c):\n        self.i2c.writeto(self.address, bytes((c,)))\n\n    def brightness(self, level):\n        \"\"\"0 (dimmest, 1/16 duty) .. 15 (brightest, 16/16 duty).\"\"\"\n        self._cmd(_DIMMING | max(0, min(15, int(level))))\n\n    def blink(self, rate):\n        \"\"\"0 = steady, 1 = 2 Hz, 2 = 1 Hz, 3 = 0.5 Hz. Also switches the display on.\"\"\"\n        self._cmd(_DISPLAY | ((rate & 3) << 1) | 1)\n\n    def off(self):\n        self._cmd(_DISPLAY)\n\n    def show(self):\n        ram = self.ram\n        for i in range(1, 17):\n            ram[i] = 0\n        for y in range(8):\n            row = self.buf[y]\n            b = 0\n            for x in range(8):\n                if row & (0x80 >> x):\n                    b |= 1 << ((x + 7) & 7)\n            ram[1 + 2 * y] = b\n        ram[0] = 0x00                    # display RAM address 0\n        self.i2c.writeto(self.address, ram)\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom ht16k33matrix import HT16K33Matrix\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}), freq=400000)\ntime.sleep_ms(100)\nm = HT16K33Matrix(i2c, 0x70, brightness=8)\nm.fill(0)\nm.text('A', 0, 0, 1)\nm.show()\nprint('shown A')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "shows-letter",
+      "title": "Draws the letter A on the 8x8 matrix",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "shown A",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "A",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:43:05.125Z",
+    "verifiedSources": [
+      "https://cdn-shop.adafruit.com/datasheets/ht16K33v110.pdf",
+      "https://learn.adafruit.com/adafruit-led-backpack/pinouts",
+      "https://www.adafruit.com/product/1049"
+    ]
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "type": "custom-ili9488",
+  "name": "ILI9488 3.5\" 480×320 SPI colour TFT",
+  "mpn": "ILI9488",
+  "category": "display",
+  "description": "3.5-inch 320×480 colour TFT LCD driven by an ILITEK ILI9488 controller over 4-wire SPI with a separate data/command (DC) line. Over SPI the ILI9488 only takes 18-bit RGB666 pixels (3 bytes each), not RGB565. Logic is 3.3 V only; VCC takes 3.3–5 V through an on-board XC6206 regulator. Sold as: LCDwiki 3.5\" SPI TFT module MSP3521 (ILI9488, 480x320, no touch; red 14-pin PCB shared with touch version MSP3520); 14-pin header VCC, GND, CS, RESET, DC/RS, SDI(MOSI), SCK, LED, SDO(MISO), T_CLK, T_CS, T_DIN, T_DO, T_IRQ — the T_ pins are unused.",
+  "eli5": "A big colour screen, about the size of a credit card, that your board can draw text, shapes and pictures on.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3–5 V (on-board XC6206 3.3 V regulator; short jumper J1 only when feeding 3.3 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "LCD chip select, active low (3.3 V logic)",
+      "required": true
+    },
+    {
+      "name": "RESET",
+      "role": "io",
+      "fn": "tft.reset",
+      "description": "LCD reset, active low (pulse ≥ 10 µs)",
+      "required": true
+    },
+    {
+      "name": "DC/RS",
+      "role": "io",
+      "fn": "tft.dc",
+      "description": "Data/command select (ILI9488 D/CX): low = command, high = parameter/pixel data",
+      "required": true
+    },
+    {
+      "name": "SDI(MOSI)",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "SPI data into the display",
+      "required": true
+    },
+    {
+      "name": "SCK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "SPI clock (4-line SPI write cycle ≥ 50 ns, 20 MHz max)",
+      "required": true
+    },
+    {
+      "name": "LED",
+      "role": "io",
+      "description": "Backlight enable via S8050 transistor: high = on (tie to 3.3 V for always on, or PWM to dim)",
+      "required": true
+    },
+    {
+      "name": "SDO(MISO)",
+      "role": "io",
+      "fn": "spi.miso",
+      "description": "SPI data out of the display, only for reading registers/GRAM",
+      "required": false
+    },
+    {
+      "name": "T_CLK",
+      "role": "nc",
+      "description": "Touch SPI clock — not connected on the no-touch MSP3521 (XPT2046 touch controller on the MSP3520)",
+      "required": false
+    },
+    {
+      "name": "T_CS",
+      "role": "nc",
+      "description": "Touch chip select — not connected on the no-touch MSP3521 (XPT2046 touch controller on the MSP3520)",
+      "required": false
+    },
+    {
+      "name": "T_DIN",
+      "role": "nc",
+      "description": "Touch SPI data in — not connected on the no-touch MSP3521 (XPT2046 touch controller on the MSP3520)",
+      "required": false
+    },
+    {
+      "name": "T_DO",
+      "role": "nc",
+      "description": "Touch SPI data out — not connected on the no-touch MSP3521 (XPT2046 touch controller on the MSP3520)",
+      "required": false
+    },
+    {
+      "name": "T_IRQ",
+      "role": "nc",
+      "description": "Touch interrupt — not connected on the no-touch MSP3521 (XPT2046 touch controller on the MSP3520)",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 125,
+  "datasheetUrl": "https://www.displayfuture.com/Display/datasheet/controller/ILI9488.pdf",
+  "priceUsd": 12,
+  "supplierQuery": "3.5 inch ILI9488 SPI TFT 480x320 module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x14_P2.54mm_Vertical",
+  "buildNotes": [
+    "Signal pins are 3.3 V logic only (ILI9488 IOVCC 1.65–3.3 V, no level shifter on the module): wire them straight to an ESP32 or Pico, never to a 5 V Arduino without a level shifter.",
+    "VCC can be 5 V or 3.3 V. Jumper J1 bypasses the on-board 3.3 V regulator: leave it open for 5 V, only short it when VCC is 3.3 V.",
+    "The module draws about 0.62 W (≈125 mA at 5 V), mostly backlight.",
+    "The backlight stays dark unless LED is high: drive it from a GPIO (or PWM to dim) or tie it to 3.3 V.",
+    "DC/RS low = command byte, high = parameters and pixel data (ILI9488 D/CX). The LCDwiki web pin table has this backwards; the user manual and datasheet have it right.",
+    "Over SPI the ILI9488 accepts only 18-bit (3 bytes per pixel, COLMOD 0x66) or 3-bit colour: RGB565 code written for the ILI9341 gives garbled colours. Convert each pixel to R, G, B bytes.",
+    "After reset wait at least 5 ms (120 ms before Sleep Out), and wait 120 ms after Sleep Out (0x11) before further commands.",
+    "The 4-line SPI write cycle is ≥ 50 ns (20 MHz max); with long jumper wires use 10–20 MHz.",
+    "A full-screen fill is 461 KB of pixel data: at 20 MHz that takes about 0.2 s, so redraw only what changes.",
+    "The ILI9488's SDO is widely reported not to release the line when CS is high: leave SDO(MISO) unconnected if the SPI bus is shared with an SD card or other device.",
+    "The SD-card slot pins on the other edge (SD_CS, SD_MOSI, SD_MISO, SD_SCK) are not modelled here."
+  ],
+  "keywords": [
+    "ili9488",
+    "tft",
+    "lcd",
+    "3.5 inch",
+    "480x320",
+    "320x480",
+    "spi display",
+    "colour display",
+    "msp3520",
+    "msp3521",
+    "rgb666"
+  ],
+  "sim": {
+    "kind": "tft-display",
+    "width": 320,
+    "height": 480,
+    "pixelBits": 18
+  },
+  "driver": {
+    "filename": "ili9488.py",
+    "code": "# MicroPython driver for the ILI9488 320x480 TFT over the 4-line serial interface\n# (DBI type C option 3: SCL, SDA, D/CX, CSX). From the ILITEK ILI9488 datasheet V1.00:\n# in SPI mode the chip only accepts 3 or 18 bits/pixel (section 4.7, no RGB565), so pixels are\n# sent as 3 bytes R, G, B with the 6 colour bits in D7..D2. COLMOD (3Ah) resets to 06h = 18-bit.\n# Power/gamma values from the module vendor's (LCDwiki MSP3520/MSP3521) init code.\nfrom machine import Pin\nimport framebuf\nimport time\n\n# Colours are given as RGB565 for convenience and expanded to RGB666 when sent.\nBLACK = 0x0000\nWHITE = 0xFFFF\nRED = 0xF800\nGREEN = 0x07E0\nBLUE = 0x001F\nYELLOW = 0xFFE0\nCYAN = 0x07FF\nMAGENTA = 0xF81F\n\n\ndef rgb565(r, g, b):\n    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)\n\n\ndef _666(c):\n    # RGB565 -> the three SPI bytes (R5..R0, G5..G0, B5..B0 in bits 7..2)\n    return bytes(((c >> 8) & 0xF8, (c >> 3) & 0xFC, (c << 3) & 0xF8))\n\n\n# (command, parameters, delay ms after)\n_INIT = (\n    (0xF7, b'\\xA9\\x51\\x2C\\x82', 0),   # Adjust control 3 (vendor value)\n    (0xC0, b'\\x11\\x09', 0),           # Power control 1: VREG1OUT / VREG2OUT\n    (0xC1, b'\\x41', 0),               # Power control 2: step-up factor\n    (0xC5, b'\\x00\\x0A\\x80', 0),       # VCOM control\n    (0xB1, b'\\xB0\\x11', 0),           # Frame rate control (normal mode)\n    (0xB4, b'\\x02', 0),               # Display inversion control: 2-dot\n    (0xB6, b'\\x02\\x42', 0),           # Display function control\n    (0xB7, b'\\xC6', 0),               # Entry mode set\n    (0xBE, b'\\x00\\x04', 0),           # HS lanes control (vendor value)\n    (0xE9, b'\\x00', 0),               # Set image function: 24-bit data bus off\n    (0x3A, b'\\x66', 0),               # COLMOD: 18 bits/pixel (the only full-colour SPI format)\n    (0xE0, b'\\x00\\x07\\x10\\x09\\x17\\x0B\\x41\\x89\\x4B\\x0A\\x0C\\x0E\\x18\\x1B\\x0F', 0),  # +gamma\n    (0xE1, b'\\x00\\x17\\x1A\\x04\\x0E\\x06\\x2F\\x45\\x43\\x02\\x0A\\x09\\x32\\x36\\x0F', 0),  # -gamma\n    (0x11, b'', 120),                 # Sleep out: wait 120 ms (datasheet 5.2.12)\n    (0x29, b'', 0),                   # Display on\n)\n\n\nclass ILI9488:\n    # MADCTL (36h) from the vendor code for this panel, BGR bit set.\n    # rotation 0/2 portrait 320x480, 1/3 landscape 480x320 (MV set).\n    _MADCTL = (0x08, 0x68, 0xC8, 0xA8)\n\n    def __init__(self, spi, dc, cs, rst=None, rotation=0):\n        self.spi = spi\n        self.dc = Pin(dc, Pin.OUT, value=1)\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        if rst is not None:\n            self.rst = Pin(rst, Pin.OUT, value=1)\n            time.sleep_ms(5)\n            self.rst(0)\n            time.sleep_ms(10)         # tRW >= 10 us\n            self.rst(1)\n            time.sleep_ms(120)        # 5 ms register load; 120 ms before Sleep Out\n        self._cmd(0x01)               # software reset\n        time.sleep_ms(120)            # >= 5 ms; 120 ms before Sleep Out\n        for c, a, d in _INIT:\n            self._cmd(c, a)\n            if d:\n                time.sleep_ms(d)\n        self.rotation(rotation)\n\n    def _cmd(self, c, data=b''):\n        self.cs(0)\n        self.dc(0)                    # D/CX low = command\n        self.spi.write(bytes([c]))\n        if data:\n            self.dc(1)                # D/CX high = parameter / pixel data\n            self.spi.write(data)\n        self.cs(1)\n\n    def rotation(self, r):\n        r &= 3\n        self.width, self.height = (320, 480) if r in (0, 2) else (480, 320)\n        self._cmd(0x36, bytes([self._MADCTL[r]]))\n\n    def _window(self, x, y, w, h):\n        x1, y1 = x + w - 1, y + h - 1\n        self._cmd(0x2A, bytes([x >> 8, x & 255, x1 >> 8, x1 & 255]))\n        self._cmd(0x2B, bytes([y >> 8, y & 255, y1 >> 8, y1 & 255]))\n\n    def blit666(self, buf, x, y, w, h):\n        \"\"\"Write w*h pixels of 3 bytes (R, G, B, 6 bits each in bits 7..2) at (x, y).\"\"\"\n        self._window(x, y, w, h)\n        self._cmd(0x2C, buf)\n\n    def fill_rect(self, x, y, w, h, colour):\n        self._window(x, y, w, h)\n        line = _666(colour) * w\n        self.cs(0)\n        self.dc(0)\n        self.spi.write(b'\\x2C')\n        self.dc(1)\n        for _ in range(h):\n            self.spi.write(line)\n        self.cs(1)\n\n    def fill(self, colour):\n        self.fill_rect(0, 0, self.width, self.height, colour)\n\n    def pixel(self, x, y, colour):\n        self.blit666(_666(colour), x, y, 1, 1)\n\n    def text(self, s, x, y, colour=WHITE, bg=BLACK):\n        \"\"\"8x8 font text, expanded to 18-bit pixels.\"\"\"\n        w = 8 * len(s)\n        mono = bytearray(w)            # w x 8 bits, MONO_HLSB\n        fb = framebuf.FrameBuffer(mono, w, 8, framebuf.MONO_HLSB)\n        fb.text(s, 0, 0, 1)\n        fg, bk = _666(colour), _666(bg)\n        buf = bytearray(w * 8 * 3)\n        i = 0\n        for yy in range(8):\n            for xx in range(w):\n                buf[i:i + 3] = fg if fb.pixel(xx, yy) else bk\n                i += 3\n        self.blit666(buf, x, y, w, 8)\n\n    def off(self):\n        self._cmd(0x28)\n\n    def on(self):\n        self._cmd(0x29)\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom ili9488 import ILI9488, BLACK, WHITE, YELLOW\n\nPin({LED}, Pin.OUT, value=1)  # backlight on\nspi = SPI(1, baudrate=20000000, sck=Pin({SCK}), mosi=Pin({SDI_MOSI_}), miso=Pin({SDO_MISO_}))\ntft = ILI9488(spi, dc={DC_RS}, cs={CS}, rst={RESET})\ntft.fill_rect(0, 0, 320, 80, BLACK)\ntft.text('HELLO ILI9488', 20, 40, WHITE)\ntft.text('480x320', 20, 60, YELLOW)\nprint('drawn')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "draws-text",
+      "title": "Draws text on the screen",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "drawn",
+          "within": 5000
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "HELLO ILI9488",
+          "within": 6000
+        }
+      ]
+    }
+  },
+  "sources": [
+    "https://www.lcdwiki.com/3.5inch_SPI_Module_ILI9488_SKU:MSP3520",
+    "https://www.lcdwiki.com/res/MSP3520/3.5inch_SPI_Module_MSP3520_User_Manual_EN.pdf",
+    "https://www.lcdwiki.com/res/MSP3520/3.5寸SPI模块原理图.pdf",
+    "https://www.lcdwiki.com/res/MSP3520/ILI9488%20Data%20Sheet.pdf",
+    "https://www.displayfuture.com/Display/datasheet/controller/ILI9488.pdf",
+    "https://www.lcdwiki.com/res/Program/Common_SPI/3.5inch/SPI_ILI9488_MSP3520_V1.1/3.5inch_SPI_Module_ILI9488_MSP3520_V1.1.zip"
+  ],
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:46:06.257Z",
+    "verifiedSources": [
+      "https://www.lcdwiki.com/3.5inch_SPI_Module_ILI9488_SKU:MSP3521",
+      "https://www.hpinfotech.ro/ILI9488.pdf"
+    ]
+  }
+}

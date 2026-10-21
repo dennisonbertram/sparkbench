@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "uart-device",
+  "board": "Goouuu Tech GT-U7 GPS module breakout (5-pin VCC/GND/RXD/TXD/PPS, micro-USB, IPEX antenna; sold by MakerFocus and others as NEO-6M compatible)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator NMEA GGA/RMC test, circuit board). The header order VCC, GND, RXD, TXD, PPS comes from the board's back silkscreen photo, which reads PPS TXD RXD GND VCC on the flipped board, and it matches the ShillehTek manual. The driver decodes standard u-blox 6 NMEA at 9600 8N1 and checks each sentence's checksum.",
+  "datasheetUrl": "https://images-na.ssl-images-amazon.com/images/I/91tuvtrO2jL.pdf",
+  "breakoutPinoutSource": "https://forum.fritzing.org/uploads/default/original/3X/b/c/bc95e5fd6079efa37e75f024c2cc975898c9a753.jpeg (vendor photo, back silkscreen) + https://shillehtek.com/blogs/shillehtek-product-manuals/gt-u7-gps-module-presoldered-1-manual",
+  "checkRuns": 1
+}

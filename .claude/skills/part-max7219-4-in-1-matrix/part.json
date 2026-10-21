@@ -1,0 +1,150 @@
+{
+  "type": "custom-max7219-4-in-1-matrix",
+  "name": "MAX7219 4-in-1 32x8 LED dot matrix",
+  "mpn": "MAX7219",
+  "category": "display",
+  "description": "Four red 8x8 LED matrices side by side (32x8 pixels), each driven by its own Maxim MAX7219 LED driver; the four chips are daisy-chained DOUT to DIN, so the whole strip is written over one write-only SPI-style serial bus (DIN, CLK, LOAD/CS), up to 10 MHz, with 16 brightness steps. Runs on 4.0-5.5 V and can draw about 1.3 A with every LED on at full brightness. Sold as: MAX7219 4-in-1 32x8 dot matrix module, FC-16 type (four 32 mm matrices on one 128x32 mm board, input header VCC, GND, DIN, CS, CLK on the right edge; output header VCC, GND, DOUT, CS, CLK on the left edge for chaining).",
+  "eli5": "A long strip of 256 red lights in 8 rows that can show scrolling words, numbers or little pictures.",
+  "refPrefix": "DS",
+  "interface": "spi",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 4.0-5.5 V (use 5 V). Up to about 1.3 A with all LEDs on at full brightness, so feed it from a separate 5 V supply sharing GND with the board",
+      "required": true,
+      "supply": {
+        "vmin": 4,
+        "vmax": 5.5,
+        "currentMa": 1320
+      }
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground, shared with the microcontroller and the 5 V supply",
+      "required": true
+    },
+    {
+      "name": "DIN",
+      "role": "io",
+      "fn": "spi.mosi",
+      "description": "Serial data in (MOSI) to the rightmost MAX7219, sampled on CLK rising edge, MSB first",
+      "required": true
+    },
+    {
+      "name": "CS",
+      "role": "io",
+      "fn": "spi.cs",
+      "description": "LOAD / chip select for all four chips: hold low while sending, rising edge latches each chip's last 16 bits",
+      "required": true
+    },
+    {
+      "name": "CLK",
+      "role": "io",
+      "fn": "spi.sck",
+      "description": "Serial clock (SCK), up to 10 MHz",
+      "required": true
+    }
+  ],
+  "vmin": 4,
+  "vmax": 5.5,
+  "currentMa": 1320,
+  "datasheetUrl": "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX7219-MAX7221.pdf",
+  "priceUsd": 5,
+  "supplierQuery": "MAX7219 4 in 1 dot matrix module FC-16 32x8",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Wire the INPUT header (the edge with DIN, on the right when the text reads left to right). The other edge has DOUT and only feeds another module.",
+    "Power VCC from a separate 5 V supply of at least 1.5 A and join its GND to the board's GND: the datasheet gives 330 mA per MAX7219 with all segments on at 40 mA (RSET about 10 kOhm on FC-16 boards), so four chips can draw about 1.3 A. From a USB board's 5 V pin, keep brightness at 0-3 and avoid lighting most of the LEDs at once.",
+    "With VCC at 5 V the MAX7219's logic-high threshold (VIH) is 3.5 V. 3.3 V GPIO usually works with short leads, but a 74HCT125 or similar 5 V buffer on DIN, CS and CLK makes it certain.",
+    "Add 10 uF and 0.1 uF capacitors across VCC and GND at the module, as the datasheet recommends, to keep the multiplexing current spikes off the supply.",
+    "The chips power up in shutdown with a one-row scan limit and minimum brightness: the driver sets display test 0, scan limit 7, decode mode 0 and intensity, then leaves shutdown (register 0x0C = 1).",
+    "Every write sends one 16-bit frame per chip (4 frames) inside one CS-low burst; the first frame ends up in the leftmost block, because DIN enters the rightmost one."
+  ],
+  "keywords": [
+    "max7219",
+    "4-in-1",
+    "4 in 1",
+    "32x8",
+    "dot matrix",
+    "led matrix",
+    "fc-16",
+    "fc16",
+    "scrolling text",
+    "led display"
+  ],
+  "sources": [
+    "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX7219-MAX7221.pdf",
+    "https://cdn-shop.adafruit.com/datasheets/MAX7219.pdf",
+    "https://lastminuteengineers.com/max7219-dot-matrix-arduino-tutorial/",
+    "https://majicdesigns.github.io/MD_MAX72XX/page_f_c16.html"
+  ],
+  "sim": {
+    "kind": "segment-display",
+    "protocol": "max7219",
+    "matrix": true,
+    "count": 4
+  },
+  "driver": {
+    "filename": "max7219.py",
+    "code": "# MAX7219 4-in-1 32x8 LED dot matrix (FC-16 module), MicroPython driver.\n# From the Maxim/Analog Devices MAX7219 datasheet: 16-bit frames (D15..D8 address, D11..D8 used,\n# D7..D0 data) shifted MSB first on CLK rising edge (SPI mode 0, <= 10 MHz) and latched on the\n# rising edge of LOAD (the CS pin). The four chips are cascaded DOUT -> DIN: during one LOAD-low\n# burst the first frame sent ends up in the LAST chip of the chain. On the FC-16 module DIN enters\n# the rightmost 8x8 block, so the leftmost block's frame is sent first.\n# Power-up state (datasheet): shutdown, scan limit 0 (one row), no decode, minimum intensity,\n# display test off.\nfrom machine import Pin\nimport framebuf\n\n_NOOP = 0x00\n_DIGIT0 = 0x01       # digit registers 0x01..0x08 = rows 0..7 (top to bottom on FC-16)\n_DECODEMODE = 0x09\n_INTENSITY = 0x0A\n_SCANLIMIT = 0x0B\n_SHUTDOWN = 0x0C\n_DISPLAYTEST = 0x0F\n\n\nclass Matrix(framebuf.FrameBuffer):\n    \"\"\"32x8 (8*num x 8) framebuffer. x = 0 is the left edge, y = 0 the top row.\n    Use fill(), pixel(), text(), scroll() etc. from framebuf, then show().\"\"\"\n\n    def __init__(self, spi, cs, num=4, brightness=1):\n        # spi: machine.SPI(polarity=0, phase=0, baudrate <= 10_000_000); cs: GPIO number of CS/LOAD.\n        self.spi = spi\n        self.cs = Pin(cs, Pin.OUT, value=1)\n        self.num = num\n        self.buffer = bytearray(8 * num)\n        # MONO_HLSB: byte (y * num + m) holds columns 8m..8m+7 of row y, bit 7 = leftmost pixel,\n        # which is exactly one MAX7219 digit register on an FC-16 block (bit 7 = left column).\n        super().__init__(self.buffer, 8 * num, 8, framebuf.MONO_HLSB)\n        self._frame = bytearray(2 * num)\n        self._all(_DISPLAYTEST, 0)   # normal operation\n        self._all(_SCANLIMIT, 7)     # scan digits 0..7 = all 8 rows\n        self._all(_DECODEMODE, 0)    # raw bits, no Code-B decode\n        self.brightness(brightness)\n        self.fill(0)\n        self.show()\n        self._all(_SHUTDOWN, 1)      # leave shutdown: display on\n\n    def _send(self):\n        self.cs(0)\n        self.spi.write(self._frame)\n        self.cs(1)                   # LOAD rising edge latches all chips at once\n\n    def _all(self, reg, val):\n        f = self._frame\n        for m in range(self.num):\n            f[2 * m] = reg\n            f[2 * m + 1] = val\n        self._send()\n\n    def brightness(self, level):\n        \"\"\"0 (1/32 duty, dimmest) .. 15 (31/32 duty). Keep low on USB power: 4 chips at 15 with\n        every LED on draw about 1.3 A.\"\"\"\n        self._all(_INTENSITY, max(0, min(15, level)))\n\n    def power(self, on):\n        \"\"\"True = normal operation, False = shutdown (dark, display data kept).\"\"\"\n        self._all(_SHUTDOWN, 1 if on else 0)\n\n    def show(self):\n        f = self._frame\n        n = self.num\n        for y in range(8):\n            # Frame 0 travels furthest: it lands in the leftmost block (m = 0).\n            for m in range(n):\n                f[2 * m] = _DIGIT0 + y\n                f[2 * m + 1] = self.buffer[y * n + m]\n            self._send()\n"
+  },
+  "example": {
+    "code": "from machine import Pin, SPI\nimport time\nfrom max7219 import Matrix\n\nspi = SPI(1, baudrate=1000000, polarity=0, phase=0, sck=Pin({CLK}), mosi=Pin({DIN}))\ntime.sleep(1)\nd = Matrix(spi, {CS}, 4)\nd.text('AB12', 0, 0, 1)\nd.show()\nprint('text shown')\ntime.sleep(4)\nd.power(False)\nprint('display off')\nwhile True:\n    time.sleep(1)\n",
+    "test": {
+      "id": "text-then-off",
+      "title": "Shows AB12 across the four blocks, then shuts the display down",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 800
+        },
+        {
+          "kind": "expect",
+          "what": "screen",
+          "part": "{REF}",
+          "text": "AB12",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "text shown",
+          "within": 3000
+        },
+        {
+          "kind": "wait",
+          "ms": 2500
+        },
+        {
+          "kind": "expect",
+          "what": "pixels",
+          "part": "{REF}",
+          "on": false,
+          "within": 4000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "display off",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:45:56.147Z",
+    "verifiedSources": [
+      "https://www.analog.com/media/en/technical-documentation/data-sheets/MAX7219-MAX7221.pdf",
+      "https://lastminuteengineers.com/max7219-dot-matrix-arduino-tutorial/"
+    ]
+  }
+}

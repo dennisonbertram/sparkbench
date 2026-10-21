@@ -1,0 +1,118 @@
+{
+  "type": "custom-grove-temperature-sensor-v1-2",
+  "name": "Grove - Temperature Sensor v1.2",
+  "mpn": "101020015",
+  "category": "sensor",
+  "description": "Analog temperature module: a Murata NCP18WF104F03RC NTC thermistor (100 kΩ ±1 % at 25 °C, B25/50 = 4250 K) in a voltage divider with a fixed 100 kΩ resistor (VCC → NTC → node → 100 kΩ → GND), buffered onto SIG by an LMV358 op-amp follower. SIG sits at half the supply at 25 °C and rises as it gets warmer; convert with the divider and B-constant equations. Range −40 to +125 °C, ±1.5 °C, runs on 3.3–5 V. Sold as: Seeed Studio Grove - Temperature Sensor v1.2 (SKU 101020015, blue Grove board, 4-pin Grove connector SIG, NC, VCC, GND).",
+  "eli5": "A tiny chip whose resistance drops as it warms up. The board turns that into a voltage on its SIG pin that goes up when it gets warmer, and a little maths turns the voltage into degrees.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Signal (Grove pin 1, yellow wire): buffered divider output, VCC × 100 kΩ / (100 kΩ + R_ntc). Half the supply at 25 °C, higher when warmer. Connect to an ADC pin.",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (Grove pin 2, white wire).",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3–5 V (Grove pin 3, red wire). Use 3.3 V with an ESP32, Pico or Raspberry Pi so SIG stays below 3.3 V.",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black wire).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 0.5,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove-Temperature_Sensor_V1.2/res/NCP18WF104F03RC.pdf",
+  "sources": [
+    "https://wiki.seeedstudio.com/Grove-Temperature_Sensor_V1.2/",
+    "https://files.seeedstudio.com/wiki/Grove-Temperature_Sensor_V1.2/res/Grove_-_Temperature_sensor_v1.1.pdf",
+    "https://files.seeedstudio.com/wiki/Grove-Temperature_Sensor_V1.2/img/Grove_Temperature_Sensor_View.jpg",
+    "https://files.seeedstudio.com/wiki/Grove-Temperature_Sensor_V1.2/res/NCP18WF104F03RC.pdf",
+    "https://www.seeedstudio.com/Grove-Temperature-Sensor-p-774.html"
+  ],
+  "priceUsd": 3.1,
+  "supplierQuery": "Seeed Grove Temperature Sensor v1.2 101020015",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Grove connector order as printed on the board: SIG, NC, VCC, GND (yellow, white, red, black wires).",
+    "The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Power VCC from 3.3 V on an ESP32, Pico or Raspberry Pi: SIG rises towards the supply voltage when the sensor is hot.",
+    "Temperature: R_ntc = 100 kΩ × (Vcc / V − 1), then 1/T(K) = 1/298.15 + ln(R_ntc/100 kΩ)/4250. At 25 °C SIG reads half the supply.",
+    "This is a 100 kΩ thermistor with the NTC on the VCC side: KY-013 (10 kΩ, NTC on the GND side) code gives wrong, backwards readings.",
+    "On the ESP32 use an ADC1 pin (GPIO32–39) and average many samples; the Raspberry Pi has no ADC, so use a Grove Base Hat or an ADS1115."
+  ],
+  "keywords": [
+    "grove",
+    "seeed",
+    "temperature",
+    "thermistor",
+    "ntc",
+    "ncp18wf104",
+    "100k",
+    "4250",
+    "analog",
+    "101020015"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "SIG voltage (rises with temperature)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 1.65,
+    "vAtMin": 0,
+    "vAtMax": 3.3
+  },
+  "driver": {
+    "filename": "grove_temp.py",
+    "code": "# Seeed Grove - Temperature Sensor v1.2 (Murata NCP18WF104F03RC NTC thermistor), MicroPython driver.\n# Circuit (Seeed schematic v1.1/v1.2): VCC -- NTC (100 kOhm @ 25 degC) -- node -- R1 100 kOhm 1% -- GND,\n# and the node is buffered onto SIG by an LMV358 op-amp voltage follower. So\n#   V_SIG = Vcc * R1 / (R1 + R_ntc)   ->   R_ntc = R1 * (Vcc / V_SIG - 1)\n# Temperature from the thermistor's B-constant equation (Murata: R25 = 100 kOhm, B25/50 = 4250 K):\n#   1 / T(K) = 1 / 298.15 + ln(R_ntc / R25) / B\n# Warmer = lower NTC resistance = HIGHER voltage on SIG. At 25 degC SIG sits at half the supply.\nimport math\nfrom machine import ADC, Pin\n\n\nclass GroveTemp:\n    R1 = 100000.0      # ohms, fixed resistor from the divider node to GND\n    R25 = 100000.0     # ohms, NCP18WF104F03RC at 25 degC\n    BETA = 4250.0      # K, B25/50 (Murata NCP18WF104, datasheet); Seeed's Arduino demo uses 4275\n    T25 = 298.15       # K\n\n    def __init__(self, pin, vcc=3.3, samples=32, vref=3.3, beta=BETA):\n        \"\"\"pin: GPIO number (or Pin) wired to SIG. vcc: the voltage on the module's VCC pin.\n        vref: ADC full scale in volts, used when read_uv() is not available (e.g. Pico).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.samples = samples\n        self.vref = vref\n        self.beta = beta\n\n    def voltage(self):\n        \"\"\"Averaged voltage on SIG in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def resistance(self):\n        \"\"\"Thermistor resistance in ohms, from the divider equation.\"\"\"\n        v = self.voltage()\n        if v <= 0:\n            return float('inf')  # thermistor open, or SIG not connected\n        if v >= self.vcc:\n            return 0.0  # thermistor shorted (or far above 125 degC)\n        return self.R1 * (self.vcc / v - 1)\n\n    def temperature(self):\n        \"\"\"Temperature in degC from the B-constant equation.\"\"\"\n        r = self.resistance()\n        if r <= 0 or r == float('inf'):\n            raise ValueError('Grove temp: SIG reads 0 V or full supply, check the wiring')\n        inv_t = 1 / self.T25 + math.log(r / self.R25) / self.beta\n        return 1 / inv_t - 273.15\n"
+  },
+  "skill": "---\nname: part-grove-temperature-sensor-v1-2\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Temperature Sensor v1.2 (Murata NCP18WF104F03RC 100 kΩ NTC thermistor, B 4250 K, in a 100 kΩ divider with an op-amp buffer). Use when designing, wiring, simulating or writing code for a Grove Temperature Sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Temperature Sensor v1.2 (Seeed 101020015)\n\n## Overview\nThe **Seeed Studio Grove - Temperature Sensor v1.2** (SKU 101020015) is a small blue Grove board with a 4-pin Grove connector. It carries a **Murata NCP18WF104F03RC** SMD NTC thermistor (100 kΩ ±1 % at 25 °C, B25/50 = 4250 K) and a fixed **100 kΩ 1 %** resistor wired as a voltage divider, buffered by an **LMV358** op-amp voltage follower.\n- Circuit (Seeed schematic): **VCC → NTC → node → 100 kΩ → GND**, node → op-amp follower → **SIG**\n- Warmer = lower NTC resistance = **higher voltage on SIG**. At 25 °C, SIG sits at half the supply.\n- Range: −40 °C to +125 °C, about ±1.5 °C (Seeed); the response is **not linear**.\n\n## Pinout (Grove connector, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | SIG | Buffered divider output (yellow wire), connect to an ADC pin |\n| 2 | NC | Not connected (white wire) |\n| 3 | VCC | Supply, 3.3–5 V (red wire) |\n| 4 | GND | Ground (black wire) |\n\nThe connector is a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable (or a Grove shield) to reach a breadboard.\n\n## Electrical limits\n- Supply: **3.3–5 V** (Seeed). The divider draws Vcc / (100 kΩ + R_ntc), about 17 µA at 25 °C on 3.3 V; the LMV358 adds roughly 0.2 mA.\n- SIG swings between 0 V and the supply. **On an ESP32, Pico or Raspberry Pi, power VCC from 3.3 V** so SIG can never go above 3.3 V (it rises towards VCC when hot).\n- Self-heating is negligible: the thermistor sees at most ~25 µW (dissipation constant 1 mW/°C).\n\n## Interface details\nFrom the Seeed schematic and the Murata NCP18WF104 datasheet:\n```\nR_ntc = 100 kΩ × (Vcc / V_SIG − 1)\n1 / T(K) = 1 / 298.15 + ln(R_ntc / 100 kΩ) / 4250\nT(°C) = T(K) − 273.15\n```\nSeeed's Arduino demo writes the same thing with ADC counts: `R = R0 × (1023 / a − 1)` and uses B = 4275 K (the middle of the \"4250–4299 K\" range on the wiki); the difference is about 0.3 °C near room temperature. The driver takes `beta=` if you prefer 4275.\nExamples at Vcc = 3.3 V: 1.65 V = 25 °C, 2.20 V ≈ 40.2 °C (R = 50 kΩ), 1.20 V ≈ 13.7 °C (R = 175 kΩ), 2.50 V ≈ 50.9 °C (R = 32 kΩ).\nThe result is ratiometric: use the actual voltage on VCC as Vcc.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| VCC (red) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| GND (black) | GND | GND | GND (pin 6) |\n| SIG (yellow) | GPIO32–39 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (e.g. Grove Base Hat A0 or ADS1115) |\n| NC (white) | — | — | — |\n\nOn the ESP32 use ADC1 pins (ADC2 does not work while Wi-Fi is on). The Raspberry Pi has no ADC.\n\n## Using the driver\n```python\nfrom grove_temp import GroveTemp\nimport time\nsensor = GroveTemp(26)        # GPIO number of the ADC pin SIG is wired to; vcc=3.3 by default\nwhile True:\n    print('T=%.1fC' % sensor.temperature())\n    time.sleep(1)\n```\n`voltage()` averages 32 samples (`read_uv()` on ESP32, else `read_u16()` × 3.3 V / 65535), `resistance()` gives the NTC resistance in Ω, `temperature()` the temperature in °C. If the module runs from 5 V into a 5 V-capable ADC, pass `vcc=5.0`.\n\n## Gotchas\n- **Formula direction**: this board has the thermistor on the VCC side, the opposite of the KY-013. SIG goes *up* when warm. Using a KY-013 formula gives readings that fall when you warm it.\n- **5 V supply + 3.3 V board** can put up to 5 V on the ADC pin when it is hot. Use 3.3 V.\n- **Wrong B / R0**: this is a 100 kΩ thermistor, not 10 kΩ. Using 10 kΩ / 3950 K constants gives nonsense.\n- **ESP32 ADC** is nonlinear near 0 V and near the top, so very cold (SIG < 0.15 V, below about −35 °C) and very hot readings are poor without calibration.\n- Older v1.0 boards use a different thermistor (B = 3975 K, 10 kΩ); this driver is for v1.1 / v1.2.\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove-Temperature_Sensor_V1.2/res/NCP18WF104F03RC.pdf (Murata NTC thermistor catalogue). Schematic: https://files.seeedstudio.com/wiki/Grove-Temperature_Sensor_V1.2/res/Grove_-_Temperature_sensor_v1.1.pdf. Module documentation: https://wiki.seeedstudio.com/Grove-Temperature_Sensor_V1.2/\n",
+  "example": {
+    "code": "from grove_temp import GroveTemp\nimport time\n\nsensor = GroveTemp({SIG})\nwhile True:\n    print('T=%.0fC' % sensor.temperature())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Converts the SIG voltage set on the slider to temperature (2.20 V on 3.3 V = 40 °C)",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 2.2
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=40C",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:48:05.260Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Temperature_Sensor_V1.2/",
+      "https://files.seeedstudio.com/wiki/Grove-Temperature_Sensor_V1.2/res/NCP18WF104F03RC.pdf"
+    ]
+  }
+}

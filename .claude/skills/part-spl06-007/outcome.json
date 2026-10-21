@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-spl06-007",
+  "board": "Jaycar / Duinotech XC3702 Barometric Pressure Sensor Module (SPL06-007, 4-pin VIN GND SCL SDA, I2C 0x76)",
+  "reason": "Check passed on ESP32 and Pico (spec, wiring, design checks, breadboard, simulator, circuit board, footprint). The driver follows the Goertek datasheet: soft reset, COEF/SENSOR ready wait, table 10 coefficient decoding, table 4 scale factors, TMP_EXT=1, P_SHIFT above 8x, command-mode reads and the sec. 5.6 compensation formulas. The sim encodes the raw values with those same formulas.",
+  "datasheetUrl": "https://raw.githubusercontent.com/rv701/SPL06-007/master/datasheets/1912111437_Goertek-SPL06-007_C233787.pdf",
+  "breakoutPinoutSource": "Jaycar XC3702 manual wiring figure (header labels VIN GND SCL SDA), reproduced at https://github.com/user-attachments/assets/c990593b-9e0a-47b2-b5e5-ef08e4122ff4 via the OtagoPolytechnic/Hardware-projects weather-station wiki; board photo at https://media.jaycar.com.au/product/images/XC3702_duinotech-arduino-compatible-barometric-pressure-sensor_81595.jpg; 0x76 address from https://community.home-assistant.io/t/barometric-pressure-sensor-module-invalid-temperature/362518",
+  "checkRuns": 1
+}

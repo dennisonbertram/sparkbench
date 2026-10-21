@@ -1,0 +1,181 @@
+{
+  "type": "custom-l76k",
+  "name": "L76K GNSS module",
+  "mpn": "L76K",
+  "category": "sensor",
+  "description": "Quectel L76K multi-GNSS receiver (GPS, BeiDou, GLONASS, QZSS) that streams NMEA 0183 sentences (position, altitude, speed, UTC time) over a UART at 9600 baud 8N1, once per second (up to 5 Hz); talker GN for a multi-system fix, configured with CASIC $PCAS sentences. The L76K itself runs on 2.7-3.4 V; the breakout's RT9193 3.3 V regulator lets it run from 3.3-5 V, but its TX/RX are 3.3 V logic. Sold as: Waveshare L76K GPS Module (SKU 23721, 5-pin VCC, GND, TX, RX, PPS) with IPEX active antenna, MS621FE backup battery and PPS LED.",
+  "eli5": "Listens to GPS, BeiDou and GLONASS satellites and tells your board where on Earth it is, once a second.",
+  "refPrefix": "U",
+  "interface": "uart",
+  "pins": [
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply, 3.3-5 V (on-board RT9193-33 regulator feeds the 2.7-3.4 V L76K)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "TX",
+      "role": "io",
+      "fn": "uart.tx",
+      "description": "Module serial output, NMEA at 9600 baud 8N1, 3.3 V logic: connect to the board's UART RX",
+      "required": true
+    },
+    {
+      "name": "RX",
+      "role": "io",
+      "fn": "uart.rx",
+      "description": "Module serial input (3.3 V logic, max VCC + 0.3 V, not 5 V tolerant): connect to the board's UART TX. Only needed to send $PCAS settings",
+      "required": false
+    },
+    {
+      "name": "PPS",
+      "role": "io",
+      "description": "1PPS time pulse output (drives the on-board PPS LED), aligned to UTC once there is a fix. Optional",
+      "required": false
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 41,
+  "datasheetUrl": "https://files.waveshare.com/upload/d/db/Quectel_L76K_Hardware_Design_V1.0.pdf",
+  "priceUsd": 10,
+  "supplierQuery": "Waveshare L76K GPS module",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "buildNotes": [
+    "Cross the serial lines: module TX goes to the board's UART RX pin; module RX (optional) to the board's UART TX pin.",
+    "Default is 9600 baud, 8 data bits, no parity, 1 stop bit, no flow control; open the UART at 9600 or the sentences come out as garbage.",
+    "TX/RX are 3.3 V logic (L76K inputs are rated to VCC + 0.3 V). ESP32 and Pico are 3.3 V, so wire them directly; use a level shifter with a 5 V Arduino.",
+    "Plug the active antenna into the IPEX socket and give it a view of the sky. A cold start takes about 30 s outdoors; indoors it may never get a fix.",
+    "With several constellations the sentences start $GNGGA / $GNRMC, not $GPGGA, so parse the sentence type after the 2-letter talker.",
+    "Settings are $PCAS sentences ($PCAS01 baud, $PCAS02 fix rate, $PCAS04 constellations, $PCAS10 restart); the L76K ignores $PMTK commands.",
+    "Supply current is about 30-40 mA with the active antenna (L76K VCC must be able to deliver 100 mA); power it from the board's 3V3 or 5V pin, not a GPIO."
+  ],
+  "keywords": [
+    "l76k",
+    "quectel",
+    "l76k gps",
+    "gnss",
+    "gps",
+    "beidou",
+    "glonass",
+    "nmea",
+    "location",
+    "waveshare l76k"
+  ],
+  "sources": [
+    "https://files.waveshare.com/upload/d/db/Quectel_L76K_Hardware_Design_V1.0.pdf",
+    "https://www.waveshare.com/wiki/L76K_GPS_Module",
+    "https://www.waveshare.com/l76k-gps-module.htm",
+    "https://files.waveshare.com/upload/d/df/L76X_GPS_Module_SchDoc.pdf",
+    "https://www.quectel.com/cn/product/gnss-l76k",
+    "https://forums.quectel.com/t/l76k-without-battery-backup/45957",
+    "https://espruino.com/files/CASIC_en.pdf"
+  ],
+  "sim": {
+    "kind": "uart-device",
+    "uartBaud": 9600,
+    "quantity": "Latitude",
+    "unit": "°",
+    "min": -90,
+    "max": 90,
+    "default": 51.5,
+    "controls": [
+      {
+        "key": "lat",
+        "quantity": "Latitude",
+        "unit": "°",
+        "min": -90,
+        "max": 90,
+        "default": 51.5
+      },
+      {
+        "key": "lon",
+        "quantity": "Longitude",
+        "unit": "°",
+        "min": -180,
+        "max": 180,
+        "default": -0.12
+      },
+      {
+        "key": "alt",
+        "quantity": "Altitude above sea level",
+        "unit": "m",
+        "min": -100,
+        "max": 18000,
+        "default": 20
+      },
+      {
+        "key": "speed",
+        "quantity": "Speed over ground",
+        "unit": "knots",
+        "min": 0,
+        "max": 1000,
+        "default": 0
+      }
+    ],
+    "uartStream": {
+      "everyMs": 1000,
+      "nmea": true
+    }
+  },
+  "driver": {
+    "filename": "l76k.py",
+    "code": "# Quectel L76K multi-GNSS receiver (GPS, BeiDou, GLONASS, QZSS), MicroPython NMEA driver.\n# Per the Quectel L76K Hardware Design (V1.0, section 4.1.1.1) the module has one UART for NMEA output\n# and command input, 9600 baud 8N1 by default (9600/19200/38400/57600/115200 supported), no flow control,\n# 1 Hz updates (max 5 Hz). It speaks NMEA 0183 plus the CASIC proprietary $PCAS sentences (the L76K does\n# NOT accept $PMTK commands):\n#   - talker GP (GPS), BD (BeiDou), GL (GLONASS) or GN (several systems combined), so a multi-system\n#     fix normally arrives as $GNGGA / $GNRMC;\n#   - latitude ddmm.mmmmm, longitude dddmm.mmmmm (degrees then minutes);\n#   - checksum = XOR of every character between '$' and '*', two hex digits.\n\n\ndef _xor(body):\n    cs = 0\n    for c in body:\n        cs ^= ord(c)\n    return cs\n\n\ndef _checksum_ok(line):\n    # line: str without CR/LF, starting with '$'\n    star = line.rfind('*')\n    if line[:1] != '$' or star < 0 or len(line) < star + 3:\n        return False\n    try:\n        return _xor(line[1:star]) == int(line[star + 1:star + 3], 16)\n    except ValueError:\n        return False\n\n\ndef _deg(field, hemi, dlen):\n    # 'ddmm.mmmmm' (dlen=2) or 'dddmm.mmmmm' (dlen=3) -> signed decimal degrees, None if empty\n    if not field or not hemi:\n        return None\n    d = int(field[:dlen]) + float(field[dlen:]) / 60\n    return -d if hemi in ('S', 'W') else d\n\n\ndef _num(field):\n    return float(field) if field else None\n\n\nclass L76K:\n    # $PCAS04 constellation modes (CASIC protocol): bit0 GPS, bit1 BeiDou, bit2 GLONASS.\n    GPS = 1\n    BDS = 2\n    GPS_BDS = 3\n    GLONASS = 4\n    GPS_GLONASS = 5\n    BDS_GLONASS = 6\n    ALL = 7\n    _BAUDS = (4800, 9600, 19200, 38400, 57600, 115200)  # $PCAS01 codes 0..5\n\n    def __init__(self, uart):\n        \"\"\"uart: machine.UART at 9600 baud, rx= the pin wired to the module's TX\n        (and tx= the pin wired to the module's RX if you want to send settings).\"\"\"\n        self.uart = uart\n        self._buf = b''\n        self.fix = False          # True when GGA quality > 0 or RMC status 'A'\n        self.fix_quality = 0      # GGA: 0 invalid, 1 GPS fix, 2 DGPS, 6 dead reckoning\n        self.latitude = None      # decimal degrees, + north\n        self.longitude = None     # decimal degrees, + east\n        self.altitude = None      # metres above mean sea level (GGA)\n        self.satellites = 0       # satellites used (GGA)\n        self.hdop = None\n        self.speed_knots = None   # speed over ground (RMC)\n        self.course = None        # course over ground, degrees true (RMC)\n        self.utc_time = None      # (hh, mm, ss)\n        self.date = None          # (day, month, 2-digit year)\n        self.talker = None        # 'GN', 'GP', 'BD' or 'GL' of the last position sentence\n        self.antenna = None       # 'OK', 'OPEN' or 'SHORT' from $GPTXT antenna messages\n        self.bad_checksums = 0\n\n    # ---- receiving -------------------------------------------------------------------\n    def update(self):\n        \"\"\"Read what has arrived and decode complete sentences. Returns True if a GGA or RMC was decoded.\"\"\"\n        n = self.uart.any()\n        if n:\n            data = self.uart.read(n)\n            if data:\n                self._buf += data\n        got = False\n        while True:\n            nl = self._buf.find(b'\\n')\n            if nl < 0:\n                break\n            line = self._buf[:nl].strip()\n            self._buf = self._buf[nl + 1:]\n            try:\n                line = line.decode()\n            except UnicodeError:  # noise on the line\n                self.bad_checksums += 1\n                continue\n            try:\n                if line and self._parse(line):\n                    got = True\n            except (ValueError, IndexError):  # malformed field\n                pass\n        if len(self._buf) > 512:  # garbage without newlines (wrong baud rate?)\n            self._buf = b''\n        return got\n\n    def _parse(self, line):\n        if not _checksum_ok(line):\n            self.bad_checksums += 1\n            return False\n        f = line[1:line.rfind('*')].split(',')\n        talker, kind = f[0][:2], f[0][2:]\n        if kind == 'GGA' and len(f) >= 10:\n            self.talker = talker\n            self._time(f[1])\n            self.fix_quality = int(f[6]) if f[6] else 0\n            self.fix = self.fix_quality > 0\n            self.satellites = int(f[7]) if f[7] else 0\n            self.hdop = _num(f[8])\n            if self.fix:\n                self.latitude = _deg(f[2], f[3], 2)\n                self.longitude = _deg(f[4], f[5], 3)\n                self.altitude = _num(f[9])\n            return True\n        if kind == 'RMC' and len(f) >= 10:\n            self.talker = talker\n            self._time(f[1])\n            self.fix = f[2] == 'A'\n            if self.fix:\n                self.latitude = _deg(f[3], f[4], 2)\n                self.longitude = _deg(f[5], f[6], 3)\n                self.speed_knots = _num(f[7])\n                self.course = _num(f[8])\n            if len(f[9]) == 6:\n                self.date = (int(f[9][0:2]), int(f[9][2:4]), int(f[9][4:6]))\n            return True\n        if kind == 'TXT' and len(f) >= 5 and f[4].startswith('ANTENNA '):\n            self.antenna = f[4][8:]\n        return False\n\n    def _time(self, t):\n        if len(t) >= 6:\n            self.utc_time = (int(t[0:2]), int(t[2:4]), int(float(t[4:])))\n\n    # ---- configuration ($PCAS sentences; needs the module's RX pin wired) ---------------\n    def send(self, body):\n        \"\"\"Send a sentence; body is the text between '$' and '*', e.g. 'PCAS02,1000'.\"\"\"\n        self.uart.write('$%s*%02X\\r\\n' % (body, _xor(body)))\n\n    def set_update_ms(self, ms):\n        \"\"\"Fix interval: 1000 (1 Hz, default), 500 (2 Hz) or 200 ms (5 Hz, the L76K maximum).\"\"\"\n        if ms not in (1000, 500, 200):\n            raise ValueError('interval must be 1000, 500 or 200 ms')\n        self.send('PCAS02,%d' % ms)\n\n    def set_mode(self, mode):\n        \"\"\"Constellations: L76K.GPS, .BDS, .GPS_BDS, .GLONASS, .GPS_GLONASS, .BDS_GLONASS or .ALL.\"\"\"\n        if not 1 <= mode <= 7:\n            raise ValueError('mode must be 1..7')\n        self.send('PCAS04,%d' % mode)\n\n    def set_baud(self, baud):\n        \"\"\"Change the module's baud rate ($PCAS01). Re-open your UART at the new rate afterwards.\"\"\"\n        self.send('PCAS01,%d' % self._BAUDS.index(baud))\n\n    def restart(self, kind=0):\n        \"\"\"0 hot, 1 warm, 2 cold start, 3 cold start with factory reset ($PCAS10).\"\"\"\n        self.send('PCAS10,%d' % kind)\n"
+  },
+  "example": {
+    "code": "from machine import UART, Pin\nimport time\nfrom l76k import L76K\n\nuart = UART({UART_ID}, baudrate=9600, tx=Pin({RX}), rx=Pin({TX}))\ngps = L76K(uart)\nwhile True:\n    if gps.update():\n        if gps.fix and gps.latitude is not None:\n            print('LAT=%.4f LON=%.4f ALT=%.1fm SPD=%.1fkn' % (gps.latitude, gps.longitude, gps.altitude or 0, gps.speed_knots or 0))\n        else:\n            print('Waiting for fix...')\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "fix",
+      "title": "Reports the position, altitude and speed set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lat",
+          "value": -33.8568
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "lon",
+          "value": 151.2153
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "alt",
+          "value": 58
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "speed",
+          "value": 12.5
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "LAT=-33.8568 LON=151.2153 ALT=58.0m SPD=12.5kn",
+          "within": 4000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:59:28.745Z",
+    "verifiedSources": [
+      "https://files.waveshare.com/upload/d/db/Quectel_L76K_Hardware_Design_V1.0.pdf",
+      "https://www.waveshare.com/wiki/L76K_GPS_Module"
+    ]
+  }
+}

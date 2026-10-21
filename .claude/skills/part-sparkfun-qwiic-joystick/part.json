@@ -1,0 +1,184 @@
+{
+  "type": "custom-sparkfun-qwiic-joystick",
+  "name": "SparkFun Qwiic Joystick",
+  "mpn": "COM-15168",
+  "category": "input",
+  "description": "Analog 2-axis thumb joystick with push button, read over I2C: an ATtiny85 running SparkFun's firmware digitises both axes to 10 bits (0-1023, about 512 at rest) and reports the button state at I2C address 0x20 (changeable in EEPROM). Runs on 3.3 V (Qwiic); the 2.2 kOhm SDA/SCL pull-ups go to its supply. Sold as: SparkFun Qwiic Joystick COM-15168 (two Qwiic connectors plus a 4-pin 0.1\" header: GND, 3V3, SDA, SCL), I2C address 0x20.",
+  "eli5": "A little thumb stick like on a game controller; it tells your board over two wires how far you push it left/right and up/down, and whether you press it down.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "3V3",
+      "role": "power",
+      "description": "Supply, 3.3 V (Qwiic); the on-board I2C pull-ups go to this pin",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kOhm pull-up on board, I2C jumper)",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kOhm pull-up on board, I2C jumper)",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.6,
+  "currentMa": 5,
+  "i2cAddress": 32,
+  "datasheetUrl": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-2586-AVR-8-bit-Microcontroller-ATtiny25-ATtiny45-ATtiny85_Datasheet.pdf",
+  "priceUsd": 11,
+  "supplierQuery": "SparkFun Qwiic Joystick COM-15168",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Read 5 bytes starting at register 0x03: X MSB, X LSB, Y MSB, Y LSB, button. Each axis is the 10-bit ADC reading shifted left 6 bits, so value = ((MSB << 8) | LSB) >> 6.",
+    "Button register 0x07 reads 1 when released and 0 when pressed. Register 0x08 latches 1 after a press until you write 0 to it.",
+    "At rest the stick reads roughly 512 on each axis but rarely exactly; record your own centre and use a dead band (e.g. 450-575). Pushing left raises X, pushing up raises Y (SparkFun's example).",
+    "Power it from 3.3 V: the 2.2 kOhm SDA/SCL pull-ups go to the board's supply, so 5 V would put 5 V on an ESP32/Pico's I2C pins.",
+    "To change the address write 0x13 to register 0x09, then the new address (0x08-0x77) to 0x0A; it is kept in EEPROM. Wait about 30 ms after each write."
+  ],
+  "keywords": [
+    "qwiic joystick",
+    "joystick",
+    "thumb joystick",
+    "com-15168",
+    "sparkfun",
+    "attiny85",
+    "i2c joystick"
+  ],
+  "sources": [
+    "https://www.sparkfun.com/products/15168",
+    "https://learn.sparkfun.com/tutorials/qwiic-joystick-hookup-guide/all",
+    "https://github.com/sparkfun/Qwiic_Joystick/blob/master/Firmware/ATtiny85%20Firmware/Qwiic_Joystick_v26/Qwiic_Joystick_v26.ino",
+    "https://github.com/sparkfun/Qwiic_Joystick/blob/master/Firmware/ATtiny85%20Firmware/Qwiic_Joystick_v26/interrupts.ino",
+    "https://github.com/sparkfun/Qwiic_Joystick/blob/master/Hardware/Qwiic%20Joystick_Eagle/Qwiic%20Joystick.brd",
+    "https://github.com/sparkfun/Qwiic_Joystick/blob/master/Firmware/Python%20Examples/Example%201%20-%20Basic%20Readings/Qwiic_Joystick.py",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Joystick_Arduino_Library/blob/master/src/SparkFun_Qwiic_Joystick_Arduino_Library.cpp",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-2586-AVR-8-bit-Microcontroller-ATtiny25-ATtiny45-ATtiny85_Datasheet.pdf"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Horizontal position (X, 10-bit ADC reading)",
+    "unit": "counts",
+    "min": 0,
+    "max": 1023,
+    "default": 512,
+    "controls": [
+      {
+        "key": "y",
+        "quantity": "Vertical position (Y, 10-bit ADC reading)",
+        "unit": "counts",
+        "min": 0,
+        "max": 1023,
+        "default": 512
+      }
+    ],
+    "registers": {
+      "0x00": 32,
+      "0x01": 2,
+      "0x02": 6,
+      "0x07": 0,
+      "0x08": 0,
+      "0x09": 0,
+      "0x0A": 32
+    },
+    "measures": [
+      {
+        "reg": "0x03",
+        "bytes": 2,
+        "scale": 1,
+        "shift": 6,
+        "control": "value"
+      },
+      {
+        "reg": "0x05",
+        "bytes": 2,
+        "scale": 1,
+        "shift": 6,
+        "control": "y"
+      }
+    ],
+    "inputBits": [
+      {
+        "reg": "0x07",
+        "bit": 0,
+        "control": "button",
+        "label": "Button pressed",
+        "activeLow": true
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_joystick.py",
+    "code": "# SparkFun Qwiic Joystick (COM-15168), MicroPython driver.\n# An ATtiny85 (SparkFun firmware v2.6) reads the thumb joystick's two 10 kOhm pots with its\n# 10-bit ADC and serves a byte register map at I2C address 0x20:\n#   0x00 ID (current I2C address)  0x01/0x02 firmware major/minor\n#   0x03/0x04 X MSB/LSB  0x05/0x06 Y MSB/LSB   (10-bit reading << 6, left-justified)\n#   0x07 button state (1 = released, 0 = pressed; the pin has a pull-up)\n#   0x08 button status (1 = pressed since cleared; write 0 to clear)\n#   0x09 I2C lock (write 0x13 first)  0x0A new I2C address (0x08-0x77, stored in EEPROM)\n# The firmware streams the map from the requested register, so one 5-byte read from 0x03\n# gives X, Y and the button from a single ADC update (as SparkFun's Python example does).\nimport time\n\nADDR = 0x20\n\n\nclass QwiicJoystick:\n    def __init__(self, i2c, addr=ADDR):\n        self.i2c = i2c\n        self.addr = addr\n\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _write(self, reg, val):\n        self.i2c.writeto(self.addr, bytes([reg, val]))\n        time.sleep_ms(30)  # the firmware may write EEPROM; SparkFun's library waits 30 ms\n\n    def version(self):\n        d = self._read(0x01, 2)\n        return d[0], d[1]\n\n    def read(self):\n        \"\"\"Return (x, y, pressed): x and y are 0-1023 (about 512 at rest), pressed is True/False.\"\"\"\n        d = self._read(0x03, 5)\n        x = ((d[0] << 8) | d[1]) >> 6\n        y = ((d[2] << 8) | d[3]) >> 6\n        return x, y, d[4] == 0\n\n    def horizontal(self):\n        return self.read()[0]\n\n    def vertical(self):\n        return self.read()[1]\n\n    def pressed(self):\n        return self.read()[2]\n\n    def clicked(self):\n        \"\"\"True if the button was pressed since the last call (reads then clears register 0x08).\"\"\"\n        s = self._read(0x08, 1)[0]\n        self._write(0x08, 0x00)\n        return s == 1\n\n    def set_address(self, new_addr):\n        \"\"\"Store a new I2C address (0x08-0x77) in the joystick's EEPROM.\"\"\"\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._write(0x09, 0x13)\n        self._write(0x0A, new_addr)\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_joystick import QwiicJoystick\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\njoy = QwiicJoystick(i2c)\nwhile True:\n    x, y, pressed = joy.read()\n    print('X=%d Y=%d B=%d' % (x, y, 1 if pressed else 0))\n    time.sleep_ms(200)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the stick position and button set on the controls",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 800
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "y",
+          "value": 200
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=800 Y=200 B=1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "button",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "X=800 Y=200 B=0",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (1 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:50:47.013Z",
+    "verifiedSources": [
+      "https://learn.sparkfun.com/tutorials/qwiic-joystick-hookup-guide/all",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/8/4/7/Breakout_Pins.jpg",
+      "https://github.com/sparkfun/Qwiic_Joystick"
+    ]
+  }
+}

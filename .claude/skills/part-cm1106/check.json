@@ -1,0 +1,79 @@
+{
+  "type": "custom-cm1106",
+  "mpn": "CM1106",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "9 pins, uart"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; Cubic CM1106 NDIR CO2 sensor needs at least 4.75 V, so it is powered from 5 V. U2.TX → RX2 (the board's RX), RX → TX2 (the board's TX). Added the cm1106.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the CO2 concentration set on the slider: passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "50.5×67 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "9 pins, uart"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "4 pins wired; Cubic CM1106 NDIR CO2 sensor needs at least 4.75 V, so it is powered from 5 V. U2.TX → GP1 (the board's RX), RX → GP0 (the board's TX). Added the cm1106.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "7 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Reports the CO2 concentration set on the slider: passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x09_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C20606816 CM1106-SOPTA (483 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T12:43:23.171Z"
+}

@@ -1,0 +1,172 @@
+{
+  "type": "custom-sparkfun-qwiic-button",
+  "name": "SparkFun Qwiic Button (red LED)",
+  "mpn": "BOB-15932",
+  "category": "input",
+  "description": "12 mm tactile push button with a built-in red LED, read over I2C through an ATtiny84 running SparkFun's firmware: it debounces the button, reports pressed/clicked status, keeps time-stamped press and click queues, drives an INT line and sets the LED brightness/pulsing. 3.3 V board with 2.2 kΩ I2C pull-ups. I2C address 0x6F (0x60-0x6F with the A0-A3 jumpers, or set in software). Sold as: SparkFun Qwiic Button - Red LED (BOB-15932), 5-pin 0.1\" header INT, SCL, SDA, 3.3V, GND plus two Qwiic connectors.",
+  "eli5": "A push button with a light inside that tells your board over two wires whether it is pressed, and lets your board turn the light on.",
+  "refPrefix": "SW",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "INT",
+      "role": "io",
+      "description": "Interrupt output, active low, pulled up to 3.3 V by 10 kΩ on the board; goes low on press/click when enabled. Not needed for basic use",
+      "required": false
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (2.2 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (2.2 kΩ pull-up to 3.3 V on the board)",
+      "required": true
+    },
+    {
+      "name": "3.3V",
+      "role": "power",
+      "description": "Supply, 3.3 V (no regulator on the board; the Qwiic system is 3.3 V only)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    }
+  ],
+  "vmin": 2.7,
+  "vmax": 3.6,
+  "currentMa": 15,
+  "i2cAddress": 111,
+  "datasheetUrl": "https://cdn.sparkfun.com/assets/learn_tutorials/1/1/0/8/Qwiic_Button_I2C_Register_Map.pdf",
+  "priceUsd": 5.5,
+  "supplierQuery": "SparkFun Qwiic Button Red LED BOB-15932",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical",
+  "sources": [
+    "https://www.sparkfun.com/products/15932",
+    "https://learn.sparkfun.com/tutorials/sparkfun-qwiic-button-hookup-guide/all",
+    "https://cdn.sparkfun.com/assets/learn_tutorials/1/1/0/8/Qwiic_Button_I2C_Register_Map.pdf",
+    "https://cdn.sparkfun.com/assets/8/b/a/2/f/Qwiic_Button.pdf",
+    "https://cdn.sparkfun.com/r/600-600/assets/learn_tutorials/1/1/0/8/SparkFun_Qwiic_Button_I2C_Pins.jpg",
+    "https://github.com/sparkfun/Qwiic_Button/blob/master/Firmware/Qwiic_Button/Qwiic_Button.ino",
+    "https://github.com/sparkfun/Qwiic_Button/blob/master/Firmware/Qwiic_Button/interrupts.ino",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Button_Arduino_Library/blob/master/src/registers.h",
+    "https://github.com/sparkfun/SparkFun_Qwiic_Button_Arduino_Library/blob/master/src/SparkFun_Qwiic_Button.cpp",
+    "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf"
+  ],
+  "buildNotes": [
+    "Power it from 3.3 V only: the board has no regulator and its I2C pull-ups go to its own 3.3V pin.",
+    "Register reads: write the register number, then read; 16- and 32-bit registers are little-endian. Register 0x00 must read 0x5D.",
+    "Button status register 0x03: bit 2 = pressed now, bit 1 = has been clicked, bit 0 = new event; write 0 to clear bits 0 and 1.",
+    "LED: write 0-255 to register 0x19 (brightness) and 0 to the pulse cycle time 0x1B/0x1C for steady light.",
+    "Default address 0x6F. Closing jumpers A0-A3 pulls address bits low (address 0b0110 A3 A2 A1 A0); a software-set address is kept in EEPROM.",
+    "INT is only needed for interrupt-driven code; it is active low with a 10 kΩ pull-up on the board."
+  ],
+  "keywords": [
+    "qwiic button",
+    "sparkfun",
+    "button",
+    "push button",
+    "led button",
+    "i2c button",
+    "attiny84",
+    "bob-15932"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "registers": {
+      "0x00": 93,
+      "0x01": 3,
+      "0x02": 1,
+      "0x03": 0,
+      "0x04": 3,
+      "0x05": 10,
+      "0x06": 0,
+      "0x07": 2,
+      "0x10": 2,
+      "0x19": 0,
+      "0x1A": 1,
+      "0x1B": 0,
+      "0x1C": 0,
+      "0x1D": 0,
+      "0x1E": 0,
+      "0x1F": 111
+    },
+    "inputBits": [
+      {
+        "reg": "0x03",
+        "bit": 2,
+        "control": "pressed",
+        "label": "Button pressed"
+      }
+    ]
+  },
+  "driver": {
+    "filename": "qwiic_button.py",
+    "code": "# SparkFun Qwiic Button (BOB-15932, red LED), MicroPython driver.\n# The board's ATtiny84 runs SparkFun's firmware, which exposes a byte-addressed register map\n# (register map PDF + SparkFun_Qwiic_Button library): write the register number, then read.\n# Multi-byte registers are little-endian (AVR). Device ID register 0x00 reads 0x5D.\nfrom micropython import const\n\n_ID = const(0x00)\n_FW_MINOR = const(0x01)\n_FW_MAJOR = const(0x02)\n_STATUS = const(0x03)          # bit0 eventAvailable, bit1 hasBeenClicked, bit2 isPressed\n_INT_CONFIG = const(0x04)      # bit0 clickedEnable, bit1 pressedEnable\n_DEBOUNCE = const(0x05)        # uint16 ms, default 10\n_PRESSED_Q_STATUS = const(0x07)  # bit0 popRequest, bit1 isEmpty, bit2 isFull\n_PRESSED_Q_FRONT = const(0x08)   # uint32 ms since newest press\n_PRESSED_Q_BACK = const(0x0C)    # uint32 ms since oldest press\n_CLICKED_Q_STATUS = const(0x10)\n_CLICKED_Q_FRONT = const(0x11)\n_CLICKED_Q_BACK = const(0x15)\n_LED_BRIGHTNESS = const(0x19)  # 0-255\n_LED_GRANULARITY = const(0x1A)\n_LED_CYCLE = const(0x1B)       # uint16 ms, 0 = no pulsing\n_LED_OFF = const(0x1D)         # uint16 ms\n_I2C_ADDRESS = const(0x1F)\n\nDEVICE_ID = const(0x5D)\n\n\nclass QwiicButton:\n    def __init__(self, i2c, addr=0x6F):\n        self.i2c = i2c\n        self.addr = addr\n        if self._read(_ID, 1)[0] != DEVICE_ID:\n            raise OSError('Qwiic Button not found at 0x%02X (wrong ID)' % addr)\n\n    # --- low level: pointer write (with STOP) then read, as SparkFun's library does\n    def _read(self, reg, n):\n        self.i2c.writeto(self.addr, bytes([reg]))\n        return self.i2c.readfrom(self.addr, n)\n\n    def _write(self, reg, data):\n        self.i2c.writeto(self.addr, bytes([reg]) + bytes(data))\n\n    def _read_u16(self, reg):\n        d = self._read(reg, 2)\n        return d[0] | (d[1] << 8)\n\n    def _read_u32(self, reg):\n        d = self._read(reg, 4)\n        return d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24)\n\n    def _write_u16(self, reg, v):\n        self._write(reg, (v & 0xFF, (v >> 8) & 0xFF))\n\n    # --- identity\n    def firmware_version(self):\n        return (self._read(_FW_MAJOR, 1)[0], self._read(_FW_MINOR, 1)[0])\n\n    # --- button\n    def status(self):\n        return self._read(_STATUS, 1)[0]\n\n    def is_pressed(self):\n        return bool(self.status() & 0x04)\n\n    def has_been_clicked(self):\n        return bool(self.status() & 0x02)\n\n    def available(self):\n        \"\"\"True when a new press/release event happened since clear_events().\"\"\"\n        return bool(self.status() & 0x01)\n\n    def clear_events(self):\n        \"\"\"Clear eventAvailable, hasBeenClicked and isPressed (isPressed is refreshed on the next read).\"\"\"\n        self._write(_STATUS, (self.status() & ~0x07 & 0xFF,))\n\n    def debounce_ms(self):\n        return self._read_u16(_DEBOUNCE)\n\n    def set_debounce_ms(self, ms):\n        self._write_u16(_DEBOUNCE, ms)\n\n    # --- interrupt pin (INT, active low)\n    def enable_interrupts(self, pressed=True, clicked=True):\n        self._write(_INT_CONFIG, ((1 if clicked else 0) | (2 if pressed else 0),))\n\n    # --- event queues (timestamps are milliseconds ago)\n    def pressed_queue_empty(self):\n        return bool(self._read(_PRESSED_Q_STATUS, 1)[0] & 0x02)\n\n    def time_since_last_press(self):\n        return self._read_u32(_PRESSED_Q_FRONT)\n\n    def pop_pressed_queue(self):\n        t = self._read_u32(_PRESSED_Q_BACK)\n        s = self._read(_PRESSED_Q_STATUS, 1)[0]\n        self._write(_PRESSED_Q_STATUS, (s | 0x01,))\n        return t\n\n    def clicked_queue_empty(self):\n        return bool(self._read(_CLICKED_Q_STATUS, 1)[0] & 0x02)\n\n    def time_since_last_click(self):\n        return self._read_u32(_CLICKED_Q_FRONT)\n\n    def pop_clicked_queue(self):\n        t = self._read_u32(_CLICKED_Q_BACK)\n        s = self._read(_CLICKED_Q_STATUS, 1)[0]\n        self._write(_CLICKED_Q_STATUS, (s | 0x01,))\n        return t\n\n    # --- LED in the button\n    def led_config(self, brightness, cycle_ms=0, off_ms=0, granularity=1):\n        \"\"\"brightness 0-255; cycle_ms > 0 makes the LED pulse (cycle_ms up, off_ms dark).\"\"\"\n        self._write(_LED_BRIGHTNESS, (brightness & 0xFF,))\n        self._write(_LED_GRANULARITY, (granularity & 0xFF,))\n        self._write_u16(_LED_CYCLE, cycle_ms)\n        self._write_u16(_LED_OFF, off_ms)\n\n    def led_on(self, brightness=255):\n        self.led_config(brightness, 0, 0)\n\n    def led_off(self):\n        self.led_config(0, 0, 0)\n\n    # --- address (stored in the ATtiny's EEPROM; address jumpers A0-A3 override it)\n    def set_address(self, new_addr):\n        if not 0x08 <= new_addr <= 0x77:\n            raise ValueError('address must be 0x08-0x77')\n        self._write(_I2C_ADDRESS, (new_addr,))\n        self.addr = new_addr\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom qwiic_button import QwiicButton\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nbtn = QwiicButton(i2c)\nprint('ID=0x%02X' % btn._read(0x00, 1)[0])\npresses = 0\nlast = None\nwhile True:\n    p = btn.is_pressed()\n    if p != last:\n        if p:\n            presses += 1\n            btn.led_on(255)\n            print('PRESSED %d' % presses)\n        else:\n            btn.led_off()\n            print('RELEASED %d' % presses)\n        last = p\n    time.sleep_ms(50)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports when the button is pressed and released",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "ID=0x5D",
+          "within": 3000
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELEASED 0",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressed",
+          "value": 1
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "PRESSED 1",
+          "within": 3000
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressed",
+          "value": 0
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "RELEASED 1",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (6 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:50:18.877Z",
+    "verifiedSources": [
+      "https://www.sparkfun.com/products/15932",
+      "https://cdn.sparkfun.com/assets/learn_tutorials/1/1/0/8/Qwiic_Button_I2C_Register_Map.pdf",
+      "https://learn.sparkfun.com/tutorials/sparkfun-qwiic-button-hookup-guide/hardware-overview",
+      "https://raw.githubusercontent.com/sparkfun/Qwiic_Button/master/Hardware/Qwiic_Button.sch"
+    ]
+  }
+}

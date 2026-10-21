@@ -1,0 +1,203 @@
+{
+  "type": "custom-spl06-007",
+  "name": "SPL06-007 barometric pressure sensor module",
+  "mpn": "SPL06-007",
+  "category": "sensor",
+  "description": "Goertek digital barometric pressure (300–1100 hPa, ±1 hPa absolute, ±0.06 hPa relative) and temperature (-40 to 85 °C, ±0.5 °C) sensor with I2C (up to 3.4 MHz) and SPI, 24-bit results and individually stored calibration coefficients; the chip runs on 1.7–3.6 V. Sold as: Jaycar / Duinotech XC3702 Barometric Pressure Sensor Module (GY-68-style 4-pin board: VIN, GND, SCL, SDA, 3.3 V regulator and 4.7 kΩ I2C pull-ups on board, SDO tied low), I2C address 0x76.",
+  "eli5": "Feels the weight of the air above it, so it can tell the weather is changing or that you climbed a floor, and it also measures the temperature.",
+  "refPrefix": "U",
+  "interface": "i2c",
+  "pins": [
+    {
+      "name": "VIN",
+      "role": "power",
+      "description": "Supply 3.3–5 V into the on-board 3.3 V regulator (the chip itself runs at 1.7–3.6 V)",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground",
+      "required": true
+    },
+    {
+      "name": "SCL",
+      "role": "io",
+      "fn": "i2c.scl",
+      "description": "I2C clock (4.7 kΩ pull-up to the module's 3.3 V fitted)",
+      "required": true
+    },
+    {
+      "name": "SDA",
+      "role": "io",
+      "fn": "i2c.sda",
+      "description": "I2C data (4.7 kΩ pull-up to the module's 3.3 V fitted)",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 1,
+  "i2cAddress": 118,
+  "datasheetUrl": "https://raw.githubusercontent.com/rv701/SPL06-007/master/datasheets/1912111437_Goertek-SPL06-007_C233787.pdf",
+  "priceUsd": 7,
+  "supplierQuery": "Jaycar XC3702 barometric pressure sensor module SPL06-007",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "sources": [
+    "https://raw.githubusercontent.com/rv701/SPL06-007/master/datasheets/1912111437_Goertek-SPL06-007_C233787.pdf",
+    "https://datasheet.lcsc.com/szlcsc/1912111437_Goertek-SPL06-007_C233787.pdf",
+    "https://www.jaycar.com.au/duinotech-arduino-compatible-barometric-pressure-sensor/p/XC3702",
+    "https://media.jaycar.com.au/product/images/XC3702_duinotech-arduino-compatible-barometric-pressure-sensor_81595.jpg",
+    "https://github.com/OtagoPolytechnic/Hardware-projects/blob/main/CO2%20Monitoring%20System/Legacy/Legacy%20feather%20board%20device%20code/hardware%20wiki%20from%20weather%20station.md",
+    "https://github.com/user-attachments/assets/c990593b-9e0a-47b2-b5e5-ef08e4122ff4",
+    "https://community.home-assistant.io/t/barometric-pressure-sensor-module-invalid-temperature/362518"
+  ],
+  "buildNotes": [
+    "Power VIN from 3.3–5 V; the board's regulator feeds the chip 3.3 V (chip absolute maximum 4 V). The board only brings out VIN, GND, SCL and SDA.",
+    "The XC3702 answers at 0x76 (SDO pulled to GND on the board); bare SPL06-007 boards with SDO high or open use 0x77.",
+    "Check the ID register 0x0D: it reads 0x10. (The Infineon DPS310 also reads 0x10, and the register maps are the same.)",
+    "After power-up or a soft reset (write 0x09 to 0x0C) wait until MEAS_CFG (0x08) bits 7 and 6 (COEF_RDY, SENSOR_RDY) are set: up to 40 ms.",
+    "Raw readings mean nothing until compensated with the factory coefficients c0, c1 (12-bit), c00, c10 (20-bit), c01, c11, c20, c21, c30 (16-bit) from 0x10–0x21 and the scale factor kP / kT for the chosen oversampling (datasheet table 4).",
+    "Set TMP_CFG (0x07) bit 7 TMP_EXT = 1: the datasheet says to use the external (MEMS) temperature sensor.",
+    "Oversampling above 8× needs the result shift bit in CFG_REG (0x09): P_SHIFT bit 2 for pressure, T_SHIFT bit 3 for temperature.",
+    "One-shot reading: write 0x02 to MEAS_CFG, wait for TMP_RDY (bit 5) and read 0x03–0x05; then write 0x01, wait for PRS_RDY (bit 4) and read 0x00–0x02 (24-bit, MSB first, two's complement). 16× pressure oversampling takes 27.6 ms.",
+    "Keep the vent hole in the metal lid uncovered and away from direct airflow, sunlight and warm parts such as the microcontroller."
+  ],
+  "keywords": [
+    "spl06-007",
+    "spl06",
+    "pressure",
+    "barometer",
+    "barometric",
+    "altitude",
+    "altimeter",
+    "temperature",
+    "goertek",
+    "xc3702",
+    "duinotech"
+  ],
+  "sim": {
+    "kind": "i2c-device",
+    "quantity": "Temperature",
+    "unit": "°C",
+    "min": -40,
+    "max": 85,
+    "default": 22,
+    "controls": [
+      {
+        "key": "pressure",
+        "quantity": "Air pressure",
+        "unit": "hPa",
+        "min": 300,
+        "max": 1100,
+        "default": 1013.25
+      }
+    ],
+    "registers": {
+      "0x08": 192,
+      "0x0d": 16,
+      "0x10": 12,
+      "0x11": 206,
+      "0x12": 251,
+      "0x13": 20,
+      "0x14": 5,
+      "0x15": 15,
+      "0x16": 68,
+      "0x17": 128,
+      "0x18": 0,
+      "0x19": 0,
+      "0x1a": 0,
+      "0x1b": 0,
+      "0x1c": 0,
+      "0x1d": 0,
+      "0x1e": 0,
+      "0x1f": 0,
+      "0x20": 0,
+      "0x21": 0
+    },
+    "measures": [
+      {
+        "reg": "0x03",
+        "bytes": 3,
+        "signed": true,
+        "scale": -0.0004978179931640625,
+        "offset": 102,
+        "control": "value"
+      },
+      {
+        "reg": "0x00",
+        "bytes": 3,
+        "signed": true,
+        "scale": -0.0018901209677419355,
+        "offset": 820,
+        "control": "pressure"
+      },
+      {
+        "reg": "0x08",
+        "bytes": 1,
+        "scale": 1000,
+        "offset": -208000,
+        "control": "value",
+        "when": {
+          "reg": "0x08",
+          "equals": 1,
+          "mask": 7
+        }
+      },
+      {
+        "reg": "0x08",
+        "bytes": 1,
+        "scale": 1000,
+        "offset": -224000,
+        "control": "value",
+        "when": {
+          "reg": "0x08",
+          "equals": 2,
+          "mask": 7
+        }
+      }
+    ]
+  },
+  "driver": {
+    "filename": "spl06_007.py",
+    "code": "# MicroPython driver for the Goertek SPL06-007 barometric pressure / temperature sensor (I2C).\n# Written from the Goertek \"SPL06-007 Digital pressure sensor\" datasheet v1.0 (2017-05-17):\n#   operating modes sec. 5.1, I2C sec. 5.3.1, compensation sec. 5.6.1 / 5.6.2, scale factors table 4,\n#   register map table 7, PRS_CFG / TMP_CFG / MEAS_CFG / CFG_REG sec. 8.3-8.6, measurement times table 8,\n#   soft reset sec. 8.9, ID sec. 8.10, calibration coefficients table 10 (sec. 8.11),\n#   sensor / coefficient ready times table 3 (12 ms / 40 ms).\nimport time\n\nREG_PSR = 0x00        # PSR_B2..B0: 24-bit two's complement pressure result, MSB first\nREG_TMP = 0x03        # TMP_B2..B0: 24-bit two's complement temperature result, MSB first\nREG_PRS_CFG = 0x06    # PM_RATE[6:4] PM_PRC[3:0]\nREG_TMP_CFG = 0x07    # TMP_EXT[7] TMP_RATE[6:4] TMP_PRC[2:0]\nREG_MEAS_CFG = 0x08   # COEF_RDY[7] SENSOR_RDY[6] TMP_RDY[5] PRS_RDY[4] MEAS_CTRL[2:0]\nREG_CFG = 0x09        # INT_HL INT_FIFO INT_PRS INT_TMP T_SHIFT[3] P_SHIFT[2] FIFO_EN SPI_MODE\nREG_RESET = 0x0C      # FIFO_FLUSH[7] SOFT_RST[3:0] = 1001\nREG_ID = 0x0D         # PROD_ID[7:4] REV_ID[3:0]; reset value 0x10\nREG_COEF = 0x10       # 0x10..0x21: c0, c1, c00, c10, c01, c11, c20, c21, c30\n\nMEAS_PRS = 0x01       # command mode: one pressure measurement\nMEAS_TMP = 0x02       # command mode: one temperature measurement\n\nCOEF_RDY = 0x80\nSENSOR_RDY = 0x40\nTMP_RDY = 0x20\nPRS_RDY = 0x10\n\n# Table 4: compensation scale factor kP / kT for oversampling code 0..7 (1, 2, 4 ... 128 times)\nSCALE = (524288, 1572864, 3670016, 7864320, 253952, 516096, 1040384, 2088960)\n# Table 8: measurement time in ms for oversampling code 0..7\nMEAS_MS = (3.6, 5.2, 8.4, 14.8, 27.6, 53.2, 104.4, 206.8)\n\n\ndef _twos(v, bits):\n    return v - (1 << bits) if v & (1 << (bits - 1)) else v\n\n\nclass SPL06:\n    def __init__(self, i2c, addr=0x76, prs_osr=4, tmp_osr=0):\n        \"\"\"addr 0x76 (SDO to GND, as on the Jaycar XC3702) or 0x77 (SDO high / open).\n        Oversampling codes 0..7 = 1, 2, 4, 8, 16, 32, 64, 128 times\n        (default: pressure 16x 'Standard', temperature single as the datasheet recommends).\"\"\"\n        self.i2c = i2c\n        self.addr = addr\n        cid = self._r(REG_ID, 1)[0]\n        if cid >> 4 != 0x1:\n            raise OSError(\"SPL06-007 not found at 0x%02X (ID register 0x%02X, expected 0x10)\" % (addr, cid))\n        self._w(REG_RESET, 0x09)  # soft reset: runs the power-on sequence again\n        time.sleep_ms(40)  # table 3: coefficients available within 40 ms, sensor ready within 12 ms\n        self._wait_bits(COEF_RDY | SENSOR_RDY, 200, \"coefficients / sensor not ready\")\n        self._load_coef()\n        self.set_oversampling(prs_osr, tmp_osr)\n        self.t_raw_sc = None\n\n    def _r(self, reg, n):\n        return self.i2c.readfrom_mem(self.addr, reg, n)\n\n    def _w(self, reg, val):\n        self.i2c.writeto_mem(self.addr, reg, bytes([val & 0xFF]))\n\n    def _wait_bits(self, mask, timeout_ms, err):\n        t0 = time.ticks_ms()\n        while (self._r(REG_MEAS_CFG, 1)[0] & mask) != mask:\n            if time.ticks_diff(time.ticks_ms(), t0) > timeout_ms:\n                raise OSError(\"SPL06-007 \" + err)\n            time.sleep_ms(2)\n\n    def _load_coef(self):\n        c = self._r(REG_COEF, 18)  # table 10, one auto-increment burst\n        self.c0 = _twos((c[0] << 4) | (c[1] >> 4), 12)\n        self.c1 = _twos(((c[1] & 0x0F) << 8) | c[2], 12)\n        self.c00 = _twos((c[3] << 12) | (c[4] << 4) | (c[5] >> 4), 20)\n        self.c10 = _twos(((c[5] & 0x0F) << 16) | (c[6] << 8) | c[7], 20)\n        self.c01 = _twos((c[8] << 8) | c[9], 16)\n        self.c11 = _twos((c[10] << 8) | c[11], 16)\n        self.c20 = _twos((c[12] << 8) | c[13], 16)\n        self.c21 = _twos((c[14] << 8) | c[15], 16)\n        self.c30 = _twos((c[16] << 8) | c[17], 16)\n\n    def set_oversampling(self, prs_osr, tmp_osr):\n        self.prs_osr = prs_osr & 0x07\n        self.tmp_osr = tmp_osr & 0x07\n        self.kP = SCALE[self.prs_osr]\n        self.kT = SCALE[self.tmp_osr]\n        self._w(REG_PRS_CFG, self.prs_osr)  # PM_RATE only matters in background mode\n        # Sec. 8.4: TMP_EXT = 1, \"Please use the external sensor setting\" (MEMS element sensor).\n        self._w(REG_TMP_CFG, 0x80 | self.tmp_osr)\n        # Sec. 8.6: the result bit-shift must be set when oversampling is more than 8 times.\n        cfg = (0x04 if self.prs_osr > 3 else 0) | (0x08 if self.tmp_osr > 3 else 0)\n        self._w(REG_CFG, cfg)\n\n    def _measure(self, ctrl, ready_bit, reg, osr):\n        # Command mode (sec. 5.1): one measurement, then the sensor returns to standby.\n        self._w(REG_MEAS_CFG, ctrl)\n        time.sleep_ms(int(MEAS_MS[osr]) + 1)\n        self._wait_bits(ready_bit, int(MEAS_MS[osr]) * 2 + 20, \"measurement timed out\")\n        d = self._r(reg, 3)\n        return _twos((d[0] << 16) | (d[1] << 8) | d[2], 24)\n\n    def read_temperature_raw(self):\n        return self._measure(MEAS_TMP, TMP_RDY, REG_TMP, self.tmp_osr)\n\n    def read_pressure_raw(self):\n        return self._measure(MEAS_PRS, PRS_RDY, REG_PSR, self.prs_osr)\n\n    def temperature(self):\n        \"\"\"Degrees C (sec. 5.6.2: Tcomp = c0 * 0.5 + c1 * Traw_sc).\"\"\"\n        t_raw_sc = self.read_temperature_raw() / self.kT\n        self.t_raw_sc = t_raw_sc\n        return self.c0 * 0.5 + self.c1 * t_raw_sc\n\n    def pressure(self):\n        \"\"\"Pascal (sec. 5.6.1). Uses the latest temperature reading; measures one if there is none.\"\"\"\n        if self.t_raw_sc is None:\n            self.temperature()\n        p = self.read_pressure_raw() / self.kP\n        t = self.t_raw_sc\n        return (self.c00 + p * (self.c10 + p * (self.c20 + p * self.c30))\n                + t * self.c01 + t * p * (self.c11 + p * self.c21))\n\n    def read(self):\n        \"\"\"Returns (temperature degC, pressure hPa): a fresh temperature, then pressure compensated with it.\"\"\"\n        t = self.temperature()\n        p = self.pressure() / 100.0\n        return t, p\n\n    def altitude(self, sea_level_hpa=1013.25):\n        \"\"\"Approximate altitude in metres (sec. 6.3, international barometric formula).\"\"\"\n        p = self.read()[1]\n        return 44330.0 * (1.0 - (p / sea_level_hpa) ** (1 / 5.255))\n"
+  },
+  "example": {
+    "code": "from machine import I2C, Pin\nimport time\nfrom spl06_007 import SPL06\n\ni2c = I2C({I2C_ID}, sda=Pin({SDA}), scl=Pin({SCL}))\nsensor = SPL06(i2c, addr=0x76)\nwhile True:\n    t, p = sensor.read()\n    print('T=%.2fC P=%.2fhPa' % (t, p))\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the temperature and air pressure set on the sliders",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 23.7
+        },
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "pressure",
+          "value": 987.6
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "T=23.70C P=987.60hPa",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading (2 difference(s) settled by a third reading with quoted evidence). Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T13:05:51.237Z",
+    "verifiedSources": [
+      "https://www.espruino.com/datasheets/SPL06.pdf",
+      "https://www.jaycar.com.au/barometric-pressure-sensor-module/p/XC3702",
+      "https://community.home-assistant.io/t/barometric-pressure-sensor-module-invalid-temperature/362518"
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "type": "custom-drv8834",
+  "mpn": "DRV8834",
+  "pass": true,
+  "boards": {
+    "esp32": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; U2.SLP → D25 (GPIO25). U2.STEP → D26 (GPIO26). U2.DIR → D27 (GPIO27). Added a separate 9 V supply for VMOT (it needs 2.5–10.8 V and up to 2 A, more than the board can give); its − joins the board's GND. Added the drv8834.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Holds SLP high, steps 800 forward (DIR high) then 800 back (DIR low): passes"
+      },
+      {
+        "stage": "circuit-board",
+        "status": "pass",
+        "detail": "54×67 mm, DRC clean"
+      }
+    ],
+    "pico": [
+      {
+        "stage": "spec",
+        "status": "pass",
+        "detail": "16 pins, digital-out"
+      },
+      {
+        "stage": "wiring",
+        "status": "pass",
+        "detail": "6 pins wired; U2.SLP → GP2 (GPIO2). U2.STEP → GP3 (GPIO3). U2.DIR → GP6 (GPIO6). Added a separate 9 V supply for VMOT (it needs 2.5–10.8 V and up to 2 A, more than the board can give); its − joins the board's GND. Added the drv8834.py driver written from the datasheet."
+      },
+      {
+        "stage": "design-checks",
+        "status": "pass",
+        "detail": "no errors"
+      },
+      {
+        "stage": "breadboard",
+        "status": "pass",
+        "detail": "6 build steps"
+      },
+      {
+        "stage": "simulator",
+        "status": "pass",
+        "detail": "Holds SLP high, steps 800 forward (DIR high) then 800 back (DIR low): passes"
+      }
+    ]
+  },
+  "part": [
+    {
+      "stage": "footprint",
+      "status": "pass",
+      "detail": "Connector_PinHeader_2.54mm:PinHeader_1x16_P2.54mm_Vertical"
+    },
+    {
+      "stage": "lcsc",
+      "status": "pass",
+      "detail": "C456273 DRV8834PWPR (1758 in stock)"
+    }
+  ],
+  "checkedAt": "2026-10-21T13:00:15.554Z"
+}

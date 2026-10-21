@@ -1,0 +1,40 @@
+{
+  "diffs": [
+    {
+      "diff": "header pin 1: part says INT, datasheet reading says GND",
+      "verdict": "part-correct",
+      "evidence": "SparkFun's BOB-15932 board photo (hookup guide 'I2C Pins') shows one straight row of five 0.1\" through-holes with silkscreen, left to right: INT, SCL, SDA, 3.3V, GND. The EAGLE schematic agrees: J1 (CONN_04 1X04) pin1=SCL, pin2=SDA, pin3=3.3V, pin4=GND, and INT is the separate single pad J5 (net !INT) placed beside SCL. The second reading listed the row reversed (GND,3V3,SDA,SCL,INT). Pin 1 of the model = INT, the leftmost pad on the silkscreen.",
+      "source": "https://cdn.sparkfun.com/r/600-600/assets/learn_tutorials/1/1/0/8/SparkFun_Qwiic_Button_I2C_Pins.jpg"
+    },
+    {
+      "diff": "header pin 2: part says SCL, datasheet reading says 3V3",
+      "verdict": "part-correct",
+      "evidence": "SparkFun's BOB-15932 board photo (hookup guide 'I2C Pins') shows one straight row of five 0.1\" through-holes with silkscreen, left to right: INT, SCL, SDA, 3.3V, GND. The EAGLE schematic agrees: J1 (CONN_04 1X04) pin1=SCL, pin2=SDA, pin3=3.3V, pin4=GND, and INT is the separate single pad J5 (net !INT) placed beside SCL. The second reading listed the row reversed (GND,3V3,SDA,SCL,INT). Second pad is SCL (schematic J1 pin 1 = net SCL; J1 pin 3 = net 3.3V).",
+      "source": "https://raw.githubusercontent.com/sparkfun/Qwiic_Button/master/Hardware/Qwiic_Button.sch"
+    },
+    {
+      "diff": "header pin 4: part says 3.3V, datasheet reading says SCL",
+      "verdict": "part-correct",
+      "evidence": "SparkFun's BOB-15932 board photo (hookup guide 'I2C Pins') shows one straight row of five 0.1\" through-holes with silkscreen, left to right: INT, SCL, SDA, 3.3V, GND. The EAGLE schematic agrees: J1 (CONN_04 1X04) pin1=SCL, pin2=SDA, pin3=3.3V, pin4=GND, and INT is the separate single pad J5 (net !INT) placed beside SCL. The second reading listed the row reversed (GND,3V3,SDA,SCL,INT). Fourth pad is 3.3V (schematic net 3.3V on J1 pin 3, i.e. the 4th hole counting the INT pad).",
+      "source": "https://cdn.sparkfun.com/r/600-600/assets/learn_tutorials/1/1/0/8/SparkFun_Qwiic_Button_I2C_Pins.jpg"
+    },
+    {
+      "diff": "header pin 5: part says GND, datasheet reading says INT",
+      "verdict": "part-correct",
+      "evidence": "SparkFun's BOB-15932 board photo (hookup guide 'I2C Pins') shows one straight row of five 0.1\" through-holes with silkscreen, left to right: INT, SCL, SDA, 3.3V, GND. The EAGLE schematic agrees: J1 (CONN_04 1X04) pin1=SCL, pin2=SDA, pin3=3.3V, pin4=GND, and INT is the separate single pad J5 (net !INT) placed beside SCL. The second reading listed the row reversed (GND,3V3,SDA,SCL,INT). Fifth (rightmost) pad is GND (schematic J1 pin 4 = net GND); INT is at the opposite end.",
+      "source": "https://cdn.sparkfun.com/r/600-600/assets/learn_tutorials/1/1/0/8/SparkFun_Qwiic_Button_I2C_Pins.jpg"
+    },
+    {
+      "diff": "physical layout: the board has 2 header rows, but this small module is modelled as plugging in as a single row",
+      "verdict": "part-correct",
+      "evidence": "The board has a single row of five 0.1\" holes (INT, SCL, SDA, 3.3V, GND) along its bottom edge, per the vendor photo. The only other headers are the 2x3 AVR ISP footprint J7, which the schematic defines as device 'TESTPOINTS' (programming pads, not a user header), plus the two Qwiic JST connectors J2/J3; the 2x3 holes in the middle are the tactile button/LED legs. Footprint PinHeader_1x05 is correct.",
+      "source": "https://raw.githubusercontent.com/sparkfun/Qwiic_Button/master/Hardware/Qwiic_Button.sch"
+    },
+    {
+      "diff": "minimum supply: part 2.7 V, datasheet reading 3 V",
+      "verdict": "part-correct",
+      "evidence": "The board has no regulator; VCC goes straight to the ATtiny84 (schematic U4 ATTINY84-ARDUINO). ATtiny24/44/84 datasheet: 'Operating voltage: 2.7 - 5.5V for Atmel ATtiny24/44/84' and 'Speed grade: 0 - 8MHz at 2.7 - 5.5V'. The firmware runs the ATtiny84 at 8 MHz (Qwiic_Button.ino: 'ATtiny84 needs to run at 8MHz'), so 2.7 V is the chip's real minimum; SparkFun publishes no separate 3.0 V board minimum (nominal is 3.3 V Qwiic).",
+      "source": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7701_Automotive-Microcontrollers-ATtiny24-44-84_Datasheet.pdf"
+    }
+  ]
+}

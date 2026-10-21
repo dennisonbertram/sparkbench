@@ -1,0 +1,122 @@
+{
+  "type": "custom-grove-light-sensor-v1-2",
+  "name": "Grove Light Sensor v1.2",
+  "mpn": "101020132",
+  "category": "sensor",
+  "description": "Seeed Grove analog light sensor, version 1.2: a Senba LS06-S NPN phototransistor (light current 25 µA typ at 10 lux) into a 68 kΩ emitter resistor, buffered by an LM358 voltage follower, giving about 0.17 V per lux on SIG up to VCC − 1.5 V (≈ 10 lx at 3.3 V). Sold as: Seeed Grove - Light Sensor v1.2 (SKU 101020132), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A light sensor on a Grove plug. The more light reaches its little clear bulb, the higher the voltage on the yellow SIG wire, so your board can read it with an analog pin. It is very sensitive: a normal room already reads full scale, so it is best at telling dark from dim from bright.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "required": true,
+      "description": "Analog output (Grove pin 1, yellow wire): LM358 follower of the phototransistor's emitter, V = I × 68 kΩ ≈ 0.17 V per lux, never above VCC − 1.5 V."
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "required": false,
+      "description": "Not connected (Grove pin 2, white wire)."
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "required": true,
+      "description": "Supply (Grove pin 3, red wire): 3–5 V. Use 3.3 V with a 3.3 V microcontroller."
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "required": true,
+      "description": "Ground (Grove pin 4, black wire)."
+    }
+  ],
+  "vmin": 3,
+  "vmax": 5,
+  "currentMa": 3,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove_Light_Sensor/res/LS06-M%CE%A65_datasheet.pdf",
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove_Light_Sensor/res/LS06-M%CE%A65_datasheet.pdf",
+    "https://wiki.seeedstudio.com/Grove-Light_Sensor/",
+    "https://www.seeedstudio.com/Grove-Light-Sensor-v1-2-LS06-S-phototransistor.html",
+    "https://files.seeedstudio.com/wiki/Grove_Light_Sensor/resources/Grove%20-%20Light%20Sensor%28P%29%20v1.1.zip",
+    "https://files.seeedstudio.com/wiki/Grove_Light_Sensor/res/LM358.pdf"
+  ],
+  "priceUsd": 2,
+  "supplierQuery": "Seeed Grove Light Sensor v1.2 LS06-S 101020132",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "cabled": true,
+  "buildNotes": [
+    "Grove connector order (Seeed schematic J1): pin 1 SIG (yellow), pin 2 NC (white), pin 3 VCC (red), pin 4 GND (black). The board has a 2 mm Grove socket, not header pins: use a Grove-to-female-jumper cable to reach the breadboard.",
+    "Circuit: LS06-S collector to VCC, emitter to a 68 kΩ resistor to GND, LM358 voltage follower to SIG. V(SIG) = I_light × 68 kΩ; with 25 µA typ at 10 lx that is about 0.17 V per lux (lux ≈ 5.9 × V).",
+    "The LM358 only reaches VCC − 1.5 V, so SIG saturates at about 1.8 V (≈ 10 lx) on 3.3 V and 3.5 V (≈ 20 lx) on 5 V. Ordinary room light reads full scale: use it to tell dark from dim, not as a lux meter.",
+    "Power it from 3.3 V on an ESP32 or Pico. On the ESP32 wire SIG to an ADC1 pin (GPIO32–39) with 11 dB attenuation, and average a few samples to smooth lamp flicker.",
+    "Older v1.0/v1.1 boards use a GL5528 photoresistor and a 10 kΩ resistor instead: their output is a resistor divider, so the v1.2 lux formula does not apply to them."
+  ],
+  "keywords": [
+    "grove light sensor",
+    "grove",
+    "seeed",
+    "101020132",
+    "ls06-s",
+    "ls06",
+    "phototransistor",
+    "light sensor",
+    "ambient light",
+    "lux",
+    "lm358",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "Illuminance",
+    "unit": "lx",
+    "min": 0,
+    "max": 10,
+    "default": 2,
+    "vAtMin": 0,
+    "vAtMax": 1.7,
+    "registers": {}
+  },
+  "driver": {
+    "filename": "grove_light_sensor.py",
+    "code": "# Seeed Grove - Light Sensor v1.2 (SKU 101020132), MicroPython driver.\n# Circuit (Seeed schematic, LS06-S revision): LS06-S NPN phototransistor, collector to VCC,\n# emitter to a 68 kOhm resistor (R1) to GND. The emitter node feeds an LM358 wired as a\n# voltage follower, whose output is SIG. So V(SIG) = I_light x 68 kOhm.\n# LS06-S (Senba) datasheet: light current 25 uA typ at Vdd = 5 V, Ev = 10 lux -> 2.5 uA per lux.\n# So V(SIG) = 0.17 V per lux and E(lx) = I(uA) / 2.5 = V(SIG) / 68 kOhm / 2.5 uA.\n# The LM358 input and output only reach VCC - 1.5 V (TI SLOS068: VICR 0 to VCC-1.5 V, VOH VCC-1.5 V),\n# so the output saturates at about 1.8 V (about 10 lx) on 3.3 V and 3.5 V (about 20 lx) on 5 V.\n# Normal room light saturates it: treat it as a dim-light / brighter-darker sensor, not a lux meter.\nfrom machine import ADC, Pin\n\n\nclass GroveLightSensor:\n    LOAD_OHMS = 68000.0  # R1 on the v1.2 board (emitter to GND)\n    UA_PER_LUX = 2.5     # LS06-S typ: 25 uA at 10 lux (Vdd = 5 V)\n    HEADROOM_V = 1.5     # LM358 output/input limit below VCC\n\n    def __init__(self, pin, samples=16, vref=3.3, vcc=3.3, ua_per_lux=UA_PER_LUX, load_ohms=LOAD_OHMS):\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: full 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.samples = samples\n        self.vref = vref  # ADC reference used when read_uv() is not available (e.g. Pico)\n        self.vcc = vcc    # supply on the module's VCC pin (sets the saturation level)\n        self.ua_per_lux = ua_per_lux\n        self.load_ohms = load_ohms\n\n    def raw(self):\n        \"\"\"One 16-bit ADC reading (0-65535): a unitless brighter/darker value.\"\"\"\n        return self.adc.read_u16()\n\n    def volts(self):\n        \"\"\"Average several ADC samples and return the SIG voltage in volts.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1000000\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def microamps(self):\n        \"\"\"Phototransistor light current in uA (V across the 68 kOhm load).\"\"\"\n        return self.volts() / self.load_ohms * 1000000\n\n    def lux(self):\n        \"\"\"Illuminance estimate in lux: E = I / 2.5 uA per lx (about 5.9 lx per volt).\"\"\"\n        return self.microamps() / self.ua_per_lux\n\n    def saturated(self):\n        \"\"\"True when SIG is at the LM358 ceiling (VCC - 1.5 V): it is brighter than the sensor can tell.\"\"\"\n        return self.volts() >= self.vcc - self.HEADROOM_V - 0.05\n"
+  },
+  "skill": "---\nname: part-grove-light-sensor-v1-2\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Light Sensor v1.2 (LS06-S phototransistor + LM358 buffer, SKU 101020132). Use when designing, wiring, simulating or writing code for a Grove Light Sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Light Sensor v1.2 (LS06-S phototransistor)\n\n## Overview\nThe **Seeed Grove - Light Sensor v1.2 (SKU 101020132)** is an analog light sensor. Version 1.2 replaced the old photoresistor with a **Senba LS06-S** NPN phototransistor (5 mm straw-hat, clear lens). It has no digital interface:\n- The phototransistor's collector is on VCC. A **68 kΩ resistor (R1)** runs from its emitter to GND. The emitter voltage goes through an **LM358** voltage follower to **SIG**.\n- Light current (LS06-S datasheet, Vdd = 5 V): **25 µA typ at 10 lux**, which is 2.5 µA/lx.\n- So **V(SIG) = I × 68 kΩ ≈ 0.17 V per lux**, and lux ≈ 5.9 × V(SIG).\n- The LM358 input and output only reach **VCC − 1.5 V**. The output stops rising at about **1.8 V (≈ 10 lx) on 3.3 V** and **3.5 V (≈ 20 lx) on 5 V**, so normal room light reads full scale. This is a dim-light and brighter/darker sensor, not a lux meter. Seeed's wiki says the same: the value \"only reflects the approximated trend\".\n- Spectral response 450–1050 nm, so it also sees near-infrared.\n\n## Pinout (Grove connector, pin 1 to 4)\n| Pin | Name | Wire colour | Function |\n|-----|------|-------------|----------|\n| 1 | SIG | yellow | Analog output (LM358 buffer), ≈ 0.17 V per lux, max VCC − 1.5 V |\n| 2 | NC | white | Not connected |\n| 3 | VCC | red | Supply, 3–5 V |\n| 4 | GND | black | Ground |\n\nSource: Seeed schematic for the LS06-S revision (J1 TWIG_2.0: 1 SIG, 2 NC, 3 VCC, 4 GND), the printed SIG/NC/VCC/GND labels, and the Seeed wiki wire table (yellow = A0, white = not connected, red = 5V, black = GND).\n\n## Electrical limits\n- Supply 3–5 V (Seeed spec; the LM358 needs at least 3 V). Current 0.5–3 mA.\n- SIG can never go above VCC − 1.5 V, so even on 5 V it stays at or below 3.5 V. On a 3.3 V board, power it from 3.3 V anyway and it stays under 1.8 V.\n- LS06-S: C-E breakdown 70 V, response 450–1050 nm, half angle 80°. Response time 20–30 ms (Seeed).\n\n## Interface details\n```\nI(µA)  = V(SIG) / 68 kΩ × 10^6\nE(lx)  = I(µA) / 2.5          (LS06-S typ: 25 µA at 10 lx)\n       ≈ 5.9 × V(SIG)\nSaturated when V(SIG) ≥ VCC − 1.5 V\n```\nExamples: 0.17 V ≈ 1 lx, 0.85 V ≈ 5 lx, 1.7 V ≈ 10 lx.\nThe 25 µA figure is a typical value measured with a specific test light. Real lamps and daylight differ, and the part also sees infrared, so treat lux as a rough estimate.\n\n## Wiring\nUse a Grove-to-female-jumper cable, or a Grove base shield/hat analog port.\n\n| Sensor | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG (yellow) | GPIO34 (ADC1) | GP26 / ADC0 (pin 31) | External ADC (Grove Base Hat A0, MCP3008, ADS1115) |\n| NC (white) | not connected | not connected | not connected |\n| VCC (red) | 3V3 | 3V3(OUT) (pin 36) | 3.3 V (pin 1) |\n| GND (black) | GND | GND | GND |\n\nThe Raspberry Pi 4 has no built-in ADC.\n\n## Using the driver\n```python\nfrom grove_light_sensor import GroveLightSensor\nimport time\nsensor = GroveLightSensor(26, vcc=3.3)   # GPIO of the ADC pin SIG is wired to\nwhile True:\n    print('L=%.1flx' % sensor.lux(), 'FULL' if sensor.saturated() else '')\n    time.sleep(1)\n```\nThe driver averages 16 samples. It uses calibrated `read_uv()` where the port has it (ESP32), otherwise `read_u16()` × 3.3 V / 65535 (pass `vref=`). `raw()` gives a single 16-bit reading for simple thresholds. `volts()` and `microamps()` give the raw quantities. `saturated()` tells you when it is too bright to measure; pass the module's supply as `vcc=`.\n\n## Gotchas\n- **Saturates early:** room light already reads full scale (≈ 1.8 V at 3.3 V). Use it for dark/dim detection, or for night-light and box-opened switches.\n- **Not the old photoresistor:** older Grove Light Sensor v1.0/v1.1 boards use a GL5528 photoresistor with a 10 kΩ resistor, and GrovePi's \"resistance\" formula only applies to those. On v1.2 the output follows light current, not resistance.\n- **Not calibrated:** use it for brighter/darker readings and thresholds. If you need real lux, calibrate `ua_per_lux` against a lux meter or use a digital lux sensor (BH1750, VEML7700).\n- **Infrared:** it responds up to 1050 nm, so IR remotes and sunlight read brighter than they look.\n- **Flicker:** mains lighting flickers at 100/120 Hz. Averaging samples smooths it out.\n- **ESP32:** use ADC1 pins (ADC2 does not work while Wi-Fi is on).\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove_Light_Sensor/res/LS06-M%CE%A65_datasheet.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://files.seeedstudio.com/wiki/Grove_Light_Sensor/res/LS06-M%CE%A65_datasheet.pdf. Machine-readable definition: `part.json`.*\n",
+  "example": {
+    "code": "from grove_light_sensor import GroveLightSensor\nimport time\n\nsensor = GroveLightSensor({SIG})\nwhile True:\n    print('L=%.1flx' % sensor.lux())\n    time.sleep(1)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the illuminance set on the slider",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 6
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "L=6.0lx",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:47:57.382Z",
+    "verifiedSources": [
+      "https://wiki.seeedstudio.com/Grove-Light_Sensor/",
+      "https://files.seeedstudio.com/wiki/Grove_Light_Sensor/res/LS06-M%CE%A65_datasheet.pdf",
+      "https://www.ti.com/lit/ds/symlink/lm358.pdf"
+    ]
+  }
+}

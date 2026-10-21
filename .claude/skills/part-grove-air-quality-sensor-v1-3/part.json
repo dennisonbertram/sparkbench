@@ -1,0 +1,116 @@
+{
+  "type": "custom-grove-air-quality-sensor-v1-3",
+  "name": "Grove - Air Quality Sensor v1.3",
+  "mpn": "MP503",
+  "category": "sensor",
+  "description": "Seeed Grove air quality module with a Winsen MP503 heated metal-oxide gas sensor (alcohol, smoke, formaldehyde, CO, acetone; qualitative, 10-1000 ppm alcohol). An SX1301 boost converter makes 5.0 V for the 95 ohm heater and an LM358; the sensing element runs from VCC to a 10 kOhm load resistor and the LM358 follower buffers it onto SIG: V(SIG) = VCC x 10k / (Rs + 10k), rising with pollution. Works from 3.3 V or 5 V. Sold as: Seeed Studio Grove - Air Quality Sensor v1.3 (SKU 101020078), 4-pin Grove connector SIG, NC, VCC, GND.",
+  "eli5": "A tiny heated nose that smells smoke, alcohol and other stuff in the air. The dirtier the air, the higher the voltage on its SIG wire.",
+  "refPrefix": "U",
+  "interface": "analog",
+  "pins": [
+    {
+      "name": "SIG",
+      "role": "io",
+      "fn": "adc",
+      "description": "Analog output (Grove pin 1, yellow): LM358-buffered voltage across the 10 kOhm load resistor, V = VCC x 10k / (Rs + 10k). Rises with pollution; at most about min(VCC, 3.5 V).",
+      "required": true
+    },
+    {
+      "name": "NC",
+      "role": "nc",
+      "description": "Not connected (Grove pin 2, white).",
+      "required": false
+    },
+    {
+      "name": "VCC",
+      "role": "power",
+      "description": "Supply 3.3 V or 5 V (Grove pin 3, red). Also the Vc of the sensing circuit. About 100 mA at 3.3 V (heater via boost converter).",
+      "required": true
+    },
+    {
+      "name": "GND",
+      "role": "gnd",
+      "description": "Ground (Grove pin 4, black).",
+      "required": true
+    }
+  ],
+  "vmin": 3.3,
+  "vmax": 5,
+  "currentMa": 100,
+  "datasheetUrl": "https://files.seeedstudio.com/wiki/Grove_Air_Quality_Sensor_v1.3/res/Mp503%20English.pdf",
+  "sources": [
+    "https://files.seeedstudio.com/wiki/Grove_Air_Quality_Sensor_v1.3/res/Mp503%20English.pdf",
+    "https://wiki.seeedstudio.com/Grove-Air_Quality_Sensor_v1.3/",
+    "https://files.seeedstudio.com/wiki/Grove_Air_Quality_Sensor_v1.3/res/Grove_-_Air_quality_sensor_v1.3_sch.pdf"
+  ],
+  "priceUsd": 10,
+  "supplierQuery": "Seeed Grove Air Quality Sensor v1.3 101020078",
+  "footprint": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
+  "buildNotes": [
+    "Header (Grove) order: SIG, NC, VCC, GND. The Grove socket is 2.0 mm pitch; on a breadboard use a Grove-to-female-jumper cable (yellow SIG, white NC, red VCC, black GND).",
+    "Power from 3.3 V for an ESP32 or Pico: the on-board SX1301 boost converter still makes the 5.0 V the MP503 heater needs, and SIG then stays below 3.3 V. On 5 V, SIG can reach about 3.5 V in heavy pollution.",
+    "Rs = 10 kOhm x (VCC / V(SIG) - 1). Pass the supply you use as vcc= to the driver; the sensing element is fed from VCC, not from the boosted rail.",
+    "Age a new sensor powered for more than 48 hours (datasheet), let it warm up a few minutes after each power-on, and start it in clean air; calibrate R0 in clean air.",
+    "Qualitative only: no ppm formula. Keep it away from silicone vapour, corrosive gases and condensation."
+  ],
+  "keywords": [
+    "grove",
+    "air quality",
+    "mp503",
+    "gas",
+    "smoke",
+    "alcohol",
+    "formaldehyde",
+    "voc",
+    "seeed",
+    "101020078",
+    "analog"
+  ],
+  "sim": {
+    "kind": "analog-sensor",
+    "outputPin": "SIG",
+    "quantity": "SIG voltage (rises with pollution)",
+    "unit": "V",
+    "min": 0,
+    "max": 3.3,
+    "default": 0.25,
+    "vAtMin": 0,
+    "vAtMax": 3.3
+  },
+  "driver": {
+    "filename": "grove_aq.py",
+    "code": "# Grove - Air Quality Sensor v1.3 (Seeed 101020078, Winsen MP503 sensor), MicroPython driver.\n# Board circuit (Seeed v1.3 schematic): an SX1301 boost converter makes a 5.0 V rail (VCC_5V) from the\n# Grove VCC for the MP503 heater (pins 1-2, RH = 95 ohm) and the LM358 op-amp. The MP503 sensing\n# element (pins 3-4) runs from the Grove VCC itself to a 10 kOhm load resistor RL to GND, and the\n# LM358, wired as a voltage follower, buffers the voltage across RL onto SIG.\n# Per the MP503 datasheet test circuit (VRL across RL in series with the sensor, fed by Vc):\n#   V(SIG) = VRL = Vc * RL / (Rs + RL)        Vc = the module's VCC, RL = 10 kOhm\n#   Rs     = RL * (Vc / V(SIG) - 1)\n# Target gases (alcohol, smoke, formaldehyde, CO...) raise the conductivity, so Rs falls and SIG rises.\n# The datasheet's curves use Rs/R0 with R0 = resistance in clean air. They are typical only, so this\n# driver gives the voltage, Rs and Rs/R0 (after calibrate() in clean air), not ppm.\nfrom machine import ADC, Pin\n\nRL = 10000  # load resistor R2 on the board (ohms)\n\n\nclass GroveAirQuality:\n    def __init__(self, pin, vcc=3.3, vref=3.3, samples=16):\n        \"\"\"pin: ADC GPIO wired to SIG. vcc: the supply you feed the module (3.3 or 5.0 V); it is the\n        Vc of the measuring circuit. vref: ADC full scale when read_uv() is missing (Pico: 3.3 V).\"\"\"\n        self.adc = ADC(Pin(pin) if isinstance(pin, int) else pin)\n        try:\n            self.adc.atten(ADC.ATTN_11DB)  # ESP32: about 0-3.3 V range; other ports have no atten()\n        except AttributeError:\n            pass\n        self.vcc = vcc\n        self.vref = vref\n        self.samples = samples\n        self.r0 = None\n\n    def volts(self):\n        \"\"\"V(SIG) in volts, averaged over several ADC samples.\"\"\"\n        total = 0\n        if hasattr(self.adc, 'read_uv'):\n            for _ in range(self.samples):\n                total += self.adc.read_uv() / 1e6\n        else:\n            for _ in range(self.samples):\n                total += self.adc.read_u16() * self.vref / 65535\n        return total / self.samples\n\n    def resistance(self, v=None):\n        \"\"\"Sensor resistance Rs in ohms, Rs = RL * (Vc / V(SIG) - 1). None if SIG is ~0 V\n        (sensor cold, unpowered or not wired).\"\"\"\n        if v is None:\n            v = self.volts()\n        if v <= 0.005:\n            return None\n        if v >= self.vcc:\n            return 0.0\n        return RL * (self.vcc / v - 1)\n\n    def calibrate(self, r0=None):\n        \"\"\"Store R0 (resistance in clean air). With no argument, use the current Rs: do this in\n        clean air after the 48 h first-use aging and a few minutes of warm-up.\"\"\"\n        self.r0 = self.resistance() if r0 is None else r0\n        return self.r0\n\n    def ratio(self):\n        \"\"\"Rs/R0, the ordinate of the datasheet's sensitivity curve (falls as gas rises).\"\"\"\n        if not self.r0:\n            raise ValueError('call calibrate() first')\n        rs = self.resistance()\n        return None if rs is None else rs / self.r0\n"
+  },
+  "example": {
+    "code": "from grove_aq import GroveAirQuality\nimport time\n\naq = GroveAirQuality({SIG}, vcc=3.3)\nwhile True:\n    v = aq.volts()\n    r = aq.resistance(v)\n    print('SIG=%.1fV Rs=%s' % (v, 'none' if r is None else '%dk' % round(r / 1000)))\n    time.sleep(0.5)\n",
+    "test": {
+      "id": "reads",
+      "title": "Reports the SIG voltage and sensor resistance for the voltage set on the control",
+      "source": "user",
+      "steps": [
+        {
+          "kind": "set",
+          "part": "{REF}",
+          "control": "value",
+          "value": 1.6
+        },
+        {
+          "kind": "expect",
+          "what": "serial",
+          "text": "SIG=1.6V Rs=11k",
+          "within": 3000
+        }
+      ]
+    }
+  },
+  "skill": "---\nname: part-grove-air-quality-sensor-v1-3\ndescription: Pinout, electrical limits, wiring and MicroPython driver for the Seeed Grove - Air Quality Sensor v1.3 (Winsen MP503 gas sensor, analog SIG). Use when designing, wiring, simulating or writing code for a Grove Air Quality Sensor in a Sparkbench project or any ESP32 / Raspberry Pi Pico / Raspberry Pi build.\n---\n\n# Grove - Air Quality Sensor v1.3 (Winsen MP503)\n\n## Overview\nSeeed's **Grove - Air Quality Sensor v1.3** carries a **Winsen MP503** heated metal-oxide gas sensor. Its resistance **Rs falls** when alcohol, smoke, formaldehyde, CO, acetone or thinner vapour is in the air, so the analog **SIG voltage rises**. It is **qualitative**: it tells you the air got better or worse, not a ppm value.\n- Board circuit: an **SX1301 boost converter** makes 5.0 V for the MP503 heater (95 Ω, ≤ 300 mW) and an **LM358** op-amp. The sensing element runs from the **Grove VCC** to a **10 kΩ load resistor**, and the LM358 (voltage follower) buffers that onto SIG\n- Works from **3.3 V or 5 V** (Seeed wiki)\n- Detection range 10–1000 ppm alcohol; Rs 1–30 kΩ in 50 ppm alcohol; sensitivity Rs(air)/Rs(50 ppm alcohol) ≥ 5 (datasheet)\n- First use: age it powered for **more than 48 hours** (longer after long storage), then allow a few minutes of warm-up each power-on\n\n## Pinout (Grove connector, as printed on the board)\n| Pin | Name | Function |\n|-----|------|----------|\n| 1 | SIG | Analog output (yellow wire), rises with pollution |\n| 2 | NC | Not connected (white wire) |\n| 3 | VCC | 3.3 V or 5 V supply (red wire) |\n| 4 | GND | Ground (black wire) |\n\n## Electrical limits\n- VCC: **3.3–5.0 V**. The board boosts it to 5.0 V for the heater (datasheet VH = 5.0 V ±0.1 V), so 3.3 V is fine.\n- Current: about 55 mA heater load on the 5 V rail, so roughly **60 mA from 5 V and about 100 mA from 3.3 V**. It gets warm.\n- SIG: 0 V up to about the lower of VCC and ~3.5 V (LM358 output swing on its 5 V rail). On **3.3 V** SIG stays inside a 3.3 V ADC. On **5 V** it can just exceed 3.3 V in heavy pollution: power it from 3.3 V for an ESP32 / Pico, or add a divider.\n\n## Interface details\nMP503 datasheet test circuit, with the board's values:\n```\nV(SIG) = Vc × RL / (Rs + RL)       Vc = module VCC, RL = 10 kΩ\nRs     = RL × (Vc / V(SIG) − 1)\n```\nThe datasheet's sensitivity curves use **Rs/R0**, where R0 is the resistance in **clean air**. They are typical only, so **calibrate R0 on your own sensor** in clean air. The driver gives voltage, Rs and Rs/R0, not ppm. Seeed's Arduino library likewise only classifies changes (fresh / low / high pollution) from the trend of the raw reading.\n\n## Wiring\n| Module | ESP32 | Raspberry Pi Pico | Raspberry Pi 4 |\n|---|---|---|---|\n| SIG | GPIO32–39 (ADC1) | GP26/27/28 (ADC) | External ADC (ADS1115 / Grove Base Hat) |\n| NC | — | — | — |\n| VCC | 3V3 | 3V3(OUT) (pin 36) | 3V3 (pin 1) |\n| GND | GND | GND | GND |\n\nThe Grove socket is 2.0 mm pitch; on a breadboard use a Grove-to-female-jumper cable. On the ESP32 use ADC1 pins (ADC2 stops working with Wi-Fi on).\n\n## Using the driver\n```python\nfrom grove_aq import GroveAirQuality\nimport time\naq = GroveAirQuality(32, vcc=3.3)   # SIG GPIO; vcc = the voltage you feed the module\ntime.sleep(180)                     # warm-up\naq.calibrate()                      # R0 = Rs now, in clean air\nwhile True:\n    v = aq.volts()\n    print('SIG=%.2fV Rs=%.0f ohm Rs/R0=%.2f' % (v, aq.resistance(v), aq.ratio()))\n    time.sleep(1)\n```\n\n## Gotchas\n- **Pass the right vcc**: the measuring circuit runs from the Grove VCC (not the boosted 5 V), so Rs is computed from it.\n- **Not a ppm meter**: there is no calibrated gas formula; use it for \"air is getting worse\" triggers (fans, purifiers).\n- **Warm-up drift**: readings creep for minutes after power-on and for a day or two on a new sensor (48 h aging).\n- **Avoid silicone vapour, corrosive gases, condensation and long exposure to heavy pollution**: they permanently reduce sensitivity (datasheet cautions). Start it in relatively clean air (Seeed).\n- **Temperature and humidity** shift Rs (datasheet Fig. 4).\n- **Not a safety device**: do not use it as your only gas or smoke alarm.\n\n## Datasheet\nhttps://files.seeedstudio.com/wiki/Grove_Air_Quality_Sensor_v1.3/res/Mp503%20English.pdf\n\n---\n*Generated by Sparkbench from the datasheet: https://files.seeedstudio.com/wiki/Grove_Air_Quality_Sensor_v1.3/res/Mp503%20English.pdf. Machine-readable definition: `part.json`.*\n",
+  "library": {
+    "status": "checked",
+    "note": "Passed the Sparkbench part check in simulation and matched an independent datasheet reading. Not yet tested on real hardware.",
+    "checkedAt": "2026-10-21T12:48:43.330Z",
+    "verifiedSources": [
+      "https://files.seeedstudio.com/wiki/Grove_Air_Quality_Sensor_v1.3/res/Mp503%20English.pdf",
+      "https://wiki.seeedstudio.com/Grove-Air_Quality_Sensor_v1.3/"
+    ]
+  }
+}

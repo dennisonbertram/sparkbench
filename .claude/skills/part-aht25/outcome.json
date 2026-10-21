@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-aht25",
+  "board": "ASAIR AHT25 temperature & humidity sensor (Aosong, 4-pin 2.54 mm plug-in: VDD, SDA, GND, SCL)",
+  "reason": "The part check passed on the first run on both ESP32 and Pico: spec, wiring with 4.7 kΩ SDA/SCL pull-ups, design checks, breadboard, simulator test (T=-12.5C H=72%), clean circuit-board DRC, footprint and LCSC C3012623. The sim encodes the datasheet's 20-bit RH/T formulas and CRC-8 (poly 0x31, init 0xFF). The driver follows the AHT25 reading process in section 7.4, including the 0x18 status check and the 0xAC 0x33 0x00 trigger.",
+  "datasheetUrl": "https://akizukidenshi.com/goodsaffix/AHT25.pdf",
+  "breakoutPinoutSource": "Aosong AHT25 datasheet V1.0, section 5 Table 5 pin distribution, top view (1 VDD, 2 SDA, 3 GND, 4 SCL)",
+  "checkRuns": 1
+}

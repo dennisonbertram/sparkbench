@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "type": "custom-aht30",
+  "board": "Purple AHT30 temperature & humidity sensor module (GY-style, 4-pin 2.54 mm header: VIN, GND, SCL, SDA; 662K 3.3 V LDO, 4.7 kOhm pull-ups, MOSFET level shifter)",
+  "reason": "The part check passed on the first run on ESP32 and Pico: spec, wiring, design checks, breadboard, simulator test (T=27.5C H=62%), circuit board with clean DRC, footprint and LCSC C45354925. The sim encodes the datasheet's 20-bit RH/T formulas and CRC-8 (0x31, init 0xFF), and the driver follows the AHT30 reading process: wait 5 ms, send 0xAC 0x33 0x00, wait 80 ms, read 7 bytes and poll on busy.",
+  "datasheetUrl": "https://raw.githubusercontent.com/libdriver/aht30/main/datasheet/aht30_datasheet.pdf",
+  "breakoutPinoutSource": "Silkscreen in the Amazon B0F1JWWFT7 product photo (https://m.media-amazon.com/images/I/6182FZuOyUL._SL1500_.jpg): VIN, GND, SCL, SDA",
+  "checkRuns": 1
+}
