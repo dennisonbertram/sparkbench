@@ -19,6 +19,7 @@ import { GallerySection, PublishDialog, TeachDialog, ClassBanner, TeacherDashboa
 import type { Shrunk } from './images';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
+import { FirmwarePanel } from './FirmwarePanel';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'breadboard', label: 'Wiring' },
@@ -119,6 +120,7 @@ export function App() {
   return (
     <div className="app">
       <Topbar />
+      <FirmwarePanel />
       <ClassBanner />
       <ShareBar />
       <div className="main">
@@ -167,6 +169,9 @@ function BreadboardWithLibrary() {
 function Topbar() {
   const project = useStore((s) => s.project)!;
   const status = useStore((s) => s.sim.status);
+  const runtime = useStore((s) => s.runtime);
+  const firmware = useStore((s) => s.firmware);
+  const supported = runtime === 'esp32-qemu' ? !!firmware : simSupported();
   const past = useStore((s) => s.past.length);
   const future = useStore((s) => s.future.length);
   const [speed, setSpd] = useState(1);
@@ -192,7 +197,7 @@ function Topbar() {
       </span>
       <div className="run-group" data-tour="run">
         {!running ? (
-          <button className="run" onClick={() => startSim(project, speed)} disabled={!simSupported()} title={simSupported() ? 'Run the simulation' : 'This browser blocks the simulator (needs cross-origin isolation)'}>
+          <button className="run" onClick={() => startSim(project, speed)} disabled={!supported} title={supported ? 'Run the simulation' : runtime === 'esp32-qemu' ? 'Load a firmware image or open the demo first' : 'This browser blocks the simulator (needs cross-origin isolation)'}>
             <span className="run-icon" aria-hidden>▶</span> Run
           </button>
         ) : (
@@ -201,13 +206,14 @@ function Topbar() {
           </button>
         )}
         {running && (
-          <button className="ghost" onClick={() => startSim(useStore.getState().project!, speed)} title="Restart from the beginning" aria-label="Restart">
-            ↻<span className="restart-label"> Restart</span>
+          <button className="ghost" onClick={() => startSim(useStore.getState().project!, speed)} title="Restart from the beginning" aria-label={runtime === 'esp32-qemu' ? 'Reset ESP32' : 'Restart'}>
+            ↻<span className="restart-label"> {runtime === 'esp32-qemu' ? 'Reset ESP32' : 'Restart'}</span>
           </button>
         )}
         <select
-          value={speed}
+          value={runtime === 'esp32-qemu' ? 1 : speed}
           aria-label="Simulation speed"
+          disabled={runtime === 'esp32-qemu'}
           onChange={(e) => {
             const v = Number(e.target.value);
             setSpd(v);

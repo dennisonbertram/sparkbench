@@ -50,6 +50,9 @@ interface State {
   tab: Tab;
   chat: ChatMsg[];
   sim: SimView;
+  runtime: 'python' | 'esp32-qemu';
+  firmware: { name: string; base64: string } | 'demo' | null;
+  firmwareArtifact: { name: string; sha256: string } | null;
   wiringFrom: PinRef | null;
   hoverNet: string | null;
   activeFile: string;
@@ -105,6 +108,9 @@ export const useStore = create<State>((set, get) => ({
   tab: 'breadboard',
   chat: [],
   sim: emptySim(),
+  runtime: 'python',
+  firmware: null,
+  firmwareArtifact: null,
   wiringFrom: null,
   hoverNet: null,
   activeFile: 'main.py',
@@ -126,7 +132,7 @@ export const useStore = create<State>((set, get) => ({
   setProject(p, opts = {}) {
     registerProjectParts(p);
     const cur = get().project;
-    if (!p || p.id !== cur?.id) set({ pinnedNet: null, hoverNet: null });
+    if (!p || p.id !== cur?.id) set({ pinnedNet: null, hoverNet: null, runtime: 'python', firmware: null, firmwareArtifact: null });
     // Each project keeps its own copilot conversation.
     if (p && p.id !== cur?.id) {
       const saved = loadChat(p.id);
