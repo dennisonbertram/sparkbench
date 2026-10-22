@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
+import { compatibilityHandler } from './compatibilityJobs';
 
 const KICAD_CLI = [process.env.KICAD_CLI, join(homedir(), 'Applications/KiCad.app/Contents/MacOS/kicad-cli'), '/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli', '/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find((p) => p && existsSync(p));
 const NGSPICE = ['/opt/homebrew/bin/ngspice', '/usr/local/bin/ngspice', '/usr/bin/ngspice'].find((p) => existsSync(p));
@@ -30,6 +31,7 @@ export function apiPlugin(): Plugin {
   const handler: Connect.NextHandleFunction = async (req, res, next) => {
     if (!req.url?.startsWith('/api/')) return next();
     try {
+      if (await compatibilityHandler(req, res)) return;
       if (req.url === '/api/status') {
         const { aiStatus } = await import('./ai');
         const { pcbToolsStatus } = await import('./pcbjobs');
