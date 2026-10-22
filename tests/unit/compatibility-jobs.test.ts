@@ -31,6 +31,20 @@ describe('bounded compatibility jobs', () => {
     expect((await post(url, 'x'.repeat(2_000_001))).status).toBe(413);
   });
 
+  it('rejects malformed custom metadata before invoking the worker', async () => {
+    let runCount = 0;
+    const url = await serve({ enabled: true, token, run: async () => {
+      runCount++;
+      return { status: 'blocked', tool: { name: 'KiCad', version: null } } as CompatibilityReport;
+    } });
+    const project = structuredClone(compatibilityFixtures[2].project);
+    (project.customParts![0] as unknown as Record<string, unknown>).mpn = { malformed: true };
+
+    const response = await post(url, JSON.stringify({ project }));
+    expect(response.status).toBe(400);
+    expect(runCount).toBe(0);
+  });
+
   it('runs one worker, bounds its queue, and reports results', async () => {
     let active = 0;
     let maxActive = 0;

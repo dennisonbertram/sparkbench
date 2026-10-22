@@ -13,6 +13,97 @@ import { exportKicadSchematic, exportKicadProject } from '../src/core/kicad';
 
 const text = z.string().max(1000);
 const endpoint = z.object({ part: text, pin: text });
+const boundedText = (max: number) => z.string().min(1).max(max);
+const optionalText = (max: number) => z.string().max(max);
+const finiteNumber = z.number().finite().min(-1_000_000_000_000).max(1_000_000_000_000);
+const simNumber = z.number().finite().min(-1_000_000_000_000_000).max(1_000_000_000_000_000);
+const pinSchema = z.object({
+  name: boundedText(100),
+  role: z.enum(['power', 'gnd', 'io', 'passive', 'nc']),
+  fn: optionalText(100).optional(),
+  description: optionalText(1000).optional(),
+  wokwi: optionalText(100).optional(),
+  required: z.boolean().optional(),
+  pullUp: finiteNumber.optional(),
+  load: z.object({ ohms: finiteNumber, to: z.enum(['3v3', 'gnd', 'supply']) }).passthrough().optional(),
+  supply: z.object({ vmin: finiteNumber, vmax: finiteNumber, currentMa: finiteNumber.optional() }).passthrough().optional(),
+  levelV: finiteNumber.optional(),
+  divider: z.object({ top: finiteNumber, bottom: finiteNumber }).passthrough().optional(),
+  boardPullUp: finiteNumber.optional(),
+}).passthrough();
+const customControlSchema = z.object({
+  key: boundedText(100),
+  quantity: boundedText(100),
+  unit: optionalText(100).optional(),
+  min: simNumber,
+  max: simNumber,
+  default: simNumber.optional(),
+}).passthrough();
+const customPartSchema = z.object({
+  type: z.string().regex(/^custom-[a-z0-9]+(?:-[a-z0-9]+)*$/).max(100),
+  name: boundedText(100),
+  mpn: boundedText(100),
+  description: boundedText(1000),
+  eli5: boundedText(1000),
+  refPrefix: boundedText(20),
+  category: boundedText(32),
+  interface: boundedText(32),
+  priceUsd: z.number().finite().min(0).max(1_000_000_000),
+  supplierQuery: optionalText(500),
+  footprint: optionalText(200).optional(),
+  keywords: z.array(optionalText(100)).max(100).optional(),
+  buildNotes: z.array(optionalText(2000)).max(100).optional(),
+  vmin: finiteNumber.optional(),
+  vmax: finiteNumber.optional(),
+  currentMa: finiteNumber.optional(),
+  i2cAddress: finiteNumber.optional(),
+  pins: z.array(pinSchema).min(1).max(100),
+  sim: z.object({
+    kind: z.enum([
+      'analog-sensor', 'digital-sensor', 'actuator', 'i2c-device', 'onewire-temp', 'oled-display', 'char-lcd',
+      'hx711', 'spi-device', 'uart-device', 'keypad-matrix', 'segment-display', 'addressable-led', 'tft-display',
+      'dht-sensor', 'servo', 'shift-register', 'rfid-reader', 'ir-receiver', 'pulse-sensor', 'ultrasonic',
+      'resistive-sensor', 'i2s-amp', 'none',
+    ]),
+    min: simNumber.optional(),
+    max: simNumber.optional(),
+    default: simNumber.optional(),
+    quantity: optionalText(100).optional(),
+    unit: optionalText(100).optional(),
+    controls: z.array(customControlSchema).max(100).optional(),
+    digitalOutputs: z.array(z.object({
+      pin: boundedText(100),
+      control: boundedText(100),
+      label: optionalText(100).optional(),
+      activeHigh: z.boolean().optional(),
+    }).passthrough()).max(100).optional(),
+    inputBits: z.array(z.object({
+      reg: boundedText(100),
+      bit: simNumber,
+      control: boundedText(100),
+      label: optionalText(100).optional(),
+      activeLow: z.boolean().optional(),
+    }).passthrough()).max(100).optional(),
+    keys: z.array(z.array(boundedText(100)).max(100)).max(100).optional(),
+    shift: z.object({
+      type: z.enum(['595', '165']),
+      inputs: z.array(boundedText(100)).max(100).optional(),
+    }).passthrough().optional(),
+    tm1638: z.object({
+      keys: z.array(z.object({
+        control: boundedText(100),
+        label: optionalText(100).optional(),
+        k: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+        ks: simNumber,
+      }).passthrough()).max(100).optional(),
+    }).passthrough().optional(),
+    ir: z.object({ protocol: z.enum(['nec', 'nec-ext']) }).passthrough().optional(),
+    measure: z.object({}).passthrough().optional(),
+    measures: z.array(z.object({}).passthrough()).max(100).optional(),
+    responses: z.array(z.object({}).passthrough()).max(100).optional(),
+    fifo: z.object({}).passthrough().optional(),
+  }).passthrough(),
+}).passthrough();
 const projectSchema = z.object({
   id: text, name: text, summary: text, version: z.literal(1),
   board: z.enum(['esp32', 'pico', 'rpi4', 'none']),
@@ -20,12 +111,22 @@ const projectSchema = z.object({
   parts: z.array(z.object({ id: text, type: text, ref: text.optional(), props: z.record(z.string(), z.unknown()), x: z.number().finite(), y: z.number().finite(), rotate: z.number().finite().optional() }).passthrough()).min(1).max(100),
   wires: z.array(z.object({ id: text, a: endpoint, b: endpoint }).passthrough()).max(1000),
   files: z.record(z.string(), z.string()), notes: z.array(text),
-  customParts: z.array(z.object({ type: text, pins: z.array(z.object({ name: text }).passthrough()).min(1).max(100), sim: z.object({ kind: text }).passthrough() }).passthrough()).max(100).optional(),
+  customParts: z.array(customPartSchema).max(100).optional(),
 }).passthrough();
 
 export function validateCompatibilityProject(value: unknown): Project {
   if (Buffer.byteLength(JSON.stringify(value) ?? '') > 2_000_000) throw new Error('Project exceeds the 2 MB compatibility limit');
-  projectSchema.parse(value);
+  const parsed = projectSchema.parse(value);
+  const customTypes = new Set<string>();
+  for (const custom of parsed.customParts ?? []) {
+    if (customTypes.has(custom.type)) throw new Error(`Duplicate custom part type: ${custom.type}`);
+    customTypes.add(custom.type);
+    const pinNames = new Set<string>();
+    for (const pin of custom.pins) {
+      if (pinNames.has(pin.name)) throw new Error(`Duplicate pin name on ${custom.type}: ${pin.name}`);
+      pinNames.add(pin.name);
+    }
+  }
   return value as Project;
 }
 
