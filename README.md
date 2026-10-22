@@ -55,6 +55,10 @@ npm run dev          # http://localhost:5173
 - **AI mode.** The copilot and code assistant use Claude (`claude-opus-5-5`): through the Anthropic SDK when `ANTHROPIC_API_KEY` is set, or otherwise through your logged-in **Claude Code** CLI (`claude -p`). Claude turns requests into a parts-level design and writes custom firmware; every firmware change is simulated on the server and crashes are fed back to Claude to fix. With neither available (or `SPARKBENCH_AI=off`), the built-in offline planner handles requests — the badge in the Copilot panel shows which.
 - **KiCad / ngspice.** If `kicad-cli` (KiCad 8+) and `ngspice` are installed, the Schematic tab can render and ERC-check the exported KiCad file, and tests cross-check our solver against ngspice.
 
+## Export compatibility lab
+
+The optional [compatibility lab](docs/compatibility-lab.md) runs reference schematics through real KiCad, checks components and physical-pin connections against independent expectations, and publishes revision-linked reports in cloud CI. Run `npm run compatibility:lab`, or use **Export → Check compatibility** on a configured self-hosted server. The API is off by default. Flux and other destinations remain explicitly untested; a schematic pass is not PCB or hardware certification.
+
 ## Supported hardware
 
 | Boards | Parts |

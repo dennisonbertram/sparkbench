@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync, readdirSync } fro
 import { tmpdir, homedir } from 'node:os';
 import { join } from 'node:path';
 import { closeEsp32Runtime, esp32Middleware } from './esp32';
+import { compatibilityHandler } from './compatibilityJobs';
 
 const KICAD_CLI = [process.env.KICAD_CLI, join(homedir(), 'Applications/KiCad.app/Contents/MacOS/kicad-cli'), '/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli', '/usr/bin/kicad-cli', '/usr/local/bin/kicad-cli'].find((p) => p && existsSync(p));
 const NGSPICE = ['/opt/homebrew/bin/ngspice', '/usr/local/bin/ngspice', '/usr/bin/ngspice'].find((p) => existsSync(p));
@@ -32,6 +33,7 @@ export function apiPlugin(): Plugin {
     if (!req.url?.startsWith('/api/')) return next();
     try {
       if (req.url.startsWith('/api/esp32/')) return esp32Middleware(req, res, () => next());
+      if (await compatibilityHandler(req, res)) return;
       if (req.url === '/api/status') {
         const { aiStatus } = await import('./ai');
         const { pcbToolsStatus } = await import('./pcbjobs');

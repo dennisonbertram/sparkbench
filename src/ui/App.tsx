@@ -13,6 +13,7 @@ import { PcbView } from './PcbView';
 import { useTestRunner } from './TestsPanel';
 import { useMenu, fitMenu } from './useDialog';
 import { BoardPanel } from './BoardPanel';
+import { CompatibilityDialog } from './CompatibilityDialog';
 import { AttachImages } from './Attach';
 import { QuestionsCard } from './Requirements';
 import { GallerySection, PublishDialog, TeachDialog, ClassBanner, TeacherDashboard, ShareBar, JoinClass, useLiveRoom, openGallery, startSharing } from './Community';
@@ -177,6 +178,7 @@ function Topbar() {
   const [speed, setSpd] = useState(1);
   const [sound, setSound] = useState(false);
   const [menu, setMenu] = useState<null | 'projects' | 'export'>(null);
+  const [compatibility, setCompatibility] = useState(false);
   const projectsRef = useMenu<HTMLDivElement>(menu === 'projects', () => setMenu(null));
   const exportRef = useMenu<HTMLDivElement>(menu === 'export', () => setMenu(null));
   const running = status === 'running' || status === 'booting';
@@ -262,10 +264,12 @@ function Topbar() {
           <div className="menu" role="menu" ref={fitMenu}>
             <button role="menuitem" onClick={() => downloadZip(project).then(() => setMenu(null))}>Everything (.zip)</button>
             <button role="menuitem" onClick={() => (download(`${slug(project.name)}.sparkbench.json`, JSON.stringify(project, null, 2), 'application/json'), setMenu(null))}>Project file (.json)</button>
+            <button role="menuitem" onClick={() => { setMenu(null); setCompatibility(true); }}>Check compatibility…</button>
             <div className="menu-note">KiCad, SPICE, BOM and docs are also on their own tabs.</div>
           </div>
         )}
       </div>
+      {compatibility && <CompatibilityDialog onClose={() => setCompatibility(false)} />}
     </header>
   );
 }
