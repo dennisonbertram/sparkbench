@@ -14,8 +14,14 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 /** Re-run the tests (debounced) whenever the design, code or tests change. */
 export function useTestRunner() {
   const project = useStore((s) => s.project);
+  const runtime = useStore((s) => s.runtime);
   const key = useMemo(() => (project ? keyOf(project) : ''), [project]);
   useEffect(() => {
+    if (runtime === 'esp32-qemu') {
+      clearTimeout(timer);
+      useStore.getState().set({ testRun: null });
+      return;
+    }
     if (!project) return;
     const st = useStore.getState();
     if (st.testRun?.key === key && !st.testRun.error) return;
@@ -26,16 +32,19 @@ export function useTestRunner() {
         const r = await fetch('/api/tests/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project }) });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error ?? 'Could not run the tests');
-        if (useStore.getState().testRun?.key === key) useStore.getState().set({ testRun: { key, running: false, results: d.results } });
+        if (useStore.getState().runtime === 'python' && useStore.getState().testRun?.key === key) useStore.getState().set({ testRun: { key, running: false, results: d.results } });
       } catch (e: any) {
-        useStore.getState().set({ testRun: { key, running: false, results: [], error: e.message ?? String(e) } });
+        if (useStore.getState().runtime === 'python' && useStore.getState().testRun?.key === key) useStore.getState().set({ testRun: { key, running: false, results: [], error: e.message ?? String(e) } });
       }
     }, 1200);
-  }, [key]);
+    return () => clearTimeout(timer);
+  }, [key, runtime]);
 }
 
 export function TestsBadge() {
   const run = useStore((s) => s.testRun);
+  const runtime = useStore((s) => s.runtime);
+  if (runtime === 'esp32-qemu') return null;
   if (!run) return null;
   if (run.running) return <span className="count info" title="Running the tests in the simulator">…</span>;
   if (run.error || !run.results.length) return null;
@@ -49,6 +58,7 @@ export function TestsPanel() {
   const project = useStore((s) => s.project)!;
   const run = useStore((s) => s.testRun);
   const ai = useStore((s) => s.aiStatus);
+  const runtime = useStore((s) => s.runtime);
   const [text, setText] = useState('');
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
@@ -75,6 +85,8 @@ export function TestsPanel() {
 
   const remove = (id: string) => useStore.getState().update((p) => ({ ...p, tests: (p.tests ?? []).filter((t) => t.id !== id) }));
   const failing = run?.results.filter((r) => !r.pass) ?? [];
+
+  if (runtime === 'esp32-qemu') return <div className="tests"><p>These automatic acceptance tests run the Python model, not ESP32 firmware. They are disabled in firmware mode to avoid misleading results. Use the live circuit and serial console; the native integration tests are documented in the runtime setup guide.</p></div>;
 
   return (
     <div className="tests" data-testid="tests">

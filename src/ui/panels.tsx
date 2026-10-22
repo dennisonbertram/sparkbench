@@ -153,6 +153,7 @@ export function Copilot() {
 // ------------------------------------------------------------------ Inspector
 export function Inspector() {
   const project = useStore((s) => s.project)!;
+  const runtime = useStore((s) => s.runtime);
   const selection = useStore((s) => s.selection);
   const sim = useStore((s) => s.sim);
   const part = selection?.kind === 'part' ? project.parts.find((p) => p.id === selection.id) : undefined;
@@ -179,7 +180,7 @@ export function Inspector() {
           <p className="eli5">
             <Glossed text={def.eli5} />
           </p>
-          {def.category !== 'board' && def.category !== 'passive' && project.board !== 'none' && !(project.features ?? []).some((f) => f.parts.includes(part.id)) && !new RegExp(`\\b${part.id}\\b|${part.ref}`).test(project.files['main.py'] ?? '') && (
+          {runtime === 'python' && def.category !== 'board' && def.category !== 'passive' && project.board !== 'none' && !(project.features ?? []).some((f) => f.parts.includes(part.id)) && !new RegExp(`\\b${part.id}\\b|${part.ref}`).test(project.files['main.py'] ?? '') && (
             <div className="banner warn">
               The code doesn't use {part.ref} yet.{' '}
               {project.wires.some((w) => (w.a.part === part.id || w.b.part === part.id) && (w.a.part === boardPart(project)?.id || w.b.part === boardPart(project)?.id))

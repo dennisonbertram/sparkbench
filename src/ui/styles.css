@@ -118,6 +118,14 @@ h2, h3 { margin: 0; }
 
 /* ---------------------------------------------------------------- layout */
 .app { display: flex; flex-direction: column; height: 100%; }
+.firmware-panel { flex: none; padding: 7px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: 12px; max-height: 35vh; overflow: auto; }
+.firmware-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.firmware-row + .firmware-row { margin-top: 6px; }
+.firmware-row label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.firmware-upload input { max-width: 260px; }
+.firmware-panel p { margin: 5px 0 0; }
+.firmware-panel a { color: var(--select); }
+.firmware-error { color: var(--error); }
 .main { flex: 1; display: grid; grid-template-columns: 320px minmax(0, 1fr) 300px; min-height: 0; }
 .center { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
 .view { flex: 1; min-height: 0; position: relative; overflow: hidden; }
