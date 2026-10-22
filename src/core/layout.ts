@@ -8,6 +8,9 @@ export const PART_SIZE: Record<string, [number, number]> = {
   'esp32-devkit': [107, 204],
   'pi-pico': [84, 200],
   rpi4: [330, 220],
+  // Nicla boards: 22.86 mm square at 5 px/mm (see ui/parts/custom.tsx).
+  'nicla-vision': [114.3, 114.3],
+  'nicla-voice': [114.3, 114.3],
   ssd1306: [150, 116],
   lcd1602: [302, 140],
   epaper29: [340, 190],
@@ -55,6 +58,9 @@ export function partSize(type: string): [number, number] {
 export function boardPinPlace(boardType: string, pin: string): { side: 'left' | 'right'; t: number } | undefined {
   const b = Object.values(BOARDS).find((x) => x.partType === boardType);
   const bp = b?.pins.find((p) => p.name === pin);
+  // Nicla: J1 pads 1–8 on the left edge, J2 pads 1–9 on the right, pad 1 at the bottom (2.54 mm pitch on 22.86 mm).
+  const nicla = bp?.header && /^J(\d)-(\d+)$/.exec(bp.header);
+  if (nicla) return { side: nicla[1] === '1' ? 'left' : 'right', t: (22.86 - 1.27 - (Number(nicla[2]) - 1) * 2.54) / 22.86 };
   if (!b || !bp?.physical) return undefined;
   const n = bp.physical;
   if (b.id === 'esp32') return n <= 15 ? { side: 'left', t: (n - 1) / 14 } : { side: 'right', t: (30 - n) / 14 };

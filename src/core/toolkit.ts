@@ -61,9 +61,12 @@ export function toolkit(project: Project): ToolItem[] {
   if (cobbler) out.push({ id: 'cobbler', name: '40-pin T-Cobbler breakout with ribbon cable', why: "Brings the Pi's GPIO pins onto the breadboard with the pin names printed next to them, so you don't wire straight onto the Pi.", required: true });
   out.push({ id: 'jumpers', name: `Male-to-male jumper wires (at least ${jumpersToBuy(jumpers)})`, why: `This build uses ${jumpers} jumpers. A mixed-length kit is easiest; pre-cut "breadboard jumper" kits lie flat and make mistakes easy to see.`, required: true });
   if (offBoard) out.push({ id: 'jumpers-mf', name: `Male-to-female jumper wires (${offBoard})`, why: 'For the parts that sit off the breadboard (screens, servos, modules with pins): the female end slides onto their pins.', required: true });
-  if (project.board === 'esp32' || project.board === 'pico') {
-    out.push({ id: 'usb-micro', name: 'Micro-USB data cable', why: `Powers the ${project.board === 'esp32' ? 'ESP32 DevKit' : 'Pico'} and carries the program. Many cables only charge: if the computer doesn't see the board, try another cable.`, required: true });
-    out.push({ id: 'computer', name: 'A computer with Chrome or Edge', why: 'To copy the program onto the board from Sparkbench ("Your board") and watch what it prints.', required: true });
+  if (project.board === 'esp32' || project.board === 'pico' || project.board === 'nicla-vision' || project.board === 'nicla-voice') {
+    out.push({ id: 'usb-micro', name: 'Micro-USB data cable', why: `Powers the ${project.board === 'esp32' ? 'ESP32 DevKit' : project.board === 'pico' ? 'Pico' : project.board === 'nicla-vision' ? 'Nicla Vision' : 'Nicla Voice'} and carries the program. Many cables only charge: if the computer doesn't see the board, try another cable.`, required: true });
+    if (project.board === 'nicla-vision') out.push({ id: 'computer', name: 'A computer with OpenMV IDE', why: 'To install the OpenMV firmware, copy the program onto the board and watch what it prints.', required: true });
+    else if (project.board === 'nicla-voice') out.push({ id: 'computer', name: 'A computer with the Arduino IDE', why: 'To compile and upload the sketch and watch what it prints.', required: true });
+    else out.push({ id: 'computer', name: 'A computer with Chrome or Edge', why: 'To copy the program onto the board from Sparkbench ("Your board") and watch what it prints.', required: true });
+    if (project.board === 'nicla-vision' || project.board === 'nicla-voice') out.push({ id: 'soldering', name: 'Soldering iron, solder and 2.54 mm male headers (1×8 and 1×9)', why: 'The Nicla has bare edge pads: solder headers on so it plugs into the breadboard.', required: true });
   }
   if (project.board === 'rpi4') {
     out.push({ id: 'usb-c-power', name: 'USB-C power supply (5 V, 3 A)', why: 'The Raspberry Pi 4 needs a proper supply; a phone charger often causes random restarts.', required: true });

@@ -43,7 +43,7 @@ export function stripOf(h: Hole): string {
 }
 
 export type BbKind =
-  | 'pico' | 'esp32' | 'cobbler' | 'led' | 'rgbled' | 'resistor' | 'diode' | 'button' | 'switch' | 'ldr' | 'ntc' | 'ne555' | 'dip'
+  | 'pico' | 'esp32' | 'nicla' | 'cobbler' | 'led' | 'rgbled' | 'resistor' | 'diode' | 'button' | 'switch' | 'ldr' | 'ntc' | 'ne555' | 'dip'
   | 'capacitor' | 'electrolytic' | 'buzzer' | 'to92' | 'pot' | 'battery' | 'module' | 'offboard';
 
 export interface BbPart {
@@ -277,6 +277,17 @@ function renderPart(p: BbPart, layout: BbLayout): string {
         <path d="M ${x2 - 2} ${my - 30} v 60 M ${x2 - 10} ${my - 30} v 60" stroke="#c9a227" stroke-width="2"/>
         <rect x="${x1 + 20}" y="${my - 8}" width="10" height="10" fill="#eee"/><rect x="${x1 + 40}" y="${my - 8}" width="10" height="10" fill="#eee"/><text x="${x1 + 35}" y="${my + 14}" fill="#ccc" font-size="6.5" text-anchor="middle" font-family="Arial">EN  BOOT</text></g>`;
     }
+    case 'nicla': {
+      // Arduino Nicla (22.86 mm square) on headers, lying across the gap: J1 in row b, J2 in row h, pad 1 at column 1.
+      const xs = pts.map((q) => q.x);
+      const x1 = Math.min(...xs) - 13;
+      const x2 = Math.max(...xs) + 13;
+      const y1 = ROW_Y.b - 13;
+      const y2 = ROW_Y.h + 13;
+      const my = (y1 + y2) / 2;
+      const pins = Object.entries(L).map(([n, q]) => `<circle cx="${q.x}" cy="${q.y}" r="5" fill="#d8c27a" stroke="#9c8742"/><text x="${q.x}" y="${q.y < my ? q.y + 15 : q.y - 9}" fill="#fff" font-size="6" text-anchor="middle" font-family="Arial">${esc(p.pinLabels?.[n] ?? n)}</text>`).join('');
+      return `<g filter="url(#sh)"><rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" rx="5" fill="#0f6e7a"/>${pins}<text x="${(x1 + x2) / 2}" y="${my + 4}" fill="#e6f6f8" font-size="10" text-anchor="middle" font-family="Arial" font-weight="bold">${esc(p.label ?? 'Nicla')}</text></g>`;
+    }
     case 'cobbler': {
       // Raspberry Pi T-Cobbler: 2×20 breakout across the gap, ribbon cable off to the Pi.
       const xs = pts.map((q) => q.x);
@@ -409,7 +420,7 @@ export function renderBreadboardSvg(layout: BbLayout, opts: BbRenderOptions = {}
   const wires = layout.wires.map((w, i) => [w, i] as const).filter(([, i]) => !opts.show || opts.show.wires.includes(i));
   const labels = opts.labels
     ? parts
-        .filter((p) => !['pico', 'esp32', 'cobbler', 'module', 'offboard', 'battery'].includes(p.kind))
+        .filter((p) => !['pico', 'esp32', 'nicla', 'cobbler', 'module', 'offboard', 'battery'].includes(p.kind))
         .map((p) => {
           const pts = Object.values(p.legs).map(holeXY);
           const x = pts.reduce((a, q) => a + q.x, 0) / pts.length;

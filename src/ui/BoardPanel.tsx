@@ -13,6 +13,7 @@ import { MultimeterGuide } from './MultimeterGuide';
 import { CostHint } from './CostHint';
 import { otaPy, otaBootPy, otaToken } from '../core/ota';
 import { Elapsed } from './Elapsed';
+import { BOARDS } from '../core/boards';
 
 type Phase = 'idle' | 'connecting' | 'connected' | 'busy';
 
@@ -262,6 +263,22 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
               Self-test output from the Pi
               <textarea value={selftest} onChange={(e) => setSelftest(e.target.value)} rows={5} placeholder="Paste what python3 selftest.py printed" />
             </label>
+          </>
+        )}
+        {(kind === 'nicla-vision' || kind === 'nicla-voice') && (
+          <>
+            <p>
+              {kind === 'nicla-vision'
+                ? 'The Nicla Vision is programmed from OpenMV IDE, not from this panel:'
+                : 'The Nicla Voice runs an Arduino C++ sketch, which the Arduino IDE compiles and uploads:'}
+            </p>
+            <ol className="bp-steps">
+              <li>Click <strong>Export → Everything (.zip)</strong> and unzip it. The <code>firmware</code> folder holds your program.</li>
+              {BOARDS[kind].flashing.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ol>
+            <p className="muted">Its header pins are low power: LEDs are switched by a transistor in this design, as Arduino recommends.</p>
           </>
         )}
         {micro && (

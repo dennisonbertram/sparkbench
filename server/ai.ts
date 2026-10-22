@@ -45,7 +45,7 @@ const FEATURE_KINDS = Object.keys(FEATURE_LABELS) as [string, ...string[]];
 const DesignSchema = z.object({
   intent: z.enum(['new', 'edit', 'code', 'question']).describe('new design; edit of the current design (parts); code = only the program behaviour changes; question = just answer'),
   title: z.string().describe('Short friendly project name, e.g. "ESP32 Weather Station"'),
-  board: z.enum(['esp32', 'pico', 'rpi4', 'none']),
+  board: z.enum(['esp32', 'pico', 'rpi4', 'nicla-vision', 'nicla-voice', 'none']),
   features: z
     .array(
       z.object({
@@ -115,6 +115,8 @@ You turn plain-English requests into a parts-level design for ONE of these targe
 - esp32: ESP32 DevKit V1, MicroPython
 - pico: Raspberry Pi Pico, MicroPython
 - rpi4: Raspberry Pi 4, Python 3 + gpiozero (no analog inputs: Sparkbench adds an MCP3008 automatically)
+- nicla-vision: Arduino Nicla Vision, MicroPython (OpenMV). Low-power 3.3 V header, no 5 V output: only button, switch, led, oled, mpu6050.
+- nicla-voice: Arduino Nicla Voice, Arduino C++ sketch (not simulated). Low-power 3.3 V header, no 5 V output: only button, switch, led, pot, ldr, ntc, soil.
 - none: battery-powered discrete circuit (features 'astable555' or 'transistor-led' only). astable555 can blink an LED (output "led") or beep a piezo buzzer (output "buzzer").
 Available feature kinds (each list entry = one physical part group; two buttons = two entries):
 ${Object.entries(FEATURE_LABELS)
@@ -397,7 +399,7 @@ export async function aiEditFile(project: Project, file: string, instruction: st
   const turns: Turn[] = [
     {
       role: 'user',
-      content: `Project: ${project.name} on ${board?.name ?? 'no microcontroller'} (${board?.language === 'python' ? 'Python 3 + gpiozero' : 'MicroPython'}).
+      content: `Project: ${project.name} on ${board?.name ?? 'no microcontroller'} (${board?.language === 'python' ? 'Python 3 + gpiozero' : board?.language === 'arduino' ? 'Arduino C++ sketch' : 'MicroPython'}).
 Wiring (feature → GPIO numbers): ${JSON.stringify(wiring)}${partSkills(project)}
 ${others ? `Other project files:\n${others}\n` : ''}
 File to edit: ${file}

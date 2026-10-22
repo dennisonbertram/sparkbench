@@ -25,9 +25,22 @@ for (const p of rpi.pins) {
   rpiPins[p.name] = { x: 34 + col * 13.5, y: n % 2 === 1 ? 30 : 16 };
 }
 
+// Nicla form factor (datasheet mechanical drawings): 22.86 mm square, J1 = 8 pads on the left edge and J2 = 9 pads
+// on the right edge, 2.54 mm pitch, pad 1 of each at the bottom, 1.27 mm from the bottom edge. Drawn at 5 px/mm.
+export const NICLA_MM = 5;
+export const NICLA_SIZE = 22.86 * NICLA_MM;
+export const niclaPadXY = (header: string): { x: number; y: number } => {
+  const [, j, n] = /^J(\d)-(\d+)$/.exec(header)!;
+  const x = j === '1' ? 1.27 : 22.86 - 1.27;
+  return { x: x * NICLA_MM, y: (22.86 - 1.27 - (Number(n) - 1) * 2.54) * NICLA_MM };
+};
+const niclaPins = (id: 'nicla-vision' | 'nicla-voice'): Pins => Object.fromEntries(BOARDS[id].pins.map((p) => [p.name, niclaPadXY(p.header!)]));
+
 export const CUSTOM_PINS: Record<string, Pins> = {
   'pi-pico': picoPins,
   rpi4: rpiPins,
+  'nicla-vision': niclaPins('nicla-vision'),
+  'nicla-voice': niclaPins('nicla-voice'),
   ldr: { '1': { x: 14, y: 68 }, '2': { x: 26, y: 68 } },
   ntc: { '1': { x: 14, y: 68 }, '2': { x: 26, y: 68 } },
   soil: { VCC: { x: 16, y: 6 }, GND: { x: 30, y: 6 }, AOUT: { x: 44, y: 6 } },
@@ -258,6 +271,10 @@ export function CustomPart({ type, props, visual }: { type: string; props: Recor
         </>
       );
       break;
+    case 'nicla-vision':
+    case 'nicla-voice':
+      body = <NiclaBoard type={type} pins={pins} />;
+      break;
     case 'ldr':
     case 'ntc':
       body = (
@@ -453,5 +470,52 @@ export function CustomPart({ type, props, visual }: { type: string; props: Recor
       {body}
       {Object.entries(pins).map(([n, p]) => pinDot(p.x, p.y, n))}
     </svg>
+  );
+}
+
+/** Top view of a Nicla board (Vision or Voice): the square PCB with its rounded top-left corner, castellated pads on
+ * both edges, the battery pads (J3) at the top, and the main parts where the datasheet's topology drawings put them. */
+function NiclaBoard({ type, pins }: { type: string; pins: Pins }) {
+  const S = NICLA_SIZE;
+  const mm = (v: number) => v * NICLA_MM;
+  const vision = type === 'nicla-vision';
+  const r = mm(2.5);
+  return (
+    <>
+      <path d={`M${r} 0 H${S} V${S} H0 V${r} A${r} ${r} 0 0 1 ${r} 0 Z`} fill="#0f6e7a" stroke="#06434b" />
+      {/* J3 battery pads: two pads near the top right (Nicla Voice drawing: 3.81 mm from the right edge) */}
+      {[0, 1].map((i) => (
+        <circle key={i} cx={S - mm(3.81) - i * mm(2.54)} cy={mm(1.27)} r={mm(0.6)} fill="#c9b37a" stroke="#6b5a2a" strokeWidth={0.6} />
+      ))}
+      {vision ? (
+        <>
+          {/* GC2145 camera module, top left of centre */}
+          <rect x={mm(6.2)} y={mm(0.4)} width={mm(6.6)} height={mm(6.6)} rx={2} fill="#222" stroke="#555" />
+          <circle cx={mm(9.5)} cy={mm(3.7)} r={mm(2.3)} fill="#111" stroke="#666" />
+          <circle cx={mm(9.5)} cy={mm(3.7)} r={mm(0.9)} fill="#2c3e66" />
+          <rect x={mm(8)} y={mm(9)} width={mm(7)} height={mm(7)} fill="#1c1c1c" />
+          <text x={mm(11.5)} y={mm(12.9)} fontSize={4} fill="#ddd" textAnchor="middle">STM32H747</text>
+        </>
+      ) : (
+        <>
+          <rect x={mm(6)} y={mm(2.5)} width={mm(9.5)} height={mm(6.5)} rx={1} fill="#c6c9cc" stroke="#888" />
+          <text x={mm(10.75)} y={mm(6.3)} fontSize={4} fill="#333" textAnchor="middle">ANNA-B112</text>
+          <rect x={mm(8.5)} y={mm(11)} width={mm(5)} height={mm(4.5)} fill="#1c1c1c" />
+          <text x={mm(11)} y={mm(13.8)} fontSize={3.6} fill="#ddd" textAnchor="middle">NDP120</text>
+        </>
+      )}
+      <text x={S / 2} y={S - mm(3.8)} fontSize={6} fill="#e6f6f8" textAnchor="middle" fontWeight={600}>NICLA</text>
+      <text x={S / 2} y={S - mm(1.6)} fontSize={6} fill="#e6f6f8" textAnchor="middle" fontWeight={600}>{vision ? 'VISION' : 'VOICE'}</text>
+      <text x={mm(3)} y={mm(3.2)} fontSize={3.4} fill="#bfe3e8">J1</text>
+      <text x={S - mm(3)} y={mm(3.6)} fontSize={3.4} fill="#bfe3e8" textAnchor="end">J2</text>
+      {Object.entries(pins).map(([n, p]) => (
+        <g key={`t${n}`}>
+          <circle cx={p.x < S / 2 ? 0 : S} cy={p.y} r={mm(0.55)} fill="#06434b" />
+          <text x={p.x < S / 2 ? p.x + 4 : p.x - 4} y={p.y + 1.5} fontSize={4} fill="#e6f6f8" textAnchor={p.x < S / 2 ? 'start' : 'end'}>
+            {n.replace(/\.\d+$/, '')}
+          </text>
+        </g>
+      ))}
+    </>
   );
 }

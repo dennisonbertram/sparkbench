@@ -4,6 +4,7 @@ import type { Project, PartInstance } from '../core/types';
 import { ElectricalModel } from '../core/circuit';
 import { partDef } from '../core/parts';
 import { pinKey } from '../core/netlist';
+import { arduinoSimMessage } from '../core/boards';
 import { ocr } from './ocr';
 import { openPort, writeSamples, analyse, shiftSamples, type I2SPort } from './i2s';
 import { SSD1306Device, MPU6050Device, Lcd1602Device, EPaperDevice, GenericI2CDevice, TM1637Device, TM1638Device, MAX7219Device, TFTDevice, PCD8544Device, HT16K33Device, APA102Chain, decodeLedStream, segText, alphaText, packResponse, type I2CDevice } from './devices';
@@ -1676,7 +1677,8 @@ export class SimEngine {
       },
       sleep_us: (us: number) => this.sleepUs(us),
       board: () => this.board?.id ?? 'none',
-      pin_by_name: (n: string) => (n === 'LED' ? (this.board?.id === 'pico' ? 25 : 2) : this.board?.pins.find((p) => p.name === n)?.gpio ?? -1),
+      // Boards that name their pins in firmware (Nicla Vision: Pin("D0"), Pin("PE12")) match on name or fw.
+      pin_by_name: (n: string) => (n === 'LED' ? (this.board?.id === 'pico' ? 25 : 2) : this.board?.pins.find((p) => p.name === n || p.fw === n)?.gpio ?? -1),
       pin_init: (g: number, mode: number, pull: number, value: number) => this.pinInit(g, mode, pull, value),
       pin_write: (g: number, v: number) => this.pinWrite(g, v),
       pin_read: (g: number) => this.pinRead(g),
@@ -1733,6 +1735,13 @@ export class SimEngine {
     this.wallStart = this.host.wallNowMs();
     this.simStart = 0;
     if (this.project.board === 'none') return this.runDiscrete();
+    if (this.board?.language === 'arduino') {
+      // An Arduino sketch is C++: the Python simulator must not pretend to run it.
+      this.serial(arduinoSimMessage(this.board.name));
+      this.status = 'stopped';
+      this.maybeFrame(true);
+      return;
+    }
     const isPi = this.project.board === 'rpi4';
     let stdoutBuf = '';
     const mp = await loader({
@@ -1927,3 +1936,4 @@ export function nmeaSentences(value: (k: string) => number, tMs: number): string
   const cs = (body: string) => `$${body}*${[...body].reduce((x, c) => x ^ c.charCodeAt(0), 0).toString(16).toUpperCase().padStart(2, '0')}\r\n`;
   return cs(`GPGGA,${time},${la},${lo},1,08,0.9,${value('alt').toFixed(1)},M,0.0,M,,`) + cs(`GPRMC,${time},A,${la},${lo},${value('speed').toFixed(2)},0.00,201026,,,A`);
 }
+

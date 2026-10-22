@@ -1,6 +1,6 @@
 // Core data model shared by the UI, simulator, exporters and tests.
 
-export type BoardId = 'esp32' | 'pico' | 'rpi4' | 'none';
+export type BoardId = 'esp32' | 'pico' | 'rpi4' | 'nicla-vision' | 'nicla-voice' | 'none';
 
 export type PinRole =
   | 'power' // supply input/output (VCC, 3V3, 5V, VIN)

@@ -161,7 +161,7 @@ function supplies(project: Project): BomLine[] {
     );
   }
   // Power / programming cables
-  if (project.board === 'esp32' || project.board === 'pico') {
+  if (project.board === 'esp32' || project.board === 'pico' || project.board === 'nicla-vision' || project.board === 'nicla-voice') {
     const board = boardFor(project.board)!;
     out.push(
       supply('usb-micro', 'Micro-USB cable (data)', `USB-A (or USB-C) to micro-USB cable to power and program the ${board.name}.`, 3, 'micro USB data cable', {

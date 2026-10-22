@@ -106,7 +106,7 @@ const customPartSchema = z.object({
 }).passthrough();
 const projectSchema = z.object({
   id: text, name: text, summary: text, version: z.literal(1),
-  board: z.enum(['esp32', 'pico', 'rpi4', 'none']),
+  board: z.enum(['esp32', 'pico', 'rpi4', 'nicla-vision', 'nicla-voice', 'none']),
   createdAt: z.number().finite(), updatedAt: z.number().finite(),
   parts: z.array(z.object({ id: text, type: text, ref: text.optional(), props: z.record(z.string(), z.unknown()), x: z.number().finite(), y: z.number().finite(), rotate: z.number().finite().optional() }).passthrough()).min(1).max(100),
   wires: z.array(z.object({ id: text, a: endpoint, b: endpoint }).passthrough()).max(1000),

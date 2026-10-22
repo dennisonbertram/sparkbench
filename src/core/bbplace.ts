@@ -149,6 +149,17 @@ export function planBreadboard(project: Project): BreadboardPlan {
       for (let c = 1; c <= 19; c++) for (const r of 'cdefgh') blocked.add(holeIn(r, c));
       for (let c = 16; c <= 19; c++) for (const r of 'abij') blocked.add(holeIn(r, c));
       start = 21;
+    } else if (board.header === 'nicla') {
+      // Nicla on 2.54 mm headers: its two pad rows are 8 pitches apart, so they sit in rows b and h across the gap.
+      bp.kind = 'nicla';
+      bp.label = board.name;
+      bp.pinLabels = Object.fromEntries(board.pins.map((pin) => [pin.name, pin.name.replace(/\.\d+$/, '')]));
+      for (const pin of board.pins) {
+        const [, j, n] = /^J(\d)-(\d+)$/.exec(pin.header!)!;
+        bp.legs[pin.name] = `${j === '1' ? 'b' : 'h'}${n}`;
+      }
+      for (let c = 1; c <= 9; c++) for (const r of 'cdefg') blocked.add(holeIn(r, c));
+      start = 11;
     } else if (board.id === 'rpi4') {
       // A 40-pin T-Cobbler breakout straddles the gap; a ribbon cable goes to the Pi's GPIO header.
       bp.kind = 'cobbler';
@@ -161,7 +172,9 @@ export function planBreadboard(project: Project): BreadboardPlan {
       for (const [pin, h] of Object.entries(bp.legs)) put(boardPart, pin, h);
       bbParts.push(bp);
       step(
-        board.id === 'pico'
+        board.header === 'nicla'
+          ? `Solder 2.54 mm headers to the ${board.name}'s edge pads, then push it into the board across the centre gap with its battery pads (J3) pointing right: header J1 goes in row b and J2 in row h, pad 1 of each in column 1 (J1-1 in b1, J2-1 in h1). It covers rows c–g of columns 1–9.`
+          : board.id === 'pico'
           ? `Push the Raspberry Pi Pico into the board so it straddles the centre gap with its USB socket hanging off the left end: its top pins go in row c, columns 1–20 (pin 40, VBUS, in c1) and its bottom pins in row h (pin 1, GP0, in h1). Press evenly on both ends until it sits flat.`
           : board.id === 'rpi4'
             ? `Push the 40-pin T-Cobbler breakout into the board so it straddles the centre gap at columns 1–20, ribbon socket on the left: even-numbered Pi pins (2, 4 … 40) go in row c, odd pins (1, 3 … 39) in row h. Plug the ribbon cable into the cobbler and into the Pi's GPIO header with the coloured edge of the cable on pin 1 (the corner nearest the SD card). Leave the Pi switched off while you wire.`
@@ -353,7 +366,7 @@ export function planBreadboard(project: Project): BreadboardPlan {
       }
     }
   }
-  for (const bp of bbParts.filter((b) => !['pico', 'esp32', 'dip', 'module'].includes(b.kind))) {
+  for (const bp of bbParts.filter((b) => !['pico', 'esp32', 'nicla', 'dip', 'module'].includes(b.kind))) {
     const part = project.parts.find((p) => refOf(p) === bp.ref)!;
     step(describeInline(part, bp), [bp.ref], Object.values(bp.legs));
   }

@@ -28,7 +28,7 @@ function covered(plan: ReturnType<typeof planBreadboard>): Set<string> {
   for (const bp of plan.layout.parts) {
     const cols = Object.values(bp.legs).map((h) => Number(/\d+$/.exec(h)![0]));
     const [lo, hi] = bp.span ?? [Math.min(...cols), Math.max(...cols)];
-    const rows = bp.kind === 'esp32' ? 'bcdefghi' : bp.kind === 'pico' || bp.kind === 'cobbler' ? 'cdefgh' : bp.kind === 'module' ? 'ab' : '';
+    const rows = bp.kind === 'esp32' ? 'bcdefghi' : bp.kind === 'nicla' ? 'bcdefgh' : bp.kind === 'pico' || bp.kind === 'cobbler' ? 'cdefgh' : bp.kind === 'module' ? 'ab' : '';
     for (let c = lo; c <= hi + (bp.kind === 'esp32' ? 4 : 0); c++) {
       for (const r of rows) out.add(`${r}${c}`);
       if (bp.flat) out.add(`T+${c}`).add(`T-${c}`);
