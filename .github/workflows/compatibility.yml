@@ -1,0 +1,47 @@
+name: KiCad compatibility lab
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kicad:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run tests/unit/compatibility.test.ts tests/unit/compatibility-jobs.test.ts
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Build pinned KiCad 8.0.9 worker
+        run: docker build -f docker/compatibility.Dockerfile -t sparkbench-compatibility .
+      - name: Check reference circuits and negative control
+        run: |
+          mkdir -p out/compatibility
+          docker run --name sparkbench-compatibility --network none --memory 2g --cpus 2 --pids-limit 128 --read-only --tmpfs /tmp:rw,nosuid,size=512m --cap-drop ALL --security-opt no-new-privileges --user "$(id -u):$(id -g)" -e GITHUB_SHA -v "$PWD/out:/lab/out" sparkbench-compatibility
+      - name: Clean up worker
+        if: always()
+        run: docker rm -f sparkbench-compatibility || true
+      - name: Publish summary
+        if: always()
+        run: test ! -f out/compatibility/SUMMARY.md || cat out/compatibility/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kicad-compatibility-${{ github.sha }}
+          path: out/compatibility/
+          if-no-files-found: warn
+          retention-days: 14
