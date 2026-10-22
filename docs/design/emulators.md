@@ -1,6 +1,6 @@
 # Firmware emulators: local Docker and cloud
 
-Status: proposal. The ESP32 runner (step 1) is built on branch `emulators`.
+Status: proposal. The ESP32 runner (step 1) is built on branch `emulators` and verified on a Mac (Colima). The demo firmware boots in the container with Espressif's real ROM boot log on the serial console, blinks GPIO2, and holds the LED on while the virtual button on GPIO4 is pressed. The container is removed after the session.
 
 ## Goal
 
@@ -60,7 +60,7 @@ The server side is the same for every family: `server/esp32.ts`, generalized int
 | Mode | How | Who it's for |
 |---|---|---|
 | **Local, native** | the helper binary on a Linux host | contributors on Linux |
-| **Local, Docker** (built) | `docker run` per session, chosen automatically when the image exists | Mac/Windows/Linux users running Sparkbench locally |
+| **Local, Docker** (built, verified) | one container per session, with the flash image copied in (no folder mounts, so any Docker host works), chosen automatically when the image exists | Mac/Windows/Linux users running Sparkbench locally |
 | **Cloud** | a worker pool runs the same images, and the browser connects to it over WebSocket | hosted Sparkbench |
 
 Cloud notes:

@@ -1,7 +1,8 @@
 import type { Connect } from 'vite';
 import { createHash, randomBytes } from 'node:crypto';
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { execFile, spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
 import type { ServerResponse } from 'node:http';
 import { tmpdir, homedir } from 'node:os';
@@ -56,17 +57,30 @@ async function demoImage(): Promise<Buffer> {
   return imageDemo;
 }
 
-/** One container per session: no network, capped CPU/memory/processes, only the session folder mounted. */
-function launchHelper(dir: string, mask: number, values: number): { child: ChildProcessWithoutNullStreams; container?: string } {
+const docker = (args: string[]) => promisify(execFile)('docker', args, { timeout: 30000 });
+
+/**
+ * One container per session: no network, capped CPU/memory/processes, no capabilities. The flash
+ * and eFuse files are copied in rather than mounted, so this works with any Docker host
+ * (Docker Desktop, Colima, a remote daemon or a cloud worker), whatever folders it shares.
+ */
+async function launchHelper(dir: string, mask: number, values: number): Promise<{ child: ChildProcessWithoutNullStreams; container?: string }> {
   if (runner() === 'native') {
     return { child: spawn(helperPath(), [qemuPath(), romPath(), join(dir, 'flash.bin'), join(dir, 'efuse.bin'), String(mask), String(values)], { stdio: ['pipe', 'pipe', 'pipe'], shell: false }) };
   }
   const container = `sparkbench-esp32-${randomBytes(6).toString('hex')}`;
-  const user = typeof process.getuid === 'function' ? ['--user', `${process.getuid()}:${process.getgid!()}`] : [];
-  const args = ['run', '--rm', '-i', '--name', container, '--network', 'none', '--cpus', '1', '--memory', '1g', '--pids-limit', '64',
-    '--read-only', '--tmpfs', '/tmp:size=16m', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', ...user,
-    '-v', `${dir}:/session`, IMAGE(), IN_IMAGE.qemu, IN_IMAGE.rom, '/session/flash.bin', '/session/efuse.bin', String(mask), String(values)];
-  return { child: spawn('docker', args, { stdio: ['pipe', 'pipe', 'pipe'], shell: false }), container };
+  await docker(['create', '--rm', '-i', '--name', container, '--network', 'none', '--cpus', '1', '--memory', '1g', '--pids-limit', '64',
+    '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+    IMAGE(), IN_IMAGE.qemu, IN_IMAGE.rom, '/session/flash.bin', '/session/efuse.bin', String(mask), String(values)]);
+  try {
+    // docker cp keeps the host owner, so let the container's user read and write the copies.
+    await Promise.all(['flash.bin', 'efuse.bin'].map((f) => chmod(join(dir, f), 0o666)));
+    await docker(['cp', `${dir}/.`, `${container}:/session`]);
+  } catch (e) {
+    removeContainer(container);
+    throw e;
+  }
+  return { child: spawn('docker', ['start', '-ai', container], { stdio: ['pipe', 'pipe', 'pipe'], shell: false }), container };
 }
 /** Killing `docker run` does not stop its container, so remove it explicitly. */
 function removeContainer(name?: string) {
@@ -384,7 +398,7 @@ async function startSession(project: Project, image: Buffer, name: string, res: 
     await writeFile(flash, image, { mode: 0o600 });
     await writeFile(efuse, Buffer.alloc(4096), { mode: 0o600 });
     if (res.destroyed) throw new Error('client disconnected before firmware startup');
-    ({ child, container } = launchHelper(dir, initial.mask, initial.values));
+    ({ child, container } = await launchHelper(dir, initial.mask, initial.values));
   } catch (e) {
     startingSessions--;
     if (child) child.kill('SIGKILL');
