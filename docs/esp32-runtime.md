@@ -86,6 +86,8 @@ concurrent instances, and never passes client paths or commands to a shell.
 The helper has 130 CPU-seconds and a 4 GiB address-space limit per session.
 This is intended for trusted local use, not a hardened hostile multi-tenant
 sandbox. Firmware networking is disabled in the QEMU arguments.
+The random session ID is a bearer capability: do not log or share it. Remote
+or multi-user hosting requires authentication and isolation before exposure.
 
 The helper is GPL-2.0-or-later; its complete license text is included in
 `native/esp32/helper/COPYING`. It dynamically links the GPL QEMU library,

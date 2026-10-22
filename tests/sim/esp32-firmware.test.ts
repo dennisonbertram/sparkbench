@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildEsp32FirmwareExample } from '../../src/core/firmwareExample';
 import { ElectricalModel } from '../../src/core/circuit';
 import { applyEsp32Inputs, Esp32CircuitBridge } from '../../server/esp32Circuit';
+import { Esp32SerialDecoder } from '../../server/esp32Serial';
 import { esp32Middleware, validateEsp32Firmware, validateEsp32Project } from '../../server/esp32';
 
 function image(): Buffer {
@@ -29,6 +30,9 @@ describe('native ESP32 firmware contract', () => {
     const project = buildEsp32FirmwareExample();
     expect(project.board).toBe('esp32');
     expect(project.parts.map((p) => p.id)).toEqual(['board1', 'resistor1', 'led1', 'resistor2', 'button1']);
+    expect(project.parts.map(({ id, ref }) => [id, ref])).toEqual([
+      ['board1', 'U1'], ['resistor1', 'R1'], ['led1', 'D1'], ['resistor2', 'R2'], ['button1', 'SW1'],
+    ]);
     expect(project.parts.find((p) => p.id === 'resistor2')?.props.ohms).toBe(10000);
     expect(project.files['main.py']).not.toMatch(/executes|runs Python/i);
     expect(() => validateEsp32Project(project)).not.toThrow();
@@ -49,6 +53,15 @@ describe('native ESP32 firmware contract', () => {
     const appOnly = Buffer.alloc(4 * 1024 * 1024); appOnly[0x10000] = 0xe9;
     expect(() => validateEsp32Firmware(appOnly)).toThrow(/bootloader/);
     expect(() => validateEsp32Firmware(Buffer.alloc(1024))).toThrow(/4 MiB/);
+  });
+
+  it('decodes UART UTF-8 bytes across chunks and preserves line boundaries', () => {
+    const decoder = new Esp32SerialDecoder();
+    const lines = [...Buffer.from('café 😀\nsecond café\nfinal 😅', 'utf8')]
+      .flatMap((byte) => decoder.writeByte(byte));
+    expect(lines).toEqual(['café 😀', 'second café']);
+    expect(decoder.end()).toEqual(['final 😅']);
+    expect(decoder.end()).toEqual([]);
   });
 
   it('rejects unsupported circuit parts', () => {

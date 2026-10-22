@@ -12,6 +12,7 @@ import { partDef } from '../src/core/parts';
 import { SimEngine, type SimFrame } from '../src/sim/engine';
 import { buildEsp32FirmwareExample } from '../src/core/firmwareExample';
 import { applyEsp32Inputs, Esp32CircuitBridge, parseEsp32Control, wiredEsp32Gpios } from './esp32Circuit';
+import { Esp32SerialDecoder } from './esp32Serial';
 
 const FLASH_SIZE = 4 * 1024 * 1024;
 const MAX_BODY = 8 * 1024 * 1024;
@@ -39,7 +40,7 @@ type Session = {
   stderrBytes: number;
   stderrBuffer: string;
   responseBytes: number;
-  serialBuffer: string;
+  serialDecoder: Esp32SerialDecoder;
   virtualTimeUs: number;
   framePending: boolean;
   backpressured: boolean;
@@ -229,11 +230,10 @@ function emit(session: Session, event: unknown, final = false) {
   writeEvent(session, event, final);
 }
 
-function flushSerial(session: Session) {
-  if (!session.serialBuffer) return;
-  session.engine.serial(session.serialBuffer);
-  session.serialBuffer = '';
-  session.framePending = true;
+function finishSerial(session: Session) {
+  const fragments = session.serialDecoder.end();
+  for (const fragment of fragments) session.engine.serial(fragment);
+  if (fragments.length) session.framePending = true;
 }
 
 function publishFrame(session: Session, final = false) {
@@ -275,7 +275,6 @@ function stopSession(session: Session, reason?: string, alreadyQueued = false): 
       if (session.child.exitCode === null && session.child.signalCode === null) {
         await new Promise<void>((resolve) => session.child.once('close', () => { clearTimeout(killTimer); resolve(); }));
       } else clearTimeout(killTimer);
-      flushSerial(session);
       if (!session.response.destroyed && !session.response.writableEnded) {
         session.engine.timeUs = session.virtualTimeUs;
         session.engine.status = 'running';
@@ -348,7 +347,7 @@ async function startSession(project: Project, image: Buffer, name: string, res: 
   }
   const session: Session = {
     id, project, model, engine, bridge, child, dir, response: res, done: false, serialBytes: 0, stdoutBytes: 0,
-    stderrBytes: 0, stderrBuffer: '', responseBytes: 0, serialBuffer: '', virtualTimeUs: 0, framePending: false,
+    stderrBytes: 0, stderrBuffer: '', responseBytes: 0, serialDecoder: new Esp32SerialDecoder(), virtualTimeUs: 0, framePending: false,
     backpressured: false, pendingErrors: [], lastFrameAt: 0,
   };
   sessions.set(id, session);
@@ -377,9 +376,7 @@ async function startSession(project: Project, image: Buffer, name: string, res: 
     } else if (event.type === 'serial' && Number.isInteger(event.value)) {
       session.serialBytes++;
       if (session.serialBytes > MAX_SERIAL) { void stopSession(session, 'native serial output limit exceeded'); return; }
-      session.serialBuffer += String.fromCharCode(event.value);
-      const lines = session.serialBuffer.split(/\r?\n/); session.serialBuffer = lines.pop() ?? '';
-      for (const value of lines) if (value) session.engine.serial(value);
+      for (const line of session.serialDecoder.writeByte(event.value)) session.engine.serial(line);
       session.framePending = true;
       flushPending(session);
     } else if (event.type === 'tick' && Number.isSafeInteger(event.timeUs) && event.timeUs >= 0) {
@@ -425,6 +422,7 @@ async function startSession(project: Project, image: Buffer, name: string, res: 
   child.on('close', () => {
     if (pending) dispatchLine(pending);
     pending = '';
+    finishSerial(session);
     if (!session.done && !session.stopping) {
       const diagnostic = session.stderrBuffer.trim();
       void stopSession(session, diagnostic || 'native helper exited');

@@ -8,11 +8,11 @@ export function buildEsp32FirmwareExample(): Project {
     summary: 'A real ESP-IDF image blinks GPIO2 and reads a pulled-up GPIO4 button.',
     board: 'esp32',
     parts: [
-      { id: 'board1', type: 'esp32-devkit', label: 'ESP32 DevKit V1', props: {}, x: 100, y: 100 },
-      { id: 'resistor1', type: 'resistor', label: 'LED resistor (220 Ω)', props: { ohms: 220 }, x: 300, y: 100 },
-      { id: 'led1', type: 'led', label: 'GPIO2 LED', props: { color: 'red' }, x: 430, y: 100 },
-      { id: 'resistor2', type: 'resistor', label: 'GPIO4 pull-up (10 kΩ)', props: { ohms: 10000 }, x: 300, y: 300 },
-      { id: 'button1', type: 'pushbutton', label: 'GPIO4 button', props: { color: 'red' }, x: 480, y: 300 },
+      { id: 'board1', ref: 'U1', type: 'esp32-devkit', label: 'ESP32 DevKit V1', props: {}, x: 100, y: 100 },
+      { id: 'resistor1', ref: 'R1', type: 'resistor', label: 'LED resistor (220 Ω)', props: { ohms: 220 }, x: 300, y: 100 },
+      { id: 'led1', ref: 'D1', type: 'led', label: 'GPIO2 LED', props: { color: 'red' }, x: 430, y: 100 },
+      { id: 'resistor2', ref: 'R2', type: 'resistor', label: 'GPIO4 pull-up (10 kΩ)', props: { ohms: 10000 }, x: 300, y: 300 },
+      { id: 'button1', ref: 'SW1', type: 'pushbutton', label: 'GPIO4 button', props: { color: 'red' }, x: 480, y: 300 },
     ],
     wires: [
       { id: 'wire-led-drive', a: { part: 'board1', pin: 'D2' }, b: { part: 'resistor1', pin: '1' } },

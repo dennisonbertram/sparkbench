@@ -39,8 +39,9 @@ export function FirmwarePanel() {
     setError('');
     setBusy(true);
     try {
-      if (!file.name.toLowerCase().endsWith('.bin') || file.size > 4 * 1024 * 1024 || file.size === 0) {
-        throw new Error('Choose a merged ESP32 .bin flash image, at most 4 MiB (not an ELF or app-only image).');
+      if (!file.name.toLowerCase().endsWith('.bin') || file.size !== 4 * 1024 * 1024) {
+        useStore.getState().set({ firmware: null, firmwareArtifact: null });
+        throw new Error('Choose an exactly 4 MiB merged ESP32 .bin flash image (not an ELF or app-only image).');
       }
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
