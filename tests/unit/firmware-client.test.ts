@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FirmwareClient, type FirmwareHandlers } from '../../src/ui/firmwareClient';
 import type { Project } from '../../src/core/types';
 
-const project = { board: 'esp32' } as Project;
+const project = {
+  board: 'esp32',
+  parts: [
+    { id: 'board1', type: 'esp32-devkit', props: {} },
+    { id: 'button1', type: 'pushbutton', props: {} },
+    { id: 'switch1', type: 'slide-switch', props: {} },
+  ],
+} as Project;
 const handlers = (): FirmwareHandlers => ({ frame: vi.fn(), artifact: vi.fn(), error: vi.fn(), done: vi.fn() });
 const encoder = new TextEncoder();
 
@@ -27,7 +34,7 @@ describe('firmware browser transport', () => {
     vi.stubGlobal('fetch', fetcher);
     const callbacks = handlers();
     const client = new FirmwareClient(callbacks);
-    const finished = client.start(project, { name: 'flash.bin', base64: 'abcd' }, { 'button1.pressed': 0 });
+    const finished = client.start(project, { name: 'flash.bin', base64: 'abcd' }, { 'button1.pressed': 0, 'board1.wifi': 1 });
     wire.text('{"type":"ses');
     wire.text('sion","id":"token","artifact":{"name":"flash.bin","sha256":"hash"}}\n');
     wire.send({ type: 'frame', frame: { status: 'running', t: 1 } });
@@ -38,6 +45,7 @@ describe('firmware browser transport', () => {
     expect(callbacks.error).not.toHaveBeenCalled();
     expect(callbacks.done).toHaveBeenCalledOnce();
     expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({ firmware: { name: 'flash.bin', base64: 'abcd' }, inputs: { 'button1.pressed': 0 } });
+    expect('board1.wifi' in JSON.parse(fetcher.mock.calls[0][1].body).inputs).toBe(false);
   });
 
   it('buffers boot-time input and serializes press/release requests', async () => {

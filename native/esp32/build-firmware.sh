@@ -12,7 +12,6 @@ PIN=f5c3654a1c2d2a01f7f67def7a0dc48e691f63c0
 test -f "$IDF_PATH/export.sh" || { echo "ESP-IDF v5.4.2 is missing: $IDF_PATH" >&2; exit 2; }
 test "$(git -C "$IDF_PATH" rev-parse HEAD)" = "$PIN" || { echo "unexpected ESP-IDF source revision" >&2; exit 2; }
 mkdir -p "$BUILD_DIR" "$(dirname -- "$OUT")"
-# export.sh only configures the pinned local toolchain; it does not run Python.
 export IDF_TOOLS_PATH IDF_PATH
 export PATH="$CACHE/build-tools/bin:$PATH"
 source "$IDF_PATH/export.sh" >/dev/null

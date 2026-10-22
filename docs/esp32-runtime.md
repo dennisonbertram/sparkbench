@@ -47,12 +47,31 @@ library, ROM, toolchain, or generated build directory belongs in git.
 
 ## Scope and limits
 
-Only GPIO and serial are advertised. I2C, SPI, RMT, Wi-Fi, PWM, and other
-peripherals are not implemented; unsupported QEMU callbacks report an error.
-The feedback loop runs at approximately 10 ms and is not cycle accurate. GPIO4 is
-modeled with external pulls; projects should not depend on an unrepresented
-internal pull resistor. The supported circuit parts are the ESP32 DevKit V1,
-resistor, LED, pushbutton, and slide switch.
+Only digital GPIO and UART transmit (TX) serial are advertised. UART receive,
+I2C, SPI, RMT, Wi-Fi, PWM, and other peripherals are not implemented. I2C, SPI,
+and RMT callback use reports an error when the pinned QEMU fork invokes those
+callbacks; peripherals that execute without one of these callbacks may not be
+detected. This is not a validator for arbitrary firmware behavior.
+
+The QEMU bridge maps GPIO0–31. A circuit may wire only GPIOs exposed by the
+ESP32 DevKit V1 pin definitions and numbered below 32 (currently GPIO1–5,
+GPIO12–19, GPIO21–23, and GPIO25–27). A wired GPIO32 or higher is rejected.
+Internal pull-up/down configuration is not forwarded from firmware; GPIO input
+circuits must provide their own external pull-up or pull-down. The circuit
+feedback loop runs at approximately 10 ms and is not cycle accurate. Supported
+circuit parts are the ESP32 DevKit V1, resistor, LED, pushbutton, and slide
+switch.
+
+Uploaded firmware must be an exactly 4 MiB merged classic ESP32 flash image
+using the fixed bootloader, partition-table, and application offsets:
+bootloader at `0x1000`, partition table at `0x8000`, and application at
+`0x10000`. Preflight checks the ESP image magic/chip ID, bounded segment counts
+and lengths, and an application partition entry at `0x10000`. This is a
+structural preflight only: it does not verify image checksums, signatures,
+secure boot, flash encryption, or general firmware compatibility.
+
+The QEMU watchdog is disabled. The helper captures UART TX output from the
+simulated chip; it does not provide a UART RX console.
 
 The default demo is a real ESP-IDF program: GPIO2 blinks at about 500 ms when
 GPIO4 is released and remains on while GPIO4 is pulled low. It prints a boot
@@ -68,7 +87,8 @@ The helper has 130 CPU-seconds and a 4 GiB address-space limit per session.
 This is intended for trusted local use, not a hardened hostile multi-tenant
 sandbox. Firmware networking is disabled in the QEMU arguments.
 
-The helper is GPL-2.0-or-later and dynamically links the GPL QEMU library,
+The helper is GPL-2.0-or-later; its complete license text is included in
+`native/esp32/helper/COPYING`. It dynamically links the GPL QEMU library,
 which remains under QEMU's own GPL-2.0 and third-party notices. QEMU's
 `pc-bios/esp32-v3-rom*.bin` files are sourced from `pc-bios` at the pinned
 QEMU revision and listed in its `pc-bios/meson.build`. Their embedded

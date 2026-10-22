@@ -44,11 +44,11 @@ describe('native ESP32 integration', () => {
       expect(await sessionDirs()).toEqual(initialDirs);
     };
 
-    const openRun = async (circuit = project): Promise<Stream> => {
+    const openRun = async (circuit = project, inputs: Record<string, number> = {}): Promise<Stream> => {
       const response = await fetch(`${base}/api/esp32/run`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ project: circuit, demo: true }),
+        body: JSON.stringify({ project: circuit, demo: true, inputs }),
       });
       expect(response.status).toBe(200);
       expect(response.headers.get('content-type')).toContain('application/x-ndjson');
@@ -80,7 +80,12 @@ describe('native ESP32 integration', () => {
       }
       expect(predicate(stream.events), `timed out waiting for ${label}: ${summary()}`).toBe(true);
     };
-    const serialText = (stream: Stream) => stream.events.flatMap((event) => event.type === 'frame' ? event.frame?.serial ?? [] : []).join('\n');
+    const serialText = (stream: Stream, from = 0) => stream.events.slice(from).flatMap((event) => event.type === 'frame' ? event.frame?.serial ?? [] : []).join('\n');
+    const ledValues = (stream: Stream, from = 0) => stream.events.slice(from)
+      .flatMap((event) => event.type === 'frame' ? [event.frame?.parts.led1?.led ?? 0] : []);
+    const frameHasSerialAndLed = (stream: Stream, from: number, serial: string, led: (value: number) => boolean) =>
+      stream.events.slice(from).some((event) => event.type === 'frame' && event.frame !== undefined &&
+        event.frame.serial.some((line) => line.includes(serial)) && led(event.frame.parts.led1?.led ?? 0));
     const stop = async (id: string) => {
       const response = await fetch(`${base}/api/esp32/stop`, {
         method: 'POST',
@@ -105,16 +110,16 @@ describe('native ESP32 integration', () => {
       await rejectRun({ project, firmware: { name: 'app.bin', base64: 'YmFk' } }, /4 MiB/);
       await rejectRun({ project: { ...project, board: 'pico' }, demo: true }, /requires an esp32 project/);
       await expectClean();
-      const demo = await openRun();
-      await readUntil(demo, (events) => events.some((event) => event.type === 'session') && serialText(demo).includes('SPARKBENCH_ESP32_BOOT'), 'first firmware boot');
+      const demo = await openRun(project, { 'button1.pressed': 1 });
+      await readUntil(demo, (events) => events.some((event) => event.type === 'session') &&
+        serialText(demo).includes('SPARKBENCH_ESP32_BOOT') && serialText(demo).includes('SPARKBENCH_BUTTON=pressed'),
+      'initial held-button firmware boot');
       const firstId = demo.events.find((event) => event.type === 'session')?.id;
       expect(firstId).toBeTruthy();
       await readUntil(demo, (events) => {
-        const leds = events.flatMap((event) => event.type === 'frame' ? [event.frame?.parts.led1?.led ?? 0] : []);
-        return leds.some((value) => value > 0) && leds.some((value) => value === 0) &&
-          serialText(demo).includes('SPARKBENCH_BUTTON=released');
-      }, 'GPIO2 blink and released-button serial state');
-      expect(Math.max(...demo.events.flatMap((event) => event.type === 'frame' ? [event.frame?.parts.led1?.led ?? 0] : []))).toBeGreaterThan(0);
+        return ledValues(demo).some((value) => value > 0);
+      }, 'initial held-button LED state');
+      expect(Math.max(...ledValues(demo))).toBeGreaterThan(0);
 
       const press = async (value: number) => {
         const response = await fetch(`${base}/api/esp32/input`, {
@@ -124,10 +129,20 @@ describe('native ESP32 integration', () => {
         });
         expect(response.status).toBe(200);
       };
-      await press(1);
-      await readUntil(demo, (events) => serialText(demo).includes('SPARKBENCH_BUTTON=pressed'), 'pressed-button serial state');
       await press(0);
-      await readUntil(demo, (events) => serialText(demo).includes('SPARKBENCH_BUTTON=released'), 'released-button serial state');
+      const firstReleaseStart = demo.events.length;
+      await readUntil(demo, () => serialText(demo, firstReleaseStart).includes('SPARKBENCH_BUTTON=released') &&
+        ledValues(demo, firstReleaseStart).some((value) => value === 0) && ledValues(demo, firstReleaseStart).some((value) => value > 0),
+      'post-input release serial and blinking LED transition');
+      await press(1);
+      const pressStart = demo.events.length;
+      await readUntil(demo, () => frameHasSerialAndLed(demo, pressStart, 'SPARKBENCH_BUTTON=pressed', (value) => value > 0),
+      'post-input pressed serial and lit LED');
+      await press(0);
+      const secondReleaseStart = demo.events.length;
+      await readUntil(demo, () => serialText(demo, secondReleaseStart).includes('SPARKBENCH_BUTTON=released') &&
+        ledValues(demo, secondReleaseStart).some((value) => value === 0) && ledValues(demo, secondReleaseStart).some((value) => value > 0),
+      'second post-input release serial and blinking LED transition');
       await stop(firstId!);
       await readUntil(demo, (events) => events.some((event) => event.type === 'done'), 'clean stop');
       await expectClean();
@@ -145,8 +160,6 @@ describe('native ESP32 integration', () => {
       expect(broken.events.find((event) => event.type === 'session')?.id).not.toBe(firstId);
       expect(broken.events.flatMap((event) => event.type === 'frame' ? [event.frame?.parts.led1?.led ?? 0] : []).every((value) => value === 0)).toBe(true);
       await broken.reader.cancel();
-      const brokenId = broken.events.find((event) => event.type === 'session')?.id;
-      if (brokenId) await stop(brokenId);
       await expectClean();
 
       const restarted = await openRun();

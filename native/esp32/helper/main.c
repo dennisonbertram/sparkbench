@@ -21,6 +21,7 @@
 
 typedef char Error;
 typedef enum { QEMU_CLOCK_REALTIME = 0, QEMU_CLOCK_VIRTUAL = 1 } QEMUClockType;
+typedef int64_t (*clock_get_ns_t)(QEMUClockType);
 typedef void (*qemu_init_t)(int, char **, const char **);
 typedef void (*qemu_main_loop_t)(void);
 typedef void (*qemu_cleanup_t)(void);
@@ -50,6 +51,7 @@ static bql_unlock_t qemu_unlock;
 static set_pin_t set_pin;
 static qmp_quit_t qmp_quit;
 static qmp_reset_t qmp_reset;
+static clock_get_ns_t clock_get_ns;
 static const int16_t *pinmap;
 static volatile sig_atomic_t stopping;
 
@@ -114,7 +116,18 @@ static void *input_loop(void *arg)
     char buf[512];
     while (!stopping && fgets(buf, sizeof(buf), stdin)) {
         int gpio, value;
-        if (sscanf(buf, "{\"type\":\"pin\",\"gpio\":%d,\"value\":%d}", &gpio, &value) == 2 &&
+        unsigned int mask, values;
+        if (sscanf(buf, "{\"type\":\"sync\",\"mask\":%u,\"values\":%u}", &mask, &values) == 2) {
+            if (qemu_lock) qemu_lock(__FILE__, __LINE__);
+            for (int input = 0; input < 32; input++) {
+                if (!(mask & (1U << input))) continue;
+                int pin = mapped_pin(input);
+                if (pin >= 0) set_pin(pin, !!(values & (1U << input)));
+            }
+            int64_t time_us = clock_get_ns(QEMU_CLOCK_VIRTUAL) / 1000;
+            if (qemu_unlock) qemu_unlock();
+            line("{\"type\":\"tick\",\"timeUs\":%lld}", (long long)time_us);
+        } else if (sscanf(buf, "{\"type\":\"pin\",\"gpio\":%d,\"value\":%d}", &gpio, &value) == 2 &&
             gpio >= 0 && gpio < 32) {
             int pin = mapped_pin(gpio);
             if (pin >= 0) {
@@ -148,10 +161,17 @@ static void *input_loop(void *arg)
 
 int main(int argc, char **argv)
 {
-    if (argc != 5) {
-        fprintf(stderr, "usage: %s LIBQEMU ROM_DIR FLASH EFUSE\n", argv[0]);
+    if (argc != 7) {
+        fprintf(stderr, "usage: %s LIBQEMU ROM_DIR FLASH EFUSE INPUT_MASK INPUT_VALUES\n", argv[0]);
         return 2;
     }
+    char *end = NULL;
+    errno = 0;
+    unsigned long startup_mask = strtoul(argv[5], &end, 10);
+    if (errno || !end || *end || startup_mask > UINT32_MAX) return 2;
+    errno = 0;
+    unsigned long startup_values = strtoul(argv[6], &end, 10);
+    if (errno || !end || *end || startup_values > UINT32_MAX) return 2;
     struct rlimit cpu = { 130, 130 }, as = { 4UL * 1024 * 1024 * 1024, 4UL * 1024 * 1024 * 1024 };
     if (setrlimit(RLIMIT_CPU, &cpu) != 0 || setrlimit(RLIMIT_AS, &as) != 0) {
         fprintf(stderr, "could not apply QEMU resource limits: %s\n", strerror(errno));
@@ -173,6 +193,7 @@ int main(int argc, char **argv)
     qmp_reset = (qmp_reset_t)symbol(lib, "qmp_system_reset");
     qemu_lock = (bql_lock_t)symbol(lib, "bql_lock_impl");
     qemu_unlock = (bql_unlock_t)symbol(lib, "bql_unlock");
+    clock_get_ns = (clock_get_ns_t)symbol(lib, "qemu_clock_get_ns");
 
     static int16_t pinmap_data[33];
     pinmap_data[0] = 32;
@@ -198,6 +219,11 @@ int main(int argc, char **argv)
         (char *)"driver=timer.esp32.timg,property=wdt_disable,value=true", NULL
     };
     qemu_init((int)(sizeof(qargv) / sizeof(qargv[0]) - 1), qargv, NULL);
+    for (int gpio = 0; gpio < 32; gpio++) {
+        if (!(startup_mask & (1UL << gpio))) continue;
+        int pin = mapped_pin(gpio);
+        if (pin >= 0) set_pin(pin, !!(startup_values & (1UL << gpio)));
+    }
     line("{\"type\":\"ready\"}");
     pthread_t input;
     if (pthread_create(&input, NULL, input_loop, NULL) != 0) return 2;

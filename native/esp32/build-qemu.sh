@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
-QEMU=${SPARKBENCH_QEMU_SOURCE:-"$HOME/.cache/sparkbench/qemu"}
+CACHE=${SPARKBENCH_CACHE:-"$HOME/.cache/sparkbench"}
+export PATH="$CACHE/build-tools/bin:$PATH"
+QEMU=${SPARKBENCH_QEMU_SOURCE:-"$CACHE/qemu"}
 PIN=9c2989840853e3b47cd1d9cbd38ce8ba41af260a
 test "$(git -C "$QEMU" rev-parse HEAD)" = "$PIN" || { echo "unexpected QEMU source revision" >&2; exit 2; }
 cd "$QEMU"

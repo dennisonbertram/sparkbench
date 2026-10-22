@@ -14,14 +14,19 @@ export class FirmwareClient {
   private stopped = false;
   private queue = Promise.resolve();
   private pending: { part: string; key: string; value: number }[] = [];
+  private supportedInputs = new Set<string>();
 
   constructor(private handlers: FirmwareHandlers) {}
 
   async start(project: Project, firmware: { name: string; base64: string } | 'demo', inputs: Record<string, number>) {
     try {
+      this.supportedInputs = new Set(project.parts.flatMap((part) =>
+        part.type === 'pushbutton' ? [`${part.id}.pressed`] :
+          part.type === 'slide-switch' ? [`${part.id}.position`] : []));
+      const initialInputs = Object.fromEntries(Object.entries(inputs).filter(([key]) => this.supportedInputs.has(key)));
       const response = await fetch('/api/esp32/run', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: this.controller.signal,
-        body: JSON.stringify({ project, inputs, ...(firmware === 'demo' ? { demo: true } : { firmware }) }),
+        body: JSON.stringify({ project, inputs: initialInputs, ...(firmware === 'demo' ? { demo: true } : { firmware }) }),
       });
       if (!response.ok) {
         const data = await response.json();
@@ -68,7 +73,7 @@ export class FirmwareClient {
   }
 
   input(part: string, key: string, value: number) {
-    if (this.stopped) return;
+    if (this.stopped || !this.supportedInputs.has(`${part}.${key}`)) return;
     if (!this.id) {
       if (this.pending.length >= 100) this.pending.shift();
       this.pending.push({ part, key, value });
