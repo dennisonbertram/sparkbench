@@ -175,6 +175,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); opacity: 1; }
 .ds-check { display: inline-flex; align-items: flex-start; gap: 6px; font-size: 13px; cursor: pointer; }
 .ds-check input { margin: 2px 0 0; accent-color: var(--primary); }
 input[type='range'] { accent-color: var(--primary); }
+input[type='color'] { width: 50px; height: 28px; padding: 0 2px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); cursor: pointer; }
 .ds-file { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius-control); padding: 5px 10px; }
 .ds-file:hover { border-color: var(--ink-3); }
 .ds-file.primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); font-weight: 500; }
@@ -227,6 +228,12 @@ input[type='range'] { accent-color: var(--primary); }
 .ds-tabs-file [role='tab'] { border: 1px solid transparent; background: none; font-family: var(--mono); font-size: 12.5px; }
 .ds-tabs-file [role='tab'].active { background: var(--surface); border-color: var(--line); }
 .tabs .ds-tabs-trail { padding-bottom: 4px; }
+
+/* Segmented: one of a few options, as a pill group (same look as the segmented Tabs) */
+.ds-segmented { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-control); }
+.ds-segmented [role='radio'] { border: none; background: none; padding: 4px 10px; border-radius: 8px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.ds-segmented [role='radio']:hover:not(.is-on) { color: var(--ink); }
+.ds-segmented [role='radio'].is-on { background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: 0 0 0 1px var(--line); }
 
 /* Disclosure: a Card that folds */
 .ds-disclosure { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
@@ -304,7 +311,7 @@ input[type='range'] { accent-color: var(--primary); }
 .ds-tool-details > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .ds-tool-lines { margin: 0; padding: 2px 0 2px 20px; list-style: none; display: grid; gap: 2px; }
 .ds-tool-lines li { font-size: 12px; line-height: 20px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ds-tool-lines li.failed { color: var(--error); }
+.ds-tool-lines li.is-failed { color: var(--error); }
 .ds-tool-list { display: grid; gap: 2px; }
 .ds-tool-hidden { font-size: 12px; line-height: 20px; color: var(--ink-3); }
 .ds-tool-group > summary { display: flex; align-items: center; gap: 4px; width: fit-content; min-height: 24px; padding: 2px 6px 2px 0; border-radius: 6px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink-3); }
@@ -317,7 +324,7 @@ input[type='range'] { accent-color: var(--primary); }
 .ds-tool-group-body { margin: 2px 0 0 7px; padding-left: 12px; border-left: 1px solid var(--line); }
 
 /* Markdown in chat */
-.ds-md { min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
+.ds-md { min-width: 0; overflow-wrap: anywhere; color: var(--ink); white-space: normal; }
 .ds-md strong, .ds-md b { font-weight: 600; }
 .ds-md > :first-child { margin-top: 0; }
 .ds-md > :last-child { margin-bottom: 0; }
@@ -341,18 +348,18 @@ input[type='range'] { accent-color: var(--primary); }
 /* Chat thread and messages */
 .ds-thread { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
 .ds-msg { position: relative; display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
-.ds-msg.user { align-items: flex-end; }
-.ds-msg.assistant { align-items: flex-start; }
+.ds-msg.ds-from-user { align-items: flex-end; }
+.ds-msg.ds-from-assistant { align-items: flex-start; }
 .ds-msg-bubble { max-width: 100%; padding: 9px 13px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
-.ds-msg.user .ds-msg-bubble { margin-left: 28px; background: var(--chat-user); color: var(--ink); }
-.ds-msg.assistant .ds-msg-bubble { background: var(--surface-2); }
-.ds-msg.pending .ds-msg-bubble { color: var(--ink-3); }
+.ds-msg.ds-from-user .ds-msg-bubble { margin-left: 28px; background: var(--chat-user); color: var(--ink); }
+.ds-msg.ds-from-assistant .ds-msg-bubble { background: var(--surface-2); }
+.ds-msg.is-pending .ds-msg-bubble { color: var(--ink-3); }
 .ds-msg-plain { white-space: pre-wrap; overflow-wrap: anywhere; }
 .ds-msg-extras { display: flex; flex-direction: column; gap: 8px; max-width: 100%; width: 100%; }
-.ds-msg.user .ds-msg-extras { align-items: flex-end; }
+.ds-msg.ds-from-user .ds-msg-extras { align-items: flex-end; }
 .ds-msg-meta { display: flex; align-items: center; gap: 2px; min-height: 22px; font-size: 12px; color: var(--ink-3); transition: opacity 120ms; }
 @media (hover: hover) and (pointer: fine) {
-  .ds-msg-meta:not(.pinned) { opacity: 0; pointer-events: none; }
+  .ds-msg-meta:not(.is-pinned) { opacity: 0; pointer-events: none; }
   .ds-msg:hover > .ds-msg-meta, .ds-msg:focus-within > .ds-msg-meta { opacity: 1; pointer-events: auto; }
 }
 
@@ -361,20 +368,25 @@ input[type='range'] { accent-color: var(--primary); }
 .ds-composer-top { display: flex; flex-wrap: wrap; gap: 6px; }
 .ds-composer-bar { display: flex; align-items: flex-end; gap: 8px; padding: 7px 7px 7px 10px; background: var(--surface); border: 1px solid var(--control); border-radius: 16px; transition: border-color 120ms; }
 .ds-composer-bar:focus-within { border-color: var(--ring); }
-.ds-composer-bar.disabled { opacity: 0.6; }
+/* Off: the box and attach fade; the actions too, unless Stop is offered. */
+.ds-composer-bar.is-disabled { background: var(--surface-2); }
+.ds-composer-bar.is-disabled > .ds-composer-input, .ds-composer-bar.is-disabled > .ds-composer-attach, .ds-composer-bar.is-disabled:not(.is-stoppable) > .ds-composer-actions { opacity: 0.6; }
+.ds-composer-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 0 4px; font-size: 12px; color: var(--ink-3); }
 .ds-composer-attach, .ds-composer-actions { display: flex; align-items: center; gap: 6px; flex: none; min-height: 32px; }
 .ds-composer textarea.ds-composer-input { flex: 1; min-width: 0; min-height: 24px; margin: 4px 0; padding: 0 2px; border: 0; border-radius: 0; background: transparent; resize: none; line-height: 24px; overflow-y: hidden; }
 .ds-composer textarea.ds-composer-input:focus-visible { outline: none; }
 .icon-btn.ds-round { width: 32px; height: 32px; min-width: 32px; padding: 0; border-radius: 50%; }
 .icon-btn.ds-round.primary:active:not(:disabled) { transform: scale(0.95); }
+.ds-composer-actions .icon-btn.ds-round:not(.primary) { background: var(--surface); border-color: var(--control); color: var(--ink); }
 .ds-composer-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border: 1px solid color-mix(in srgb, var(--error) 40%, var(--line)); border-radius: var(--radius); background: color-mix(in srgb, var(--error) 8%, var(--surface)); color: var(--error); font-size: 13px; }
 .ds-composer-error-text { flex: 1 1 12rem; min-width: 0; }
 .ds-composer-error-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .ds-composer-error .ds-composer-error-x { color: var(--error); min-width: 24px; padding: 2px; }
 
 /* Cards the agent posts: approval and ask */
-.ds-approval, .ds-ask { width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.ds-approval.live { border-color: var(--control); }
+/* flex: none: in a scrolling flex column the card keeps its height (and its buttons) instead of being squeezed. */
+.ds-approval, .ds-ask { flex: none; width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.ds-approval.ds-approval-live { border-color: var(--control); }
 .ds-approval-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; text-align: left; }
 button.ds-approval-head { border: 0; border-radius: 0; background: none; }
 button.ds-approval-head:hover:not(:disabled) { background: var(--surface-2); }
@@ -392,24 +404,27 @@ button.ds-approval-head:focus-visible { outline-offset: -2px; }
 .ds-approval-sub { font-size: 12.5px; color: var(--ink-3); }
 .ds-approval-desc { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
 .ds-approval-preview { position: relative; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-2); overflow: auto; }
-.ds-approval-preview.clipped { overflow: hidden; }
-.ds-approval-preview.faded::after { content: ''; position: absolute; inset: auto 0 0; height: 40px; background: linear-gradient(transparent, var(--surface-2)); pointer-events: none; }
+.ds-approval-preview.is-clipped { overflow: hidden; }
+.ds-approval-preview.is-faded::after { content: ''; position: absolute; inset: auto 0 0; height: 40px; background: linear-gradient(transparent, var(--surface-2)); pointer-events: none; }
 button.link.ds-approval-more { align-self: flex-start; padding: 0; font-size: 12.5px; }
 .ds-approval-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .ds-approval-always { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 12.5px; color: var(--ink-3); }
 .ds-approval-always button.link { padding: 0; font-size: 12.5px; }
 .ds-card-error { margin: 0; padding: 0 14px 12px; font-size: 13px; color: var(--error); }
 
-.ds-ask { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ds-ask { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; white-space: normal; }
 .ds-ask .ds-card-error { padding: 0; }
 .ds-ask-question { font-size: 14.5px; line-height: 1.5; color: var(--ink); }
+.ds-ask-question .ds-md p, .ds-ask-question .ds-md ul, .ds-ask-question .ds-md ol { margin: 0.25em 0; }
+.ds-ask-question .ds-md > :first-child { margin-top: 0; }
+.ds-ask-question .ds-md > :last-child { margin-bottom: 0; }
 .ds-ask-detail { font-size: 13px; color: var(--ink-3); white-space: pre-wrap; overflow-wrap: anywhere; }
 .ds-ask-options { display: grid; gap: 6px; }
 button.ds-ask-option { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; text-align: left; background: var(--surface-2); border: 1px solid transparent; border-radius: var(--radius-control); }
 button.ds-ask-option:hover:not(:disabled) { border-color: var(--line); background: color-mix(in srgb, var(--surface-2) 70%, var(--line)); }
-button.ds-ask-option.on { border-color: var(--ink); background: var(--surface); }
+button.ds-ask-option.is-on { border-color: var(--ink); background: var(--surface); }
 .ds-ask-num { display: grid; place-items: center; flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 7px; background: var(--surface); font-size: 12px; font-weight: 500; color: var(--ink-2); }
-button.ds-ask-option.on .ds-ask-num { background: var(--primary); color: var(--primary-ink); }
+button.ds-ask-option.is-on .ds-ask-num { background: var(--primary); color: var(--primary-ink); }
 .ds-ask-option-text { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; color: var(--ink); }
 .ds-ask-hint { margin-top: 2px; font-size: 12.5px; color: var(--ink-3); }
 .ds-ask-rec { color: var(--ink-3); }
@@ -418,7 +433,7 @@ button.link.ds-ask-other { align-self: flex-start; padding: 0; font-size: 13px; 
 .ds-ask-form { display: flex; flex-wrap: wrap; gap: 8px; }
 .ds-ask-form input { flex: 1 1 12rem; min-width: 0; }
 .ds-ask-answered { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink); }
-.ds-ask-answered.muted { color: var(--ink-3); }
+.ds-ask-answered.is-muted { color: var(--ink-3); }
 
 @media (prefers-reduced-motion: reduce) {
   .ds-shimmer { animation: none; background: none; color: var(--ink-2); }

@@ -12,6 +12,8 @@ await p.waitForSelector('.part');
 await p.click('.tabs button:has-text("Circuit board")');
 await p.click('[data-testid=pcb-build]');
 await p.waitForSelector('[data-testid=pcb-result]', { timeout: 400000 });
+// The result smooth-scrolls into view; clicking during that scroll never finds a stable button.
+await p.waitForTimeout(1500);
 await p.click('[data-testid=case-make]');
 await p.waitForSelector('[data-testid=case-summary]', { timeout: 60000 });
 await p.waitForTimeout(2500);

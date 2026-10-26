@@ -633,9 +633,9 @@ export function ShareBar() {
         {room.offline ? ' · reconnecting…' : ''}
       </span>
       {room.conflict && (
-        <span className="share-conflict" role="alert" data-testid="share-conflict">
+        <Banner variant="inline" tone="warn" role="alert" className="share-conflict" data-testid="share-conflict">
           {room.conflict} <Button variant="ghost" size="sm" onClick={() => roomSet({ conflict: undefined })}>OK</Button>
-        </span>
+        </Banner>
       )}
       {room.unread && latest ? (
         <span className="share-new" role="status" data-testid="comment-notice">
@@ -744,7 +744,7 @@ export function JoinClass() {
         <TextInput value={code} onChange={(e) => (setCode(e.target.value), setHint(''))} placeholder="Class code" aria-label="Class code" maxLength={10} />
         <Button type="submit">Join a class</Button>
         <Button variant="ghost" onClick={() => useStore.getState().set({ dialog: 'teach' })}>I’m a teacher</Button>
-        {hint && <span className="join-hint" role="alert">{hint}</span>}
+        {hint && <Banner variant="inline" tone="warn" role="alert" className="join-hint">{hint}</Banner>}
       </form>
       {classes.length > 0 && (
         <div className="my-classes" data-testid="my-classes">

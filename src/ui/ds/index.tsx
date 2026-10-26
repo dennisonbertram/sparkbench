@@ -380,6 +380,31 @@ export function Radio({ label, className, ...rest }: BoxProps) {
   );
 }
 
+/**
+ * Pick one of a few options shown side by side as a pill group (a case style, a mode). A radio
+ * group: arrow keys, Home and End move the choice; only the chosen option is in the Tab order.
+ */
+export function Segmented<T extends string>({ options, value, onChange, label, className }: { options: readonly { id: T; label: ReactNode; title?: string }[]; value: T; onChange: (id: T) => void; label: string; className?: string }) {
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    const i = options.findIndex((o) => o.id === value);
+    e.preventDefault();
+    const fwd = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+    const n = e.key === 'Home' ? 0 : e.key === 'End' ? options.length - 1 : (i + (fwd ? 1 : -1) + options.length) % options.length;
+    onChange(options[n].id);
+    e.currentTarget.querySelectorAll<HTMLButtonElement>('[role=radio]')[n]?.focus();
+  };
+  return (
+    <div role="radiogroup" aria-label={label} className={cx('ds-segmented', className)} onKeyDown={onKeyDown}>
+      {options.map((o) => (
+        <button key={o.id} type="button" role="radio" aria-checked={value === o.id} tabIndex={value === o.id ? 0 : -1} className={value === o.id ? 'is-on' : undefined} title={o.title} onClick={() => onChange(o.id)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Slider for a number in a range. */
 export const Slider = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>>(function Slider(props, ref) {
   return <input ref={ref} type="range" {...props} />;

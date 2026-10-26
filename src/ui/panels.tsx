@@ -1,7 +1,6 @@
 // Side and bottom panels: copilot chat, inspector, console (serial / problems / scope), part library.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
-import { useDialog } from './useDialog';
 import { sendPrompt, suggestions as suggestFor, cancelDesign } from './copilot';
 import { Glossed } from './Glossed';
 import { startSim } from './simClient';
@@ -21,7 +20,7 @@ import { annotate } from '../core/netlist';
 import { registerCustomPart, type CustomPartSpec } from '../core/customParts';
 import { withCustomPart } from '../core/autowire';
 import { partSize } from '../core/layout';
-import { Banner, Button, Card, ChatMessage, ChatThread, ColorInput, Composer, IconButton, LoadingState, PanelHead, Select, TextInput } from './ds';
+import { Banner, Button, Card, ChatMessage, ChatThread, ColorInput, Composer, Disclosure, Field, IconButton, LoadingState, PanelHead, Popover, Select, Tabs, TextInput, type TabItem, type Tone } from './ds';
 
 // ------------------------------------------------------------------ Copilot
 export function Copilot() {
@@ -67,59 +66,50 @@ export function Copilot() {
             </p>
           </div>
         )}
-        {chat.map((m) => {
-          // ChatMessage draws its extras box for any children, so pass none when there is nothing to show.
-          const extras = !!(m.images?.length || m.questions || m.requirements || m.details?.length || m.actions);
-          // `msg ai|user` stay as hooks for the e2e scripts; the look comes from ChatMessage.
-          return (
-            <ChatMessage key={m.id} data-msg={m.id} from={m.role === 'ai' ? 'assistant' : 'user'} text={m.text} pending={m.pending} className={`msg ${m.role}`}>
-              {extras && (
-                <>
-                  {m.images && m.images.length > 0 && (
-                    <div className="msg-images">
-                      {m.images.map((src, i) => (
-                        <img key={i} src={src} alt={`Attached image ${i + 1}`} />
-                      ))}
-                    </div>
-                  )}
-                  {m.questions && <QuestionsCard questions={m.questions} />}
-                  {m.requirements && <RequirementsCard requirements={m.requirements} />}
-                  {m.details && m.details.length > 0 && (
-                    <details className="msg-details">
-                      <summary>Why it's wired this way</summary>
-                      <ul>
-                        {m.details.map((d, i) => (
-                          <li key={i}>
-                            <Glossed text={d} />
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
-                  {m.actions && (
-                    <div className="msg-actions">
-                      {m.actions.map((a) => (
-                        <Button
-                          key={a.label}
-                          size="sm"
-                          onClick={() => {
-                            const p = useStore.getState().project;
-                            if (a.run === 'run' && p) startSim(p);
-                            else if (a.run.startsWith('tab:')) useStore.getState().setTab(a.run.slice(4) as any);
-                            else if (a.run.startsWith('bottom:')) useStore.getState().set({ bottomTab: a.run.slice(7) as any });
-                            else if (a.run === 'tour') useStore.getState().set({ tourStep: 0 });
-                          }}
-                        >
-                          {a.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </ChatMessage>
-          );
-        })}
+        {chat.map((m) => (
+          // `msg ai|user` and `pending` stay as hooks for the e2e scripts; the look comes from ChatMessage.
+          <ChatMessage key={m.id} data-msg={m.id} from={m.role === 'ai' ? 'assistant' : 'user'} text={m.text} pending={m.pending} className={`msg ${m.role}${m.pending ? ' pending' : ''}`}>
+            {m.images && m.images.length > 0 && (
+              <div className="msg-images">
+                {m.images.map((src, i) => (
+                  <img key={i} src={src} alt={`Attached image ${i + 1}`} />
+                ))}
+              </div>
+            )}
+            {m.questions && <QuestionsCard questions={m.questions} />}
+            {m.requirements && <RequirementsCard requirements={m.requirements} />}
+            {m.details && m.details.length > 0 && (
+              <Disclosure variant="plain" className="msg-details" summary="Why it's wired this way">
+                <ul>
+                  {m.details.map((d, i) => (
+                    <li key={i}>
+                      <Glossed text={d} />
+                    </li>
+                  ))}
+                </ul>
+              </Disclosure>
+            )}
+            {m.actions && (
+              <div className="msg-actions">
+                {m.actions.map((a) => (
+                  <Button
+                    key={a.label}
+                    size="sm"
+                    onClick={() => {
+                      const p = useStore.getState().project;
+                      if (a.run === 'run' && p) startSim(p);
+                      else if (a.run.startsWith('tab:')) useStore.getState().setTab(a.run.slice(4) as any);
+                      else if (a.run.startsWith('bottom:')) useStore.getState().set({ bottomTab: a.run.slice(7) as any });
+                      else if (a.run === 'tour') useStore.getState().set({ tourStep: 0 });
+                    }}
+                  >
+                    {a.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </ChatMessage>
+        ))}
       </ChatThread>
       <div className="suggest">
         {suggestions.map((s) => (
@@ -139,8 +129,9 @@ export function Copilot() {
         busy={!!busy}
         disabled={!!busy}
         onStop={ai.enabled ? cancelDesign : undefined}
+        stopProps={{ 'data-testid': 'copilot-stop' }}
         attach={<AttachImages images={images} onChange={setImages} label="" />}
-        top={ai.enabled && <CostHint kind="design" />}
+        footer={ai.enabled && <CostHint kind="design" />}
       />
     </aside>
   );
@@ -208,11 +199,7 @@ export function Inspector() {
             <section>
               <h3>Properties</h3>
               {def.props!.map((pr) => (
-                <label key={pr.key} className="field">
-                  <span>
-                    {pr.label}
-                    {pr.unit ? ` (${pr.unit})` : ''}
-                  </span>
+                <Field key={pr.key} layout="row" className="prop-row" label={`${pr.label}${pr.unit ? ` (${pr.unit})` : ''}`}>
                   {pr.type === 'select' ? (
                     <Select value={part.props[pr.key]} onChange={(e) => useStore.getState().setPartProp(part.id, pr.key, e.target.value)}>
                       {pr.options!.map((o) => (
@@ -227,7 +214,7 @@ export function Inspector() {
                       onChange={(e) => useStore.getState().setPartProp(part.id, pr.key, pr.type === 'number' ? Number(e.target.value) : e.target.value)}
                     />
                   )}
-                </label>
+                </Field>
               ))}
             </section>
           )}
@@ -287,10 +274,9 @@ export function Inspector() {
             {ref(wire.a)} → {ref(wire.b)}
           </p>
           <p className="muted small">Net {net?.name}</p>
-          <label className="field">
-            <span>Colour</span>
+          <Field layout="row" className="prop-row" label="Colour">
             <ColorInput value={wire.color ?? '#2e7d32'} onChange={(e) => useStore.getState().update((p) => ({ ...p, wires: p.wires.map((w) => (w.id === wire.id ? { ...w, color: e.target.value } : w)) }))} />
-          </label>
+          </Field>
           <Button variant="danger" onClick={() => useStore.getState().removeSelection()}>
             Delete wire
           </Button>
@@ -352,6 +338,8 @@ export function Inspector() {
 }
 
 // ------------------------------------------------------------------ Console (bottom)
+const SEVERITY_TONE: Record<'error' | 'warning' | 'info', Tone> = { error: 'error', warning: 'warn', info: 'info' };
+
 export function Console() {
   const project = useStore((s) => s.project)!;
   const sim = useStore((s) => s.sim);
@@ -372,31 +360,28 @@ export function Console() {
   const warns = checks.filter((c) => c.severity === 'warning').length + sim.warnings.filter((w) => w.severity === 'warning').length;
   const infos = checks.filter((c) => c.severity === 'info').length + sim.warnings.filter((w) => w.severity === 'info').length;
   const discrete = project.board === 'none';
-  return (
-    <section className="console" data-tour="console">
-      <div className="console-tabs" role="tablist">
-        <Button role="tab" aria-selected={tab === 'serial'} className={tab === 'serial' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'serial' })}>
-          {discrete ? 'Scope' : 'Serial monitor'}
-        </Button>
-        <Button role="tab" aria-selected={tab === 'problems'} className={tab === 'problems' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'problems' })}>
-          Problems
+  const consoleTabs: TabItem<typeof tab>[] = [
+    { id: 'serial', label: discrete ? 'Scope' : 'Serial monitor' },
+    {
+      id: 'problems',
+      label: 'Problems',
+      badge: (
+        <>
           {errs > 0 && <span className="count err" title={`${errs} problem${errs === 1 ? '' : 's'} to fix`}>{errs}</span>}
           {warns > 0 && <span className="count warn" title={`${warns} warning${warns === 1 ? '' : 's'}`}>{warns}</span>}
           {infos > 0 && <span className="count info" title={`${infos} tip${infos === 1 ? '' : 's'}, not problems`}>{infos}</span>}
           {errs + warns + infos === 0 && <span className="count ok">✓</span>}
-        </Button>
-        {!discrete && (
-          <Button role="tab" aria-selected={tab === 'pins'} className={tab === 'pins' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'pins' })}>
-            Pins
-          </Button>
-        )}
-        <Button role="tab" aria-selected={tab === 'tests'} className={tab === 'tests' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'tests' })} data-testid="tests-tab">
-          Tests
-          <TestsBadge />
-        </Button>
-        <span className="spacer" />
+        </>
+      ),
+    },
+    ...(discrete ? [] : [{ id: 'pins' as const, label: 'Pins' }]),
+    { id: 'tests', label: 'Tests', badge: <TestsBadge />, testId: 'tests-tab' },
+  ];
+  return (
+    <section className="console" data-tour="console">
+      <Tabs className="console-tabs" label="Console" items={consoleTabs} value={tab} onChange={(id) => useStore.getState().set({ bottomTab: id })}>
         <span className="sim-time">{sim.status !== 'idle' ? `${(sim.t / 1000).toFixed(1)} s simulated` : ''}</span>
-      </div>
+      </Tabs>
       {tab === 'serial' && !discrete && (
         <pre className="serial" ref={serialRef} data-testid="serial">
           {sim.error && <span className="serial-err">{`${sim.error.raw}\n`}</span>}
@@ -407,9 +392,9 @@ export function Console() {
       {tab === 'pins' && !discrete && <PinsPanel />}
       {tab === 'tests' && <TestsPanel />}
       {tab === 'problems' && (
-        <div className="problems" data-testid="problems">
+        <div className="problems" data-testid="problems" role="list">
           {sim.error && (
-            <div className="problem error">
+            <Banner variant="inline" tone="error" role="listitem">
               <b>Program crashed{sim.error.line ? ` at ${sim.error.file}:${sim.error.line}` : ''}:</b> {sim.error.message}
               {sim.error.hint && <div className="hint">{sim.error.hint}</div>}
               {sim.error.line && (
@@ -417,16 +402,16 @@ export function Console() {
                   Show in code
                 </Button>
               )}
-            </div>
+            </Banner>
           )}
           {sim.warnings.map((w) => (
-            <div key={w.id} className={`problem ${w.severity}`}>
+            <Banner key={w.id} variant="inline" tone={SEVERITY_TONE[w.severity]} role="listitem">
               {w.severity === 'info' && <span className="tip-tag">Tip</span>}
               <b>Simulation:</b> {w.text}
-            </div>
+            </Banner>
           ))}
           {checks.map((c) => (
-            <div key={c.id} className={`problem ${c.severity}`}>
+            <Banner key={c.id} variant="inline" tone={SEVERITY_TONE[c.severity]} role="listitem">
               {c.severity === 'info' && <span className="tip-tag">Tip</span>}
               <b>{c.title}</b> — {c.detail}
               {c.fix && (
@@ -434,9 +419,13 @@ export function Console() {
                   {c.fix.label}
                 </Button>
               )}
-            </div>
+            </Banner>
           ))}
-          {!sim.error && !sim.warnings.length && !checks.length && <div className="problem ok">No problems found. The wiring passes all design checks.</div>}
+          {!sim.error && !sim.warnings.length && !checks.length && (
+            <Banner variant="inline" tone="ok" role="listitem">
+              No problems found. The wiring passes all design checks.
+            </Banner>
+          )}
         </div>
       )}
     </section>
@@ -595,7 +584,7 @@ function LibraryItem({ spec: s, onDone }: { spec: CustomPartSpec; onDone(): void
 }
 
 // ------------------------------------------------------------------ Part library popover
-export function PartLibrary({ onClose }: { onClose(): void }) {
+export function PartLibrary({ onClose, anchorRect }: { onClose(): void; anchorRect?: DOMRect | null }) {
   const [q, setQ] = useState('');
   const [mine, setMine] = useState<CustomPartSpec[]>([]);
   useEffect(() => {
@@ -608,11 +597,10 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
   const list = PARTS.filter((p) => p.category !== 'board' && !p.production).filter((p) => match(`${p.name} ${p.description} ${p.keywords.join(' ')}`));
   const myList = mine.filter((s) => match(`${s.name} ${s.mpn} ${s.description}`));
   const cats = ['sensor', 'display', 'input', 'output', 'actuator', 'ic', 'passive', 'power'];
-  const ref = useDialog<HTMLDivElement>(onClose, { trap: false, autoFocus: false });
   return (
-    <div className="library" role="dialog" aria-label="Add a part" onPointerDown={(e) => e.stopPropagation()} ref={ref}>
+    <Popover className="library" label="Add a part" onClose={onClose} anchorRect={anchorRect} placement="bottom" width={380} onPointerDown={(e) => e.stopPropagation()}>
       <div className="library-head">
-        <TextInput autoFocus placeholder="Search parts (e.g. button, OLED, servo)" value={q} onChange={(e) => setQ(e.target.value)} />
+        <TextInput placeholder="Search parts (e.g. button, OLED, servo)" value={q} onChange={(e) => setQ(e.target.value)} />
         <IconButton label="Close" onClick={onClose}>
           ✕
         </IconButton>
@@ -650,8 +638,8 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
           );
         })}
       </div>
-      <p className="library-foot">Built-in parts appear top-left — wire them by clicking a pin and then another pin. Parts added from a datasheet are wired for you. Wire them by clicking a pin and then another pin. Tip: asking the copilot (“add a buzzer”) also wires and codes it for you.</p>
-    </div>
+      <p className="library-foot">Built-in parts appear top-left — wire them by clicking a pin and then another pin. Parts added from a datasheet are wired for you. Tip: asking the copilot (“add a buzzer”) also wires and codes it for you.</p>
+    </Popover>
   );
 }
 

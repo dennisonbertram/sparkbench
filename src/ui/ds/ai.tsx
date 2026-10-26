@@ -15,7 +15,7 @@
 // Sparkbench's AI chrome: the copilot chat, its tool activity, and the cards where the agent asks
 // for permission or for an answer. Plain CSS in ./ds.css (the "AI and chat" section), tokens only.
 // Catalog: docs/design/design-system.md, "AI and chat".
-import { forwardRef, useEffect, useId, useLayoutEffect, useRef, useState, type HTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
+import { Children, forwardRef, useEffect, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
 import { Marked } from 'marked';
 import { Button, IconButton, TextArea, TextInput } from './index';
 
@@ -226,7 +226,7 @@ export function ToolCall({ label, state = 'done', count = 1, summary, lines, tit
       <summary>{row}</summary>
       <ul className="ds-tool-lines">
         {lines.map((line, i) => (
-          <li key={i} className={line.failed ? 'failed' : undefined}>
+          <li key={i} className={line.failed ? 'is-failed' : undefined}>
             {line.text}
           </li>
         ))}
@@ -325,21 +325,25 @@ export interface ChatMessageProps extends Omit<HTMLAttributes<HTMLDivElement>, '
   meta?: ReactNode;
   /** Keep `meta` visible (e.g. while its menu is open). */
   metaPinned?: boolean;
-  /** Cards, tool activity, images and actions under the text. */
+  /** Cards, tool activity, images and actions under the text. The extras box is drawn only when there is at least one. */
   children?: ReactNode;
+  /** Extra attributes for the text bubble (it carries `data-testid="msg-text"` unless overridden). */
+  bubbleProps?: HTMLAttributes<HTMLDivElement> & { 'data-testid'?: string };
 }
 
 /** One chat message. Extra cards (ToolCallGroup, ApprovalCard, AskCard, actions) go in children. */
-export function ChatMessage({ from, text, pending, meta, metaPinned, children, className, ...rest }: ChatMessageProps) {
+export function ChatMessage({ from, text, pending, meta, metaPinned, children, bubbleProps, className, ...rest }: ChatMessageProps) {
+  // `false`, `null` and `undefined` children count as nothing, so `{cond && <Card />}` alone draws no box.
+  const extras = Children.toArray(children).length > 0;
   return (
-    <div className={cx('ds-msg', from, pending && 'pending', className)} data-from={from} {...rest}>
+    <div className={cx('ds-msg', `ds-from-${from}`, pending && 'is-pending', className)} data-from={from} data-pending={pending || undefined} {...rest}>
       {text !== undefined && text !== '' && (
-        <div className="ds-msg-bubble" dir="auto">
+        <div data-testid="msg-text" dir="auto" {...bubbleProps} className={cx('ds-msg-bubble', bubbleProps?.className)}>
           {from === 'assistant' && !pending ? <Markdown text={text} /> : <span className="ds-msg-plain">{text}</span>}
         </div>
       )}
-      {children && <div className="ds-msg-extras">{children}</div>}
-      {meta && <div className={cx('ds-msg-meta', metaPinned && 'pinned')}>{meta}</div>}
+      {extras && <div className="ds-msg-extras">{children}</div>}
+      {meta && <div className={cx('ds-msg-meta', metaPinned && 'is-pinned')}>{meta}</div>}
     </div>
   );
 }
@@ -388,6 +392,10 @@ export interface ComposerProps {
   top?: ReactNode;
   /** Between the box and Send: a cost hint, a model badge. */
   aside?: ReactNode;
+  /** Below the box: a cost hint or a note about what Send does. */
+  footer?: ReactNode;
+  /** Extra attributes for the Stop button, e.g. a screen's own `data-testid` (default `composer-stop`). */
+  stopProps?: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'type' | 'aria-label'> & { 'data-testid'?: string };
   /** An error line above the box; pass a string, or a ComposerError for actions. */
   error?: ReactNode;
   onDismissError?: () => void;
@@ -399,18 +407,20 @@ export interface ComposerProps {
 
 /** The chat input: a growing text box, attach slot and a round Send (or Stop) button. Enter sends; Shift+Enter is a new line. */
 export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function Composer(
-  { value, onChange, onSend, label, placeholder, canSend, busy, onStop, disabled, attach, top, aside, error, onDismissError, sendLabel = 'Send', maxHeight = 160, className },
+  { value, onChange, onSend, label, placeholder, canSend, busy, onStop, disabled, attach, top, aside, footer, stopProps, error, onDismissError, sendLabel = 'Send', maxHeight = 160, className },
   ref,
 ) {
   const inner = useRef<HTMLTextAreaElement | null>(null);
   const sendable = (canSend ?? value.trim().length > 0) && !busy && !disabled;
+  const stoppable = !!busy && !!onStop;
   useLayoutEffect(() => {
     const el = inner.current;
     if (!el) return;
     el.style.height = '0px';
     el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
     el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
-  }, [value, maxHeight]);
+    // An empty box is as tall as its placeholder, which changes while busy.
+  }, [value, maxHeight, placeholder]);
   const send = () => {
     if (sendable) onSend();
   };
@@ -432,7 +442,8 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
     >
       {error && (typeof error === 'string' ? <ComposerError message={error} onDismiss={onDismissError} /> : error)}
       {top && <div className="ds-composer-top">{top}</div>}
-      <div className={cx('ds-composer-bar', disabled && 'disabled')}>
+      {/* While the agent works the box may be off, but Stop stays at full strength. */}
+      <div className={cx('ds-composer-bar', disabled && 'is-disabled', stoppable && 'is-stoppable')}>
         {attach && <span className="ds-composer-attach">{attach}</span>}
         <TextArea
           ref={(el) => {
@@ -453,8 +464,8 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
         />
         <span className="ds-composer-actions">
           {aside}
-          {busy && onStop ? (
-            <IconButton label="Stop" variant="default" className="ds-round" onClick={onStop}>
+          {stoppable ? (
+            <IconButton data-testid="composer-stop" {...stopProps} label="Stop" variant="default" className={cx('ds-round', stopProps?.className)} onClick={onStop}>
               <Icon name="stop" size={14} />
             </IconButton>
           ) : (
@@ -464,6 +475,7 @@ export const Composer = forwardRef<HTMLTextAreaElement, ComposerProps>(function 
           )}
         </span>
       </div>
+      {footer && <div className="ds-composer-footer">{footer}</div>}
     </form>
   );
 });
@@ -514,7 +526,7 @@ const APPROVAL_RESULT: Record<Exclude<ApprovalStatus, 'pending'>, { text: string
   expired: { text: 'No longer active', tone: 'muted' },
 };
 
-export interface ApprovalCardProps {
+export interface ApprovalCardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title' | 'children' | 'role'> {
   /** What the agent wants to do: "Rewire the motor driver", "Change main.py". */
   title: ReactNode;
   /** A short line under the title: the file, the parts touched, "+12 −3 lines". */
@@ -539,7 +551,7 @@ export interface ApprovalCardProps {
   resultText?: ReactNode;
   /** Clip height of the preview, in px. */
   previewHeight?: number;
-  className?: string;
+  /** Native div props (`data-testid`, `id`, …) pass through to the card; `data-testid` defaults to `approval-card`. */
 }
 
 /**
@@ -564,6 +576,7 @@ export function ApprovalCard({
   resultText,
   previewHeight = 220,
   className,
+  ...rest
 }: ApprovalCardProps) {
   const answered = status !== 'pending';
   const interactive = !answered && canAnswer;
@@ -614,9 +627,9 @@ export function ApprovalCard({
   );
 
   return (
-    <div ref={card} role="group" aria-labelledby={titleId} className={cx('ds-approval', interactive && 'live', className)} data-status={status} data-testid="approval-card">
+    <div ref={card} role="group" aria-labelledby={titleId} data-testid="approval-card" {...rest} className={cx('ds-approval', interactive && 'ds-approval-live', className)} data-status={status}>
       {answered ? (
-        <button ref={toggle} type="button" className="ds-approval-head toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <button ref={toggle} type="button" className="ds-approval-head ds-approval-toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {header}
           <Icon name="chevron-down" size={14} className="ds-approval-chevron" />
         </button>
@@ -629,7 +642,7 @@ export function ApprovalCard({
           {description && <div className="ds-approval-desc">{description}</div>}
           {children && (
             <>
-              <div ref={preview} className={cx('ds-approval-preview', !expanded && 'clipped', overflows && !expanded && 'faded')} style={expanded ? undefined : { maxHeight: previewHeight }}>
+              <div ref={preview} className={cx('ds-approval-preview', !expanded && 'is-clipped', overflows && !expanded && 'is-faded')} style={expanded ? undefined : { maxHeight: previewHeight }}>
                 {children}
               </div>
               {(overflows || expanded) && (
@@ -678,7 +691,7 @@ export interface AskOption {
   hint?: ReactNode;
 }
 
-export interface AskCardProps {
+export interface AskCardProps extends Omit<HTMLAttributes<HTMLDivElement>, 'onSelect' | 'children' | 'role'> {
   /** The question, as markdown. */
   question: string;
   /** Background under the question. */
@@ -701,11 +714,11 @@ export interface AskCardProps {
   answer?: string;
   /** False when the run no longer waits for this answer. */
   canAnswer?: boolean;
-  className?: string;
+  /** Native div props (`data-testid`, `id`, …) pass through to the card; `data-testid` defaults to `ask-card`. */
 }
 
 /** The agent asks the person a question: numbered options and/or a free-text answer. */
-export function AskCard({ question, detail, options, recommendedId, onAnswer, allowText, textPlaceholder = 'Type your answer', selected, onSelect, answer, canAnswer = true, className }: AskCardProps) {
+export function AskCard({ question, detail, options, recommendedId, onAnswer, allowText, textPlaceholder = 'Type your answer', selected, onSelect, answer, canAnswer = true, className, ...rest }: AskCardProps) {
   const qid = useId();
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
@@ -726,7 +739,7 @@ export function AskCard({ question, detail, options, recommendedId, onAnswer, al
   };
 
   return (
-    <div role="group" aria-labelledby={qid} className={cx('ds-ask', className)} data-testid="ask-card">
+    <div role="group" aria-labelledby={qid} data-testid="ask-card" {...rest} className={cx('ds-ask', className)}>
       <div id={qid} className="ds-ask-question">
         <Markdown text={question} />
       </div>
@@ -737,7 +750,7 @@ export function AskCard({ question, detail, options, recommendedId, onAnswer, al
           {chosen ? <>Answered: {chosen.label}</> : 'Answered'}
         </div>
       ) : !canAnswer ? (
-        <div className="ds-ask-answered muted">No longer active</div>
+        <div className="ds-ask-answered is-muted">No longer active</div>
       ) : (
         <>
           {!!options?.length && (
@@ -748,7 +761,7 @@ export function AskCard({ question, detail, options, recommendedId, onAnswer, al
                   <button
                     key={o.id}
                     type="button"
-                    className={cx('ds-ask-option', on && 'on')}
+                    className={cx('ds-ask-option', on && 'is-on')}
                     role={pick ? 'radio' : undefined}
                     aria-checked={pick ? on : undefined}
                     disabled={busy}

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from './store';
 import type { MeterCheck } from '../core/multimeter';
 import { holeWords } from '../core/breadboard';
+import { Disclosure } from './ds';
 
 export function MultimeterGuide() {
   const project = useStore((s) => s.project)!;
@@ -16,8 +17,7 @@ export function MultimeterGuide() {
       .catch(() => setChecks([]));
   }, [open]);
   return (
-    <details className="meter" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)} data-testid="multimeter">
-      <summary>Check it with a multimeter</summary>
+    <Disclosure className="meter" summary="Check it with a multimeter" onToggle={setOpen} data-testid="multimeter">
       <p>Set the meter to <strong>DC volts (V⎓, 20 V range)</strong> and power the circuit. Keep the black probe in a − (blue) rail hole and touch the red probe to each breadboard hole below. Holes are named by row letter and column number (d22 = row d, column 22); rail holes start with T (top) or B (bottom). An empty hole in the same column works just like the leg itself.</p>
       {!checks ? (
         <p className="muted">Working out the expected readings…</p>
@@ -34,6 +34,6 @@ export function MultimeterGuide() {
       ) : (
         <p className="muted">No measurement points for this design.</p>
       )}
-    </details>
+    </Disclosure>
   );
 }

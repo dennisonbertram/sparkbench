@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { canonicalJson, type CompatibilityJob, type CompatibilityReport } from '../core/compatibility';
 import { useStore } from './store';
-import { Banner, Button, Field, Modal, TextInput } from './ds';
+import { Banner, Button, Disclosure, Field, Modal, TextInput } from './ds';
 import { download } from './exporters';
 
 export function CompatibilityDialog({ onClose }: { onClose(): void }) {
@@ -71,9 +71,9 @@ export function CompatibilityDialog({ onClose }: { onClose(): void }) {
         <h3>KiCad {report.tool.version ?? '(unavailable)'} — {report.status}</h3>
         <p className="compatibility-muted">Measured schematic checks only. “Passed” does not certify interactive editing, PCB routing, firmware or real hardware.</p>
         <p className="compatibility-hash">Snapshot SHA-256: <code>{report.project.sha256}</code><br />Completed: {new Date(report.finishedAt).toLocaleString()}</p>
-        {report.checks.map((check) => <details className="compatibility-check" key={check.id} open={check.status !== 'passed'}>
-          <summary><strong>{check.label}</strong><span data-status={check.status}>{check.status}</span></summary><p>{check.detail}</p>
-        </details>)}
+        {report.checks.map((check) => <Disclosure variant="plain" className="compatibility-check" key={check.id} defaultOpen={check.status !== 'passed'} summary={<><strong>{check.label}</strong><span data-status={check.status}>{check.status}</span></>}>
+          <p>{check.detail}</p>
+        </Disclosure>)}
         <h4>Limits & warnings</h4><ul>{report.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
         <Button onClick={() => download('compatibility-report.json', JSON.stringify(report, null, 2), 'application/json')}>Download report (.json)</Button>
       </>}

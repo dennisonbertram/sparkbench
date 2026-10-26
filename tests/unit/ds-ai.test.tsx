@@ -24,7 +24,7 @@ describe('ds: AI and chat', () => {
     expect(out).toContain('Ran 12 checks');
     expect(out).not.toContain('Running checks');
     expect(out).toContain('<details');
-    expect(out).toContain('class="failed"');
+    expect(out).toContain('class="is-failed"');
   });
 
   it('windows a long list and labels the group', () => {
@@ -81,6 +81,31 @@ describe('ds: AI and chat', () => {
     expect(pick).toContain('role="radiogroup"');
     expect(pick).toContain('aria-checked="true"');
     expect(html(<AskCard question="Which board?" options={opts} answer="b" />)).toContain('Answered: Pico');
+  });
+
+  it('draws the extras box only for real children, and prefixes its own classes', () => {
+    expect(html(<ChatMessage from="assistant" text="hi">{false}{null}</ChatMessage>)).not.toContain('ds-msg-extras');
+    expect(html(<ChatMessage from="assistant" text="hi"><b>x</b></ChatMessage>)).toContain('ds-msg-extras');
+    const pending = html(<ChatMessage from="user" text="hi" pending className="msg user pending" />);
+    expect(pending).toContain('class="ds-msg ds-from-user is-pending msg user pending"');
+    expect(pending).toContain('data-testid="msg-text"');
+    expect(html(<ChatMessage from="assistant" text="hi" bubbleProps={{ 'data-testid': 'x', className: 'y' }} />)).toMatch(/data-testid="x"[^>]*class="ds-msg-bubble y"/);
+  });
+
+  it('gives Stop a test id and stays undimmed while busy, with a footer under the box', () => {
+    const busy = html(<Composer value="" onChange={() => {}} onSend={() => {}} onStop={() => {}} busy disabled label="m" stopProps={{ 'data-testid': 'copilot-stop' }} footer={<span>note</span>} />);
+    expect(busy).toContain('data-testid="copilot-stop"');
+    expect(busy).toContain('ds-composer-bar is-disabled is-stoppable');
+    expect(busy).toContain('<div class="ds-composer-footer"><span>note</span></div>');
+    expect(html(<Composer value="" onChange={() => {}} onSend={() => {}} onStop={() => {}} busy label="m" />)).toContain('data-testid="composer-stop"');
+  });
+
+  it('passes div props through ApprovalCard and AskCard', () => {
+    const card = html(<ApprovalCard data-testid="ai-proposal" id="p1" title="t" onApprove={() => {}} onDeny={() => {}} />);
+    expect(card).toContain('data-testid="ai-proposal"');
+    expect(card).toContain('id="p1"');
+    expect(card).toContain('ds-approval ds-approval-live');
+    expect(html(<AskCard data-testid="q1" question="?" onAnswer={() => {}} />)).toContain('data-testid="q1"');
   });
 
   it('renders a loading state as a status', () => {

@@ -13,7 +13,7 @@ import { MultimeterGuide } from './MultimeterGuide';
 import { CostHint } from './CostHint';
 import { otaPy, otaBootPy, otaToken } from '../core/ota';
 import { Elapsed } from './Elapsed';
-import { Banner, Button, Checkbox, IconButton, PanelHead, TextArea, TextInput } from './ds';
+import { Banner, Button, Checkbox, Disclosure, IconButton, PanelHead, TextArea, TextInput } from './ds';
 
 type Phase = 'idle' | 'connecting' | 'connected' | 'busy';
 
@@ -288,11 +288,11 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
                   <strong>Install MicroPython</strong> {needsMp ? <span className="bp-warn">(needed: the board didn't answer)</span> : connected ? <span className="bp-ok" data-testid="mp-installed">✓ already installed — skip this step</span> : <span className="muted">(only once per board)</span>}
                   {kind === 'esp32' ? (
                     confirmErase ? (
-                      <span className="bp-row bp-confirm" role="alert">
+                      <Banner variant="inline" tone="warn" role="alert" className="bp-row bp-confirm">
                         <span>This erases everything on the board, including any program already on it. Continue?</span>
                         <Button variant="primary" onClick={install} data-testid="board-install-confirm">Erase and install</Button>
                         <Button variant="link" onClick={() => setConfirmErase(false)}>Cancel</Button>
-                      </span>
+                      </Banner>
                     ) : (
                       <span className="bp-row">
                         <Button variant={needsMp ? 'primary' : connected ? 'link' : 'default'} onClick={() => setConfirmErase(true)} disabled={!connected || busy} data-testid="board-install">{needsMp || !connected ? 'Install MicroPython (erases the board)' : 'Reinstall MicroPython anyway…'}</Button>
@@ -337,8 +337,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
         {error && <Banner tone="error">{error}</Banner>}
 
         {kind === 'esp32' && (
-          <details className="bp-ota" data-testid="board-ota-section">
-            <summary>Update over Wi-Fi</summary>
+          <Disclosure className="bp-ota" summary="Update over Wi-Fi" data-testid="board-ota-section">
             <p className="muted">After you’ve copied the program once with “Also set up updates over Wi-Fi”, the board prints its network address in the serial monitor when it starts, e.g. “OTA: send updates to http://192.168.1.42:8266” (OTA means “over the air”, i.e. over Wi-Fi). Type the address here to send a new version without the cable.</p>
             <span className="bp-row">
               <TextInput value={otaHost} onChange={(e) => setOtaHost(e.target.value)} placeholder="e.g. 192.168.1.42" aria-label="Board address" />
@@ -355,7 +354,7 @@ export function BoardPanel({ onClose }: { onClose: () => void }) {
               </Button>
             </span>
             {otaLog && <pre className="bp-monitor">{otaLog}</pre>}
-          </details>
+          </Disclosure>
         )}
 
         {parsed.lines.length > 0 && (

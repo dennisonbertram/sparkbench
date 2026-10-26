@@ -1,7 +1,7 @@
 // "A case for it": printable enclosure generated from the finished board, with a 3D preview.
 import React, { useState } from 'react';
 import { useStore } from './store';
-import { Banner, Button, ButtonLink } from './ds';
+import { Banner, Button, ButtonLink, Segmented } from './ds';
 import { CaseViewer } from './CaseViewer';
 
 interface CaseInfo {
@@ -60,21 +60,16 @@ export function CaseSection({ jobId }: { jobId: string }) {
     <section className="case-section" data-testid="case-section">
       <h3>A case for it</h3>
       <p className="muted">A 3D-printable case made to fit this exact board: {features(project.parts.map((p) => p.type))}.</p>
-      <div className="case-styles" role="radiogroup" aria-label="Case style">
-        {STYLES.map((s) => (
-          <Button
-            key={s.id}
-            role="radio"
-            aria-checked={style === s.id}
-            on={style === s.id}
-            onClick={() => {
-              setStyle(s.id);
-              if (info) make(s.id);
-            }}
-          >
-            {s.label}
-          </Button>
-        ))}
+      <div className="case-styles">
+        <Segmented
+          label="Case style"
+          options={STYLES}
+          value={style}
+          onChange={(id) => {
+            setStyle(id);
+            if (info) make(id);
+          }}
+        />
         <Button variant="primary" onClick={() => make()} disabled={busy} data-testid="case-make">
           {busy ? 'Making the case…' : info ? 'Make it again' : 'Make a case'}
         </Button>

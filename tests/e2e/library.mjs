@@ -9,7 +9,8 @@ await p.waitForSelector('.part');
 await p.click('button.add-part');
 await p.waitForSelector('.library .lib-item');
 await p.fill('.library-head input', 'CO2');
-await p.waitForTimeout(300);
+// The checked library (hundreds of parts) arrives from /api/parts after the popover opens.
+await p.waitForSelector('.library .lib-item:has-text("SCD40")', { timeout: 15000 }).catch(() => {});
 const co2 = await p.$$eval('.library .lib-item .lib-name', (els) => els.map((e) => e.textContent));
 console.log('CO2 search:', co2);
 await p.screenshot({ path: 'test-results/library-co2.png' });

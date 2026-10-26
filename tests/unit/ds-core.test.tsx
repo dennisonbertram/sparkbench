@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Banner, ButtonLink, Disclosure, Field, Tabs } from '../../src/ui/ds';
+import { Banner, ButtonLink, Disclosure, Field, Segmented, Tabs } from '../../src/ui/ds';
 
 const html = (el: JSX.Element) => renderToStaticMarkup(el);
 
@@ -32,6 +32,13 @@ describe('ds: core components', () => {
     expect(out).toMatch(/^<details class="ds-disclosure" open="" data-testid="p"><summary>/);
     expect(out).toContain('<div class="ds-disclosure-body">Body</div>');
     expect(html(<Disclosure summary="x" variant="plain">y</Disclosure>)).not.toContain(' open=');
+  });
+
+  it('makes Segmented a radio group with one option in the Tab order', () => {
+    const out = html(<Segmented label="Case style" value="b" onChange={() => {}} options={[{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }]} />);
+    expect(out).toContain('role="radiogroup" aria-label="Case style" class="ds-segmented"');
+    expect(out).toMatch(/aria-checked="false" tabindex="-1"[^>]*>A/);
+    expect(out).toMatch(/aria-checked="true" tabindex="0" class="is-on"[^>]*>B/);
   });
 
   it('has an inline Banner and a row Field', () => {

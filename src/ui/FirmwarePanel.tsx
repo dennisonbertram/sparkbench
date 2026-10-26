@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import { stopSim } from './simClient';
-import { Button, Chip, FilePicker, Select } from './ds';
+import { Banner, Button, Chip, FilePicker, Select } from './ds';
 
 type RuntimeStatus = { available: boolean; demoAvailable: boolean; reason?: string; capabilities: string[] };
 
@@ -109,7 +109,7 @@ export function FirmwarePanel() {
         </div>
         <p className="muted">Run boots the selected binary, not the Python editor. Reset reboots a fresh copy; edits to the circuit stop the run. Images stay in this tab, not saved projects. See <a href="https://github.com/dennisonbertram/sparkbench/blob/main/docs/esp32-runtime.md" target="_blank" rel="noreferrer">setup and limits</a>.</p>
         {firmware === 'demo' && <p>Press Run: the LED blinks. Hold the circuit’s button to keep it on; release to resume blinking.</p>}
-        {error && <p className="firmware-error" role="alert">{error}</p>}
+        {error && <Banner variant="inline" tone="error">{error}</Banner>}
       </>}
     </section>
   );

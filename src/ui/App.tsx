@@ -150,14 +150,15 @@ export function App() {
 }
 
 function BreadboardWithLibrary() {
-  const [lib, setLib] = useState(false);
+  // The popover opens under the button that toggled it.
+  const [lib, setLib] = useState<DOMRect | null>(null);
   return (
     <div className="bb-wrap">
       <Breadboard />
-      <Button className="add-part" onClick={() => setLib((v) => !v)} data-tour="add-part">
+      <Button className="add-part" aria-expanded={!!lib} onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setLib((v) => (v ? null : r)); }} data-tour="add-part">
         + Add part
       </Button>
-      {lib && <PartLibrary onClose={() => setLib(false)} />}
+      {lib && <PartLibrary anchorRect={lib} onClose={() => setLib(null)} />}
     </div>
   );
 }

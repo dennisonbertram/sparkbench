@@ -9,20 +9,34 @@ const ROOT = join(import.meta.dirname, '..');
 const UI = join(ROOT, 'src/ui');
 const BASELINE = join(ROOT, 'scripts/ds-baseline.json');
 
-/** Patterns that mean "built by hand instead of taken from the design system". Class patterns match
- *  whole class names only, so `net-banner` or `projects-menu` passed to a DS component is fine. */
+/** A class name used whole: `className="x"`, `className={'a x'}` or `className={`x ${y}`}`, so
+ *  `net-banner` or `projects-menu` passed to a DS component is fine. */
+const cls = (name: string) => new RegExp(`className=(?:\\{\`|["'{\`])(?:[^"'}\`]*\\s)?(?:${name})(?=[\\s"'}\`])`, 'g');
+
+/** Patterns that mean "built by hand instead of taken from the design system". Canvas, part and
+ *  board drawings are content, not chrome: SVG `<text>`/`<rect>` labels never match these. */
 export const AD_HOC: [string, RegExp][] = [
   ['button', /<button[\s>]/g],
   ['input', /<input[\s>]/g],
   ['select', /<select[\s>]/g],
   ['textarea', /<textarea[\s>]/g],
-  ['banner', /className=["'{`](?:[^"'}`]*\s)?banner(?=[\s"'}`])/g],
-  ['chip', /className=["'{`](?:[^"'}`]*\s)?(board-)?chip(?=[\s"'}`])/g],
-  ['modal', /className=["'{`](?:[^"'}`]*\s)?modal(-back)?(?=[\s"'}`])/g],
-  ['menu', /className=["'{`](?:[^"'}`]*\s)?menu(?=[\s"'}`])/g],
-  ['tabs', /role=["']tablist["']/g],
-  ['card', /className=["'{`](?:[^"'}`]*\s)?card(?=[\s"'}`])/g],
+  ['banner', cls('banner')],
+  ['chip', cls('(?:board-)?chip')],
+  ['modal', cls('modal(?:-back)?')],
+  ['menu', cls('menu')],
+  ['menu-role', /role=["'](?:menu|menuitem)["']/g],
+  ['tabs', /role=["']tab(?:list)?["']/g],
+  ['radio', /role=["']radio(?:group)?["']/g],
+  ['card', cls('card')],
   ['link-button', /<a\s[^>]*className=["'{`](?:[^"'}`]*\s)?button(?=[\s"'}`])/g],
+  // Folding sections are Disclosure; menus behind a button are DisclosureMenu.
+  ['details', /<details[\s>]/g],
+  // Problem rows are Banner variant="inline".
+  ['problem', cls('problem')],
+  // Dialogs and popovers are Modal, Popover or Coachmark.
+  ['dialog', /role=["'](?:dialog|alertdialog)["']|aria-modal=/g],
+  // An alert message is a Banner (role="alert" on a Banner is fine).
+  ['alert', /<(?!Banner\b)[A-Za-z][\w.]*\s[^<>]*?role=["']alert["']/g],
 ];
 
 function files(dir: string): string[] {

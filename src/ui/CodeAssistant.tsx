@@ -153,31 +153,30 @@ function ProposalView({ p, onDone }: { p: Proposal; onDone(accepted: boolean): v
     startSim(project);
   };
   return (
-    <div data-testid="ai-proposal">
-      <ApprovalCard
-        title={`Change ${p.file}`}
-        summary={`+${added} −${removed} lines`}
-        description={
-          <>
-            {p.reply}
-            {p.log.length > 0 && <ToolCallList steps={p.log.map((l) => ({ label: l, state: p.ok ? 'done' : 'failed' }))} />}
-          </>
-        }
-        approveLabel="Accept & run"
-        denyLabel="Discard"
-        onApprove={accept}
-        onDeny={() => onDone(false)}
-      >
-        <pre className="diff">
-          {compactDiff(diff).map((d, i) => (
-            <div key={i} className={`dl dl-${d.t === '+' ? 'add' : d.t === '-' ? 'del' : d.t === '…' ? 'gap' : 'ctx'}`}>
-              <span className="dm">{d.t === '=' ? ' ' : d.t}</span>
-              {d.s}
-            </div>
-          ))}
-        </pre>
-      </ApprovalCard>
-    </div>
+    <ApprovalCard
+      data-testid="ai-proposal"
+      title={`Change ${p.file}`}
+      summary={`+${added} −${removed} lines`}
+      description={
+        <>
+          {p.reply}
+          {p.log.length > 0 && <ToolCallList steps={p.log.map((l) => ({ label: l, state: p.ok ? 'done' : 'failed' }))} />}
+        </>
+      }
+      approveLabel="Accept & run"
+      denyLabel="Discard"
+      onApprove={accept}
+      onDeny={() => onDone(false)}
+    >
+      <pre className="diff">
+        {compactDiff(diff).map((d, i) => (
+          <div key={i} className={`dl dl-${d.t === '+' ? 'add' : d.t === '-' ? 'del' : d.t === '…' ? 'gap' : 'ctx'}`}>
+            <span className="dm">{d.t === '=' ? ' ' : d.t}</span>
+            {d.s}
+          </div>
+        ))}
+      </pre>
+    </ApprovalCard>
   );
 }
 
