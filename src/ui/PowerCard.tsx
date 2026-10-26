@@ -2,6 +2,7 @@
 // type over a day of use, what each battery needs (regulator, charger, protection), and sleep advice.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
+import { TextInput } from './ds';
 import type { PowerReport } from '../core/power';
 
 type PowerInfo = PowerReport;
@@ -69,7 +70,7 @@ export function PowerCard() {
           </details>
           <label className="power-hours">
             Used for
-            <input type="number" min={0.5} max={24} step={0.5} value={hoursText} onChange={(e) => setHoursText(e.target.value)} aria-label="Hours of use per day" aria-invalid={!hoursValid} /> hours a day
+            <TextInput type="number" min={0.5} max={24} step={0.5} value={hoursText} onChange={(e) => setHoursText(e.target.value)} aria-label="Hours of use per day" aria-invalid={!hoursValid} /> hours a day
           </label>
           {!hoursValid && <p className="problem warning" data-testid="power-hours-hint">Enter a number of hours between 0.5 and 24 (showing all-day use for now).</p>}
           <ul className="power-options" data-testid="power-table">

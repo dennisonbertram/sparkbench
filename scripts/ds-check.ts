@@ -9,18 +9,19 @@ const ROOT = join(import.meta.dirname, '..');
 const UI = join(ROOT, 'src/ui');
 const BASELINE = join(ROOT, 'scripts/ds-baseline.json');
 
-/** Patterns that mean "built by hand instead of taken from the design system". */
+/** Patterns that mean "built by hand instead of taken from the design system". Class patterns match
+ *  whole class names only, so `net-banner` or `projects-menu` passed to a DS component is fine. */
 export const AD_HOC: [string, RegExp][] = [
   ['button', /<button[\s>]/g],
   ['input', /<input[\s>]/g],
   ['select', /<select[\s>]/g],
   ['textarea', /<textarea[\s>]/g],
-  ['banner', /className=["'{`][^"'}`]*\bbanner\b/g],
-  ['chip', /className=["'{`][^"'}`]*\b(board-)?chip\b/g],
-  ['modal', /className=["'{`][^"'}`]*\bmodal(-back)?\b/g],
-  ['menu', /className=["'{`][^"'}`]*\bmenu\b(?!-)/g],
+  ['banner', /className=["'{`](?:[^"'}`]*\s)?banner(?=[\s"'}`])/g],
+  ['chip', /className=["'{`](?:[^"'}`]*\s)?(board-)?chip(?=[\s"'}`])/g],
+  ['modal', /className=["'{`](?:[^"'}`]*\s)?modal(-back)?(?=[\s"'}`])/g],
+  ['menu', /className=["'{`](?:[^"'}`]*\s)?menu(?=[\s"'}`])/g],
   ['tabs', /role=["']tablist["']/g],
-  ['card', /className=["'{`][^"'}`]*\bcard\b(?!-)/g],
+  ['card', /className=["'{`](?:[^"'}`]*\s)?card(?=[\s"'}`])/g],
 ];
 
 function files(dir: string): string[] {

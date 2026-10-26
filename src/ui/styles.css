@@ -1,6 +1,6 @@
 .modal.compatibility-dialog { width: min(720px, calc(100vw - 32px)); }
-.compatibility-dialog .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-.compatibility-dialog .modal-head h2 { margin: 0; font-size: 18px; }
+.compatibility-dialog .panel-head { gap: 12px; padding: 12px 16px; }
+.compatibility-dialog .panel-head h2 { margin: 0; font-size: 18px; }
 .compatibility-dialog .modal-body { white-space: normal; line-height: 1.5; }
 .compatibility-muted, .compatibility-hash { font-size: 12px; opacity: .8; }
 .compatibility-hash code { overflow-wrap: anywhere; }
@@ -8,7 +8,7 @@
 .compatibility-controls label { display: grid; gap: 6px; }
 .compatibility-controls input { width: 100%; }
 .compatibility-controls small { opacity: .75; }
-.compatibility-notice { padding: 12px; border: 1px solid var(--warn); border-radius: var(--radius-control); overflow-wrap: anywhere; }
+.compatibility-notice { margin: 12px 0; padding: 12px; border: 1px solid var(--warn); border-radius: var(--radius-control); overflow-wrap: anywhere; }
 .compatibility-check { border-bottom: 1px solid #6665; padding: 10px 0; }
 .compatibility-check summary { cursor: pointer; }
 .compatibility-check summary span { float: right; margin-left: 12px; }
@@ -517,6 +517,7 @@ body.building .console { display: none; }
 .req-card.editing label { display: grid; gap: 3px; color: var(--ink-3); }
 .req-card.editing textarea, .req-card.editing input { font: inherit; color: var(--ink); }
 .req-actions { display: flex; gap: 6px; }
+.req-form { display: grid; gap: 4px; }
 .board-btn { border: 1px solid var(--line); background: var(--surface); }
 .board-panel { position: fixed; top: 50px; right: 0; bottom: 0; width: min(520px, 100vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -8px 0 24px #0002; z-index: 30; display: flex; flex-direction: column; }
 .board-panel .bp-body { overflow: auto; overflow-x: hidden; padding: 12px 16px 30px; font-size: 13.5px; line-height: 1.5; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
@@ -582,7 +583,7 @@ body.building .console { display: none; }
 .attach { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .attach-thumb { position: relative; }
 .attach-thumb img { height: 40px; border-radius: 4px; border: 1px solid var(--line); display: block; }
-.attach-thumb button { position: absolute; top: -6px; right: -6px; font-size: 10px; padding: 0 4px; border-radius: 999px; line-height: 16px; }
+.attach-thumb button { position: absolute; top: -6px; right: -6px; font-size: 10px; padding: 0 4px; border-radius: 999px; line-height: 16px; min-width: 0; }
 .attach-btn { font-size: 13px; }
 .hero-attach { margin-top: 8px; }
 .msg-images { display: flex; gap: 6px; margin-top: 6px; }
@@ -618,7 +619,7 @@ body.building .console { display: none; }
 .pcb-variant { border: 1px solid var(--line); border-radius: var(--radius-control); padding: 6px 10px 8px; margin: 0; display: grid; gap: 4px; flex-basis: 100%; }
 .pcb-variant legend { font-size: 12.5px; color: var(--ink-3); padding: 0 4px; }
 .pcb-variant label { display: flex !important; gap: 6px; align-items: baseline; color: var(--ink) !important; font-size: 13.5px !important; cursor: pointer; }
-.pcb-variant label span { color: var(--ink-2); }
+.pcb-variant label span span { color: var(--ink-2); }
 .pcb-product-notes { background: var(--surface-2); border-radius: var(--radius-control); padding: 10px 12px; }
 .pcb-product-notes ul { margin: 6px 0; padding-left: 18px; }
 .power-card summary { cursor: pointer; font-weight: 600; }
@@ -634,13 +635,12 @@ body.building .console { display: none; }
 .power-option .problem { margin: 4px 0; font-size: 12px; }
 .bp-ota-opt { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 4px; } .bp-ota summary { cursor: pointer; font-weight: 600; }
 .class-code { font-family: var(--mono); font-size: 1.2em; letter-spacing: 0.08em; }
-.class-banner { background: color-mix(in srgb, var(--signal) 18%, var(--surface)); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13.5px; }
-.class-banner ul { margin: 2px 0; padding-left: 18px; }
-.class-banner .cb-main { flex: 1; min-width: 260px; }
-.class-banner .cb-submit { display: flex; gap: 6px; align-items: start; flex-wrap: wrap; }
-.class-banner .cb-grade { flex-basis: 100%; }
-.class-banner .cb-grade li.pass { color: var(--ok); }
-.class-banner .cb-grade li.fail { color: var(--error); }
+.class-strip ul { margin: 2px 0; padding-left: 18px; }
+.class-strip .cb-main { flex: 1; min-width: 260px; }
+.class-strip .cb-submit { display: flex; gap: 6px; align-items: start; flex-wrap: wrap; }
+.class-strip .cb-grade { flex-basis: 100%; }
+.class-strip .cb-grade li.pass { color: var(--ok); }
+.class-strip .cb-grade li.fail { color: var(--error); }
 .share-bar { background: color-mix(in srgb, var(--select) 12%, var(--surface)); border-bottom: 1px solid var(--line); padding: 6px 16px; display: flex; gap: 12px; align-items: center; font-size: 13px; }
 .share-bar span { flex: 1; }
 .join-class { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }

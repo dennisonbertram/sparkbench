@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { CASE_DIMS } from '../core/enclosure';
+import { Button } from './ds';
 
 export function CaseViewer({ jobId, files, outer, board, style = 'rounded' }: { jobId: string; files: string[]; outer: { w: number; d: number; h: number }; board: { w: number; d: number }; style?: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -94,7 +95,7 @@ export function CaseViewer({ jobId, files, outer, board, style = 'rounded' }: { 
     <div className="case-viewer" data-testid="case-viewer">
       <div ref={host} className="case-canvas" />
       <div className="case-viewer-tools">
-        <button onClick={() => setExploded((x) => !x)}>{exploded ? 'Close the lid' : 'Open the lid'}</button>
+        <Button onClick={() => setExploded((x) => !x)}>{exploded ? 'Close the lid' : 'Open the lid'}</Button>
         <span className="muted">{style === 'wall-mount' ? 'Seen from below: the two keyhole slots hang on wall screws. ' : style === 'desk-stand' ? 'The tan wedge beside it is the desk stand. ' : ''}Drag to turn it, scroll to zoom.</span>
       </div>
     </div>

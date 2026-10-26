@@ -71,3 +71,26 @@ All components are imported from `src/ui/ds`.
 | `Modal` | A dialog over a scrim. Focus stays inside; Escape and ✕ close it. | `title`, `onClose`, `className` (for width), `closeLabel`. |
 | `Menu`, `MenuAnchor`, `MenuItem`, `MenuSection`, `MenuNote` | Drop-down menus. Wrap the trigger and `Menu` in a `MenuAnchor`. | Native props. `MenuSection` is a divider with a heading. |
 | `Tabs` | Switching between views of the same thing | `items` (`{id, label}`), `value`, `onChange`. |
+
+### AI and chat
+
+The copilot chat, the Code Assistant and anything else where the agent talks, works or asks. Source: `src/ui/ds/ai.tsx`, styles in the "AI and chat" section of `ds.css`. Adapted from Praci's chat components (Apache-2.0, derived from Rakazo; the motion primitives come from beautifului.dev, MIT). All motion stops under `prefers-reduced-motion`.
+
+| Component | Use it for | Props |
+| --- | --- | --- |
+| `ChatThread` | The scrolling transcript (`role="log"`, polite live region) | Native div props; forwards a ref for scrolling. |
+| `ChatMessage` | One message. User text is a `--chat-user` bubble on the right, shown literally; assistant text is markdown on the left. | `from`: `user` or `assistant`. `text`, `pending` (muted, not parsed), `meta` (time, model, quick actions: shown on hover or focus, always on touch), `metaPinned`. `children` hold cards, tool activity, images and action buttons under the bubble. Native div props such as `data-msg` pass through. |
+| `Markdown` | A model's markdown outside a message | `text`. Uses `marked`; raw HTML is escaped and `javascript:` links are dropped. |
+| `Composer` | The chat input: a box that grows with its text, an attach slot and a round Send button, or Stop while busy. Enter sends, Shift+Enter is a new line, and Enter during IME composition never sends. | `value`, `onChange(text)`, `onSend()`, `label` (required accessible name), `placeholder`, `canSend` (overrides "non-blank text", e.g. images only), `busy`, `onStop`, `disabled`, `attach` (left slot), `top` (attachment previews), `aside` (cost hint, before Send), `error` + `onDismissError`, `sendLabel`, `maxHeight`. Forwards a ref to the text box, which carries `data-composer-input`. |
+| `ComposerError` | A send or run error above the composer | `message`, `onDismiss`, `onRetry`, `retryLabel`; extra action buttons as `children`. `role="alert"`. |
+| `ToolCall` | One thing the agent did or is doing, as a phrase ("Placing parts", "Wiring", "Running checks") | `label`, `state`: `running` (shimmers), `done`, `failed`, `waiting`, `queued`, `skipped`. `count` (×3), `summary` (replaces the label once settled: "Ran 12 checks · 1 warning"), `lines` (`{text, failed?}`: makes the row a disclosure), `title` (tooltip). |
+| `ToolCallList` | Several tool calls; while live, only the latest few | `steps` (ToolCall props), `limit` (use `LIVE_TOOL_STEP_WINDOW` while live). |
+| `ToolCallGroup` | The folding tool-activity line: "Working… · 3 tools" open while live, "Done · 3 tools · 42s" folded after | `live`, `count`, `durationMs`, `label` (override), `children` (usually a `ToolCallList`). |
+| `LoadingState` | The agent is working: pixel loader, shimmering label, live timer, latest step | `label`, `startedAt`, `detail`, `slowAfterMs` (default 2 min) and `slowHint`, then `onStop` / `onRetry` links. `role="status"`. |
+| `Shimmer` | A shimmering label for "happening now" text inside other components | `children`. |
+| `SuccessPop` | The beat after an approved change lands | `label`. |
+| `ApprovalCard` | The agent asks before acting (apply a code change, rewire, flash a board): what it will do, a preview, Approve / Deny, optional "Always allow". Answered cards fold to their header. | `title`, `summary`, `description`, `children` (details or diff preview; tall content clips with Show more), `icon`, `status`: `pending`, `approved`, `always`, `denied`, `expired`. `canAnswer`, `approveLabel`, `denyLabel`, `onApprove`, `onDeny`, `onAlwaysAllow`, `alwaysLabel`, `alwaysHint`, `resultText`, `previewHeight`. Handlers may return a promise; the card shows "Sending…" and any thrown error. |
+| `AskCard` | The agent asks the person a question | `question` (markdown), `detail`, `options` (`{id, label, hint?}`, numbered), `recommendedId` ("(suggested)"), `onAnswer(idOrText)`, `allowText`, `textPlaceholder`, `answer` (closes the card), `canAnswer`. Pick mode for several questions sent with one button: `selected` + `onSelect` turn the options into a radio group. |
+| `Icon` | Small line icons inside these components and buttons | `name`: `check`, `x`, `clock`, `circle`, `dash`, `chevron-right`, `chevron-down`, `arrow-up`, `stop`, `plus`, `key`, `more`, `spark`. `size`. Decorative (`aria-hidden`): label the control around it. |
+
+`ApprovalCard` and `AskCard` keep their buttons off for a second when they appear right after another card was answered, so a double click cannot approve the next request.

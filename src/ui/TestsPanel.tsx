@@ -2,6 +2,7 @@
 // me"), run in the simulator after every change, with a pass/fail badge on the tab.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
+import { Button, TextInput } from './ds';
 import { sendPrompt } from './copilot';
 import { CostHint } from './CostHint';
 import type { AcceptanceTest, TestResult } from '../core/acceptance';
@@ -101,8 +102,8 @@ export function TestsPanel() {
           add();
         }}
       >
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder={ai.enabled ? 'Add a test in plain words, e.g. "when I press SW1 the buzzer beeps"' : 'Adding tests in plain words needs Claude'} disabled={!ai.enabled || adding} aria-label="Describe a new test" />
-        <button type="submit" disabled={!ai.enabled || adding || !text.trim()}>{adding ? 'Writing the test…' : 'Add test'}</button>
+        <TextInput value={text} onChange={(e) => setText(e.target.value)} placeholder={ai.enabled ? 'Add a test in plain words, e.g. "when I press SW1 the buzzer beeps"' : 'Adding tests in plain words needs Claude'} disabled={!ai.enabled || adding} aria-label="Describe a new test" />
+        <Button type="submit" disabled={!ai.enabled || adding || !text.trim()}>{adding ? 'Writing the test…' : 'Add test'}</Button>
         {ai.enabled && <CostHint kind="test" />}
       </form>
       {error && <div className="problem error">{error}</div>}
@@ -114,16 +115,16 @@ export function TestsPanel() {
             <span className="t-title">{r.title}</span>
             <span className="t-source">{SOURCE[sourceOf(r)]}</span>
             {sourceOf(r) !== 'auto' && (
-              <button className="link" onClick={() => remove(r.id)} aria-label={`Delete test: ${r.title}`}>Delete</button>
+              <Button variant="link" onClick={() => remove(r.id)} aria-label={`Delete test: ${r.title}`}>Delete</Button>
             )}
             {!r.pass && <div className="t-detail">{r.detail}</div>}
           </li>
         ))}
       </ul>
       {failing.length > 0 && ai.enabled && (
-        <button className="primary" onClick={() => sendPrompt(`Change the program so these tests pass:\n${failing.map((f) => `- ${f.title} (${f.detail})`).join('\n')}`)}>
+        <Button variant="primary" onClick={() => sendPrompt(`Change the program so these tests pass:\n${failing.map((f) => `- ${f.title} (${f.detail})`).join('\n')}`)}>
           Fix the code with AI
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 // time, drawing only what's placed so far and ringing the holes for the current step.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
+import { Button } from './ds';
 import { planBreadboard } from '../core/bbplace';
 import { holeXY, renderBreadboardSvg } from '../core/breadboard';
 
@@ -94,9 +95,9 @@ export function BuildMode() {
                 : `${total} short steps, about ${minutes} minutes. Each step shows exactly which holes to use, so you never have to read a schematic.`}
             </p>
           </div>
-          <button className="primary" onClick={() => setStep(0)} data-testid="build-start">
+          <Button variant="primary" onClick={() => setStep(0)} data-testid="build-start">
             {step >= total ? 'Start again' : 'Build it step by step'}
-          </button>
+          </Button>
         </div>
       </section>
     );
@@ -108,19 +109,19 @@ export function BuildMode() {
       <div className="bm-head">
         <span className="bm-count">Step {step + 1} of {total}</span>
         <div className="bm-progress" aria-hidden><span style={{ width: `${((step + 1) / total) * 100}%` }} /></div>
-        <button onClick={() => setWhole((w) => !w)}>{whole ? 'Zoom to this step' : 'Show whole board'}</button>
-        <button onClick={() => setStep(-1)}>Close</button>
+        <Button onClick={() => setWhole((w) => !w)}>{whole ? 'Zoom to this step' : 'Show whole board'}</Button>
+        <Button onClick={() => setStep(-1)}>Close</Button>
       </div>
       <p className="bm-text" data-testid="build-step-text">{cur.text}</p>
       <div className="bm-picture" dangerouslySetInnerHTML={{ __html: svg }} />
       <div className="bm-nav">
-        <button onClick={() => setStep(step - 1)} disabled={step === 0}>Back</button>
+        <Button onClick={() => setStep(step - 1)} disabled={step === 0}>Back</Button>
         <span className="bm-hint">Tip: the ← and → keys work too</span>
         {step < total - 1 ? (
-          <button className="primary" onClick={() => setStep(step + 1)} data-testid="build-next" autoFocus>Done, next step</button>
+          <Button variant="primary" onClick={() => setStep(step + 1)} data-testid="build-next" autoFocus>Done, next step</Button>
         ) : (
-          <button
-            className="primary"
+          <Button
+            variant="primary"
             onClick={() => {
               setStep(total);
               // After the step view has collapsed, bring the photo check into view and point at it.
@@ -135,7 +136,7 @@ export function BuildMode() {
             data-testid="build-finish"
           >
             Finish and check with a photo
-          </button>
+          </Button>
         )}
       </div>
     </section>

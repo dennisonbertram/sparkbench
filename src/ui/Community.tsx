@@ -2,7 +2,7 @@
 // (assignments graded in the simulator, teacher dashboard) and live sharing (edit together, comments).
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
-import { useDialog } from './useDialog';
+import { Banner, Button, Card, Checkbox, Chip, Field, Modal, TextArea, TextInput } from './ds';
 import type { Project } from '../core/types';
 import { BOARDS } from '../core/boards';
 import { mergeProjects } from '../core/merge';
@@ -45,9 +45,9 @@ const boardLabel = (b: string) => (b === 'none' ? 'No MCU' : BOARDS[b as 'esp32'
 function CopyButton({ text, label = 'Copy link', testid }: { text: string; label?: string; testid?: string }) {
   const [done, setDone] = useState(false);
   return (
-    <button
-      type="button"
-      className="ghost small"
+    <Button
+      variant="ghost"
+      size="sm"
       data-testid={testid}
       onClick={() => {
         navigator.clipboard?.writeText(text).catch(() => {});
@@ -56,7 +56,7 @@ function CopyButton({ text, label = 'Copy link', testid }: { text: string; label
       }}
     >
       {done ? 'Copied' : label}
-    </button>
+    </Button>
   );
 }
 
@@ -105,23 +105,24 @@ export function GallerySection() {
       <div className="cards">
         {entries.slice(0, 12).map((e) => (
           <div key={e.id} className="card-wrap">
-            <button className="card" onClick={() => openGallery(e.id)} data-gallery={e.id}>
+            <Card onClick={() => openGallery(e.id)} data-gallery={e.id}>
               <span className="card-meta">
-                <span className="chip">{boardLabel(e.board)}</span>
+                <Chip>{boardLabel(e.board)}</Chip>
                 <span className="level">{e.remixes ? `${e.remixes} remix${e.remixes > 1 ? 'es' : ''}` : ''}</span>
               </span>
               <span className="card-title">{e.name}</span>
               <span className="card-blurb">{e.blurb || `${e.parts} parts`} — by {e.author}{e.remixOf ? `, remixed from ${e.remixOf.author}’s ${e.remixOf.name}` : ''}</span>
-            </button>
-            <button
-              className={`like${liked.includes(e.id) ? ' on' : ''}`}
+            </Card>
+            <Button
+              className="like"
+              on={liked.includes(e.id)}
               onClick={() => like(e)}
               aria-pressed={liked.includes(e.id)}
               aria-label={liked.includes(e.id) ? `You like ${e.name} (${e.likes} likes)` : `Like ${e.name} (${e.likes} likes)`}
               data-testid="gallery-like"
             >
               ♥ {e.likes}
-            </button>
+            </Button>
           </div>
         ))}
       </div>
@@ -167,7 +168,7 @@ export function PublishDialog({ onClose }: { onClose(): void }) {
           <p className="muted">
             Link: <code>{link(`gallery=${done.id}`)}</code> <CopyButton text={link(`gallery=${done.id}`)} />
           </p>
-          <button onClick={onClose} data-autofocus>Done</button>
+          <Button onClick={onClose} data-autofocus>Done</Button>
         </div>
       ) : (
         <form
@@ -185,23 +186,20 @@ export function PublishDialog({ onClose }: { onClose(): void }) {
             }
           }}
         >
-          <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} data-testid="publish-title" /></label>
-          <label>Your name<input value={author} onChange={(e) => setAuthor(e.target.value)} required maxLength={40} /></label>
-          <label>What is it? (one or two sentences)<textarea value={blurb} onChange={(e) => setBlurb(e.target.value)} rows={3} maxLength={300} /></label>
+          <Field label="Title"><TextInput value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} data-testid="publish-title" /></Field>
+          <Field label="Your name"><TextInput value={author} onChange={(e) => setAuthor(e.target.value)} required maxLength={40} /></Field>
+          <Field label="What is it? (one or two sentences)"><TextArea value={blurb} onChange={(e) => setBlurb(e.target.value)} rows={3} maxLength={300} /></Field>
           {remixOf && <p className="muted">It will say it’s a remix of {remixOf.author}’s {remixOf.name}.</p>}
-          {unchanged && <div className="banner warn" data-testid="publish-unchanged">You haven’t changed anything from {remixOf!.author}’s original yet. Change something first, so your remix is worth opening.</div>}
+          {unchanged && <Banner tone="warn" data-testid="publish-unchanged">You haven’t changed anything from {remixOf!.author}’s original yet. Change something first, so your remix is worth opening.</Banner>}
           {earlier && (
-            <label className="check">
-              <input type="checkbox" checked={update} onChange={(e) => setUpdate(e.target.checked)} /> Update my earlier entry “{earlier[1].name}” instead of adding a new one
-            </label>
+            <Checkbox className="check" checked={update} onChange={(e) => setUpdate(e.target.checked)} label={<>Update my earlier entry “{earlier[1].name}” instead of adding a new one</>} />
           )}
-          {error && <div className="banner error">{error}</div>}
+          {error && <Banner tone="error">{error}</Banner>}
           <div className="row">
-            <button className="primary" type="submit" data-testid="publish-go">{update && earlier ? 'Update it' : 'Publish'}</button>
+            <Button variant="primary" type="submit" data-testid="publish-go">{update && earlier ? 'Update it' : 'Publish'}</Button>
             {earlier && (
-              <button
-                type="button"
-                className="ghost"
+              <Button
+                variant="ghost"
                 onClick={async () => {
                   try {
                     await post(`/api/gallery/${earlier[0]}/delete`, { editKey: earlier[1].editKey });
@@ -215,7 +213,7 @@ export function PublishDialog({ onClose }: { onClose(): void }) {
                 }}
               >
                 Take my entry down
-              </button>
+              </Button>
             )}
           </div>
         </form>
@@ -269,7 +267,7 @@ export function TeachDialog({ onClose }: { onClose(): void }) {
             <CopyButton text={dash} label="Copy dashboard link" testid="teach-copy" />
           </p>
           <p className="muted">This computer remembers it: find it later under <strong>My classes</strong> on the start page. On another computer you’ll need the dashboard link.</p>
-          <button onClick={onClose}>Done</button>
+          <Button onClick={onClose}>Done</Button>
         </div>
       ) : (
         <form
@@ -285,16 +283,15 @@ export function TeachDialog({ onClose }: { onClose(): void }) {
             }
           }}
         >
-          <label>Title<input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Traffic light with a crossing button" /></label>
-          <label>Brief<textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} placeholder="What should students build? Say which board or example to start from." /></label>
-          <label>
-            What it must do (one per line: each becomes an automatic test)
-            <textarea value={reqs} onChange={(e) => setReqs(e.target.value)} rows={4} required placeholder={'The red, yellow and green LEDs light in turn\nPressing the button turns the light red'} />
-          </label>
-          <label>Your name<input value={teacher} onChange={(e) => setTeacher(e.target.value)} maxLength={40} /></label>
+          <Field label="Title"><TextInput value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Traffic light with a crossing button" /></Field>
+          <Field label="Brief"><TextArea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} placeholder="What should students build? Say which board or example to start from." /></Field>
+          <Field label="What it must do (one per line: each becomes an automatic test)">
+            <TextArea value={reqs} onChange={(e) => setReqs(e.target.value)} rows={4} required placeholder={'The red, yellow and green LEDs light in turn\nPressing the button turns the light red'} />
+          </Field>
+          <Field label="Your name"><TextInput value={teacher} onChange={(e) => setTeacher(e.target.value)} maxLength={40} /></Field>
           <p className="muted">Every hand-in also gets two automatic checks: the wiring passes the design checks, and the program runs.</p>
-          {error && <div className="banner error">{error}</div>}
-          <button className="primary" type="submit" data-testid="teach-go">Create the class</button>
+          {error && <Banner tone="error">{error}</Banner>}
+          <Button variant="primary" type="submit" data-testid="teach-go">Create the class</Button>
         </form>
       )}
     </Modal>
@@ -327,18 +324,18 @@ export function ClassBanner() {
   }, [code]);
   if (back)
     return (
-      <div className="class-banner" data-testid="teacher-return">
+      <Banner variant="strip" tone="info" className="class-strip" data-testid="teacher-return">
         <span className="cb-main">You’re looking at <strong>{back.student}</strong>’s submission. Changes here don’t change what they handed in.</span>
-        <button className="primary" onClick={() => openDashboard(back.code, back.key)} data-testid="back-to-dashboard">Back to class dashboard</button>
-      </div>
+        <Button variant="primary" onClick={() => openDashboard(back.code, back.key)} data-testid="back-to-dashboard">Back to class dashboard</Button>
+      </Banner>
     );
   if (!code) return null;
   return (
-    <div className="class-banner" data-testid="class-banner">
+    <Banner variant="strip" tone="info" className="class-strip" data-testid="class-banner">
       {error && !a ? (
         <>
           <span className="cb-main">{error}</span>
-          <button className="ghost" onClick={() => useStore.getState().set({ classCode: null })}>Close</button>
+          <Button variant="ghost" onClick={() => useStore.getState().set({ classCode: null })}>Close</Button>
         </>
       ) : !a ? (
         <span>Loading the assignment…</span>
@@ -351,9 +348,9 @@ export function ClassBanner() {
             {!project && <div className="cb-next" data-testid="class-next">Next: describe your design below or open an example, build it, then press <strong>Hand it in</strong>.</div>}
           </div>
           <div className="cb-submit">
-            <input value={student} onChange={(e) => setStudent(e.target.value)} placeholder="Your name" aria-label="Your name" />
-            <button
-              className="primary"
+            <TextInput value={student} onChange={(e) => setStudent(e.target.value)} placeholder="Your name" aria-label="Your name" />
+            <Button
+              variant="primary"
               disabled={!project || !student.trim() || busy}
               title={!project ? 'Open or design your project first' : !student.trim() ? 'Type your name first' : undefined}
               data-testid="class-submit"
@@ -374,11 +371,11 @@ export function ClassBanner() {
               }}
             >
               {busy ? `Checking your project… (${gradeTime(a.requirements.length)})` : grade ? 'Hand it in again' : 'Hand it in'}
-            </button>
+            </Button>
             <CostHint kind="grade" />
-            <button className="ghost" onClick={() => useStore.getState().set({ classCode: null })}>Leave class</button>
+            <Button variant="ghost" onClick={() => useStore.getState().set({ classCode: null })}>Leave class</Button>
           </div>
-          {error && <div className="banner error cb-grade">{error}</div>}
+          {error && <Banner tone="error" className="cb-grade">{error}</Banner>}
           {grade && (
             <div className="cb-grade" data-testid="class-grade">
               <strong>{grade.score} of {grade.max} checks passed</strong> (your teacher sees this too{grade.at ? `; handed in ${new Date(grade.at).toLocaleString()}` : ''})
@@ -387,7 +384,7 @@ export function ClassBanner() {
           )}
         </>
       )}
-    </div>
+    </Banner>
   );
 }
 
@@ -414,17 +411,17 @@ export function TeacherDashboard({ code, teacherKey }: { code: string; teacherKe
         <span className="brand">
           <TinyLogo /> <span>Sparkbench</span>
         </span>
-        <button
-          className="ghost"
+        <Button
+          variant="ghost"
           onClick={() => {
             history.replaceState(null, '', location.pathname);
             useStore.getState().set({ teach: null });
           }}
         >
           Back to Sparkbench
-        </button>
+        </Button>
       </header>
-      {error && <div className="banner error">{error}</div>}
+      {error && <Banner tone="error">{error}</Banner>}
       {d && (
         <>
           <h1>{d.assignment.title}</h1>
@@ -458,7 +455,7 @@ export function TeacherDashboard({ code, teacherKey }: { code: string; teacherKe
                       })}
                       <td>{new Date(s.submittedAt).toLocaleString()}</td>
                       <td>
-                        <button
+                        <Button
                           onClick={async () => {
                             const x = await fetch(`/api/class/${code}/submission?key=${encodeURIComponent(teacherKey)}&id=${s.id}`).then((r) => r.json());
                             history.pushState(null, '', location.pathname);
@@ -468,7 +465,7 @@ export function TeacherDashboard({ code, teacherKey }: { code: string; teacherKe
                           }}
                         >
                           Open
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -637,7 +634,7 @@ export function ShareBar() {
       </span>
       {room.conflict && (
         <span className="share-conflict" role="alert" data-testid="share-conflict">
-          {room.conflict} <button className="ghost small" onClick={() => roomSet({ conflict: undefined })}>OK</button>
+          {room.conflict} <Button variant="ghost" size="sm" onClick={() => roomSet({ conflict: undefined })}>OK</Button>
         </span>
       )}
       {room.unread && latest ? (
@@ -645,8 +642,8 @@ export function ShareBar() {
           💬 {latest.by} on {partName(latest.target)}: “{latest.text.slice(0, 60)}”
         </span>
       ) : null}
-      <button
-        className="ghost"
+      <Button
+        variant="ghost"
         aria-expanded={showComments}
         data-testid="share-comments"
         onClick={() => {
@@ -655,9 +652,9 @@ export function ShareBar() {
         }}
       >
         Comments ({comments.length}){room.unread ? ` · ${room.unread} new` : ''}
-      </button>
-      <button
-        className="ghost"
+      </Button>
+      <Button
+        variant="ghost"
         onClick={() => {
           navigator.clipboard?.writeText(link(`room=${room.id}`));
           setCopied(true);
@@ -665,16 +662,16 @@ export function ShareBar() {
         }}
       >
         {copied ? 'Link copied' : 'Copy invite link'}
-      </button>
-      <button className="ghost" onClick={stopSharing} data-testid="share-stop">Stop sharing</button>
+      </Button>
+      <Button variant="ghost" onClick={stopSharing} data-testid="share-stop">Stop sharing</Button>
       {showComments && (
         <div className="share-comments" data-testid="share-comment-list">
           {comments.length ? (
             <ul>
               {comments.map((c) => (
                 <li key={c.id}>
-                  <button
-                    className="link"
+                  <Button
+                    variant="link"
                     onClick={() => {
                       if (project?.parts.some((p) => p.id === c.target)) {
                         useStore.getState().set({ tab: 'breadboard' });
@@ -684,7 +681,7 @@ export function ShareBar() {
                     }}
                   >
                     {partName(c.target)}
-                  </button>{' '}
+                  </Button>{' '}
                   <strong>{c.by}</strong>: {c.text}
                 </li>
               ))}
@@ -721,29 +718,14 @@ export function CommentsPanel({ target, label }: { target: string; label: string
           setText('');
         }}
       >
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a comment" aria-label={`Comment on ${label}`} />
-        <button type="submit" disabled={!text.trim()}>Send</button>
+        <TextInput value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a comment" aria-label={`Comment on ${label}`} />
+        <Button type="submit" disabled={!text.trim()}>Send</Button>
       </form>
     </section>
   );
 }
 
 // ------------------------------------------------------------------ bits
-function Modal({ title, onClose, children }: { title: string; onClose(): void; children: React.ReactNode }) {
-  const ref = useDialog<HTMLDivElement>(onClose);
-  return (
-    <div className="modal-back" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} ref={ref}>
-        <header className="panel-head">
-          <h2>{title}</h2>
-          <button className="ghost" onClick={onClose} aria-label="Close">✕</button>
-        </header>
-        <div className="modal-body">{children}</div>
-      </div>
-    </div>
-  );
-}
-
 export function JoinClass() {
   const [code, setCode] = useState('');
   const [hint, setHint] = useState('');
@@ -759,9 +741,9 @@ export function JoinClass() {
           useStore.getState().set({ classCode: code.trim().toUpperCase() });
         }}
       >
-        <input value={code} onChange={(e) => (setCode(e.target.value), setHint(''))} placeholder="Class code" aria-label="Class code" maxLength={10} />
-        <button type="submit">Join a class</button>
-        <button type="button" className="ghost" onClick={() => useStore.getState().set({ dialog: 'teach' })}>I’m a teacher</button>
+        <TextInput value={code} onChange={(e) => (setCode(e.target.value), setHint(''))} placeholder="Class code" aria-label="Class code" maxLength={10} />
+        <Button type="submit">Join a class</Button>
+        <Button variant="ghost" onClick={() => useStore.getState().set({ dialog: 'teach' })}>I’m a teacher</Button>
         {hint && <span className="join-hint" role="alert">{hint}</span>}
       </form>
       {classes.length > 0 && (
@@ -770,7 +752,7 @@ export function JoinClass() {
           {classes.slice(0, 6).map((c, i) => (
             <React.Fragment key={c.code}>
               {i > 0 && ', '}
-              <button className="link" onClick={() => openDashboard(c.code, c.key)}>{c.title} ({c.code})</button>
+              <Button variant="link" onClick={() => openDashboard(c.code, c.key)}>{c.title} ({c.code})</Button>
             </React.Fragment>
           ))}
         </div>

@@ -1,6 +1,7 @@
 // "A case for it": printable enclosure generated from the finished board, with a 3D preview.
 import React, { useState } from 'react';
 import { useStore } from './store';
+import { Banner, Button } from './ds';
 import { CaseViewer } from './CaseViewer';
 
 interface CaseInfo {
@@ -61,31 +62,31 @@ export function CaseSection({ jobId }: { jobId: string }) {
       <p className="muted">A 3D-printable case made to fit this exact board: {features(project.parts.map((p) => p.type))}.</p>
       <div className="case-styles" role="radiogroup" aria-label="Case style">
         {STYLES.map((s) => (
-          <button
+          <Button
             key={s.id}
             role="radio"
             aria-checked={style === s.id}
-            className={style === s.id ? 'on' : ''}
+            on={style === s.id}
             onClick={() => {
               setStyle(s.id);
               if (info) make(s.id);
             }}
           >
             {s.label}
-          </button>
+          </Button>
         ))}
-        <button className="primary" onClick={() => make()} disabled={busy} data-testid="case-make">
+        <Button variant="primary" onClick={() => make()} disabled={busy} data-testid="case-make">
           {busy ? 'Making the case…' : info ? 'Make it again' : 'Make a case'}
-        </button>
+        </Button>
       </div>
-      {error && <div className="banner error">{error}</div>}
+      {error && <Banner tone="error">{error}</Banner>}
       {info && (
         <>
           <CaseViewer jobId={jobId} files={info.files} outer={info.outer} board={info.board} style={info.style} />
           <p data-testid="case-summary">
             Outside {info.outer.w} × {info.outer.d} × {info.outer.h} mm (tallest part: {info.tallest.ref}, {info.tallest.h} mm). Openings: {info.openings.map((o) => `${o.ref ? `${o.ref} ` : ''}${o.what}`).join('; ')}.
           </p>
-          {info.warnings.map((w, i) => <div key={i} className="banner">{w}</div>)}
+          {info.warnings.map((w, i) => <Banner key={i}>{w}</Banner>)}
           <div className="pcb-downloads">
             {info.files.map((f) => (
               <a key={f} className="button" href={file(f, true)}>{f.split('/').pop()}</a>

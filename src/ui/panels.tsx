@@ -22,6 +22,7 @@ import { annotate } from '../core/netlist';
 import { registerCustomPart, type CustomPartSpec } from '../core/customParts';
 import { withCustomPart } from '../core/autowire';
 import { partSize } from '../core/layout';
+import { Banner, Button, Card, ColorInput, IconButton, PanelHead, Select, TextArea, TextInput } from './ds';
 
 // ------------------------------------------------------------------ Copilot
 export function Copilot() {
@@ -53,12 +54,11 @@ export function Copilot() {
   const suggestions = suggestFor(project);
   return (
     <aside className="copilot" data-tour="copilot">
-      <header className="panel-head">
-        <h2>Copilot</h2>
+      <PanelHead title="Copilot">
         <span className={`ai-badge ${ai.enabled ? 'on' : ''}`} title={ai.enabled ? `Using ${ai.model}${ai.via === 'claude-cli' ? ' through your Claude Code login' : ''}` : 'Using the built-in offline planner. Set ANTHROPIC_API_KEY or log in to Claude Code to use Claude.'}>
           {ai.enabled ? 'Claude AI' : 'Offline planner'}
         </span>
-      </header>
+      </PanelHead>
       <div className="chat-log" ref={log}>
         {!chat.length && (
           <div className="chat-empty">
@@ -89,7 +89,7 @@ export function Copilot() {
             {m.actions && (
               <div className="msg-actions">
                 {m.actions.map((a) => (
-                  <button
+                  <Button
                     key={a.label}
                     onClick={() => {
                       const p = useStore.getState().project;
@@ -100,7 +100,7 @@ export function Copilot() {
                     }}
                   >
                     {a.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -109,9 +109,9 @@ export function Copilot() {
       </div>
       <div className="suggest">
         {suggestions.map((s) => (
-          <button key={s} onClick={() => sendPrompt(s)} disabled={!!busy}>
+          <Button key={s} onClick={() => sendPrompt(s)} disabled={!!busy}>
             {s}
-          </button>
+          </Button>
         ))}
       </div>
       <form
@@ -121,7 +121,7 @@ export function Copilot() {
           submit();
         }}
       >
-        <textarea
+        <TextArea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={busy ? busy : project ? 'Ask a question or for a change… (Enter to send)' : 'Describe your gadget… (Enter to send)'}
@@ -137,13 +137,13 @@ export function Copilot() {
         />
         <AttachImages images={images} onChange={setImages} label="" />
         {ai.enabled && <CostHint kind="design" />}
-        <button type="submit" className="primary" disabled={(!text.trim() && !images.length) || !!busy}>
+        <Button type="submit" variant="primary" disabled={(!text.trim() && !images.length) || !!busy}>
           {busy ? 'Working…' : 'Send'}
-        </button>
+        </Button>
         {busy && ai.enabled && (
-          <button type="button" onClick={cancelDesign} data-testid="copilot-stop">
+          <Button onClick={cancelDesign} data-testid="copilot-stop">
             Stop
-          </button>
+          </Button>
         )}
       </form>
     </aside>
@@ -168,26 +168,29 @@ export function Inspector() {
     const v = sim.parts[part.id];
     return (
       <aside className="inspector" data-tour="inspector">
-        <header className="panel-head">
-          <h2>
-            {part.ref} <span className="muted">{def.name}</span>
-          </h2>
-          <button className="ghost" onClick={() => useStore.getState().select(null)} aria-label="Close">
+        <PanelHead
+          title={
+            <>
+              {part.ref} <span className="muted">{def.name}</span>
+            </>
+          }
+        >
+          <IconButton label="Close" onClick={() => useStore.getState().select(null)}>
             ✕
-          </button>
-        </header>
+          </IconButton>
+        </PanelHead>
         <div className="panel-body">
           <p className="eli5">
             <Glossed text={def.eli5} />
           </p>
           {runtime === 'python' && def.category !== 'board' && def.category !== 'passive' && project.board !== 'none' && !(project.features ?? []).some((f) => f.parts.includes(part.id)) && !new RegExp(`\\b${part.id}\\b|${part.ref}`).test(project.files['main.py'] ?? '') && (
-            <div className="banner warn">
+            <Banner tone="warn">
               The code doesn't use {part.ref} yet.{' '}
               {project.wires.some((w) => (w.a.part === part.id || w.b.part === part.id) && (w.a.part === boardPart(project)?.id || w.b.part === boardPart(project)?.id))
                 ? 'It is wired to the board: ask the copilot to'
                 : 'Wire it to a free pin, then ask the copilot to'}{' '}
               “use the {def.name.toLowerCase()} I added” (with Claude), or add it in the Code tab.
-            </div>
+            </Banner>
           )}
           <p className="muted small">{def.description}</p>
           {running && (def.controls ?? []).some((c) => c.key !== 'wifi' || (project.features ?? []).some((f) => f.kind === 'internet') || /network|urequests|requests|socket/.test(project.files['main.py'] ?? '')) && (
@@ -215,13 +218,13 @@ export function Inspector() {
                     {pr.unit ? ` (${pr.unit})` : ''}
                   </span>
                   {pr.type === 'select' ? (
-                    <select value={part.props[pr.key]} onChange={(e) => useStore.getState().setPartProp(part.id, pr.key, e.target.value)}>
+                    <Select value={part.props[pr.key]} onChange={(e) => useStore.getState().setPartProp(part.id, pr.key, e.target.value)}>
                       {pr.options!.map((o) => (
                         <option key={o}>{o}</option>
                       ))}
-                    </select>
+                    </Select>
                   ) : (
-                    <input
+                    <TextInput
                       type={pr.type === 'number' ? 'number' : 'text'}
                       value={part.props[pr.key]}
                       step="any"
@@ -263,9 +266,9 @@ export function Inspector() {
             </section>
           )}
           {def.category !== 'board' && (
-            <button className="danger" onClick={() => useStore.getState().removeSelection()}>
+            <Button variant="danger" onClick={() => useStore.getState().removeSelection()}>
               Remove {part.ref}
-            </button>
+            </Button>
           )}
           <CommentsPanel target={part.id} label={`${part.ref} ${part.label ?? def.name}`} />
         </div>
@@ -278,12 +281,11 @@ export function Inspector() {
     const ref = (r: { part: string; pin: string }) => `${project.parts.find((p) => p.id === r.part)?.ref}.${r.pin}`;
     return (
       <aside className="inspector">
-        <header className="panel-head">
-          <h2>Wire</h2>
-          <button className="ghost" onClick={() => useStore.getState().select(null)} aria-label="Close">
+        <PanelHead title="Wire">
+          <IconButton label="Close" onClick={() => useStore.getState().select(null)}>
             ✕
-          </button>
-        </header>
+          </IconButton>
+        </PanelHead>
         <div className="panel-body">
           <p>
             {ref(wire.a)} → {ref(wire.b)}
@@ -291,11 +293,11 @@ export function Inspector() {
           <p className="muted small">Net {net?.name}</p>
           <label className="field">
             <span>Colour</span>
-            <input type="color" value={wire.color ?? '#2e7d32'} onChange={(e) => useStore.getState().update((p) => ({ ...p, wires: p.wires.map((w) => (w.id === wire.id ? { ...w, color: e.target.value } : w)) }))} />
+            <ColorInput value={wire.color ?? '#2e7d32'} onChange={(e) => useStore.getState().update((p) => ({ ...p, wires: p.wires.map((w) => (w.id === wire.id ? { ...w, color: e.target.value } : w)) }))} />
           </label>
-          <button className="danger" onClick={() => useStore.getState().removeSelection()}>
+          <Button variant="danger" onClick={() => useStore.getState().removeSelection()}>
             Delete wire
-          </button>
+          </Button>
         </div>
       </aside>
     );
@@ -303,9 +305,7 @@ export function Inspector() {
 
   return (
     <aside className="inspector" data-tour="inspector">
-      <header className="panel-head">
-        <h2>Project</h2>
-      </header>
+      <PanelHead title="Project" />
       <div className="panel-body">
         <p className="summary">{project.summary}</p>
         {running && interactive.length > 0 && (
@@ -379,25 +379,25 @@ export function Console() {
   return (
     <section className="console" data-tour="console">
       <div className="console-tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'serial'} className={tab === 'serial' ? 'active' : ''} onClick={() => useStore.getState().set({ bottomTab: 'serial' })}>
+        <Button role="tab" aria-selected={tab === 'serial'} className={tab === 'serial' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'serial' })}>
           {discrete ? 'Scope' : 'Serial monitor'}
-        </button>
-        <button role="tab" aria-selected={tab === 'problems'} className={tab === 'problems' ? 'active' : ''} onClick={() => useStore.getState().set({ bottomTab: 'problems' })}>
+        </Button>
+        <Button role="tab" aria-selected={tab === 'problems'} className={tab === 'problems' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'problems' })}>
           Problems
           {errs > 0 && <span className="count err" title={`${errs} problem${errs === 1 ? '' : 's'} to fix`}>{errs}</span>}
           {warns > 0 && <span className="count warn" title={`${warns} warning${warns === 1 ? '' : 's'}`}>{warns}</span>}
           {infos > 0 && <span className="count info" title={`${infos} tip${infos === 1 ? '' : 's'}, not problems`}>{infos}</span>}
           {errs + warns + infos === 0 && <span className="count ok">✓</span>}
-        </button>
+        </Button>
         {!discrete && (
-          <button role="tab" aria-selected={tab === 'pins'} className={tab === 'pins' ? 'active' : ''} onClick={() => useStore.getState().set({ bottomTab: 'pins' })}>
+          <Button role="tab" aria-selected={tab === 'pins'} className={tab === 'pins' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'pins' })}>
             Pins
-          </button>
+          </Button>
         )}
-        <button role="tab" aria-selected={tab === 'tests'} className={tab === 'tests' ? 'active' : ''} onClick={() => useStore.getState().set({ bottomTab: 'tests' })} data-testid="tests-tab">
+        <Button role="tab" aria-selected={tab === 'tests'} className={tab === 'tests' ? 'active' : undefined} onClick={() => useStore.getState().set({ bottomTab: 'tests' })} data-testid="tests-tab">
           Tests
           <TestsBadge />
-        </button>
+        </Button>
         <span className="spacer" />
         <span className="sim-time">{sim.status !== 'idle' ? `${(sim.t / 1000).toFixed(1)} s simulated` : ''}</span>
       </div>
@@ -417,9 +417,9 @@ export function Console() {
               <b>Program crashed{sim.error.line ? ` at ${sim.error.file}:${sim.error.line}` : ''}:</b> {sim.error.message}
               {sim.error.hint && <div className="hint">{sim.error.hint}</div>}
               {sim.error.line && (
-                <button className="link" onClick={() => useStore.getState().set({ tab: 'code', activeFile: sim.error!.file ?? 'main.py' })}>
+                <Button variant="link" onClick={() => useStore.getState().set({ tab: 'code', activeFile: sim.error!.file ?? 'main.py' })}>
                   Show in code
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -434,9 +434,9 @@ export function Console() {
               {c.severity === 'info' && <span className="tip-tag">Tip</span>}
               <b>{c.title}</b> — {c.detail}
               {c.fix && (
-                <button className="link" onClick={() => applyFix(c.fix!.action)}>
+                <Button variant="link" onClick={() => applyFix(c.fix!.action)}>
                   {c.fix.label}
-                </button>
+                </Button>
               )}
             </div>
           ))}
@@ -582,7 +582,7 @@ function LibraryItem({ spec: s, onDone }: { spec: CustomPartSpec; onDone(): void
   const lib = (s as any).library;
   const checked = lib?.status === 'checked';
   return (
-    <button className="lib-item" onClick={() => addCustomPart(s).then(onDone)}>
+    <Button className="lib-item" onClick={() => addCustomPart(s).then(onDone)}>
       <span className="lib-name">
         {s.name}{' '}
         <span className={`ds-badge${checked ? ' checked' : ''}`} title={checked ? [lib.note, lib.simNote, lib.caveat].filter(Boolean).join(' ') : 'Read from the datasheet by Claude; not checked by the part check yet.'}>
@@ -594,7 +594,7 @@ function LibraryItem({ spec: s, onDone }: { spec: CustomPartSpec; onDone(): void
         {s.vmin !== undefined && ` · ${s.vmin}–${s.vmax} V`}
       </span>
       <span className="lib-price">${s.priceUsd.toFixed(2)}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -616,10 +616,10 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
   return (
     <div className="library" role="dialog" aria-label="Add a part" onPointerDown={(e) => e.stopPropagation()} ref={ref}>
       <div className="library-head">
-        <input autoFocus placeholder="Search parts (e.g. button, OLED, servo)" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button className="ghost" onClick={onClose} aria-label="Close">
+        <TextInput autoFocus placeholder="Search parts (e.g. button, OLED, servo)" value={q} onChange={(e) => setQ(e.target.value)} />
+        <IconButton label="Close" onClick={onClose}>
           ✕
-        </button>
+        </IconButton>
       </div>
       <div className="library-list">
         <AddAnyComponent initial={list.length + myList.length === 0 ? q : ''} onDone={onClose} />
@@ -634,7 +634,7 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
                 <LibraryItem key={s.type} spec={s} onDone={onClose} />
               ))}
               {items.map((p) => (
-                <button
+                <Button
                   key={p.type}
                   className="lib-item"
                   onClick={() => {
@@ -648,7 +648,7 @@ export function PartLibrary({ onClose }: { onClose(): void }) {
                     {p.vmin !== undefined && ` · ${p.vmin}–${p.vmax} V`}
                   </span>
                   <span className="lib-price">${p.bom.priceUsd.toFixed(2)}</span>
-                </button>
+                </Button>
               ))}
             </div>
           );
@@ -708,17 +708,17 @@ function AddAnyComponent({ initial, onDone }: { initial: string; onDone(): void 
             go();
           }}
         >
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Part number or datasheet URL, e.g. BME280, TMP36, VL53L0X" disabled={busy} aria-label="Part number or datasheet URL" />
-          <button className="primary" disabled={busy || !q.trim()}>
+          <TextInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Part number or datasheet URL, e.g. BME280, TMP36, VL53L0X" disabled={busy} aria-label="Part number or datasheet URL" />
+          <Button type="submit" variant="primary" disabled={busy || !q.trim()}>
             {busy ? 'Reading…' : 'Find datasheet'}
-          </button>
+          </Button>
           {ai.enabled && <CostHint kind="datasheet" />}
         </form>
       )}
       {busy && <p className="assistant-status">Claude is finding and reading the datasheet (30–90 s)…</p>}
-      {err && <div className="banner error">{err}</div>}
+      {err && <Banner tone="error">{err}</Banner>}
       {found && (
-        <div className="part-card">
+        <Card className="part-card">
           <div className="part-card-head">
             <b>{found.spec.name}</b> <span className="muted">{found.spec.mpn}</span>
           </div>
@@ -747,12 +747,12 @@ function AddAnyComponent({ initial, onDone }: { initial: string; onDone(): void 
             {found.spec.driver && <> · includes a MicroPython driver ({found.spec.driver.filename})</>}
           </p>
           <div className="part-card-actions">
-            <button className="primary" onClick={() => addCustomPart(found.spec, true).then(onDone)}>
+            <Button variant="primary" onClick={() => addCustomPart(found.spec, true).then(onDone)}>
               Add & wire it
-            </button>
-            <button onClick={() => addCustomPart(found.spec, false).then(onDone)}>Add without wiring</button>
+            </Button>
+            <Button onClick={() => addCustomPart(found.spec, false).then(onDone)}>Add without wiring</Button>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

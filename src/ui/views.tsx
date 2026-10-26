@@ -18,6 +18,7 @@ import { renderBreadboardSvg } from '../core/breadboard';
 import { download, slug } from './exporters';
 import { generateFiles } from '../core/codegen';
 import { buildNets } from '../core/netlist';
+import { Banner, Button } from './ds';
 
 function useTheme(): 'light' | 'dark' {
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches);
@@ -66,34 +67,34 @@ export function SchematicView() {
     <div className="docview">
       <div className="doc-toolbar">
         <span className="doc-title">Schematic</span>
-        <button onClick={() => download(`${name}-schematic.svg`, renderSchematicSvg(project, { theme: 'light' }), 'image/svg+xml')}>Download SVG</button>
-        <button onClick={() => svgToPng(renderSchematicSvg(project, { theme: 'light' })).then((b) => download(`${name}-schematic.png`, b))}>Download PNG</button>
+        <Button onClick={() => download(`${name}-schematic.svg`, renderSchematicSvg(project, { theme: 'light' }), 'image/svg+xml')}>Download SVG</Button>
+        <Button onClick={() => svgToPng(renderSchematicSvg(project, { theme: 'light' })).then((b) => download(`${name}-schematic.png`, b))}>Download PNG</Button>
         <span className="zoom-group">
-          <button onClick={() => setZoom((z) => Math.max(0.6, z / 1.25))} aria-label="Zoom out">−</button>
-          <button onClick={() => setZoom(1)} title="Fit the whole sheet in the window">Fit</button>
-          <button onClick={() => setZoom((z) => Math.min(5, z * 1.25))} aria-label="Zoom in">+</button>
+          <Button onClick={() => setZoom((z) => Math.max(0.6, z / 1.25))} aria-label="Zoom out">−</Button>
+          <Button onClick={() => setZoom(1)} title="Fit the whole sheet in the window">Fit</Button>
+          <Button onClick={() => setZoom((z) => Math.min(5, z * 1.25))} aria-label="Zoom in">+</Button>
           <span className="zoom-pct">{Math.round(zoom * 100)}%</span>
         </span>
         <details className="doc-more">
           <summary>Files for engineering tools</summary>
           <div className="doc-more-list">
-            <button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Opens in KiCad, the free circuit design program">KiCad schematic</button>
-            <button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))} title="A KiCad project you can open and turn into a circuit board">KiCad project</button>
-            <button onClick={() => download(`${name}.net`, exportKicadNetlist(project))} title="Netlist: the list of which pins connect to which, for other design tools">Netlist</button>
-            <button onClick={() => download(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)))} title="SPICE: a circuit file for electronics simulators such as ngspice">SPICE (.cir)</button>
+            <Button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Opens in KiCad, the free circuit design program">KiCad schematic</Button>
+            <Button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))} title="A KiCad project you can open and turn into a circuit board">KiCad project</Button>
+            <Button onClick={() => download(`${name}.net`, exportKicadNetlist(project))} title="Netlist: the list of which pins connect to which, for other design tools">Netlist</Button>
+            <Button onClick={() => download(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)))} title="SPICE: a circuit file for electronics simulators such as ngspice">SPICE (.cir)</Button>
             {aiStatus.kicad && (
-              <button onClick={renderKicad} disabled={kicad?.busy} title="Open the schematic in KiCad on this computer and check it for wiring errors">
+              <Button onClick={renderKicad} disabled={kicad?.busy} title="Open the schematic in KiCad on this computer and check it for wiring errors">
                 {kicad?.busy ? 'Running KiCad…' : 'Check in KiCad'}
-              </button>
+              </Button>
             )}
           </div>
         </details>
       </div>
-      {kicad?.error && <div className="banner warn">KiCad: {kicad.error}</div>}
+      {kicad?.error && <Banner tone="warn">KiCad: {kicad.error}</Banner>}
       {kicad?.svg && (
-        <div className="banner ok">
-          Rendered by KiCad · ERC: {ercCount === 0 ? 'no errors' : `${ercCount} error(s)`} <button onClick={() => setKicad(null)}>Show Sparkbench view</button>
-        </div>
+        <Banner tone="ok">
+          Rendered by KiCad · ERC: {ercCount === 0 ? 'no errors' : `${ercCount} error(s)`} <Button onClick={() => setKicad(null)}>Show Sparkbench view</Button>
+        </Banner>
       )}
       <div
         className={`schematic ${hoverNet ? 'has-hl' : ''} ${zoom === 1 ? 'fit' : ''}`}
@@ -117,10 +118,10 @@ export function SchematicView() {
         }}
       />
       {pinnedName && (
-        <div className="banner ok net-banner">
+        <Banner tone="ok" className="net-banner">
           Net <b>{pinnedName}</b> is highlighted.{' '}
-          <button onClick={() => useStore.getState().setTab('breadboard')}>Show it on the breadboard</button> <button onClick={() => useStore.getState().set({ pinnedNet: null })}>Clear</button>
-        </div>
+          <Button onClick={() => useStore.getState().setTab('breadboard')}>Show it on the breadboard</Button> <Button onClick={() => useStore.getState().set({ pinnedNet: null })}>Clear</Button>
+        </Banner>
       )}
       <p className="doc-foot">Each wire ends in a <b>net label</b>: pins with the same label are connected. Click a wire or label to highlight that net on the breadboard too. Open the KiCad file in KiCad to lay out a PCB.</p>
     </div>
@@ -169,15 +170,15 @@ export function CodeView() {
     <div className="codeview">
       <div className="file-tabs" role="tablist">
         {files.map((f) => (
-          <button key={f} role="tab" aria-selected={f === file} className={f === file ? 'active' : ''} onClick={() => useStore.getState().set({ activeFile: f })}>
+          <Button key={f} role="tab" aria-selected={f === file} className={f === file ? 'active' : undefined} onClick={() => useStore.getState().set({ activeFile: f })}>
             {f}
             {f !== 'main.py' && <span className="file-hint">{f.startsWith('arduino/') ? 'Arduino' : 'driver'}</span>}
-          </button>
+          </Button>
         ))}
         <span className="spacer" />
         {project.codeCustom && (
-          <button
-            className="ghost"
+          <Button
+            variant="ghost"
             title="Throw away all changes to main.py (yours and the AI's) and go back to the code Sparkbench generated from the circuit"
             onClick={() => {
               if (!confirm('Go back to the code Sparkbench generated from the circuit? All changes to main.py, by you or the AI, will be lost.')) return;
@@ -185,18 +186,18 @@ export function CodeView() {
             }}
           >
             Reset main.py
-          </button>
+          </Button>
         )}
         <ArduinoButton />
-        <button className="ghost" onClick={() => download(file.split('/').pop()!, project.files[file], 'text/plain')}>
+        <Button variant="ghost" onClick={() => download(file.split('/').pop()!, project.files[file], 'text/plain')}>
           Download {file.split('/').pop()}
-        </button>
+        </Button>
       </div>
       {err && err.file === file && (
-        <div className="banner error">
+        <Banner tone="error">
           <b>Line {err.line}:</b> {err.message}
           {err.hint && <div className="hint">{err.hint}</div>}
-        </div>
+        </Banner>
       )}
       <CodeEditor fileKey={`${project.id}:${file}`} value={project.files[file]} onChange={(v) => useStore.getState().setFile(file, v)} errorLine={errorLine} />
       <CodeAssistant file={file} />
@@ -214,8 +215,8 @@ function ArduinoButton() {
   const has = Object.keys(project.files).some((f) => f.startsWith('arduino/'));
   return (
     <>
-      <button
-        className="ghost"
+      <Button
+        variant="ghost"
         disabled={!ai.enabled || busy}
         title={ai.enabled ? 'Translate to Arduino C++ and compile it for this board' : 'Needs Claude'}
         data-testid="arduino-make"
@@ -238,9 +239,9 @@ function ArduinoButton() {
         }}
       >
         {busy ? 'Writing and compiling C++… (1–5 min)' : has ? 'Update the Arduino version' : 'Arduino (C++) version'}
-      </button>
+      </Button>
       {ai.enabled && !busy && <CostHint kind="arduino" />}
-      {msg && <div className="banner arduino-msg" data-testid="arduino-msg">{msg}</div>}
+      {msg && <Banner className="arduino-msg" data-testid="arduino-msg">{msg}</Banner>}
     </>
   );
 }
@@ -281,16 +282,16 @@ export function BomView() {
     <div className="docview">
       <div className="doc-toolbar">
         <span className="doc-title">Parts list</span>
-        <button onClick={() => download(`${slug(project.name)}-bom.csv`, bomToCsv(lines), 'text/csv')}>Download CSV</button>
-        {!live && <button onClick={loadLive} disabled={loading} data-testid="bom-live">{loading ? 'Checking stock and prices…' : 'Check live stock and prices'}</button>}
+        <Button onClick={() => download(`${slug(project.name)}-bom.csv`, bomToCsv(lines), 'text/csv')}>Download CSV</Button>
+        {!live && <Button onClick={loadLive} disabled={loading} data-testid="bom-live">{loading ? 'Checking stock and prices…' : 'Check live stock and prices'}</Button>}
         {!live && <CostHint kind="parts" />}
-        {live && found.length > 0 && <button onClick={() => download(`${slug(project.name)}-lcsc-cart.csv`, lcscCsv(), 'text/csv')} data-testid="bom-cart">Download LCSC cart ({found.length} parts)</button>}
+        {live && found.length > 0 && <Button onClick={() => download(`${slug(project.name)}-lcsc-cart.csv`, lcscCsv(), 'text/csv')} data-testid="bom-cart">Download LCSC cart ({found.length} parts)</Button>}
       </div>
-      {liveErr && <div className="banner error">{liveErr}</div>}
+      {liveErr && <Banner tone="error">{liveErr}</Banner>}
       {live && (
-        <div className="banner" data-testid="bom-live-note">
+        <Banner data-testid="bom-live-note">
           Sparkbench looked up the {live.length} component line{live.length === 1 ? '' : 's'} at LCSC: {found.length} {found.length === 1 ? 'is' : 'are'} in stock (green lines below){missing.length ? `, ${missing.length} ${missing.length === 1 ? 'isn’t' : 'aren’t'} (marked “not at LCSC”)` : ''}. The LCSC subtotal for those is <strong>${lcscSubtotal.toFixed(2)}</strong>: LCSC sells small parts in minimum quantities (often 10–100 pieces), so the cart orders at least that many, and shipping (about $5–20) is extra. The breadboard, wires and cables aren’t looked up; buy them, the board and plug-in modules from a hobby store with the links in the Buy column. To order the LCSC parts in one go, download the cart and upload it at <a href="https://www.lcsc.com/bom" target="_blank" rel="noreferrer">lcsc.com/bom</a>.
-        </div>
+        </Banner>
       )}
       <table className="bom" data-testid="bom">
         <thead>
@@ -369,9 +370,9 @@ export function MarkdownView({ kind }: { kind: 'guide' | 'blog' }) {
     <div className="docview">
       <div className="doc-toolbar">
         <span className="doc-title">{kind === 'guide' ? 'Build guide' : 'Blog post'}</span>
-        <button onClick={() => download(`${slug(project.name)}-${file}`, md, 'text/markdown')}>Download Markdown</button>
-        <button onClick={() => navigator.clipboard?.writeText(md)}>Copy Markdown</button>
-        <button onClick={() => window.print()}>Print</button>
+        <Button onClick={() => download(`${slug(project.name)}-${file}`, md, 'text/markdown')}>Download Markdown</Button>
+        <Button onClick={() => navigator.clipboard?.writeText(md)}>Copy Markdown</Button>
+        <Button onClick={() => window.print()}>Print</Button>
       </div>
       {kind === 'guide' && <BuildMode />}
       {kind === 'guide' && <PhotoCheck />}

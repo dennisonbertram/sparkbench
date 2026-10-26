@@ -7,6 +7,7 @@ import { Revisions } from './Revisions';
 import { CostHint } from './CostHint';
 import { CaseSection } from './CaseSection';
 import { BoardEditor, type PlacedPart } from './BoardEditor';
+import { Banner, Button, Radio, Select, TextInput } from './ds';
 
 interface DrcItem { severity: string; type: string; description: string }
 interface Result {
@@ -187,9 +188,9 @@ export function PcbView() {
           </div>
           {!running && <CostHint kind="pcb" />}
           {!running && (
-            <button className="primary" onClick={() => build()} data-testid="pcb-build">
+            <Button variant="primary" onClick={() => build()} data-testid="pcb-build">
               {res ? (stale ? 'Update the board for the changed design' : revStale ? `Rebuild so the board prints ${label(project.revision)}` : 'Design it again') : 'Design my circuit board'}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -198,39 +199,46 @@ export function PcbView() {
           <div className="pcb-options">
             <fieldset className="pcb-variant" data-testid="pcb-variant">
               <legend>Version</legend>
-              <label className={variant === 'prototype' ? 'on' : ''}>
-                <input type="radio" name="variant" checked={variant === 'prototype'} onChange={() => setVariant('prototype')} />
-                <strong>Prototype</strong> <span>Your dev board and modules plug into sockets. You solder it yourself.</span>
-              </label>
-              <label className={variant === 'product' ? 'on' : ''}>
-                <input type="radio" name="variant" checked={variant === 'product'} onChange={() => setVariant('product')} data-testid="pcb-variant-product" />
-                <strong>Product</strong> <span>The chips go on the board{project.board === 'esp32' ? ' (bare ESP32 module, USB, regulator)' : ''}, with small surface-mount parts the factory assembles.</span>
-              </label>
+              <Radio
+                className={variant === 'prototype' ? 'on' : ''}
+                name="variant"
+                checked={variant === 'prototype'}
+                onChange={() => setVariant('prototype')}
+                label={<><strong>Prototype</strong> <span>Your dev board and modules plug into sockets. You solder it yourself.</span></>}
+              />
+              <Radio
+                className={variant === 'product' ? 'on' : ''}
+                name="variant"
+                checked={variant === 'product'}
+                onChange={() => setVariant('product')}
+                data-testid="pcb-variant-product"
+                label={<><strong>Product</strong> <span>The chips go on the board{project.board === 'esp32' ? ' (bare ESP32 module, USB, regulator)' : ''}, with small surface-mount parts the factory assembles.</span></>}
+              />
             </fieldset>
             <label>
               Made by
-              <select value={fab} onChange={(e) => setFab(e.target.value as any)} data-testid="pcb-fab">
+              <Select value={fab} onChange={(e) => setFab(e.target.value as any)} data-testid="pcb-fab">
                 <option value="jlcpcb">JLCPCB</option>
                 <option value="pcbway">PCBWay</option>
                 <option value="oshpark">OSH Park</option>
-              </select>
+              </Select>
             </label>
             <label>
               Boards per panel
-              <select value={panel} onChange={(e) => setPanel(e.target.value)} data-testid="pcb-panel">
+              <Select value={panel} onChange={(e) => setPanel(e.target.value)} data-testid="pcb-panel">
                 <option value="1x1">Single boards</option>
                 <option value="2x2">Panel of 4 (2×2, snap apart)</option>
                 <option value="3x3">Panel of 9 (3×3, snap apart)</option>
-              </select>
+              </Select>
             </label>
             <label className="grow">
               QR code on the board (optional)
-              <input value={qrUrl} onChange={(e) => setQrUrl(e.target.value)} placeholder="https://… your blog post or repo" data-testid="pcb-qr" />
+              <TextInput value={qrUrl} onChange={(e) => setQrUrl(e.target.value)} placeholder="https://… your blog post or repo" data-testid="pcb-qr" />
             </label>
           </div>
         )}
-        {error && <div className="banner error">{error}</div>}
-        {tools && !tools.freerouting && <div className="banner">Automatic track routing needs Java and Freerouting. Without them you get the placed board and you route it yourself in KiCad.</div>}
+        {error && <Banner tone="error">{error}</Banner>}
+        {tools && !tools.freerouting && <Banner>Automatic track routing needs Java and Freerouting. Without them you get the placed board and you route it yourself in KiCad.</Banner>}
 
         {(running || (status && !res && !status.error)) && (
           <>
@@ -256,12 +264,12 @@ export function PcbView() {
           </ol>
           </>
         )}
-        {status?.error && <div className="banner error">The board design failed: {status.error}</div>}
+        {status?.error && <Banner tone="error">The board design failed: {status.error}</Banner>}
 
         {res && (
           <div className="pcb-result" data-testid="pcb-result">
-            {stale && <div className="banner warn" data-testid="pcb-stale">{known ? 'You changed the design since this board was made.' : 'This board was made earlier and may not match your current design.'} Click <strong>Update the board</strong> to redo it before you order: the files below are for the old design.</div>}
-            {revStale && <div className="banner" data-testid="pcb-rev-stale">Your design hasn’t changed, but you released {label(project.revision)}. This board still prints “{label(known?.rev)}”. Click <strong>Rebuild</strong> so the board and its documents say {label(project.revision)}.</div>}
+            {stale && <Banner tone="warn" data-testid="pcb-stale">{known ? 'You changed the design since this board was made.' : 'This board was made earlier and may not match your current design.'} Click <strong>Update the board</strong> to redo it before you order: the files below are for the old design.</Banner>}
+            {revStale && <Banner data-testid="pcb-rev-stale">Your design hasn’t changed, but you released {label(project.revision)}. This board still prints “{label(known?.rev)}”. Click <strong>Rebuild</strong> so the board and its documents say {label(project.revision)}.</Banner>}
             {res.variant === 'product' && res.productNotes.length > 0 && (
               <div className="pcb-product-notes" data-testid="pcb-product-notes">
                 <strong>Product version: what changed</strong>
@@ -309,16 +317,16 @@ export function PcbView() {
             </div>
 
             <div className="pcb-arrange">
-              <button onClick={() => setEditing((e) => !e)} data-testid="pcb-arrange">{editing ? 'Close the editor' : 'Arrange the parts myself'}</button>
+              <Button onClick={() => setEditing((e) => !e)} data-testid="pcb-arrange">{editing ? 'Close the editor' : 'Arrange the parts myself'}</Button>
             </div>
             {editing && res.placement?.length > 0 && <BoardEditor parts={res.placement} width={res.widthMm} height={res.heightMm} busy={running} onApply={(f) => build(f)} />}
 
             <div className="pcb-picture">
               <div className="pcb-toggle" role="tablist">
                 {(['top', 'bottom', 'copper', ...(res.panel ? ['panel'] : [])] as const).map((s) => (
-                  <button key={s} role="tab" aria-selected={side === s} className={side === s ? 'active' : ''} onClick={() => setSide(s as any)}>
+                  <Button key={s} role="tab" aria-selected={side === s} className={side === s ? 'active' : ''} onClick={() => setSide(s as any)}>
                     {s === 'top' ? 'Top' : s === 'bottom' ? 'Bottom' : s === 'copper' ? 'Copper tracks' : `Panel of ${res.panel!.rows * res.panel!.cols}`}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <img src={file(side === 'top' ? 'board-top.png' : side === 'bottom' ? 'board-bottom.png' : (side as string) === 'panel' ? 'fab/panel/panel-top.png' : 'board.svg')} alt={`Circuit board, ${side} view`} className={side === 'copper' ? 'copper' : ''} />

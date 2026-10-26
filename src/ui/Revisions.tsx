@@ -1,6 +1,7 @@
 // Revisions: release the design as Rev A, B…, with what changed since the last release.
 import React, { useMemo, useState } from 'react';
 import { useStore } from './store';
+import { Button, TextInput } from './ds';
 import { releaseRevision, unreleasedChanges } from '../core/revisions';
 
 export function Revisions() {
@@ -29,8 +30,8 @@ export function Revisions() {
             setNote('');
           }}
         >
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={revs.length ? 'Why this revision? e.g. "brighter LED"' : 'e.g. "First boards"'} aria-label="Revision note" />
-          <button type="submit" data-testid="rev-release">Release Rev {next}</button>
+          <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder={revs.length ? 'Why this revision? e.g. "brighter LED"' : 'e.g. "First boards"'} aria-label="Revision note" />
+          <Button type="submit" data-testid="rev-release">Release Rev {next}</Button>
         </form>
       )}
       {revs.length > 0 && (

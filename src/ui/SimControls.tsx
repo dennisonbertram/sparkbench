@@ -4,6 +4,7 @@ import type { PartInstance } from '../core/types';
 import { partDef } from '../core/parts';
 import { setInput } from './simClient';
 import { useStore } from './store';
+import { Button, Checkbox, Slider } from './ds';
 
 export function SimControls({ part, compact }: { part: PartInstance; compact?: boolean }) {
   const inputs = useStore((s) => s.sim.inputs);
@@ -20,28 +21,26 @@ export function SimControls({ part, compact }: { part: PartInstance; compact?: b
         const v = inputs[k] ?? c.default;
         if (c.kind === 'momentary')
           return (
-            <button
+            <Button
               key={c.key}
-              className={`momentary ${v ? 'on' : ''}`}
+              className="momentary"
+              on={!!v}
               onPointerDown={() => setInput(part.id, c.key, 1)}
               onPointerUp={() => setInput(part.id, c.key, 0)}
               onPointerLeave={() => v && setInput(part.id, c.key, 0)}
               title={`Hold to simulate: ${c.label}`}
             >
               {c.label}
-            </button>
+            </Button>
           );
         if (c.kind === 'toggle')
           return (
-            <label key={c.key} className="toggle">
-              <input type="checkbox" checked={!!v} onChange={(e) => setInput(part.id, c.key, e.target.checked ? 1 : 0)} />
-              {c.label}
-            </label>
+            <Checkbox key={c.key} className="toggle" checked={!!v} onChange={(e) => setInput(part.id, c.key, e.target.checked ? 1 : 0)} label={c.label} />
           );
         return (
           <label key={c.key} className="slider">
             <span className="slider-label">{c.label}</span>
-            <input type="range" min={c.min} max={c.max} step={c.step} value={v} onChange={(e) => setInput(part.id, c.key, Number(e.target.value))} aria-label={c.label} />
+            <Slider min={c.min} max={c.max} step={c.step} value={v} onChange={(e) => setInput(part.id, c.key, Number(e.target.value))} aria-label={c.label} />
             <span className="slider-value">
               {Number.isInteger(c.step) ? Math.round(v) : v.toFixed(1)}
               {c.unit}

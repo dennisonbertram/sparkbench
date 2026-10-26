@@ -1,6 +1,7 @@
 // Arrange the parts on the circuit board by hand: drag to move, R or the button to rotate.
 // "Re-route" designs the board again with exactly these positions.
 import React, { useMemo, useRef, useState } from 'react';
+import { Banner, Button } from './ds';
 
 export interface PlacedPart {
   ref: string;
@@ -96,17 +97,17 @@ export function BoardEditor({ parts, width, height, onApply, busy }: { parts: Pl
         })}
       </svg>
       {grown && (
-        <div className="banner warn" data-testid="be-grow">
+        <Banner tone="warn" data-testid="be-grow">
           {grown.outside.join(', ')} {grown.outside.length > 1 ? 'are' : 'is'} outside the board, so it will grow from {width} × {height} mm to about {Math.round(grown.w * 10) / 10} × {Math.round(grown.h * 10) / 10} mm (the dashed outline). Bigger boards cost a little more; drag {grown.outside.length > 1 ? 'them' : 'it'} back inside to keep the size.
-        </div>
+        </Banner>
       )}
-      {overlaps.size > 0 && <div className="banner error">{[...overlaps].join(', ')} overlap. Drag them apart (the part you’re moving is drawn on top).</div>}
+      {overlaps.size > 0 && <Banner tone="error">{[...overlaps].join(', ')} overlap. Drag them apart (the part you’re moving is drawn on top).</Banner>}
       <div className="be-tools">
-        <button onClick={() => sel && rotate(sel)} disabled={!sel}>Rotate {sel ?? ''} 90°</button>
-        <button onClick={() => setItems(parts)} disabled={!changed}>Undo my moves</button>
-        <button className="primary" disabled={!changed || overlaps.size > 0 || busy} onClick={() => onApply(Object.fromEntries(items.map((p) => [p.ref, { x: p.x, y: p.y, rot: p.rot }])))} data-testid="be-apply">
+        <Button onClick={() => sel && rotate(sel)} disabled={!sel}>Rotate {sel ?? ''} 90°</Button>
+        <Button onClick={() => setItems(parts)} disabled={!changed}>Undo my moves</Button>
+        <Button variant="primary" disabled={!changed || overlaps.size > 0 || busy} onClick={() => onApply(Object.fromEntries(items.map((p) => [p.ref, { x: p.x, y: p.y, rot: p.rot }])))} data-testid="be-apply">
           {overlaps.size ? 'Fix the overlaps first' : 'Re-route with this layout'}
-        </button>
+        </Button>
       </div>
     </div>
   );

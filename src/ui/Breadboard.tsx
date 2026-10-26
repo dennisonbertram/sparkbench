@@ -9,6 +9,7 @@ import { partSize } from '../core/layout';
 import { buildNets, pinKey } from '../core/netlist';
 import { setInput } from './simClient';
 import { audio } from './audio';
+import { Button } from './ds';
 import type { PinRef } from '../core/types';
 
 interface View {
@@ -271,9 +272,9 @@ export function Breadboard() {
         </svg>
       </div>
       <div className="canvas-tools" onPointerDown={(e) => e.stopPropagation()}>
-        <button onClick={() => setView((v) => ({ ...v, k: Math.min(3, v.k * 1.2) }))} title="Zoom in" aria-label="Zoom in">+</button>
-        <button onClick={() => setView((v) => ({ ...v, k: Math.max(0.25, v.k / 1.2) }))} title="Zoom out" aria-label="Zoom out">−</button>
-        <button onClick={fit} title="Fit design to screen">Fit</button>
+        <Button onClick={() => setView((v) => ({ ...v, k: Math.min(3, v.k * 1.2) }))} title="Zoom in" aria-label="Zoom in">+</Button>
+        <Button onClick={() => setView((v) => ({ ...v, k: Math.max(0.25, v.k / 1.2) }))} title="Zoom out" aria-label="Zoom out">−</Button>
+        <Button onClick={fit} title="Fit design to screen">Fit</Button>
       </div>
       {wiringFrom && <div className="canvas-hint">Click another pin to connect it · Esc to cancel</div>}
       {pinnedNet && !wiringFrom && <div className="canvas-hint">Highlighting net {buildNets(project).nets.find((n) => n.id === pinnedNet)?.name} from the schematic · click the mat to clear</div>}

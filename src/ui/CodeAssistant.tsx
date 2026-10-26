@@ -3,6 +3,7 @@
 // before you ever see it.
 import React, { useState } from 'react';
 import { useStore } from './store';
+import { Banner, Button, TextArea } from './ds';
 import { startSim } from './simClient';
 import { getEditorSelection } from './CodeEditor';
 import type { Project } from '../core/types';
@@ -63,9 +64,9 @@ export function CodeAssistant({ file }: { file: string }) {
   return (
     <div className="assistant" data-testid="code-assistant">
       {err && err.file === file && !busy && !proposal && (
-        <button className="fix-ai" onClick={() => ask('The program crashes. Find and fix the bug, and explain it simply.', err.raw)}>
+        <Button className="fix-ai" onClick={() => ask('The program crashes. Find and fix the bug, and explain it simply.', err.raw)}>
           Fix this crash with AI
-        </button>
+        </Button>
       )}
       {proposal && (
         <ProposalView
@@ -77,7 +78,7 @@ export function CodeAssistant({ file }: { file: string }) {
         />
       )}
       {accepted && !busy && <AfterAccept instruction={accepted} onClose={() => setAccepted(null)} />}
-      {error && <div className="banner error">{error}</div>}
+      {error && <Banner tone="error">{error}</Banner>}
       <form
         className="assistant-form"
         onSubmit={(e) => {
@@ -85,7 +86,7 @@ export function CodeAssistant({ file }: { file: string }) {
           if (text.trim()) ask(text.trim());
         }}
       >
-        <textarea
+        <TextArea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
@@ -99,9 +100,9 @@ export function CodeAssistant({ file }: { file: string }) {
             }
           }}
         />
-        <button type="submit" className="primary" disabled={busy || !text.trim()}>
+        <Button type="submit" variant="primary" disabled={busy || !text.trim()}>
           {busy ? 'Working…' : 'Ask AI'}
-        </button>
+        </Button>
       </form>
       {busy && (
         <div className="assistant-status">
@@ -147,13 +148,13 @@ function AfterAccept({ instruction, onClose }: { instruction: string; onClose():
         </span>
       )}{' '}
       {!msg && (
-        <button className="link" onClick={addTest} disabled={adding}>
+        <Button variant="link" onClick={addTest} disabled={adding}>
           {adding ? 'Writing the test…' : 'Add a test for this change'}
-        </button>
+        </Button>
       )}{' '}
-      <button className="link" onClick={onClose} aria-label="Close">
+      <Button variant="link" onClick={onClose} aria-label="Close">
         Close
-      </button>
+      </Button>
     </div>
   );
 }
@@ -182,10 +183,10 @@ function ProposalView({ p, onDone }: { p: Proposal; onDone(accepted: boolean): v
           ))}
         </div>
         <div className="proposal-actions">
-          <button className="primary" onClick={accept}>
+          <Button variant="primary" onClick={accept}>
             Accept & run
-          </button>
-          <button onClick={() => onDone(false)}>Discard</button>
+          </Button>
+          <Button onClick={() => onDone(false)}>Discard</Button>
         </div>
       </div>
       <pre className="diff">

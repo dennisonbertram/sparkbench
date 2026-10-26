@@ -53,15 +53,16 @@ export function Field({ label, hint, children, className }: { label: ReactNode; 
 // ------------------------------------------------------------------ status and labels
 export type Tone = 'neutral' | 'info' | 'ok' | 'warn' | 'error';
 
-/** A one-line message across a panel: what happened and, if needed, one action. */
-export function Banner({ tone = 'neutral', className, ...rest }: HTMLAttributes<HTMLDivElement> & { tone?: Tone }) {
+/** A message across a panel or the page: what happened and, if needed, one action. */
+export function Banner({ tone = 'neutral', variant = 'inset', className, ...rest }: HTMLAttributes<HTMLDivElement> & { tone?: Tone; variant?: 'inset' | 'strip' }) {
   const role = rest.role ?? (tone === 'error' ? 'alert' : undefined);
-  return <div role={role} className={cx('banner', tone !== 'neutral' && tone, className)} {...rest} />;
+  // inset: a rounded box inside a panel. strip: full width across the page, under the top bar.
+  return <div role={role} className={cx('banner', variant === 'strip' && 'strip', tone !== 'neutral' && tone, className)} {...rest} />;
 }
 
-/** Small rounded label: board names, tags, counts in text. */
-export function Chip({ className, ...rest }: HTMLAttributes<HTMLSpanElement>) {
-  return <span className={cx('chip', className)} {...rest} />;
+/** Small rounded label: tags and counts in text. `board` is the target-board chip in the top bar (hidden on narrow screens). */
+export function Chip({ variant = 'default', className, ...rest }: HTMLAttributes<HTMLSpanElement> & { variant?: 'default' | 'board' }) {
+  return <span className={cx(variant === 'board' ? 'board-chip' : 'chip', className)} {...rest} />;
 }
 
 // ------------------------------------------------------------------ surfaces
@@ -113,8 +114,13 @@ export const Menu = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(f
   return <div ref={ref} role="menu" className={cx('menu', className)} {...rest} />;
 });
 
-export function MenuAnchor({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cx('menu-anchor', className)} {...rest} />;
+export const MenuAnchor = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(function MenuAnchor({ className, ...rest }, ref) {
+  return <div ref={ref} className={cx('menu-anchor', className)} {...rest} />;
+});
+
+/** A menu row with a main item and a trailing action (e.g. a recent project and its delete button). */
+export function MenuRow({ children }: { children: ReactNode }) {
+  return <div className="menu-row">{children}</div>;
 }
 
 export function MenuItem(props: ButtonHTMLAttributes<HTMLButtonElement>) {
@@ -191,3 +197,6 @@ export const FilePicker = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<
     </label>
   );
 });
+
+// ------------------------------------------------------------------ AI and chat (./ai.tsx)
+export * from './ai';

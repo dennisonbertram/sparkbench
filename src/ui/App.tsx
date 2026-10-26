@@ -21,6 +21,7 @@ import type { Shrunk } from './images';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
 import { FirmwarePanel } from './FirmwarePanel';
+import { Button, Card, Chip, FilePicker, Menu, MenuAnchor, MenuItem, MenuNote, MenuRow, MenuSection, Select, Tabs, TextArea, TextInput } from './ds';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'breadboard', label: 'Wiring' },
@@ -127,13 +128,7 @@ export function App() {
       <div className="main">
         <Copilot />
         <section className="center">
-          <nav className="tabs" role="tablist" data-tour="tabs">
-            {TABS.filter((t) => t.id !== 'code' || project.board !== 'none').map((t) => (
-              <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => useStore.getState().setTab(t.id)}>
-                {t.label}
-              </button>
-            ))}
-          </nav>
+          <Tabs items={TABS.filter((t) => t.id !== 'code' || project.board !== 'none')} value={tab} onChange={(id) => useStore.getState().setTab(id)} data-tour="tabs" />
           <div className="view">
             {tab === 'breadboard' && <BreadboardWithLibrary />}
             {tab === 'schematic' && <SchematicView />}
@@ -159,9 +154,9 @@ function BreadboardWithLibrary() {
   return (
     <div className="bb-wrap">
       <Breadboard />
-      <button className="add-part" onClick={() => setLib((v) => !v)} data-tour="add-part">
+      <Button className="add-part" onClick={() => setLib((v) => !v)} data-tour="add-part">
         + Add part
-      </button>
+      </Button>
       {lib && <PartLibrary onClose={() => setLib(false)} />}
     </div>
   );
@@ -185,34 +180,34 @@ function Topbar() {
   const board = project.board === 'none' ? 'No microcontroller' : BOARDS[project.board].name;
   return (
     <header className="topbar">
-      <div className="menu-anchor brand-anchor" ref={projectsRef}>
-        <button className="brand" onClick={() => setMenu(menu === 'projects' ? null : 'projects')} title="Projects: new, open, share" aria-haspopup="menu" aria-expanded={menu === 'projects'}>
+      <MenuAnchor className="brand-anchor" ref={projectsRef}>
+        <Button className="brand" onClick={() => setMenu(menu === 'projects' ? null : 'projects')} title="Projects: new, open, share" aria-haspopup="menu" aria-expanded={menu === 'projects'}>
           <Logo />
           <span>Sparkbench</span>
           <span className="brand-caret">Projects ▾</span>
-        </button>
+        </Button>
         {menu === 'projects' && <ProjectsMenu onClose={() => setMenu(null)} />}
-      </div>
-      <input className="project-name" value={project.name} aria-label="Project name" onChange={(e) => useStore.getState().update((p) => ({ ...p, name: e.target.value }), false)} />
-      <span className="board-chip" title="Target board">
+      </MenuAnchor>
+      <TextInput className="project-name" value={project.name} aria-label="Project name" onChange={(e) => useStore.getState().update((p) => ({ ...p, name: e.target.value }), false)} />
+      <Chip variant="board" title="Target board">
         {board}
-      </span>
+      </Chip>
       <div className="run-group" data-tour="run">
         {!running ? (
-          <button className="run" onClick={() => startSim(project, speed)} disabled={!supported} title={supported ? 'Run the simulation' : runtime === 'esp32-qemu' ? 'Load a firmware image or open the demo first' : 'This browser blocks the simulator (needs cross-origin isolation)'}>
+          <Button className="run" onClick={() => startSim(project, speed)} disabled={!supported} title={supported ? 'Run the simulation' : runtime === 'esp32-qemu' ? 'Load a firmware image or open the demo first' : 'This browser blocks the simulator (needs cross-origin isolation)'}>
             <span className="run-icon" aria-hidden>▶</span> Run
-          </button>
+          </Button>
         ) : (
-          <button className="run stop" onClick={() => stopSim()}>
+          <Button className="run stop" onClick={() => stopSim()}>
             <span className="run-icon" aria-hidden>■</span> Stop
-          </button>
+          </Button>
         )}
         {running && (
-          <button className="ghost" onClick={() => startSim(useStore.getState().project!, speed)} title="Restart from the beginning" aria-label={runtime === 'esp32-qemu' ? 'Reset ESP32' : 'Restart'}>
+          <Button variant="ghost" onClick={() => startSim(useStore.getState().project!, speed)} title="Restart from the beginning" aria-label={runtime === 'esp32-qemu' ? 'Reset ESP32' : 'Restart'}>
             ↻<span className="restart-label"> {runtime === 'esp32-qemu' ? 'Reset ESP32' : 'Restart'}</span>
-          </button>
+          </Button>
         )}
-        <select
+        <Select
           value={runtime === 'esp32-qemu' ? 1 : speed}
           aria-label="Simulation speed"
           disabled={runtime === 'esp32-qemu'}
@@ -227,9 +222,10 @@ function Topbar() {
           <option value={1}>1× speed</option>
           <option value={2}>2× speed</option>
           <option value={5}>5× speed</option>
-        </select>
-        <button
-          className={`ghost ${sound ? 'on' : ''}`}
+        </Select>
+        <Button
+          variant="ghost"
+          on={sound}
           onClick={() => {
             audio.setEnabled(!sound);
             setSound(!sound);
@@ -238,37 +234,37 @@ function Topbar() {
           aria-pressed={sound}
         >
           ♪<span className="sound-label"> {sound ? 'Sound on' : 'Sound off'}</span>
-        </button>
+        </Button>
         <span className={`status status-${status}`}>{statusText(status)}</span>
       </div>
       <span className="spacer" />
-      <button className="ghost" onClick={() => useStore.getState().undo()} disabled={!past} title="Undo (⌘Z)" aria-label="Undo">
+      <Button variant="ghost" onClick={() => useStore.getState().undo()} disabled={!past} title="Undo (⌘Z)" aria-label="Undo">
         <span aria-hidden>↶</span>
         <span className="undo-label"> Undo</span>
-      </button>
-      <button className="ghost" onClick={() => useStore.getState().redo()} disabled={!future} title="Redo (⇧⌘Z)" aria-label="Redo">
+      </Button>
+      <Button variant="ghost" onClick={() => useStore.getState().redo()} disabled={!future} title="Redo (⇧⌘Z)" aria-label="Redo">
         <span aria-hidden>↷</span>
         <span className="undo-label"> Redo</span>
-      </button>
-      <button className="ghost" onClick={() => useStore.getState().set({ tourStep: 0 })}>
+      </Button>
+      <Button variant="ghost" onClick={() => useStore.getState().set({ tourStep: 0 })}>
         Tour
-      </button>
-      <button className="board-btn" onClick={() => useStore.getState().set({ boardPanel: !useStore.getState().boardPanel })} data-testid="board-open" data-tour="board" title="Program and test the real hardware over USB">
+      </Button>
+      <Button className="board-btn" onClick={() => useStore.getState().set({ boardPanel: !useStore.getState().boardPanel })} data-testid="board-open" data-tour="board" title="Program and test the real hardware over USB">
         Your board
-      </button>
-      <div className="menu-anchor" ref={exportRef}>
-        <button className="primary" onClick={() => setMenu(menu === 'export' ? null : 'export')} data-tour="export" aria-haspopup="menu" aria-expanded={menu === 'export'}>
+      </Button>
+      <MenuAnchor ref={exportRef}>
+        <Button variant="primary" onClick={() => setMenu(menu === 'export' ? null : 'export')} data-tour="export" aria-haspopup="menu" aria-expanded={menu === 'export'}>
           Export
-        </button>
+        </Button>
         {menu === 'export' && (
-          <div className="menu" role="menu" ref={fitMenu}>
-            <button role="menuitem" onClick={() => downloadZip(project).then(() => setMenu(null))}>Everything (.zip)</button>
-            <button role="menuitem" onClick={() => (download(`${slug(project.name)}.sparkbench.json`, JSON.stringify(project, null, 2), 'application/json'), setMenu(null))}>Project file (.json)</button>
-            <button role="menuitem" onClick={() => { setMenu(null); setCompatibility(true); }}>Check compatibility…</button>
-            <div className="menu-note">KiCad, SPICE, BOM and docs are also on their own tabs.</div>
-          </div>
+          <Menu ref={fitMenu}>
+            <MenuItem onClick={() => downloadZip(project).then(() => setMenu(null))}>Everything (.zip)</MenuItem>
+            <MenuItem onClick={() => (download(`${slug(project.name)}.sparkbench.json`, JSON.stringify(project, null, 2), 'application/json'), setMenu(null))}>Project file (.json)</MenuItem>
+            <MenuItem onClick={() => { setMenu(null); setCompatibility(true); }}>Check compatibility…</MenuItem>
+            <MenuNote>KiCad, SPICE, BOM and docs are also on their own tabs.</MenuNote>
+          </Menu>
         )}
-      </div>
+      </MenuAnchor>
       {compatibility && <CompatibilityDialog onClose={() => setCompatibility(false)} />}
     </header>
   );
@@ -282,8 +278,8 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
   const saved = listSaved();
   const [, force] = useState(0);
   return (
-    <div className="menu projects-menu" role="menu" ref={fitMenu}>
-      <button
+    <Menu className="projects-menu" ref={fitMenu}>
+      <MenuItem
         onClick={() => {
           stopSim(true);
           useStore.getState().set({ project: null, showWelcome: true, chat: [] });
@@ -291,12 +287,10 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
         }}
       >
         New project…
-      </button>
-      <label className="menu-file">
-        Import project file…
-        <input
-          type="file"
-          accept=".json"
+      </MenuItem>
+      <FilePicker
+        asMenuItem
+        accept=".json"
           onChange={async (e) => {
             const f = e.target.files?.[0];
             if (!f) return;
@@ -309,9 +303,10 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
               alert(`Could not open that file: ${err.message}`);
             }
           }}
-        />
-      </label>
-      <button
+      >
+        Import project file…
+      </FilePicker>
+      <MenuItem
         onClick={() => {
           const p = useStore.getState().project!;
           useStore.getState().setProject({ ...p, id: `p${Date.now().toString(36)}`, name: `${p.name} (copy)` });
@@ -319,10 +314,10 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
         }}
       >
         Duplicate this project
-      </button>
-      <div className="menu-sep">Share</div>
-      <button onClick={() => (useStore.getState().set({ dialog: 'publish' }), onClose())} data-testid="menu-publish">Publish to the gallery…</button>
-      <button
+      </MenuItem>
+      <MenuSection>Share</MenuSection>
+      <MenuItem onClick={() => (useStore.getState().set({ dialog: 'publish' }), onClose())} data-testid="menu-publish">Publish to the gallery…</MenuItem>
+      <MenuItem
         data-testid="menu-share"
         onClick={async () => {
           const url = await startSharing();
@@ -331,12 +326,12 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
         }}
       >
         Edit together (copy a live link)
-      </button>
-      <button onClick={() => (useStore.getState().set({ dialog: 'teach' }), onClose())}>Set a class assignment…</button>
-      <div className="menu-sep">Recent</div>
+      </MenuItem>
+      <MenuItem onClick={() => (useStore.getState().set({ dialog: 'teach' }), onClose())}>Set a class assignment…</MenuItem>
+      <MenuSection>Recent</MenuSection>
       {saved.slice(0, 10).map((p) => (
-        <div className="menu-row" key={p.id}>
-          <button
+        <MenuRow key={p.id}>
+          <MenuItem
             onClick={() => {
               stopSim(true);
               useStore.getState().setProject(p, { record: false });
@@ -344,9 +339,10 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
             }}
           >
             {p.name}
-          </button>
-          <button
-            className="ghost small"
+          </MenuItem>
+          <Button
+            variant="ghost"
+            size="sm"
             aria-label={`Delete ${p.name}`}
             onClick={() => {
               if (confirm(`Delete “${p.name}”?`)) {
@@ -362,10 +358,10 @@ function ProjectsMenu({ onClose }: { onClose(): void }) {
             }}
           >
             ✕
-          </button>
-        </div>
+          </Button>
+        </MenuRow>
       ))}
-    </div>
+    </Menu>
   );
 }
 
@@ -416,9 +412,9 @@ function Designing({ text, status }: { text: string; status: string }) {
             ? `${t} s — most designs take 30–90 seconds.`
             : `${t} s — still working. Designs with custom code and tests can take 2–3 minutes; this is normal.`}
         </p>
-        <button className="ghost" onClick={cancelDesign} data-testid="design-cancel">
+        <Button variant="ghost" onClick={cancelDesign} data-testid="design-cancel">
           Cancel
-        </button>
+        </Button>
       </section>
     </div>
   );
@@ -470,9 +466,9 @@ function Welcome() {
           <a href="#examples">Examples</a>
           {community > 0 && <a href="#community">Community projects ({community})</a>}
           {saved.length > 0 && (
-            <button className="ghost" onClick={() => useStore.getState().setProject(saved[0], { record: false })}>
+            <Button variant="ghost" onClick={() => useStore.getState().setProject(saved[0], { record: false })}>
               Continue “{saved[0].name}”
-            </button>
+            </Button>
           )}
         </nav>
       </header>
@@ -486,7 +482,7 @@ function Welcome() {
             go();
           }}
         >
-          <textarea
+          <TextArea
             autoFocus={!isTouch()}
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -500,9 +496,9 @@ function Welcome() {
               }
             }}
           />
-          <button className="primary big" type="submit" disabled={(!text.trim() && !images.length) || !!busy}>
+          <Button variant="primary" size="lg" type="submit" disabled={(!text.trim() && !images.length) || !!busy}>
             Design it
-          </button>
+          </Button>
         </form>
         <div className="hero-attach">
           <AttachImages images={images} onChange={setImages} label="Or start from a photo or sketch of a gadget" />
@@ -520,14 +516,14 @@ function Welcome() {
         <h2>Or open a working example</h2>
         <div className="cards">
           {[...EXAMPLES].sort((a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level)).map((ex) => (
-            <button key={ex.id} className="card" data-example={ex.id} onClick={() => useStore.getState().setProject(buildExample(ex.id), { record: false })}>
+            <Card key={ex.id} data-example={ex.id} onClick={() => useStore.getState().setProject(buildExample(ex.id), { record: false })}>
               <span className="card-meta">
-                <span className="chip">{boardName(ex.board)}</span>
+                <Chip>{boardName(ex.board)}</Chip>
                 <span className="level">{ex.level}</span>
               </span>
               <span className="card-title">{ex.title}</span>
               <span className="card-blurb">{ex.blurb}</span>
-            </button>
+            </Card>
           ))}
         </div>
       </section>

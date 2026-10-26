@@ -107,6 +107,7 @@
   --code-cls: #f2cf75;
   --code-prop: #8fd0e8;
   color-scheme: dark;
+}
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bench); color: var(--ink); font: 14px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
@@ -174,3 +175,176 @@ input[type='range'] { accent-color: var(--primary); }
 .ds-file.ghost:hover { background: var(--surface-2); border-color: var(--line); }
 .ds-file.disabled { opacity: 0.45; cursor: default; }
 .ds-file:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.banner.strip { margin: 0; border-radius: 0; border-width: 0 0 1px; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13.5px; }
+.banner.strip.info { background: color-mix(in srgb, var(--select) 10%, var(--surface)); }
+.banner.strip.warn { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); }
+
+/* ---------------------------------------------------------------- AI and chat (./ai.tsx)
+   Adapted from Praci (github.com/dennisonbertram/praci, Apache-2.0, derived from Rakazo):
+   apps/web/src/components/ai/beautiful-ui.css, packages/chat-ui/src/markdown.web.css and the
+   Tailwind classes of the components listed at the top of ai.tsx. Keyframes from beautifului.dev
+   (MIT © 2026 Turbo), with a ds- prefix. */
+@keyframes ds-shimmer-text { 0% { background-position: 150%; } 100% { background-position: -50%; } }
+@keyframes ds-pixel-on { 0%, 100% { opacity: 0.15; } 18%, 42% { opacity: 1; } 62% { opacity: 0.15; } }
+@keyframes ds-pop-in { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes ds-fade-up { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes ds-pulse { 50% { opacity: 0.35; } }
+.ds-icon { flex: none; display: inline-block; vertical-align: -2px; }
+.ds-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ds-shimmer { background: linear-gradient(90deg, var(--ink-3) 35%, var(--ink) 50%, var(--ink-3) 65%); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: ds-shimmer-text 1.4s linear infinite; }
+
+/* Loading state */
+.ds-loading { display: flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; }
+.ds-pixels { display: grid; grid-template-columns: repeat(3, 4px); gap: 1.5px; flex: none; }
+.ds-pixels span { width: 4px; height: 4px; border-radius: 1px; background: var(--ink); opacity: 0.15; animation: ds-pixel-on 650ms ease-in-out infinite; }
+.ds-loading-text { display: flex; flex-direction: column; min-width: 0; }
+.ds-loading-head { display: flex; align-items: baseline; gap: 10px; }
+.ds-loading-label { font-size: 13.5px; font-weight: 500; }
+.ds-loading-time { font: 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.ds-loading-detail { font-size: 12px; line-height: 20px; color: var(--ink-3); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ds-loading-slow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; font-size: 12px; color: var(--ink-3); }
+.ds-loading-slow button.link { color: var(--ink-2); font-size: 12px; }
+
+/* Success pop */
+.ds-success { display: inline-flex; align-items: center; gap: 8px; }
+.ds-success-dot { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: var(--surface); animation: ds-pop-in 300ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.ds-success-label { font-size: 13px; font-weight: 500; color: var(--ink); animation: ds-fade-up 350ms cubic-bezier(0.23, 1, 0.32, 1) 100ms both; }
+
+/* Tool calls */
+.ds-tool { display: flex; align-items: center; gap: 8px; min-width: 0; line-height: 20px; }
+.ds-tool-icon { flex: none; display: inline-flex; color: var(--ink-3); }
+.ds-tool[data-state='done'] .ds-tool-icon { color: var(--ok); }
+.ds-tool[data-state='failed'] .ds-tool-icon { color: var(--error); }
+.ds-tool[data-state='waiting'] .ds-tool-icon, .ds-tool[data-state='running'] .ds-tool-icon { color: var(--warn); }
+.ds-tool[data-state='running'] .ds-tool-icon { animation: ds-pulse 1.2s infinite; }
+.ds-tool-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink-2); }
+.ds-tool[data-state='queued'] .ds-tool-text, .ds-tool[data-state='skipped'] .ds-tool-text { color: var(--ink-3); }
+.ds-tool-details > summary { list-style: none; cursor: pointer; border-radius: 6px; }
+.ds-tool-details > summary::-webkit-details-marker { display: none; }
+.ds-tool-details > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ds-tool-lines { margin: 0; padding: 2px 0 2px 20px; list-style: none; display: grid; gap: 2px; }
+.ds-tool-lines li { font-size: 12px; line-height: 20px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-tool-lines li.failed { color: var(--error); }
+.ds-tool-list { display: grid; gap: 2px; }
+.ds-tool-hidden { font-size: 12px; line-height: 20px; color: var(--ink-3); }
+.ds-tool-group > summary { display: flex; align-items: center; gap: 4px; width: fit-content; min-height: 24px; padding: 2px 6px 2px 0; border-radius: 6px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink-3); }
+.ds-tool-group > summary::-webkit-details-marker { display: none; }
+.ds-tool-group[data-live] > summary { color: var(--ink-2); }
+.ds-tool-group > summary:hover { color: var(--ink); }
+.ds-tool-group > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ds-tool-chevron { transition: transform 150ms; }
+.ds-tool-group[open] > summary .ds-tool-chevron { transform: rotate(90deg); }
+.ds-tool-group-body { margin: 2px 0 0 7px; padding-left: 12px; border-left: 1px solid var(--line); }
+
+/* Markdown in chat */
+.ds-md { min-width: 0; overflow-wrap: anywhere; color: var(--ink); }
+.ds-md strong, .ds-md b { font-weight: 600; }
+.ds-md > :first-child { margin-top: 0; }
+.ds-md > :last-child { margin-bottom: 0; }
+.ds-md p, .ds-md blockquote, .ds-md pre, .ds-md table, .ds-md ul, .ds-md ol { margin: 0.6em 0; }
+.ds-md h1, .ds-md h2, .ds-md h3, .ds-md h4, .ds-md h5, .ds-md h6 { margin: 0.9em 0 0.35em; font-weight: 650; line-height: 1.25; font-size: 1.05em; }
+.ds-md h1 { font-size: 1.3em; }
+.ds-md h2 { font-size: 1.15em; }
+.ds-md ul, .ds-md ol { padding-left: 1.4em; }
+.ds-md li + li { margin-top: 0.2em; }
+.ds-md li > p { margin: 0.2em 0; }
+.ds-md a { color: var(--ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 55%, transparent); text-underline-offset: 0.15em; }
+.ds-md code { font-family: var(--mono); font-size: 0.88em; padding: 0.05em 0.3em; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2); }
+.ds-md pre { max-width: 100%; overflow-x: auto; padding: 0.7em 0.85em; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface); }
+.ds-md pre code { border: 0; padding: 0; background: none; font-size: 0.86em; white-space: pre; }
+.ds-md blockquote { padding-left: 0.8em; border-left: 3px solid var(--line); color: var(--ink-2); }
+.ds-md table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; font-size: 0.93em; }
+.ds-md th, .ds-md td { padding: 4px 8px; border: 1px solid var(--line); text-align: left; }
+.ds-md th { background: var(--surface-2); font-weight: 600; }
+.ds-md hr { border: 0; border-top: 1px solid var(--line); margin: 0.9em 0; }
+
+/* Chat thread and messages */
+.ds-thread { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.ds-msg { position: relative; display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+.ds-msg.user { align-items: flex-end; }
+.ds-msg.assistant { align-items: flex-start; }
+.ds-msg-bubble { max-width: 100%; padding: 9px 13px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
+.ds-msg.user .ds-msg-bubble { margin-left: 28px; background: var(--chat-user); color: var(--ink); }
+.ds-msg.assistant .ds-msg-bubble { background: var(--surface-2); }
+.ds-msg.pending .ds-msg-bubble { color: var(--ink-3); }
+.ds-msg-plain { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-msg-extras { display: flex; flex-direction: column; gap: 8px; max-width: 100%; width: 100%; }
+.ds-msg.user .ds-msg-extras { align-items: flex-end; }
+.ds-msg-meta { display: flex; align-items: center; gap: 2px; min-height: 22px; font-size: 12px; color: var(--ink-3); transition: opacity 120ms; }
+@media (hover: hover) and (pointer: fine) {
+  .ds-msg-meta:not(.pinned) { opacity: 0; pointer-events: none; }
+  .ds-msg:hover > .ds-msg-meta, .ds-msg:focus-within > .ds-msg-meta { opacity: 1; pointer-events: auto; }
+}
+
+/* Composer */
+.ds-composer { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px 14px; }
+.ds-composer-top { display: flex; flex-wrap: wrap; gap: 6px; }
+.ds-composer-bar { display: flex; align-items: flex-end; gap: 8px; padding: 7px 7px 7px 10px; background: var(--surface); border: 1px solid var(--control); border-radius: 16px; transition: border-color 120ms; }
+.ds-composer-bar:focus-within { border-color: var(--ring); }
+.ds-composer-bar.disabled { opacity: 0.6; }
+.ds-composer-attach, .ds-composer-actions { display: flex; align-items: center; gap: 6px; flex: none; min-height: 32px; }
+.ds-composer textarea.ds-composer-input { flex: 1; min-width: 0; min-height: 24px; margin: 4px 0; padding: 0 2px; border: 0; border-radius: 0; background: transparent; resize: none; line-height: 24px; overflow-y: hidden; }
+.ds-composer textarea.ds-composer-input:focus-visible { outline: none; }
+.icon-btn.ds-round { width: 32px; height: 32px; min-width: 32px; padding: 0; border-radius: 50%; }
+.icon-btn.ds-round.primary:active:not(:disabled) { transform: scale(0.95); }
+.ds-composer-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border: 1px solid color-mix(in srgb, var(--error) 40%, var(--line)); border-radius: var(--radius); background: color-mix(in srgb, var(--error) 8%, var(--surface)); color: var(--error); font-size: 13px; }
+.ds-composer-error-text { flex: 1 1 12rem; min-width: 0; }
+.ds-composer-error-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.ds-composer-error .ds-composer-error-x { color: var(--error); min-width: 24px; padding: 2px; }
+
+/* Cards the agent posts: approval and ask */
+.ds-approval, .ds-ask { width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.ds-approval.live { border-color: var(--control); }
+.ds-approval-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; text-align: left; }
+button.ds-approval-head { border: 0; border-radius: 0; background: none; }
+button.ds-approval-head:hover:not(:disabled) { background: var(--surface-2); }
+button.ds-approval-head:focus-visible { outline-offset: -2px; }
+.ds-approval-tile { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 8px; background: var(--surface-2); color: var(--ink-2); }
+.ds-approval-headline { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ds-approval-title { font-weight: 600; font-size: 14px; color: var(--ink); overflow-wrap: anywhere; }
+.ds-approval-status { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-approval-status.tone-ink { color: var(--ink); }
+.ds-approval-status.tone-error { color: var(--error); }
+.ds-approval-summary { color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
+.ds-approval-chevron { color: var(--ink-3); }
+.ds-approval-head[aria-expanded='true'] .ds-approval-chevron { transform: rotate(180deg); }
+.ds-approval-body { display: flex; flex-direction: column; gap: 10px; padding: 0 14px 14px; }
+.ds-approval-sub { font-size: 12.5px; color: var(--ink-3); }
+.ds-approval-desc { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+.ds-approval-preview { position: relative; border: 1px solid var(--line); border-radius: var(--radius-control); background: var(--surface-2); overflow: auto; }
+.ds-approval-preview.clipped { overflow: hidden; }
+.ds-approval-preview.faded::after { content: ''; position: absolute; inset: auto 0 0; height: 40px; background: linear-gradient(transparent, var(--surface-2)); pointer-events: none; }
+button.link.ds-approval-more { align-self: flex-start; padding: 0; font-size: 12.5px; }
+.ds-approval-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-approval-always { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 12.5px; color: var(--ink-3); }
+.ds-approval-always button.link { padding: 0; font-size: 12.5px; }
+.ds-card-error { margin: 0; padding: 0 14px 12px; font-size: 13px; color: var(--error); }
+
+.ds-ask { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.ds-ask .ds-card-error { padding: 0; }
+.ds-ask-question { font-size: 14.5px; line-height: 1.5; color: var(--ink); }
+.ds-ask-detail { font-size: 13px; color: var(--ink-3); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-ask-options { display: grid; gap: 6px; }
+button.ds-ask-option { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; text-align: left; background: var(--surface-2); border: 1px solid transparent; border-radius: var(--radius-control); }
+button.ds-ask-option:hover:not(:disabled) { border-color: var(--line); background: color-mix(in srgb, var(--surface-2) 70%, var(--line)); }
+button.ds-ask-option.on { border-color: var(--ink); background: var(--surface); }
+.ds-ask-num { display: grid; place-items: center; flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 7px; background: var(--surface); font-size: 12px; font-weight: 500; color: var(--ink-2); }
+button.ds-ask-option.on .ds-ask-num { background: var(--primary); color: var(--primary-ink); }
+.ds-ask-option-text { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; color: var(--ink); }
+.ds-ask-hint { margin-top: 2px; font-size: 12.5px; color: var(--ink-3); }
+.ds-ask-rec { color: var(--ink-3); }
+.ds-ask-check { margin-top: 3px; color: var(--ink); }
+button.link.ds-ask-other { align-self: flex-start; padding: 0; font-size: 13px; }
+.ds-ask-form { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-ask-form input { flex: 1 1 12rem; min-width: 0; }
+.ds-ask-answered { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink); }
+.ds-ask-answered.muted { color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-shimmer { animation: none; background: none; color: var(--ink-2); }
+  .ds-pixels span { animation: none; opacity: 0.5; }
+  .ds-success-dot, .ds-success-label { animation: none; }
+  .ds-tool[data-state='running'] .ds-tool-icon { animation: none; }
+  .ds-tool-chevron, .ds-msg-meta, .ds-composer-bar { transition: none; }
+  .icon-btn.ds-round.primary:active:not(:disabled) { transform: none; }
+}

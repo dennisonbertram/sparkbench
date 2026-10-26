@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import { stopSim } from './simClient';
+import { Button, Chip, FilePicker, Select } from './ds';
 
 type RuntimeStatus = { available: boolean; demoAvailable: boolean; reason?: string; capabilities: string[] };
 
@@ -81,24 +82,24 @@ export function FirmwarePanel() {
   return (
     <section className="firmware-panel" aria-label="Simulation runtime">
       <div className="firmware-row">
-        <label>Runtime <select aria-label="Simulation runtime" value={runtime} onChange={(e) => {
+        <label>Runtime <Select aria-label="Simulation runtime" value={runtime} onChange={(e) => {
           stopSim(true);
           useStore.getState().resetSim();
           useStore.getState().set({ runtime: e.target.value as 'python' | 'esp32-qemu', firmwareArtifact: null });
         }}>
           <option value="python">Python model</option>
           <option value="esp32-qemu" disabled={project.board !== 'esp32'}>ESP32 firmware (QEMU)</option>
-        </select></label>
+        </Select></label>
         {runtime === 'python' ? <span className="muted">Python hardware APIs — not chip emulation.</span> : <>
-          <span className="chip">Local firmware emulator</span>
+          <Chip>Local firmware emulator</Chip>
           <span className="muted">GPIO + serial · classic ESP32 · experimental</span>
         </>}
       </div>
       {runtime === 'esp32-qemu' && <>
         <div className="firmware-row">
-          <label className="firmware-upload">Flash image <input type="file" accept=".bin" aria-label="ESP32 flash image" disabled={running || busy} onChange={(e) => { void loadFile(e.target.files?.[0]); e.target.value = ''; }} /></label>
-          <button onClick={() => void loadDemo()} disabled={running || busy || !status?.demoAvailable}>Open LED/button demo</button>
-          <button className="ghost" onClick={() => void refresh()} disabled={busy}>Check setup</button>
+          <FilePicker className="firmware-upload" accept=".bin" aria-label="ESP32 flash image" disabled={running || busy} onChange={(e) => { void loadFile(e.target.files?.[0]); e.target.value = ''; }}>Choose flash image (.bin)…</FilePicker>
+          <Button onClick={() => void loadDemo()} disabled={running || busy || !status?.demoAvailable}>Open LED/button demo</Button>
+          <Button variant="ghost" onClick={() => void refresh()} disabled={busy}>Check setup</Button>
         </div>
         <div className="firmware-row" aria-live="polite">
           <strong>{busy ? 'Loading…' : firmware === 'demo' ? 'LED/button demo selected' : firmware?.name ?? 'No firmware selected'}</strong>

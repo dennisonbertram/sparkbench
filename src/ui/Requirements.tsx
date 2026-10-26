@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { sendPrompt } from './copilot';
 import { useStore } from './store';
+import { Button, Card, Radio, TextArea, TextInput } from './ds';
 import type { Requirements } from '../core/types';
 
 export function QuestionsCard({ questions }: { questions: { question: string; options: string[] }[] }) {
@@ -16,17 +17,25 @@ export function QuestionsCard({ questions }: { questions: { question: string; op
           <legend>{q.question}</legend>
           <div className="q-options">
             {q.options.map((o, j) => (
-              <label key={o} className={picked[i] === o ? 'on' : ''}>
-                <input type="radio" name={`q${i}-${q.question}`} checked={picked[i] === o} onChange={() => setPicked((p) => p.map((x, k) => (k === i ? o : x)))} />
-                {o}
-                {j === 0 && <span className="q-rec"> (suggested)</span>}
-              </label>
+              <Radio
+                key={o}
+                className={picked[i] === o ? 'on' : ''}
+                name={`q${i}-${q.question}`}
+                checked={picked[i] === o}
+                onChange={() => setPicked((p) => p.map((x, k) => (k === i ? o : x)))}
+                label={
+                  <>
+                    {o}
+                    {j === 0 && <span className="q-rec"> (suggested)</span>}
+                  </>
+                }
+              />
             ))}
           </div>
         </fieldset>
       ))}
-      <button
-        className="primary"
+      <Button
+        variant="primary"
         disabled={sent || !!busy}
         data-testid="questions-go"
         onClick={() => {
@@ -35,7 +44,7 @@ export function QuestionsCard({ questions }: { questions: { question: string; op
         }}
       >
         Design it with these answers
-      </button>
+      </Button>
     </div>
   );
 }
@@ -49,30 +58,32 @@ export function RequirementsCard({ requirements: r, compact }: { requirements: R
   const [power, setPower] = useState(r.power);
   if (editing)
     return (
-      <form
-        className="req-card editing"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setEditing(false);
-          sendPrompt(`Update the design to match these requirements.\nWhat it should do:\n${does.split('\n').filter(Boolean).map((d) => `- ${d}`).join('\n')}\nPower: ${power}`);
-        }}
-      >
-        <label>
-          What it should do (one per line)
-          <textarea value={does} onChange={(e) => setDoes(e.target.value)} rows={5} />
-        </label>
-        <label>
-          Power
-          <input value={power} onChange={(e) => setPower(e.target.value)} />
-        </label>
-        <div className="req-actions">
-          <button type="submit" className="primary" disabled={!!busy}>Update the design</button>
-          <button type="button" onClick={() => setEditing(false)}>Cancel</button>
-        </div>
-      </form>
+      <Card className="req-card editing">
+        <form
+          className="req-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setEditing(false);
+            sendPrompt(`Update the design to match these requirements.\nWhat it should do:\n${does.split('\n').filter(Boolean).map((d) => `- ${d}`).join('\n')}\nPower: ${power}`);
+          }}
+        >
+          <label>
+            What it should do (one per line)
+            <TextArea value={does} onChange={(e) => setDoes(e.target.value)} rows={5} />
+          </label>
+          <label>
+            Power
+            <TextInput value={power} onChange={(e) => setPower(e.target.value)} />
+          </label>
+          <div className="req-actions">
+            <Button type="submit" variant="primary" disabled={!!busy}>Update the design</Button>
+            <Button onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </form>
+      </Card>
     );
   return (
-    <div className={`req-card ${compact ? 'compact' : ''}`} data-testid="requirements">
+    <Card className={`req-card ${compact ? 'compact' : ''}`} data-testid="requirements">
       <div className="req-row">
         <span className="req-label">What it will do</span>
         <ul>
@@ -91,7 +102,7 @@ export function RequirementsCard({ requirements: r, compact }: { requirements: R
       <div className="req-row"><span className="req-label">Power</span><span>{r.power}</span></div>
       <div className="req-row"><span className="req-label">Size</span><span>{r.size}</span></div>
       <div className="req-row"><span className="req-label">Budget</span><span>{r.budget}</span></div>
-      <button className="link" onClick={() => setEditing(true)} disabled={!!busy}>Not quite right? Change it</button>
-    </div>
+      <Button variant="link" onClick={() => setEditing(true)} disabled={!!busy}>Not quite right? Change it</Button>
+    </Card>
   );
 }

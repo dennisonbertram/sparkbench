@@ -4,6 +4,7 @@ import { useStore } from './store';
 import { shrinkImage as shrink } from './images';
 import { CostHint } from './CostHint';
 import { Elapsed } from './Elapsed';
+import { Banner, Button, FilePicker } from './ds';
 
 interface Issue { parts: string[]; problem: string; fix: string; confidence: 'high' | 'medium' | 'low' }
 interface Result { verdict: 'looks-right' | 'problems' | 'cant-tell'; summary: string; issues: Issue[]; could_not_check: string[]; photo_tips: string | null }
@@ -52,12 +53,13 @@ export function PhotoCheck() {
           <p>Built it on a breadboard? Take a photo from straight above in good light and Claude will compare it with this design: LEDs the wrong way round, legs one hole off, jumpers on the wrong pin, missing wires.</p>
         </div>
         <div className="pc-actions">
-          <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => pick(e.target.files)} data-testid="photo-input" />
-          <button onClick={() => input.current?.click()}>{photos.length ? 'Choose other photos' : 'Choose photo'}</button>
+          <FilePicker ref={input} accept="image/*" multiple onChange={(e) => pick(e.target.files)} data-testid="photo-input">
+            {photos.length ? 'Choose other photos' : 'Choose photo'}
+          </FilePicker>
           {photos.length > 0 && (
-            <button className="primary" disabled={busy || !ai?.enabled} onClick={check} title={ai?.enabled ? '' : 'Needs Claude: log in to Claude Code or set ANTHROPIC_API_KEY'}>
+            <Button variant="primary" disabled={busy || !ai?.enabled} onClick={check} title={ai?.enabled ? '' : 'Needs Claude: log in to Claude Code or set ANTHROPIC_API_KEY'}>
               {busy ? <Elapsed label="Checking…" usual={30} /> : 'Check wiring'}
-            </button>
+            </Button>
           )}
           {photos.length > 0 && ai?.enabled && (
             <CostHint kind="photo" />
@@ -70,7 +72,7 @@ export function PhotoCheck() {
         </div>
       )}
       {!ai?.enabled && photos.length > 0 && <p className="pc-note">Photo checks need Claude. Log in to Claude Code or set ANTHROPIC_API_KEY, then reload.</p>}
-      {error && <div className="banner error">{error}</div>}
+      {error && <Banner tone="error">{error}</Banner>}
       {result && (
         <div className={`pc-result ${result.verdict}${result.verdict === 'looks-right' && result.could_not_check.length ? ' partial' : ''}`} data-testid="photo-result">
           <p className="pc-verdict">{result.verdict === 'looks-right' ? (result.could_not_check.length ? `No problems seen, but ${result.could_not_check.length === 1 ? 'one thing' : `${result.could_not_check.length} things`} to check by eye` : '✓ Looks right') : result.verdict === 'problems' ? `${result.issues.length} problem${result.issues.length === 1 ? '' : 's'} found` : "Couldn't check this photo"}</p>

@@ -2,6 +2,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import { useDialog } from './useDialog';
+import { Button } from './ds';
 
 const touch = () => typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
 
@@ -61,22 +62,22 @@ export function Tour() {
         <h3 id="tour-title">{s.title}</h3>
         <p>{touch() && 'touchBody' in s ? s.touchBody : s.body}</p>
         <div className="tour-actions">
-          <button className="ghost" onClick={close}>
+          <Button variant="ghost" onClick={close}>
             Skip tour
-          </button>
+          </Button>
           {i > 0 && (
-            <button className="ghost" onClick={() => useStore.getState().set({ tourStep: i - 1 })}>
+            <Button variant="ghost" onClick={() => useStore.getState().set({ tourStep: i - 1 })}>
               Back
-            </button>
+            </Button>
           )}
           {!last ? (
-            <button className="primary" onClick={() => useStore.getState().set({ tourStep: i + 1 })} data-autofocus>
+            <Button variant="primary" onClick={() => useStore.getState().set({ tourStep: i + 1 })} data-autofocus>
               Next
-            </button>
+            </Button>
           ) : (
-            <button className="primary" onClick={close} data-autofocus>
+            <Button variant="primary" onClick={close} data-autofocus>
               Got it
-            </button>
+            </Button>
           )}
         </div>
       </div>
