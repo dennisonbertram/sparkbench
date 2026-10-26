@@ -82,7 +82,7 @@ async function launchHelper(dir: string, mask: number, values: number): Promise<
   }
   return { child: spawn('docker', ['start', '-ai', container], { stdio: ['pipe', 'pipe', 'pipe'], shell: false }), container };
 }
-/** Killing `docker run` does not stop its container, so remove it explicitly. */
+/** Killing the `docker start -ai` client does not stop its container, so remove it explicitly. */
 function removeContainer(name?: string) {
   if (name) spawn('docker', ['rm', '-f', name], { stdio: 'ignore' }).on('error', () => {});
 }

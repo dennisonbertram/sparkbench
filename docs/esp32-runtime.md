@@ -15,7 +15,7 @@ npm run dev
 
 The image builds the pinned QEMU fork, the helper and the demo firmware from source (the first
 build takes a while). When no native build is present, the server finds the image and starts one
-container per session: no network, 1 CPU, 1 GB, read-only root, only the session folder mounted.
+container per session: no network, 1 CPU, 1 GB, 64 processes, no capabilities; the flash image is copied in (nothing is mounted).
 `SPARKBENCH_ESP32_RUNNER=native|docker` forces one; `SPARKBENCH_ESP32_IMAGE` names another image.
 
 ## Pinned setup (native, Linux)
