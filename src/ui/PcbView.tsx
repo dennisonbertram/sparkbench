@@ -1,5 +1,6 @@
 // "Circuit board" tab: turns the design into a real, routed printed circuit board (KiCad +
 // Freerouting on the local server) and hands over the files a PCB factory needs.
+import { BOARDS } from '../core/boards';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
 import { slug } from './exporters';
@@ -343,7 +344,7 @@ export function PcbView() {
                 </table>
                 <p className="pcb-note">
                   Not included: the circuit boards themselves, assembly and shipping
-                  {res.variant === 'prototype' && project.board !== 'none' ? `, and the ${project.board === 'esp32' ? 'ESP32 board' : project.board === 'pico' ? 'Pico' : 'Raspberry Pi'} and modules that plug into the sockets (the sockets are included)` : ''}
+                  {res.variant === 'prototype' && project.board !== 'none' ? `, and the ${project.board === 'esp32' ? 'ESP32 board' : project.board === 'pico' ? 'Pico' : project.board === 'rpi4' ? 'Raspberry Pi' : BOARDS[project.board].name} and modules that plug into the sockets (the sockets are included)` : ''}
                   {res.sourcing.cost[0].missing ? `, and ${res.sourcing.cost[0].missing} part${res.sourcing.cost[0].missing > 1 ? 's' : ''} LCSC doesn’t stock (marked “buy separately” below)` : ''}. The bare boards are priced by the maker when you upload the files: <a href={res.fab.quote} target="_blank" rel="noreferrer">get a {res.fab.name} quote</a>.
                 </p>
                 <details>

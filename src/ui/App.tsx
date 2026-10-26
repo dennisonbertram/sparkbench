@@ -513,7 +513,7 @@ function Welcome() {
             {lastAi.questions && <QuestionsCard questions={lastAi.questions} />}
           </div>
         )}
-        <p className="hero-hint">Works with ESP32, Raspberry Pi Pico, Raspberry Pi 4, or plain components (555 timers, transistors).</p>
+        <p className="hero-hint">Works with ESP32, Raspberry Pi Pico, Raspberry Pi 4, Arduino Nicla Vision and Nicla Voice, or plain components (555 timers, transistors).</p>
         <JoinClass />
       </section>
       <section className="gallery" id="examples" aria-label="Example projects">

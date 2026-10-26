@@ -51,7 +51,9 @@ const DISCRETE_RE = /\b(555|ne555|no (micro ?controller|mcu)|without (a )?(micro
 
 export function detectBoard(text: string): BoardId {
   const t = text.toLowerCase();
-  if (DISCRETE_RE.test(t) && !/\b(esp32|pico|raspberry)\b/.test(t)) return 'none';
+  if (DISCRETE_RE.test(t) && !/\b(esp32|pico|raspberry|nicla)\b/.test(t)) return 'none';
+  if (/\bnicla ?vision\b|abx00051/.test(t)) return 'nicla-vision';
+  if (/\bnicla ?voice\b|abx00061/.test(t)) return 'nicla-voice';
   if (/\bpico\b|rp2040/.test(t)) return 'pico';
   if (/raspberry ?pi|\brpi\b|\bpi ?[345]\b|\bpi zero\b/.test(t)) return 'rpi4';
   if (/esp-?32/.test(t)) return 'esp32';
@@ -168,6 +170,25 @@ function titleFrom(prompt: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// ------------------------------------------------------------------ Nicla boards
+// What Sparkbench can honestly build on the Nicla header (docs/boards/nicla.md): no 5 V output (VIN is an
+// input), "low power" translated I/O, Nicla Vision analog pins limited to 1.8 V, and the Nicla Voice
+// program is an Arduino sketch, which Sparkbench writes only for simple digital and analog parts.
+const NICLA_KINDS: Partial<Record<BoardId, FeatureKind[]>> = {
+  'nicla-vision': ['button', 'switch', 'led', 'oled', 'mpu6050'],
+  'nicla-voice': ['button', 'switch', 'led', 'pot', 'ldr', 'ntc', 'soil'],
+};
+
+function niclaRefusal(b: BoardDef, kind: FeatureKind): string {
+  const what = LABELS[kind];
+  if (['lcd', 'hcsr04', 'pir', 'neopixel', 'servo', 'relay'].includes(kind)) return `${what} needs a 5 V supply, and the ${b.name}'s header has none (its VIN pin is a power input). Use an ESP32 or Pico for this part.`;
+  if (['pot', 'ldr', 'ntc', 'soil'].includes(kind)) return `The ${b.name}'s analog pins only take up to 1.8 V and its header has no 1.8 V supply, so Sparkbench can't wire ${what} to it safely yet. Use an ESP32 or Pico for analog parts.`;
+  if (['buzzer', 'rgb'].includes(kind)) return `${what} needs more current than the ${b.name}'s low-power header pins can give (Arduino recommends a MOSFET or buffer), and Sparkbench doesn't add one for it yet. Use an ESP32 or Pico for this part.`;
+  if (kind === 'internet') return `Sparkbench doesn't write internet code for the ${b.name} yet. Use an ESP32 for internet projects.`;
+  if (kind === 'dht22') return `${what} talks over a single open-drain wire, which the ${b.name}'s level translator (TXB0108) isn't made for. Use an ESP32 or Pico for this sensor.`;
+  return `Sparkbench can't build ${what} on the ${b.name} yet${b.language === 'arduino' ? ' (its program is an Arduino sketch, and Sparkbench only writes those for buttons, switches, LEDs and analog sensors)' : ''}. Use an ESP32 or Pico for this part.`;
+}
+
 // ------------------------------------------------------------------ pin allocation
 
 type Need = 'out' | 'pwm' | 'in-pullup' | 'in' | 'adc';
@@ -178,7 +199,8 @@ class PinAllocator {
     for (const r of reserved) this.used.add(r);
   }
   take(need: Need, what: string, prefer?: string): BoardPin {
-    const caps: Cap[] = need === 'adc' ? ['adc'] : need === 'out' || need === 'pwm' ? ['out'] : ['in'];
+    // PWM needs a timer channel on the pin (not every Nicla Vision pin has one); Arduino sketches drive LEDs on/off.
+    const caps: Cap[] = need === 'adc' ? ['adc'] : need === 'pwm' && this.board.language !== 'arduino' ? ['out', 'pwm'] : need === 'out' || need === 'pwm' ? ['out'] : ['in'];
     if (prefer) {
       const p = this.board.pins.find((x) => x.name === prefer);
       const ok = p && p.role === 'gpio' && !this.used.has(p.name) && caps.every((c) => p.caps?.includes(c)) && (need === 'in' || need === 'adc' || p.caps?.includes('out'));
@@ -358,6 +380,7 @@ class Builder {
     this.seenKinds.set(req.kind, kindNth);
     this.sigPrefs = this.prevSignals.get(`${base}#${nth}`) ?? this.prevSignals.get(`${req.kind}##${kindNth}`) ?? {};
     const kind = req.kind;
+    if (b && NICLA_KINDS[b.id] && !NICLA_KINDS[b.id]!.includes(kind)) throw new PlanError(niclaRefusal(b, kind));
     const label = req.label ?? LABELS[kind];
     const name = this.varName(kind, req.label);
     const fi: FeatureInstance = { kind, name, label, parts: [], pins: {}, gpio: {}, props: req.props };
@@ -538,6 +561,24 @@ class Builder {
         const id = this.addPart('led', { color }, req.label ? (/\bled\b/i.test(req.label) ? req.label : `${req.label} LED`) : `${color[0].toUpperCase()}${color.slice(1)} LED`);
         const ohms = color === 'blue' || color === 'white' ? 47 : 220;
         const r = this.addPart('resistor', { ohms }, `${color} LED resistor`);
+        if (b && b.maxPinMa < 2) {
+          // "Low power" pins (Nicla): Arduino asks for a transistor or buffer to drive an LED. The pin only feeds
+          // the NPN's base through 10 kΩ (about 0.25 mA); the LED current comes from the 3.3 V rail.
+          const rb = this.addPart('resistor', { ohms: 10000 }, `${color} LED base resistor`);
+          const q = this.addPart('npn', {}, `${color} LED transistor`);
+          setPin('pin', this.gpio(rb, '1', 'pwm', fi.label, 'pin'));
+          this.wire({ part: rb, pin: '2' }, { part: q, pin: 'B' });
+          this.v33(r, '1');
+          this.wire({ part: r, pin: '2' }, { part: id, pin: 'A' });
+          this.wire({ part: id, pin: 'C' }, { part: q, pin: 'C' });
+          this.gnd(q, 'E');
+          fi.parts.push(id, r, rb, q);
+          fi.props = { ...(fi.props ?? {}), color };
+          if (!req.label) fi.label = `${color[0].toUpperCase()}${color.slice(1)} LED`;
+          this.groups.push({ main: id, parts: [rb, q, r, id], side: 'left' });
+          if (!this.notes.some((n) => n.includes('low-power pins'))) this.notes.push(`The ${b.name}'s header pins are low-power (they go through a level translator), so each LED is switched by an NPN transistor: the pin drives its base through 10 kΩ and the LED's current comes from the 3.3 V rail.`);
+          break;
+        }
         setPin('pin', this.gpio(r, '1', 'pwm', fi.label, 'pin'));
         this.wire({ part: r, pin: '2' }, { part: id, pin: 'A' });
         this.gnd(id, 'C');
@@ -840,7 +881,10 @@ function pinNotes(project: Project): string[] {
   for (const f of project.features) {
     const pins = Object.entries(f.pins)
       .filter(([s]) => s !== 'sda' && s !== 'scl')
-      .map(([s, p]) => `${s === 'pin' ? '' : s.toUpperCase() + '→'}${p}${f.gpio[s] !== undefined && !/^(GPIO|GP|D)\d+$/.test(p) ? ` (GPIO${f.gpio[s]})` : ''}`);
+      .map(([s, p]) => {
+        const pad = board.pins.find((x) => x.name === p)?.header;
+        return `${s === 'pin' ? '' : s.toUpperCase() + '→'}${p}${pad ? ` (pad ${pad})` : f.gpio[s] !== undefined && !/^(GPIO|GP|D)\d+$/.test(p) ? ` (GPIO${f.gpio[s]})` : ''}`;
+      });
     if (f.kind === 'internet') continue;
     if (['oled', 'lcd', 'mpu6050'].includes(f.kind)) notes.push(`${f.label}: shares the I2C bus (SDA ${board.i2c.sda}, SCL ${board.i2c.scl}).`);
     else if (f.mcpChannel !== undefined) notes.push(`${f.label}: MCP3008 channel ${f.mcpChannel}.`);
@@ -924,7 +968,7 @@ export function editSpec(spec: DesignSpec, instruction: string): EditResult {
   const next: DesignSpec = { ...spec, features: spec.features.map((f) => ({ ...f })) };
   const msgs: string[] = [];
   // Board swap
-  const boardWords = /\b(esp-?32|pico|rp2040|raspberry ?pi|rpi)\b/.exec(t);
+  const boardWords = /\b(esp-?32|pico|rp2040|raspberry ?pi|rpi|nicla ?vision|nicla ?voice)\b/.exec(t);
   if (boardWords && /\b(use|switch|swap|change|instead|move|port|replace)\b/.test(t)) {
     const nb = detectBoard(instruction);
     if (nb !== spec.board) {

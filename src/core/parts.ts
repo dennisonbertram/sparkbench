@@ -5,11 +5,12 @@ import { customDef } from './customParts';
 
 const p = (name: string, role: PinDef['role'], fn?: string, extra: Partial<PinDef> = {}): PinDef => ({ name, role, fn, ...extra });
 
-const boardPins = (id: 'esp32' | 'pico' | 'rpi4'): PinDef[] =>
+const boardPins = (id: keyof typeof BOARDS): PinDef[] =>
   BOARDS[id].pins.map((bp) =>
     p(bp.name, bp.role === 'gnd' ? 'gnd' : bp.role === 'power' ? 'power' : 'io', bp.gpio !== undefined ? `gpio${bp.gpio}` : undefined, {
       required: false,
-      description: [bp.gpio !== undefined ? `GPIO${bp.gpio}` : '', ...(bp.alt ?? []), bp.caution ?? ''].filter(Boolean).join(' · '),
+      // Nicla pins are described by header pad and MCU pin (in alt), not a GPIO number.
+      description: [bp.header ? `Pad ${bp.header}` : bp.gpio !== undefined ? `GPIO${bp.gpio}` : '', ...(bp.alt ?? []), bp.caution ?? ''].filter(Boolean).join(' · '),
     }),
   );
 
@@ -67,6 +68,37 @@ export const PARTS: PartDef[] = [
     bom: { mpn: 'SC0194(9)', description: 'Raspberry Pi 4 Model B 2GB', priceUsd: 45, supplierQuery: 'Raspberry Pi 4 Model B 2GB' },
     kicad: { symbol: 'Sparkbench:Raspberry_Pi_4_Header', footprint: 'Connector_PinHeader_2.54mm:PinHeader_2x20_P2.54mm_Vertical' },
     keywords: ['raspberry pi', 'rpi', 'pi 4', 'pi4', 'raspberry pi 4', 'linux'],
+  },
+  // Nicla boards: facts and sources in docs/boards/nicla.md.
+  {
+    type: 'nicla-vision',
+    name: 'Arduino Nicla Vision',
+    category: 'board',
+    description: 'STM32H747 dual-core board with a 2 MP camera, Wi-Fi and Bluetooth on a 22.86 mm square. Header I/O at 3.3 V through level translators (low power); analog pins 1.8 V max. Runs MicroPython (OpenMV).',
+    eli5: 'A tiny brain with a camera. It runs your Python program; its pins are weak, so LEDs go through a transistor.',
+    refPrefix: 'U',
+    pins: boardPins('nicla-vision'),
+    vmin: 3.5,
+    vmax: 5.5,
+    currentMa: 105, // datasheet: average during image capture (battery powered)
+    bom: { mpn: 'ABX00051', description: 'Arduino Nicla Vision', priceUsd: 80.2, supplierQuery: 'Arduino Nicla Vision ABX00051' },
+    kicad: { symbol: 'Sparkbench:Arduino_Nicla_Vision' },
+    keywords: ['nicla vision', 'nicla', 'abx00051', 'openmv'],
+  },
+  {
+    type: 'nicla-voice',
+    name: 'Arduino Nicla Voice',
+    category: 'board',
+    description: 'nRF52832 (ANNA-B112) board with a Syntiant NDP120 neural processor, microphone and Bluetooth LE on a 22.86 mm square. Header I/O at 3.3 V through level translators (low power). Programmed in Arduino C++.',
+    eli5: 'A tiny brain that listens for sounds and words. It runs an Arduino (C++) sketch; its pins are weak, so LEDs go through a transistor.',
+    refPrefix: 'U',
+    pins: boardPins('nicla-voice'),
+    vmin: 3.5,
+    vmax: 5.5,
+    currentMa: 2.4, // datasheet: factory demo with BLE advertising, at VBAT = 3.7 V
+    bom: { mpn: 'ABX00061', description: 'Arduino Nicla Voice', priceUsd: 49.4, supplierQuery: 'Arduino Nicla Voice ABX00061' },
+    kicad: { symbol: 'Sparkbench:Arduino_Nicla_Voice' },
+    keywords: ['nicla voice', 'nicla', 'abx00061', 'syntiant', 'ndp120'],
   },
 
   // ------------------------------------------------------------------ displays

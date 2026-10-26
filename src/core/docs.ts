@@ -3,6 +3,7 @@
 // Everything is written for a total beginner and derived from the actual design
 // (parts, wires, pins, firmware), so it stays correct when the design changes.
 import { planBreadboard } from './bbplace';
+import { sketchBehaviour } from './codegen-arduino';
 import { benchCounts, toolkit } from './toolkit';
 import type { FeatureInstance, FeatureKind, PartDef, PartInstance, PinRef, Project, Wire } from './types';
 import { partDef, formatOhms, formatFarads } from './parts';
@@ -125,6 +126,7 @@ function boardPinText(board: BoardDef, pin: string): string {
   const shown = pin.replace(/^(GND|3V3|5V)\.\d+$/, '$1');
   if (!bp) return shown;
   if (board.id === 'rpi4' || board.id === 'pico') return bp.physical ? `${shown} (pin ${bp.physical})` : shown;
+  if (bp.header) return `${shown} (pad ${bp.header})`;
   return bp.gpio !== undefined && shown !== `D${bp.gpio}` ? `${shown} (GPIO${bp.gpio})` : shown;
 }
 const fivePinName = (b: BoardDef) => (b.id === 'rpi4' ? 'a 5V header pin' : `the ${b.supply5v} pin`);
@@ -323,6 +325,8 @@ const BUTTON_ACTION: [RegExp, string, string][] = [
 
 function behaviours(c: Ctx): Behaviour[] {
   if (c.project.board === 'none') return behavioursDiscrete(c);
+  // An Arduino sketch (Nicla Voice): its behaviour comes from the sketch generator, not from main.py.
+  if (c.board?.language === 'arduino' && !c.project.behavior?.length) return sketchBehaviour(c.project);
   if (c.project.behavior?.length) {
     // Code written by the AI (or a curated example) describes itself.
     return c.project.behavior.map((b) => ({ does: b.does, test: b.test ?? `Check that: ${b.does.charAt(0).toLowerCase()}${b.does.slice(1)}`, sim: b.sim }));
@@ -342,7 +346,7 @@ function behaviours(c: Ctx): Behaviour[] {
   if (/starting(…|\.\.\.)/.test(main)) {
     out.push({
       does: `When it powers up, it prints "${c.project.name} starting…" to the serial console${main.includes('little start-up chirp') ? ' and plays a little three-note chirp' : ''}.`,
-      test: `Open the serial console (${c.board?.id === 'rpi4' ? 'the terminal where you ran `python3 main.py`' : '`mpremote repl`'}) and restart the program: you should see "${c.project.name} starting…".`,
+      test: `Open the serial console (${c.board?.id === 'rpi4' ? 'the terminal where you ran `python3 main.py`' : c.board?.id === 'nicla-vision' ? 'the Serial Terminal in OpenMV IDE' : '`mpremote repl`'}) and restart the program: you should see "${c.project.name} starting…".`,
     });
   }
   for (const f of fs.filter((x) => x.kind === 'oled' || x.kind === 'lcd')) {
@@ -715,6 +719,9 @@ function boardPlacement(c: Ctx): string {
       return 'Push the ESP32 DevKit into the breadboard so it straddles the centre gap, with the USB socket hanging off one end. It\'s wide, so it only leaves one free row on each side — that\'s why a full-size breadboard (or two half-size ones side by side) is listed. Press gently and evenly; the pins bend easily.';
     case 'pico':
       return 'Push the Pico into the breadboard so it straddles the centre gap, with the USB socket at the end. Pin 1 (GP0) is the corner pin next to the USB socket; pin numbers run down the left side (1–20) and back up the right side (21–40).';
+    case 'nicla-vision':
+    case 'nicla-voice':
+      return `Solder (or press-fit) 2.54 mm male headers into the ${c.board!.name}'s two rows of edge pads: J1 has 8 pads and J2 has 9, with pad 1 of each at the end away from the battery pads. Then push it into the breadboard so it straddles the centre gap. The pads are numbered on the build guide's wiring table (J1-1, J2-3 …).`;
     case 'rpi4':
       return 'The Raspberry Pi stays off the breadboard. Use female-to-male jumper wires from its 40-pin header to the breadboard. Pin 1 is the corner pin nearest the SD card slot (it has a square pad underneath); odd pins are on the inner row, even pins on the outer edge. Do all the wiring with the Pi switched off.';
     default:
@@ -827,6 +834,7 @@ function wiringTable(c: Ctx): string[] {
 function fileDescription(name: string, board: BoardDef): string {
   const known: Record<string, string> = {
     'main.py': board.language === 'python' ? 'your program — run it with `python3 main.py`' : 'your program; MicroPython runs it automatically every time the board starts',
+    'sketch.ino': 'your program, an Arduino C++ sketch: open it in the Arduino IDE and click Upload',
     'ssd1306.py': 'driver for the OLED display',
     'oled.py': 'driver for the OLED display',
     'mpu6050.py': 'driver for the MPU-6050 IMU',
@@ -967,10 +975,19 @@ export function buildGuide(project: Project): string {
   // ---- firmware
   if (b) {
     out.push('## Load the program', '');
-    out.push(b.language === 'python' ? 'The Raspberry Pi runs your program as ordinary Python 3 on Linux, using the friendly **gpiozero** library.' : `The ${b.name} runs **MicroPython** — a small version of Python made for microcontrollers. You flash MicroPython once, then copy your program onto the board.`, '');
+    out.push(
+      b.language === 'python'
+        ? 'The Raspberry Pi runs your program as ordinary Python 3 on Linux, using the friendly **gpiozero** library.'
+        : b.language === 'arduino'
+          ? `The ${b.name} runs an **Arduino sketch** written in C++. The Arduino IDE compiles it and uploads it over USB.`
+          : b.id === 'nicla-vision'
+            ? `The ${b.name} runs **MicroPython** with the OpenMV firmware. OpenMV IDE installs the firmware once; then you copy your program onto the board.`
+            : `The ${b.name} runs **MicroPython** — a small version of Python made for microcontrollers. You flash MicroPython once, then copy your program onto the board.`,
+      '',
+    );
     out.push(...netSetup(c));
     out.push('**First, get the files out of Sparkbench:** click **Export → Everything (.zip)** and unzip it — the `firmware` folder holds the program. (Or use **Download** on each file in the Code tab.)', '');
-    if (b.language === 'micropython')
+    if (b.language === 'micropython' && (b.id === 'esp32' || b.id === 'pico'))
       out.push(
         `**Easiest way (no command line):** install [Thonny](https://thonny.org), plug in the ${b.short}, choose *Tools → Options → Interpreter → MicroPython (${b.id === 'pico' ? 'Raspberry Pi Pico' : 'ESP32'})* — Thonny can install MicroPython onto the board for you from that same screen. Then open each \`.py\` file from the \`firmware\` folder and use *File → Save as… → MicroPython device*, keeping the same name. Press the red Stop/Restart button to run \`main.py\`.`,
         '',
@@ -1196,7 +1213,7 @@ function blogPartsSection(c: Ctx): string[] {
     out.push(`### ${d.name}${same.length > 1 ? ` (× ${same.length})` : ''}`, '');
     out.push(!c.board && DISCRETE_INTRO[p.type] ? DISCRETE_INTRO[p.type] : `${d.eli5} ${d.description.replace(/\.$/, '')}.`, '');
     const roles = same.flatMap((x) => roleOf.get(x.id) ?? []);
-    if (d.category === 'board' && c.board) out.push(`In this project it runs ${c.board.language === 'micropython' ? 'MicroPython' : 'Python 3'}, ${c.features.some((f) => SENSOR_KINDS.includes(f.kind) || f.kind === 'button') ? 'reads every input and decides what every output should do' : 'decides what every output should do, moment by moment'}.`, '');
+    if (d.category === 'board' && c.board) out.push(`In this project it runs ${c.board.language === 'micropython' ? 'MicroPython' : c.board.language === 'arduino' ? 'an Arduino sketch' : 'Python 3'}, ${c.features.some((f) => SENSOR_KINDS.includes(f.kind) || f.kind === 'button') ? 'reads every input and decides what every output should do' : 'decides what every output should do, moment by moment'}.`, '');
     else if (!c.board && p.type === 'pushbutton' && analyze555(c.project)?.tone) out.push('Here it connects the 555\'s RESET pin to + while you hold it, letting the timer run.', '');
     else if (!c.board && p.type === 'buzzer') out.push('Here the 555\'s output pushes its piezo disc back and forth hundreds of times a second — that\'s the sound.', '');
     else if (!c.board && ROLE_DISCRETE[p.type]) out.push(ROLE_DISCRETE[p.type], '');
@@ -1312,6 +1329,11 @@ function codeSectionBlog(c: Ctx): string[] {
   const b = c.board!;
   const files = Object.keys(c.project.files ?? {});
   out.push('## The code', '');
+  if (b.language === 'arduino') {
+    const sketch = c.project.files?.['sketch.ino'] ?? '';
+    out.push(`The firmware is an Arduino sketch in C++, \`sketch.ino\`: \`setup()\` runs once to set the pins up, then \`loop()\` runs over and over. Here is how it starts:`, '', '```cpp', sketch.split('\n').slice(0, 40).join('\n'), '```', '');
+    return out;
+  }
   const extra = files.filter((f) => f !== 'main.py');
   out.push(`The firmware is written in ${b.language === 'micropython' ? 'MicroPython, a version of Python that runs directly on the microcontroller' : 'Python 3 with the gpiozero library, which turns pins into friendly objects like `Button` and `LED`'}. ${extra.length ? `It's split into ${plural(files.length, 'file', { words: true })}: \`main.py\` is the program itself, and ${listJoin(extra.map((f) => `\`${f}\``))} ${extra.length === 1 ? 'is a driver that knows' : 'are drivers that know'} how to talk to the hardware.` : 'Everything lives in a single file, `main.py`.'}`, '');
   const main = c.main;
@@ -1383,7 +1405,17 @@ function buildTipsSection(c: Ctx): string[] {
   }
   if (c.board) tips.push(c.board.id === 'rpi4' ? 'Do all the wiring with the Pi shut down and unplugged.' : 'Use a proper USB *data* cable; charge-only cables are the number one reason a board "isn\'t detected".');
   out.push(...tips.slice(0, 6).map((t) => `- ${t}`), '');
-  if (c.board) out.push(c.board.language === 'micropython' ? `To load the code, flash MicroPython onto the ${c.board.short} once, then copy the project files across with \`mpremote\`. From then on, main.py runs every time the board powers up.` : 'To run the code, copy the project folder onto the Pi and start it with `python3 main.py`.', '');
+  if (c.board)
+    out.push(
+      c.board.language === 'arduino'
+        ? `To load the code, open sketch.ino in the Arduino IDE with the "Arduino Mbed OS Nicla Boards" core installed, pick the ${c.board.name} and click Upload.`
+        : c.board.id === 'nicla-vision'
+          ? `To load the code, connect the ${c.board.short} to OpenMV IDE once (it installs the OpenMV firmware), then copy the project files onto the board's storage drive. From then on, main.py runs every time the board powers up.`
+          : c.board.language === 'micropython'
+            ? `To load the code, flash MicroPython onto the ${c.board.short} once, then copy the project files across with \`mpremote\`. From then on, main.py runs every time the board powers up.`
+            : 'To run the code, copy the project folder onto the Pi and start it with `python3 main.py`.',
+      '',
+    );
   return out;
 }
 

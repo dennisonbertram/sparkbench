@@ -42,8 +42,11 @@ export function testProcedure(project: Project, opts: { tests: AcceptanceTest[];
   }
   if (board && project.board !== 'rpi4') {
     L.push('## 4. Program and self-test', '');
-    L.push(`- [ ] Install MicroPython and copy the files (Sparkbench → **Your board**, or: ${board.flashing.slice(-2).join(' ')}).`);
-    L.push('- [ ] Run `selftest.py`. A good board prints:', '', '```', opts.selftestExpected.replace('[program finished]', '').trim(), '```', '');
+    if (board.language === 'arduino') L.push(`- [ ] Upload the sketch (${board.flashing.slice(-2).join(' ')}) and check the serial messages.`, '');
+    else {
+      L.push(`- [ ] Install ${board.id === 'nicla-vision' ? 'the OpenMV firmware' : 'MicroPython'} and copy the files (Sparkbench → **Your board**, or: ${board.flashing.slice(-2).join(' ')}).`);
+      L.push('- [ ] Run `selftest.py`. A good board prints:', '', '```', opts.selftestExpected.replace('[program finished]', '').trim(), '```', '');
+    }
   } else if (board) {
     L.push('## 4. Self-test', '', '- [ ] Copy the files to the Pi and run `python3 selftest.py`. A good board prints:', '', '```', opts.selftestExpected.replace('[program finished]', '').trim(), '```', '');
   }
@@ -58,7 +61,7 @@ export function testProcedure(project: Project, opts: { tests: AcceptanceTest[];
 
 export function complianceChecklist(project: Project): string {
   const board = boardFor(project.board);
-  const radio = project.board === 'esp32' || project.board === 'rpi4';
+  const radio = project.board === 'esp32' || project.board === 'rpi4' || project.board === 'nicla-vision' || project.board === 'nicla-voice';
   const mains = project.parts.some((p) => p.type === 'relay');
   const battery = project.parts.some((p) => p.type === 'battery-9v');
   const L: string[] = [
@@ -75,7 +78,7 @@ export function complianceChecklist(project: Project): string {
     '',
   ];
   if (radio)
-    L.push(`- [ ] **It has a radio** (${board?.name}: Wi-Fi/Bluetooth). Use the pre-certified module as-is (no antenna changes, keep the antenna area clear of copper and metal), and keep its FCC ID / CE certificate. In the EU the Radio Equipment Directive applies to the whole product.`);
+    L.push(`- [ ] **It has a radio** (${board?.name}: ${board?.id === 'nicla-voice' ? 'Bluetooth LE' : 'Wi-Fi/Bluetooth'}). Use the pre-certified module as-is (no antenna changes, keep the antenna area clear of copper and metal), and keep its FCC ID / CE certificate. In the EU the Radio Equipment Directive applies to the whole product.`);
   else L.push(`- [ ] No radio on board${board ? ` (${board.name})` : ''}: only the unintentional-radiator rules apply.`);
   L.push('- [ ] **RoHS:** order RoHS parts (Sparkbench’s LCSC picks are RoHS) and lead-free solder, and keep the part datasheets.');
   if (mains) L.push('- [ ] **The relay can switch mains or high current.** Keep mains wiring off this board: use an enclosed, certified relay module or a certified smart plug, with fuse, strain relief, earthing and creepage distances checked by a professional. Selling mains-switching products needs electrical-safety testing (UL/IEC 62368-1).');

@@ -9,6 +9,7 @@
 import type { FeatureInstance, Project } from './types';
 import { generateFiles } from './codegen';
 import { partDef } from './parts';
+import { BOARDS } from './boards';
 
 const I2C_KINDS = new Set(['oled', 'lcd', 'mpu6050']);
 
@@ -24,7 +25,8 @@ function setupOf(project: Project): { imports: string[]; setup: string[] } {
 }
 
 export function generateSelfTest(project: Project): string | null {
-  if (project.board === 'none' || !project.features?.length) return null;
+  // An Arduino sketch board (Nicla Voice) has no Python self-test.
+  if (project.board === 'none' || BOARDS[project.board].language === 'arduino' || !project.features?.length) return null;
   const pi = project.board === 'rpi4';
   const { imports, setup } = setupOf(project);
   const fs = project.features;

@@ -10,8 +10,10 @@ import { customSpec, type CustomPartSpec } from './customParts';
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
 
 /** Supply budgets in mA available to external parts. */
-const BUDGET_3V3: Record<string, number> = { esp32: 500, pico: 300, rpi4: 50 };
-const BUDGET_5V: Record<string, number> = { esp32: 500, pico: 500, rpi4: 1000 };
+// Nicla VDDIO_EXT: the PMIC regulator behind it (Vision: PF1550 SW2 buck, "1.0 A"; Voice: BQ25120A LS/LDO,
+// "100 mA"); their VIN is a power input, so nothing may draw 5 V from it (docs/boards/nicla.md).
+const BUDGET_3V3: Record<string, number> = { esp32: 500, pico: 300, rpi4: 50, 'nicla-vision': 1000, 'nicla-voice': 100 };
+const BUDGET_5V: Record<string, number> = { esp32: 500, pico: 500, rpi4: 1000, 'nicla-vision': 0, 'nicla-voice': 0 };
 /** Worst-case draw (stalled servo, NeoPixels at full white) where it differs a lot from typical. */
 export const WORST_MA: Record<string, (p: PartInstance) => number> = {
   servo: () => 650,
@@ -158,6 +160,7 @@ class Ctx {
     if (!bp) return name;
     if (b.id === 'rpi4') return bp.physical ? `${name} (header pin ${bp.physical})` : name;
     if (b.id === 'pico') return bp.physical ? `${name} (pin ${bp.physical})` : name;
+    if (bp.header) return `${name} (pad ${bp.header})`;
     return bp.gpio !== undefined && name !== `D${bp.gpio}` ? `${name} (GPIO${bp.gpio})` : name;
   }
   pinName(ref: PinRef): string {
@@ -943,7 +946,7 @@ function railLoads(c: Ctx): RailLoad[] {
   const own = c.def(c.project.parts.find((p) => p.id === c.boardId)!)?.currentMa ?? 0;
   const rails: [3 | 5, string, number, number][] = [
     [3, `${b.supply3v3} (3.3 V)`, BUDGET_3V3[b.id] ?? 300, 0],
-    [5, b.id === 'rpi4' ? '5V' : `${b.supply5v} (5 V from USB)`, BUDGET_5V[b.id] ?? 500, b.id === 'rpi4' ? 0 : own],
+    [5, b.id === 'rpi4' ? '5V' : b.supply5vInput ? `${b.supply5v} (a power input, not a 5 V output)` : `${b.supply5v} (5 V from USB)`, BUDGET_5V[b.id] ?? 500, b.id === 'rpi4' || b.supply5vInput ? 0 : own],
   ];
   return rails.map(([rail, name, budget, base]) => ({ rail, name, budget, base, typ: Math.round(tally[rail].typ + base), worst: Math.round(tally[rail].worst + base), who: tally[rail].who }));
 }

@@ -3,6 +3,7 @@ import type { Project } from '../core/types';
 import { partDef } from '../core/parts';
 import { useStore } from './store';
 import type { SimFrame } from '../sim/engine';
+import { BOARDS, arduinoSimMessage } from '../core/boards';
 import { audio } from './audio';
 import { FirmwareClient } from './firmwareClient';
 
@@ -33,6 +34,12 @@ export function startSim(project: Project, speed = 1) {
   const inputMap: Record<string, number> = {};
   keys.forEach((k, i) => (inputMap[k] = initial[i]));
   st.setSim(() => ({ status: 'booting', t: 0, parts: {}, pins: {}, serial: [], warnings: [], nets: {}, scope: [], inputs: inputMap, i2c: [] }));
+  if (project.board !== 'none' && BOARDS[project.board].language === 'arduino') {
+    const message = arduinoSimMessage(BOARDS[project.board].name);
+    // Not a crash: the sketch simply can't run in the Python simulator yet. Say so in the serial monitor.
+    useStore.getState().setSim((s) => ({ ...s, status: 'stopped', serial: [message] }));
+    return;
+  }
   if (st.runtime === 'esp32-qemu') {
     st.set({ firmwareArtifact: null });
     const fail = (message: string) => useStore.getState().setSim((s) => ({ ...s, status: 'error', error: { message, raw: message } }));

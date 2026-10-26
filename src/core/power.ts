@@ -134,6 +134,22 @@ export function batteryOptions(project: Project, worstMa = 0, rails: RailLoad[] 
       { id: 'aa3', name: '3 × AA (4.5 V)', mAh: 2500, volts: 4.5, regulator: 'none (the 555 works from 4.5 V; the LED gets a little dimmer)', factor: 1, charging: null, protection: [] },
     ];
   }
+  if (b === 'nicla-vision' || b === 'nicla-voice')
+    // Both datasheets: a single-cell 3.7 V Li-Po on the battery connector (J4), charged by the board's own PMIC.
+    return [
+      { id: 'usb', name: 'USB charger or computer (micro USB)', mAh: Infinity, volts: 5, regulator: 'the board’s own PMIC', factor: 1, charging: null, protection: [] },
+      {
+        id: 'lipo1000',
+        name: 'LiPo pouch, 1 000 mAh, on the board’s battery connector (J4)',
+        mAh: 1000,
+        volts: 3.7,
+        regulator: 'the board’s own PMIC',
+        factor: 1,
+        charging: 'the board charges it from USB (its PMIC has a Li-Po charger)',
+        protection: b === 'nicla-vision' ? ['the battery input has no reverse-polarity protection (datasheet): check the plug before connecting'] : [],
+        note: 'Only one battery at a time: the J3 pads and the J4 connector are the same battery input.',
+      },
+    ];
   const vin = b === 'esp32' ? 'VIN' : 'VSYS';
   const needs5 = fiveVoltParts(rails);
   // A lithium cell gives 3.0–4.2 V: 5 V parts need a boost converter; otherwise an LDO sized for the load.

@@ -361,6 +361,12 @@ function boardBox(type: string): BoxLayout {
       b.filter((p) => p.physical! >= lo && p.physical! <= hi && sides.includes(p.name)).sort((x, y) => (desc ? y.physical! - x.physical! : x.physical! - y.physical!)).map((p) => p.name);
     return { top, bottom, left: phys(1, 20), right: phys(21, 40, true) };
   }
+  if (type === 'nicla-vision' || type === 'nicla-voice') {
+    // Same order as the board: J1 on the left, J2 on the right, highest pad at the top.
+    const b = BOARDS[type].pins;
+    const side = (j: string) => b.filter((p) => p.header!.startsWith(j) && sides.includes(p.name)).sort((x, y) => Number(y.header!.split('-')[1]) - Number(x.header!.split('-')[1])).map((p) => p.name);
+    return { top, bottom, left: side('J1-'), right: side('J2-') };
+  }
   if (type === 'rpi4') {
     const g = (n: string) => Number(/\d+$/.exec(n)?.[0] ?? 99);
     const gpios = sides.filter((n) => n.startsWith('GPIO')).sort((a, b) => g(a) - g(b));
