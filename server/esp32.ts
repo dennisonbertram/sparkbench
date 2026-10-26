@@ -1,7 +1,8 @@
 import type { Connect } from 'vite';
 import { createHash, randomBytes } from 'node:crypto';
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { execFile, spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
 import type { ServerResponse } from 'node:http';
 import { tmpdir, homedir } from 'node:os';
@@ -25,6 +26,67 @@ const qemuPath = () => process.env.SPARKBENCH_ESP32_QEMU ?? join(CACHE, 'qemu', 
 const romPath = () => process.env.SPARKBENCH_ESP32_ROM ?? join(CACHE, 'qemu', 'pc-bios');
 const demoPath = () => process.env.SPARKBENCH_ESP32_FIRMWARE ?? join(CACHE, 'esp32', 'firmware', 'esp32-gpio-blink-4mb.bin');
 
+// The same helper can run from the local build above or from the sparkbench-esp32 Docker image
+// (docker/esp32-runtime.Dockerfile), which is how it runs on a Mac or a cloud worker.
+// SPARKBENCH_ESP32_RUNNER=native|docker picks one; by default the local build wins when present.
+const IMAGE = () => process.env.SPARKBENCH_ESP32_IMAGE ?? 'sparkbench-esp32';
+const IN_IMAGE = { qemu: '/opt/sparkbench/qemu/libqemu-xtensa.so', rom: '/opt/sparkbench/qemu/pc-bios', demo: '/opt/sparkbench/firmware/esp32-gpio-blink-4mb.bin' };
+const nativeBuilt = () => existsSync(helperPath()) && existsSync(qemuPath()) && existsSync(join(romPath(), 'esp32-v3-rom.bin')) && existsSync(join(romPath(), 'esp32-v3-rom-app.bin'));
+let imageCheck = { at: 0, ok: false };
+function dockerImageReady() {
+  if (Date.now() - imageCheck.at > 10000) {
+    const r = spawnSync('docker', ['image', 'inspect', '--format', '{{.Id}}', IMAGE()], { stdio: 'ignore', timeout: 5000 });
+    imageCheck = { at: Date.now(), ok: r.status === 0 };
+  }
+  return imageCheck.ok;
+}
+function runner(): 'native' | 'docker' | null {
+  const want = process.env.SPARKBENCH_ESP32_RUNNER;
+  if (want === 'native') return nativeBuilt() ? 'native' : null;
+  if (want === 'docker') return dockerImageReady() ? 'docker' : null;
+  return nativeBuilt() ? 'native' : dockerImageReady() ? 'docker' : null;
+}
+let imageDemo: Buffer | null = null;
+async function demoImage(): Promise<Buffer> {
+  if (runner() !== 'docker') return readFile(demoPath());
+  if (!imageDemo) {
+    const r = spawnSync('docker', ['run', '--rm', '--network', 'none', '--entrypoint', 'cat', IMAGE(), IN_IMAGE.demo], { maxBuffer: FLASH_SIZE + 1024, timeout: 30000 });
+    if (r.status !== 0) throw new Error('could not read the demo firmware from the ESP32 runtime image');
+    imageDemo = r.stdout;
+  }
+  return imageDemo;
+}
+
+const docker = (args: string[]) => promisify(execFile)('docker', args, { timeout: 30000 });
+
+/**
+ * One container per session: no network, capped CPU/memory/processes, no capabilities. The flash
+ * and eFuse files are copied in rather than mounted, so this works with any Docker host
+ * (Docker Desktop, Colima, a remote daemon or a cloud worker), whatever folders it shares.
+ */
+async function launchHelper(dir: string, mask: number, values: number): Promise<{ child: ChildProcessWithoutNullStreams; container?: string }> {
+  if (runner() === 'native') {
+    return { child: spawn(helperPath(), [qemuPath(), romPath(), join(dir, 'flash.bin'), join(dir, 'efuse.bin'), String(mask), String(values)], { stdio: ['pipe', 'pipe', 'pipe'], shell: false }) };
+  }
+  const container = `sparkbench-esp32-${randomBytes(6).toString('hex')}`;
+  await docker(['create', '--rm', '-i', '--name', container, '--network', 'none', '--cpus', '1', '--memory', '1g', '--pids-limit', '64',
+    '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+    IMAGE(), IN_IMAGE.qemu, IN_IMAGE.rom, '/session/flash.bin', '/session/efuse.bin', String(mask), String(values)]);
+  try {
+    // docker cp keeps the host owner, so let the container's user read and write the copies.
+    await Promise.all(['flash.bin', 'efuse.bin'].map((f) => chmod(join(dir, f), 0o666)));
+    await docker(['cp', `${dir}/.`, `${container}:/session`]);
+  } catch (e) {
+    removeContainer(container);
+    throw e;
+  }
+  return { child: spawn('docker', ['start', '-ai', container], { stdio: ['pipe', 'pipe', 'pipe'], shell: false }), container };
+}
+/** Killing the `docker start -ai` client does not stop its container, so remove it explicitly. */
+function removeContainer(name?: string) {
+  if (name) spawn('docker', ['rm', '-f', name], { stdio: 'ignore' }).on('error', () => {});
+}
+
 type Session = {
   id: string;
   project: Project;
@@ -32,6 +94,7 @@ type Session = {
   engine: SimEngine;
   bridge: Esp32CircuitBridge;
   child: ChildProcessWithoutNullStreams;
+  container?: string;
   dir: string;
   response: ServerResponse;
   done: boolean;
@@ -190,9 +253,10 @@ export function validateEsp32Project(project: Project): void {
 }
 
 function runtimeStatus() {
-  const available = existsSync(helperPath()) && existsSync(qemuPath()) && existsSync(join(romPath(), 'esp32-v3-rom.bin')) && existsSync(join(romPath(), 'esp32-v3-rom-app.bin'));
-  const demoAvailable = available && existsSync(demoPath());
-  return { available, demoAvailable, ...(available ? {} : { reason: 'Build the pinned QEMU library and native helper; see docs/esp32-runtime.md.' }), capabilities: ['gpio', 'serial'] };
+  const how = runner();
+  const available = how !== null;
+  const demoAvailable = how === 'docker' || (available && existsSync(demoPath()));
+  return { available, demoAvailable, ...(how ? { runner: how } : { reason: 'Build the emulator image (docker build -f docker/esp32-runtime.Dockerfile -t sparkbench-esp32 .) or the native helper; see docs/esp32-runtime.md.' }), capabilities: ['gpio', 'serial'] };
 }
 
 function writeEvent(session: Session, event: unknown, final = false) {
@@ -291,6 +355,7 @@ function stopSession(session: Session, reason?: string, alreadyQueued = false): 
     } finally {
       session.done = true;
       sessions.delete(session.id);
+      removeContainer(session.container);
       await rm(session.dir, { recursive: true, force: true }).catch(() => {});
       if (!session.response.writableEnded && !session.response.destroyed) {
         writeEvent(session, { type: 'done' }, true);
@@ -324,6 +389,7 @@ async function startSession(project: Project, image: Buffer, name: string, res: 
   const id = randomBytes(18).toString('base64url');
   let dir: string | undefined;
   let child: ChildProcessWithoutNullStreams | undefined;
+  let container: string | undefined;
   try {
     dir = await mkdtemp(join(tmpdir(), 'sparkbench-esp32-'));
     if (res.destroyed) throw new Error('client disconnected before firmware startup');
@@ -332,10 +398,11 @@ async function startSession(project: Project, image: Buffer, name: string, res: 
     await writeFile(flash, image, { mode: 0o600 });
     await writeFile(efuse, Buffer.alloc(4096), { mode: 0o600 });
     if (res.destroyed) throw new Error('client disconnected before firmware startup');
-    child = spawn(helperPath(), [qemuPath(), romPath(), flash, efuse, String(initial.mask), String(initial.values)], { stdio: ['pipe', 'pipe', 'pipe'], shell: false });
+    ({ child, container } = await launchHelper(dir, initial.mask, initial.values));
   } catch (e) {
     startingSessions--;
     if (child) child.kill('SIGKILL');
+    removeContainer(container);
     if (dir) await rm(dir, { recursive: true, force: true }).catch(() => {});
     throw e;
   }
@@ -346,7 +413,7 @@ async function startSession(project: Project, image: Buffer, name: string, res: 
     throw new Error('could not initialize the ESP32 helper process');
   }
   const session: Session = {
-    id, project, model, engine, bridge, child, dir, response: res, done: false, serialBytes: 0, stdoutBytes: 0,
+    id, project, model, engine, bridge, child, container, dir, response: res, done: false, serialBytes: 0, stdoutBytes: 0,
     stderrBytes: 0, stderrBuffer: '', responseBytes: 0, serialDecoder: new Esp32SerialDecoder(), virtualTimeUs: 0, framePending: false,
     backpressured: false, pendingErrors: [], lastFrameAt: 0,
   };
@@ -456,7 +523,7 @@ export async function esp32Middleware(req: Connect.IncomingMessage, res: ServerR
     const payload = await requestBody(req);
     if (req.url === '/api/esp32/run' && req.method === 'POST') {
       const project = payload.project as Project;
-      const image = payload.demo ? await readFile(demoPath()) : Buffer.from(String(payload.firmware?.base64 ?? ''), 'base64');
+      const image = payload.demo ? await demoImage() : Buffer.from(String(payload.firmware?.base64 ?? ''), 'base64');
       const name = payload.demo ? 'esp32-gpio-blink-4mb.bin' : String(payload.firmware?.name ?? 'firmware.bin').slice(0, 120);
       await startSession(project, image, name, res, payload.inputs);
       return;

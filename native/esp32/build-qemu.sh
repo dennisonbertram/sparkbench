@@ -15,5 +15,6 @@ ninja -t clean qemu-system-xtensa
 ninja -v -d keeprsp qemu-system-xtensa
 cp qemu-system-xtensa.rsp libqemu-xtensa.rsp
 sed -i 's/-pie//g; s/-o qemu-system-xtensa/-shared -o libqemu-xtensa.so/g; s/qemu-system-xtensa.p\/system_main.c.o//g' libqemu-xtensa.rsp
-cc -m64 @libqemu-xtensa.rsp
+# -m64 only exists on x86 compilers; arm64 hosts (Apple silicon Docker) build natively.
+if [ "$(uname -m)" = x86_64 ]; then cc -m64 @libqemu-xtensa.rsp; else cc @libqemu-xtensa.rsp; fi
 printf '%s\n' "$QEMU/build/libqemu-xtensa.so"

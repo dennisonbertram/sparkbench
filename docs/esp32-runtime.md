@@ -6,7 +6,19 @@ Vite API; the API starts one isolated GPL helper process per session. The
 helper loads QEMU dynamically and forwards only QEMU GPIO direction/output and
 UART TX callbacks. The electrical model feeds GPIO inputs back into QEMU.
 
-## Pinned setup
+## Quick start with Docker (Mac, Windows or Linux)
+
+```sh
+docker build -f docker/esp32-runtime.Dockerfile -t sparkbench-esp32 .
+npm run dev
+```
+
+The image builds the pinned QEMU fork, the helper and the demo firmware from source (the first
+build takes a while). When no native build is present, the server finds the image and starts one
+container per session: no network, 1 CPU, 1 GB, 64 processes, no capabilities; the flash image is copied in (nothing is mounted).
+`SPARKBENCH_ESP32_RUNNER=native|docker` forces one; `SPARKBENCH_ESP32_IMAGE` names another image.
+
+## Pinned setup (native, Linux)
 
 The source pins are QEMU `9c2989840853e3b47cd1d9cbd38ce8ba41af260a` in
 `~/.cache/sparkbench/qemu`, and ESP-IDF `v5.4.2` peeled commit
