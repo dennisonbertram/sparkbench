@@ -17,7 +17,7 @@ if (asked) {
   console.log('questions:', qs.slice(0, 500));
   await p.screenshot({ path: 'test-results/ai-clarify-questions.png' });
   // Pick the second option of the first question.
-  const second = p.locator('[data-testid=questions] fieldset').first().locator('label').nth(1);
+  const second = p.locator('[data-testid=questions] [data-testid=ask-card]').first().locator('[role=radio]').nth(1);
   if (await second.count()) await second.click();
   await p.click('[data-testid=questions-go]');
   await p.waitForSelector('[data-testid=requirements]', { timeout: 400000 });

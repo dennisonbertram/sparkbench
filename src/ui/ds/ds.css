@@ -22,6 +22,13 @@
   --warn: #b7791f;
   --ok: #228b3b;
   --overlay: rgba(20, 20, 22, 0.45);
+  --shadow-menu: 0 10px 30px rgba(0, 0, 0, 0.14);
+  --shadow-pop: 0 18px 50px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.27);
+  /* Controls laid over a dark picture (the rendered circuit board): the same in both themes. */
+  --inverse: #3a3f3c;
+  --inverse-ink: #e7ebe8;
+  --inverse-line: #4a504c;
   --chat-user: #e2e2dc;
   --mat: #214f46;
   --mat-2: #1b443c;
@@ -126,7 +133,7 @@ button.link { border: none; background: none; color: var(--select); padding: 0 0
 select, input:not([type]), input[type='text'], input[type='search'], input[type='url'], input[type='email'], input[type='number'], textarea { background: var(--surface); color: var(--ink); border: 1px solid var(--control); border-radius: var(--radius-control); padding: 5px 8px; }
 input::placeholder, textarea::placeholder { color: var(--ink-3); opacity: 1; }
 .menu-anchor { position: relative; }
-.menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14); padding: 6px; min-width: 230px; display: flex; flex-direction: column; gap: 2px; z-index: 50; }
+.menu { position: absolute; top: calc(100% + 6px); right: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-menu); padding: 6px; min-width: 230px; display: flex; flex-direction: column; gap: 2px; z-index: 50; }
 .menu button, .menu .menu-file { text-align: left; border: none; background: none; padding: 7px 10px; border-radius: var(--radius-control); cursor: pointer; }
 .menu button:hover, .menu .menu-file:hover { background: var(--surface-2); }
 .menu-file input { display: none; }
@@ -151,7 +158,7 @@ input::placeholder, textarea::placeholder { color: var(--ink-3); opacity: 1; }
 .card-title { font-weight: 600; font-size: 15.5px; }
 .card-blurb { font-size: 13px; color: var(--ink-2); }
 .modal-back { position: fixed; inset: 0; background: var(--overlay); z-index: 50; display: grid; place-items: center; padding: 16px; }
-.modal { background: var(--surface); border-radius: var(--radius); width: min(520px, 100%); max-height: 90vh; overflow: auto; box-shadow: 0 20px 60px #0004; }
+.modal { background: var(--surface); border-radius: var(--radius); width: min(520px, 100%); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-modal); }
 .modal-body { padding: 12px 16px 16px; }
 .modal-body form { display: grid; gap: 10px; }
 .modal-body label { display: grid; gap: 4px; font-size: 13px; color: var(--ink-2); }
@@ -178,6 +185,79 @@ input[type='range'] { accent-color: var(--primary); }
 .banner.strip { margin: 0; border-radius: 0; border-width: 0 0 1px; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13.5px; }
 .banner.strip.info { background: color-mix(in srgb, var(--select) 10%, var(--surface)); }
 .banner.strip.warn { background: color-mix(in srgb, var(--warn) 14%, var(--surface)); }
+.banner.inline { margin: 0; padding: 6px 10px; border-width: 0 0 0 3px; border-color: var(--line); background: var(--surface-2); }
+.banner.inline.error { border-color: var(--error); }
+.banner.inline.warn { border-color: var(--warn); }
+.banner.inline.ok { border-color: var(--ok); }
+.banner.inline.info { border-color: var(--select); }
+.ds-field.row { grid-template-columns: minmax(6em, 40%) minmax(0, 1fr); align-items: center; gap: 4px 10px; }
+.ds-field.row .ds-field-hint { grid-column: 2; }
+
+/* ButtonLink: an <a> that looks like a Button */
+.ds-button-link { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: var(--radius-control); padding: 5px 10px; text-decoration: none; cursor: pointer; }
+.ds-button-link:hover { border-color: var(--ink-3); }
+.ds-button-link.primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); font-weight: 500; }
+.ds-button-link.primary:hover { background: color-mix(in srgb, var(--primary) 85%, var(--bench)); }
+.ds-button-link.ghost { background: transparent; border-color: transparent; }
+.ds-button-link.ghost:hover { background: var(--surface-2); border-color: var(--line); }
+.ds-button-link.danger { color: var(--error); border-color: color-mix(in srgb, var(--error) 40%, var(--line)); }
+.ds-button-link.link { border: none; background: none; color: var(--select); padding: 0; text-decoration: underline; }
+.ds-button-link.big { padding: 8px 16px; font-size: 15px; }
+
+/* Tabs: the tablist inside the bar, trailing content, and the segmented and file variants */
+.ds-tablist { display: flex; gap: 2px; flex: none; }
+.ds-tabs-trail { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 6px; margin-left: auto; min-width: 0; }
+.ds-tab-badge { display: inline-flex; gap: 4px; margin-left: 6px; }
+.ds-tab-badge:empty { display: none; }
+.ds-tabs { display: flex; align-items: center; }
+.ds-tabs [role='tab'] { white-space: nowrap; display: inline-flex; align-items: center; }
+.ds-tabs-segmented { gap: 8px; }
+.ds-tabs-segmented .ds-tablist { padding: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-control); }
+.ds-tabs-segmented [role='tab'] { border: none; background: none; padding: 4px 10px; border-radius: 8px; font-size: 12.5px; color: var(--ink-2); }
+.ds-tabs-segmented [role='tab']:hover:not(.active) { color: var(--ink); }
+.ds-tabs-segmented [role='tab'].active { background: var(--surface); color: var(--ink); font-weight: 500; box-shadow: 0 0 0 1px var(--line); }
+.ds-tabs-segmented.dark .ds-tablist { background: var(--inverse); border-color: var(--inverse-line); }
+.ds-tabs-segmented.dark [role='tab'] { color: var(--inverse-ink); }
+.ds-tabs-segmented.dark [role='tab']:hover:not(.active) { color: var(--inverse-ink); background: var(--inverse-line); }
+.ds-tabs-segmented.dark [role='tab'].active { background: var(--inverse-ink); color: var(--inverse); box-shadow: none; }
+.ds-tabs-segmented.dark [role='tab']:focus-visible { outline-color: var(--inverse-ink); }
+.ds-tabs-file { flex-wrap: wrap; gap: 4px 2px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.ds-tabs-file .ds-tablist { flex: 0 1 auto; flex-wrap: wrap; min-width: 0; }
+.ds-tabs-file .ds-tabs-trail { flex: 1 1 0; min-width: min-content; }
+.ds-tabs-file [role='tab'] { border: 1px solid transparent; background: none; font-family: var(--mono); font-size: 12.5px; }
+.ds-tabs-file [role='tab'].active { background: var(--surface); border-color: var(--line); }
+.tabs .ds-tabs-trail { padding-bottom: 4px; }
+
+/* Disclosure: a Card that folds */
+.ds-disclosure { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.ds-disclosure > summary { display: flex; align-items: center; gap: 6px; padding: 9px 12px; list-style: none; cursor: pointer; font-weight: 600; border-radius: var(--radius); }
+.ds-disclosure > summary::-webkit-details-marker { display: none; }
+.ds-disclosure > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ds-disclosure > summary:hover .ds-disclosure-chevron { color: var(--ink); }
+.ds-disclosure-chevron { flex: none; color: var(--ink-3); transition: transform 150ms; vertical-align: 0; }
+.ds-disclosure[open] > summary > .ds-disclosure-chevron { transform: rotate(90deg); }
+.ds-disclosure-summary { flex: 1; min-width: 0; }
+.ds-disclosure-body { padding: 0 12px 12px; }
+.ds-disclosure.plain { background: none; border: none; border-radius: 0; }
+.ds-disclosure.plain > summary { padding: 3px 0; font-weight: 400; font-size: 12.5px; color: var(--ink-2); border-radius: 6px; }
+.ds-disclosure.plain > summary:hover { color: var(--ink); }
+.ds-disclosure.plain > .ds-disclosure-body { padding: 2px 0 4px 18px; }
+
+/* Popover and Coachmark */
+.ds-popover { position: fixed; z-index: 100; width: 340px; max-width: calc(100vw - 16px); max-height: calc(100vh - 24px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow-pop); pointer-events: auto; }
+.ds-popover:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.ds-coachmark-step { font-size: 12px; color: var(--ink-3); }
+.ds-coachmark-title { font-size: 17px; font-weight: 600; margin: 4px 0 6px; }
+.ds-coachmark-body { margin: 0 0 12px; color: var(--ink-2); }
+.ds-coachmark-body > p { margin: 0; }
+.ds-coachmark-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+
+/* Menus: start alignment and the DisclosureMenu trigger */
+.menu.start { left: 0; right: auto; }
+.ds-disclosure-menu { display: inline-block; }
+.ds-disclosure-menu > button { display: inline-flex; align-items: center; gap: 6px; }
+.ds-disclosure-menu-chevron { color: var(--ink-3); transition: transform 150ms; }
+.ds-disclosure-menu > button[aria-expanded='true'] .ds-disclosure-menu-chevron { transform: rotate(180deg); }
 
 /* ---------------------------------------------------------------- AI and chat (./ai.tsx)
    Adapted from Praci (github.com/dennisonbertram/praci, Apache-2.0, derived from Rakazo):
@@ -345,6 +425,6 @@ button.link.ds-ask-other { align-self: flex-start; padding: 0; font-size: 13px; 
   .ds-pixels span { animation: none; opacity: 0.5; }
   .ds-success-dot, .ds-success-label { animation: none; }
   .ds-tool[data-state='running'] .ds-tool-icon { animation: none; }
-  .ds-tool-chevron, .ds-msg-meta, .ds-composer-bar { transition: none; }
+  .ds-tool-chevron, .ds-msg-meta, .ds-composer-bar, .ds-disclosure-chevron, .ds-disclosure-menu-chevron { transition: none; }
   .icon-btn.ds-round.primary:active:not(:disabled) { transform: none; }
 }

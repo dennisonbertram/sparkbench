@@ -18,7 +18,7 @@ import { renderBreadboardSvg } from '../core/breadboard';
 import { download, slug } from './exporters';
 import { generateFiles } from '../core/codegen';
 import { buildNets } from '../core/netlist';
-import { Banner, Button } from './ds';
+import { Banner, Button, DisclosureMenu, MenuItem, Tabs } from './ds';
 
 function useTheme(): 'light' | 'dark' {
   const [dark, setDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches);
@@ -75,21 +75,19 @@ export function SchematicView() {
           <Button onClick={() => setZoom((z) => Math.min(5, z * 1.25))} aria-label="Zoom in">+</Button>
           <span className="zoom-pct">{Math.round(zoom * 100)}%</span>
         </span>
-        <details className="doc-more">
-          <summary>Files for engineering tools</summary>
-          <div className="doc-more-list">
-            <Button onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Opens in KiCad, the free circuit design program">KiCad schematic</Button>
-            <Button onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))} title="A KiCad project you can open and turn into a circuit board">KiCad project</Button>
-            <Button onClick={() => download(`${name}.net`, exportKicadNetlist(project))} title="Netlist: the list of which pins connect to which, for other design tools">Netlist</Button>
-            <Button onClick={() => download(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)))} title="SPICE: a circuit file for electronics simulators such as ngspice">SPICE (.cir)</Button>
-            {aiStatus.kicad && (
-              <Button onClick={renderKicad} disabled={kicad?.busy} title="Open the schematic in KiCad on this computer and check it for wiring errors">
-                {kicad?.busy ? 'Running KiCad…' : 'Check in KiCad'}
-              </Button>
-            )}
-          </div>
-        </details>
+        <DisclosureMenu label="Files for engineering tools" size="sm" className="doc-more">
+          <MenuItem onClick={() => download(`${name}.kicad_sch`, exportKicadSchematic(project))} title="Opens in KiCad, the free circuit design program">KiCad schematic</MenuItem>
+          <MenuItem onClick={() => download(`${name}.kicad_pro`, exportKicadProject(project))} title="A KiCad project you can open and turn into a circuit board">KiCad project</MenuItem>
+          <MenuItem onClick={() => download(`${name}.net`, exportKicadNetlist(project))} title="Netlist: the list of which pins connect to which, for other design tools">Netlist</MenuItem>
+          <MenuItem onClick={() => download(`${name}.cir`, exportSpice(project, defaultSpiceOptions(project)))} title="SPICE: a circuit file for electronics simulators such as ngspice">SPICE (.cir)</MenuItem>
+          {aiStatus.kicad && (
+            <MenuItem onClick={renderKicad} disabled={kicad?.busy} title="Open the schematic in KiCad on this computer and check it for wiring errors">
+              {kicad?.busy ? 'Running KiCad…' : 'Check in KiCad'}
+            </MenuItem>
+          )}
+        </DisclosureMenu>
       </div>
+      {kicad?.busy && <Banner role="status">Running KiCad to draw and check the schematic…</Banner>}
       {kicad?.error && <Banner tone="warn">KiCad: {kicad.error}</Banner>}
       {kicad?.svg && (
         <Banner tone="ok">
@@ -168,14 +166,14 @@ export function CodeView() {
   const errorLine = err?.file === file ? err.line : null;
   return (
     <div className="codeview">
-      <div className="file-tabs" role="tablist">
-        {files.map((f) => (
-          <Button key={f} role="tab" aria-selected={f === file} className={f === file ? 'active' : undefined} onClick={() => useStore.getState().set({ activeFile: f })}>
-            {f}
-            {f !== 'main.py' && <span className="file-hint">{f.startsWith('arduino/') ? 'Arduino' : 'driver'}</span>}
-          </Button>
-        ))}
-        <span className="spacer" />
+      <Tabs
+        variant="file"
+        className="file-tabs"
+        label="Files"
+        items={files.map((f) => ({ id: f, label: <>{f}{f !== 'main.py' && <span className="file-hint">{f.startsWith('arduino/') ? 'Arduino' : 'driver'}</span>}</> }))}
+        value={file}
+        onChange={(f) => useStore.getState().set({ activeFile: f })}
+      >
         {project.codeCustom && (
           <Button
             variant="ghost"
@@ -192,7 +190,7 @@ export function CodeView() {
         <Button variant="ghost" onClick={() => download(file.split('/').pop()!, project.files[file], 'text/plain')}>
           Download {file.split('/').pop()}
         </Button>
-      </div>
+      </Tabs>
       {err && err.file === file && (
         <Banner tone="error">
           <b>Line {err.line}:</b> {err.message}

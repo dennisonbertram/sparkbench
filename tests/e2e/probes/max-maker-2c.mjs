@@ -2,18 +2,18 @@ import { open, OUT, runSim, stop, problems } from './max-maker-lib.mjs';
 const { b, p, errs } = await open();
 await p.fill('.hero-input textarea', 'ESP32 with an OLED screen, two buttons, a temperature sensor and an IMU');
 await p.click('button.primary.big');
-await p.waitForSelector('.part', { timeout: 240000 }); console.log('badge', await p.locator('.ai-badge').innerText()); console.log('first reply', (await p.locator('.msg-text').allInnerTexts()).slice(-1)[0]);
+await p.waitForSelector('.part', { timeout: 240000 }); console.log('badge', await p.locator('.ai-badge').innerText()); console.log('first reply', (await p.locator('.ds-msg-bubble').allInnerTexts()).slice(-1)[0]);
 await p.waitForTimeout(2000);
 async function proj() { return p.evaluate(() => { const id = localStorage.getItem('sparkbench.current.v1'); return JSON.parse(localStorage.getItem('sparkbench.projects.v1'))[id]; }); }
 const steps = ['add a buzzer', 'use a Raspberry Pi Pico instead', 'remove the buzzer', 'add two more LEDs'];
 let i = 4;
 for (const s of steps) {
-  const before = (await p.locator('.msg-text').count());
+  const before = (await p.locator('.ds-msg-bubble').count());
   await p.fill('.composer textarea', s);
   await p.press('.composer textarea', 'Enter');
-  const t0=Date.now(); await p.waitForFunction(n => { const m=[...document.querySelectorAll('.msg-text')]; return m.length >= n + 2 && !/designing/i.test(m[m.length-1].innerText); }, before, { timeout: 240000 }).catch(() => console.log('no reply?')); console.log('reply secs', (Date.now()-t0)/1000);
+  const t0=Date.now(); await p.waitForFunction(n => { const m=[...document.querySelectorAll('.ds-msg-bubble')]; return m.length >= n + 2 && !/designing/i.test(m[m.length-1].innerText); }, before, { timeout: 240000 }).catch(() => console.log('no reply?')); console.log('reply secs', (Date.now()-t0)/1000);
   await p.waitForTimeout(2500);
-  const msgs = await p.locator('.msg-text').allInnerTexts();
+  const msgs = await p.locator('.ds-msg-bubble').allInnerTexts();
   console.log('\n===== STEP:', s);
   console.log('REPLY:', msgs[msgs.length - 1]);
   const pr = await proj();

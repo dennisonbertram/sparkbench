@@ -17,7 +17,7 @@ for (let i=0;i<5;i++){ await p.waitForTimeout(1000); console.log('pico t', i, aw
 for (const s of ['move button A to GP14', 'move the button to GPIO 14', 'remove the LED', 'add 40 potentiometers']) {
   await p.fill('.composer textarea', s); await p.press('.composer textarea', 'Enter');
   await p.waitForTimeout(2500);
-  const m = await p.locator('.msg-text').allInnerTexts();
+  const m = await p.locator('.ds-msg-bubble').allInnerTexts();
   const pr2 = await proj();
   console.log('\n>>', s, '\n', m[m.length-1], '\nFEAT', JSON.stringify(pr2.features?.map(f => [f.label, f.pins])));
 }

@@ -2,7 +2,7 @@
 // me"), run in the simulator after every change, with a pass/fail badge on the tab.
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from './store';
-import { Button, TextInput } from './ds';
+import { Banner, Button, TextInput } from './ds';
 import { sendPrompt } from './copilot';
 import { CostHint } from './CostHint';
 import type { AcceptanceTest, TestResult } from '../core/acceptance';
@@ -106,8 +106,8 @@ export function TestsPanel() {
         <Button type="submit" disabled={!ai.enabled || adding || !text.trim()}>{adding ? 'Writing the test…' : 'Add test'}</Button>
         {ai.enabled && <CostHint kind="test" />}
       </form>
-      {error && <div className="problem error">{error}</div>}
-      {run?.error && <div className="problem error">The tests couldn't run: {run.error}</div>}
+      {error && <Banner tone="error" variant="inline">{error}</Banner>}
+      {run?.error && <Banner tone="error" variant="inline">The tests couldn't run: {run.error}</Banner>}
       <ul className="test-list">
         {(run?.results ?? []).map((r) => (
           <li key={r.id} className={r.pass ? 'pass' : 'fail'} data-testid="test-result">

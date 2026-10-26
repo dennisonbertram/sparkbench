@@ -50,10 +50,10 @@ for (const a of acts) {
     await p.locator('[data-testid=code-assistant] button[type=submit]').click();
     const t0 = Date.now();
     await p.waitForTimeout(3000); await shot('assist-busy');
-    await p.waitForSelector('[data-testid=ai-proposal], [data-testid=code-assistant] .banner.error', { timeout: 300000 });
+    await p.waitForSelector('[data-testid=ai-proposal], [data-testid=composer-error]', { timeout: 300000 });
     console.log('assist took', Date.now() - t0);
     await shot('assist-proposal');
-    console.log('PROPOSAL>>>\n' + await p.locator('[data-testid=ai-proposal], [data-testid=code-assistant] .banner.error').first().innerText() + '\n<<<');
+    console.log('PROPOSAL>>>\n' + await p.locator('[data-testid=ai-proposal], [data-testid=composer-error]').first().innerText() + '\n<<<');
   }
   else if (k === 'accept') { await p.locator('[data-testid=ai-proposal] button', { hasText: 'Accept' }).click(); await p.waitForTimeout(1500); }
   } catch (e) { console.log('ACTION FAILED', JSON.stringify(a), e.message.slice(0, 500)); await shot('err-' + k); }

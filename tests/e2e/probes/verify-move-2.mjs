@@ -8,7 +8,7 @@ await p.waitForSelector('.part', { timeout: 30000 });
 await p.waitForTimeout(1500);
 async function proj() { return p.evaluate(() => { const id = localStorage.getItem('sparkbench.current.v1'); return JSON.parse(localStorage.getItem('sparkbench.projects.v1'))[id]; }); }
 async function say(s){ await p.fill('.composer textarea', s); await p.press('.composer textarea', 'Enter'); await p.waitForTimeout(4000);
- const m = await p.locator('.msg-text').allInnerTexts(); const pr=await proj();
+ const m = await p.locator('.ds-msg-bubble').allInnerTexts(); const pr=await proj();
  console.log('\n>>', s, '\n', m[m.length-1], '\nFEAT', JSON.stringify(pr.features?.map(f => [f.label, f.pins])));
  console.log('parts', await p.locator('.part').evaluateAll(es=>es.map(e=>e.dataset.part).join(',')));
  console.log('code pins', (pr.files['main.py']||pr.files['sketch.ino']||'').split('\n').filter(l=>/Pin\(|BUTTON|button/i.test(l)).join(' | '));

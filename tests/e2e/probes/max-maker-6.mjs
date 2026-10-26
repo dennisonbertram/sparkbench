@@ -51,7 +51,7 @@ await p.screenshot({ path: OUT + '45-syntax-problems.png' });
 // copilot after custom code
 await p.fill('.composer textarea', 'add a buzzer'); await p.press('.composer textarea', 'Enter');
 await p.waitForTimeout(8000);
-const m = await p.locator('.msg-text').allInnerTexts(); console.log('REPLY:', m[m.length-1]);
+const m = await p.locator('.ds-msg-bubble').allInnerTexts(); console.log('REPLY:', m[m.length-1]);
 pr = await proj(); console.log('custom code kept?', pr.files['main.py'].includes('if shakes > 3'), 'buzzer in code?', /buzzer/.test(pr.files['main.py']), 'codeCustom', pr.codeCustom);
 await p.screenshot({ path: OUT + '46-copilot-after-custom.png' });
 console.log('ERRS', errs);

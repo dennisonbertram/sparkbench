@@ -1,7 +1,7 @@
 // Revisions: release the design as Rev A, B…, with what changed since the last release.
 import React, { useMemo, useState } from 'react';
 import { useStore } from './store';
-import { Button, TextInput } from './ds';
+import { Button, Disclosure, TextInput } from './ds';
 import { releaseRevision, unreleasedChanges } from '../core/revisions';
 
 export function Revisions() {
@@ -12,11 +12,17 @@ export function Revisions() {
   const next = revs.length ? String.fromCharCode(revs[revs.length - 1].rev.charCodeAt(0) + 1) : 'A';
   const canRelease = !revs.length || pending.length > 0;
   return (
-    <details className="revisions" data-testid="revisions" open={revs.length > 0}>
-      <summary>
-        Revision: {project.revision ? `Rev ${project.revision}` : 'not released yet (boards made now are marked “Draft”)'}
-        {pending.length > 0 && <span className="rev-pending"> · {pending.length} change{pending.length > 1 ? 's' : ''} since Rev {project.revision}</span>}
-      </summary>
+    <Disclosure
+      className="revisions"
+      data-testid="revisions"
+      defaultOpen={revs.length > 0}
+      summary={
+        <>
+          Revision: {project.revision ? `Rev ${project.revision}` : 'not released yet (boards made now are marked “Draft”)'}
+          {pending.length > 0 && <span className="rev-pending"> · {pending.length} change{pending.length > 1 ? 's' : ''} since Rev {project.revision}</span>}
+        </>
+      }
+    >
       <p className="muted">Release the design when you order boards, so you always know which files made which boards. The revision letter is printed on the board and its documents, so after releasing, design the board again to print the new letter.</p>
       {pending.length > 0 && (
         <ul className="rev-changes">{pending.map((c, i) => <li key={i}>{c}</li>)}</ul>
@@ -44,6 +50,6 @@ export function Revisions() {
           ))}
         </ol>
       )}
-    </details>
+    </Disclosure>
   );
 }

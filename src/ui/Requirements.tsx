@@ -3,36 +3,27 @@
 import React, { useState } from 'react';
 import { sendPrompt } from './copilot';
 import { useStore } from './store';
-import { Button, Card, Radio, TextArea, TextInput } from './ds';
+import { AskCard, Button, Card, TextArea, TextInput } from './ds';
 import type { Requirements } from '../core/types';
 
 export function QuestionsCard({ questions }: { questions: { question: string; options: string[] }[] }) {
   const busy = useStore((s) => s.busy);
-  const [picked, setPicked] = useState<string[]>(() => questions.map((q) => q.options[0] ?? ''));
+  // Option ids are their index, so options with the same text stay distinct. The first option is the suggestion.
+  const [picked, setPicked] = useState<number[]>(() => questions.map(() => 0));
   const [sent, setSent] = useState(false);
   return (
     <div className="questions" data-testid="questions">
       {questions.map((q, i) => (
-        <fieldset key={i} disabled={sent}>
-          <legend>{q.question}</legend>
-          <div className="q-options">
-            {q.options.map((o, j) => (
-              <Radio
-                key={o}
-                className={picked[i] === o ? 'on' : ''}
-                name={`q${i}-${q.question}`}
-                checked={picked[i] === o}
-                onChange={() => setPicked((p) => p.map((x, k) => (k === i ? o : x)))}
-                label={
-                  <>
-                    {o}
-                    {j === 0 && <span className="q-rec"> (suggested)</span>}
-                  </>
-                }
-              />
-            ))}
-          </div>
-        </fieldset>
+        <AskCard
+          key={i}
+          question={q.question}
+          options={q.options.map((o, j) => ({ id: String(j), label: o }))}
+          recommendedId="0"
+          selected={String(picked[i])}
+          onSelect={(id) => setPicked((p) => p.map((x, k) => (k === i ? Number(id) : x)))}
+          // Once sent, each card closes on its answer.
+          answer={sent ? String(picked[i]) : undefined}
+        />
       ))}
       <Button
         variant="primary"
@@ -40,7 +31,7 @@ export function QuestionsCard({ questions }: { questions: { question: string; op
         data-testid="questions-go"
         onClick={() => {
           setSent(true);
-          sendPrompt(`My answers: ${questions.map((q, i) => `${q.question} → ${picked[i]}`).join('; ')}. Please design it now.`);
+          sendPrompt(`My answers: ${questions.map((q, i) => `${q.question} → ${q.options[picked[i]] ?? ''}`).join('; ')}. Please design it now.`);
         }}
       >
         Design it with these answers

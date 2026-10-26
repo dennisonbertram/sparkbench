@@ -1,7 +1,7 @@
 // "A case for it": printable enclosure generated from the finished board, with a 3D preview.
 import React, { useState } from 'react';
 import { useStore } from './store';
-import { Banner, Button } from './ds';
+import { Banner, Button, ButtonLink } from './ds';
 import { CaseViewer } from './CaseViewer';
 
 interface CaseInfo {
@@ -89,7 +89,7 @@ export function CaseSection({ jobId }: { jobId: string }) {
           {info.warnings.map((w, i) => <Banner key={i}>{w}</Banner>)}
           <div className="pcb-downloads">
             {info.files.map((f) => (
-              <a key={f} className="button" href={file(f, true)}>{f.split('/').pop()}</a>
+              <ButtonLink key={f} href={file(f, true)}>{f.split('/').pop()}</ButtonLink>
             ))}
           </div>
           <ul className="case-notes">{info.notes.map((n) => <li key={n.name}><strong>{n.name}.stl</strong>: {n.note}</li>)}</ul>

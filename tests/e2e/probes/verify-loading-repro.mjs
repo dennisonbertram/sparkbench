@@ -12,7 +12,7 @@ const t0 = Date.now();
 await p.click('button.primary.big');
 for (const s of [1, 5, 20]) {
   while (Date.now() - t0 < s * 1000) await p.waitForTimeout(200);
-  const st = await p.evaluate(() => ({ designing: !!document.querySelector('.welcome.designing'), h1: document.querySelector('h1')?.textContent, hint: document.querySelector('.hero-hint')?.textContent, now: document.querySelector('.design-steps .now')?.textContent, btn: !!document.querySelector('button.primary.big'), parts: document.querySelectorAll('.part').length }));
+  const st = await p.evaluate(() => ({ designing: !!document.querySelector('.welcome.designing'), h1: document.querySelector('h1')?.textContent, hint: document.querySelector('.hero-hint')?.textContent, now: document.querySelector('[data-testid=tool-call][data-state=running]')?.textContent, btn: !!document.querySelector('button.primary.big'), parts: document.querySelectorAll('.part').length }));
   console.log(s, 's', JSON.stringify(st));
   await p.screenshot({ path: `${dir}/t${s}.png` });
 }

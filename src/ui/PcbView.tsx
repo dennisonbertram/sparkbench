@@ -7,7 +7,7 @@ import { Revisions } from './Revisions';
 import { CostHint } from './CostHint';
 import { CaseSection } from './CaseSection';
 import { BoardEditor, type PlacedPart } from './BoardEditor';
-import { Banner, Button, Radio, Select, TextInput } from './ds';
+import { Banner, Button, ButtonLink, Disclosure, Radio, Select, Tabs, TextInput } from './ds';
 
 interface DrcItem { severity: string; type: string; description: string }
 interface Result {
@@ -68,7 +68,7 @@ export function PcbView() {
     }
   });
   const [status, setStatus] = useState<Status | null>(null);
-  const [side, setSide] = useState<'top' | 'bottom' | 'copper'>('top');
+  const [side, setSide] = useState<'top' | 'bottom' | 'copper' | 'panel'>('top');
   const [fab, setFab] = useState<'jlcpcb' | 'pcbway' | 'oshpark'>('jlcpcb');
   const [qrUrl, setQrUrl] = useState('');
   const [editing, setEditing] = useState(false);
@@ -305,15 +305,15 @@ export function PcbView() {
             </div>
 
             <div className={`pcb-downloads${stale ? ' stale' : ''}`} title={stale ? 'These files are for the old design: update the board first' : undefined}>
-              <a className="button primary" href={`/api/pcb/zip?id=${job}&kind=fab&name=${name}`} data-testid="pcb-gerbers">Download files for the factory (.zip)</a>
-              <a className="button" href="#pcb-order" onClick={(e) => (e.preventDefault(), document.getElementById('pcb-order')?.scrollIntoView({ behavior: 'smooth' }))}>How to order it</a>
-              <a className="button" href={`/api/pcb/zip?id=${job}&kind=all&name=${name}`}>All board files: KiCad, 3D, assembly (.zip)</a>
-              <a className="button" href={file(`fab/bom-jlcpcb.csv`)}>Assembly parts list (BOM)</a>
-              <a className="button" href={file(`fab/cpl-jlcpcb.csv`)}>Part positions (CPL)</a>
-              {res.panel && <a className="button" href={`/api/pcb/zip?id=${job}&kind=panel&name=${name}`} data-testid="pcb-panel-zip">Panel of {res.panel.rows * res.panel.cols} for the factory (.zip)</a>}
-              <a className="button" href={`${file('fab/assembly.pdf')}&view`} target="_blank" rel="noreferrer">Assembly drawing (PDF)</a>
-              <a className="button" href={`${file('TEST.md')}&view`} target="_blank" rel="noreferrer">Test procedure</a>
-              <a className="button" href={`${file('COMPLIANCE.md')}&view`} target="_blank" rel="noreferrer">Selling it? Compliance checklist</a>
+              <ButtonLink variant="primary" href={`/api/pcb/zip?id=${job}&kind=fab&name=${name}`} data-testid="pcb-gerbers">Download files for the factory (.zip)</ButtonLink>
+              <ButtonLink href="#pcb-order" onClick={(e) => (e.preventDefault(), document.getElementById('pcb-order')?.scrollIntoView({ behavior: 'smooth' }))}>How to order it</ButtonLink>
+              <ButtonLink href={`/api/pcb/zip?id=${job}&kind=all&name=${name}`}>All board files: KiCad, 3D, assembly (.zip)</ButtonLink>
+              <ButtonLink href={file(`fab/bom-jlcpcb.csv`)}>Assembly parts list (BOM)</ButtonLink>
+              <ButtonLink href={file(`fab/cpl-jlcpcb.csv`)}>Part positions (CPL)</ButtonLink>
+              {res.panel && <ButtonLink href={`/api/pcb/zip?id=${job}&kind=panel&name=${name}`} data-testid="pcb-panel-zip">Panel of {res.panel.rows * res.panel.cols} for the factory (.zip)</ButtonLink>}
+              <ButtonLink href={`${file('fab/assembly.pdf')}&view`} target="_blank" rel="noreferrer">Assembly drawing (PDF)</ButtonLink>
+              <ButtonLink href={`${file('TEST.md')}&view`} target="_blank" rel="noreferrer">Test procedure</ButtonLink>
+              <ButtonLink href={`${file('COMPLIANCE.md')}&view`} target="_blank" rel="noreferrer">Selling it? Compliance checklist</ButtonLink>
             </div>
 
             <div className="pcb-arrange">
@@ -322,14 +322,21 @@ export function PcbView() {
             {editing && res.placement?.length > 0 && <BoardEditor parts={res.placement} width={res.widthMm} height={res.heightMm} busy={running} onApply={(f) => build(f)} />}
 
             <div className="pcb-picture">
-              <div className="pcb-toggle" role="tablist">
-                {(['top', 'bottom', 'copper', ...(res.panel ? ['panel'] : [])] as const).map((s) => (
-                  <Button key={s} role="tab" aria-selected={side === s} className={side === s ? 'active' : ''} onClick={() => setSide(s as any)}>
-                    {s === 'top' ? 'Top' : s === 'bottom' ? 'Bottom' : s === 'copper' ? 'Copper tracks' : `Panel of ${res.panel!.rows * res.panel!.cols}`}
-                  </Button>
-                ))}
-              </div>
-              <img src={file(side === 'top' ? 'board-top.png' : side === 'bottom' ? 'board-bottom.png' : (side as string) === 'panel' ? 'fab/panel/panel-top.png' : 'board.svg')} alt={`Circuit board, ${side} view`} className={side === 'copper' ? 'copper' : ''} />
+              <Tabs<typeof side>
+                variant="segmented"
+                tone="dark"
+                className="pcb-toggle"
+                label="Board view"
+                items={[
+                  { id: 'top', label: 'Top' },
+                  { id: 'bottom', label: 'Bottom' },
+                  { id: 'copper', label: 'Copper tracks' },
+                  ...(res.panel ? [{ id: 'panel' as const, label: `Panel of ${res.panel.rows * res.panel.cols}` }] : []),
+                ]}
+                value={side}
+                onChange={setSide}
+              />
+              <img src={file(side === 'top' ? 'board-top.png' : side === 'bottom' ? 'board-bottom.png' : side === 'panel' ? 'fab/panel/panel-top.png' : 'board.svg')} alt={`Circuit board, ${side} view`} className={side === 'copper' ? 'copper' : ''} />
             </div>
 
             {res.sourcing ? (
@@ -354,8 +361,7 @@ export function PcbView() {
                   {res.variant === 'prototype' && project.board !== 'none' ? `, and the ${project.board === 'esp32' ? 'ESP32 board' : project.board === 'pico' ? 'Pico' : 'Raspberry Pi'} and modules that plug into the sockets (the sockets are included)` : ''}
                   {res.sourcing.cost[0].missing ? `, and ${res.sourcing.cost[0].missing} part${res.sourcing.cost[0].missing > 1 ? 's' : ''} LCSC doesn’t stock (marked “buy separately” below)` : ''}. The bare boards are priced by the maker when you upload the files: <a href={res.fab.quote} target="_blank" rel="noreferrer">get a {res.fab.name} quote</a>.
                 </p>
-                <details>
-                  <summary>Parts for the board ({res.sourcing.lines.length})</summary>
+                <Disclosure variant="plain" summary={`Parts for the board (${res.sourcing.lines.length})`}>
                   <table className="bom">
                     <thead><tr><th>Ref</th><th>What</th><th>Qty</th><th>LCSC</th><th className="num">Stock</th><th className="num">Each</th></tr></thead>
                     <tbody>
@@ -369,7 +375,7 @@ export function PcbView() {
                       ))}
                     </tbody>
                   </table>
-                </details>
+                </Disclosure>
               </div>
             ) : (
               <p className="pcb-note">Live part prices were unavailable (no internet?). The BOM file still lists every part.</p>

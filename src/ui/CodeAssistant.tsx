@@ -3,11 +3,10 @@
 // before you ever see it.
 import React, { useState } from 'react';
 import { useStore } from './store';
-import { Banner, Button, TextArea } from './ds';
+import { ApprovalCard, Button, Composer, ComposerError, LoadingState, SuccessPop, ToolCallList } from './ds';
 import { startSim } from './simClient';
 import { getEditorSelection } from './CodeEditor';
 import type { Project } from '../core/types';
-import { Elapsed } from './Elapsed';
 
 interface Proposal {
   file: string;
@@ -56,13 +55,13 @@ export function CodeAssistant({ file }: { file: string }) {
 
   if (!ai.enabled)
     return (
-      <div className="assistant off">
+      <div className="code-assistant off">
         AI code editing needs Claude. Start Sparkbench with <code>ANTHROPIC_API_KEY</code> set, or install and log in to Claude Code on this computer.
       </div>
     );
 
   return (
-    <div className="assistant" data-testid="code-assistant">
+    <div className="code-assistant" data-testid="code-assistant">
       {err && err.file === file && !busy && !proposal && (
         <Button className="fix-ai" onClick={() => ask('The program crashes. Find and fix the bug, and explain it simply.', err.raw)}>
           Fix this crash with AI
@@ -77,38 +76,21 @@ export function CodeAssistant({ file }: { file: string }) {
           }}
         />
       )}
+      {accepted && !busy && <SuccessPop label={`Applied to ${file}. Running it now.`} />}
       {accepted && !busy && <AfterAccept instruction={accepted} onClose={() => setAccepted(null)} />}
-      {error && <Banner tone="error">{error}</Banner>}
-      <form
+      {busy && <LoadingState label={`Claude is editing ${file} and trying it in the simulator`} detail="Usually about a minute." slowAfterMs={60_000} slowHint="Taking longer than usual, still working." />}
+      <Composer
         className="assistant-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (text.trim()) ask(text.trim());
-        }}
-      >
-        <TextArea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={2}
-          disabled={busy}
-          aria-label="Ask the AI to change this file"
-          placeholder={busy ? '' : `Ask AI to change ${file}… e.g. “make the LED blink twice as fast” or “show the temperature in Fahrenheit”. Select code first to focus on it.`}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              if (text.trim()) ask(text.trim());
-            }
-          }}
-        />
-        <Button type="submit" variant="primary" disabled={busy || !text.trim()}>
-          {busy ? 'Working…' : 'Ask AI'}
-        </Button>
-      </form>
-      {busy && (
-        <div className="assistant-status">
-          <Elapsed label={`Claude is editing ${file} and trying it in the simulator…`} usual={60} />
-        </div>
-      )}
+        label="Ask the AI to change this file"
+        sendLabel="Ask AI"
+        value={text}
+        onChange={setText}
+        onSend={() => ask(text.trim())}
+        busy={busy}
+        disabled={busy}
+        placeholder={busy ? '' : `Ask AI to change ${file}… e.g. “make the LED blink twice as fast” or “show the temperature in Fahrenheit”. Select code first to focus on it.`}
+        error={error ? <ComposerError message={error} onDismiss={() => setError(null)} /> : undefined}
+      />
       {!busy && !proposal && <div className="assistant-note muted">This box changes only the code. To add, remove or move parts, use the Copilot on the left.</div>}
     </div>
   );
@@ -171,32 +153,30 @@ function ProposalView({ p, onDone }: { p: Proposal; onDone(accepted: boolean): v
     startSim(project);
   };
   return (
-    <div className="proposal" data-testid="ai-proposal">
-      <div className="proposal-head">
-        <div>
-          <b>Suggested change to {p.file}</b> <span className="muted">+{added} −{removed} lines</span>
-          <div className="proposal-reply">{p.reply}</div>
-          {p.log.map((l, i) => (
-            <div key={i} className={`proposal-log ${p.ok ? 'ok' : 'warn'}`}>
-              {l}
+    <div data-testid="ai-proposal">
+      <ApprovalCard
+        title={`Change ${p.file}`}
+        summary={`+${added} −${removed} lines`}
+        description={
+          <>
+            {p.reply}
+            {p.log.length > 0 && <ToolCallList steps={p.log.map((l) => ({ label: l, state: p.ok ? 'done' : 'failed' }))} />}
+          </>
+        }
+        approveLabel="Accept & run"
+        denyLabel="Discard"
+        onApprove={accept}
+        onDeny={() => onDone(false)}
+      >
+        <pre className="diff">
+          {compactDiff(diff).map((d, i) => (
+            <div key={i} className={`dl dl-${d.t === '+' ? 'add' : d.t === '-' ? 'del' : d.t === '…' ? 'gap' : 'ctx'}`}>
+              <span className="dm">{d.t === '=' ? ' ' : d.t}</span>
+              {d.s}
             </div>
           ))}
-        </div>
-        <div className="proposal-actions">
-          <Button variant="primary" onClick={accept}>
-            Accept & run
-          </Button>
-          <Button onClick={() => onDone(false)}>Discard</Button>
-        </div>
-      </div>
-      <pre className="diff">
-        {compactDiff(diff).map((d, i) => (
-          <div key={i} className={`dl dl-${d.t === '+' ? 'add' : d.t === '-' ? 'del' : d.t === '…' ? 'gap' : 'ctx'}`}>
-            <span className="dm">{d.t === '=' ? ' ' : d.t}</span>
-            {d.s}
-          </div>
-        ))}
-      </pre>
+        </pre>
+      </ApprovalCard>
     </div>
   );
 }

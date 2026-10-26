@@ -22,6 +22,7 @@ export const AD_HOC: [string, RegExp][] = [
   ['menu', /className=["'{`](?:[^"'}`]*\s)?menu(?=[\s"'}`])/g],
   ['tabs', /role=["']tablist["']/g],
   ['card', /className=["'{`](?:[^"'}`]*\s)?card(?=[\s"'}`])/g],
+  ['link-button', /<a\s[^>]*className=["'{`](?:[^"'}`]*\s)?button(?=[\s"'}`])/g],
 ];
 
 function files(dir: string): string[] {

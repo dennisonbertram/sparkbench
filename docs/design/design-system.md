@@ -11,6 +11,9 @@ Praci is Apache-2.0 and derived from Rakazo; the palette values below come from 
 
 Tokens live at the top of `src/ui/ds/ds.css`, with light, system-dark and forced-dark (`data-theme`) blocks. Use them; don't hard-code colours in chrome.
 
+- **Shadows:** `--shadow-menu` (menus), `--shadow-pop` (popovers and coachmarks), `--shadow-modal` (dialogs).
+- **Inverse:** `--inverse`, `--inverse-ink`, `--inverse-line` style controls laid over a dark picture (the rendered circuit board). They are the same in light and dark mode, because the picture is.
+
 Differences from Praci:
 - `--line` is `#e4e4df` in light mode rather than Praci's `#f0f0ed`, because Sparkbench's denser panels need visible dividers.
 - `--ink-2` is an extra mid-gray between foreground and muted text.
@@ -35,6 +38,7 @@ All components are imported from `src/ui/ds`.
 | --- | --- | --- |
 | `Button` | Every clickable action | `variant`: `default` (outlined), `primary` (ink: the one main action in view), `ghost` (toolbars, quiet actions), `link` (inline text), `danger` (destructive). `size`: `sm`, `md`, `lg`. `on`: toggled state. Defaults to `type="button"`, so pass `type="submit"` in forms. |
 | `IconButton` | A square button showing only an icon or symbol | `label` (required; the accessible name and tooltip), plus every `Button` prop. Ghost by default. |
+| `ButtonLink` | A link that looks like a button: file downloads, "open in a new tab", a jump to a section | `variant` and `size` as on `Button`, plus native `<a>` props (`href`, `download`, `target`). Never style `<a className="button">` by hand. |
 
 ### Form controls
 
@@ -43,7 +47,7 @@ All components are imported from `src/ui/ds`.
 | `TextInput` | One line of text, search, URL, number or password | Native input props. `type` defaults to `text`. |
 | `TextArea` | Multi-line text | Native textarea props. |
 | `Select` | Picking one item from a short list | Native select props, with `<option>` children. |
-| `Field` | A label above a control, with an optional hint below | `label`, `hint`, `children`. |
+| `Field` | A label above a control, with an optional hint below | `label`, `hint`, `children`. `layout`: `stack` (default, label above) or `row` (label on the left, control on the right, hint under the control: inspector-style property rows). |
 | `Checkbox` | An on/off choice with a label | `label`, plus native checkbox props. |
 | `Radio` | One option in a group | `label`, `name`, plus native radio props. |
 | `Slider` | A number in a range | Native range props. |
@@ -54,7 +58,7 @@ All components are imported from `src/ui/ds`.
 
 | Component | Use it for | Props |
 | --- | --- | --- |
-| `Banner` | A one-line message across a panel: what happened, plus at most one action | `tone`: `neutral`, `info`, `ok`, `warn`, `error`. `error` sets `role="alert"`. |
+| `Banner` | A one-line message across a panel: what happened, plus at most one action | `tone`: `neutral`, `info`, `ok`, `warn`, `error`. `error` sets `role="alert"`. `variant`: `inset` (default, a rounded box inside a panel), `strip` (full width under the top bar), `inline` (a problem row in a list or form: a coloured bar on the left, no outer margin; replaces hand-written `.problem` rows). |
 | `Chip` | A small rounded label (board names, tags) | Native span props. |
 
 ### Surfaces
@@ -63,14 +67,18 @@ All components are imported from `src/ui/ds`.
 | --- | --- | --- |
 | `Card` | A bordered surface, such as a gallery or example tile | Pass `onClick` to make the whole card a button. |
 | `PanelHead` | A panel or dialog header: title on the left, actions on the right | `title`, plus action `children`. |
+| `Disclosure` | A card that folds open: power and batteries, revisions, "Parts for the board". Use it instead of a raw `<details>`. | `summary` (always shown, after a chevron), `children` (shown when open), `defaultOpen` (first state only), `onToggle(open)`, `variant`: `card` (default, bordered surface) or `plain` (no border: a smaller disclosure inside another surface). Native details props such as `data-testid` pass through. |
 
 ### Overlays and navigation
 
 | Component | Use it for | Props |
 | --- | --- | --- |
 | `Modal` | A dialog over a scrim. Focus stays inside; Escape and ✕ close it. | `title`, `onClose`, `className` (for width), `closeLabel`. |
-| `Menu`, `MenuAnchor`, `MenuItem`, `MenuSection`, `MenuNote` | Drop-down menus. Wrap the trigger and `Menu` in a `MenuAnchor`. | Native props. `MenuSection` is a divider with a heading. |
-| `Tabs` | Switching between views of the same thing | `items` (`{id, label}`), `value`, `onChange`. |
+| `Menu`, `MenuAnchor`, `MenuItem`, `MenuSection`, `MenuNote` | Drop-down menus. Wrap the trigger and `Menu` in a `MenuAnchor`. | Native props. `Menu` `align`: `end` (default, right edges line up) or `start`. `MenuSection` is a divider with a heading. |
+| `DisclosureMenu` | A button that opens a menu of actions below it ("Files for engineering tools ▾") | `label`, `children` (`MenuItem`s), `align` (`start` default), `variant`, `size`, `title`, `className`, `menuClassName`. Picking an item, Escape or a click outside closes it; ArrowDown on the button opens it on the first item; arrow keys, Home and End move between items. |
+| `Popover` | A non-modal floating panel next to an element | `label` (or `aria-labelledby`), `onClose` (Escape; focus returns to the opener), `anchorRect` (a `getBoundingClientRect()`; without it the panel sits centred near the top), `placement`: `auto` (right, then left, above, below), `right`, `left`, `top`, `bottom`; always kept on screen. `trapFocus` keeps Tab inside and marks it `aria-modal`. `width` (default 340), `focusKey` (refocus `[data-autofocus]` when it changes). `placePopover()` is the placement maths on its own. |
+| `Coachmark` | A Popover that teaches one thing: the guided tour, first-run hints | `title`, `step` ("Step 2 of 6"), `children` (the text), `actions` (buttons; mark the main one `data-autofocus`), plus every `Popover` prop. |
+| `Tabs` | Switching between views of the same thing | `items` (`{id, label, badge?, testId?, title?}`: `badge` is shown after the label, e.g. counts), `value`, `onChange`, `label` (accessible name of the tablist). `variant`: `underline` (default, the main view tabs), `segmented` (a compact pill group for a picture or mode; `tone="dark"` on a dark picture), `file` (monospace file names, as on the Code tab). `children` are trailing content at the end of the bar (actions, a timer), outside the tablist itself. Only the selected tab is in the Tab order; arrow keys, Home and End move between tabs and select them. |
 
 ### AI and chat
 

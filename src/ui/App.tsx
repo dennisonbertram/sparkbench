@@ -21,7 +21,7 @@ import type { Shrunk } from './images';
 import { BOARDS } from '../core/boards';
 import type { Project } from '../core/types';
 import { FirmwarePanel } from './FirmwarePanel';
-import { Button, Card, Chip, FilePicker, Menu, MenuAnchor, MenuItem, MenuNote, MenuRow, MenuSection, Select, Tabs, TextArea, TextInput } from './ds';
+import { Button, Card, Chip, FilePicker, LoadingState, Menu, MenuAnchor, MenuItem, MenuNote, MenuRow, MenuSection, Select, Tabs, TextArea, TextInput, ToolCallList, type ToolStep } from './ds';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'breadboard', label: 'Wiring' },
@@ -375,16 +375,19 @@ const PHASES = [
 
 /** The waiting screen while Claude designs: real phases streamed from the server, elapsed time and Cancel. */
 function Designing({ text, status }: { text: string; status: string }) {
-  const [t, setT] = useState(0);
+  const [startedAt] = useState(() => Date.now());
   const phase = useStore((s) => s.designPhase);
   const seen = useRef(new Set<string>());
   if (phase) seen.current.add(phase);
-  useEffect(() => {
-    const id = setInterval(() => setT((x) => x + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
   const at = PHASES.findIndex((p) => p.id === phase);
   const shown = PHASES.filter((p) => p.id !== 'fix' || seen.current.has('fix'));
+  const steps: ToolStep[] = shown.map((p) => {
+    const i = PHASES.findIndex((x) => x.id === p.id);
+    if (p.id === phase) return { label: p.label, state: 'running' };
+    if (seen.current.has(p.id)) return { label: p.label, state: 'done' };
+    if (at > i) return { label: p.label, state: 'skipped', summary: `${p.label} (not needed)` };
+    return { label: p.label, state: 'queued' };
+  });
   return (
     <div className="welcome designing" aria-live="polite">
       <header className="welcome-top">
@@ -395,23 +398,16 @@ function Designing({ text, status }: { text: string; status: string }) {
       <section className="hero">
         <p className="lede">“{text}”</p>
         <h1>{status}</h1>
-        <ol className="design-steps">
-          {shown.map((p) => {
-            const i = PHASES.findIndex((x) => x.id === p.id);
-            const cls = p.id === phase ? 'now' : seen.current.has(p.id) ? 'done' : at > i ? 'skip' : '';
-            return (
-              <li key={p.id} className={cls}>
-                {p.label}
-                {cls === 'skip' && <span className="muted"> (not needed)</span>}
-              </li>
-            );
-          })}
-        </ol>
-        <p className="hero-hint">
-          {t < 60
-            ? `${t} s — most designs take 30–90 seconds.`
-            : `${t} s — still working. Designs with custom code and tests can take 2–3 minutes; this is normal.`}
-        </p>
+        <div className="design-progress" data-testid="design-progress">
+          <ToolCallList steps={steps} />
+          <LoadingState
+            label="Designing"
+            startedAt={startedAt}
+            detail="Most designs take 30–90 seconds."
+            slowAfterMs={60_000}
+            slowHint="Still working. Designs with custom code and tests can take 2–3 minutes; this is normal."
+          />
+        </div>
         <Button variant="ghost" onClick={cancelDesign} data-testid="design-cancel">
           Cancel
         </Button>

@@ -8,12 +8,12 @@ async function proj() { return p.evaluate(() => { const id = localStorage.getIte
 const steps = ['add a buzzer', 'use a Raspberry Pi Pico instead', 'remove the buzzer', 'add two more LEDs'];
 let i = 4;
 for (const s of steps) {
-  const before = (await p.locator('.msg-text').count());
+  const before = (await p.locator('.ds-msg-bubble').count());
   await p.fill('.composer textarea', s);
   await p.press('.composer textarea', 'Enter');
-  await p.waitForFunction(n => document.querySelectorAll('.msg-text').length >= n + 2, before, { timeout: 30000 }).catch(() => console.log('no reply?'));
+  await p.waitForFunction(n => document.querySelectorAll('.ds-msg-bubble').length >= n + 2, before, { timeout: 30000 }).catch(() => console.log('no reply?'));
   await p.waitForTimeout(2500);
-  const msgs = await p.locator('.msg-text').allInnerTexts();
+  const msgs = await p.locator('.ds-msg-bubble').allInnerTexts();
   console.log('\n===== STEP:', s);
   console.log('REPLY:', msgs[msgs.length - 1]);
   const pr = await proj();

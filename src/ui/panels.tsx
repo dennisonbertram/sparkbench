@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from './store';
 import { useDialog } from './useDialog';
 import { sendPrompt, suggestions as suggestFor, cancelDesign } from './copilot';
-import { marked } from 'marked';
 import { Glossed } from './Glossed';
 import { startSim } from './simClient';
 import { PARTS, partDef } from '../core/parts';
@@ -22,7 +21,7 @@ import { annotate } from '../core/netlist';
 import { registerCustomPart, type CustomPartSpec } from '../core/customParts';
 import { withCustomPart } from '../core/autowire';
 import { partSize } from '../core/layout';
-import { Banner, Button, Card, ColorInput, IconButton, PanelHead, Select, TextArea, TextInput } from './ds';
+import { Banner, Button, Card, ChatMessage, ChatThread, ColorInput, Composer, IconButton, LoadingState, PanelHead, Select, TextInput } from './ds';
 
 // ------------------------------------------------------------------ Copilot
 export function Copilot() {
@@ -59,54 +58,69 @@ export function Copilot() {
           {ai.enabled ? 'Claude AI' : 'Offline planner'}
         </span>
       </PanelHead>
-      <div className="chat-log" ref={log}>
+      <ChatThread className="chat-log" ref={log}>
         {!chat.length && (
           <div className="chat-empty">
             <p>Tell me what you want to build, in plain words. I'll pick the parts, wire them to valid pins, write the code and the docs.</p>
-            <p>Then you can ask for changes: <em>“add a buzzer”</em>, <em>“use a Pico instead”</em>.</p>
+            <p>
+              Then you can ask for changes: <em>“add a buzzer”</em>, <em>“use a Pico instead”</em>.
+            </p>
           </div>
         )}
-        {chat.map((m) => (
-          <div key={m.id} data-msg={m.id} className={`msg ${m.role} ${m.pending ? 'pending' : ''}`}>
-            {m.role === 'ai' && !m.pending ? <div className="msg-text md" dangerouslySetInnerHTML={{ __html: marked.parse(m.text, { async: false, breaks: true }) as string }} /> : <div className="msg-text">{m.text}</div>}
-            {m.images && m.images.length > 0 && (
-              <div className="msg-images">{m.images.map((src, i) => <img key={i} src={src} alt={`Attached image ${i + 1}`} />)}</div>
-            )}
-            {m.questions && <QuestionsCard questions={m.questions} />}
-            {m.requirements && <RequirementsCard requirements={m.requirements} />}
-            {m.details && m.details.length > 0 && (
-              <details className="msg-details">
-                <summary>Why it's wired this way</summary>
-                <ul>
-                  {m.details.map((d, i) => (
-                    <li key={i}>
-                      <Glossed text={d} />
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-            {m.actions && (
-              <div className="msg-actions">
-                {m.actions.map((a) => (
-                  <Button
-                    key={a.label}
-                    onClick={() => {
-                      const p = useStore.getState().project;
-                      if (a.run === 'run' && p) startSim(p);
-                      else if (a.run.startsWith('tab:')) useStore.getState().setTab(a.run.slice(4) as any);
-                      else if (a.run.startsWith('bottom:')) useStore.getState().set({ bottomTab: a.run.slice(7) as any });
-                      else if (a.run === 'tour') useStore.getState().set({ tourStep: 0 });
-                    }}
-                  >
-                    {a.label}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+        {chat.map((m) => {
+          // ChatMessage draws its extras box for any children, so pass none when there is nothing to show.
+          const extras = !!(m.images?.length || m.questions || m.requirements || m.details?.length || m.actions);
+          // `msg ai|user` stay as hooks for the e2e scripts; the look comes from ChatMessage.
+          return (
+            <ChatMessage key={m.id} data-msg={m.id} from={m.role === 'ai' ? 'assistant' : 'user'} text={m.text} pending={m.pending} className={`msg ${m.role}`}>
+              {extras && (
+                <>
+                  {m.images && m.images.length > 0 && (
+                    <div className="msg-images">
+                      {m.images.map((src, i) => (
+                        <img key={i} src={src} alt={`Attached image ${i + 1}`} />
+                      ))}
+                    </div>
+                  )}
+                  {m.questions && <QuestionsCard questions={m.questions} />}
+                  {m.requirements && <RequirementsCard requirements={m.requirements} />}
+                  {m.details && m.details.length > 0 && (
+                    <details className="msg-details">
+                      <summary>Why it's wired this way</summary>
+                      <ul>
+                        {m.details.map((d, i) => (
+                          <li key={i}>
+                            <Glossed text={d} />
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                  {m.actions && (
+                    <div className="msg-actions">
+                      {m.actions.map((a) => (
+                        <Button
+                          key={a.label}
+                          size="sm"
+                          onClick={() => {
+                            const p = useStore.getState().project;
+                            if (a.run === 'run' && p) startSim(p);
+                            else if (a.run.startsWith('tab:')) useStore.getState().setTab(a.run.slice(4) as any);
+                            else if (a.run.startsWith('bottom:')) useStore.getState().set({ bottomTab: a.run.slice(7) as any });
+                            else if (a.run === 'tour') useStore.getState().set({ tourStep: 0 });
+                          }}
+                        >
+                          {a.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </ChatMessage>
+          );
+        })}
+      </ChatThread>
       <div className="suggest">
         {suggestions.map((s) => (
           <Button key={s} onClick={() => sendPrompt(s)} disabled={!!busy}>
@@ -114,38 +128,20 @@ export function Copilot() {
           </Button>
         ))}
       </div>
-      <form
+      <Composer
         className="composer"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <TextArea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={busy ? busy : project ? 'Ask a question or for a change… (Enter to send)' : 'Describe your gadget… (Enter to send)'}
-          disabled={!!busy}
-          rows={3}
-          aria-label="Message the copilot"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
-          }}
-        />
-        <AttachImages images={images} onChange={setImages} label="" />
-        {ai.enabled && <CostHint kind="design" />}
-        <Button type="submit" variant="primary" disabled={(!text.trim() && !images.length) || !!busy}>
-          {busy ? 'Working…' : 'Send'}
-        </Button>
-        {busy && ai.enabled && (
-          <Button onClick={cancelDesign} data-testid="copilot-stop">
-            Stop
-          </Button>
-        )}
-      </form>
+        label="Message the copilot"
+        value={text}
+        onChange={setText}
+        onSend={submit}
+        canSend={!!text.trim() || images.length > 0}
+        placeholder={busy ? busy : project ? 'Ask a question or for a change… (Enter to send)' : 'Describe your gadget… (Enter to send)'}
+        busy={!!busy}
+        disabled={!!busy}
+        onStop={ai.enabled ? cancelDesign : undefined}
+        attach={<AttachImages images={images} onChange={setImages} label="" />}
+        top={ai.enabled && <CostHint kind="design" />}
+      />
     </aside>
   );
 }
@@ -715,7 +711,7 @@ function AddAnyComponent({ initial, onDone }: { initial: string; onDone(): void 
           {ai.enabled && <CostHint kind="datasheet" />}
         </form>
       )}
-      {busy && <p className="assistant-status">Claude is finding and reading the datasheet (30–90 s)…</p>}
+      {busy && <LoadingState label="Claude is finding and reading the datasheet" detail="Usually 30–90 seconds." slowAfterMs={90_000} />}
       {err && <Banner tone="error">{err}</Banner>}
       {found && (
         <Card className="part-card">

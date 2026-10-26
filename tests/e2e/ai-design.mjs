@@ -11,7 +11,7 @@ await p.click('.hero-input button');
 await p.waitForSelector('.msg.ai:not(.pending)', { timeout: 300000 });
 await p.waitForTimeout(800);
 console.log('name:', await p.inputValue('.project-name'));
-console.log('reply:', (await p.textContent('.msg.ai .msg-text')).slice(0, 600));
+console.log('reply:', (await p.textContent('.msg.ai .ds-msg-bubble')).slice(0, 600));
 await p.screenshot({ path: 'test-results/ai-design-1.png' });
 await p.click('button.run');
 await p.waitForTimeout(6000);
